@@ -8,6 +8,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? 'mock-anthropic-api-k
 const HAS_REAL_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 const EXPECTATIONS_DIR = './expectations';
 const INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR = 'You are the n8n Instance Agent';
+export const SKIP_PROXY_SETUP_ANNOTATION = 'skip-proxy-setup';
 const SYSTEM_PROMPT_ANCHORS = [
 	INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR,
 	'You are the n8n Workflow Planner',
@@ -213,6 +214,14 @@ type InstanceAiFixtures = {
 	instanceAiProxySetup: undefined;
 };
 
+async function safeFetch(input: string, init: RequestInit = {}): Promise<Response | undefined> {
+	try {
+		return await fetch(input, { ...init, signal: AbortSignal.timeout(10_000) });
+	} catch {
+		return undefined;
+	}
+}
+
 export const instanceAiTestConfig = {
 	timezoneId: 'America/New_York',
 	capability: {
@@ -242,6 +251,14 @@ export const test = base.extend<InstanceAiFixtures>({
 				await use(undefined);
 				return;
 			}
+
+			const skipsProxySetup = testInfo.annotations.some(
+				(annotation) => annotation.type === SKIP_PROXY_SETUP_ANNOTATION,
+			);
+			if (skipsProxySetup) {
+				await use(undefined);
+				return;
+			}
 			const services = n8nContainer.services;
 			const testSlug = getInstanceAiTestSlug(testInfo);
 			const folder = `instance-ai/${testSlug}`;
@@ -249,11 +266,7 @@ export const test = base.extend<InstanceAiFixtures>({
 			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
 			// and user workflows before clearing the proxy so cleanup traffic from a
 			// previous test cannot be captured into this test's recording.
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
-			} catch {
-				// Endpoint may not be available
-			}
+			await safeFetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
 
 			await services.proxy.clearAllExpectations();
 
@@ -296,30 +309,20 @@ export const test = base.extend<InstanceAiFixtures>({
 					transform: loosenRecordedInstanceAiPromptMatcher,
 				});
 
-				// Load trace events for replay ID remapping
-				try {
-					await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							slug: testSlug,
-							...(traceEvents.length > 0 ? { events: traceEvents } : {}),
-						}),
-					});
-				} catch {
-					// Trace endpoint may not be available
-				}
+				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						slug: testSlug,
+						...(traceEvents.length > 0 ? { events: traceEvents } : {}),
+					}),
+				});
 			} else {
-				// In recording mode, just activate the slug (no trace events to load)
-				try {
-					await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ slug: testSlug }),
-					});
-				} catch {
-					// Trace endpoint may not be available
-				}
+				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ slug: testSlug }),
+				});
 			}
 
 			await use(undefined);
@@ -367,31 +370,21 @@ export const test = base.extend<InstanceAiFixtures>({
 					},
 				});
 
-				// Save tool trace events (slug-scoped)
-				try {
-					const traceResponse = await fetch(
-						`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`,
-					);
-					if (traceResponse.ok) {
-						const body = (await traceResponse.json()) as { data?: { events?: unknown[] } };
-						const events = body?.data?.events ?? [];
-						if (events.length > 0) {
-							await writeTraceFile(folder, events);
-						}
+				const traceResponse = await safeFetch(
+					`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`,
+				);
+				if (traceResponse?.ok) {
+					const body = (await traceResponse.json()) as { data?: { events?: unknown[] } };
+					const events = body?.data?.events ?? [];
+					if (events.length > 0) {
+						await writeTraceFile(folder, events);
 					}
-				} catch {
-					// Trace endpoint may not be available — skip silently
 				}
 			}
 
-			// Clear trace events for this test
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`, {
-					method: 'DELETE',
-				});
-			} catch {
-				// Trace endpoint may not be available
-			}
+			await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`, {
+				method: 'DELETE',
+			});
 		},
 		{ auto: true },
 	],

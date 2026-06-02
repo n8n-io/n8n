@@ -1,8 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { SSHCredentials } from 'n8n-workflow';
 import { Client } from 'ssh2';
+import { mock } from 'vitest-mock-extended';
 
 import { SSHClientsConfig, SSHClientsManager } from '../ssh-clients-manager';
 
@@ -17,14 +17,14 @@ const credentials: SSHCredentials = {
 };
 
 let sshClientsManager: SSHClientsManager;
-let connectSpy: jest.SpyInstance;
-let endSpy: jest.SpyInstance;
+let connectSpy = vi.spyOn(Client.prototype, 'connect');
+let endSpy = vi.spyOn(Client.prototype, 'end');
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 
-	connectSpy = jest.spyOn(Client.prototype, 'connect');
-	endSpy = jest.spyOn(Client.prototype, 'end');
+	connectSpy = vi.spyOn(Client.prototype, 'connect');
+	endSpy = vi.spyOn(Client.prototype, 'end');
 
 	sshClientsManager = new SSHClientsManager(
 		mock({ idleTimeout }),
@@ -113,7 +113,7 @@ describe('onShutdown', () => {
 
 describe('cleanup', () => {
 	beforeEach(async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		sshClientsManager = new SSHClientsManager(
 			mock({ idleTimeout }),
 			mock<Logger>({ scoped: () => mock<Logger>() }),
@@ -125,7 +125,7 @@ describe('cleanup', () => {
 		await sshClientsManager.getClient({ ...credentials, sshHost: 'host2' });
 		await sshClientsManager.getClient({ ...credentials, sshHost: 'host3' });
 
-		jest.advanceTimersByTime((idleTimeout + cleanUpInterval + 1) * 1000);
+		vi.advanceTimersByTime((idleTimeout + cleanUpInterval + 1) * 1000);
 
 		expect(endSpy).toHaveBeenCalledTimes(3);
 		expect(sshClientsManager.clients.size).toBe(0);
@@ -136,18 +136,18 @@ describe('cleanup', () => {
 			// ARRANGE
 			const client = await sshClientsManager.getClient(credentials);
 			// schedule client for clean up soon
-			jest.advanceTimersByTime((idleTimeout - 1) * 1000);
+			vi.advanceTimersByTime((idleTimeout - 1) * 1000);
 
 			// ACT 1
 			// updating lastUsed should prevent the clean up
 			sshClientsManager.updateLastUsed(client);
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 
 			// ASSERT 1
 			expect(endSpy).toHaveBeenCalledTimes(0);
 
 			// ACT 1
-			jest.advanceTimersByTime(cleanUpInterval * 1000);
+			vi.advanceTimersByTime(cleanUpInterval * 1000);
 
 			// ASSERT 1
 			expect(endSpy).toHaveBeenCalledTimes(1);

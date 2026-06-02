@@ -105,23 +105,6 @@ try {
 	buildProcess.pipe(process.stdout);
 	await buildProcess;
 
-	// Generate third-party licenses for production builds
-	// Skip with N8N_SKIP_LICENSES=true for CI test builds
-	if (process.env.N8N_SKIP_LICENSES !== 'true') {
-		echo(chalk.yellow('INFO: Generating third-party licenses...'));
-		try {
-			const licenseProcess = $`cd ${config.rootDir} && node scripts/generate-third-party-licenses.mjs`;
-			licenseProcess.pipe(process.stdout);
-			await licenseProcess;
-			echo(chalk.green('✅ Third-party licenses generated successfully'));
-		} catch (error) {
-			echo(chalk.yellow('⚠️  Warning: Third-party license generation failed, continuing build...'));
-			echo(chalk.red(`ERROR: License generation failed: ${error.message}`));
-		}
-	} else {
-		echo(chalk.gray('INFO: Skipping license generation (N8N_SKIP_LICENSES=true)'));
-	}
-
 	echo(chalk.green('✅ pnpm install and build completed'));
 } catch (error) {
 	console.error(chalk.red('\n🛑 BUILD PROCESS FAILED!'));
@@ -219,6 +202,38 @@ echo(
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
 const packageDeployTime = getElapsedTime('package_deploy');
+
+// Generate SBOM + render THIRD_PARTY_LICENSES.md from the deployed runtime closure.
+// Single source of truth: the SBOM. Both the runtime endpoint (packages/cli/) and the
+// release asset (compiled/) get the same SBOM-derived attribution file.
+// Tooling (cdxgen + renderer) is installed in .github/scripts/, alongside other CI
+// scripts, so we don't carry a second isolated install.
+//
+// Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
+// is only needed for the release SBOM job. The release-publish workflow opts in by
+// setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
+if (process.env.N8N_GENERATE_LICENSES === 'true') {
+	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
+	try {
+		const toolingDir = path.join(config.rootDir, '.github', 'scripts');
+		await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --ignore-workspace`;
+		const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
+		generateProcess.pipe(process.stdout);
+		await generateProcess;
+		echo(chalk.green('✅ SBOM generated and THIRD_PARTY_LICENSES.md rendered'));
+	} catch (error) {
+		echo(chalk.red(`ERROR: SBOM/license generation failed: ${error.message}`));
+		// In CI, fail loudly. A stale or missing THIRD_PARTY_LICENSES.md must never ship —
+		// the release workflow uploads it unconditionally and would otherwise publish
+		// an incomplete attribution file.
+		if (process.env.CI === 'true') {
+			throw error;
+		}
+		echo(chalk.yellow('⚠️  Warning: continuing local build (CI=true would have failed)'));
+	}
+} else {
+	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
+}
 
 // Restore package.json files
 // This is only needed locally, not in CI

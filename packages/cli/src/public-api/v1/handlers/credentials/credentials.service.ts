@@ -115,6 +115,7 @@ export async function saveCredential(
 		projectId: project?.id,
 		projectType: project?.type,
 		isDynamic: credential.isResolvable ?? false,
+		jweEnabled: payload.data.jweEnabled === true,
 	});
 
 	const credentialForApi = {

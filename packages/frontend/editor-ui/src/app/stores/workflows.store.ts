@@ -31,7 +31,6 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
 import { unflattenExecutionData } from '@/features/execution/executions/executions.utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
@@ -49,10 +48,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import {
-	createWorkflowExecutionStateId,
-	useWorkflowExecutionStateStore,
-} from '@/app/stores/workflowExecutionState.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
@@ -84,7 +80,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// done together to preserve test contracts.
 
 	const currentExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(createWorkflowExecutionStateId(workflowId.value)),
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const currentWorkflowExecutions = computed<ExecutionSummary[]>({
@@ -119,30 +115,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			>,
 	);
 
-	const executionWaitingForWebhook = computed<boolean>({
-		get: () => currentExecutionStateStore.value.executionWaitingForWebhook,
-		set: (value) => currentExecutionStateStore.value.setExecutionWaitingForWebhook(value),
-	});
-
-	const isInDebugMode = computed<boolean>({
-		get: () => currentExecutionStateStore.value.isInDebugMode,
-		set: (value) => currentExecutionStateStore.value.setIsInDebugMode(value),
-	});
-
-	const chatMessages = computed<string[]>(
-		() => currentExecutionStateStore.value.chatMessages as string[],
-	);
-
-	const chatPartialExecutionDestinationNode = computed<string | null>({
-		get: () => currentExecutionStateStore.value.chatPartialExecutionDestinationNode,
-		set: (value) => currentExecutionStateStore.value.setChatPartialExecutionDestinationNode(value),
-	});
-
-	const selectedTriggerNodeName = computed<string | undefined>({
-		get: () => currentExecutionStateStore.value.selectedTriggerNodeName,
-		set: (value) => currentExecutionStateStore.value.setSelectedTriggerNodeName(value),
-	});
-
 	// A workflow is new if it hasn't been saved to the backend yet.
 	// TODO: move to workflowDocumentStore after `workflow` ref is removed from this store.
 	// When moved, preserve the `workflowsListStore.getWorkflowById` coupling — pure
@@ -175,21 +147,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowExecutionData.value.data.resultData.runData;
 	});
 
-	const isWorkflowRunning = computed(() => {
-		if (activeExecutionId.value === null) {
-			return true;
-		} else if (activeExecutionId.value && workflowExecutionData.value) {
-			if (
-				['waiting', 'running'].includes(workflowExecutionData.value.status) &&
-				!workflowExecutionData.value.finished
-			) {
-				return true;
-			}
-		}
-
-		return false;
-	});
-
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
 	const getAllLoadedFinishedExecutions = computed(() => {
@@ -200,36 +157,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getWorkflowExecution = computed(() => workflowExecutionData.value);
 
-	const getPastChatMessages = computed(() => chatMessages.value);
-
 	const canViewWorkflows = computed(
 		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
-
-	/**
-	 * Active execution id (tri-state):
-	 *   - undefined → no active execution being tracked
-	 *   - null      → execution started but backend id not yet known
-	 *   - string    → active backend execution id
-	 *
-	 * Routes through the per-workflow session store. Exposed as a writable
-	 * computed so existing test setups that mutate via `createTestingPinia`
-	 * continue to work.
-	 */
-	const activeExecutionId = computed<string | null | undefined>({
-		get: () => currentExecutionStateStore.value.activeExecutionId,
-		set: (value) => currentExecutionStateStore.value.setActiveExecutionId(value),
-	});
-	const readonlyActiveExecutionId = computed(
-		() => currentExecutionStateStore.value.activeExecutionId,
-	);
-	const readonlyPreviousExecutionId = computed(
-		() => currentExecutionStateStore.value.previousExecutionId,
-	);
-
-	function setActiveExecutionId(id: string | null | undefined) {
-		currentExecutionStateStore.value.setActiveExecutionId(id);
-	}
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		if (getWorkflowRunData.value === null) {
@@ -421,18 +351,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentExecutionStateStore.value.clearActiveExecutionStartedData();
 	}
 
-	function setExecutionWaitingForWebhook(value: boolean): void {
-		currentExecutionStateStore.value.setExecutionWaitingForWebhook(value);
-	}
-
-	function setIsInDebugMode(value: boolean): void {
-		currentExecutionStateStore.value.setIsInDebugMode(value);
-	}
-
-	function setChatPartialExecutionDestinationNode(value: string | null): void {
-		currentExecutionStateStore.value.setChatPartialExecutionDestinationNode(value);
-	}
-
 	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
 		currentExecutionStateStore.value.setLastSuccessfulExecution(execution);
 	}
@@ -455,14 +373,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function clearNodeExecutionData(nodeName: string): void {
 		currentExecutionStateStore.value.clearActiveNodeExecutionData(nodeName);
-	}
-
-	// TODO: remove this shim once consumers (assistant.store) switch to a hoisted
-	// scoped NDV store. External FE-hooks consumers reach this via
-	// `workflowsStore.activeNode()` and will lose this surface.
-	function activeNode(): INodeUi | null {
-		const ndvStore = useNDVStore();
-		return ndvStore.activeNode;
 	}
 
 	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
@@ -638,7 +548,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 
 		if (isCurrentWorkflow) {
-			currentSettings = workflowDocumentStore.settings;
+			currentSettings = workflowDocumentStore.getSettingsSnapshot();
 			currentVersionId = workflowDocumentStore.versionId;
 			currentChecksum = workflowDocumentStore.checksum;
 		} else {
@@ -740,41 +650,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return url.toString();
 	}
 
-	function resetChatMessages(): void {
-		currentExecutionStateStore.value.resetChatMessages();
-	}
-
-	function appendChatMessage(message: string): void {
-		currentExecutionStateStore.value.appendChatMessage(message);
-	}
-
-	function setSelectedTriggerNodeName(value: string | undefined) {
-		currentExecutionStateStore.value.setSelectedTriggerNodeName(value);
-	}
-
 	return {
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
 		workflowExecutionResultDataLastUpdate,
 		workflowExecutionStartedData,
-		activeExecutionId: readonlyActiveExecutionId,
-		previousExecutionId: readonlyPreviousExecutionId,
-		executionWaitingForWebhook,
-		isInDebugMode,
-		chatMessages,
-		chatPartialExecutionDestinationNode,
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
-		isWorkflowRunning,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
-		getPastChatMessages,
-		selectedTriggerNodeName,
 		getExecutionDataById,
 		convertTemplateNodeToNodeUi,
 		getWorkflowFromUrl,
@@ -791,15 +680,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowExecutionRunData,
 		setWorkflowExecutionData,
 		clearExecutionStartedData,
-		setExecutionWaitingForWebhook,
-		setIsInDebugMode,
-		setChatPartialExecutionDestinationNode,
 		setLastSuccessfulExecution,
 		clearCurrentWorkflowExecutions,
 		setCurrentWorkflowExecutions,
 		renameNodeSelectedAndExecution,
 		clearNodeExecutionData,
-		activeNode,
 		getPastExecutions,
 		getExecution,
 		createNewWorkflow,
@@ -813,17 +698,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		deleteExecution,
 		addToCurrentExecutions,
 		getBinaryUrl,
-		resetChatMessages,
-		appendChatMessage,
 		getPartialIdForNode,
-		setSelectedTriggerNodeName,
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
 		canViewWorkflows,
-		// This is exposed to ease the refactoring to the injected workflowState composable
-		// Please do not use outside this context
-		private: {
-			setActiveExecutionId,
-		},
 	};
 });

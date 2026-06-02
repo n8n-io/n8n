@@ -91,6 +91,7 @@ function buildPrompt(modelRecommendationsSection: string | null) {
 		toolList: '(none)',
 		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
+		enabledModules: [],
 	});
 }
 
@@ -118,10 +119,30 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
 		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
 		expect(prompt).not.toContain('agent-builder-config-mutation');
 		expect(prompt).not.toContain('agent-builder-llm-selection');
 		expect(prompt).not.toContain('agent-builder-memory');
 		expect(prompt).not.toContain('agent-builder-tools');
+	});
+
+	it('tells the builder to preserve fallback web search on model switches', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain(
+			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
+		);
+		expect(prompt).toContain(
+			'Only OpenAI and Anthropic models support native web search. Use native web\n  search by default for those providers only',
+		);
+		expect(prompt).toContain('For every provider other than OpenAI or Anthropic');
+		expect(prompt).toContain(
+			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
+		);
+		expect(prompt).toContain(
+			'Preserve existing Brave/SearXNG `config.webSearch` on model switches unless',
+		);
 	});
 
 	it('injects custom tool builder guidance into the base builder prompt', () => {
@@ -158,10 +179,17 @@ describe('builder model recommendations', () => {
 	});
 
 	it('registers only optional builder runtime skills', () => {
-		expect(getBuilderRuntimeSkills().map((skill) => skill.id)).toEqual([
+		const skills = getBuilderRuntimeSkills();
+
+		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
+			'agent-builder-mcp',
 			'agent-builder-target-skills',
+			'agent-builder-target-tasks',
 		]);
+		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
+		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
+		expect(skills[0].instructions).toContain('Linear node tools');
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {

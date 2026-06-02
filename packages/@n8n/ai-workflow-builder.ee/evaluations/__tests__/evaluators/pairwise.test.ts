@@ -6,17 +6,17 @@
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
 import { PAIRWISE_METRICS } from '../../evaluators/pairwise/metrics';
 
 // Store mock for runJudgePanel
-const mockRunJudgePanel = jest.fn();
+const mockRunJudgePanel = vi.fn();
 
 // Mock the judge panel module
-jest.mock('../../evaluators/pairwise/judge-panel', () => ({
+vi.mock('../../evaluators/pairwise/judge-panel', () => ({
 	runJudgePanel: (...args: unknown[]): unknown => mockRunJudgePanel(...args),
 }));
 
@@ -74,7 +74,7 @@ describe('Pairwise Evaluator', () => {
 		feedback.find((f) => f.evaluator === 'pairwise' && f.metric === metric);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockLlm = mock<BaseChatModel>();
 	});
 
