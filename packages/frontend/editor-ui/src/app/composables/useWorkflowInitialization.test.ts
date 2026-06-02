@@ -134,16 +134,12 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-function createWorkflowState(): WorkflowState {
-	return {} as unknown as WorkflowState;
-}
-
 function renderWithComposable(
 	callback: (init: ReturnType<typeof useWorkflowInitialization>) => void,
 ) {
 	const TestComponent = defineComponent({
 		setup() {
-			const init = useWorkflowInitialization(createWorkflowState());
+			const init = useWorkflowInitialization({} as unknown as WorkflowState);
 			callback(init);
 			return () => h('div');
 		},
