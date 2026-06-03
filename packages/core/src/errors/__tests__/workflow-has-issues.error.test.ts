@@ -45,6 +45,24 @@ describe('WorkflowHasIssuesError', () => {
 		);
 	});
 
+	it("joins a node's multiple issues with a space within the multi-node format", () => {
+		const issues: IWorkflowIssues = {
+			A: { parameters: { x: ['Parameter "x" is required.'] } },
+			B: {
+				parameters: { url: ['Parameter "URL" is required.'] },
+				credentials: { httpBasicAuth: ['Credentials for "httpBasicAuth" are not set.'] },
+			},
+		};
+
+		expect(new WorkflowHasIssuesError(issues, {}).message).toBe(
+			[
+				'2 nodes have issues:',
+				'- \'A\': Parameter "x" is required.',
+				'- \'B\': Parameter "URL" is required. Credentials for "httpBasicAuth" are not set.',
+			].join('\n'),
+		);
+	});
+
 	it('caps at 4 nodes and appends a hint for the rest', () => {
 		const issues: IWorkflowIssues = {
 			A: { parameters: { p: ['Parameter "p" is required.'] } },
