@@ -1,3 +1,5 @@
+import { buildClaimsContext, evaluateRules } from '@n8n/expression-rules';
+import type { ClaimRule } from '@n8n/expression-rules';
 import { validateToken } from '@n8n/oauth2-token-validator';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
@@ -378,19 +380,32 @@ export async function validateWebhookAuthentication(
 			throw new WebhookAuthorizationError(401, 'No bearer token provided');
 		}
 
+		let claims: IDataObject;
 		try {
-			const claims = await validateToken(token, {
+			claims = (await validateToken(token, {
 				issuer: expectedAuth.issuer as string,
 				audience: (expectedAuth.audience as string) || undefined,
 				jwksUri: (expectedAuth.jwksUri as string) || undefined,
-			});
-			return claims as IDataObject;
+			})) as IDataObject;
 		} catch (error) {
 			throw new WebhookAuthorizationError(
 				401,
 				error instanceof Error ? error.message : 'Token validation failed',
 			);
 		}
+
+		// A valid signature alone does not grant access when claim rules are
+		// configured: the claims must satisfy the allow/deny rules (deny-wins).
+		const claimRules = ((expectedAuth.claimRules as { rule?: ClaimRule[] })?.rule ??
+			[]) as ClaimRule[];
+		if (claimRules.length > 0) {
+			const { allowed } = evaluateRules(claimRules, buildClaimsContext(claims));
+			if (!allowed) {
+				throw new WebhookAuthorizationError(403, 'Token claims do not satisfy the access rules');
+			}
+		}
+
+		return claims;
 	}
 }
 

@@ -1,3 +1,4 @@
+import { evaluateRules } from '@n8n/expression-rules';
 import { validateToken } from '@n8n/oauth2-token-validator';
 import jwt from 'jsonwebtoken';
 import {
@@ -33,7 +34,14 @@ jest.mock('@n8n/oauth2-token-validator', () => ({
 	validateToken: jest.fn(),
 }));
 
+jest.mock('@n8n/expression-rules', () => ({
+	validateToken: undefined,
+	buildClaimsContext: jest.fn((claims) => ({ $claims: claims })),
+	evaluateRules: jest.fn(),
+}));
+
 const mockValidateToken = validateToken as jest.MockedFunction<typeof validateToken>;
+const mockEvaluateRules = evaluateRules as jest.MockedFunction<typeof evaluateRules>;
 
 describe('Webhook Utils', () => {
 	describe('getResponseCode', () => {
@@ -359,7 +367,10 @@ describe('Webhook Utils', () => {
 				};
 			};
 
-			beforeEach(() => mockValidateToken.mockReset());
+			beforeEach(() => {
+				mockValidateToken.mockReset();
+				mockEvaluateRules.mockReset();
+			});
 
 			it('throws if no issuer is configured on the credential', async () => {
 				const ctx = buildCtx(new Error(), 'Bearer some-token');
@@ -415,6 +426,67 @@ describe('Webhook Utils', () => {
 				await expect(
 					validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication'),
 				).rejects.toThrowError('token expired');
+			});
+
+			it('does not evaluate claim rules when none are configured', async () => {
+				mockValidateToken.mockResolvedValue({ sub: 'user-123' });
+				const ctx = buildCtx(
+					{ validationMethod: 'jwks', issuer: 'https://idp.test' },
+					'Bearer valid-token',
+				);
+
+				const result = await validateWebhookAuthentication(
+					ctx as IWebhookFunctions,
+					'authentication',
+				);
+
+				expect(result).toEqual({ sub: 'user-123' });
+				expect(mockEvaluateRules).not.toHaveBeenCalled();
+			});
+
+			it('returns claims when configured claim rules allow the caller', async () => {
+				mockValidateToken.mockResolvedValue({ sub: 'user-123', groups: ['admin'] });
+				mockEvaluateRules.mockReturnValue({ allowed: true });
+				const ctx = buildCtx(
+					{
+						validationMethod: 'jwks',
+						issuer: 'https://idp.test',
+						claimRules: {
+							rule: [{ effect: 'allow', expression: '{{ $claims.groups.includes("admin") }}' }],
+						},
+					},
+					'Bearer valid-token',
+				);
+
+				const result = await validateWebhookAuthentication(
+					ctx as IWebhookFunctions,
+					'authentication',
+				);
+
+				expect(result).toEqual({ sub: 'user-123', groups: ['admin'] });
+				expect(mockEvaluateRules).toHaveBeenCalledWith(
+					[{ effect: 'allow', expression: '{{ $claims.groups.includes("admin") }}' }],
+					{ $claims: { sub: 'user-123', groups: ['admin'] } },
+				);
+			});
+
+			it('throws 403 when configured claim rules deny the caller', async () => {
+				mockValidateToken.mockResolvedValue({ sub: 'user-123', groups: ['guest'] });
+				mockEvaluateRules.mockReturnValue({ allowed: false });
+				const ctx = buildCtx(
+					{
+						validationMethod: 'jwks',
+						issuer: 'https://idp.test',
+						claimRules: {
+							rule: [{ effect: 'allow', expression: '{{ $claims.groups.includes("admin") }}' }],
+						},
+					},
+					'Bearer valid-token',
+				);
+
+				await expect(
+					validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication'),
+				).rejects.toThrowError('Token claims do not satisfy the access rules');
 			});
 		});
 

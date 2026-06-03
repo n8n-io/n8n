@@ -131,19 +131,28 @@ the REST API surface (many operations, each gated by an n8n scope like
 `workflow:execute`), a webhook/MCP trigger has one operation. So the M1 mapping
 produces a **boolean gate**, not a claim→n8n-scope mapping.
 
-**Rule shape** (stored in the credential for M1):
+**Rule shape** (stored in the credential for M1; expressions use n8n syntax with
+`{{ }}` and JS-style access, evaluated by `Expression.resolveWithoutWorkflow`):
 
 ```jsonc
 "claimRules": [
-  { "effect": "allow", "expression": "$claims.scope contains 'wf-execute'" },
-  { "effect": "allow", "expression": "$claims.realm_access.roles includes 'wf-admin'" },
-  { "effect": "deny",  "expression": "$claims.groups includes 'suspended'" }
+  { "effect": "allow", "expression": "{{ $claims.scope.includes('wf-execute') }}" },
+  { "effect": "allow", "expression": "{{ $claims.realm_access.roles.includes('wf-admin') }}" },
+  { "effect": "deny",  "expression": "{{ $claims.groups.includes('suspended') }}" }
 ]
 ```
 
 **Gate logic:** at least one `allow` matches AND no `deny` matches → fire; else
-`403`. **Deny-by-default**: an empty allow list rejects everything. This is the
-`@n8n/expression-rules` deny-wins evaluator (Task 5).
+`403`. **Deny-by-default among the configured rules** (an allow list that
+matches nothing rejects). This is the `@n8n/expression-rules` deny-wins
+evaluator (Task 5).
+
+**Implemented M1 behavior:** if the credential has **no** claim rules, a
+validly-signed token from the trusted issuer is sufficient (keeps the common
+case frictionless, per the "security must not degrade building" principle).
+Sixt's stricter *"valid signature alone must never grant access"* is an
+always-on policy stance that belongs in the governance/registry layer (a token
+flows as `401` when invalid, `403` when valid-but-denied).
 
 **No right-hand-side n8n scope in M1.** The `expression -> "workflow:execute"`
 mapping form is correct for the *REST API* surface (many operations), not for

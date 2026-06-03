@@ -69,5 +69,44 @@ export class OAuth2OidcBearer implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Claim Access Rules',
+			name: 'claimRules',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			default: {},
+			placeholder: 'Add Rule',
+			description:
+				'Optional allow/deny rules evaluated against the token claims (deny-wins). Leave empty to allow any validly-signed token from the issuer. When rules are present, access is denied unless an allow rule matches and no deny rule matches.',
+			options: [
+				{
+					name: 'rule',
+					displayName: 'Rule',
+					values: [
+						{
+							displayName: 'Effect',
+							name: 'effect',
+							type: 'options',
+							options: [
+								{ name: 'Allow', value: 'allow' },
+								{ name: 'Deny', value: 'deny' },
+							],
+							default: 'allow',
+						},
+						{
+							displayName: 'Expression',
+							name: 'expression',
+							type: 'string',
+							default: '',
+							placeholder: '={{ $claims.groups.includes("admin") }}',
+							description:
+								'n8n expression evaluated against the token claims. The claims are available as $claims.',
+						},
+					],
+				},
+			],
+		},
 	];
 }

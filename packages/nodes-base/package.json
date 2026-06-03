@@ -911,6 +911,7 @@
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/expression-rules": "workspace:*",
     "@n8n/imap": "workspace:*",
     "@n8n/oauth2-token-validator": "workspace:*",
     "@thednp/dommatrix": "^2.0.12",

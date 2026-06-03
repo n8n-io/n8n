@@ -4724,6 +4724,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
+      '@n8n/expression-rules':
+        specifier: workspace:*
+        version: link:../@n8n/expression-rules
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
