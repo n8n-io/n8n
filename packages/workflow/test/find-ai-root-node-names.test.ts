@@ -286,9 +286,7 @@ describe('findAiRootNodeNames', () => {
 			// some other property that happens to be present.
 			const connections = {
 				Source: {
-					ai_tool: [
-						[{ node: 'TheNode', type: 'NotTheNode' as never, index: 0 }],
-					],
+					ai_tool: [[{ node: 'TheNode', type: 'NotTheNode' as never, index: 0 }]],
 				},
 			};
 			expect(findAiRootNodeNames(connections)).toEqual(new Set(['TheNode']));
