@@ -182,40 +182,6 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
-	it('strips nested sub-agent delegation config before building the child runtime', async () => {
-		const configWithNestedSubAgents: RunnableAgentJsonConfig = {
-			...runnableConfig,
-			subAgents: {
-				agents: [{ agentId: 'nested-agent' }],
-			},
-		};
-		sourceResolver.resolveForRuntime.mockResolvedValue({
-			...runtimeSource,
-			source: {
-				...source,
-				config: configWithNestedSubAgents,
-			},
-		});
-
-		await runner.runForeground(spawnRequest, {
-			projectId,
-			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
-		});
-
-		expect(buildFromJson).toHaveBeenCalledWith(
-			runnableConfig,
-			runtimeSource.toolDescriptors,
-			expect.objectContaining({
-				toolExecutor,
-				credentialProvider,
-				skills: runtimeSource.skills,
-				memoryFactory: expect.any(Function),
-			}),
-		);
-	});
-
 	it('inherits the parent resource id as the child memory scope when provided', async () => {
 		const result = await runner.runForeground(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },

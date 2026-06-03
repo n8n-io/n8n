@@ -8,11 +8,7 @@ import {
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import type {
-	ResolvedSubAgentSource,
-	RunnableAgentJsonConfig,
-	SubAgentSpawnRequest,
-} from '@n8n/api-types';
+import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -90,17 +86,13 @@ export class SubAgentForegroundRunner {
 		// Inherit the parent's episodic-memory scope. When the parent has none,
 		// isolate this run to its own thread rather than widening to the project.
 		const resourceId = request.parentResourceId ?? threadId;
-		const agent = await buildFromJson(
-			omitSubAgentDelegationConfig(runtimeSource.source.config),
-			runtimeSource.toolDescriptors,
-			{
-				toolExecutor,
-				credentialProvider: context.credentialProvider,
-				resolveTool: context.resolveTool,
-				skills: runtimeSource.skills,
-				memoryFactory: createSubAgentMemoryFactory(runtimeSource.source, context),
-			},
-		);
+		const agent = await buildFromJson(runtimeSource.source.config, runtimeSource.toolDescriptors, {
+			toolExecutor,
+			credentialProvider: context.credentialProvider,
+			resolveTool: context.resolveTool,
+			skills: runtimeSource.skills,
+			memoryFactory: createSubAgentMemoryFactory(runtimeSource.source, context),
+		});
 
 		const timeoutController = request.policy?.timeoutMs ? new AbortController() : undefined;
 		const timeout = timeoutController
@@ -272,11 +264,6 @@ function toKnownFinishReason(
 		return value;
 	}
 	return undefined;
-}
-
-function omitSubAgentDelegationConfig(config: RunnableAgentJsonConfig): RunnableAgentJsonConfig {
-	const { subAgents: _subAgents, ...childRuntimeConfig } = config;
-	return childRuntimeConfig;
 }
 
 function createSubAgentMemoryFactory(
