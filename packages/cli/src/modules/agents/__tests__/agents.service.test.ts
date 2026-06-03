@@ -1369,6 +1369,10 @@ describe('AgentsService', () => {
 	});
 
 	describe('integration runtime tools', () => {
+		beforeEach(() => {
+			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		});
+
 		it('injects each credential integration context/action tool only once', async () => {
 			const integrationRegistry = new ChatIntegrationRegistry();
 			Container.set(ChatIntegrationRegistry, integrationRegistry);
@@ -1399,6 +1403,10 @@ describe('AgentsService', () => {
 						projectId: string;
 						credentialProvider: unknown;
 						nodeToolsEnabled: boolean;
+						subAgentDelegation: {
+							sourcesById: Record<string, never>;
+							availableSubAgents: [];
+						};
 						credentialIntegrations: Array<{ type: string; credentialId: string }>;
 					}): Promise<void>;
 				}
@@ -1408,6 +1416,10 @@ describe('AgentsService', () => {
 				projectId,
 				credentialProvider: mock(),
 				nodeToolsEnabled: false,
+				subAgentDelegation: {
+					sourcesById: {},
+					availableSubAgents: [],
+				},
 				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
 			});
 
@@ -1415,9 +1427,7 @@ describe('AgentsService', () => {
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
 		});
 
-		it('injects write_todos and delegate_subagent when sub-agent delegation is provided', async () => {
-			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
-
+		it('always injects write_todos and delegate_subagent', async () => {
 			const toolNames: string[] = [];
 			const runtimeAgent = {
 				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
@@ -1514,6 +1524,10 @@ describe('AgentsService', () => {
 						projectId: string;
 						credentialProvider: unknown;
 						nodeToolsEnabled: boolean;
+						subAgentDelegation: {
+							sourcesById: Record<string, never>;
+							availableSubAgents: [];
+						};
 						credentialIntegrations: Array<{ type: string; credentialId: string }>;
 					}): Promise<void>;
 				}
@@ -1523,6 +1537,10 @@ describe('AgentsService', () => {
 				projectId,
 				credentialProvider: mock(),
 				nodeToolsEnabled: false,
+				subAgentDelegation: {
+					sourcesById: {},
+					availableSubAgents: [],
+				},
 				credentialIntegrations: [],
 			});
 

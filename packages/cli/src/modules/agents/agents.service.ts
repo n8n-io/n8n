@@ -123,7 +123,7 @@ interface InjectRuntimeDependenciesParams {
 	projectId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
-	subAgentDelegation?: SubAgentDelegationConfig;
+	subAgentDelegation: SubAgentDelegationConfig;
 	credentialIntegrations: AgentIntegrationConfig[];
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
@@ -1077,16 +1077,14 @@ export class AgentsService {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
-		if (subAgentDelegation !== undefined) {
-			this.attachSubAgentDelegationTool({
-				agent,
-				agentId,
-				projectId,
-				credentialProvider,
-				delegation: subAgentDelegation,
-			});
-			this.attachWriteTodosTool(agent, agentId);
-		}
+		this.attachSubAgentDelegationTool({
+			agent,
+			agentId,
+			projectId,
+			credentialProvider,
+			delegation: subAgentDelegation,
+		});
+		this.attachWriteTodosTool(agent, agentId);
 
 		this.attachThreadTitleSyncListener(agent);
 
