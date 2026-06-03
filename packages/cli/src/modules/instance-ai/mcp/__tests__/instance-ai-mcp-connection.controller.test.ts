@@ -36,7 +36,10 @@ describe('InstanceAiMcpConnectionController', () => {
 	const linearServer = {
 		slug: 'linear',
 		title: 'Linear',
-		icons: [{ src: 'https://example.com/linear.svg' }],
+		icons: [
+			{ src: 'https://example.com/linear-light.svg', theme: 'light' as const },
+			{ src: 'https://example.com/linear-dark.svg', theme: 'dark' as const },
+		],
 	} as McpRegistryServer;
 
 	function createController() {
@@ -82,7 +85,7 @@ describe('InstanceAiMcpConnectionController', () => {
 				id: 'conn-1',
 				serverSlug: 'linear',
 				serverTitle: 'Linear',
-				serverIcon: 'https://example.com/linear.svg',
+				serverIcons: linearServer.icons,
 				credentialId: 'cred-1',
 				credentialName: 'Linear OAuth2',
 				credentialType: 'mcpOAuth2Api',
@@ -104,8 +107,7 @@ describe('InstanceAiMcpConnectionController', () => {
 
 			const result = await controller.list(authedRequest());
 
-			expect(result[0]).toMatchObject({ serverTitle: 'linear' });
-			expect(result[0].serverIcon).toBeUndefined();
+			expect(result[0]).toMatchObject({ serverTitle: 'linear', serverIcons: [] });
 		});
 
 		it('drops rows whose credentials are no longer accessible to the user', async () => {
@@ -143,7 +145,7 @@ describe('InstanceAiMcpConnectionController', () => {
 				credentialName: 'Linear OAuth2',
 				credentialType: 'mcpOAuth2Api',
 				serverTitle: 'Linear',
-				serverIcon: 'https://example.com/linear.svg',
+				serverIcons: linearServer.icons,
 			});
 		});
 	});

@@ -26,12 +26,12 @@ import { InstanceAiMcpRegistryService } from './instance-ai-mcp-registry.service
 
 interface ServerMetadata {
 	title: string;
-	icon?: string;
+	icons: McpRegistryServer['icons'];
 }
 
 function serverMetadata(server: McpRegistryServer | undefined, slug: string): ServerMetadata {
-	if (!server) return { title: slug };
-	return { title: server.title, icon: server.icons[0]?.src };
+	if (!server) return { title: slug, icons: [] };
+	return { title: server.title, icons: server.icons };
 }
 
 @RestController('/instance-ai/mcp/connections')
@@ -148,7 +148,7 @@ function toResponse(
 		id: connection.id,
 		serverSlug: connection.serverSlug,
 		serverTitle: server.title,
-		serverIcon: server.icon,
+		serverIcons: server.icons,
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,

@@ -18,7 +18,7 @@ describe('McpRegistryController', () => {
 
 			const result = await controller.listServers();
 
-			expect(service.getAll).toHaveBeenCalledWith();
+			expect(service.getAll).toHaveBeenCalledWith({ includeDeprecated: false });
 			expect(result).toHaveLength(2);
 
 			const notion = result.find((s) => s.slug === 'notion');

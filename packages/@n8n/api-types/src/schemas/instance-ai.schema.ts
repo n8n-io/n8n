@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
@@ -1057,8 +1058,12 @@ export interface InstanceAiMcpConnectionResponse {
 	serverSlug: string;
 	/** Display title from the registry server (e.g. "Notion"). Falls back to `serverSlug` if the server is no longer in the registry. */
 	serverTitle: string;
-	/** URL of the registry server's primary icon, when available. */
-	serverIcon?: string;
+	/**
+	 * Icons for the registry server, with optional `theme` tagging so the FE
+	 * can pick a light- or dark-mode variant. Empty if the server is no longer
+	 * in the registry.
+	 */
+	serverIcons: McpRegistryServerIconResponse[];
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;

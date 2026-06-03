@@ -11,7 +11,7 @@ export class McpRegistryController {
 
 	@Get('/servers')
 	async listServers(): Promise<McpRegistryServerResponse[]> {
-		const servers = await this.service.getAll();
+		const servers = await this.service.getAll({ includeDeprecated: false });
 		return servers.map(toResponse);
 	}
 }
