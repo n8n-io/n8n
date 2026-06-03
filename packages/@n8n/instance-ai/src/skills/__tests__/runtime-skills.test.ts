@@ -45,4 +45,64 @@ describe('Instance AI runtime skills', () => {
 		}
 		expect(loadResult.content).toContain('Fast Routing');
 	});
+
+	it('loads the bundled Computer Use credential setup skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find(
+			(entry) => entry.name === 'credential-setup-with-computer-use',
+		);
+
+		expect(skill?.name).toBe('credential-setup-with-computer-use');
+		for (const tool of [
+			'research',
+			'ask-user',
+			'browser_connect',
+			'browser_snapshot',
+			'browser_capture_secret',
+			'browser_create_credential',
+		]) {
+			expect(skill?.recommendedTools).toContain(tool);
+		}
+		expect(skill?.linkedFiles.references).toEqual([]);
+
+		const loaded = await source.loadSkill('credential-setup-with-computer-use');
+		expect(loaded?.instructions).toContain('Computer Use browser tools');
+		expect(loaded?.instructions).toContain('browser_capture_secret');
+		expect(loaded?.instructions).toContain('interactive: false');
+		expect(loaded?.instructions).toContain('`ref`');
+		expect(loaded?.instructions).toContain('`redactedKey`');
+		expect(loaded?.instructions).toContain('same `credentialsKey`');
+		expect(loaded?.instructions).toContain('`data`');
+		expect(loaded?.instructions).toContain('`resolveData`');
+		expect(loaded?.instructions).not.toMatch(/MCP|devtools/i);
+	});
+
+	it('loads the bundled workflow-builder skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'workflow-builder');
+
+		expect(skill?.name).toBe('workflow-builder');
+		expect(skill?.platforms).toBeUndefined();
+		expect(skill?.recommendedTools).toEqual([
+			'build-workflow',
+			'workflows',
+			'nodes',
+			'data-tables',
+			'credentials',
+			'verify-built-workflow',
+			'executions',
+		]);
+		expect(skill?.description).toContain('former workflow-builder agent guidance');
+
+		const loaded = await source.loadSkill('workflow-builder');
+		expect(loaded?.instructions).toContain('Tool Surface');
+		expect(loaded?.instructions).toContain('build-workflow');
+		expect(loaded?.instructions).toContain('nodes(action="suggested")');
+		expect(loaded?.instructions).toContain('nodes(action="search")');
+		expect(loaded?.instructions).toContain('workflows(action="get-as-code")');
+		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
+		expect(loaded?.instructions).toContain('Verification');
+		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toContain('Do not call `delegate`');
+	});
 });

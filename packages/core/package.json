@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.23.0",
+  "version": "2.25.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -22,6 +22,7 @@
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --silent=false"
   },
   "files": [
@@ -30,6 +31,7 @@
   ],
   "devDependencies": {
     "@n8n/errors": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
