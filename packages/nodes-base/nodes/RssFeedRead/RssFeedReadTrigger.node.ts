@@ -61,14 +61,30 @@ export class RssFeedReadTrigger implements INodeType {
 		try {
 			feed = await parseFeedUrl(this.helpers, feedUrl);
 		} catch (error) {
-			if (error.code === 'ECONNREFUSED') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`,
-				);
+			const node = this.getNode();
+			const message =
+				(error as { code?: string }).code === 'ECONNREFUSED'
+					? `It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`
+					: (error as Error).message;
+
+			// Route HTTP/parse failures through the node's configured error path so users
+			// can handle them with "Continue (using error output)" instead of falling through
+			// to the global Error Workflow. The engine inspects items with `json.error` and,
+			// when `onError === 'continueErrorOutput'`, moves them to the node's error output
+			// (see WorkflowExecute.handleNodeErrorOutput).
+			if (
+				node.onError === 'continueErrorOutput' ||
+				node.onError === 'continueRegularOutput' ||
+				node.continueOnFail === true
+			) {
+				return [[{ json: { error: message } }]];
 			}
 
-			throw new NodeOperationError(this.getNode(), error as Error);
+			if ((error as { code?: string }).code === 'ECONNREFUSED') {
+				throw new NodeOperationError(node, message);
+			}
+
+			throw new NodeOperationError(node, error as Error);
 		}
 
 		const returnData: IDataObject[] = [];
