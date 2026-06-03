@@ -40,7 +40,7 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-process-builder';
+import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
@@ -129,7 +129,7 @@ export async function runDiscoveryScenario(
 			orchestrationContext,
 			mcpManager,
 			memory,
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
 			disableDeferredTools: true,

@@ -77,6 +77,8 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				user: req.user,
 				projectId: payload.data.projectId,
 				folderId: payload.data.folderId,
+				credentialMatchingMode: payload.data.credentialMatchingMode,
+				credentialMissingMode: payload.data.credentialMissingMode,
 				packageBuffer: packageFile.buffer,
 			});
 			return res.status(200).json(result);

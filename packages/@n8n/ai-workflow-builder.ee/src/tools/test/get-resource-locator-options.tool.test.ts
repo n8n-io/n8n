@@ -1,5 +1,6 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import {
 	createWorkflow,
@@ -17,21 +18,19 @@ import {
 import type { ResourceLocatorCallback } from '../../types/callbacks';
 import { createGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool';
 
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: jest.fn(),
-	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-		content: JSON.stringify(params),
-	})),
+vi.mock('@langchain/langgraph', () => ({
+	getCurrentTaskInput: vi.fn(),
+	Command: vi.fn(function (params: Record<string, unknown>) {
+		return { content: JSON.stringify(params) };
+	}),
 }));
 
 describe('getResourceLocatorOptions tool', () => {
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
+	const mockGetCurrentTaskInput = getCurrentTaskInput as MockedFunction<typeof getCurrentTaskInput>;
 	let parsedNodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		parsedNodeTypes = [
 			nodeTypes.code,
 			nodeTypes.httpRequest,
@@ -253,11 +252,11 @@ describe('getResourceLocatorOptions tool', () => {
 
 	describe('callback errors', () => {
 		it('should handle callback errors gracefully', async () => {
-			const mockCallback = jest
+			const mockCallback = vi
 				.fn()
 				.mockRejectedValue(
 					new Error('API rate limit exceeded'),
-				) as jest.MockedFunction<ResourceLocatorCallback>;
+				) as MockedFunction<ResourceLocatorCallback>;
 			const tool = createGetResourceLocatorOptionsTool(parsedNodeTypes, mockCallback).tool;
 			const workflow = createWorkflow([
 				createNode({
@@ -281,12 +280,12 @@ describe('getResourceLocatorOptions tool', () => {
 		});
 
 		it('should handle callback timeout', async () => {
-			const mockCallback = jest.fn().mockImplementation(
+			const mockCallback = vi.fn().mockImplementation(
 				async () =>
 					await new Promise((_, reject) => {
 						setTimeout(() => reject(new Error('Request timed out')), 100);
 					}),
-			) as jest.MockedFunction<ResourceLocatorCallback>;
+			) as MockedFunction<ResourceLocatorCallback>;
 			const tool = createGetResourceLocatorOptionsTool(parsedNodeTypes, mockCallback).tool;
 			const workflow = createWorkflow([
 				createNode({

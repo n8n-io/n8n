@@ -184,6 +184,8 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
+	datasets: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +216,9 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
+	 *  configs each get their own URL for canvas/execution links. */
+	n8nBaseUrl?: string;
 }
 
 // ---------------------------------------------------------------------------

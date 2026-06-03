@@ -1,0 +1,5 @@
+{
+	"workflowPreview.ariaLabel.creating": "Creating workflow",
+	"workflowPreview.ariaLabel.ready": "Workflow ready to open",
+	"workflowPreview.openButton": "Open in n8n"
+}

@@ -3,8 +3,8 @@ import { callLifecycle } from '../../workspace/lifecycle';
 describe('callLifecycle', () => {
 	it('calls _init when both _init and init exist', async () => {
 		const target = {
-			_init: jest.fn().mockResolvedValue(undefined),
-			init: jest.fn().mockResolvedValue(undefined),
+			_init: vi.fn().mockResolvedValue(undefined),
+			init: vi.fn().mockResolvedValue(undefined),
 		};
 
 		await callLifecycle(target, 'init');
@@ -15,7 +15,7 @@ describe('callLifecycle', () => {
 
 	it('falls back to init when _init is undefined', async () => {
 		const target = {
-			init: jest.fn().mockResolvedValue(undefined),
+			init: vi.fn().mockResolvedValue(undefined),
 		};
 
 		await callLifecycle(target, 'init');
@@ -25,8 +25,8 @@ describe('callLifecycle', () => {
 
 	it('calls _start when both _start and start exist', async () => {
 		const target = {
-			_start: jest.fn().mockResolvedValue(undefined),
-			start: jest.fn().mockResolvedValue(undefined),
+			_start: vi.fn().mockResolvedValue(undefined),
+			start: vi.fn().mockResolvedValue(undefined),
 		};
 
 		await callLifecycle(target, 'start');
@@ -37,8 +37,8 @@ describe('callLifecycle', () => {
 
 	it('calls _stop over stop', async () => {
 		const target = {
-			_stop: jest.fn().mockResolvedValue(undefined),
-			stop: jest.fn().mockResolvedValue(undefined),
+			_stop: vi.fn().mockResolvedValue(undefined),
+			stop: vi.fn().mockResolvedValue(undefined),
 		};
 
 		await callLifecycle(target, 'stop');
@@ -49,8 +49,8 @@ describe('callLifecycle', () => {
 
 	it('calls _destroy over destroy', async () => {
 		const target = {
-			_destroy: jest.fn().mockResolvedValue(undefined),
-			destroy: jest.fn().mockResolvedValue(undefined),
+			_destroy: vi.fn().mockResolvedValue(undefined),
+			destroy: vi.fn().mockResolvedValue(undefined),
 		};
 
 		await callLifecycle(target, 'destroy');
@@ -68,7 +68,7 @@ describe('callLifecycle', () => {
 	it('propagates errors from lifecycle methods', async () => {
 		const error = new Error('lifecycle failure');
 		const target = {
-			_start: jest.fn().mockRejectedValue(error),
+			_start: vi.fn().mockRejectedValue(error),
 		};
 
 		await expect(callLifecycle(target, 'start')).rejects.toThrow('lifecycle failure');
@@ -78,7 +78,7 @@ describe('callLifecycle', () => {
 		const target = {
 			value: 42,
 			// eslint-disable-next-line @typescript-eslint/require-await
-			_init: jest.fn(async function (this: { value: number }) {
+			_init: vi.fn(async function (this: { value: number }) {
 				expect(this.value).toBe(42);
 			}),
 		};
