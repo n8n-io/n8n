@@ -574,7 +574,7 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			project_type: projectType,
 			uiContext,
-			is_dynamic: isDynamic ?? false,
+			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
 		});
@@ -612,7 +612,7 @@ export class TelemetryEventRelay extends EventRelay {
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
-			is_dynamic: isDynamic ?? false,
+			is_private: isDynamic ?? false,
 			uses_external_secrets: usesExternalSecrets ?? false,
 			jwe_enabled: jweEnabled ?? false,
 		});
@@ -1007,7 +1007,7 @@ export class TelemetryEventRelay extends EventRelay {
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
-			used_dynamic_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
+			used_private_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
 				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
 			),
 		};
@@ -1106,7 +1106,7 @@ export class TelemetryEventRelay extends EventRelay {
 					is_managed: false,
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
-					used_dynamic_credentials: telemetryProperties.used_dynamic_credentials,
+					used_private_credentials: telemetryProperties.used_private_credentials,
 					...executionTelemetryProperties,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),

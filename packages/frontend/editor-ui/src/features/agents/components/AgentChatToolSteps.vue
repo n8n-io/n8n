@@ -116,6 +116,12 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 							size="large"
 							:class="$style.indicatorError"
 						/>
+						<N8nIcon
+							v-else-if="tc.state === 'cancelled'"
+							icon="circle-x"
+							size="large"
+							:class="$style.indicatorCancelled"
+						/>
 						<N8nTooltip
 							v-else-if="tc.state === 'suspended'"
 							placement="top"
@@ -234,6 +240,10 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 
 .indicatorError {
 	color: var(--text-color--danger);
+}
+
+.indicatorCancelled {
+	color: var(--text-color--subtler);
 }
 
 .indicatorLoading {

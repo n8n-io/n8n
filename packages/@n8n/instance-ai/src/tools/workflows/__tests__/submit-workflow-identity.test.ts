@@ -211,11 +211,11 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 	});
 
 	it('blocks submit when persisted remediation says editing must stop', async () => {
-		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (): Promise<SubmitWorkflowOutput> => {
 			await Promise.resolve();
 			return { success: true, workflowId: 'wf_unused' };
 		});
-		const onGuardFired = jest.fn();
+		const onGuardFired = vi.fn();
 		const state: WorkflowLoopState = {
 			workItemId: 'wi_test',
 			threadId: 'thread_1',
@@ -260,8 +260,8 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			reason: 'workflow_save_failed',
 			guidance: 'Stop editing.',
 		});
-		const execute = jest
-			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+		const execute = vi
+			.fn<(...args: [SubmitWorkflowInput]) => Promise<SubmitWorkflowOutput>>()
 			.mockResolvedValueOnce({
 				success: false,
 				errors: ['Workflow save failed.'],
@@ -299,7 +299,7 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			reason: 'workflow_save_failed',
 			guidance: 'Stop editing.',
 		});
-		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (): Promise<SubmitWorkflowOutput> => {
 			await gate;
 			return {
 				success: false,
@@ -329,7 +329,7 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 	});
 
 	it('ignores terminal remediation from a previous run', async () => {
-		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (): Promise<SubmitWorkflowOutput> => {
 			await Promise.resolve();
 			return { success: true, workflowId: 'wf_current' };
 		});
@@ -379,12 +379,12 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			successfulSubmitSeen: true,
 			postSubmitRemediationSubmitsUsed: 2,
 		};
-		const getWorkflowLoopState = jest
-			.fn<Promise<WorkflowLoopState | undefined>, []>()
+		const getWorkflowLoopState = vi
+			.fn<(...args: []) => Promise<WorkflowLoopState | undefined>>()
 			.mockResolvedValueOnce(undefined)
 			.mockResolvedValueOnce(undefined)
 			.mockResolvedValueOnce(terminalState);
-		const execute = jest.fn(async (input: SubmitWorkflowInput): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (input: SubmitWorkflowInput): Promise<SubmitWorkflowOutput> => {
 			await gate;
 			return { success: true, workflowId: input.workflowId ?? 'wf_1' };
 		});
