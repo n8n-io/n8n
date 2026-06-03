@@ -8,7 +8,7 @@ const mockSaveThread = jest.fn();
 const mockDeleteThread = jest.fn();
 const mockDeleteThreadsByResourceIdPrefix = jest.fn();
 const mockListThreads = jest.fn();
-const mockSetThreadProjectId = jest.fn();
+const mockSaveThreadWithProject = jest.fn();
 const mockGetThreadProjectId = jest.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
@@ -17,7 +17,7 @@ const mockAgentMemory = {
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
 	listThreads: mockListThreads,
-	setThreadProjectId: mockSetThreadProjectId,
+	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
 };
 
@@ -297,9 +297,9 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		jest.clearAllMocks();
 	});
 
-	it('creates a thread when it does not exist yet', async () => {
+	it('creates a thread bound to the project in a single atomic call', async () => {
 		mockGetThread.mockResolvedValueOnce(null);
-		mockSaveThread.mockResolvedValueOnce({
+		mockSaveThreadWithProject.mockResolvedValueOnce({
 			id: 'thread-new',
 			title: '',
 			resourceId: 'user-1',
@@ -311,12 +311,13 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		const service = createService();
 		const result = await service.ensureThread('user-1', 'thread-new', 'project-1');
 
-		expect(mockSaveThread).toHaveBeenCalledWith({
-			id: 'thread-new',
-			resourceId: 'user-1',
-			title: '',
-		});
-		expect(mockSetThreadProjectId).toHaveBeenCalledWith('thread-new', 'project-1');
+		// Thread + project binding are written together, so a partial failure can
+		// never persist a project-less thread.
+		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
+			{ id: 'thread-new', resourceId: 'user-1', title: '' },
+			'project-1',
+		);
+		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(true);
 		expect(result.thread.id).toBe('thread-new');
 		expect(result.thread.resourceId).toBe('user-1');

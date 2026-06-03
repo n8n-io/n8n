@@ -209,6 +209,30 @@ export class TypeORMAgentMemory
 		});
 	}
 
+	// Binds the thread to a project as part of the insert (atomic, so a partial
+	// failure can't leave a project-less thread) and never rebinds an existing
+	// thread (the binding is immutable for the thread's lifetime).
+	async saveThreadWithProject(
+		thread: Omit<Thread, 'createdAt' | 'updatedAt'>,
+		projectId: string,
+	): Promise<Thread> {
+		return await this.serializeThreadMutation(thread.id, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: thread.id });
+			if (existing) return toThread(existing);
+
+			const saved = await this.threadRepo.save(
+				this.threadRepo.create({
+					id: thread.id,
+					resourceId: thread.resourceId,
+					title: thread.title ?? '',
+					metadata: thread.metadata ?? null,
+					projectId,
+				}),
+			);
+			return toThread(saved);
+		});
+	}
+
 	async patchThread(args: {
 		threadId: string;
 		update: (current: Thread) => ThreadPatch | null | undefined;
@@ -234,12 +258,6 @@ export class TypeORMAgentMemory
 	async getThreadProjectId(threadId: string): Promise<string | null> {
 		const thread = await this.threadRepo.findOneBy({ id: threadId });
 		return thread?.projectId ?? null;
-	}
-
-	async setThreadProjectId(threadId: string, projectId: string): Promise<void> {
-		await this.serializeThreadMutation(threadId, async () => {
-			await this.threadRepo.update({ id: threadId }, { projectId });
-		});
 	}
 
 	async deleteThreadsByResourceIdPrefix(resourceIdPrefix: string): Promise<void> {

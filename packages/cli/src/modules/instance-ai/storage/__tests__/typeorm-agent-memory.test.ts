@@ -94,4 +94,50 @@ describe('TypeORMAgentMemory', () => {
 		expect(resourceRepo.delete).toHaveBeenCalledTimes(2);
 		expect(threadRepo.delete).toHaveBeenCalledWith({ id: expect.anything() });
 	});
+
+	it('saveThreadWithProject writes the thread and its project binding together', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValueOnce(null);
+		threadRepo.create.mockImplementation((entity) => entity as InstanceAiThread);
+		threadRepo.save.mockImplementation(async (entity) => ({
+			...(entity as InstanceAiThread),
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		}));
+		const { memory } = createMemory({ threadRepo });
+
+		await memory.saveThreadWithProject(
+			{ id: 'thread-1', resourceId: 'user-1', title: '' },
+			'project-1',
+		);
+
+		// projectId is part of the inserted row — not a follow-up update.
+		expect(threadRepo.create).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'thread-1', resourceId: 'user-1', projectId: 'project-1' }),
+		);
+		expect(threadRepo.save).toHaveBeenCalledTimes(1);
+	});
+
+	it('saveThreadWithProject never rebinds an existing thread', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValueOnce({
+			id: 'thread-1',
+			resourceId: 'user-1',
+			title: 'Existing',
+			metadata: null,
+			projectId: 'project-original',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		} as InstanceAiThread);
+		const { memory } = createMemory({ threadRepo });
+
+		await memory.saveThreadWithProject(
+			{ id: 'thread-1', resourceId: 'user-1', title: '' },
+			'project-attacker',
+		);
+
+		// The existing row (and its original project) is returned untouched.
+		expect(threadRepo.create).not.toHaveBeenCalled();
+		expect(threadRepo.save).not.toHaveBeenCalled();
+	});
 });

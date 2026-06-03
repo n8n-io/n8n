@@ -1185,10 +1185,20 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				// Setup flows scope to a workflow or project so the candidates match what
-				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
-				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
-				// so the editor's credential picker and the AI's setup card stay aligned.
+				// In a project-bound thread the credential list is always the bound
+				// project's usable set (project-shared + global) — the same intersection
+				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// workflowId/projectId must not broaden it.
+				if (boundProjectId) {
+					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						projectId: boundProjectId,
+					});
+					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+				}
+
+				// Unbound runs (internal sub-agents) scope to the caller-supplied workflow
+				// or project so the candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
 						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
@@ -1207,14 +1217,6 @@ export class InstanceAiAdapterService {
 							type: c.type,
 						}),
 					);
-				}
-
-				if (boundProjectId) {
-					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
-						projectId: boundProjectId,
-					});
-					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
-					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
 				}
 
 				const credentials = await credentialsService.getMany(user, {

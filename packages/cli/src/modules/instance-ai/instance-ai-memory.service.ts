@@ -104,12 +104,14 @@ export class InstanceAiMemoryService {
 			};
 		}
 
-		const created = await this.agentMemory.saveThread({
-			id: threadId,
-			resourceId: userId,
-			title: '',
-		});
-		await this.agentMemory.setThreadProjectId(threadId, projectId);
+		const created = await this.agentMemory.saveThreadWithProject(
+			{
+				id: threadId,
+				resourceId: userId,
+				title: '',
+			},
+			projectId,
+		);
 
 		return {
 			thread: this.toThreadInfo(created),
