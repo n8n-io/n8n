@@ -151,10 +151,7 @@ describe('add()', () => {
 
 				const dbWorkflow = await createActiveWorkflow();
 				const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-				const addNonWebhookTriggersSpy = jest.spyOn(
-					activeWorkflowManager,
-					'addNonWebhookTriggers',
-				);
+				const addNonWebhookTriggersSpy = jest.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
 
 				await activeWorkflowManager.add(dbWorkflow.id, mode);
 
