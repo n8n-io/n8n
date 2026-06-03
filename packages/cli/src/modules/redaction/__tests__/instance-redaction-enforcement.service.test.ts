@@ -1,4 +1,4 @@
-import { REDACTION_ENFORCEMENT_DEFAULTS } from '@n8n/api-types';
+import { REDACTION_FLOOR_DEFAULT, type RedactionFloor } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -64,8 +64,8 @@ describe('InstanceRedactionEnforcementService', () => {
 		describe('with feature flag off', () => {
 			beforeEach(() => disableFlag());
 
-			it('returns defaults without touching cache or repository', async () => {
-				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
+			it('returns the default floor without touching cache or repository', async () => {
+				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
 				expect(cacheService.get).not.toHaveBeenCalled();
 				expect(findByKey).not.toHaveBeenCalled();
 				expect(cacheService.set).not.toHaveBeenCalled();
@@ -75,17 +75,17 @@ describe('InstanceRedactionEnforcementService', () => {
 		describe('with feature flag on', () => {
 			beforeEach(() => enableFlag());
 
-			it('returns parsed value from cache on hit without reading DB', async () => {
-				const cached = { enforced: true, manual: true, production: true };
+			it('returns parsed floor from cache on hit without reading DB', async () => {
+				const cached: RedactionFloor = 'all';
 				simulateCacheHit(JSON.stringify(cached));
 
-				await expect(service.get()).resolves.toEqual(cached);
+				await expect(service.get()).resolves.toBe(cached);
 				expect(findByKey).not.toHaveBeenCalled();
 				expect(cacheService.set).not.toHaveBeenCalled();
 			});
 
 			it('falls back to DB, returns row, and backfills cache on cache miss', async () => {
-				const stored = { enforced: true, manual: false, production: true };
+				const stored: RedactionFloor = 'production';
 				simulateCacheMiss();
 				findByKey.mockResolvedValueOnce(
 					mock<Settings>({
@@ -95,26 +95,23 @@ describe('InstanceRedactionEnforcementService', () => {
 					}),
 				);
 
-				await expect(service.get()).resolves.toEqual(stored);
+				await expect(service.get()).resolves.toBe(stored);
 				expect(findByKey).toHaveBeenCalledWith(KEY);
 				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(stored));
 			});
 
-			it('returns defaults and backfills cache when no DB row exists', async () => {
+			it('returns the default floor and backfills cache when no DB row exists', async () => {
 				simulateCacheMiss();
 				findByKey.mockResolvedValueOnce(null);
 
-				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
-				expect(cacheService.set).toHaveBeenCalledWith(
-					KEY,
-					JSON.stringify(REDACTION_ENFORCEMENT_DEFAULTS),
-				);
+				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
+				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(REDACTION_FLOOR_DEFAULT));
 			});
 
-			it('returns defaults when cache has invalid JSON, and logs a warning', async () => {
+			it('returns the default floor when cache has invalid JSON, and logs a warning', async () => {
 				simulateCacheHit('not-json');
 
-				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
+				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to parse redaction enforcement setting JSON',
 					expect.objectContaining({ source: 'cache' }),
@@ -122,25 +119,22 @@ describe('InstanceRedactionEnforcementService', () => {
 				expect(findByKey).not.toHaveBeenCalled();
 			});
 
-			it('returns defaults and backfills cache when DB value has an invalid shape, and logs a warning', async () => {
+			it('returns the default floor and backfills cache when DB value has an invalid shape, and logs a warning', async () => {
 				simulateCacheMiss();
 				findByKey.mockResolvedValueOnce(
 					mock<Settings>({
 						key: KEY,
-						value: JSON.stringify({ enforced: 'yes', manual: false, production: true }),
+						value: JSON.stringify('bogus'),
 						loadOnStartup: true,
 					}),
 				);
 
-				await expect(service.get()).resolves.toEqual(REDACTION_ENFORCEMENT_DEFAULTS);
+				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Redaction enforcement setting has an invalid shape',
 					expect.objectContaining({ source: 'database' }),
 				);
-				expect(cacheService.set).toHaveBeenCalledWith(
-					KEY,
-					JSON.stringify(REDACTION_ENFORCEMENT_DEFAULTS),
-				);
+				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(REDACTION_FLOOR_DEFAULT));
 			});
 		});
 	});
@@ -150,9 +144,7 @@ describe('InstanceRedactionEnforcementService', () => {
 			beforeEach(() => disableFlag());
 
 			it('throws OperationalError without touching cache or repository', async () => {
-				await expect(
-					service.set({ enforced: true, manual: true, production: true }),
-				).rejects.toThrow(OperationalError);
+				await expect(service.set('all')).rejects.toThrow(OperationalError);
 				expect(upsert).not.toHaveBeenCalled();
 				expect(cacheService.set).not.toHaveBeenCalled();
 			});
@@ -161,8 +153,8 @@ describe('InstanceRedactionEnforcementService', () => {
 		describe('with feature flag on', () => {
 			beforeEach(() => enableFlag());
 
-			it('upserts the setting and writes the same serialized value to cache', async () => {
-				const next = { enforced: true, manual: false, production: true };
+			it('upserts the floor and writes the same serialized value to cache', async () => {
+				const next: RedactionFloor = 'production';
 
 				await service.set(next);
 
@@ -174,11 +166,7 @@ describe('InstanceRedactionEnforcementService', () => {
 			});
 
 			it('rejects invalid input with a UserError and logs validation issues', async () => {
-				const invalid = { enforced: true, manual: 'yes', production: true } as unknown as {
-					enforced: boolean;
-					manual: boolean;
-					production: boolean;
-				};
+				const invalid = 'bogus' as unknown as RedactionFloor;
 
 				await expect(service.set(invalid)).rejects.toThrow(UserError);
 				expect(logger.warn).toHaveBeenCalledWith(

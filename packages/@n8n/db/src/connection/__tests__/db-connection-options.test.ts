@@ -78,15 +78,18 @@ describe('DbConnectionOptions', () => {
 				dbConfig.type = 'postgresdb';
 				dbConfig.postgresdb = {
 					database: 'test_db',
-					host: 'localhost',
-					port: 5432,
-					user: 'postgres',
-					password: 'password',
-					schema: 'public',
-					poolSize: 2,
-					connectionTimeoutMs: 20000,
-					idleTimeoutMs: 30000,
-					statementTimeoutMs: 300000,
+					host: 'pg.test.example.com',
+					port: 5433,
+					user: 'test_user',
+					password: 'test_password',
+					schema: 'test_schema',
+					poolSize: 5,
+					connectionTimeoutMs: 15_000,
+					idleTimeoutMs: 25_000,
+					statementTimeoutMs: 60_000,
+					maxConnectionLifetimeMs: 1_800_000,
+					keepAlive: false,
+					keepAliveInitialDelayMs: 5_000,
 					ssl: {
 						enabled: false,
 						ca: '',
@@ -104,18 +107,21 @@ describe('DbConnectionOptions', () => {
 					type: 'postgres',
 					...commonOptions,
 					database: 'test_db',
-					host: 'localhost',
-					port: 5432,
-					username: 'postgres',
-					password: 'password',
-					schema: 'public',
-					poolSize: 2,
+					host: 'pg.test.example.com',
+					port: 5433,
+					username: 'test_user',
+					password: 'test_password',
+					schema: 'test_schema',
+					poolSize: 5,
 					migrations: postgresMigrations,
-					connectTimeoutMS: 20000,
-					statementTimeout: 300_000,
+					connectTimeoutMS: 15_000,
+					statementTimeout: 60_000,
 					ssl: false,
 					extra: {
-						idleTimeoutMillis: 30000,
+						idleTimeoutMillis: 25_000,
+						keepAlive: false,
+						keepAliveInitialDelayMillis: 5_000,
+						maxLifetimeSeconds: 1800,
 					},
 				});
 			});
@@ -132,6 +138,23 @@ describe('DbConnectionOptions', () => {
 				const result = dbConnectionOptions.getOptions();
 
 				expect(result).toMatchObject({ ssl });
+			});
+
+			it('should omit maxLifetimeSeconds when maxConnectionLifetimeMs is 0', () => {
+				dbConfig.postgresdb.maxConnectionLifetimeMs = 0;
+
+				const result = dbConnectionOptions.getOptions();
+
+				expect(result.extra).not.toHaveProperty('maxLifetimeSeconds');
+			});
+
+			it('should clamp sub-second maxConnectionLifetimeMs values to 1 second', () => {
+				// Guards against silent rounding-to-0, which would unintentionally disable the lifetime cap.
+				dbConfig.postgresdb.maxConnectionLifetimeMs = 500;
+
+				const result = dbConnectionOptions.getOptions();
+
+				expect(result.extra).toMatchObject({ maxLifetimeSeconds: 1 });
 			});
 		});
 

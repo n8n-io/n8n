@@ -35,6 +35,12 @@ import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceA
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
+export interface PlanEditContext {
+	requestId: string;
+	inputThreadId?: string;
+	taskCount: number;
+}
+
 export interface PendingConfirmationItem {
 	toolCall: InstanceAiToolCallState & { confirmation: InstanceAiConfirmation };
 	agentNode: InstanceAiAgentNode;
@@ -51,7 +57,7 @@ function isSetupLikeConfirmation(conf: InstanceAiConfirmation): boolean {
 
 function isUnresolvedConfirmation(
 	tc: InstanceAiToolCallState,
-	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
 ): tc is InstanceAiToolCallState & { confirmation: InstanceAiConfirmation } {
 	return (
 		!!tc.confirmation &&
@@ -79,13 +85,18 @@ export interface ThreadRuntimeHooks {
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
 		if (
 			isUnresolvedConfirmation(tc, resolved) &&
 			(tc.isLoading || isSetupLikeConfirmation(tc.confirmation)) &&
+			// Expired cards render as a terminal "this action has expired" state
+			// in their inline slot; surfacing them in the floating/inline panel
+			// would block the chat input on a confirmation the user can no
+			// longer act on.
+			!tc.confirmation.expired &&
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
@@ -250,12 +261,16 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
+	const resolvedConfirmationIds = reactive(
+		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
+	);
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const activePlanEdit = ref<PlanEditContext | null>(null);
+	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// --- Non-reactive runtime state ---
 	let runStateByGroupId: Record<string, AgentRunState> = {};
@@ -311,11 +326,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				: 'Add error handling to the workflow';
 		}
 
-		const dataChild = tree.children.find((c) => c.role === 'data-table-manager');
-		if (dataChild) {
-			return 'Query the data table to show recent entries';
-		}
-
 		return null;
 	});
 
@@ -324,7 +334,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		const items: PendingConfirmationItem[] = [];
 		for (const msg of messages.value) {
 			if (msg.role !== 'assistant' || !msg.agentTree) continue;
-			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
+			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds, items);
 		}
 		return items;
 	});
@@ -334,11 +344,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'denied' | 'deferred',
+		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
 	): void {
-		const next = new Map(resolvedConfirmationIds.value);
-		next.set(requestId, action);
-		resolvedConfirmationIds.value = next;
+		resolvedConfirmationIds.set(requestId, action);
 	}
 
 	/** Find a tool call by its confirmation requestId across all messages. */
@@ -397,7 +405,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			if (sessionAlwaysAllowKeys.value.size === 0) return;
 			for (const item of items) {
 				const conf = item.toolCall.confirmation;
-				if (resolvedConfirmationIds.value.has(conf.requestId)) continue;
+				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
 				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
@@ -646,7 +654,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
-		resolvedConfirmationIds.value = new Map();
+		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
@@ -768,15 +776,11 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 	}
 
-	function trackUserMessageSent(optimistic: InstanceAiMessage): void {
-		// The first user message in the array is the first the thread has ever
-		// seen. `find` short-circuits at the first match, so this is O(1) once
-		// the user has sent more than one message.
-		const firstUser = messages.value.find((m) => m.role === 'user');
+	function trackUserMessageSent(isFirstMessage: boolean): void {
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
-			is_first_message: firstUser === optimistic,
+			is_first_message: isFirstMessage,
 		});
 	}
 
@@ -855,11 +859,12 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		try {
 			ensureSSEConnected();
 			const setupCorrection = getPendingSetupConfirmation();
+			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const optimistic = pushOptimisticUserMessage(
 				message,
 				setupCorrection ? undefined : attachments,
 			);
-			trackUserMessageSent(optimistic);
+			trackUserMessageSent(isFirstMessage);
 
 			const wasDispatched = setupCorrection
 				? await dispatchSetupCorrection(setupCorrection, message)
@@ -902,6 +907,32 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		amendContext.value = { agentId, role };
 	}
 
+	// --- Plan edit mode ---
+
+	function startPlanEdit(context: PlanEditContext): void {
+		activePlanEdit.value = context;
+	}
+
+	function cancelPlanEdit(): void {
+		activePlanEdit.value = null;
+	}
+
+	function markPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.add(requestId);
+	}
+
+	function clearPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.delete(requestId);
+	}
+
+	// Defensive cleanup: if a stream ends without a matching clear, drop the
+	// pending markers so we don't leave a card stuck in "Updating plan…".
+	watch(isStreaming, (streaming) => {
+		if (!streaming && updatingPlanRequestIds.size > 0) {
+			updatingPlanRequestIds.clear();
+		}
+	});
+
 	// --- Confirmations ---
 
 	async function confirmAction(
@@ -911,8 +942,25 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		try {
 			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
-		} catch {
-			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+		} catch (error: unknown) {
+			// Surface the server's UserError text when present (e.g. "This
+			// confirmation was lost when the assistant restarted") so the user
+			// sees the actual reason instead of a generic "Try again". UserError
+			// from `n8n-workflow` is mapped to a 400 with the message in the
+			// response body — `ResponseError.message` exposes that here.
+			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+			if (status === 400) {
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The confirmation could not be processed.'),
+					'Confirmation failed',
+				);
+			} else {
+				toast.showError(
+					new Error('Failed to send confirmation. Try again.'),
+					'Confirmation failed',
+				);
+			}
 			return false;
 		}
 	}
@@ -956,6 +1004,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		sseState,
 		lastEventId,
 		amendContext,
+		activePlanEdit,
+		updatingPlanRequestIds,
 
 		// computeds
 		isStreaming,
@@ -982,6 +1032,10 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
+		startPlanEdit,
+		cancelPlanEdit,
+		markPlanUpdatePending,
+		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,

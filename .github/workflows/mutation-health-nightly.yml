@@ -1,0 +1,158 @@
+name: 'Mutation Health (nightly)'
+
+on:
+  schedule:
+    # 03:30 UTC daily — outside CI rush, before EU morning. Runs both passes.
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Which pass to run'
+        type: choice
+        options:
+          - both
+          - baseline # score files with no result yet (the `new` bucket)
+          - coverage # revisit the weakest scored files (`red`/`stale`, lowest first)
+        default: both
+
+permissions:
+  contents: read
+
+env:
+  READER_URL: https://internal.users.n8n.cloud/webhook/mutation-health-ledger
+
+jobs:
+  # Build the (package × pass) matrix once. The package list lives here only —
+  # onboarding a vitest package is a one-line addition below. The requested
+  # `mode` filters which passes run (scheduled runs default to both).
+  #   baseline → score files with no result yet (picker `new` bucket)
+  #   coverage → revisit the weakest scored files (picker `red`/`stale`, lowest first)
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Build matrix
+        id: build
+        env:
+          REQUESTED_MODE: ${{ github.event.inputs.mode || 'both' }}
+        # vitest packages only. A package with its own stryker.config.mjs overrides
+        # the shared default (scripts/mutation-health/stryker.default.mjs) — n8n-workflow
+        # does this to run the legacy expression engine and dodge the isolated-vm
+        # dry-run crash (see its config + DEVP-257). Jest packages and
+        # @n8n/expression-runtime are intentionally absent.
+        run: |
+          node -e '
+            const packages = [
+              { name: "n8n-workflow", dir: "packages/workflow", slug: "workflow" },
+              { name: "@n8n/crdt", dir: "packages/@n8n/crdt", slug: "crdt" },
+              { name: "@n8n/decorators", dir: "packages/@n8n/decorators", slug: "decorators" },
+            ];
+            const req = process.env.REQUESTED_MODE;
+            const modes = req === "both" ? ["baseline", "coverage"] : [req];
+            const include = packages.flatMap((p) => modes.map((mode) => ({ ...p, mode })));
+            console.log("matrix=" + JSON.stringify({ include }));
+          ' >> "$GITHUB_OUTPUT"
+
+  mutate:
+    needs: setup
+    name: ${{ matrix.mode }} · ${{ matrix.name }}
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false # one leg's failure must not skip the others
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    # Per package + pass: a scheduled run and a manual run won't double-write the
+    # same ledger row, but different packages/passes still run in parallel.
+    concurrency:
+      group: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}
+      cancel-in-progress: false
+    env:
+      PACKAGE_NAME: ${{ matrix.name }}
+      PKG_DIR: ${{ matrix.dir }}
+      MODE: ${{ matrix.mode }}
+      REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        # Shallow clone is fine — pick-next no longer reads git history.
+        # Staleness is purely age-based via last_checked_at.
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Fetch live ledger from BigQuery
+        run: |
+          mkdir -p "$REPORTS_DIR"
+          curl --fail -sS --get --data-urlencode "package=$PACKAGE_NAME" \
+            "$READER_URL" -o "$REPORTS_DIR/live-ledger.json"
+
+      - name: Pick next source file
+        id: pick
+        run: |
+          picked_json=$(node scripts/mutation-health/pick-next.mjs \
+            --package-dir "$PKG_DIR" \
+            --ledger-file "$REPORTS_DIR/live-ledger.json" \
+            --mode "$MODE")
+          echo "$picked_json"
+          src_repo=$(echo "$picked_json" | jq -r '.picked.source_file_path // ""')
+          if [ -z "$src_repo" ]; then
+            echo "::notice::Picker returned no work for mode=$MODE (bucket empty). Exiting cleanly."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          src_rel="${src_repo#"$PKG_DIR"/}"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "source-rel=$src_rel" >> "$GITHUB_OUTPUT"
+
+      - name: Mutate the picked source file
+        if: steps.pick.outputs.skip != 'true'
+        # Exit code semantics from mutate.mjs:
+        #   0 — score >= threshold (green)
+        #   1 — score < threshold (red) — emit step still runs, this is normal
+        #   2 — usage error
+        #   3 — Stryker hard failure (no summary.json) — must fail the job
+        # We capture rc explicitly so we can distinguish "below threshold" from
+        # "Stryker crashed." continue-on-error: true would collapse them.
+        run: |
+          set +e
+          node scripts/mutation-health/mutate.mjs "${{ steps.pick.outputs.source-rel }}" --package-dir "$PKG_DIR"
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::Stryker hard-failed with exit code $rc."
+            exit "$rc"
+          fi
+          echo "Mutate exit $rc ($([ "$rc" = "0" ] && echo green || echo red))."
+
+      - name: Emit BQ payload
+        if: steps.pick.outputs.skip != 'true'
+        run: node scripts/mutation-health/emit-payload.mjs --summary "$REPORTS_DIR/summary.json" --package "$PACKAGE_NAME"
+
+      - name: POST result payload
+        if: steps.pick.outputs.skip != 'true'
+        env:
+          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+        run: |
+          if [ -z "$MUTATION_HEALTH_WEBHOOK" ]; then
+            echo "::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run, POST skipped (payload uploaded as artefact)."
+            exit 0
+          fi
+          curl --fail -sS -X POST \
+            -H 'Content-Type: application/json' \
+            --data @"$REPORTS_DIR/bq-payload.json" \
+            "$MUTATION_HEALTH_WEBHOOK"
+
+      - name: Upload artefacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}-${{ github.run_id }}
+          path: |
+            ${{ env.REPORTS_DIR }}/raw.json
+            ${{ env.REPORTS_DIR }}/raw.html
+            ${{ env.REPORTS_DIR }}/summary.json
+            ${{ env.REPORTS_DIR }}/bq-payload.json
+            ${{ env.REPORTS_DIR }}/live-ledger.json
+          retention-days: 14
+          if-no-files-found: warn

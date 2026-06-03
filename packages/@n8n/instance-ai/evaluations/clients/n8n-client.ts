@@ -10,8 +10,6 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -168,20 +166,6 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
-	}
-
-	/**
-	 * Run an isolated sub-agent on the instance and return its result.
-	 * POST /rest/instance-ai/eval/run-sub-agent
-	 */
-	async runSubAgentEval(
-		request: InstanceAiEvalSubAgentRequest,
-	): Promise<InstanceAiEvalSubAgentResponse> {
-		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
-			method: 'POST',
-			body: request,
-		})) as { data: InstanceAiEvalSubAgentResponse };
-		return result.data;
 	}
 
 	/**
@@ -495,15 +479,26 @@ export class N8nClient {
 	/**
 	 * Execute a workflow with LLM-based HTTP mocking.
 	 * The server handles hint generation and mock execution in a single synchronous call.
+	 *
+	 * AI root nodes (Agent, Chain) default to wire-server interception so their
+	 * sub-nodes actually run instead of being short-circuited by pin data;
+	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
+	 * A/B comparison). Gated server-side behind the
+	 * `085_eval_vendor_sdk_interception` PostHog flag.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
 		scenarioHints?: string,
 		timeoutMs: number = 120_000,
+		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
+		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
+		if (scenarioHints) body.scenarioHints = scenarioHints;
+		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',
-			body: scenarioHints ? { scenarioHints } : {},
+			body,
 			timeoutMs,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;

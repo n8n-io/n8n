@@ -4,6 +4,7 @@
 
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 
+import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 
 // ---------------------------------------------------------------------------
@@ -183,6 +184,8 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
+	datasets: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +215,10 @@ export interface WorkflowTestCaseResult {
 	conversationMetrics?: ConversationMetrics;
 	threadId?: string;
 	transcript?: TranscriptTurn[];
+	workflowChecks?: CheckOutcome[];
+	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
+	 *  configs each get their own URL for canvas/execution links. */
+	n8nBaseUrl?: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -42,6 +42,11 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	})),
 }));
 
+vi.mock('@/app/api/workflows', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/api/workflows')>()),
+	getNewWorkflowData: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
+}));
+
 vi.mock('@/features/execution/executions/composables/useExecutionDebugging', () => ({
 	useExecutionDebugging: vi.fn(() => ({
 		applyExecutionData: vi.fn(),
@@ -91,6 +96,7 @@ vi.mock('@/app/composables/useWorkflowId', () => ({
 const mockNDVStore = vi.hoisted(() => ({}));
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => mockNDVStore),
+	injectNDVStore: vi.fn(() => ({ value: mockNDVStore })),
 	disposeNDVStore: vi.fn(),
 }));
 
@@ -128,18 +134,12 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-function createWorkflowState(): WorkflowState {
-	return {
-		getNewWorkflowData: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
-	} as unknown as WorkflowState;
-}
-
 function renderWithComposable(
 	callback: (init: ReturnType<typeof useWorkflowInitialization>) => void,
 ) {
 	const TestComponent = defineComponent({
 		setup() {
-			const init = useWorkflowInitialization(createWorkflowState());
+			const init = useWorkflowInitialization({} as unknown as WorkflowState);
 			callback(init);
 			return () => h('div');
 		},

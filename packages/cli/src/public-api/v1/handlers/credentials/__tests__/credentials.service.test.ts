@@ -441,10 +441,10 @@ describe('CredentialsService', () => {
 			mock(), // connectionStatusProxy
 		);
 
-		jest.spyOn(credentialsService, 'decrypt');
-
 		beforeEach(() => {
 			credentialsRepository = mock<CredentialsRepository>();
+
+			jest.spyOn(credentialsService, 'decrypt');
 
 			jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 				if (serviceClass === CredentialsService) {

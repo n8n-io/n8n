@@ -20,8 +20,38 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { parseStoredMessages } from './message-parser';
+import {
+	collectConfirmationRequestIds,
+	markExpiredConfirmations,
+	parseStoredMessages,
+} from './message-parser';
+import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+
+function isAgentMessageLike(value: unknown): value is AgentDbMessage {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { id?: unknown }).id === 'string' &&
+		'role' in value
+	);
+}
+
+function messageCreatedAtMs(message: AgentDbMessage): number {
+	const at = message.createdAt;
+	if (at instanceof Date) return at.getTime();
+	const parsed = new Date(at).getTime();
+	return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): AgentDbMessage[] {
+	if (extras.length === 0) return stored;
+	const byId = new Map<string, AgentDbMessage>();
+	for (const message of stored) byId.set(message.id, message);
+	for (const message of extras) if (!byId.has(message.id)) byId.set(message.id, message);
+	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
+}
 
 @Service()
 export class InstanceAiMemoryService {
@@ -32,6 +62,8 @@ export class InstanceAiMemoryService {
 		globalConfig: GlobalConfig,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
+		private readonly checkpointRepository: InstanceAiCheckpointRepository,
+		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -123,9 +155,70 @@ export class InstanceAiMemoryService {
 			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
 		}
 
-		const messages = parseStoredMessages(result.messages, snapshots);
+		// Surface the in-flight messages from any suspended checkpoint. The
+		// SDK only commits messages to memory after a successful turn, so
+		// during HITL suspension the user's prompt and intermediate assistant
+		// responses live only inside the checkpoint blob. Without merging
+		// them in, a thread that's waiting on a confirmation renders without
+		// the original user message after a page reload.
+		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
+		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
+
+		const messages = parseStoredMessages(storedMessages, snapshots);
+		await this.flagExpiredConfirmations(messages);
 
 		return { threadId, messages };
+	}
+
+	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
+	 *  and flip `confirmation.expired = true` on the ones with no live row. */
+	private async flagExpiredConfirmations(
+		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	): Promise<void> {
+		const requestIds = collectConfirmationRequestIds(messages);
+		if (requestIds.length === 0) return;
+		try {
+			const live = await this.pendingConfirmationRepository.findLiveRequestIds(
+				requestIds,
+				new Date(),
+			);
+			markExpiredConfirmations(messages, live);
+		} catch (error) {
+			this.logger.warn('Failed to flag expired confirmation cards', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async loadInFlightCheckpointMessages(threadId: string): Promise<AgentDbMessage[]> {
+		let checkpoints;
+		try {
+			checkpoints = await this.checkpointRepository.findActiveByThreadId(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to load in-flight checkpoint messages', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		}
+
+		const merged: AgentDbMessage[] = [];
+		const seen = new Set<string>();
+		for (const checkpoint of checkpoints) {
+			const stateMessages = checkpoint.state?.messageList?.messages ?? [];
+			for (const candidate of stateMessages) {
+				if (!isAgentMessageLike(candidate) || seen.has(candidate.id)) continue;
+				seen.add(candidate.id);
+				merged.push({
+					...candidate,
+					createdAt:
+						candidate.createdAt instanceof Date
+							? candidate.createdAt
+							: new Date(candidate.createdAt),
+				});
+			}
+		}
+		return merged;
 	}
 
 	async getLatestRunSnapshot(

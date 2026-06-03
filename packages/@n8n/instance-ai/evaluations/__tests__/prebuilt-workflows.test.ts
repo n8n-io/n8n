@@ -1,6 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { vi } from 'vitest';
+import type { Mock } from 'vitest';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
@@ -99,7 +101,7 @@ describe('fetchPrebuiltBuild', () => {
 		isVerbose: false,
 	};
 
-	function makeClient(getWorkflow: jest.Mock): N8nClient {
+	function makeClient(getWorkflow: Mock): N8nClient {
 		// Only the methods used by fetchPrebuiltBuild — narrow cast in test code is fine.
 		return { getWorkflow } as unknown as N8nClient;
 	}
@@ -111,7 +113,7 @@ describe('fetchPrebuiltBuild', () => {
 			nodes: [{ id: 'n1', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
 			connections: {},
 		} as unknown as WorkflowResponse;
-		const getWorkflow = jest.fn().mockResolvedValue(fakeWorkflow);
+		const getWorkflow = vi.fn().mockResolvedValue(fakeWorkflow);
 		const client = makeClient(getWorkflow);
 
 		const result = await fetchPrebuiltBuild(client, 'W123', silentLogger);
@@ -127,7 +129,7 @@ describe('fetchPrebuiltBuild', () => {
 	});
 
 	it('returns a failed BuildResult with the workflow ID in the error when fetch throws', async () => {
-		const getWorkflow = jest.fn().mockRejectedValue(new Error('HTTP 404 Not Found'));
+		const getWorkflow = vi.fn().mockRejectedValue(new Error('HTTP 404 Not Found'));
 		const client = makeClient(getWorkflow);
 
 		const result = await fetchPrebuiltBuild(client, 'Wstale', silentLogger);
@@ -141,7 +143,7 @@ describe('fetchPrebuiltBuild', () => {
 	});
 
 	it('coerces non-Error rejection values into a string in the error message', async () => {
-		const getWorkflow = jest.fn().mockRejectedValue('plain string failure');
+		const getWorkflow = vi.fn().mockRejectedValue('plain string failure');
 		const client = makeClient(getWorkflow);
 
 		const result = await fetchPrebuiltBuild(client, 'Wodd', silentLogger);
