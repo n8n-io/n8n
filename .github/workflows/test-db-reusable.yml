@@ -30,13 +30,13 @@ jobs:
           # PG instances beat one larger box (see DEVP-200 / DEVP-315).
           - name: Postgres 16 (1/2)
             runner: blacksmith-2vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc -- --shard=1/2
+            test-cmd: pnpm test:postgres:integration:tc --shard=1/2
             migration-cmd: pnpm test:postgres:migrations:tc
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
           - name: Postgres 16 (2/2)
             runner: blacksmith-2vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc -- --shard=2/2
+            test-cmd: pnpm test:postgres:integration:tc --shard=2/2
             migration-cmd: ''
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
