@@ -100,9 +100,13 @@ export class OAuth2OidcBearer implements ICredentialType {
 							name: 'expression',
 							type: 'string',
 							default: '',
-							placeholder: '={{ $claims.groups.includes("admin") }}',
+							// Stored verbatim: n8n eagerly resolves "="-prefixed field values
+							// at credential-load time, which would consume the rule expression
+							// before it reaches the trigger. noDataExpression keeps it literal.
+							noDataExpression: true,
+							placeholder: '{{ $claims.groups.includes("admin") }}',
 							description:
-								'n8n expression evaluated against the token claims. The claims are available as $claims.',
+								'Condition evaluated against the token claims, in n8n expression syntax. The claims are available as $claims (e.g. {{ $claims.groups.includes("admin") }}). Enter it as plain text; do not prefix with "=".',
 						},
 					],
 				},

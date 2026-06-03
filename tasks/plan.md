@@ -162,6 +162,29 @@ triggers. Logged as a separate API-surface ticket in Task 8.
 the decoded claims as trigger output lets builders do fine-grained
 routing/authz in the workflow itself, keeping the M1 gate a simple boolean.
 
+### POC finding: credential fields eagerly resolve `=` expressions
+
+Storing a claim-rule expression as a credential string field is a trap. n8n
+treats any field value starting with `=` as an n8n expression and **resolves it
+at credential-load time** — against a context where `$claims` doesn't exist — so
+the rule expression is consumed (resolved to empty and dropped) before it ever
+reaches the trigger. Symptoms hit during the POC: the rule arrived at runtime as
+`{ effect: "allow" }` with no `expression`, so every caller was denied.
+
+Mitigations applied in the POC, and implications for M1:
+- Set **`noDataExpression: true`** on the rule's expression field so n8n stores
+  it verbatim and the UI hides the expression toggle. Required.
+- The evaluator also strips a leading `=` and guards empty/undefined
+  expressions defensively.
+- **Two evaluation layers exist** (n8n credential-load resolution vs. our
+  `@n8n/expression-rules` evaluation). The expression is meant for *our* layer;
+  n8n's must not touch it. The real feature should make this unambiguous —
+  ideally a structured rule input (field/operator/value) rather than a free-text
+  n8n-expression string, which also removes the silent-failure-on-typo problem
+  (`inlcudes` evaluated to "no match" with zero feedback).
+- n8n **strips parameter values equal to their default**, so a rule's `effect`
+  is absent when left at "allow"; code must treat missing effect as allow.
+
 ## Config storage location (where the policy lives)
 
 Split the config into **trust config** (issuer, audience, JWKS URI, allowed
