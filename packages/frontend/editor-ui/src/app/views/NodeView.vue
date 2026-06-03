@@ -1331,8 +1331,16 @@ async function addEvaluationTriggerNodeFromRoute() {
 	isHandlingEvaluationTriggerRouteAction.value = true;
 
 	try {
-		if (!canvasRef.value) await nextTick();
-		if (!canvasRef.value) await nextTick();
+		if (!canvasRef.value) {
+			await new Promise<void>((resolve) => {
+				const stop = watch(canvasRef, (val) => {
+					if (val) {
+						stop();
+						resolve();
+					}
+				});
+			});
+		}
 
 		if (!checkIfEditingIsAllowed()) return;
 
