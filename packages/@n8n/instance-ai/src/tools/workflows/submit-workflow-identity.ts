@@ -171,6 +171,11 @@ export function wrapSubmitExecuteWithIdentity(
 				errorDetails: guarded.errorDetails,
 				nodeIndex: guarded.nodeIndex,
 			});
+		} else {
+			// A successful submit invalidates any prior failure diagnostics for
+			// this path. Without clearing them, a later terminal-state short-circuit
+			// (e.g. post_submit_budget_exhausted) would surface the stale error.
+			lastFailedDiagnosticByPath.delete(path);
 		}
 		recordTerminalRemediation(guarded.workflowId ?? fallbackWorkflowId, guarded.remediation);
 		return guarded;

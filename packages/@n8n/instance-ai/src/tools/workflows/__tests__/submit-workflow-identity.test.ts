@@ -410,6 +410,61 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		expect(execute).toHaveBeenCalledTimes(1);
 	});
 
+	it('clears captured diagnostics after a successful submit so a later block does not echo the stale error', async () => {
+		// fail → success → terminal block for the SAME path. The success must
+		// invalidate the earlier failure diagnostics; otherwise the short-circuited
+		// block (e.g. post_submit_budget_exhausted, which only fires after a save)
+		// would surface the resolved error instead of the terminal guidance.
+		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		const blockRemediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+			guidance: 'The workflow was saved, but the repair budget is exhausted.',
+		});
+		const execute = jest
+			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+			.mockResolvedValueOnce({
+				success: false,
+				errors: ['Workflow save failed: nodes[9].position invalid_type'],
+				errorDetails: [
+					{
+						path: 'nodes[9].position',
+						code: 'invalid_type',
+						message: 'Expected tuple, received null',
+						offendingValue: null,
+						nodeJson: { name: 'Manual Trigger (temp)', type: 'n8n-nodes-base.manualTrigger' },
+					},
+				],
+				nodeIndex: [{ index: 9, name: 'Manual Trigger (temp)' }],
+			})
+			.mockResolvedValueOnce({ success: true, workflowId: 'wf_saved' });
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getTerminalRemediation: () => terminalRemediation,
+		});
+
+		// 1. First submit fails and records the failure diagnostics for the path.
+		const failed = await wrapped({});
+		expect(failed.success).toBe(false);
+
+		// 2. Second submit for the same path succeeds — clears the stale diagnostics.
+		const saved = await wrapped({});
+		expect(saved).toMatchObject({ success: true, workflowId: 'wf_saved' });
+
+		// 3. A terminal block now arises and a later submit is short-circuited.
+		//    It must surface the terminal guidance, not the resolved step-1 error.
+		terminalRemediation = blockRemediation;
+		const blocked = await wrapped({});
+		expect(blocked).toMatchObject({
+			success: false,
+			errors: ['The workflow was saved, but the repair budget is exhausted.'],
+			remediation: blockRemediation,
+		});
+		expect(blocked.errorDetails).toBeUndefined();
+		expect(blocked.nodeIndex).toBeUndefined();
+		expect(execute).toHaveBeenCalledTimes(2);
+	});
+
 	it('falls back to remediation guidance when no prior failure was captured', async () => {
 		// If a terminal remediation appears before any submit attempt has run
 		// (e.g. carried over from a different code path), there's no real error
