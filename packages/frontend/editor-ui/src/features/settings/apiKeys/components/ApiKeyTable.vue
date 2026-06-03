@@ -52,8 +52,8 @@ function onRowClick(_event: MouseEvent, payload: { item: ApiKey }) {
 
 const rows = computed(() => props.apiKeys);
 
-// Column resizing isn't useful for this fixed-shape table — disabling it
-// also hides the resizer handle that otherwise lights up on every hover.
+// `resize: false` everywhere — these columns are fixed-shape and the resizer
+// handle otherwise highlights on every header hover.
 const headers = ref<Array<TableHeader<ApiKey>>>([
 	{ title: i18n.baseText('settings.api.columns.name'), key: 'label', resize: false },
 	{
@@ -64,7 +64,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 		resize: false,
 	},
 	{ title: i18n.baseText('settings.api.columns.scopes'), key: 'scopes', resize: false },
-	// `expiresAt` is decoded from the JWT, not a column — sorting would need a DB migration.
+	// expiresAt lives in the JWT, not a column — can't ORDER BY without a migration.
 	{
 		title: i18n.baseText('settings.api.columns.expiration'),
 		key: 'expiresAt',

@@ -17,32 +17,17 @@ const DEFAULT_PAGE_SIZE = 10;
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
-	/** Server-side ownership filter: 'mine' = caller's own keys, 'all' = every key on the instance. */
 	const ownership = ref<ApiKeyOwnership>('mine');
-	/** Case-insensitive substring filter applied server-side to the label. */
 	const labelFilter = ref('');
-	/** Cross-page totals per ownership filter, populated from the GET response. */
 	const mineCount = ref(0);
 	const allCount = ref(0);
-	/**
-	 * Session-sticky flag: `true` after we've seen at least one key on the
-	 * instance. Used to keep the search input and the "create" CTA visible
-	 * even when the active label filter zeros out `allCount` for the page.
-	 */
+	// Latched once we've seen any key, so a zero-result search doesn't hide the toolbar.
 	const hasAnyKeys = ref(false);
-	/**
-	 * Page, page-size, and sort state in `N8nDataTableServer`'s native shape.
-	 * The view binds this via `storeToRefs` + `v-model:table-options`, so the
-	 * store is the single source of truth — DTS writes flow back here, and
-	 * action methods that need to reset the page mutate `tableOptions.value.page`
-	 * directly.
-	 */
 	const tableOptions = ref<TableOptions>({
 		page: 0,
 		itemsPerPage: DEFAULT_PAGE_SIZE,
 		sortBy: [],
 	});
-	/** Total number of API keys for the current ownership filter, across every page. */
 	const apiKeysCount = computed(() =>
 		ownership.value === 'mine' ? mineCount.value : allCount.value,
 	);
@@ -80,9 +65,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeys.value = response.items;
 		mineCount.value = response.counts.mine;
 		allCount.value = response.counts.all;
-		// Latch on the first non-empty response — but only when we're looking at
-		// the unfiltered list, otherwise an instance that genuinely has no keys
-		// could flip the flag based on a stale label.
+		// Only latch on an unfiltered response so a stale search can't flip the flag.
 		if (!trimmed && response.counts.all > 0) hasAnyKeys.value = true;
 		return response;
 	};
@@ -101,19 +84,13 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		await fetchApiKeys();
 	};
 
-	/**
-	 * Refetch in response to a DTS `update:options` event. The v-model on
-	 * `tableOptions` has already written the new page / itemsPerPage / sortBy
-	 * into the store, so this is just a sync helper.
-	 */
+	// DTS already wrote the new page/itemsPerPage/sortBy via v-model; we just refetch.
 	const applyTableOptions = async () => {
 		await fetchApiKeys();
 	};
 
 	const createApiKey = async (payload: CreateApiKeyRequestDto) => {
 		const newApiKey = await publicApiApi.createApiKey(rootStore.restApiContext, payload);
-		// New key lands at the top (createdAt DESC) — return to page 1 and refetch so
-		// every consumer sees the same server state regardless of which page they were on.
 		tableOptions.value.page = 0;
 		await fetchApiKeys();
 		return newApiKey;
@@ -121,7 +98,6 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const deleteApiKey = async (id: string) => {
 		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
-		// Refetching keeps the counts honest and handles the page-becomes-empty edge case.
 		const remaining = apiKeysCount.value - 1;
 		const lastPage = Math.max(0, Math.ceil(remaining / tableOptions.value.itemsPerPage) - 1);
 		if (tableOptions.value.page > lastPage) tableOptions.value.page = lastPage;

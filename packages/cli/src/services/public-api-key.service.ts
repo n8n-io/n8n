@@ -24,10 +24,7 @@ const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
 export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
 
-/**
- * Escape `%`, `_`, and `\` so user input passed to `LIKE` matches literally.
- * Combine with `ESCAPE '\\'` on the SQL side.
- */
+// Pair with `ESCAPE '\\'` on the SQL side to keep `%`/`_`/`\` literal in user input.
 const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, '\\$&');
 
 @Service()
@@ -37,10 +34,6 @@ export class PublicApiKeyService {
 		private readonly jwtService: JwtService,
 	) {}
 
-	/**
-	 * Creates a new public API key for the specified user.
-	 * @param user - The user for whom the API key is being created.
-	 */
 	async createPublicApiKeyForUser(
 		user: User,
 		{ label, expiresAt, scopes }: CreateApiKeyRequestDto,
@@ -59,16 +52,6 @@ export class PublicApiKeyService {
 		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
 	}
 
-	/**
-	 * Retrieves a page of redacted API keys with owner info attached, ordered
-	 * by `createdAt` descending. Returns every key on the instance for callers
-	 * with `apiKey:manage` (owners and admins); otherwise scopes to the
-	 * caller's own keys. Admins can narrow to their own keys with
-	 * `ownership: 'mine'`. `counts` carries the cross-page totals for both
-	 * ownership filters — `counts[ownership]` is the total for the requested
-	 * page, and the other lets callers render Mine/All tab badges without a
-	 * second request.
-	 */
 	async getRedactedApiKeys(
 		caller: User,
 		options: {
@@ -101,8 +84,7 @@ export class PublicApiKeyService {
 
 		const [apiKeys, count] = await qb.getManyAndCount();
 
-		// For non-admins the `mine` and `all` totals are identical, so we
-		// reuse `count` and skip the extra COUNT query.
+		// For non-admins the two totals are identical, so we skip the extra COUNT query.
 		const counts = canSeeAll
 			? {
 					mine: includeOthers
@@ -118,18 +100,8 @@ export class PublicApiKeyService {
 		};
 	}
 
-	/**
-	 * Apply a single `field:asc|desc` entry from the query. `createdAt DESC`
-	 * is the default order and lands as a tie-breaker for every other field
-	 * so newest keys surface first when the caller's sort runs out of
-	 * distinguishing values. Sorting by `scopes` is a count sort — the
-	 * column is stored as a JSON array (TEXT on sqlite, `json` on postgres),
-	 * so we cast through text on postgres before counting commas + 1 and
-	 * special-casing the empty array `[]`. Validates `sortBy` against
-	 * `LIST_API_KEYS_SORT_OPTIONS` as defense-in-depth — the DTO is the
-	 * primary gate, but bypasses (tests, internal callers) shouldn't get a
-	 * free SQL-injection vector.
-	 */
+	// `sortBy` is validated by the DTO; the allow-list here keeps the SQL safe
+	// against bypasses (tests, internal callers) that build options by hand.
 	private applyApiKeyListSort(qb: SelectQueryBuilder<ApiKey>, sortBy?: string) {
 		const allowList = LIST_API_KEYS_SORT_OPTIONS as readonly string[];
 		const valid = sortBy !== undefined && allowList.includes(sortBy);
@@ -142,11 +114,8 @@ export class PublicApiKeyService {
 		const direction = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
 		if (field === 'scopes') {
-			// TypeORM doesn't auto-quote identifiers inside raw expressions, so on
-			// Postgres we must explicitly double-quote the alias/column (otherwise
-			// `apiKey.scopes` gets case-folded to `apikey.scopes` and fails). The
-			// `::text` cast is also Postgres-only — the column type resolves to
-			// `json` there but `simple-json` (text) on sqlite.
+			// Raw expressions aren't auto-quoted, and `scopes` is `json` on Postgres
+			// but text-backed on sqlite — quote the alias and cast through text on PG.
 			const isPostgres = qb.connection.options.type === 'postgres';
 			const scopesText = isPostgres ? '"apiKey"."scopes"::text' : 'apiKey.scopes';
 			const scopesCountExpr = `CASE WHEN ${scopesText} = '[]' THEN 0 ELSE LENGTH(${scopesText}) - LENGTH(REPLACE(${scopesText}, ',', '')) + 1 END`;
@@ -159,12 +128,8 @@ export class PublicApiKeyService {
 		if (field !== 'createdAt') qb.addOrderBy('apiKey.createdAt', 'DESC');
 	}
 
-	/**
-	 * Deletes an API key. The caller must either own the key or hold the
-	 * `apiKey:manage` global scope (granted to owners and admins). When
-	 * neither condition matches we return 404 rather than 403 so the caller
-	 * cannot probe for the existence of another user's key.
-	 */
+	// 404 (not 403) when the caller can't delete the key so they can't probe
+	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
 		const result = await this.apiKeyRepository.delete({

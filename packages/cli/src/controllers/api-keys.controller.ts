@@ -38,9 +38,6 @@ export class ApiKeysController {
 		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
-	/**
-	 * Create an API Key
-	 */
 	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
 	async createApiKey(
@@ -64,12 +61,7 @@ export class ApiKeysController {
 		};
 	}
 
-	/**
-	 * Get API keys. The service returns every key on the instance for callers
-	 * with `apiKey:manage` (owners and admins) and the caller's own keys for
-	 * everyone else. Callers with `apiKey:manage` can narrow to just their own
-	 * keys with `ownership=mine`.
-	 */
+	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
 	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
@@ -82,10 +74,7 @@ export class ApiKeysController {
 		});
 	}
 
-	/**
-	 * Delete an API Key. Callers can always delete their own keys; admins
-	 * (holders of `apiKey:manage`) can also revoke other users' keys.
-	 */
+	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
 	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
@@ -96,10 +85,7 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
-	/**
-	 * Patch an API Key. Owner-only — admins cannot edit another user's
-	 * label or scopes.
-	 */
+	// Owner-only — `apiKey:manage` doesn't extend to editing someone else's key.
 	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async updateApiKey(
