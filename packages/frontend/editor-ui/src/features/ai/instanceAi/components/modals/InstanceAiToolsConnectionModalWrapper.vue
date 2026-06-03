@@ -50,14 +50,6 @@ watch(isOpen, (open) => {
 	if (!open) detailItem.value = null;
 });
 
-const AUTH_TYPE_TO_CREDENTIAL_TYPE: Record<string, string> = {
-	oauth2: 'mcpOAuth2Api',
-};
-
-function credentialTypeFor(server: McpRegistryServerResponse): string {
-	return AUTH_TYPE_TO_CREDENTIAL_TYPE[server.authType] ?? server.authType;
-}
-
 function categoryForTool(tool: McpRegistryServerToolResponse): 'read' | 'write' | undefined {
 	if (tool.annotations?.readOnlyHint === true) return 'read';
 	if (tool.annotations?.readOnlyHint === false) return 'write';
@@ -68,7 +60,6 @@ function buildItem(
 	server: McpRegistryServerResponse,
 	connection: InstanceAiMcpConnectionResponse | undefined,
 ): McpServerConnectionItem {
-	const credType = credentialTypeFor(server);
 	return {
 		id: connection?.id ?? server.slug,
 		kind: 'mcp-server',
@@ -79,7 +70,7 @@ function buildItem(
 		iconSource: server.icons[0]?.src ? { type: 'file', src: server.icons[0].src } : undefined,
 		credentials: [
 			{
-				authType: credType,
+				authType: server.credentialType,
 				credentialId: connection?.credentialId,
 				required: true,
 			},
