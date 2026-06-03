@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { Tool } from '../sdk/tool';
-import type { BuiltTool, ToolContext } from '../types/sdk/tool';
+import type { BuiltTool } from '../types/sdk/tool';
 
 export const WRITE_TODOS_TOOL_NAME = 'write_todos';
 
@@ -85,13 +85,6 @@ const WRITE_TODOS_SYSTEM_INSTRUCTION = [
 	'- After all work is done, send the final answer as normal assistant text after the last write_todos call.',
 ].join('\n');
 
-/** Per-run todo lists keyed by thread id or run id. */
-const todoListsByScope = new Map<string, TodoItem[]>();
-
-function resolveTodoScopeKey(ctx: ToolContext): string {
-	return ctx.persistence?.threadId ?? ctx.runId ?? 'anonymous';
-}
-
 function assertUniqueTodoIds(todos: TodoItem[]): void {
 	const seen = new Set<string>();
 	for (const todo of todos) {
@@ -112,11 +105,9 @@ export function createWriteTodosTool(): BuiltTool {
 		.systemInstruction(WRITE_TODOS_SYSTEM_INSTRUCTION)
 		.input(writeTodosInputSchema)
 		.output(writeTodosOutputSchema)
-		.handler(async (input, ctx) => {
+		.handler(async (input) => {
 			assertUniqueTodoIds(input.todos);
-			const scopeKey = resolveTodoScopeKey(ctx);
 			const todos = [...input.todos];
-			todoListsByScope.set(scopeKey, todos);
 
 			return {
 				status: 'ok' as const,
@@ -125,14 +116,4 @@ export function createWriteTodosTool(): BuiltTool {
 			};
 		})
 		.build();
-}
-
-/** Read the current todo list for a scope — intended for tests and diagnostics. */
-export function getWriteTodosForScope(scopeKey: string): TodoItem[] | undefined {
-	return todoListsByScope.get(scopeKey);
-}
-
-/** Clear stored todo lists — intended for tests. */
-export function clearWriteTodosStore(): void {
-	todoListsByScope.clear();
 }

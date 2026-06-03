@@ -221,9 +221,7 @@ export type {
 } from './runtime/delegate-sub-agent-tool';
 export {
 	WRITE_TODOS_TOOL_NAME,
-	clearWriteTodosStore,
 	createWriteTodosTool,
-	getWriteTodosForScope,
 	todoItemSchema,
 } from './runtime/write-todos-tool';
 export type {

@@ -1,11 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-	WRITE_TODOS_TOOL_NAME,
-	clearWriteTodosStore,
-	createWriteTodosTool,
-	getWriteTodosForScope,
-} from '../write-todos-tool';
+import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../write-todos-tool';
 
 const sampleTodos = [
 	{
@@ -25,10 +20,6 @@ const sampleTodos = [
 ];
 
 describe('createWriteTodosTool', () => {
-	afterEach(() => {
-		clearWriteTodosStore();
-	});
-
 	it('creates the write_todos tool with planner guidance', () => {
 		const tool = createWriteTodosTool();
 
@@ -48,10 +39,16 @@ describe('createWriteTodosTool', () => {
 	it('replaces the full todo list for a run scope on each call', async () => {
 		const tool = createWriteTodosTool();
 
-		await tool.handler?.(
+		const firstResult = await tool.handler?.(
 			{ todos: sampleTodos },
 			{ runId: 'parent-run-1', persistence: { threadId: 'thread-1', resourceId: 'res-1' } },
 		);
+
+		expect(firstResult).toEqual({
+			status: 'ok',
+			todoCount: 2,
+			todos: sampleTodos,
+		});
 
 		const updatedTodos = [
 			{
@@ -66,37 +63,16 @@ describe('createWriteTodosTool', () => {
 			},
 		];
 
-		const result = await tool.handler?.(
+		const secondResult = await tool.handler?.(
 			{ todos: updatedTodos },
 			{ runId: 'parent-run-1', persistence: { threadId: 'thread-1', resourceId: 'res-1' } },
 		);
 
-		expect(result).toEqual({
+		expect(secondResult).toEqual({
 			status: 'ok',
 			todoCount: 2,
 			todos: updatedTodos,
 		});
-		expect(getWriteTodosForScope('thread-1')).toEqual(updatedTodos);
-	});
-
-	it('scopes todo lists by thread id when persistence is available', async () => {
-		const tool = createWriteTodosTool();
-
-		await tool.handler?.(
-			{ todos: sampleTodos },
-			{ runId: 'run-a', persistence: { threadId: 'thread-a', resourceId: 'res-a' } },
-		);
-		await tool.handler?.(
-			{
-				todos: [{ id: 'only', content: 'Single task', status: 'pending' as const }],
-			},
-			{ runId: 'run-b', persistence: { threadId: 'thread-b', resourceId: 'res-b' } },
-		);
-
-		expect(getWriteTodosForScope('thread-a')).toEqual(sampleTodos);
-		expect(getWriteTodosForScope('thread-b')).toEqual([
-			{ id: 'only', content: 'Single task', status: 'pending' },
-		]);
 	});
 
 	it('rejects duplicate todo ids in a single update', async () => {
