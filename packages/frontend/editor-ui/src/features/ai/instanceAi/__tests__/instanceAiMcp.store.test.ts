@@ -48,6 +48,7 @@ const makeConnection = (
 	credentialId: overrides.credentialId ?? 'cred-1',
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',
+	toolFilter: overrides.toolFilter ?? null,
 	createdAt: '2026-05-01T00:00:00.000Z',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 });
@@ -140,7 +141,9 @@ describe('useInstanceAiMcpStore', () => {
 			await store.fetchConnections();
 			mockUpdateMcpConnection.mockResolvedValue(updated);
 
-			const result = await store.updateSettings('conn-1', { inclusionMode: 'except' });
+			const result = await store.updateSettings('conn-1', {
+				toolFilter: { mode: 'exclude', tools: [] },
+			});
 
 			expect(result).toEqual(updated);
 			expect(store.connections[0].credentialName).toBe('Renamed');

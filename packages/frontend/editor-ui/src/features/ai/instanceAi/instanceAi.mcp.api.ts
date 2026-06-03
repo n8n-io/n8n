@@ -3,6 +3,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpToolFilter,
 	McpRegistryServerResponse,
 } from '@n8n/api-types';
 
@@ -12,9 +13,7 @@ export interface CreateMcpConnectionBody {
 }
 
 export interface UpdateMcpConnectionBody {
-	inclusionMode?: 'all' | 'selected' | 'except';
-	selectedTools?: string[];
-	excludedTools?: string[];
+	toolFilter: InstanceAiMcpToolFilter | null;
 }
 
 export async function fetchMcpRegistryServers(
