@@ -21,8 +21,7 @@ export const ASK_USER_FALLBACK =
 
 const WORKSPACE_ROOT_PLACEHOLDER = '<workspace_root>';
 
-/** Replace `<workspace_root>` placeholders with the resolved sandbox root path. */
-export function substituteWorkspaceRoot(text: string, workspaceRoot?: string): string {
+function substituteWorkspaceRoot(text: string, workspaceRoot?: string): string {
 	if (!workspaceRoot) return text;
 	return text.replaceAll(WORKSPACE_ROOT_PLACEHOLDER, workspaceRoot);
 }
