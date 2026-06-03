@@ -94,6 +94,7 @@ export type RelayEventMap = {
 		workflowIds: string[];
 		packageSourceId: string;
 		packageVersion: string;
+		matchedCredentialIds: string[];
 	};
 
 	'workflow-deleted': {
@@ -573,8 +574,9 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: string;
-		members: ProjectRelation[];
+		members?: ProjectRelation[];
 		projectId: string;
+		otelProjectCustomTagsCount?: number;
 	};
 
 	'team-project-deleted': {
