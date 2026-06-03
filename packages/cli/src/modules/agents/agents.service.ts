@@ -12,6 +12,7 @@ import {
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
 	isNodeToolsEnabled,
+	sanitizeAgentJsonConfig,
 	isSubAgentsEnabled,
 	AgentModelSchema,
 	type AgentIntegrationConfig,
@@ -94,6 +95,7 @@ import { N8nMemory } from './integrations/n8n-memory';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -1772,7 +1774,7 @@ export class AgentsService {
 	async validateConfig(
 		raw: unknown,
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
-		const parsed = AgentJsonConfigSchema.safeParse(raw);
+		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
 		}
@@ -1785,16 +1787,6 @@ export class AgentsService {
 				error:
 					'config.nodeTools.enabled requires the node-tools-searcher agents module to be enabled.',
 			};
-		}
-
-		const mcpServers = config.mcpServers ?? [];
-		for (const server of mcpServers) {
-			if (server.authentication !== 'none' && !server.credential) {
-				return {
-					valid: false,
-					error: `MCP server "${server.name}" requires a credential when authentication is not "none".`,
-				};
-			}
 		}
 
 		try {
@@ -1834,7 +1826,16 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const result = await this.validateConfig(config);
+		const credentialProvider = this.createCredentialProvider(projectId);
+		const accessibleCredentialIds = new Set(
+			(await credentialProvider.list()).map((credential) => credential.id),
+		);
+		const sanitizedConfig = sanitizeUnknownAgentCredentials(
+			sanitizeAgentJsonConfig(config),
+			accessibleCredentialIds,
+		);
+
+		const result = await this.validateConfig(sanitizedConfig);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
@@ -1988,6 +1989,10 @@ export class AgentsService {
 		}
 		const validated = parseResult.data;
 		const { type, credentialId } = validated;
+
+		if (credentialId === '') {
+			throw new UserError('Credential integration requires a credential ID.');
+		}
 
 		const existing = agent.integrations ?? [];
 		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
