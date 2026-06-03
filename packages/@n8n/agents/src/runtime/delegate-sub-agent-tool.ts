@@ -406,7 +406,7 @@ function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
 }
 
 function getChildCountKey(ctx: ToolContext): string {
-	return ctx.runId ?? ctx.persistence?.threadId ?? 'adhoc';
+	return ctx.runId ?? ctx.persistence?.threadId ?? ctx.persistence?.resourceId ?? 'adhoc';
 }
 
 function stringifyUnknown(value: unknown): string {
