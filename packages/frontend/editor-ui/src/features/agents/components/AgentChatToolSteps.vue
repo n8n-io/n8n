@@ -98,7 +98,7 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 <template>
 	<ol :class="$style.toolSteps">
 		<li v-for="(tc, i) in toolCalls" :key="i" :class="$style.toolStep">
-			<template v-for="view in [toolStepView(tc)]" :key="tc.toolCallId">
+			<template v-for="view in [toolStepView(tc)]" :key="view.label">
 				<!-- Rail: the status icon plus a line that grows to fill the step's
 				     height, so consecutive steps stay visually connected even when one
 				     expands its answer. -->

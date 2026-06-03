@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { Tool } from '../sdk/tool';
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
+import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types/sdk/tool';
 
 export const WRITE_TODOS_TOOL_NAME = 'write_todos';

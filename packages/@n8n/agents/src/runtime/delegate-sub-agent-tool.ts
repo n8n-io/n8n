@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import {
 	assertSubAgentPolicyAllowsChild,
 	assertSubAgentPolicyAllowsChildCount,
@@ -9,7 +10,6 @@ import {
 } from './sub-agent-task-path';
 import { filterLlmMessages } from '../sdk/message';
 import { Tool } from '../sdk/tool';
-import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { FinishReason, GenerateResult, TokenUsage } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
@@ -327,7 +327,7 @@ async function handleDelegateSubAgent(
 			);
 		}
 		const output = await options.runSubAgent(request, {
-			runInlineSubAgent: async () => {
+			runInlineSubAgent: () => {
 				throw new Error(
 					'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
 				);

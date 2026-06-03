@@ -84,6 +84,7 @@ describe('createDelegateSubAgentTool', () => {
 	it('passes runInlineSubAgent helpers to the host runner callback', async () => {
 		const runSubAgent = vi.fn<DelegateSubAgentRunner>(async (_request, helpers) => {
 			expect(helpers.runInlineSubAgent).toEqual(expect.any(Function));
+			await Promise.resolve();
 			return {
 				status: 'completed',
 				taskPath: '/root/research_api_0',

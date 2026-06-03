@@ -2,8 +2,18 @@ import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
 import type { BuiltTelemetry } from '../../types';
+import type { AgentDbMessage } from '../../types/sdk/message';
 import { InMemoryMemory } from '../memory-store';
 import { generateThreadTitle, generateTitleFromMessage } from '../title-generation';
+
+function makeUserMessage(text: string): AgentDbMessage {
+	return {
+		id: crypto.randomUUID(),
+		createdAt: new Date(),
+		role: 'user',
+		content: [{ type: 'text', text }],
+	};
+}
 
 type GenerateTextCall = {
 	messages: Array<{ role: string; content: string }>;
@@ -228,12 +238,7 @@ describe('generateThreadTitle', () => {
 			resourceId: 'resource-1',
 			titleConfig: {},
 			agentModel: 'openai/gpt-4o-mini',
-			turnDelta: [
-				{
-					role: 'user',
-					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
-				},
-			],
+			turnDelta: [makeUserMessage('Build a daily Berlin rain alert workflow')],
 		});
 
 		expect(result).toBeNull();
@@ -251,12 +256,7 @@ describe('generateThreadTitle', () => {
 			resourceId: 'resource-1',
 			titleConfig: {},
 			agentModel: 'openai/gpt-4o-mini',
-			turnDelta: [
-				{
-					role: 'user',
-					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
-				},
-			],
+			turnDelta: [makeUserMessage('Build a daily Berlin rain alert workflow')],
 		});
 
 		expect(result).toEqual({ title: 'Berlin rain alert' });
