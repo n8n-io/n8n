@@ -139,9 +139,8 @@ function buildItem(
 			name: tool.title ?? tool.name,
 			category: categoryForTool(tool),
 		})),
-		publisher: server.isOfficial
-			? { name: server.title, url: server.websiteUrl }
-			: server.websiteUrl
+		publisher:
+			server.isOfficial || server.websiteUrl
 				? { name: server.title, url: server.websiteUrl }
 				: undefined,
 		version: server.version,

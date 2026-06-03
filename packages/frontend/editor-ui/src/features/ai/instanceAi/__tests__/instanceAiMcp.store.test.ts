@@ -42,7 +42,7 @@ const makeConnection = (
 	id: overrides.id ?? 'conn-1',
 	serverSlug: overrides.serverSlug ?? 'linear',
 	serverTitle: overrides.serverTitle ?? 'Linear',
-	serverIcon: overrides.serverIcon,
+	serverIcons: overrides.serverIcons ?? [],
 	credentialId: overrides.credentialId ?? 'cred-1',
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',

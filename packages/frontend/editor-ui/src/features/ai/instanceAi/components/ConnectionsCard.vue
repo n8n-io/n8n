@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue';
 import { N8nButton, N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
+import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
@@ -46,6 +47,22 @@ const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 	mcp: 'server',
 };
 
+/**
+ * Pick the icon variant that best matches the current applied theme. Prefer
+ * a theme-tagged match, then an untagged icon, then any icon. Returns null if
+ * the server has no icons (e.g. the server is no longer in the registry).
+ */
+function pickIconForTheme(
+	icons: McpRegistryServerIconResponse[],
+	appliedTheme: 'light' | 'dark',
+): string | null {
+	if (icons.length === 0) return null;
+	const themed = icons.find((i) => i.theme === appliedTheme);
+	if (themed) return themed.src;
+	const untagged = icons.find((i) => i.theme === undefined);
+	return (untagged ?? icons[0]).src;
+}
+
 function getSingletonRowActions(
 	type: SingletonConnectionType,
 	status: ConnectionStatus,
@@ -56,6 +73,13 @@ function getSingletonRowActions(
 }
 
 const MCP_ROW_ACTIONS: RowAction[] = ['settings', 'remove'];
+
+function iconForConnection(
+	icons: McpRegistryServerIconResponse[],
+): IconName | { type: 'file'; src: string } {
+	const src = pickIconForTheme(icons, uiStore.appliedTheme);
+	return src ? { type: 'file', src } : ICON_MAP.mcp;
+}
 
 async function openSingletonModal(type: SingletonConnectionType) {
 	if (
@@ -150,7 +174,7 @@ onMounted(() => {
 				:key="conn.id"
 				:name="conn.serverTitle"
 				:subtitle="conn.credentialName"
-				:icon="conn.serverIcon ? { type: 'file', src: conn.serverIcon } : ICON_MAP.mcp"
+				:icon="iconForConnection(conn.serverIcons)"
 				status="connected"
 				:actions="MCP_ROW_ACTIONS"
 				:dropdown-portal-target="props.dropdownPortalTarget"
