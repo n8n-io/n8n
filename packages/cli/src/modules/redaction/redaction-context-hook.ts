@@ -34,7 +34,7 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 	 * A workflow can be equal to or stricter than the floor, never weaker.
 	 */
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const floor = await this.instanceRedactionEnforcementService.getFloor();
+		const floor = await this.instanceRedactionEnforcementService.get();
 		const workflow = policyToChannels(options.workflow.settings?.redactionPolicy ?? 'none');
 
 		const floorEnforcesProduction = floor !== 'off';
