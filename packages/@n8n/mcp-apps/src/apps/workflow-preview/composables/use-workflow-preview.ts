@@ -27,6 +27,8 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 	const previewLoading = ref(false);
 	const previewSent = ref(false);
 	const previewTheme = computed(() => hostContext.value?.theme);
+	const workflowDetailsRevision = ref(0);
+	let latestPreviewLoadRequestId = 0;
 
 	const ariaLabel = computed(() =>
 		previewWorkflow.value
@@ -52,7 +54,7 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 	});
 
 	watch(
-		[workflowId, app],
+		[workflowId, app, workflowDetailsRevision],
 		([id, mcpApp]) => {
 			if (!id || !mcpApp) return;
 			void loadPreviewWorkflow(mcpApp, id);
@@ -89,7 +91,7 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 	}
 
 	async function loadPreviewWorkflow(mcpApp: App, id: string) {
-		if (previewLoading.value) return;
+		const requestId = ++latestPreviewLoadRequestId;
 
 		previewLoading.value = true;
 		previewError.value = undefined;
@@ -99,6 +101,8 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 				name: 'get_workflow_details',
 				arguments: { workflowId: id },
 			});
+
+			if (!isLatestPreviewLoadRequest(requestId)) return;
 
 			if (result.isError) {
 				previewError.value = t('workflowPreview.error.detailsUnavailable');
@@ -116,15 +120,33 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 
 			previewWorkflow.value = workflow;
 		} catch (error) {
+			if (!isLatestPreviewLoadRequest(requestId)) return;
+
 			console.warn('[n8n MCP App] Failed to load workflow preview data', error);
 			previewError.value = t('workflowPreview.error.detailsUnavailable');
 		} finally {
-			previewLoading.value = false;
+			if (isLatestPreviewLoadRequest(requestId)) {
+				previewLoading.value = false;
+			}
 		}
+	}
+
+	function isLatestPreviewLoadRequest(requestId: number) {
+		return requestId === latestPreviewLoadRequestId;
+	}
+
+	function resetPreviewState() {
+		latestPreviewLoadRequestId += 1;
+		previewWorkflow.value = undefined;
+		previewError.value = undefined;
+		previewLoading.value = false;
+		previewSent.value = false;
 	}
 
 	function applyToolResult(structuredContent: unknown) {
 		if (!isWorkflowResult(structuredContent)) return;
+
+		resetPreviewState();
 
 		const candidateUrl = structuredContent.url;
 		if (isAllowedWorkflowUrl(candidateUrl)) {
@@ -148,7 +170,10 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 
 		if (typeof structuredContent.workflowId === 'string') {
 			workflowId.value = structuredContent.workflowId;
+		} else {
+			workflowId.value = undefined;
 		}
+		workflowDetailsRevision.value += 1;
 
 		if (typeof structuredContent.name === 'string') {
 			workflowName.value = structuredContent.name;
