@@ -314,9 +314,7 @@ export async function executeAgent(
 	);
 }
 
-async function listAgents(
-	userId: string,
-): Promise<Array<{ id: string; name: string; published: boolean }>> {
+async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
