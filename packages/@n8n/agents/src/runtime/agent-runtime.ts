@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -78,6 +79,7 @@ import {
 	isSuspendedToolResult,
 	toAiSdkProviderTools,
 	toAiSdkTools,
+	toStrictJsonSchema,
 } from './tool-adapter';
 import { isCancellation } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
@@ -194,7 +196,7 @@ export interface AgentRuntimeConfig {
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
-	structuredOutput?: z.ZodType;
+	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
 	eventBus?: AgentEventBus;
@@ -2297,15 +2299,23 @@ export class AgentRuntime {
 	private buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const { Output } = getAiSdk();
+		const { Output, jsonSchema } = getAiSdk();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
+		const outputSchema = this.config.structuredOutput;
 		return {
 			model,
 			aiProviderTools,
 			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
-			outputSpec: this.config.structuredOutput
-				? Output.object({ schema: this.config.structuredOutput })
+			outputSpec: outputSchema
+				? Output.object({
+						// Zod schemas pass through directly; a raw JSON Schema is made
+						// provider-strict (additionalProperties: false on every object)
+						// and wrapped with the AI SDK's `jsonSchema()` helper.
+						schema: isZodSchema(outputSchema)
+							? outputSchema
+							: jsonSchema(toStrictJsonSchema(outputSchema)),
+					})
 				: undefined,
 		};
 	}

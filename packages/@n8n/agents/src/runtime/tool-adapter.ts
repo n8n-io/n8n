@@ -1,5 +1,5 @@
 import type { Tool as AiSdkTool } from 'ai';
-import type { JSONSchema7 } from 'json-schema';
+import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import { z } from 'zod';
 
 import { loadAi } from './lazy-ai';
@@ -59,7 +59,7 @@ export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string
 	return result;
 }
 
-const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
+export const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
 	// Ensure 'type: object' is present when properties are present (required by some providers):
 	if (
 		typeof schema === 'object' &&
@@ -71,6 +71,93 @@ const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
 	}
 	return schema;
 };
+
+/**
+ * Recursively prepare a JSON Schema for use as a *structured output* schema.
+ *
+ * Both Anthropic and OpenAI strict structured outputs reject any object schema
+ * that does not explicitly set `additionalProperties: false`. Zod schemas get
+ * this for free during conversion, but a raw JSON Schema (e.g. supplied by a
+ * workflow node) usually omits it. We set it on every object that doesn't
+ * specify it, and normalise objects that declare `properties` without a `type`
+ * (mirrors {@link fixSchema}).
+ *
+ * Returns a deep copy — the input schema is never mutated.
+ */
+export function toStrictJsonSchema(schema: JSONSchema7): JSONSchema7 {
+	const result = strictifyDefinition(schema);
+	// The public entry point is only ever called with an object schema.
+	return typeof result === 'object' ? result : schema;
+}
+
+function strictifyDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
+	if (typeof schema !== 'object' || schema === null) return schema;
+
+	const result: JSONSchema7 = { ...schema };
+
+	// Normalise objects that list properties but omit the type (mirrors fixSchema).
+	if (result.properties !== undefined && result.type === undefined) {
+		result.type = 'object';
+	}
+
+	const isObjectSchema =
+		result.type === 'object' ||
+		(Array.isArray(result.type) && result.type.includes('object')) ||
+		result.properties !== undefined;
+
+	if (isObjectSchema && result.additionalProperties === undefined) {
+		result.additionalProperties = false;
+	}
+
+	if (result.properties) {
+		result.properties = mapDefinitions(result.properties);
+	}
+	if (result.$defs) {
+		result.$defs = mapDefinitions(result.$defs);
+	}
+	if (result.definitions) {
+		result.definitions = mapDefinitions(result.definitions);
+	}
+	if (result.items !== undefined) {
+		result.items = Array.isArray(result.items)
+			? result.items.map(strictifyDefinition)
+			: strictifyDefinition(result.items);
+	}
+	if (typeof result.additionalProperties === 'object' && result.additionalProperties !== null) {
+		result.additionalProperties = strictifyDefinition(result.additionalProperties);
+	}
+	for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
+		const branch = result[key];
+		if (Array.isArray(branch)) {
+			result[key] = branch.map(strictifyDefinition);
+		}
+	}
+	if (result.not !== undefined) {
+		result.not = strictifyDefinition(result.not);
+	}
+
+	return result;
+}
+
+/**
+ * Re-map a record of sub-schemas, strictifying each value. Uses
+ * `Object.defineProperty` so a user-supplied property name like `__proto__`
+ * becomes a normal own property instead of mutating the prototype chain.
+ */
+function mapDefinitions(
+	record: Record<string, JSONSchema7Definition>,
+): Record<string, JSONSchema7Definition> {
+	const out: Record<string, JSONSchema7Definition> = {};
+	for (const [key, value] of Object.entries(record)) {
+		Object.defineProperty(out, key, {
+			value: strictifyDefinition(value),
+			enumerable: true,
+			writable: true,
+			configurable: true,
+		});
+	}
+	return out;
+}
 
 /**
  * Convert an array of BuiltTools into a Record of AI SDK tool definitions.
