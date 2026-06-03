@@ -1,6 +1,39 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
+
+type WorkflowApiForExecutionAssertions = {
+	getWorkflows(): Promise<Array<{ id?: string; name?: string; nodes?: Array<{ name: string }> }>>;
+	getWorkflow(workflowId: string): Promise<{ name?: string; nodes?: Array<{ name: string }> }>;
+	getExecutions(workflowId: string, limit?: number): Promise<Array<{ status?: string }>>;
+};
+
+async function getSuccessfulExecutionCountForNode(
+	workflowsApi: WorkflowApiForExecutionAssertions,
+	nodeName: string,
+): Promise<number> {
+	const workflows = await workflowsApi.getWorkflows();
+	let executionCount = 0;
+
+	for (const workflowSummary of workflows) {
+		if (!workflowSummary.id) continue;
+
+		const workflow = workflowSummary.nodes
+			? workflowSummary
+			: await workflowsApi.getWorkflow(workflowSummary.id);
+
+		const matchesNode =
+			workflow.name?.toLowerCase().includes(nodeName) ||
+			workflow.nodes?.some((node) => node.name.toLowerCase().includes(nodeName));
+		if (!matchesNode) continue;
+
+		const executions = await workflowsApi.getExecutions(workflowSummary.id, 20);
+		executionCount += executions.filter((execution) => execution.status === 'success').length;
+	}
+
+	return executionCount;
+}
+
 test.describe(
 	'Instance AI workflow execution @capability:proxy',
 	{
@@ -139,29 +172,39 @@ test.describe(
 				timeout: 120_000,
 			});
 
+			const executionCountBeforeFirstRun = await getSuccessfulExecutionCountForNode(
+				n8n.api.workflows,
+				're-run test',
+			);
+
 			// First execution
 			await n8n.instanceAi.runPreviewWorkflow();
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
 				timeout: 30_000,
 			});
-			await n8n.notifications.closeNotificationByText('Workflow executed successfully', {
-				timeout: 10_000,
-			});
-			await expect(
-				n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
-			).toHaveCount(0, { timeout: 10_000 });
+
+			let executionCountAfterFirstRun = executionCountBeforeFirstRun;
+			await expect
+				.poll(async () => {
+					executionCountAfterFirstRun = await getSuccessfulExecutionCountForNode(
+						n8n.api.workflows,
+						're-run test',
+					);
+					return executionCountAfterFirstRun;
+				})
+				.toBeGreaterThan(executionCountBeforeFirstRun);
 
 			// Run workflow button should still be visible for re-execution
 			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
 				timeout: 10_000,
 			});
 
-			// Second execution — wait for a fresh success notification so fast
-			// workflows do not race through the transient running-node class.
 			await n8n.instanceAi.runPreviewWorkflow();
-			await expect(
-				n8n.notifications.getNotificationByTitle('Workflow executed successfully').first(),
-			).toBeVisible({ timeout: 30_000 });
+			await expect
+				.poll(
+					async () => await getSuccessfulExecutionCountForNode(n8n.api.workflows, 're-run test'),
+				)
+				.toBeGreaterThan(executionCountAfterFirstRun);
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
 				timeout: 10_000,
 			});
