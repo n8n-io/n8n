@@ -45,6 +45,14 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
+import {
+	type ImpactMap,
+	type InternedImpactMap,
+	decodeImpactMap,
+	encodeImpactMap,
+	mergeCoverage,
+	resolveImpact,
+} from './core/coverage-map.js';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -646,6 +654,76 @@ function runScope(options: CliOptions): void {
 	console.log(formatScope(result));
 }
 
+function findLcovFiles(dir: string): string[] {
+	const out: string[] = [];
+	for (const entry of fs.readdirSync(dir)) {
+		const p = path.join(dir, entry);
+		if (fs.statSync(p).isDirectory()) out.push(...findLcovFiles(p));
+		else if (entry.endsWith('.lcov') || entry === 'lcov.info') out.push(p);
+	}
+	return out;
+}
+
+/** merge-coverage: per-spec lcovs (under --inputs-dir) → unified lcov + impact map. */
+function runMergeCoverage(options: CliOptions): void {
+	if (!options.inputsDir || !options.outLcov || !options.outMap) {
+		console.error('Error: --inputs-dir, --out-lcov, and --out-map are required');
+		process.exit(1);
+	}
+	const files = fs.existsSync(options.inputsDir) ? findLcovFiles(options.inputsDir) : [];
+	// spec attribution comes from each lcov's TN:; the path is only a fallback.
+	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
+	const result = mergeCoverage(inputs);
+	fs.writeFileSync(options.outLcov, result.lcov);
+	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
+	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));
+	console.error(
+		`merge-coverage: ${files.length} lcov(s) → ${result.stats.files} files, ` +
+			`${result.stats.mapEntries} map entries, ${result.stats.specs} specs`,
+	);
+}
+
+/** select-e2e: changed files + impact map → spec list (JSON).
+ *
+ *  Two layers of safety, both biased to OVER-select (never miss a regression):
+ *   - FAIL-OPEN on the map source: a missing/unreadable/corrupt map → broad
+ *     (run everything). This is what makes swapping the committed file for a
+ *     remote webhook safe — a fetch failure degrades to running the full suite,
+ *     never to skipping tests.
+ *   - DEFAULT-BROAD on content: any changed file absent from a loaded map → broad.
+ */
+function runSelectE2e(options: CliOptions): void {
+	const changed = (readChangedFiles(options) ?? []).map((file) => ({ file }));
+	const allSpecs = options.allSpecsFile
+		? fs
+				.readFileSync(options.allSpecsFile, 'utf8')
+				.split(/[\n,]+/)
+				.map((s) => s.trim())
+				.filter(Boolean)
+		: undefined;
+
+	let map: ImpactMap = {};
+	let failOpen: string | undefined;
+	if (options.mapFile && fs.existsSync(options.mapFile)) {
+		try {
+			const parsed: unknown = JSON.parse(fs.readFileSync(options.mapFile, 'utf8'));
+			// Interned form ({specs, files}) is decoded; a plain ImpactMap is used as-is.
+			const isInterned =
+				typeof parsed === 'object' && parsed !== null && 'specs' in parsed && 'files' in parsed;
+			map = isInterned ? decodeImpactMap(parsed as InternedImpactMap) : (parsed as ImpactMap);
+		} catch (error) {
+			failOpen = `unreadable map: ${String(error)}`;
+		}
+	} else {
+		failOpen = options.mapFile ? `map not found: ${options.mapFile}` : 'no --map provided';
+	}
+
+	// With an empty map every changed file is "unmapped" → resolveImpact returns
+	// broad, so fail-open falls out of the same code path — no special-casing.
+	const result = resolveImpact(changed, map, { allSpecs });
+	console.log(JSON.stringify({ ...result, failOpen }));
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -702,6 +780,14 @@ async function main(): Promise<void> {
 	}
 	if (options.command === 'test-scoped') {
 		runTestScopedCmd(options);
+		return;
+	}
+	if (options.command === 'merge-coverage') {
+		runMergeCoverage(options);
+		return;
+	}
+	if (options.command === 'select-e2e') {
+		runSelectE2e(options);
 		return;
 	}
 

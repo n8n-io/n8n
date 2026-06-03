@@ -1,8 +1,4 @@
-import type {
-	AuthenticationMethod,
-	ProjectRelation,
-	RedactionEnforcementSettings,
-} from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -574,8 +570,9 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: string;
-		members: ProjectRelation[];
+		members?: ProjectRelation[];
 		projectId: string;
+		otelProjectCustomTagsCount?: number;
 	};
 
 	'team-project-deleted': {
@@ -989,8 +986,8 @@ export type RelayEventMap = {
 
 	'redaction-enforcement-updated': {
 		user: UserLike;
-		before: RedactionEnforcementSettings;
-		after: RedactionEnforcementSettings;
+		before: RedactionFloor;
+		after: RedactionFloor;
 	};
 
 	// #endregion

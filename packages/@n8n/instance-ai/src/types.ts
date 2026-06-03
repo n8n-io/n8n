@@ -252,6 +252,16 @@ export interface InstanceAiWorkflowService {
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Cheap version-only lookup. The adapter projects just `versionId` and
+	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
+	 *  Use to validate per-session caches when the body isn't needed. */
+	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Single fetch returning the SDK WorkflowJSON together with the version it
+	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
+	 *  versionId you'll pin to it land in one round-trip. */
+	getWorkflowSnapshot(
+		workflowId: string,
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
