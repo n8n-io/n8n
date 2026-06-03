@@ -14,6 +14,9 @@ import {
 	ApplicationError,
 	createDeferredPromise,
 	NodeConnectionTypes,
+	OperationalError,
+	UnexpectedError,
+	UserError,
 	Workflow,
 } from 'n8n-workflow';
 import type { INodeType, INodeTypes, IWorkflowExecuteAdditionalData, IRun } from 'n8n-workflow';
@@ -142,6 +145,18 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 				},
 			}),
 		);
+	});
+
+	it.each([
+		['UnexpectedError', new UnexpectedError('unexpected')],
+		['OperationalError', new OperationalError('operational')],
+		['UserError', new UserError('user')],
+	])('should report a %s (BaseError subclass) as-is', async (_name, baseError) => {
+		await runWorkflowThatThrows(baseError);
+
+		expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
+		const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+		expect(reported).toBe(baseError);
 	});
 
 	it('should not report an ApplicationError with no cause', async () => {
