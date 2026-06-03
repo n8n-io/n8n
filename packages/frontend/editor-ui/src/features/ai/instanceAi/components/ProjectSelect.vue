@@ -13,7 +13,7 @@ import {
 	ComboboxRoot,
 	ComboboxTrigger,
 } from 'reka-ui';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -24,6 +24,8 @@ const PROJECT_SELECT_TOOLTIP = 'Where AI assistant creates automations';
 const projectsStore = useProjectsStore();
 const model = defineModel<string | null>();
 const open = ref(false);
+const isTooltipSuppressed = ref(false);
+let tooltipSuppressTimeout: ReturnType<typeof setTimeout> | undefined;
 
 const selectedProject = computed(() =>
 	projectsStore.myProjects.find((project) => project.id === model.value),
@@ -33,6 +35,17 @@ const selectedProjectName = computed(() =>
 	selectedProject.value ? getProjectName(selectedProject.value) : 'Select a project',
 );
 const selectedProjectIcon = computed(() => getProjectIcon(selectedProject.value));
+const isTooltipDisabled = computed(() => open.value || isTooltipSuppressed.value);
+
+watch(open, (isOpen, wasOpen) => {
+	if (!isOpen && wasOpen) {
+		suppressTooltip();
+	}
+});
+
+onBeforeUnmount(() => {
+	clearTimeout(tooltipSuppressTimeout);
+});
 
 function getProjectName(project: ProjectListItem) {
 	return project.type === 'personal' ? 'Personal space' : (project.name ?? '');
@@ -42,6 +55,14 @@ function getProjectIcon(project?: ProjectListItem): IconOrEmoji {
 	if (project?.type === 'personal') return PERSONAL_PROJECT_ICON;
 
 	return project?.icon && isIconOrEmoji(project.icon) ? project.icon : FALLBACK_PROJECT_ICON;
+}
+
+function suppressTooltip() {
+	clearTimeout(tooltipSuppressTimeout);
+	isTooltipSuppressed.value = true;
+	tooltipSuppressTimeout = setTimeout(() => {
+		isTooltipSuppressed.value = false;
+	}, TOOLTIP_DELAY_MS + 100);
 }
 </script>
 
@@ -53,7 +74,7 @@ function getProjectIcon(project?: ProjectListItem): IconOrEmoji {
 					placement="bottom"
 					as-child
 					:content-class="$style.tooltip"
-					:disabled="open"
+					:disabled="isTooltipDisabled"
 					:show-after="TOOLTIP_DELAY_MS"
 				>
 					<button type="button" :class="$style.select">
@@ -169,7 +190,7 @@ function getProjectIcon(project?: ProjectListItem): IconOrEmoji {
 .scrollArea {
 	flex: 1;
 	min-height: 0;
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--4xs) 0;
 }
 
 .scrollAreaWithSearch {
