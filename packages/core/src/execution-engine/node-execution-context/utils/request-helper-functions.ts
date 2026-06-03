@@ -14,7 +14,7 @@ import type {
 	ClientOAuth2TokenData,
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -772,6 +772,26 @@ async function decryptOAuth2TokenDataIfConfigured<T extends IDataObject | undefi
 	return await proxy.decryptOAuth2TokenData(tokenData);
 }
 
+function isRevokedOAuth2GrantError(error: unknown): boolean {
+	if (!(error instanceof AuthError)) return false;
+	const body = error.body as { error?: unknown } | undefined;
+	return body?.error === 'invalid_grant';
+}
+
+function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOperationError {
+	const credentialName = node.credentials?.[credentialsType]?.name;
+	const credentialLabel = credentialName ? `"${credentialName}"` : `of type "${credentialsType}"`;
+	return new NodeOperationError(
+		node,
+		`The credential ${credentialLabel} needs to be reconnected.`,
+		{
+			description:
+				'Access could not be refreshed because the connected account has revoked access, the refresh token expired, or the account password or permissions changed. Open the credential and reconnect it to continue.',
+			level: 'warning',
+		},
+	);
+}
+
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
 	const {
 		credentials,
@@ -800,10 +820,17 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 	);
 
 	let newToken;
-	if (credentials.grantType === 'clientCredentials') {
-		newToken = await token.client.credentials.getToken();
-	} else {
-		newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+	try {
+		if (credentials.grantType === 'clientCredentials') {
+			newToken = await token.client.credentials.getToken();
+		} else {
+			newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+		}
+	} catch (error) {
+		if (isRevokedOAuth2GrantError(error)) {
+			throw buildOAuth2ReconnectError(node, credentialsType);
+		}
+		throw error;
 	}
 
 	logger.debug(

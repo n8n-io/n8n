@@ -1,14 +1,21 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
-
 test.describe(
 	'Instance AI workflow execution @capability:proxy',
 	{
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
+		test.describe.configure({ timeout: 180_000 });
+
+		test.beforeEach(({}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Workflow execution replay is not yet stable in multi-main mode',
+			);
+		});
+
 		test('should show run workflow button in preview', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
@@ -114,11 +121,7 @@ test.describe(
 			});
 		});
 
-		test('should allow re-running workflow after initial execution', async ({ n8n }, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Re-execution is not yet stable in multi-main mode',
-			);
+		test('should allow re-running workflow after initial execution', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
@@ -137,19 +140,24 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
 				timeout: 30_000,
 			});
+			await n8n.notifications.closeNotificationByText('Workflow executed successfully', {
+				timeout: 10_000,
+			});
+			await expect(
+				n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
+			).toHaveCount(0, { timeout: 10_000 });
 
 			// Run workflow button should still be visible for re-execution
 			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
 				timeout: 10_000,
 			});
 
-			// Second execution — wait for it to actually run and complete so we
-			// don't race against stale success indicators from the first run.
+			// Second execution — wait for a fresh success notification so fast
+			// workflows do not race through the transient running-node class.
 			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
-			await expect(n8n.instanceAi.getPreviewRunningNodes().first()).toBeVisible({
-				timeout: 10_000,
-			});
-			await expect(n8n.instanceAi.getPreviewRunningNodes()).toHaveCount(0, { timeout: 30_000 });
+			await expect(
+				n8n.notifications.getNotificationByTitle('Workflow executed successfully').first(),
+			).toBeVisible({ timeout: 30_000 });
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
 				timeout: 10_000,
 			});

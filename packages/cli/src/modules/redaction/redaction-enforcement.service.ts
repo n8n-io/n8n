@@ -1,36 +1,44 @@
 import { Service } from '@n8n/di';
 import type { WorkflowSettings } from 'n8n-workflow';
 
+import { settingsToFloor } from './redaction-enforcement-mapper';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
-import { RedactionConfig } from './redaction.config';
+import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
+import { policyMeetsFloor, REDACTION_FLOOR_VIOLATION_MESSAGE } from './redaction-policy';
 
 /**
- * Reports whether the workflow redaction policy is enforced at the instance level
- * and asserts that incoming updates do not modify the policy when enforcement is on.
+ * Reports the active instance redaction floor and asserts that incoming
+ * workflow updates do not weaken the policy below it.
  *
- * The current check reads the env feature flag directly. When the enforcement cache
- * lands, this is the single place to swap in the cache lookup so call sites stay
- * unchanged.
+ * Progressive restriction model: workflows may match or exceed the floor;
+ * changes that would drop the policy below the floor are rejected with 422.
+ * Pre-existing below-floor state is preserved (no retroactive application) —
+ * an update only fails when the *incoming* policy violates the floor.
  */
 @Service()
 export class RedactionEnforcementService {
-	constructor(private readonly config: RedactionConfig) {}
+	constructor(
+		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
+	) {}
 
-	isEnforced(): boolean {
-		return this.config.enforcement;
+	private async getFloor() {
+		const settings = await this.instanceRedactionEnforcementService.get();
+		return settingsToFloor(settings);
 	}
 
-	assertPolicyChangeAllowed(
+	async assertPolicyChangeAllowed(
 		currentPolicy: WorkflowSettings.RedactionPolicy | undefined,
 		incomingPolicy: WorkflowSettings.RedactionPolicy | undefined,
-	): void {
-		if (!this.isEnforced()) return;
+	): Promise<void> {
+		// Field absent from payload: nothing to validate.
 		if (incomingPolicy === undefined) return;
+		// Unchanged: preserve legacy below-floor state (no retroactive application).
 		if (incomingPolicy === currentPolicy) return;
 
-		throw new UnprocessableRequestError(
-			'Workflow redaction policy is enforced at the instance level and cannot be modified.',
-		);
+		const floor = await this.getFloor();
+		if (!policyMeetsFloor(incomingPolicy, floor)) {
+			throw new UnprocessableRequestError(REDACTION_FLOOR_VIOLATION_MESSAGE);
+		}
 	}
 }
