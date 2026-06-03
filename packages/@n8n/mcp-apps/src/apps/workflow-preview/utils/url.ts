@@ -34,23 +34,6 @@ export function isAllowedWorkflowUrl(input: unknown): input is string {
 	return ALLOWED_URL_SCHEMES.has(parsed.protocol) && parsed.hostname.length > 0;
 }
 
-export function buildWorkflowDemoUrl(workflowUrl: string): string | undefined {
-	if (!isAllowedWorkflowUrl(workflowUrl)) return undefined;
-
-	const parsed = new URL(workflowUrl);
-	const demoPath = parsed.pathname.replace(/\/workflow\/[^/]+\/?$/, '/workflows/demo');
-	if (demoPath === parsed.pathname) return undefined;
-
-	parsed.pathname = demoPath;
-	parsed.search = '';
-	parsed.searchParams.set('hideControls', 'true');
-	parsed.searchParams.set('canOpenNDV', 'false');
-	parsed.searchParams.set('canvasBackground', 'dots');
-	parsed.hash = '';
-
-	return parsed.toString();
-}
-
 export function isAllowedWorkflowDemoUrl(input: unknown, workflowUrl?: unknown): input is string {
 	if (!isAllowedWorkflowUrl(input)) return false;
 

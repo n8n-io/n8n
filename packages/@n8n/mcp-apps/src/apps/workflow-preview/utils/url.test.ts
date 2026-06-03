@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	applyWorkflowDemoTheme,
-	buildWorkflowDemoUrl,
 	isAllowedWorkflowDemoUrl,
 	isAllowedWorkflowUrl,
 	resolveWorkflowDemoUrl,
@@ -61,35 +60,6 @@ describe('isAllowedWorkflowUrl', () => {
 		} else {
 			throw new Error('Expected URL to be accepted');
 		}
-	});
-});
-
-describe('buildWorkflowDemoUrl', () => {
-	it.each([
-		[
-			'hosted at root',
-			'https://n8n.example.com/workflow/abc123',
-			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
-		],
-		[
-			'hosted under a path',
-			'https://n8n.example.com/n8n/workflow/abc123',
-			'https://n8n.example.com/n8n/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
-		],
-		[
-			'clears query and hash',
-			'https://n8n.example.com/workflow/abc123?foo=bar#section',
-			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
-		],
-	])('builds the demo URL for %s', (_label, input, expected) => {
-		expect(buildWorkflowDemoUrl(input)).toBe(expected);
-	});
-
-	it.each([
-		['unexpected path', 'https://n8n.example.com/workflows/abc123'],
-		['unsafe URL', 'javascript:alert(1)'],
-	])('returns undefined for %s', (_label, input) => {
-		expect(buildWorkflowDemoUrl(input)).toBeUndefined();
 	});
 });
 

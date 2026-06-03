@@ -33,6 +33,8 @@ interface PostMessageHandlerDeps {
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
+// Shared by the demo-route postMessage handler and NodeView controls in this iframe.
+// setup() initializes it from the route, and cleanup() must reset it on unmount.
 const canOpenNDV = ref(true);
 
 export function usePostMessageControls() {

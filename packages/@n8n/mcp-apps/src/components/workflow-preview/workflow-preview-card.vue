@@ -26,6 +26,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+// Give the embedded editor enough time to load and emit its postMessage handshake.
+const PREVIEW_READY_TIMEOUT_MS = 8000;
 const previewReady = ref(false);
 const previewReadyOrigin = ref<string>();
 const iframeRef = ref<HTMLIFrameElement>();
@@ -43,7 +45,7 @@ watch(
 			if (!previewReady.value) {
 				emit('previewError', t('workflowPreview.error.previewUnavailable'));
 			}
-		}, 8000);
+		}, PREVIEW_READY_TIMEOUT_MS);
 	},
 	{ immediate: true },
 );
