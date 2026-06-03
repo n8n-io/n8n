@@ -1,6 +1,8 @@
 import type * as agents from '@n8n/agents';
+import { DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
 import type { AgentsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import type { ToolRegistry } from '../tool-registry';
 import type { Logger } from '@n8n/backend-common';
@@ -30,6 +32,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
 // Mock buildFromJson so reconstructFromConfig doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -51,6 +54,10 @@ jest.mock('../json-config/mcp-client-factory', () => ({
 jest.mock('../integrations/rich-interaction-tool', () => ({
 	createRichInteractionTool: () => ({}) as never,
 }));
+
+beforeEach(() => {
+	Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+});
 
 function makeService(
 	agentsToolsService: AgentsToolsService,
@@ -249,5 +256,87 @@ describe('AgentsService.reconstructFromConfig — MCP wiring', () => {
 		expect(buildMcpClientForServerMock).toHaveBeenCalledTimes(2);
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
 		expect(buildMcpClientForServerMock.mock.calls[1][0]).toMatchObject({ name: 'fs' });
+	});
+});
+
+describe('AgentsService.reconstructFromConfig — sub-agent delegation gating', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		builtAgent.tool.mockClear();
+	});
+
+	function setup() {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const secureRuntime = mock<AgentSecureRuntime>();
+		secureRuntime.createToolExecutor.mockReturnValue(jest.fn());
+		const service = new AgentsService(
+			mock<Logger>(),
+			mock<AgentRepository>(),
+			mock<ProjectRelationRepository>(),
+			mock<WorkflowRunner>(),
+			mock<ActiveExecutions>(),
+			mock<ExecutionRepository>(),
+			mock<WorkflowRepository>(),
+			mock<UserRepository>(),
+			mock<WorkflowFinderService>(),
+			mock<UrlService>(),
+			mock<N8NCheckpointStorage>(),
+			secureRuntime,
+			mock<EphemeralNodeExecutor>(),
+			agentsToolsService,
+			mock<N8nMemory>(),
+			mock<AgentExecutionService>(),
+			mock<AgentHistoryRepository>(),
+			mock<AgentSkillsService>(),
+			mock(),
+			mock(),
+			mock(),
+			{ modules: [] } as unknown as AgentsConfig,
+			mock(),
+			mock<Telemetry>(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+		);
+		return { service, credentialProvider };
+	}
+
+	function getInjectedToolNames(): string[] {
+		const names: string[] = [];
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as { name?: string };
+				if (tool.name) names.push(tool.name);
+			}
+		}
+		return names;
+	}
+
+	it.each([
+		{
+			name: 'no subAgents block',
+			subAgents: undefined,
+		},
+		{
+			name: 'empty saved-agent reference list',
+			subAgents: { agents: [] },
+		},
+		{
+			name: 'saved-agent references',
+			subAgents: { agents: [{ agentId: 'agent-2' }] },
+		},
+	])('always injects delegation tools for $name', async ({ subAgents }) => {
+		const { service, credentialProvider } = setup();
+		const entity = makeAgentEntity(undefined, subAgents !== undefined ? { subAgents } : {});
+
+		await (service as unknown as Reconstructable).reconstructFromConfig(entity, credentialProvider);
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(toolNames).toContain(WRITE_TODOS_TOOL_NAME);
 	});
 });

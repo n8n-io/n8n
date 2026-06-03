@@ -78,12 +78,11 @@ Use \`patch_config\` with:
   selected refs.
 - If \`subAgents.agents\` exists, append new refs to \`/subAgents/agents/-\`.
 - Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
-- Preserve \`subAgents.enabled\` unless the user explicitly asks to enable or
-  disable delegation. To explicitly enable delegation without saved agents, write
-  \`subAgents: { "enabled": true }\`. Inline delegation uses
+- Do not write a flag to enable or disable delegation; delegation is always
+  available. Inline delegation uses
   \`subAgentId: "inline"\` at tool-call time and does not require saved-agent
-  refs. Runtime \`write_todos\` is injected automatically when delegation is
-  enabled; it is not configured in JSON.
+  refs. Runtime \`write_todos\` is injected automatically; it is not configured
+  in JSON.
 - If an \`ask_question\` resume value is not one of the listed agent IDs, do not
   write it into config.
 

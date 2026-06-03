@@ -140,31 +140,23 @@ through \`$json\`; use \`$fromAI\` for those fields instead.`;
 export const SUB_AGENTS_SECTION = `\
 ## Sub Agents
 
-The target agent can delegate bounded subtasks through \`delegate_subagent\`.
+The target agent can always delegate bounded subtasks through \`delegate_subagent\`.
 
-Delegation is controlled by top-level \`subAgents.enabled\`:
-- Omitted \`subAgents\` means delegation is enabled.
-- Omitted \`subAgents.enabled\` means delegation is enabled.
-- \`subAgents.enabled: true\` means delegation is enabled.
-- Only \`subAgents.enabled: false\` disables delegation.
-
-When delegation is enabled, the target agent can call \`delegate_subagent\` with
+The target agent can call \`delegate_subagent\` with
 \`subAgentId: "inline"\` without any saved-agent refs. Inline subagents are
 ad-hoc child agents for one-off focused tasks.
 
-When delegation is enabled, the target agent also has a runtime \`write_todos\`
-tool for planning complex work. Use it to decompose multi-step requests into a
-visible task list before calling \`delegate_subagent\` for independent
-workstreams. \`write_todos\` only updates the task list; it does not run
-sub-agents or answer the user.
+The target agent also has a runtime \`write_todos\` tool for planning complex
+work. Use it to decompose multi-step requests into a visible task list before
+calling \`delegate_subagent\` for independent workstreams. \`write_todos\` only
+updates the task list; it does not run sub-agents or answer the user.
 
 \`subAgents.agents\` is only for optional saved/published n8n Agent specialists
 that the target agent may select by id when they are a better fit than an inline
 subagent.
 
-- To explicitly enable delegation, write \`subAgents: { "enabled": true }\`.
-- Set \`subAgents: { "enabled": false, "agents": [] }\` only when the user
-  explicitly asks to disable delegation.
+- Do not write a flag to enable or disable delegation; delegation is always
+  available.
 - Add saved subagent refs only when the user asks to use specific published
   agents, reusable specialists, named helper agents, or saved-agent delegation.
 - Use \`list_sub_agents\` to discover published same-project agents that can be
@@ -180,8 +172,8 @@ subagent.
   do not persist it as an agent id; ask a follow-up.
 - Do not add custom tools, custom instructions, or custom schema fields to
   simulate subagents.
-- Preserve existing \`subAgents\` settings unless the user explicitly asks to
-  change delegation.`;
+- Preserve existing \`subAgents.agents\` refs unless the user explicitly asks to
+  change saved subagents.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness

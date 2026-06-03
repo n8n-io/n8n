@@ -15,7 +15,6 @@ import {
 	AgentJsonConfigSchema,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
-	isSubAgentsEnabled,
 	AgentModelSchema,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -411,10 +410,6 @@ export class AgentsService {
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
 		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
-	}
-
-	private shouldAttachSubAgents(config: AgentJsonConfig): boolean {
-		return isSubAgentsEnabled(config.subAgents);
 	}
 
 	/**
@@ -1146,6 +1141,7 @@ export class AgentsService {
 
 	private attachThreadTitleSyncListener(agent: RuntimeAgent): void {
 		agent.on(AgentEvent.ThreadTitleGenerated, (event) => {
+			if (event.type !== AgentEvent.ThreadTitleGenerated) return;
 			void this.agentExecutionService.syncThreadTitle(event.threadId, {
 				title: event.title,
 				...(event.emoji !== undefined && { emoji: event.emoji }),
@@ -2442,9 +2438,10 @@ export class AgentsService {
 			buildMcpClient,
 		});
 
-		const subAgentDelegation = this.shouldAttachSubAgents(config)
-			? await this.createSubAgentDelegationConfig(config, agentEntity.projectId)
-			: undefined;
+		const subAgentDelegation = await this.createSubAgentDelegationConfig(
+			config,
+			agentEntity.projectId,
+		);
 
 		await this.injectRuntimeDependencies({
 			agent: reconstructed,
@@ -2452,7 +2449,7 @@ export class AgentsService {
 			projectId: agentEntity.projectId,
 			credentialProvider,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
-			...(subAgentDelegation !== undefined ? { subAgentDelegation } : {}),
+			subAgentDelegation,
 			credentialIntegrations: agentEntity.integrations ?? [],
 			integrationType,
 		});
@@ -2464,7 +2461,7 @@ export class AgentsService {
 	private async createSubAgentDelegationConfig(
 		config: AgentJsonConfig,
 		projectId: string,
-	): Promise<SubAgentDelegationConfig | undefined> {
+	): Promise<SubAgentDelegationConfig> {
 		const configuredAgents = config.subAgents?.agents ?? [];
 
 		const sourcesById: Record<string, SubAgentSource> = {};
@@ -2494,5 +2491,6 @@ function normalizeSubAgentsConfig(
 	subAgents: AgentJsonConfig['subAgents'],
 ): AgentJsonConfig['subAgents'] {
 	if (!subAgents) return undefined;
-	return { enabled: subAgents.enabled ?? true, agents: subAgents.agents ?? [] };
+	const agents = subAgents.agents ?? [];
+	return { agents };
 }

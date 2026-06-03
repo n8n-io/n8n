@@ -1,9 +1,4 @@
-import {
-	AgentJsonConfigSchema,
-	isNodeToolsEnabled,
-	isSubAgentsEnabled,
-	type AgentJsonConfig,
-} from '@n8n/api-types';
+import { AgentJsonConfigSchema, isNodeToolsEnabled, type AgentJsonConfig } from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
@@ -104,25 +99,16 @@ describe('AgentJsonConfigSchema — subAgents', () => {
 		expect(parsed.success).toBe(true);
 	});
 
-	it('accepts the subAgents.enabled switch', () => {
+	it('accepts an empty saved-agent reference list', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { agents: [] } }).success,
+		).toBe(true);
+	});
+
+	it('rejects the removed subAgents.enabled switch', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: true } }).success,
-		).toBe(true);
-		expect(
-			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: false } }).success,
-		).toBe(true);
-	});
-});
-
-describe('isSubAgentsEnabled', () => {
-	it('defaults to enabled when subAgents is undefined or enabled is omitted', () => {
-		expect(isSubAgentsEnabled(undefined)).toBe(true);
-		expect(isSubAgentsEnabled({ agents: [] })).toBe(true);
-		expect(isSubAgentsEnabled({ agents: [{ agentId: 'agent-1' }] })).toBe(true);
-	});
-
-	it('returns false only when subAgents.enabled is false', () => {
-		expect(isSubAgentsEnabled({ enabled: false, agents: [] })).toBe(false);
+		).toBe(false);
 	});
 });
 

@@ -132,7 +132,6 @@ async function onOpenAddSubAgentsModal() {
 
 				emit('update:config', {
 					subAgents: {
-						...props.localConfig?.subAgents,
 						agents: [...selectedSubAgentRefs.value, ...newAgentRefs],
 					},
 				});
@@ -144,7 +143,6 @@ async function onOpenAddSubAgentsModal() {
 function onRemoveSubAgent(agentId: string) {
 	emit('update:config', {
 		subAgents: {
-			...props.localConfig?.subAgents,
 			agents: selectedSubAgentRefs.value.filter((subAgent) => subAgent.agentId !== agentId),
 		},
 	});

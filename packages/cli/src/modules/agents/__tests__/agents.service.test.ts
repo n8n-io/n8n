@@ -33,6 +33,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -799,8 +800,30 @@ describe('AgentsService', () => {
 
 			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
 			expect(savedEntity.schema?.subAgents).toEqual({
-				enabled: true,
 				agents: [{ agentId: 'agent-2' }],
+			});
+		});
+
+		it('normalizes an explicit empty subAgents list without an enabled flag', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const configWithEmptySubAgents = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				subAgents: { agents: [] },
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithEmptySubAgents,
+			});
+
+			await service.updateConfig(agentId, projectId, configWithEmptySubAgents);
+
+			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(savedEntity.schema?.subAgents).toEqual({
+				agents: [],
 			});
 		});
 
@@ -1392,7 +1415,7 @@ describe('AgentsService', () => {
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
 		});
 
-		it('injects write_todos and delegate_subagent when sub-agent delegation is enabled', async () => {
+		it('injects write_todos and delegate_subagent when sub-agent delegation is provided', async () => {
 			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
 
 			const toolNames: string[] = [];
@@ -1407,7 +1430,7 @@ describe('AgentsService', () => {
 				checkpoint: jest.fn(),
 			};
 			const secureRuntime = mock<AgentSecureRuntime>();
-			secureRuntime.createToolExecutor.mockReturnValue(jest.fn());
+			secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
 
 			const serviceWithSecureRuntime = new AgentsService(
 				mockLogger(),
