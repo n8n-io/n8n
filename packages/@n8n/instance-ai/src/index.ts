@@ -1,8 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-
-if (process.env.N8N_INSTANCE_AI_SOURCE_MAP_FILTER === '1') {
-	require('./source-map-filter');
-}
+import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SubAgentFactoryMod from './agent/sub-agent-factory';
