@@ -8,7 +8,10 @@ export const GROUP_PADDING_Y_BOTTOM = 88;
 // standard node's height so groups line up with the nodes around them.
 export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
 
-// When collapsed, the group renders as a compact box: a fixed-width header with
-// no frame. Its height is the header height, and it shares its top-left anchor
-// with the expanded frame so the anchor never moves on collapse/expand.
+// When collapsed, the group renders as a compact box: a fixed-width header
+// (plus an optional pinned-node list), sharing its top-left anchor with the
+// expanded frame so the anchor never moves on collapse/expand.
 export const GROUP_COLLAPSED_WIDTH = 400;
+
+// Height of the collapsed box header: ~24px of padding around the title row.
+export const GROUP_COLLAPSED_HEIGHT = 72;

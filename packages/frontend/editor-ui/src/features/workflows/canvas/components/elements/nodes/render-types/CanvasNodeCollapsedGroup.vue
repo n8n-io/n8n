@@ -15,7 +15,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.t
 import type { CanvasElementPortWithRenderData } from '../../../../canvas.types';
 import {
 	GROUP_COLLAPSED_WIDTH,
-	GROUP_HEADER_HEIGHT,
+	GROUP_COLLAPSED_HEIGHT,
 } from '../../../../stores/canvasNodeGroups.constants';
 import CanvasHandleRenderer from '../../handles/CanvasHandleRenderer.vue';
 
@@ -178,7 +178,7 @@ function onUnpinNode(nodeId: string) {
 	<div
 		v-if="options"
 		:class="[$style.collapsedGroup, { [$style.selected]: isSelected }]"
-		:style="{ width: `${GROUP_COLLAPSED_WIDTH}px`, minHeight: `${GROUP_HEADER_HEIGHT}px` }"
+		:style="{ width: `${GROUP_COLLAPSED_WIDTH}px`, minHeight: `${GROUP_COLLAPSED_HEIGHT}px` }"
 		data-test-id="canvas-collapsed-group"
 		:data-group-id="options.groupId"
 		@contextmenu="onContextMenu"
@@ -201,13 +201,12 @@ function onUnpinNode(nodeId: string) {
 			:is-valid-connection="noValidConnection"
 		/>
 
-		<div :class="$style.header" :style="{ minHeight: `${GROUP_HEADER_HEIGHT}px` }">
+		<div :class="$style.header">
 			<N8nIconButton
 				v-if="!isReadOnly"
 				:class="$style.expandToggle"
 				variant="ghost"
-				size="small"
-				icon="chevron-right"
+				icon="chevrons-up-down"
 				:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
 				data-test-id="canvas-collapsed-group-expand"
 				@click.stop="onExpand"
@@ -237,14 +236,13 @@ function onUnpinNode(nodeId: string) {
 					<template #activator>
 						<N8nIconButton
 							variant="ghost"
-							size="small"
 							icon="plus"
 							:aria-label="i18n.baseText('canvas.nodeGroup.pinNode')"
 						/>
 					</template>
 					<template #menuItem="item">
 						<span :class="$style.menuItem">
-							<NodeIcon :icon-source="iconSourceForNodeId(item.id)" :size="16" />
+							<NodeIcon :icon-source="iconSourceForNodeId(item.id)" :size="14" />
 							<span :class="$style.menuItemLabel">{{ item.label }}</span>
 						</span>
 					</template>
@@ -266,7 +264,9 @@ function onUnpinNode(nodeId: string) {
 				@mousedown.stop
 				@click.stop="onOpenNode(pinned.name)"
 			>
-				<NodeIcon :icon-source="pinned.iconSource" :size="20" />
+				<div :class="$style.iconWrapper">
+					<NodeIcon :icon-source="pinned.iconSource" :size="14" />
+				</div>
 				<span :class="$style.pinnedName">{{ pinned.name }}</span>
 				<N8nIconButton
 					v-if="!isReadOnly"
@@ -295,6 +295,7 @@ function onUnpinNode(nodeId: string) {
 	border-radius: var(--radius--lg);
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
+	padding: var(--spacing--lg) var(--spacing--md);
 }
 
 .selected {
@@ -307,7 +308,6 @@ function onUnpinNode(nodeId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: 0 var(--spacing--sm);
 }
 
 .expandToggle,
@@ -315,11 +315,21 @@ function onUnpinNode(nodeId: string) {
 	flex-shrink: 0;
 }
 
+// The "+" picker only appears while hovering the collapsed box.
+.pinButton {
+	opacity: 0;
+	transition: opacity 0.1s ease-in;
+}
+
+.collapsedGroup:hover .pinButton,
+.pinButton:focus-within {
+	opacity: 1;
+}
+
 .title {
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
+
 	white-space: nowrap;
 }
 
@@ -328,15 +338,15 @@ function onUnpinNode(nodeId: string) {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	margin: 0;
-	padding: 0 var(--spacing--sm) var(--spacing--xs);
+	margin-top: var(--spacing--xs);
 	list-style: none;
 }
 
 .pinnedItem {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) 0;
 	border-radius: var(--radius);
 	font-weight: var(--font-weight--regular);
 	font-size: var(--font-size--sm);
@@ -347,10 +357,17 @@ function onUnpinNode(nodeId: string) {
 	}
 }
 
+.iconWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+}
+
 .pinnedName {
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
+
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }

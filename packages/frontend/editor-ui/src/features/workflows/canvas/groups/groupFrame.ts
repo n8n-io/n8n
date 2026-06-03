@@ -7,6 +7,7 @@ import {
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_HEADER_HEIGHT,
 	GROUP_COLLAPSED_WIDTH,
+	GROUP_COLLAPSED_HEIGHT,
 } from '../stores/canvasNodeGroups.constants';
 
 interface Rect {
@@ -81,7 +82,7 @@ export function getGroupFrameRects(memberNodes: GraphNode[]): GroupFrameRects | 
 		},
 		collapsed: {
 			width: GROUP_COLLAPSED_WIDTH,
-			height: GROUP_HEADER_HEIGHT,
+			height: GROUP_COLLAPSED_HEIGHT,
 		},
 	};
 }
