@@ -2,7 +2,7 @@
  * Template usage telemetry for the builder agent.
  *
  * Pattern-detects template-related shell commands (grep on
- * `knowledge-base/templates/index.txt`, cat/head/sed on
+ * `knowledge-base/templates/index.json`, cat/head/sed on
  * `knowledge-base/templates/*.ts`) and emits three event types via the existing
  * `context.trackTelemetry?.(name, props)` channel:
  *
@@ -22,7 +22,7 @@ import type { OrchestrationContext } from '../types';
 const MAX_QUERY_LENGTH = 200;
 const MAX_USER_REQUEST_LENGTH = 120;
 
-const SEARCH_PATTERN = /\bgrep\b[^|]*\bknowledge-base\/templates\/index\.txt\b/;
+const SEARCH_PATTERN = /\bgrep\b[^|]*\bknowledge-base\/templates\/index\.json\b/;
 const READ_COMMAND_HEADS = ['cat', 'head', 'tail', 'sed', 'less', 'more'];
 const READ_FILE_PATTERN = /\bknowledge-base\/templates\/([a-zA-Z0-9._-]+\.ts)\b/;
 
@@ -96,7 +96,7 @@ export function createTemplateTelemetrySession(
 	function observe(command: string, stdout: string): void {
 		if (!open) return;
 
-		// Search detection: any grep at knowledge-base/templates/index.txt
+		// Search detection: any grep at knowledge-base/templates/index.json
 		if (SEARCH_PATTERN.test(command)) {
 			searchCount++;
 			emit('Builder template search', {

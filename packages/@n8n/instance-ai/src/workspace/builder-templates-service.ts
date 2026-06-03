@@ -5,8 +5,9 @@
  * them on the host into `knowledge-base/templates/`.
  *
  * The archive is produced by `n8n-io/n8n-sdk-templates` and is flat:
- *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup
- *   - `<slug>.ts`        — one pre-rendered SDK file per publishable template
+ *   - `index.json`        — structured catalog (preferred)
+ *   - `index.txt`         — legacy pipe-delimited catalog (converted to `index.json` in workspace)
+ *   - `<slug>.ts`         — one pre-rendered SDK file per publishable template
  *
  * Versioning:
  *   - The companion repo emits one archive per supported SDK minor and

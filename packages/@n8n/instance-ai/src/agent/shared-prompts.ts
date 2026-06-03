@@ -36,12 +36,13 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 ${pathHint}
 A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
 
+- \`<workspace_root>/knowledge-base/index.json\` — combined catalog of technique guides and curated workflow templates
 - \`<workspace_root>/knowledge-base/best-practices/index.json\` — workflow technique guides (read the linked \`.md\` files)
-- \`<workspace_root>/knowledge-base/templates/\` — curated SDK workflow examples (\`index.txt\` catalog, \`*.ts\` source files)
+- \`<workspace_root>/knowledge-base/templates/index.json\` — curated SDK workflow examples (read the linked \`.ts\` source files)
 - \`<workspace_root>/node-types/index.txt\` — searchable catalog of available n8n nodes
 - \`<workspace_root>/workflows/*.json\` — existing workflows on this instance (when synced)
 
-**Consult the knowledge base before planning or building.** Read \`<workspace_root>/knowledge-base/best-practices/index.json\`, then \`workspace_read_file\` the relevant \`.md\` guides for each technique the request involves. For non-trivial builds, \`grep\` \`<workspace_root>/knowledge-base/templates/index.txt\` and read matching \`.ts\` files for structural patterns. Skip only for trivial mechanical edits you have already reviewed in this thread.`;
+**Consult the knowledge base before planning or building.** Read \`<workspace_root>/knowledge-base/index.json\` (or the section indexes under \`best-practices/\` and \`templates/\`), then \`workspace_read_file\` the relevant \`.md\` guides for each technique the request involves and matching \`.ts\` template files for structural patterns. Skip only for trivial mechanical edits you have already reviewed in this thread.`;
 
 	return substituteWorkspaceRoot(section, workspaceRoot);
 }

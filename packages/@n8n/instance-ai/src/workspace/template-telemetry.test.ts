@@ -31,11 +31,11 @@ function makeOpts(): {
 }
 
 describe('createTemplateTelemetrySession', () => {
-	it('emits a search event when grep targets knowledge-base/templates/index.txt', () => {
+	it('emits a search event when grep targets knowledge-base/templates/index.json', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		session.observe(
-			'grep -i "slack" /home/sandbox/workspace/knowledge-base/templates/index.txt',
+			'grep -i "slack" /home/sandbox/workspace/knowledge-base/templates/index.json',
 			'slack-daily-summary.ts | Daily Slack ...\nother.ts | ...\n',
 		);
 
@@ -91,7 +91,7 @@ describe('createTemplateTelemetrySession', () => {
 	it('emits a session rollup on flush', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
-		session.observe('grep -i "slack" /workspace/knowledge-base/templates/index.txt', 'a\nb\n');
+		session.observe('grep -i "slack" /workspace/knowledge-base/templates/index.json', 'a\nb\n');
 		session.observe('cat /workspace/knowledge-base/templates/slack-daily-summary.ts', 'X');
 		session.observe('cat /workspace/knowledge-base/templates/slack-daily-summary.ts', 'X');
 		session.flush();
@@ -170,23 +170,23 @@ describe('createTemplateTelemetrySession', () => {
 
 describe('extractGrepQuery', () => {
 	it('extracts double-quoted patterns', () => {
-		expect(extractGrepQuery('grep -i "slack post" knowledge-base/templates/index.txt')).toBe(
+		expect(extractGrepQuery('grep -i "slack post" knowledge-base/templates/index.json')).toBe(
 			'slack post',
 		);
 	});
 
 	it('extracts single-quoted patterns', () => {
-		expect(extractGrepQuery("grep -i 'gmail' knowledge-base/templates/index.txt")).toBe('gmail');
+		expect(extractGrepQuery("grep -i 'gmail' knowledge-base/templates/index.json")).toBe('gmail');
 	});
 
 	it('extracts bare patterns when unquoted', () => {
-		expect(extractGrepQuery('grep slack knowledge-base/templates/index.txt')).toBe('slack');
-		expect(extractGrepQuery('grep -i slack knowledge-base/templates/index.txt')).toBe('slack');
+		expect(extractGrepQuery('grep slack knowledge-base/templates/index.json')).toBe('slack');
+		expect(extractGrepQuery('grep -i slack knowledge-base/templates/index.json')).toBe('slack');
 	});
 
 	it('caps the query at 200 characters', () => {
 		const long = 'x'.repeat(300);
-		const result = extractGrepQuery(`grep -i "${long}" knowledge-base/templates/index.txt`);
+		const result = extractGrepQuery(`grep -i "${long}" knowledge-base/templates/index.json`);
 		expect(result.length).toBe(200);
 	});
 
@@ -270,7 +270,7 @@ describe('observeTypedRead / observeTypedSearch', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		session.observe(
-			'grep -i "sk-proj-abcdef0123456789xyz" /workspace/knowledge-base/templates/index.txt',
+			'grep -i "sk-proj-abcdef0123456789xyz" /workspace/knowledge-base/templates/index.json',
 			'nothing\n',
 		);
 
@@ -373,7 +373,7 @@ describe('createTypedToolObserver', () => {
 		expect(search!.props.result_count).toBe(2);
 	});
 
-	it('emits typed search for grep targeting knowledge-base/templates/index.txt', () => {
+	it('emits typed search for grep targeting knowledge-base/templates/index.json', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
@@ -381,7 +381,7 @@ describe('createTypedToolObserver', () => {
 		observe(
 			toolCall('tc-3', 'workspace_grep', {
 				pattern: 'slack',
-				path: 'knowledge-base/templates/index.txt',
+				path: 'knowledge-base/templates/index.json',
 			}),
 		);
 		observe(toolResult('tc-3', 'slack-daily.ts | Daily Slack\nslack-onboard.ts | Onboard\n'));

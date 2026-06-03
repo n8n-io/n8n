@@ -285,9 +285,10 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## Sandbox workspace');
+			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/');
-			expect(prompt).toContain('knowledge-base/templates/index.txt');
+			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
 			expect(prompt).toContain('Consult the knowledge base before planning or building');
 			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
@@ -299,7 +300,7 @@ describe('getSystemPrompt', () => {
 			});
 
 			expect(prompt).toContain('Workspace root: `/home/daytona/workspace`');
-			expect(prompt).toContain('/home/daytona/workspace/knowledge-base/best-practices/index.json');
+			expect(prompt).toContain('/home/daytona/workspace/knowledge-base/index.json');
 			expect(prompt).not.toContain('<workspace_root>');
 		});
 	});

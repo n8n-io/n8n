@@ -20,8 +20,13 @@
  *     chunks/
  *       *.ts                          # reusable node/workflow modules
  *     knowledge-base/
- *       best-practices/               # workflow technique guides
- *       templates/                    # curated SDK workflow examples
+ *       index.json                    # combined catalog of guides and templates
+ *       best-practices/
+ *         index.json                  # technique guide catalog
+ *         *.md                        # guide content per technique
+ *       templates/
+ *         index.json                  # curated template catalog
+ *         *.ts                        # SDK workflow examples
  */
 
 import { createRequire } from 'node:module';

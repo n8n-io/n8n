@@ -9,7 +9,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 function isAllowedTemplateEntryName(name: string): boolean {
-	if (name === 'index.txt') return true;
+	if (name === 'index.json' || name === 'index.txt') return true;
 	return TEMPLATE_ENTRY_PATTERN.test(name);
 }
 
@@ -83,7 +83,8 @@ function gunzipArchive(archive: Buffer): { tar: Buffer } | { error: string } {
 
 /**
  * Validate the exact archive shape published by n8n-sdk-templates: a gzip-wrapped tar
- * with only regular top-level files (`index.txt` and `<slug>.ts`).
+ * with only regular top-level files (`index.json` or CDN `index.txt`, and `<slug>.ts`).
+ * The workspace never materializes `index.txt` — it is converted to `index.json`.
  */
 export function validateBuilderTemplatesArchive(archive: Buffer): string | null {
 	const gunzipped = gunzipArchive(archive);

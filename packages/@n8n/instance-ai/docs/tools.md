@@ -646,9 +646,10 @@ template-search tool.
 
 | Path | Description |
 |------|-------------|
+| `knowledge-base/index.json` | Combined catalog of technique guides and curated templates |
 | `knowledge-base/best-practices/index.json` | Catalog of workflow technique guides |
 | `knowledge-base/best-practices/*.md` | Best-practices documentation per technique |
-| `knowledge-base/templates/index.txt` | Searchable catalog of curated SDK examples |
+| `knowledge-base/templates/index.json` | Catalog of curated SDK workflow examples |
 | `knowledge-base/templates/*.ts` | Template workflow source files |
 
 Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
