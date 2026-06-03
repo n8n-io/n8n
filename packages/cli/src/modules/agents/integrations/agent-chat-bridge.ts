@@ -83,7 +83,7 @@ function isIntegrationActionSuspendPayload(value: unknown): boolean {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
@@ -1356,10 +1356,6 @@ function stripSlackSelfMention(text: string, userId: string): string {
 		.replace(new RegExp(`(^|\\s)@${escapedUserId}\\b`, 'gi'), '$1')
 		.replace(/\s+/g, ' ')
 		.trim();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantStatusAdapter {
