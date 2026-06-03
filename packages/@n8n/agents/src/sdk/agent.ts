@@ -744,7 +744,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				}
 			},
 			async cancel(reason) {
-				active.bus.abort();
 				try {
 					await reader.cancel(reason);
 				} finally {
