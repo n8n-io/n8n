@@ -37,6 +37,7 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
 
@@ -183,6 +184,16 @@ function canConnectPrivateCredential(credentialType: string): boolean {
 	const credential = getSelectedPrivateCredential(credentialType);
 	return getResourcePermissions(credential?.scopes).credential.update === true;
 }
+
+// The connect / connected callout is only relevant when the workflow uses the
+// default (system) resolver, where resolution maps to the n8n user's own
+// connection. With a custom resolver (e.g. Slack, OAuth) the runtime account is
+// chosen by the resolver, not the n8n user, so their own connection state is
+// irrelevant and we don't surface it.
+const isDefaultResolver = computed(() => {
+	const resolverId = workflowDocumentStore?.value.settings?.credentialResolverId;
+	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
+});
 
 watch(
 	() => props.node.parameters,
@@ -892,7 +903,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<div v-if="getSelectedPrivateCredential(type.name)" :class="$style.noticesContainer">
+				<div
+					v-if="getSelectedPrivateCredential(type.name) && isDefaultResolver"
+					:class="$style.noticesContainer"
+				>
 					<div
 						v-if="isPrivateConnected(type.name)"
 						:class="$style.privateConnectedNotice"
