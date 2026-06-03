@@ -129,12 +129,11 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 		.map((property) => {
 			const guidance = getParameterGuidance(property.name);
 			const guidanceText = getParameterGuidanceText(property.name, guidance);
-			if (!guidance?.contextLabel && !guidanceText) return property;
+			if (!guidanceText) return property;
 
 			return {
 				...property,
-				...(guidance?.contextLabel ? { displayName: guidance.contextLabel } : {}),
-				...(guidanceText ? { hint: guidanceText } : {}),
+				hint: guidanceText,
 			};
 		});
 });
@@ -175,7 +174,11 @@ function getParameterGuidanceText(
 	parameterName: string,
 	guidance?: WorkflowSetupParameterGuidance,
 ): string {
-	const guidanceText = formatGuidanceText(guidance?.reason, guidance?.howTo);
+	const guidanceText = formatGuidanceText(
+		guidance?.contextLabel,
+		guidance?.reason,
+		guidance?.howTo,
+	);
 	if (guidanceText) return guidanceText;
 
 	const placeholderLabel = getPlaceholderLabel(parameterName);

@@ -351,6 +351,38 @@ describe('useWorkflowSetupInputs', () => {
 		});
 	});
 
+	it('does not prefill placeholder parameter values or submit them', () => {
+		nodeTypesStore.getNodeType.mockReturnValue({
+			name: 'n8n-nodes-base.googleSheets',
+			properties: [{ displayName: 'Document', name: 'documentId', type: 'string', default: '' }],
+		});
+		const parameterSection = makeWorkflowSetupSection({
+			id: 'Google Sheets:parameters',
+			targetNodeName: 'Google Sheets',
+			credentialType: undefined,
+			parameterNames: ['documentId'],
+			node: {
+				parameters: {
+					documentId: '<__PLACEHOLDER_VALUE__Purchase Orders Google Sheet ID__>',
+				},
+			},
+		});
+		const h = setupHarness([parameterSection]);
+
+		expect(h.inputs.getDisplayNode(parameterSection).parameters).toEqual({ documentId: '' });
+		expect(h.inputs.isSectionComplete(parameterSection)).toBe(false);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
+
+		h.inputs.setParameterValue(parameterSection, 'documentId', 'sheet-123');
+
+		expect(h.inputs.isSectionComplete(parameterSection)).toBe(true);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeParameters: {
+				'Google Sheets': { documentId: 'sheet-123' },
+			},
+		});
+	});
+
 	it('updates nested parameter values without flattening the path', () => {
 		const parameterSection = makeWorkflowSetupSection({
 			id: 'HTTP Request:parameters',

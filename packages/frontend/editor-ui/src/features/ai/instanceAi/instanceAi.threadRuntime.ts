@@ -55,6 +55,24 @@ function isSetupLikeConfirmation(conf: InstanceAiConfirmation): boolean {
 	return (conf.setupRequests?.length ?? 0) > 0 || (conf.credentialRequests?.length ?? 0) > 0;
 }
 
+function onlyLatestSetupLikeConfirmation(
+	items: PendingConfirmationItem[],
+): PendingConfirmationItem[] {
+	let latestSetupLikeIndex = -1;
+	for (let i = items.length - 1; i >= 0; i--) {
+		if (isSetupLikeConfirmation(items[i].toolCall.confirmation)) {
+			latestSetupLikeIndex = i;
+			break;
+		}
+	}
+	if (latestSetupLikeIndex === -1) return items;
+
+	return items.filter((item, index) => {
+		if (!isSetupLikeConfirmation(item.toolCall.confirmation)) return true;
+		return index === latestSetupLikeIndex;
+	});
+}
+
 function isUnresolvedConfirmation(
 	tc: InstanceAiToolCallState,
 	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
@@ -336,7 +354,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 			if (msg.role !== 'assistant' || !msg.agentTree) continue;
 			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds, items);
 		}
-		return items;
+		return onlyLatestSetupLikeConfirmation(items);
 	});
 
 	/** True while the run is paused awaiting the user to resolve a confirmation. */

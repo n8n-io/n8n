@@ -2,6 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
@@ -205,6 +206,41 @@ function activateThread(registry: RuntimeRegistry, threadId: string): void {
 		if (activeThreadId !== threadId || hydrationStatus !== 'applied') return;
 		void runtime.loadThreadStatus();
 		runtime.connectSSE();
+	});
+}
+
+function pushPendingConfirmation(
+	runtime: ThreadRuntime,
+	messageId: string,
+	toolCallId: string,
+	confirmation: InstanceAiConfirmation,
+): void {
+	runtime.messages.push({
+		id: messageId,
+		role: 'assistant',
+		createdAt: new Date().toISOString(),
+		content: '',
+		reasoning: '',
+		isStreaming: true,
+		agentTree: {
+			agentId: `${messageId}-agent`,
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			timeline: [],
+			children: [],
+			toolCalls: [
+				{
+					toolCallId,
+					toolName: 'workflows',
+					args: { action: 'setup' },
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation,
+				},
+			],
+		},
 	});
 }
 
@@ -975,6 +1011,51 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			role: 'user',
 			content: 'Use my production Google Sheets credential',
 		});
+	});
+
+	test('pending confirmations expose only the latest setup-like confirmation', () => {
+		const runtime = activeRuntime(registry);
+		pushPendingConfirmation(
+			runtime,
+			'assistant-old-credential-setup',
+			'tool-old-credential-setup',
+			{
+				requestId: 'req-old-credential-setup',
+				severity: 'info',
+				message: 'Configure credentials',
+				credentialRequests: [
+					{
+						credentialType: 'googleSheetsOAuth2Api',
+						reason: 'Needed for Google Sheets',
+						existingCredentials: [],
+					},
+				],
+			},
+		);
+		pushPendingConfirmation(runtime, 'assistant-new-workflow-setup', 'tool-new-workflow-setup', {
+			requestId: 'req-new-workflow-setup',
+			severity: 'info',
+			message: 'Configure workflow',
+			setupRequests: [
+				{
+					node: {
+						id: 'google-sheets',
+						name: 'Google Sheets',
+						type: 'n8n-nodes-base.googleSheets',
+						typeVersion: 1,
+						parameters: {},
+						position: [0, 0],
+					},
+					isTrigger: false,
+					needsAction: true,
+				},
+			],
+			workflowId: 'wf-1',
+		});
+
+		expect(
+			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
+		).toEqual(['req-new-workflow-setup']);
 	});
 
 	test('sendMessage rolls back the optimistic message when postMessage fails', async () => {

@@ -5,15 +5,14 @@ import { setParameterValue as setParameterValueByPath } from '@/app/utils/parame
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { findPlaceholderDetails } from '@n8n/utils';
 import type { WorkflowSetupApplyPayload, WorkflowSetupSection } from '../workflowSetup.types';
 import { getWorkflowSetupParameterIssues } from '../workflowSetupParameterIssues';
 
 export type CredentialSelectionsMap = Record<string, Record<string, string>>;
 type ParameterValuesMap = Record<string, INodeParameters>;
 
-export function useWorkflowSetupInputs(deps: {
-	sections: ComputedRef<WorkflowSetupSection[]>;
-}): {
+export function useWorkflowSetupInputs(deps: { sections: ComputedRef<WorkflowSetupSection[]> }): {
 	credentialSelections: Ref<CredentialSelectionsMap>;
 	skippedSectionIds: Ref<Set<string>>;
 	setCredential: (section: WorkflowSetupSection, credId: string | null) => void;
@@ -90,7 +89,8 @@ export function useWorkflowSetupInputs(deps: {
 
 	function getParameterValues(section: WorkflowSetupSection): INodeParameters {
 		return (
-			parameterValues.value[section.targetNodeName] ?? (section.node.parameters as INodeParameters)
+			parameterValues.value[section.targetNodeName] ??
+			sanitizePlaceholderParameterValues(section.node.parameters as INodeParameters)
 		);
 	}
 
@@ -108,10 +108,17 @@ export function useWorkflowSetupInputs(deps: {
 			}
 			const node = getDisplayNode(section);
 			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			result.set(
-				section.id,
-				getWorkflowSetupParameterIssues(node, nodeType, section.parameterNames),
-			);
+			const issues = getWorkflowSetupParameterIssues(node, nodeType, section.parameterNames);
+			for (const name of section.parameterNames) {
+				if (parameterValues.value[section.targetNodeName]?.[name] !== undefined) continue;
+				const placeholderDetails = findPlaceholderDetails(section.node.parameters[name]);
+				if (placeholderDetails.length === 0) continue;
+				issues[name] = [
+					...(issues[name] ?? []),
+					`Placeholder "${placeholderDetails[0].label}" - please provide the real value`,
+				];
+			}
+			result.set(section.id, issues);
 		}
 		return result;
 	});
@@ -279,4 +286,35 @@ function setCredentialSelectionForTargetNames(
 	}
 
 	return nextCredentialSelections;
+}
+
+function sanitizePlaceholderParameterValues(parameters: INodeParameters): INodeParameters {
+	return sanitizePlaceholderValue(parameters) as INodeParameters;
+}
+
+function sanitizePlaceholderValue(value: unknown): unknown {
+	if (typeof value === 'string') {
+		return findPlaceholderDetails(value).length > 0 ? '' : value;
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((item) => sanitizePlaceholderValue(item));
+	}
+
+	if (isPlainObject(value)) {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, nestedValue]) => [
+				key,
+				sanitizePlaceholderValue(nestedValue),
+			]),
+		);
+	}
+
+	return value;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return (
+		typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype
+	);
 }

@@ -315,7 +315,7 @@ describe('WorkflowSetupSectionBody', () => {
 		expect(context.setParameterValue).toHaveBeenCalledWith(siblingSection, 'formId', 'form-1');
 	});
 
-	it('applies setup guidance to parameter labels and hints', () => {
+	it('keeps parameter labels stable and applies setup guidance to hints', () => {
 		const section = makeWorkflowSetupSection({
 			id: 'Typeform Trigger:typeformApi',
 			targetNodeName: 'Typeform Trigger',
@@ -344,8 +344,8 @@ describe('WorkflowSetupSectionBody', () => {
 
 		expect(renderedParameters.at(-1)).toEqual([
 			expect.objectContaining({
-				displayName: 'Lead capture form',
-				hint: 'This tells the trigger which Typeform form starts the workflow. Choose the form that collects new leads.',
+				displayName: 'Form Name or ID',
+				hint: 'Lead capture form This tells the trigger which Typeform form starts the workflow. Choose the form that collects new leads.',
 			}),
 		]);
 	});
