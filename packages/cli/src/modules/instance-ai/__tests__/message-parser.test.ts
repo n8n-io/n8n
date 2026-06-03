@@ -600,7 +600,7 @@ describe('parseStoredMessages', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-2',
-							toolName: 'build-workflow-with-agent',
+							toolName: 'build-workflow',
 							input: {},
 							state: 'resolved',
 							output: 'ok',

@@ -314,7 +314,8 @@ export class AgentChatBridge {
 			subject,
 		});
 		// threadId.id is agent-prefixed for observation storage; resourceId keeps
-		// the platform identity so episodic recall remains agent + resource scoped.
+		// the platform user identity so episodic recall works across threads for
+		// the same user while staying isolated between users.
 		// Always run the published snapshot — integrations are production traffic.
 		const stream = this.agentService.executeForChatPublished({
 			agentId: this.agentId,
@@ -322,7 +323,7 @@ export class AgentChatBridge {
 			message: text,
 			memory: {
 				threadId,
-				resourceId: integrationMemoryResourceId(this.integration.type, platformThreadId),
+				resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
 			},
 			integrationType: this.integration.type,
 		});
