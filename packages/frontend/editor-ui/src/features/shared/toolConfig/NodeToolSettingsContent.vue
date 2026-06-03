@@ -390,6 +390,9 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>
+					<div v-if="$slots.commonSettings" :class="$style.commonSettings">
+						<slot name="commonSettings" />
+					</div>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" :class="$style.noParameters">
 					<N8nText>
@@ -448,6 +451,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 }
 
 .noParameters {
+	margin-top: var(--spacing--xs);
+}
+
+.commonSettings {
 	margin-top: var(--spacing--xs);
 }
 </style>

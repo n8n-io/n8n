@@ -26,8 +26,14 @@ vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 
 function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialNode', 'existingToolNames', 'projectId'],
-		emits: ['update:valid', 'update:node-name'],
+		props: [
+			'initialNode',
+			'existingToolNames',
+			'projectId',
+			'showApprovalSetting',
+			'approvalRequired',
+		],
+		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
 		setup(props, { emit, expose }) {
 			// Expose what the modal reads from ref(...). The stub carries through
 			// the initialNode's credentials so we can assert the round-trip keeps them.
@@ -51,14 +57,23 @@ function createToolSettingsStub(emitValid: boolean) {
 			});
 			return {};
 		},
-		template: '<div data-test-id="node-tool-settings-content" :data-project-id="projectId" />',
+		template: `
+			<div data-test-id="node-tool-settings-content" :data-project-id="projectId">
+				<button
+					v-if="showApprovalSetting"
+					data-test-id="agent-tool-approval-toggle"
+					:data-checked="approvalRequired"
+					@click="$emit('update:approvalRequired', !approvalRequired)"
+				/>
+			</div>
+		`,
 	});
 }
 
 function createWorkflowToolConfigStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialRef'],
-		emits: ['update:valid', 'update:node-name'],
+		props: ['initialRef', 'showApprovalSetting', 'approvalRequired'],
+		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
 		setup(props, { emit, expose }) {
 			expose({
 				getName: () => props.initialRef?.name ?? '',
@@ -72,7 +87,16 @@ function createWorkflowToolConfigStub(emitValid: boolean) {
 			});
 			return {};
 		},
-		template: '<div data-test-id="workflow-tool-config-content" />',
+		template: `
+			<div data-test-id="workflow-tool-config-content">
+				<button
+					v-if="showApprovalSetting"
+					data-test-id="agent-tool-approval-toggle"
+					:data-checked="approvalRequired"
+					@click="$emit('update:approvalRequired', !approvalRequired)"
+				/>
+			</div>
+		`,
 	});
 }
 
@@ -237,6 +261,18 @@ describe('AgentToolConfigModal', () => {
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [updated] = onConfirm.mock.calls[0];
 		expect(updated).toMatchObject({ type: 'node', requireApproval: true });
+	});
+
+	it('renders the approval setting after the tool configuration content', () => {
+		const { getByTestId } = renderModal();
+
+		const settings = getByTestId('node-tool-settings-content');
+		const approvalToggle = getByTestId('agent-tool-approval-toggle');
+
+		expect(settings.contains(approvalToggle)).toBe(true);
+		expect(
+			settings.compareDocumentPosition(approvalToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 	});
 
 	it('closes the modal on Cancel without calling onConfirm', async () => {

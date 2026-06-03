@@ -5,7 +5,7 @@
 import { computed, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nRadioButtons, N8nSwitch2, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 
@@ -22,6 +22,7 @@ import {
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import AgentJsonEditor from './AgentJsonEditor.vue';
+import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigModalHeader from './AgentToolConfigModalHeader.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
@@ -270,21 +271,14 @@ function handleNodeNameUpdate(name: string) {
 					(isCustomTool || activeView === 'raw') && $style.codeContentWrapper,
 				]"
 			>
-				<div v-if="showApprovalSetting" :class="$style.approvalRow">
-					<div :class="$style.approvalText">
-						<N8nText size="small" :bold="true">
-							{{ i18n.baseText('agents.toolConfig.approval.label') }}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('agents.toolConfig.approval.hint') }}
-						</N8nText>
-					</div>
-					<N8nSwitch2 v-model="approvalRequired" data-test-id="agent-tool-approval-toggle" />
-				</div>
 				<AgentToolConfigCustomContent
 					v-if="isCustomTool"
 					:code="customToolCode"
 					:class="$style.customToolViewer"
+				/>
+				<AgentToolConfigApprovalSetting
+					v-if="isCustomTool && showApprovalSetting"
+					v-model="approvalRequired"
 				/>
 				<template v-else>
 					<N8nRadioButtons
@@ -306,8 +300,11 @@ function handleNodeNameUpdate(name: string) {
 							v-if="workflowInitialRef"
 							ref="workflowContentRef"
 							:initial-ref="workflowInitialRef"
+							:show-approval-setting="showApprovalSetting"
+							:approval-required="approvalRequired"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
+							@update:approval-required="approvalRequired = $event"
 						/>
 						<AgentToolConfigNodeContent
 							v-else-if="isMcpTool && initialNode"
@@ -326,8 +323,11 @@ function handleNodeNameUpdate(name: string) {
 							:existing-tool-names="data.existingToolNames"
 							:project-id="data.projectId"
 							content-test-id="node-tool-settings-content"
+							:show-approval-setting="showApprovalSetting"
+							:approval-required="approvalRequired"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
+							@update:approval-required="approvalRequired = $event"
 						/>
 					</div>
 				</template>
@@ -385,7 +385,8 @@ function handleNodeNameUpdate(name: string) {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	max-height: var(--agent-tool-config-content-max-height);
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding: var(--spacing--md) 0;
 
@@ -394,36 +395,18 @@ function handleNodeNameUpdate(name: string) {
 	}
 }
 
-.approvalRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	margin-right: var(--spacing--lg);
-	border: var(--border);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-background-light);
-}
-
-.approvalText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-
 .codeContentWrapper {
 	height: var(--agent-tool-config-content-max-height);
 	margin-right: 0;
 	padding-bottom: 0;
+	overflow: hidden;
 }
 
 .configureTab {
 	display: flex;
-	flex: 1;
 	min-height: 0;
 	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
 .viewToggle {
