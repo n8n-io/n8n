@@ -266,7 +266,7 @@ function onOpenScopes(apiKey: ApiKey) {
 		/>
 
 		<ApiKeyTable
-			v-if="isPublicApiEnabled && apiKeys.length"
+			v-if="isPublicApiEnabled && hasAnyKeys && (!labelFilter.trim() || apiKeysCount > 0)"
 			v-model:table-options="tableOptions"
 			:api-keys="apiKeys"
 			:items-length="apiKeysCount"
