@@ -25,10 +25,6 @@ jobs:
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
-          # Postgres 16 integration suite runs on an 8-vCPU runner.
-          # The suite is worker-bound (throughput scales with jest workers),
-          # so more cores -> more workers (jest default = cores-1) -> faster.
-          # See DEVP-315.
           - name: Postgres 16
             runner: blacksmith-8vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
