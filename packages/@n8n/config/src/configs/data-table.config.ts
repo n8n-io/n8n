@@ -1,6 +1,8 @@
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { Time } from '@n8n/constants';
+
 import { Config, Env } from '../decorators';
 
 @Config
@@ -21,7 +23,7 @@ export class DataTableConfig {
 	 * Reduces database load when validating size repeatedly.
 	 */
 	@Env('N8N_DATA_TABLES_SIZE_CHECK_CACHE_DURATION_MS')
-	sizeCheckCacheDuration: number = 5 * 1000;
+	sizeCheckCacheDuration: number = 5 * Time.seconds.toMilliseconds;
 
 	/**
 	 * Maximum file size in bytes for CSV uploads to data tables.
@@ -32,14 +34,14 @@ export class DataTableConfig {
 
 	/** Interval in milliseconds between cleanup runs for orphaned upload files. Default: 60000 milliseconds. */
 	@Env('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS')
-	cleanupIntervalMs: number = 60 * 1000;
+	cleanupIntervalMs: number = 1 * Time.minutes.toMilliseconds;
 
 	/**
 	 * Age in milliseconds after which an uploaded file is treated as orphaned and deleted during cleanup.
 	 * Default: 2 minutes.
 	 */
 	@Env('N8N_DATA_TABLES_FILE_MAX_AGE_MS')
-	fileMaxAgeMs: number = 2 * 60 * 1000;
+	fileMaxAgeMs: number = 2 * Time.minutes.toMilliseconds;
 
 	/**
 	 * Directory for temporary CSV uploads before import. Files in this directory are pruned by cleanup (see fileMaxAgeMs).
