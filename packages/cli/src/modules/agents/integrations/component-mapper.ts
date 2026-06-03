@@ -37,14 +37,13 @@ interface SuspendPayload {
 
 /**
  * JSON Schema shape passed to {@link ComponentMapper.toCard} when the suspend
- * payload comes from a rich-interaction-style tool (rich_interaction itself,
- * the integration action tool's interactive cards, or display-only cards).
+ * payload comes from an integration action's interactive card.
  *
  * `wrapValueForSchema` inspects the top-level properties to pick the wrapping
  * convention — a schema with `{ type, value }` produces `{ type: 'button',
  * value: rawValue }` on click.
  */
-export const RICH_INTERACTION_RESUME_JSON_SCHEMA = {
+export const INTERACTIVE_CARD_RESUME_JSON_SCHEMA = {
 	type: 'object',
 	properties: {
 		type: { type: 'string' },
@@ -310,7 +309,7 @@ export class ComponentMapper {
 			return { approved: rawValue === 'true' };
 		}
 
-		// Rich interaction resume schema: { type, value }
+		// Interactive card resume schema: { type, value }
 		if ('type' in props && 'value' in props) {
 			return { type: 'button', value: rawValue };
 		}

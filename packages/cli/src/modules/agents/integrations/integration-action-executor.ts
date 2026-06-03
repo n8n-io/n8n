@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
-import { ComponentMapper, RICH_INTERACTION_RESUME_JSON_SCHEMA } from './component-mapper';
+import { ComponentMapper, INTERACTIVE_CARD_RESUME_JSON_SCHEMA } from './component-mapper';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
 	connectionUnavailable,
@@ -20,17 +20,19 @@ import type {
 } from './integration-tools';
 import { subscribeSlackThread } from './platforms/slack-operations';
 
-const messageSchema = z.object({
-	text: z.string().optional(),
-	richInteraction: z
-		.object({
-			awaitResponse: z.boolean().optional(),
-			title: z.string().optional(),
-			message: z.string().optional(),
-			components: z.array(z.object({ type: z.string() }).passthrough()).min(1),
-		})
-		.optional(),
-});
+const messageSchema = z
+	.object({
+		text: z.string().optional(),
+		card: z
+			.object({
+				awaitResponse: z.boolean().optional(),
+				title: z.string().optional(),
+				message: z.string().optional(),
+				components: z.array(z.object({ type: z.string() }).passthrough()).min(1),
+			})
+			.optional(),
+	})
+	.strict();
 
 const respondInputSchema = z.object({ message: messageSchema });
 const sendDmInputSchema = z.object({
@@ -186,8 +188,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		message: MessagePayload,
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
 	) {
-		const richInteraction = message.richInteraction;
-		if (!richInteraction) return message.text ?? '';
+		const cardPayload = message.card;
+		if (!cardPayload) return message.text ?? '';
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');
@@ -195,13 +197,13 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		const card = await this.componentMapper.toCard(
 			{
-				title: richInteraction.title ?? message.text,
-				message: richInteraction.message,
-				components: richInteraction.components,
+				title: cardPayload.title ?? message.text,
+				message: cardPayload.message,
+				components: cardPayload.components,
 			},
 			params.runId ?? '',
 			params.toolCallId ?? '',
-			RICH_INTERACTION_RESUME_JSON_SCHEMA,
+			INTERACTIVE_CARD_RESUME_JSON_SCHEMA,
 			undefined,
 			descriptor.integration.type,
 		);

@@ -19,7 +19,7 @@ import { executeSlackAction, executeSlackContextQuery } from './slack-operations
  * Slack platform integration.
  *
  * Slack callback_data has no small limit and supports every component type
- * the rich_interaction tool emits, so no normalization or callback shortening
+ * integration action cards emit, so no normalization or callback shortening
  * is required.
  */
 @Service()
@@ -37,7 +37,7 @@ export class SlackIntegration extends AgentChatIntegration {
 			'Receive Slack mentions and messages as agent triggers.',
 			'Respond in the latest Slack thread, DM, or channel conversation context.',
 			'Send DMs and channel messages, search users/channels, and add emoji reactions.',
-			'Render rich interaction cards in Slack messages.',
+			'Render rich cards and feedback requests in Slack messages.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',

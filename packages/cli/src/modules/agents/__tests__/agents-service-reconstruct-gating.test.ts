@@ -47,11 +47,6 @@ jest.mock('../json-config/mcp-client-factory', () => ({
 	buildMcpClientForServer: (...args: unknown[]) => buildMcpClientForServerMock(...args),
 }));
 
-// Avoid loading the rich-interaction tool (its import path resolves to runtime code).
-jest.mock('../integrations/rich-interaction-tool', () => ({
-	createRichInteractionTool: () => ({}) as never,
-}));
-
 function makeService(
 	agentsToolsService: AgentsToolsService,
 	modules: string[] = [],

@@ -93,7 +93,6 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import {
@@ -124,7 +123,7 @@ interface InjectRuntimeDependenciesParams {
 	nodeToolsEnabled: boolean;
 	subAgentDelegation?: SubAgentDelegationConfig;
 	credentialIntegrations: AgentIntegrationConfig[];
-	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
+	/** Chat platform the runtime is being reconstructed for. */
 	integrationType?: string;
 }
 
@@ -172,7 +171,7 @@ export interface ResumeForChatConfig {
 	resumeData: unknown;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
-	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
+	 * (e.g. an integration action). Without it, `getRuntime` rebuilds the agent
 	 * with only its configured tools, and `runtime.resume` throws because the
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
@@ -1001,7 +1000,6 @@ export class AgentsService {
 			nodeToolsEnabled,
 			subAgentDelegation,
 			credentialIntegrations,
-			integrationType,
 		} = params;
 
 		// Inject get_environment unconditionally. It surfaces info the model
@@ -1034,22 +1032,7 @@ export class AgentsService {
 			}
 		}
 
-		// Inject the rich_interaction tool only for platforms that can actually
-		// render its suspend/resume HITL cards. Two gates:
-		//   - A registered integration in ChatIntegrationRegistry. The in-app
-		//     test chat uses `integrationType = 'chat'`, which isn't registered,
-		//     and the compile/validate path passes no integrationType at all —
-		//     neither has a bridge to render the card or resume the suspended
-		//     turn, so letting the model call the tool there would hang the
-		//     agent.
-		//   - The integration must declare `supportedComponents`. Platforms
-		//     that omit it (e.g. Linear) have explicitly opted out of
-		//     rich_interaction.
 		const integrationRegistry = Container.get(ChatIntegrationRegistry);
-		const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
-		if (integration?.supportedComponents !== undefined) {
-			agent.tool(createRichInteractionTool(integrationType));
-		}
 
 		if (credentialIntegrations.length > 0) {
 			const messageContextStore = Container.get(IntegrationMessageContextService);

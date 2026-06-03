@@ -438,6 +438,7 @@ describe('integration tools', () => {
 		).toBe(true);
 		expect(tool.description).toContain('send_dm: input.userId');
 		expect(tool.description).toContain('send_channel_message: input.channelId');
+		expect(tool.description).toContain('Use message.card for cards');
 	});
 
 	it('action tool schema accepts Slack emoji reaction actions', () => {
@@ -641,7 +642,7 @@ describe('integration tools', () => {
 					channelId: 'slack:C123',
 					message: {
 						text: 'Choose',
-						richInteraction: {
+						card: {
 							components: [{ type: 'button', label: 'Approve', value: 'approve' }],
 						},
 					},

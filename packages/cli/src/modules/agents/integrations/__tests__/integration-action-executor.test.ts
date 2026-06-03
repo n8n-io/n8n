@@ -27,6 +27,10 @@ function buildRegistry(): ChatIntegrationRegistry {
 }
 
 describe('ChatIntegrationActionExecutor', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	it('posts channel messages through the selected integration connection and returns message context', async () => {
 		const sentMessage = {
 			id: '123.456',

@@ -159,7 +159,7 @@ const selectOptionSchema = z.object({
 	description: z.string().optional(),
 });
 
-const richComponentSchema = z.object({
+const cardComponentSchema = z.object({
 	type: z.string(),
 	text: z.string().optional(),
 	label: z.string().optional(),
@@ -174,17 +174,19 @@ const richComponentSchema = z.object({
 	fields: z.array(fieldPairSchema).optional(),
 });
 
-const messageSchema = z.object({
-	text: z.string().optional(),
-	richInteraction: z
-		.object({
-			awaitResponse: z.boolean().optional(),
-			title: z.string().optional(),
-			message: z.string().optional(),
-			components: z.array(richComponentSchema).min(1),
-		})
-		.optional(),
-});
+const messageSchema = z
+	.object({
+		text: z.string().optional(),
+		card: z
+			.object({
+				awaitResponse: z.boolean().optional(),
+				title: z.string().optional(),
+				message: z.string().optional(),
+				components: z.array(cardComponentSchema).min(1),
+			})
+			.optional(),
+	})
+	.strict();
 
 const noInputSchema = z.object({}).strict();
 
@@ -925,9 +927,12 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		`Available actions: ${descriptor.actions.join(', ')}.`,
 		'Action inputs:',
 		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
-		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include rich interactions that wait for a user response.`,
+		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
-		'Messages may include richInteraction components. Interactive components suspend the agent until the user responds.',
+		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
+		'Platform-specific rendering is handled internally.',
+		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
+		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
 }
 
@@ -1152,7 +1157,7 @@ async function executeActionToolOperation(params: {
 			error: {
 				code: INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				message:
-					'Batch actions cannot include rich interactions that wait for a user response. Send that action separately.',
+					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
 			},
 		};
 	}
@@ -1238,12 +1243,16 @@ function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined
 }
 
 function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
-	const richInteraction = message?.richInteraction;
-	if (!richInteraction) return false;
-	if (richInteraction.awaitResponse === true) return true;
-	return richInteraction.components.some((component) =>
-		['button', 'select', 'radio_select'].includes(component.type),
-	);
+	const card = message?.card;
+	if (card?.awaitResponse === true) return true;
+	if (
+		card?.components.some((component) =>
+			['button', 'select', 'radio_select'].includes(component.type),
+		)
+	) {
+		return true;
+	}
+	return false;
 }
 
 function withPreviousSubject(
