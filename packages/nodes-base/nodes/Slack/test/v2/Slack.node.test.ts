@@ -151,6 +151,56 @@ describe('SlackV2', () => {
 		});
 	});
 
+	describe('Channel List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['public_channel', 'private_channel'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'public_channel,private_channel ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channels: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/conversations.list',
+				{},
+				expect.objectContaining({ types: 'public_channel,private_channel' }),
+			);
+		});
+	});
+
 	describe('Channel Operations - History, Invite, Leave, Members, etc.', () => {
 		it('should get channel history with pagination', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -316,6 +366,32 @@ describe('SlackV2', () => {
 					},
 				],
 			]);
+		});
+
+		it('should invite users when userIds is a comma-joined string (whitespace-coerced expression)', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'invite',
+					channelId: 'C123456789',
+					userIds: 'U111111111,U222222222 ',
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ channel: { id: 'C123456789' } });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'/conversations.invite',
+				{
+					channel: 'C123456789',
+					users: 'U111111111,U222222222',
+				},
+				{},
+			);
 		});
 
 		it('should leave channel', async () => {
@@ -1412,6 +1488,56 @@ describe('SlackV2', () => {
 					filename: 'custom-name.txt',
 					length: 4,
 				},
+			);
+		});
+	});
+
+	describe('File List Operations - multiOptions types filter', () => {
+		it('should send types as CSV when filters.types is an array', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'file',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: ['images', 'pdfs'] },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ files: [{ id: 'F1' }] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/files.list',
+				{},
+				expect.objectContaining({ types: 'images,pdfs' }),
+			);
+		});
+
+		it('should normalize types when filters.types is a comma-joined string with trailing whitespace', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'file',
+					operation: 'getAll',
+					returnAll: false,
+					limit: 50,
+					filters: { types: 'images,pdfs ' },
+				};
+				return params[paramName];
+			});
+
+			slackApiRequestSpy.mockResolvedValue({ files: [] });
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(slackApiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				'/files.list',
+				{},
+				expect.objectContaining({ types: 'images,pdfs' }),
 			);
 		});
 	});

@@ -4,6 +4,7 @@ import {
 	type Project,
 	type ProjectRepository,
 	type SharedCredentialsRepository,
+	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
 	type SharedCredentials,
 	PROJECT_ADMIN_ROLE,
@@ -12,32 +13,42 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+
+import type { OwnershipService } from '../ownership.service';
+
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
 describe('ProjectService', () => {
 	const manager = mock<EntityManager>();
-	const projectRepository = mock<ProjectRepository>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const projectRepository = mock<ProjectRepository>({ manager });
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
+	const agentRepository = mock<AgentRepository>();
+	const agentKnowledgeService = mock<AgentKnowledgeService>();
+	const ownershipService = mock<OwnershipService>();
 	const projectService = new ProjectService(
-		mock(),
+		sharedWorkflowRepository,
 		projectRepository,
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
 		mock(),
 		moduleRegistry,
+		ownershipService,
 	);
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
 	describe('getAccessibleProjectsAndCount', () => {
 		const options = { skip: 0, take: 10, search: 'test' };
-
-		beforeEach(() => {
-			jest.clearAllMocks();
-		});
 
 		it('should call findAllProjectsAndCount for admin users', async () => {
 			const adminUser = {
@@ -113,7 +124,6 @@ describe('ProjectService', () => {
 		];
 
 		beforeEach(() => {
-			jest.clearAllMocks();
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -191,6 +201,83 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('updateProject', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			ownershipService.invalidateWorkflowProjectCacheForProject.mockResolvedValue(undefined);
+		});
+
+		it('should trim whitespace from tag keys on save', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', {
+				name: 'My Project',
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team ', value: 'backend' },
+				],
+			});
+
+			expect(projectRepository.update).toHaveBeenCalledWith(
+				{ id: 'proj-1', type: 'team' },
+				expect.objectContaining({
+					customTelemetryTags: [
+						{ key: 'env', value: 'production' },
+						{ key: 'team', value: 'backend' },
+					],
+				}),
+			);
+		});
+
+		it('should filter out tags with empty keys after trimming', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', {
+				name: 'My Project',
+				customTelemetryTags: [
+					{ key: '   ', value: 'ignored' },
+					{ key: 'region', value: 'us-east' },
+				],
+			});
+
+			expect(projectRepository.update).toHaveBeenCalledWith(
+				{ id: 'proj-1', type: 'team' },
+				expect.objectContaining({
+					customTelemetryTags: [{ key: 'region', value: 'us-east' }],
+				}),
+			);
+		});
+
+		it('should save undefined customTelemetryTags when not provided', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', { name: 'My Project' });
+
+			expect(projectRepository.update).toHaveBeenCalledWith(
+				{ id: 'proj-1', type: 'team' },
+				expect.objectContaining({ customTelemetryTags: undefined }),
+			);
+		});
+
+		it('should invalidate workflow project cache after a successful update', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await projectService.updateProject('proj-1', { name: 'Updated' });
+
+			expect(ownershipService.invalidateWorkflowProjectCacheForProject).toHaveBeenCalledWith(
+				'proj-1',
+			);
+		});
+
+		it('should throw NotFoundError when project is not found', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 0 } as never);
+
+			await expect(projectService.updateProject('missing-proj', { name: 'Ghost' })).rejects.toThrow(
+				'Could not find project with ID: missing-proj',
+			);
+		});
+	});
+
 	describe('changeUserRoleInProject', () => {
 		const projectId = '12345';
 		const mockRelations = [
@@ -199,7 +286,6 @@ describe('ProjectService', () => {
 		];
 
 		beforeEach(() => {
-			jest.clearAllMocks();
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -269,6 +355,71 @@ describe('ProjectService', () => {
 				where: { id: projectId, type: 'team' },
 				relations: { projectRelations: { role: true } },
 			});
+		});
+	});
+
+	describe('deleteProject', () => {
+		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
+			const user = { id: 'user-1', role: { scopes: [{ slug: 'project:delete' }] } } as any;
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			Object.defineProperty(projectService, 'workflowService', {
+				configurable: true,
+				get: async () => ({ delete: jest.fn() }),
+			});
+			Object.defineProperty(projectService, 'credentialsService', {
+				configurable: true,
+				get: async () => ({ delete: jest.fn() }),
+			});
+			Object.defineProperty(projectService, 'agentRepository', {
+				configurable: true,
+				get: async () => agentRepository,
+			});
+			Object.defineProperty(projectService, 'agentKnowledgeService', {
+				configurable: true,
+				get: async () => agentKnowledgeService,
+			});
+			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'agents');
+			agentRepository.findByProjectId.mockResolvedValueOnce([
+				{ id: 'agent-1' },
+				{ id: 'agent-2' },
+			] as never);
+
+			await projectService.deleteProject(user, project.id);
+
+			expect(agentRepository.findByProjectId).toHaveBeenCalledWith(project.id);
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
+				projectRepository.remove.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('skips agent knowledge cleanup when the agents module is inactive', async () => {
+			const user = { id: 'user-1', role: { scopes: [{ slug: 'project:delete' }] } } as any;
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			Object.defineProperty(projectService, 'workflowService', {
+				configurable: true,
+				get: async () => ({ delete: jest.fn() }),
+			});
+			Object.defineProperty(projectService, 'credentialsService', {
+				configurable: true,
+				get: async () => ({ delete: jest.fn() }),
+			});
+			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			await projectService.deleteProject(user, project.id);
+
+			expect(agentRepository.findByProjectId).not.toHaveBeenCalled();
+			expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
+			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});
 });

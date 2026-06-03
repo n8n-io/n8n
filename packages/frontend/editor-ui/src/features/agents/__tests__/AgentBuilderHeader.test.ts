@@ -9,7 +9,7 @@ const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
 const routerPush = vi.fn();
 const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
-	href: `/projects/${to.params?.projectId ?? ''}/workflows`,
+	href: `/projects/${to.params?.projectId ?? ''}/agents`,
 }));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
@@ -168,16 +168,16 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.text()).toContain('Darwin');
 	});
 
-	it('links the project breadcrumb to the project workflows page', () => {
+	it('links the project breadcrumb to the project agents page', () => {
 		const wrapper = mountHeader();
 		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
 		const items = bc.props('items') as Array<{ href: string }>;
-		expect(items[0].href).toBe('/projects/p1/workflows');
+		expect(items[0].href).toBe('/projects/p1/agents');
 
 		bc.vm.$emit('itemSelected', { id: 'p1' });
 
 		expect(routerPush).toHaveBeenCalledWith({
-			name: 'ProjectsWorkflows',
+			name: 'ProjectAgents',
 			params: { projectId: 'p1' },
 		});
 	});

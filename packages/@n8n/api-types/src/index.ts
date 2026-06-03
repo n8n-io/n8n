@@ -11,6 +11,7 @@ export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
 export * from './redaction-enforcement';
+export * from './redaction-enforcement-floor';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -116,6 +117,7 @@ export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export {
+	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
 	credentialResolversSchema,
 	credentialResolverTypeSchema,
@@ -299,6 +301,7 @@ export {
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
+	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -309,7 +312,6 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -397,9 +399,6 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalToolCall,
-	InstanceAiEvalToolResult,
-	InstanceAiEvalSubAgentResponse,
 } from './schemas/instance-ai.schema';
 
 export {
@@ -416,6 +415,12 @@ export {
 	StartTestRunRequestDto,
 	type StartTestRunPayload,
 } from './schemas/evaluations.schema';
+
+export {
+	MCP_APPS_FLAG,
+	MCP_APPS_VARIANT_CONTROL,
+	MCP_APPS_VARIANT_ENABLED,
+} from './schemas/mcp.schema';
 
 export {
 	EVAL_COLLECTIONS_FLAG,
@@ -454,7 +459,6 @@ export {
 } from './schemas/eval-insights.schema';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
-export { xssCheck } from './utils/xss-check';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {

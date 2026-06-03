@@ -24,6 +24,7 @@ export const SERVICE_NAMES = [
 	'kent',
 	'postgresExporter',
 	'cadvisor',
+	'sandbox',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
@@ -52,6 +53,7 @@ export interface StartContext {
 	projectName: string;
 	mains: number;
 	workers: number;
+	webhooks: number;
 	isQueueMode: boolean;
 	usePostgres: boolean;
 	needsLoadBalancer: boolean;
@@ -68,16 +70,23 @@ export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_con
 export interface StackConfig {
 	mains?: number;
 	workers?: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	postgres?: boolean;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
+	webhookResourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
 	/** When true, services target host machine instead of Docker-internal n8n */
 	external?: boolean;
+	/** When set, the Docker network uses this exact name instead of a random UUID. */
+	networkName?: string;
 	/**
-	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`.
+	 * Caddy load-balancer upstream-selection policy. Only applies when `mains > 1`
+	 * or `webhooks > 0` (anything that triggers the LB to start).
 	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
 	 * Benchmarks should set `'round_robin'` to actually distribute load.
 	 */

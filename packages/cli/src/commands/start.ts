@@ -358,7 +358,27 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES, {
+			extra: {
+				instance: {
+					type: this.instanceSettings.instanceType,
+					isLeader: this.instanceSettings.isLeader,
+				},
+				config: {
+					autoRenewalEnabled: this.globalConfig.license?.autoRenewalEnabled,
+					activationKeySet: !!this.globalConfig.license?.activationKey,
+					usingEphemeralCert: !!this.globalConfig.license?.cert,
+				},
+				cert: {
+					exists: (await this.license.loadCertStr()).length > 0,
+					isValid: this.license.isCertValid(),
+					hasMultiMain: this.license.hasFeatureInCert(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES),
+					expiresAt: this.license.getExpiryDate()?.toISOString() ?? null,
+					terminatesAt: this.license.getTerminationDate()?.toISOString() ?? null,
+					consumerId: this.license.getConsumerId(),
+				},
+			},
+		});
 	}
 
 	async run() {

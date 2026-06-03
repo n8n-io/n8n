@@ -11,6 +11,7 @@ import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowEvaluationState } from '../../composables/useWorkflowEvaluationState';
 defineEmits<{
 	runTest: [];
 }>();
@@ -19,6 +20,7 @@ const router = useRouter();
 const locale = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const evaluationStore = useEvaluationStore();
+const evaluationState = useWorkflowEvaluationState();
 const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -50,14 +52,17 @@ const initializeActiveStep = () => {
 		return;
 	}
 
-	if (evaluationStore.evaluationTriggerExists && evaluationStore.evaluationSetMetricsNodeExist) {
+	if (
+		evaluationState.evaluationTriggerExists.value &&
+		evaluationState.evaluationSetMetricsNodeExist.value
+	) {
 		activeStepIndex.value = 3;
 	} else if (
-		evaluationStore.evaluationTriggerExists &&
-		evaluationStore.evaluationSetOutputsNodeExist
+		evaluationState.evaluationTriggerExists.value &&
+		evaluationState.evaluationSetOutputsNodeExist.value
 	) {
 		activeStepIndex.value = 2;
-	} else if (evaluationStore.evaluationTriggerExists) {
+	} else if (evaluationState.evaluationTriggerExists.value) {
 		activeStepIndex.value = 1;
 	} else {
 		activeStepIndex.value = 0;
@@ -96,7 +101,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="1"
 					:title="locale.baseText('evaluations.setupWizard.step1.title')"
-					:is-completed="evaluationStore.evaluationTriggerExists"
+					:is-completed="evaluationState.evaluationTriggerExists.value"
 					:is-active="activeStepIndex === 0"
 					@click="toggleStep(0)"
 				/>
@@ -131,7 +136,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="2"
 					:title="locale.baseText('evaluations.setupWizard.step2.title')"
-					:is-completed="evaluationStore.evaluationSetOutputsNodeExist"
+					:is-completed="evaluationState.evaluationSetOutputsNodeExist.value"
 					:is-active="activeStepIndex === 1"
 					@click="toggleStep(1)"
 				/>
@@ -160,7 +165,7 @@ function onSeePlans() {
 				<StepHeader
 					:step-number="3"
 					:title="locale.baseText('evaluations.setupWizard.step3.title')"
-					:is-completed="evaluationStore.evaluationSetMetricsNodeExist"
+					:is-completed="evaluationState.evaluationSetMetricsNodeExist.value"
 					:is-active="activeStepIndex === 2"
 					:is-optional="true"
 					@click="toggleStep(2)"
@@ -231,12 +236,14 @@ function onSeePlans() {
 					<div :class="[$style.actionButton, $style.actionButtonInline]">
 						<N8nButton
 							variant="subtle"
-							v-if="evaluationStore.evaluationSetMetricsNodeExist && !evaluationsQuotaExceeded"
+							v-if="
+								evaluationState.evaluationSetMetricsNodeExist.value && !evaluationsQuotaExceeded
+							"
 							size="medium"
 							:disabled="
-								!evaluationStore.evaluationTriggerExists ||
-								(!evaluationStore.evaluationSetOutputsNodeExist &&
-									!evaluationStore.evaluationSetMetricsNodeExist)
+								!evaluationState.evaluationTriggerExists.value ||
+								(!evaluationState.evaluationSetOutputsNodeExist.value &&
+									!evaluationState.evaluationSetMetricsNodeExist.value)
 							"
 							@click="$emit('runTest')"
 						>
@@ -247,9 +254,9 @@ function onSeePlans() {
 							v-else
 							size="medium"
 							:disabled="
-								!evaluationStore.evaluationTriggerExists ||
-								(!evaluationStore.evaluationSetOutputsNodeExist &&
-									!evaluationStore.evaluationSetMetricsNodeExist)
+								!evaluationState.evaluationTriggerExists.value ||
+								(!evaluationState.evaluationSetOutputsNodeExist.value &&
+									!evaluationState.evaluationSetMetricsNodeExist.value)
 							"
 							@click="navigateToWorkflow('executeEvaluation')"
 						>

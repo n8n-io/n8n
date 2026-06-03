@@ -18,10 +18,10 @@ describe('ExecutionContextHookRegistry', () => {
 	beforeAll(() => {
 		// Set up Container dependencies once for all tests
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		} as unknown as Logger;
 
 		hookMetadata = Container.get(ContextEstablishmentHookMetadata);
@@ -29,7 +29,7 @@ describe('ExecutionContextHookRegistry', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Manually clear the metadata's internal Set to remove hooks from previous tests
 		// This prevents hooks from accumulating across tests
@@ -92,7 +92,7 @@ describe('ExecutionContextHookRegistry', () => {
 		});
 
 		it('should call optional init() method on hooks', async () => {
-			const initSpy = jest.fn().mockResolvedValue(undefined);
+			const initSpy = vi.fn().mockResolvedValue(undefined);
 
 			@ContextEstablishmentHook()
 			// @ts-expect-error - Class is used via decorator side-effect
@@ -136,7 +136,7 @@ describe('ExecutionContextHookRegistry', () => {
 			// @ts-expect-error - Class is used via decorator side-effect
 			class FailingHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'failing.hook' };
-				init = jest.fn().mockRejectedValue(initError);
+				init = vi.fn().mockRejectedValue(initError);
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 					return {};
 				}
