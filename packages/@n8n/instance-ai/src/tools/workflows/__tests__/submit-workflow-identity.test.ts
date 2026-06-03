@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowLoopState } from '../../../workflow-loop/workflow-loop-state';
 import {
@@ -322,8 +324,8 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			],
 			remediation,
 		};
-		const execute = jest
-			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+		const execute = vi
+			.fn<(input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>>()
 			.mockResolvedValueOnce(richFirstFailure)
 			.mockResolvedValueOnce({ success: true, workflowId: 'wf_should_not_save' });
 		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
@@ -372,8 +374,8 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			nodeIndex: [{ index: 9, name: 'Manual Trigger (temp)' }],
 			remediation,
 		};
-		const execute = jest
-			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+		const execute = vi
+			.fn<(input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>>()
 			.mockResolvedValueOnce(mainFailure);
 		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
 			getTerminalRemediation: () => terminalRemediation,
@@ -415,15 +417,15 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		// invalidate the earlier failure diagnostics; otherwise the short-circuited
 		// block (e.g. post_submit_budget_exhausted, which only fires after a save)
 		// would surface the resolved error instead of the terminal guidance.
-		let terminalRemediation: SubmitWorkflowOutput['remediation'];
+		let terminalRemediation: SubmitWorkflowOutput['remediation'] = undefined;
 		const blockRemediation = createRemediation({
 			category: 'blocked',
 			shouldEdit: false,
 			reason: 'post_submit_budget_exhausted',
 			guidance: 'The workflow was saved, but the repair budget is exhausted.',
 		});
-		const execute = jest
-			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+		const execute = vi
+			.fn<(input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>>()
 			.mockResolvedValueOnce({
 				success: false,
 				errors: ['Workflow save failed: nodes[9].position invalid_type'],
@@ -486,7 +488,7 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			rebuildAttempts: 0,
 			lastRemediation: remediation,
 		};
-		const execute = jest.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>();
+		const execute = vi.fn<(input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>>();
 		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
 			getWorkflowLoopState: async () => {
 				await Promise.resolve();
