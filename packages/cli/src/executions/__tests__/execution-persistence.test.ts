@@ -3,6 +3,7 @@
 
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
+	ExecutionData,
 	ExecutionEntity,
 	type CreateExecutionPayload,
 	type EntityManager,
@@ -407,10 +408,9 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('data updates on db-mode executions', () => {
-			it('should update entity in a transaction and write a fresh bundle via dbStore', async () => {
-				const executionPersistence = createPersistenceService('fs'); // current mode is irrelevant for routing
+			it('should update data and workflowData directly without reading the existing bundle first', async () => {
+				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
-				dbStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -433,9 +433,10 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
-				expect(dbStore.write).toHaveBeenCalledWith(
-					{ workflowId, executionId },
-					expect.objectContaining({
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionData,
+					{ executionId },
+					{
 						data: expect.any(String) as string,
 						workflowData: {
 							id: workflowData.id,
@@ -444,11 +445,33 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'v-original',
-					}),
-					mockTx,
+					},
 				);
+				expect(dbStore.read).not.toHaveBeenCalled();
+				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should throw MissingExecutionDataError when the data row no longer exists during a full overwrite', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+
+				const mockTx = createMockTransaction();
+				mockTx.update
+					.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} })
+					.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.updateExistingExecution(executionId, {
+						data: runData,
+						workflowData,
+						status: 'success',
+					}),
+				).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+				expect(dbStore.read).not.toHaveBeenCalled();
+				expect(dbStore.write).not.toHaveBeenCalled();
 			});
 
 			it('should preserve fields not supplied in a partial payload', async () => {

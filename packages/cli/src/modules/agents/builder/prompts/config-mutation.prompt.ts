@@ -78,7 +78,6 @@ Use \`patch_config\` with:
   selected refs.
 - If \`subAgents.agents\` exists, append new refs to \`/subAgents/agents/-\`.
 - Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
-- Never write \`subAgents.enabled\`; saved agent refs alone enable delegation.
 - If an \`ask_question\` resume value is not one of the listed agent IDs, do not
   write it into config.
 

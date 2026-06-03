@@ -107,6 +107,8 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('## When to Plan');
 			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
+			expect(prompt).toContain('call `plan` immediately');
+			expect(prompt).toContain('Do not load the `workflow-builder` skill');
 			expect(prompt).toContain('workflow tasks include any data table names');
 		});
 
@@ -134,6 +136,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('load the `workflow-builder` skill');
 			expect(prompt).toContain('call `build-workflow` directly');
 			expect(prompt).toContain('existing `workflowId`');
+			expect(prompt).toContain('approval before saving');
 		});
 
 		it('routes non-build ops through direct tools', () => {
@@ -230,6 +233,14 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'Do not call `credentials(action="setup")` or `apply-workflow-credentials`',
 			);
+		});
+
+		it('does not treat checkpoint verification as a user-requested run', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('explicitly asked to run or execute the workflow');
+			expect(prompt).toContain('checkpoint verification does not satisfy a user-requested run');
+			expect(prompt).toContain('executions(action="run")');
 		});
 
 		it('tells the orchestrator it may patch during a checkpoint and re-verify in place', () => {

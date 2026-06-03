@@ -1,14 +1,14 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
-
 test.describe(
 	'Instance AI artifacts @capability:proxy',
 	{
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
+		test.describe.configure({ timeout: 180_000 });
+
 		test('should display artifact card in timeline after workflow build', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
@@ -20,7 +20,7 @@ test.describe(
 			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for build to complete (no confirmation for simple builds)
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete(120_000);
 
 			// An artifact card should appear in the timeline
 			await expect(n8n.instanceAi.getArtifactCards().first()).toBeVisible({ timeout: 30_000 });
@@ -35,7 +35,7 @@ test.describe(
 
 			await n8n.instanceAi.approveBuildPlan();
 
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete(120_000);
 
 			// Preview should auto-open after build
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
