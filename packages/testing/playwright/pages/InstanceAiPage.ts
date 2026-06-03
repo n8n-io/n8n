@@ -190,6 +190,10 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	getPreviewTabByName(name: string | RegExp): Locator {
+		return this.getPreviewPanel().getByRole('tab', { name });
+	}
+
 	/**
 	 * Resolves to the preview's canvas root. Used by tests to assert the
 	 * preview is hidden (collapsing the panel removes the host from the DOM
@@ -219,12 +223,6 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewCanvas().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
 		);
-	}
-
-	async openPreviewNodeByName(nodeName: string): Promise<void> {
-		const node = this.getPreviewNodeByName(nodeName);
-		await node.waitFor({ state: 'visible', timeout: 10_000 });
-		await node.dblclick();
 	}
 
 	async openLastPreviewNode(): Promise<void> {

@@ -18,11 +18,9 @@ test.describe(
 
 			await n8n.instanceAi.approveBuildPlan();
 
-			await expect(
-				n8n.instanceAi.getPreviewPanel().getByRole('tab', {
-					name: /artifact card test/i,
-				}),
-			).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.getPreviewTabByName(/artifact card test/i)).toBeVisible({
+				timeout: 120_000,
+			});
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 30_000,
 			});

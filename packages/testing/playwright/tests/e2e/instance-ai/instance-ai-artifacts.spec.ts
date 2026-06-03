@@ -19,11 +19,9 @@ test.describe(
 			// New builds route through the planner and pause for user approval.
 			await n8n.instanceAi.approveBuildPlan();
 
-			await expect(
-				n8n.instanceAi.getPreviewPanel().getByRole('tab', {
-					name: /artifact display test/i,
-				}),
-			).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.getPreviewTabByName(/artifact display test/i)).toBeVisible({
+				timeout: 120_000,
+			});
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 30_000,
 			});
