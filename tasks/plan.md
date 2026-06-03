@@ -84,7 +84,7 @@ Prove the whole pipe with the simplest strategy before adding the second one.
 ### Phase 2 — Second strategy + claim ACL
 - [ ] **Task 4**: Add RFC 7662 introspection strategy to the validator package
 - [ ] **Task 5**: Extract `@n8n/expression-rules` from role-resolver (deny-wins)
-- [ ] **Task 6**: Wire claim-rule check into the auth branch + add rule fields to credential
+- [ ] **Task 6**: Wire claim-rule check into the auth branch + add `{effect, expression}` rule list to credential (see "Claim-ACL design")
 
 ### Checkpoint: full validation + ACL
 - [ ] Opaque token validated via introspection; revoked token → 403
@@ -123,3 +123,67 @@ Prove the whole pipe with the simplest strategy before adding the second one.
    use it in the new trigger path. Rewiring role-resolver is logged as M2.
 4. **Claim-rule UX → expression strings**, reusing n8n expression syntax
    (e.g. `$claims.groups includes "admin"`), evaluated directly.
+
+## Claim-ACL design (first iteration)
+
+**A trigger's authz decision is binary** — fire the workflow or reject. Unlike
+the REST API surface (many operations, each gated by an n8n scope like
+`workflow:execute`), a webhook/MCP trigger has one operation. So the M1 mapping
+produces a **boolean gate**, not a claim→n8n-scope mapping.
+
+**Rule shape** (stored in the credential for M1):
+
+```jsonc
+"claimRules": [
+  { "effect": "allow", "expression": "$claims.scope contains 'wf-execute'" },
+  { "effect": "allow", "expression": "$claims.realm_access.roles includes 'wf-admin'" },
+  { "effect": "deny",  "expression": "$claims.groups includes 'suspended'" }
+]
+```
+
+**Gate logic:** at least one `allow` matches AND no `deny` matches → fire; else
+`403`. **Deny-by-default**: an empty allow list rejects everything. This is the
+`@n8n/expression-rules` deny-wins evaluator (Task 5).
+
+**No right-hand-side n8n scope in M1.** The `expression -> "workflow:execute"`
+mapping form is correct for the *REST API* surface (many operations), not for
+triggers. Logged as a separate API-surface ticket in Task 8.
+
+**Expose validated claims into the workflow run** (Sixt requirement): surfacing
+the decoded claims as trigger output lets builders do fine-grained
+routing/authz in the workflow itself, keeping the M1 gate a simple boolean.
+
+## Config storage location (where the policy lives)
+
+Split the config into **trust config** (issuer, audience, JWKS URI, allowed
+algorithms) and **claim→gate rules**.
+
+- **M1 / POC → both in the CREDENTIAL.** Fast, encrypted at rest, reuses the
+  webhook auth wiring, and credential sharing gives a basic access story.
+- **Known limitation:** a credential is attached by the workflow author at the
+  node, so an author who can edit the workflow can swap/weaken it. This does
+  **not** satisfy Sixt's *"lockable, platform-managed policy that authors cannot
+  weaken"* nor *"multiple trusted issuers at once."*
+- **End-state (Sixt-driven, separate ticket):** lift trust config to an
+  **instance/admin-owned trusted-issuer registry** (multi-issuer, principal
+  types), and bind **per-endpoint policy to a stable identifier** (workflow ID /
+  webhook path / stable webhook ID), enforced server-side and lockable
+  regardless of node config.
+
+## Sixt feature-request alignment (input for Task 8 tickets)
+
+Source: `~/Downloads/Sixt Feature Request - External IdP.pdf`. Sixt's ask is
+broader than M1 (three surfaces: REST API + Webhook + MCP; multi-issuer;
+human-vs-agent principals; claim→permission mapping; governance). M1 covers the
+*validation core* + trigger wiring. Cheap hardening worth pulling into M1:
+
+- explicit **algorithm allow-list + reject `alg:none`** in the validator
+- standard **`WWW-Authenticate: Bearer`** challenge + clean 401 (invalid) vs
+  403 (unauthorized) split
+- **never log token contents**; stateless per pod (already true)
+
+Larger, out-of-M1 (capture as tickets): Public REST API surface; multi-issuer
+registry; human/agent principal types + JIT/virtual principals; structured
+claim→n8n-permission mapping + audit events; lockable central webhook policy;
+MCP RFC 9728 protected-resource metadata + RFC 8707 resource/audience binding;
+SixtGPT delegated user+app identity.

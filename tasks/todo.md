@@ -5,7 +5,7 @@ M=3-5, L=5-8.
 
 ---
 
-## Task 1: Scaffold `@n8n/oauth2-token-validator` with JWKS validation
+## Task 1: Scaffold `@n8n/oauth2-token-validator` with JWKS validation ✅ DONE (ec4892ac39)
 **Description:** Create the new package (copy structure from
 `packages/@n8n/client-oauth2`). Implement `validateToken(token, options)` for
 the JWKS strategy: OIDC discovery of `jwks_uri`, signature verification with
@@ -28,7 +28,7 @@ issuer here.
 
 ---
 
-## Task 2: Create `OAuth2/OIDC Bearer Token` credential (JWKS fields)
+## Task 2: Create `OAuth2/OIDC Bearer Token` credential (JWKS fields) ✅ DONE (ac646a6ae0)
 **Description:** New `oAuthBearerToken` credential in
 `packages/nodes-base/credentials/`, modeled on `HttpBearerAuth.credentials.ts`.
 Phase-1 fields: issuer/discovery URL, audience, validation mode. No
