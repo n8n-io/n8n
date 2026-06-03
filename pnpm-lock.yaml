@@ -4708,6 +4708,9 @@ importers:
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
+      '@n8n/oauth2-token-validator':
+        specifier: workspace:*
+        version: link:../@n8n/oauth2-token-validator
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12

@@ -1,3 +1,4 @@
+import { validateToken } from '@n8n/oauth2-token-validator';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
@@ -351,6 +352,44 @@ export async function validateWebhookAuthentication(
 			}) as IDataObject;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
+		}
+	} else if (authentication === 'oAuth2OidcBearer') {
+		let expectedAuth: ICredentialDataDecryptedObject | undefined;
+		try {
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('oAuth2OidcBearer');
+		} catch {}
+
+		if (expectedAuth === undefined || !expectedAuth.issuer) {
+			throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+		}
+
+		// Phase 1 of the ENT-28 POC covers JWKS validation only; introspection
+		// lands in a follow-up.
+		if (expectedAuth.validationMethod === 'introspection') {
+			throw new WebhookAuthorizationError(500, 'Introspection validation is not yet available');
+		}
+
+		const authHeader = req.headers.authorization;
+		const token =
+			typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+				? authHeader.slice('Bearer '.length)
+				: undefined;
+		if (!token) {
+			throw new WebhookAuthorizationError(401, 'No bearer token provided');
+		}
+
+		try {
+			const claims = await validateToken(token, {
+				issuer: expectedAuth.issuer as string,
+				audience: (expectedAuth.audience as string) || undefined,
+				jwksUri: (expectedAuth.jwksUri as string) || undefined,
+			});
+			return claims as IDataObject;
+		} catch (error) {
+			throw new WebhookAuthorizationError(
+				401,
+				error instanceof Error ? error.message : 'Token validation failed',
+			);
 		}
 	}
 }

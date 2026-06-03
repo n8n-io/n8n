@@ -1,3 +1,4 @@
+import { validateToken } from '@n8n/oauth2-token-validator';
 import jwt from 'jsonwebtoken';
 import {
 	ApplicationError,
@@ -27,6 +28,12 @@ import { mock } from 'jest-mock-extended';
 jest.mock('jsonwebtoken', () => ({
 	verify: jest.fn(),
 }));
+
+jest.mock('@n8n/oauth2-token-validator', () => ({
+	validateToken: jest.fn(),
+}));
+
+const mockValidateToken = validateToken as jest.MockedFunction<typeof validateToken>;
 
 describe('Webhook Utils', () => {
 	describe('getResponseCode', () => {
@@ -333,6 +340,82 @@ describe('Webhook Utils', () => {
 				authPropertyName,
 			);
 			expect(result).toBeUndefined();
+		});
+
+		describe('oAuth2OidcBearer', () => {
+			const buildCtx = (
+				credentials: ICredentialDataDecryptedObject | Error,
+				authorization?: string,
+			): Partial<IWebhookFunctions> => {
+				const headers = authorization ? { authorization } : {};
+				return {
+					getNodeParameter: jest.fn().mockReturnValue('oAuth2OidcBearer'),
+					getCredentials:
+						credentials instanceof Error
+							? jest.fn().mockRejectedValue(credentials)
+							: jest.fn().mockResolvedValue(credentials),
+					getRequestObject: jest.fn().mockReturnValue({ headers }),
+					getHeaderData: jest.fn().mockReturnValue(headers),
+				};
+			};
+
+			beforeEach(() => mockValidateToken.mockReset());
+
+			it('throws if no issuer is configured on the credential', async () => {
+				const ctx = buildCtx(new Error(), 'Bearer some-token');
+				await expect(
+					validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication'),
+				).rejects.toThrowError('No authentication data defined on node!');
+			});
+
+			it('throws if the introspection method is selected (not yet available)', async () => {
+				const ctx = buildCtx(
+					{ validationMethod: 'introspection', issuer: 'https://idp.test' },
+					'Bearer some-token',
+				);
+				await expect(
+					validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication'),
+				).rejects.toThrowError('Introspection validation is not yet available');
+			});
+
+			it('throws 401 when no bearer token is present', async () => {
+				const ctx = buildCtx({ validationMethod: 'jwks', issuer: 'https://idp.test' });
+				await expect(
+					validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication'),
+				).rejects.toThrowError('No bearer token provided');
+				expect(mockValidateToken).not.toHaveBeenCalled();
+			});
+
+			it('returns the validated claims for a valid token', async () => {
+				mockValidateToken.mockResolvedValue({ sub: 'user-123', groups: ['admin'] });
+				const ctx = buildCtx(
+					{ validationMethod: 'jwks', issuer: 'https://idp.test', audience: 'n8n' },
+					'Bearer valid-token',
+				);
+
+				const result = await validateWebhookAuthentication(
+					ctx as IWebhookFunctions,
+					'authentication',
+				);
+
+				expect(result).toEqual({ sub: 'user-123', groups: ['admin'] });
+				expect(mockValidateToken).toHaveBeenCalledWith('valid-token', {
+					issuer: 'https://idp.test',
+					audience: 'n8n',
+					jwksUri: undefined,
+				});
+			});
+
+			it('throws 401 when token validation fails', async () => {
+				mockValidateToken.mockRejectedValue(new Error('token expired'));
+				const ctx = buildCtx(
+					{ validationMethod: 'jwks', issuer: 'https://idp.test' },
+					'Bearer expired-token',
+				);
+				await expect(
+					validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication'),
+				).rejects.toThrowError('token expired');
+			});
 		});
 
 		it('should throw an error if basicAuth is enabled but no authentication data is defined on the node', async () => {

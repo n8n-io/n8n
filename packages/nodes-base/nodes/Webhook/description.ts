@@ -46,6 +46,15 @@ export const credentialsProperty = (
 			},
 		},
 	},
+	{
+		name: 'oAuth2OidcBearer',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['oAuth2OidcBearer'],
+			},
+		},
+	},
 ];
 
 export const inboundTriggerAuthenticationBuilderHint = {
@@ -73,6 +82,10 @@ export const authenticationProperty = (propertyName = 'authentication'): INodePr
 		{
 			name: 'None',
 			value: 'none',
+		},
+		{
+			name: 'OAuth2/OIDC Bearer Token',
+			value: 'oAuth2OidcBearer',
 		},
 	],
 	default: 'none',
