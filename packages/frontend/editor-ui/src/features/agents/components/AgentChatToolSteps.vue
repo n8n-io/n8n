@@ -46,20 +46,20 @@ function stepLabel(tc: ToolCall): string {
 }
 
 function rowSummary(tc: ToolCall): string | undefined {
-	if (tc.displaySummary) return tc.displaySummary;
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
 		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todoCount);
 	}
+	if (tc.displaySummary) return tc.displaySummary;
 	return undefined;
 }
 
 function toolDetails(tc: ToolCall): string {
-	return getToolCallDetails(tc) ?? '';
+	return getToolCallDetails(tc, i18n) ?? '';
 }
 
 function isExpandable(tc: ToolCall): boolean {
-	return isToolCallExpandable(tc);
+	return isToolCallExpandable(tc, i18n);
 }
 
 function isExpanded(tc: ToolCall): boolean {

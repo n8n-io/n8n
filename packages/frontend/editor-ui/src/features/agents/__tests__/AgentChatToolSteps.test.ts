@@ -25,10 +25,22 @@ vi.mock('@n8n/i18n', () => ({
 				return `Sub-agent · ${opts.interpolate.name}`;
 			}
 			if (key === 'agents.chat.writeTodos.label') return 'Task list';
-			if (key === 'agents.chat.writeTodos.summary' && opts?.interpolate?.count) {
+			if (key === 'agents.chat.writeTodos.summary.one' && opts?.interpolate?.count) {
+				return `${opts.interpolate.count} task`;
+			}
+			if (key === 'agents.chat.writeTodos.summary.other' && opts?.interpolate?.count) {
 				return `${opts.interpolate.count} tasks`;
 			}
-			return key;
+			const statusLabels: Record<string, string> = {
+				'agents.chat.writeTodos.status.inProgress': 'In progress',
+				'agents.chat.writeTodos.status.pending': 'Pending',
+				'agents.chat.writeTodos.status.completed': 'Completed',
+				'agents.chat.writeTodos.status.blocked': 'Blocked',
+				'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+				'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
+				'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+			};
+			return statusLabels[key] ?? key;
 		},
 	}),
 }));
@@ -61,7 +73,7 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('"nodes"');
 	});
 
-	it('expands write_todos output with label and summary', async () => {
+	it('expands write_todos output with label and plural summary', async () => {
 		const wrapper = mountSteps([
 			{
 				tool: WRITE_TODOS_TOOL_NAME,
@@ -83,6 +95,24 @@ describe('AgentChatToolSteps', () => {
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
+	});
+
+	it('uses singular summary for one write_todos task even when displaySummary is plural', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: WRITE_TODOS_TOOL_NAME,
+				toolCallId: 'tc-todos-one',
+				state: TOOL_CALL_STATE.DONE,
+				displaySummary: '1 tasks',
+				output: {
+					status: 'ok',
+					todoCount: 1,
+					todos: [{ id: 'a', content: 'Only task', status: 'pending' }],
+				},
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('1 task');
 	});
 
 	it('keeps delegate_subagent expandable behavior', async () => {

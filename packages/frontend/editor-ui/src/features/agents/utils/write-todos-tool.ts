@@ -31,12 +31,14 @@ export type WriteTodosOutput = z.infer<typeof writeTodosOutputSchema>;
 export type TodoItem = z.infer<typeof todoItemSchema>;
 export type TodoStatus = z.infer<typeof todoStatusSchema>;
 
-const STATUS_SECTION_LABEL: Record<TodoStatus, string> = {
-	in_progress: 'In progress',
-	pending: 'Pending',
-	completed: 'Completed',
-	blocked: 'Blocked',
-	cancelled: 'Cancelled',
+export type WriteTodosI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
+
+const STATUS_I18N_KEY: Record<TodoStatus, string> = {
+	in_progress: 'agents.chat.writeTodos.status.inProgress',
+	pending: 'agents.chat.writeTodos.status.pending',
+	completed: 'agents.chat.writeTodos.status.completed',
+	blocked: 'agents.chat.writeTodos.status.blocked',
+	cancelled: 'agents.chat.writeTodos.status.cancelled',
 };
 
 const STATUS_ORDER: TodoStatus[] = ['in_progress', 'pending', 'completed', 'blocked', 'cancelled'];
@@ -60,26 +62,33 @@ export function summariseWriteTodosOutput(output: unknown): string | undefined {
 	return formatWriteTodosSummaryCount(parsed.todoCount);
 }
 
-export function writeTodosLabel(i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>): string {
+export function writeTodosLabel(i18n: WriteTodosI18n): string {
 	return i18n.baseText('agents.chat.writeTodos.label');
 }
 
-export function writeTodosSummaryLabel(
-	i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>,
-	todoCount: number,
-): string {
-	return i18n.baseText('agents.chat.writeTodos.summary', {
+export function writeTodosSummaryLabel(i18n: WriteTodosI18n, todoCount: number): string {
+	const key =
+		todoCount === 1 ? 'agents.chat.writeTodos.summary.one' : 'agents.chat.writeTodos.summary.other';
+	return i18n.baseText(key, {
 		interpolate: { count: String(todoCount) },
 	});
 }
 
-function formatTodoItem(todo: TodoItem): string {
+function writeTodosStatusLabel(i18n: WriteTodosI18n, status: TodoStatus): string {
+	return i18n.baseText(STATUS_I18N_KEY[status]);
+}
+
+function formatTodoItem(todo: TodoItem, i18n: WriteTodosI18n): string {
 	const hints: string[] = [];
 	if (todo.delegateHint?.subAgentId) {
-		hints.push(`Sub-agent: ${todo.delegateHint.subAgentId}`);
+		hints.push(
+			`${i18n.baseText('agents.chat.writeTodos.hint.subAgent')}: ${todo.delegateHint.subAgentId}`,
+		);
 	}
 	if (todo.delegateHint?.expectedOutput) {
-		hints.push(`Expected output: ${todo.delegateHint.expectedOutput}`);
+		hints.push(
+			`${i18n.baseText('agents.chat.writeTodos.hint.expectedOutput')}: ${todo.delegateHint.expectedOutput}`,
+		);
 	}
 
 	const suffix = hints.length > 0 ? ` _(${hints.join('; ')})_` : '';
@@ -87,7 +96,10 @@ function formatTodoItem(todo: TodoItem): string {
 }
 
 /** Format parsed write_todos output as Markdown for the expandable details panel. */
-export function formatWriteTodosMarkdown(output: unknown): string | undefined {
+export function formatWriteTodosMarkdown(
+	output: unknown,
+	i18n: WriteTodosI18n,
+): string | undefined {
 	const parsed = parseWriteTodosOutput(output);
 	if (!parsed || parsed.todos.length === 0) return undefined;
 
@@ -95,8 +107,8 @@ export function formatWriteTodosMarkdown(output: unknown): string | undefined {
 	for (const status of STATUS_ORDER) {
 		const items = parsed.todos.filter((todo) => todo.status === status);
 		if (items.length === 0) continue;
-		sections.push(`**${STATUS_SECTION_LABEL[status]}**`);
-		sections.push(items.map(formatTodoItem).join('\n'));
+		sections.push(`**${writeTodosStatusLabel(i18n, status)}**`);
+		sections.push(items.map((todo) => formatTodoItem(todo, i18n)).join('\n'));
 	}
 
 	return sections.join('\n\n');

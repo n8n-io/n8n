@@ -2,7 +2,11 @@ import type { ToolCallState } from '../constants';
 import { TOOL_CALL_STATE } from '../constants';
 import type { ToolCall } from '../composables/agentChatMessages';
 import { isDelegateSubAgentTool, parseDelegateOutput } from './delegate-tool';
-import { formatWriteTodosMarkdown, isWriteTodosTool } from './write-todos-tool';
+import {
+	formatWriteTodosMarkdown,
+	isWriteTodosTool,
+	type WriteTodosI18n,
+} from './write-todos-tool';
 
 function isSettledState(state: ToolCallState): boolean {
 	return state === TOOL_CALL_STATE.DONE || state === TOOL_CALL_STATE.ERROR;
@@ -43,13 +47,18 @@ function formatDelegateDetails(output: unknown): string | undefined {
 	return undefined;
 }
 
-function formatSpecializedDetails(toolName: string, output: unknown): string | undefined {
+function formatSpecializedDetails(
+	toolName: string,
+	output: unknown,
+	i18n?: WriteTodosI18n,
+): string | undefined {
 	if (isDelegateSubAgentTool(toolName)) {
 		return formatDelegateDetails(output);
 	}
 
 	if (isWriteTodosTool(toolName)) {
-		return formatWriteTodosMarkdown(output);
+		if (!i18n) return undefined;
+		return formatWriteTodosMarkdown(output, i18n);
 	}
 
 	return formatGenericToolOutput(output);
@@ -61,11 +70,15 @@ function formatSpecializedDetails(toolName: string, output: unknown): string | u
  */
 export function getToolCallDetails(
 	tc: Pick<ToolCall, 'tool' | 'output' | 'state'>,
+	i18n?: WriteTodosI18n,
 ): string | undefined {
 	if (!isSettledState(tc.state)) return undefined;
-	return formatSpecializedDetails(tc.tool, tc.output);
+	return formatSpecializedDetails(tc.tool, tc.output, i18n);
 }
 
-export function isToolCallExpandable(tc: Pick<ToolCall, 'tool' | 'output' | 'state'>): boolean {
-	return getToolCallDetails(tc) !== undefined;
+export function isToolCallExpandable(
+	tc: Pick<ToolCall, 'tool' | 'output' | 'state'>,
+	i18n?: WriteTodosI18n,
+): boolean {
+	return getToolCallDetails(tc, i18n) !== undefined;
 }

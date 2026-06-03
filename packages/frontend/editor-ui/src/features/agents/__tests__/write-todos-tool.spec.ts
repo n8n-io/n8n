@@ -7,7 +7,32 @@ import {
 	summariseWriteTodosOutput,
 	writeTodosLabel,
 	writeTodosSummaryLabel,
+	type WriteTodosI18n,
 } from '../utils/write-todos-tool';
+
+const STATUS_LABELS: Record<string, string> = {
+	'agents.chat.writeTodos.status.inProgress': 'In progress',
+	'agents.chat.writeTodos.status.pending': 'Pending',
+	'agents.chat.writeTodos.status.completed': 'Completed',
+	'agents.chat.writeTodos.status.blocked': 'Blocked',
+	'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+	'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
+	'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
+};
+
+function createWriteTodosI18n(): WriteTodosI18n {
+	return {
+		baseText: (key: string, opts?: { interpolate?: { count?: string } }) => {
+			if (key === 'agents.chat.writeTodos.summary.one' && opts?.interpolate?.count) {
+				return `${opts.interpolate.count} task`;
+			}
+			if (key === 'agents.chat.writeTodos.summary.other' && opts?.interpolate?.count) {
+				return `${opts.interpolate.count} tasks`;
+			}
+			return STATUS_LABELS[key] ?? key;
+		},
+	} as WriteTodosI18n;
+}
 
 describe('write-todos-tool', () => {
 	describe('isWriteTodosTool', () => {
@@ -61,27 +86,32 @@ describe('write-todos-tool', () => {
 	});
 
 	describe('formatWriteTodosMarkdown', () => {
+		const i18n = createWriteTodosI18n();
+
 		it('groups todos by status and includes delegate hints', () => {
-			const markdown = formatWriteTodosMarkdown({
-				status: 'ok',
-				todoCount: 2,
-				todos: [
-					{
-						id: 'research',
-						content: 'Research auth options',
-						status: 'in_progress',
-						delegateHint: {
-							subAgentId: 'inline',
-							expectedOutput: 'Short comparison',
+			const markdown = formatWriteTodosMarkdown(
+				{
+					status: 'ok',
+					todoCount: 2,
+					todos: [
+						{
+							id: 'research',
+							content: 'Research auth options',
+							status: 'in_progress',
+							delegateHint: {
+								subAgentId: 'inline',
+								expectedOutput: 'Short comparison',
+							},
 						},
-					},
-					{
-						id: 'synthesize',
-						content: 'Synthesize findings',
-						status: 'pending',
-					},
-				],
-			});
+						{
+							id: 'synthesize',
+							content: 'Synthesize findings',
+							status: 'pending',
+						},
+					],
+				},
+				i18n,
+			);
 
 			expect(markdown).toContain('**In progress**');
 			expect(markdown).toContain('- Research auth options');
@@ -93,27 +123,36 @@ describe('write-todos-tool', () => {
 
 		it('returns undefined for empty todo lists', () => {
 			expect(
-				formatWriteTodosMarkdown({
-					status: 'ok',
-					todoCount: 0,
-					todos: [],
-				}),
+				formatWriteTodosMarkdown(
+					{
+						status: 'ok',
+						todoCount: 0,
+						todos: [],
+					},
+					i18n,
+				),
 			).toBeUndefined();
 		});
 	});
 
 	describe('i18n helpers', () => {
 		const i18n = {
-			baseText: (key: string, opts?: { interpolate?: { count?: string } }) =>
-				opts?.interpolate?.count ? `${key}:${opts.interpolate.count}` : key,
-		} as unknown as Parameters<typeof writeTodosLabel>[0];
+			baseText: (key: string, opts?: { interpolate?: { count?: string } }) => {
+				if (opts?.interpolate?.count) return `${key}:${opts.interpolate.count}`;
+				return key;
+			},
+		} as WriteTodosI18n;
 
 		it('uses the task list label key', () => {
 			expect(writeTodosLabel(i18n)).toBe('agents.chat.writeTodos.label');
 		});
 
-		it('uses the summary label key with count interpolation', () => {
-			expect(writeTodosSummaryLabel(i18n, 4)).toBe('agents.chat.writeTodos.summary:4');
+		it('uses the singular summary key for one task', () => {
+			expect(writeTodosSummaryLabel(i18n, 1)).toBe('agents.chat.writeTodos.summary.one:1');
+		});
+
+		it('uses the plural summary key for multiple tasks', () => {
+			expect(writeTodosSummaryLabel(i18n, 4)).toBe('agents.chat.writeTodos.summary.other:4');
 		});
 	});
 });
