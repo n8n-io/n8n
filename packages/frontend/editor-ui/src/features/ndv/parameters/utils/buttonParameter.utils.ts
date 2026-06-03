@@ -1,6 +1,5 @@
 import type { Schema } from '@/Interface';
-import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { ApplicationError, type INode, type INodeExecutionData } from 'n8n-workflow';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
@@ -20,14 +19,13 @@ export type TextareaRowData = {
 	linesToRowsMap: number[][];
 };
 
-export function getParentNodes(workflowDocumentId: WorkflowDocumentId) {
+export function getParentNodes(workflowDocumentId: WorkflowDocumentId, activeNode: INode | null) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
-	const activeNode = useNDVStore().activeNode;
 
 	if (!activeNode) return [];
 
 	return workflowDocumentStore
-		.getParentNodesByDepth(activeNode?.name)
+		.getParentNodesByDepth(activeNode.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
@@ -35,8 +33,8 @@ export function getParentNodes(workflowDocumentId: WorkflowDocumentId) {
 		.filter((n) => n !== null);
 }
 
-export function getSchemas(workflowDocumentId: WorkflowDocumentId) {
-	const parentNodes = getParentNodes(workflowDocumentId);
+export function getSchemas(workflowDocumentId: WorkflowDocumentId, activeNode: INode | null) {
+	const parentNodes = getParentNodes(workflowDocumentId, activeNode);
 	const parentNodesNames = parentNodes.map((node) => node?.name);
 	const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes
@@ -187,16 +185,18 @@ export async function generateCodeForAiTransform(
 	prompt: string,
 	path: string,
 	workflowDocumentId: WorkflowDocumentId,
+	activeNode: INode | null,
+	ndvPushRef: string,
 	retries = 1,
 ) {
-	const schemas = getSchemas(workflowDocumentId);
+	const schemas = getSchemas(workflowDocumentId, activeNode);
 
 	const payload: AskAiRequest.RequestPayload = {
 		question: prompt,
 		context: {
 			schema: schemas.parentNodesSchemas,
 			inputSchema: schemas.inputSchema!,
-			ndvPushRef: useNDVStore().pushRef,
+			ndvPushRef,
 			pushRef: useRootStore().pushRef,
 		},
 		forNode: 'transform',

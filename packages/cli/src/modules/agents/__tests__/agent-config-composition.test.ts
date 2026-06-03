@@ -44,9 +44,7 @@ describe('decomposeJsonConfig', () => {
 			name: 'A',
 			model: 'anthropic/claude',
 			instructions: 'x',
-			integrations: [
-				{ type: 'schedule', active: true, cronExpression: '0 9 * * *', wakeUpPrompt: 'go' },
-			],
+			integrations: [{ type: 'telegram', credentialId: 'cred-1' }],
 		} as unknown as AgentJsonConfig;
 		const { schemaConfig, integrations } = decomposeJsonConfig(input);
 		expect(schemaConfig).not.toHaveProperty('integrations');

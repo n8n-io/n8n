@@ -42,7 +42,7 @@ interface Props
 	 */
 	enableSlideIn?: boolean;
 	/**
-	 * Whether to suppress auto-focus behavior when the content includes focusable element
+	 * Whether to suppress auto-focus behavior when the popover opens or closes.
 	 */
 	suppressAutoFocus?: boolean;
 	/**
@@ -108,6 +108,12 @@ function handleOpenAutoFocus(e: Event) {
 	}
 }
 
+function handleCloseAutoFocus(e: Event) {
+	if (props.suppressAutoFocus) {
+		e.preventDefault();
+	}
+}
+
 /**
  * Handles outside interaction events to prevent Reka UI from interfering
  * with Element Plus dropdown selections. Element Plus teleports dropdowns
@@ -155,6 +161,7 @@ watch(
 				:force-mount="forceMount"
 				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"
+				@close-auto-focus="handleCloseAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
 			>

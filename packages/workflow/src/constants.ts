@@ -121,6 +121,13 @@ export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.aliba
 export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
 export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 
+// Trigger types that execute with a manual-user identity. Used to gate
+// features (like private credentials) that depend on per-user runtime state.
+export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
+	MANUAL_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+];
+
 export const AI_VENDOR_NODE_TYPES = [
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	ANTHROPIC_LANGCHAIN_NODE_TYPE,
