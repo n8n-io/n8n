@@ -16,13 +16,12 @@ export default mergeConfig(
 				// Workspace deps CJS-require zod while tests ESM-import it, so
 				// `schema instanceof ZodSchema` in src/converters/tool.ts fails across the
 				// two. Pin the top-level `zod` import to the CJS file so both share one
-				// module instance. Subpaths like `zod/v4` keep their normal resolution.
+				// module instance. `require.resolve` follows zod's `require` export condition,
+				// so it tracks the installed (catalog) version automatically. Subpaths like
+				// `zod/v4` keep their normal resolution.
 				{
 					find: /^zod$/,
-					replacement: path.resolve(
-						__dirname,
-						'../../../node_modules/.pnpm/zod@3.25.67/node_modules/zod/dist/cjs/index.js',
-					),
+					replacement: require.resolve('zod'),
 				},
 			],
 		},

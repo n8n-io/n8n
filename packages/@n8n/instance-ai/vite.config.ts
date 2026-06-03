@@ -50,13 +50,12 @@ export default mergeConfig(
 				// Workspace deps CJS-require zod while test files ESM-import it, so
 				// `instanceof` checks (e.g. in sanitize-mcp-schemas) fail across the two
 				// module instances. Pin the top-level `zod` import to the CJS file so all
-				// code paths share one instance. Subpaths like `zod/v4` resolve normally.
+				// code paths share one instance. `require.resolve` follows zod's `require`
+				// export condition, so it tracks the installed (catalog) version
+				// automatically. Subpaths like `zod/v4` resolve normally.
 				{
 					find: /^zod$/,
-					replacement: path.resolve(
-						__dirname,
-						'../../../node_modules/.pnpm/zod@3.25.67/node_modules/zod/dist/cjs/index.js',
-					),
+					replacement: require.resolve('zod'),
 				},
 			],
 		},
