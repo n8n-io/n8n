@@ -1,5 +1,4 @@
-import type { CredentialsEntity, User } from '@n8n/db';
-import { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
