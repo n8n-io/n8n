@@ -4,7 +4,7 @@
 	"workflowPreview.ariaLabel.ready": "Workflow ready to open",
 	"workflowPreview.error.detailsUnavailable": "Preview couldn't load. Open the workflow in n8n to view it.",
 	"workflowPreview.error.invalidWorkflow": "Preview couldn't load because the workflow data is incomplete. Open the workflow in n8n to view it.",
-	"workflowPreview.error.previewUnavailable": "Preview couldn't load. Open the workflow in n8n to view it.",
+	"workflowPreview.error.previewUnavailable": "Looks like your mcp client doesn't support workflow previews. Open the workflow in n8n to view it.",
 	"workflowPreview.fallbackDescription": "Open the workflow in n8n to view and edit it.",
 	"workflowPreview.fallbackTitle": "Workflow created",
 	"workflowPreview.frameTitle": "n8n workflow preview",
