@@ -132,6 +132,24 @@ export function useWorkflowDocumentNodeGroups() {
 		applyUpsertGroup({ ...group, collapsed }, CHANGE_ACTION.UPDATE);
 	}
 
+	function addPinnedNodeToGroup(id: string, nodeId: string) {
+		const group = groups.value.get(id);
+		// Only members can be pinned, and only once.
+		if (!group?.nodeIds.includes(nodeId)) return;
+		const pinned = group.pinnedNodeIds ?? [];
+		if (pinned.includes(nodeId)) return;
+		applyUpsertGroup({ ...group, pinnedNodeIds: [...pinned, nodeId] }, CHANGE_ACTION.UPDATE);
+	}
+
+	function removePinnedNodeFromGroup(id: string, nodeId: string) {
+		const group = groups.value.get(id);
+		if (!group?.pinnedNodeIds?.includes(nodeId)) return;
+		applyUpsertGroup(
+			{ ...group, pinnedNodeIds: group.pinnedNodeIds.filter((pinnedId) => pinnedId !== nodeId) },
+			CHANGE_ACTION.UPDATE,
+		);
+	}
+
 	function addNodesToGroup(id: string, nodeIds: string[]) {
 		const group = groups.value.get(id);
 		if (!group) return;
@@ -175,7 +193,11 @@ export function useWorkflowDocumentNodeGroups() {
 			if (remaining.length === 0) {
 				applyDeleteGroup(group.id);
 			} else {
-				applyUpsertGroup({ ...group, nodeIds: remaining }, CHANGE_ACTION.UPDATE);
+				const pinned = group.pinnedNodeIds?.filter((id) => id !== nodeId);
+				applyUpsertGroup(
+					{ ...group, nodeIds: remaining, pinnedNodeIds: pinned },
+					CHANGE_ACTION.UPDATE,
+				);
 			}
 		}
 	}
@@ -194,6 +216,8 @@ export function useWorkflowDocumentNodeGroups() {
 		updateName,
 		deleteGroup,
 		setGroupCollapsed,
+		addPinnedNodeToGroup,
+		removePinnedNodeFromGroup,
 		addNodesToGroup,
 		replaceNodeInGroup,
 		getGroupById,

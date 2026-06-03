@@ -92,6 +92,22 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.data?.nodeGroups).toEqual(nodeGroups);
 		});
 
+		test('should preserve pinned node ids on node groups', () => {
+			const nodeGroups = [
+				{
+					id: 'group1',
+					name: 'Data Fetching',
+					nodeIds: ['node1', 'node2'],
+					pinnedNodeIds: ['node1'],
+				},
+			];
+
+			const result = UpdateWorkflowDto.safeParse({ nodeGroups });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.nodeGroups).toEqual(nodeGroups);
+		});
+
 		test('should transform tags from objects to string array', () => {
 			const result = UpdateWorkflowDto.safeParse({
 				tags: [

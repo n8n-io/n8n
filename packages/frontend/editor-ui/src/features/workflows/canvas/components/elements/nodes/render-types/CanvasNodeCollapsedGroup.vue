@@ -2,9 +2,14 @@
 import { computed } from 'vue';
 import { Position } from '@vue-flow/core';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIconButton, type ActionDropdownItem } from '@n8n/design-system';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { getNodeIconSource, type NodeIconSource } from '@/app/utils/nodeIcon';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.types';
 import type { CanvasElementPortWithRenderData } from '../../../../canvas.types';
@@ -20,6 +25,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStore();
+const nodeTypesStore = useNodeTypesStore();
 const { render, isReadOnly, isSelected } = useCanvasNode();
 
 const options = computed(() =>
@@ -70,6 +77,76 @@ function noValidConnection(): boolean {
 	return false;
 }
 
+const currentGroup = computed(() => {
+	const groupId = options.value?.groupId;
+	return groupId ? workflowDocumentStore.value.getGroupById(groupId) : undefined;
+});
+
+function iconSourceForNodeId(nodeId: string): NodeIconSource | undefined {
+	const node = workflowDocumentStore.value.getNodeById(nodeId);
+	if (!node) return undefined;
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	return getNodeIconSource(nodeType, node, workflowDocumentStore.value.getExpressionHandler());
+}
+
+// Execution-order rank: a node executes after all its main-connection
+// ancestors, so a node always has strictly more ancestors than any of its
+// predecessors — making the ancestor count a valid topological sort key.
+function executionRank(nodeName: string): number {
+	return workflowDocumentStore.value.getParentNodes(nodeName, NodeConnectionTypes.Main, -1).length;
+}
+
+interface PinnedNodeDisplay {
+	id: string;
+	name: string;
+	iconSource: NodeIconSource | undefined;
+}
+
+// Nodes the user chose to surface on the box, shown as icon + name in
+// execution order (not the order they were pinned).
+const pinnedNodes = computed<PinnedNodeDisplay[]>(() => {
+	const group = currentGroup.value;
+	if (!group?.pinnedNodeIds?.length) return [];
+	const store = workflowDocumentStore.value;
+	const entries: Array<PinnedNodeDisplay & { rank: number }> = [];
+	for (const id of group.pinnedNodeIds) {
+		const node = store.getNodeById(id);
+		if (!node) continue;
+		entries.push({
+			id,
+			name: node.name,
+			iconSource: iconSourceForNodeId(id),
+			rank: executionRank(node.name),
+		});
+	}
+	// Array.sort is stable, so equal-rank nodes keep their pinned order.
+	entries.sort((a, b) => a.rank - b.rank);
+	return entries.map(({ id, name, iconSource }) => ({ id, name, iconSource }));
+});
+
+// Direct member nodes (sub-nodes excluded) not already pinned, in execution
+// order — the options the "+" picker offers.
+const pickableItems = computed<Array<ActionDropdownItem<string>>>(() => {
+	const group = currentGroup.value;
+	if (!group) return [];
+	const store = workflowDocumentStore.value;
+	const pinned = new Set(group.pinnedNodeIds ?? []);
+	const items: Array<ActionDropdownItem<string> & { rank: number }> = [];
+	for (const nodeId of group.nodeIds) {
+		if (pinned.has(nodeId)) continue;
+		const node = store.getNodeById(nodeId);
+		if (!node) continue;
+		// A sub-node (model/memory/tool) feeds its host via a non-main OUTGOING
+		// connection, so it has non-main children; a regular node does not.
+		if (store.getChildNodes(node.name, 'ALL_NON_MAIN', 1).length > 0) continue;
+		items.push({ id: nodeId, label: node.name, rank: executionRank(node.name) });
+	}
+	items.sort((a, b) => a.rank - b.rank);
+	return items.map(({ id, label }) => ({ id, label }));
+});
+
+const canPickNodes = computed(() => !isReadOnly.value && pickableItems.value.length > 0);
+
 function onExpand() {
 	const groupId = options.value?.groupId;
 	if (!groupId || isReadOnly.value) return;
@@ -78,6 +155,22 @@ function onExpand() {
 
 function onContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
+}
+
+function onPickNode(nodeId: string) {
+	const groupId = options.value?.groupId;
+	if (!groupId) return;
+	workflowDocumentStore.value.addPinnedNodeToGroup(groupId, nodeId);
+}
+
+function onOpenNode(name: string) {
+	ndvStore.value.setActiveNodeName(name, 'other');
+}
+
+function onUnpinNode(nodeId: string) {
+	const groupId = options.value?.groupId;
+	if (!groupId) return;
+	workflowDocumentStore.value.removePinnedNodeFromGroup(groupId, nodeId);
 }
 </script>
 
@@ -108,29 +201,94 @@ function onContextMenu(event: MouseEvent) {
 			:is-valid-connection="noValidConnection"
 		/>
 
-		<N8nIconButton
-			v-if="!isReadOnly"
-			:class="$style.expandToggle"
-			variant="ghost"
-			size="small"
-			icon="chevron-right"
-			:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
-			data-test-id="canvas-collapsed-group-expand"
-			@click.stop="onExpand"
-			@mousedown.stop
-		/>
-		<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{
-			options.title
-		}}</span>
+		<div :class="$style.header" :style="{ minHeight: `${GROUP_HEADER_HEIGHT}px` }">
+			<N8nIconButton
+				v-if="!isReadOnly"
+				:class="$style.expandToggle"
+				variant="ghost"
+				size="small"
+				icon="chevron-right"
+				:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
+				data-test-id="canvas-collapsed-group-expand"
+				@click.stop="onExpand"
+				@mousedown.stop
+			/>
+			<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{
+				options.title
+			}}</span>
+			<!-- Stop propagation on the wrapper (not the button): the dropdown's
+				trigger is a descendant and opens first, then we halt the event so it
+				doesn't reach Vue Flow's node drag/select. Stopping on the button
+				itself would swallow the click before the trigger sees it. -->
+			<div
+				v-if="canPickNodes"
+				:class="$style.pinButton"
+				@pointerdown.stop
+				@mousedown.stop
+				@click.stop
+				@dblclick.stop
+			>
+				<N8nActionDropdown
+					:items="pickableItems"
+					placement="bottom-end"
+					data-test-id="canvas-collapsed-group-pin"
+					@select="onPickNode"
+				>
+					<template #activator>
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="plus"
+							:aria-label="i18n.baseText('canvas.nodeGroup.pinNode')"
+						/>
+					</template>
+					<template #menuItem="item">
+						<span :class="$style.menuItem">
+							<NodeIcon :icon-source="iconSourceForNodeId(item.id)" :size="16" />
+							<span :class="$style.menuItemLabel">{{ item.label }}</span>
+						</span>
+					</template>
+				</N8nActionDropdown>
+			</div>
+		</div>
+
+		<ul
+			v-if="pinnedNodes.length"
+			:class="$style.pinnedList"
+			data-test-id="canvas-collapsed-group-pinned"
+		>
+			<li
+				v-for="pinned in pinnedNodes"
+				:key="pinned.id"
+				:class="$style.pinnedItem"
+				data-test-id="canvas-collapsed-group-pinned-item"
+				@pointerdown.stop
+				@mousedown.stop
+				@click.stop="onOpenNode(pinned.name)"
+			>
+				<NodeIcon :icon-source="pinned.iconSource" :size="20" />
+				<span :class="$style.pinnedName">{{ pinned.name }}</span>
+				<N8nIconButton
+					v-if="!isReadOnly"
+					:class="$style.unpinButton"
+					variant="ghost"
+					size="small"
+					icon="x"
+					:aria-label="i18n.baseText('canvas.nodeGroup.unpinNode')"
+					data-test-id="canvas-collapsed-group-unpin"
+					@click.stop="onUnpinNode(pinned.id)"
+					@mousedown.stop
+					@pointerdown.stop
+				/>
+			</li>
+		</ul>
 	</div>
 </template>
 
 <style lang="scss" module>
 .collapsedGroup {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: 0 var(--spacing--sm);
+	flex-direction: column;
 	box-sizing: border-box;
 	background: var(--background--surface);
 	border: var(--border);
@@ -145,12 +303,77 @@ function onContextMenu(event: MouseEvent) {
 		var(--canvas--color--selected-transparent);
 }
 
-.expandToggle {
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: 0 var(--spacing--sm);
+}
+
+.expandToggle,
+.pinButton {
 	flex-shrink: 0;
 }
 
 .title {
 	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pinnedList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	margin: 0;
+	padding: 0 var(--spacing--sm) var(--spacing--xs);
+	list-style: none;
+}
+
+.pinnedItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--sm);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color--foreground--tint-2);
+	}
+}
+
+.pinnedName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.unpinButton {
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity 0.1s ease-in;
+}
+
+.pinnedItem:hover .unpinButton,
+.unpinButton:focus-visible {
+	opacity: 1;
+}
+
+.menuItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.menuItemLabel {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;

@@ -116,6 +116,43 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('pinned nodes', () => {
+		it('pins a member node', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'a');
+			expect(nodeGroups.getGroupById(group.id)?.pinnedNodeIds).toEqual(['a']);
+		});
+
+		it('preserves order and does not pin the same node twice', () => {
+			const group = nodeGroups.createGroup(['a', 'b', 'c'], 'X');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'b');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'a');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'b');
+			expect(nodeGroups.getGroupById(group.id)?.pinnedNodeIds).toEqual(['b', 'a']);
+		});
+
+		it('does not pin a node that is not a group member', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'z');
+			expect(nodeGroups.getGroupById(group.id)?.pinnedNodeIds).toBeUndefined();
+		});
+
+		it('unpins a node', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'a');
+			nodeGroups.removePinnedNodeFromGroup(group.id, 'a');
+			expect(nodeGroups.getGroupById(group.id)?.pinnedNodeIds).toEqual([]);
+		});
+
+		it('drops a pinned node when it is removed from the group', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.addPinnedNodeToGroup(group.id, 'a');
+			nodeGroups.removeNodeFromGroups('a');
+			expect(nodeGroups.getGroupById(group.id)?.nodeIds).toEqual(['b']);
+			expect(nodeGroups.getGroupById(group.id)?.pinnedNodeIds).toEqual([]);
+		});
+	});
+
 	describe('addNodesToGroup', () => {
 		it('appends new node ids to an existing group', () => {
 			const group = nodeGroups.createGroup(['a', 'b'], 'X');

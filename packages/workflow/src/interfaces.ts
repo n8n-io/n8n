@@ -3063,6 +3063,9 @@ export interface IWorkflowGroup {
 	/** When true the group is rendered as a compact box and its member nodes
 	 * are hidden on the canvas. Defaults to expanded (undefined / false). */
 	collapsed?: boolean;
+	/** Member node ids the user has chosen to surface on the collapsed box
+	 * (shown as an icon + name list). Subset of nodeIds, order preserved. */
+	pinnedNodeIds?: string[];
 }
 
 export interface IWorkflowBase {

@@ -99,6 +99,7 @@ const workflowGroupSchema = z.object({
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),
 	collapsed: z.boolean().optional(),
+	pinnedNodeIds: z.array(z.string().min(1)).optional(),
 });
 
 export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
