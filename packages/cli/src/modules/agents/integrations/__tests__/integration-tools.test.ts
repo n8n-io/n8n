@@ -442,6 +442,13 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('type: "radio_select"');
 		expect(tool.description).toContain('For radio-style choices');
 		expect(tool.description).toContain('Do not provide platform-native component payloads');
+		expect(tool.description).toContain('Generic card examples');
+		expect(tool.description).toContain('"card": {');
+		expect(tool.description).toContain('"type": "radio_select"');
+		expect(tool.description).toContain('"type": "button"');
+		expect(tool.description).toContain('Never send message.blocks');
+		expect(tool.description).toContain('radio_buttons');
+		expect(tool.description).toContain('action_id');
 	});
 
 	it('action tool schema rejects platform-shaped text objects in message cards', () => {

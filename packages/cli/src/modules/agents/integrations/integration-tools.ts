@@ -241,7 +241,7 @@ const cardComponentSchema = z.union([
 
 const messageSchema = z
 	.object({
-		text: z.string().optional(),
+		text: z.string().optional().describe('Plain-text fallback or summary for the message.'),
 		card: z
 			.object({
 				awaitResponse: z.boolean().optional(),
@@ -250,9 +250,13 @@ const messageSchema = z
 				components: z.array(cardComponentSchema).min(1),
 			})
 			.strict()
+			.describe(
+				'Generic card payload rendered by the integration. Use generic components only, not platform-native message payloads.',
+			)
 			.optional(),
 	})
-	.strict();
+	.strict()
+	.describe('Generic message payload. Use message.text plus optional message.card only.');
 
 const noInputSchema = z.object({}).strict();
 
@@ -1000,9 +1004,83 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
 		'For radio-style choices, use { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }.',
 		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-native component payloads, formatted text objects, or attachments; rendering is handled internally.',
+		...buildGenericCardGuidance(),
 		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
 		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
+}
+
+function buildGenericCardGuidance(): string[] {
+	return [
+		'Generic card examples:',
+		[
+			'Radio choice card:',
+			'```json',
+			JSON.stringify(
+				{
+					action: 'respond',
+					input: {
+						message: {
+							text: 'Acme Executive Briefing — Next Steps',
+							card: {
+								title: 'Acme Corporation — Executive Briefing Next Steps',
+								components: [
+									{
+										type: 'section',
+										text: '30X Expansion Briefing ($3.75M) — Internal owner: Paul G | Briefing contact: Mike D\n\nWhat should happen next?',
+									},
+									{ type: 'divider' },
+									{
+										type: 'radio_select',
+										id: 'next_step_selection',
+										label: 'Next step',
+										options: [
+											{
+												label: 'Schedule exec briefing prep call with Paul G',
+												value: 'schedule_prep_call',
+											},
+											{
+												label: 'Draft briefing agenda doc for Mike D',
+												value: 'draft_briefing_doc',
+											},
+										],
+									},
+								],
+							},
+						},
+					},
+				},
+				null,
+				2,
+			),
+			'```',
+		].join('\n'),
+		[
+			'Button card:',
+			'```json',
+			JSON.stringify(
+				{
+					action: 'respond',
+					input: {
+						message: {
+							text: 'Approve or revise the briefing draft',
+							card: {
+								components: [
+									{ type: 'section', text: 'Review the briefing draft.' },
+									{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+									{ type: 'button', label: 'Revise', value: 'revise', style: 'default' },
+								],
+							},
+						},
+					},
+				},
+				null,
+				2,
+			),
+			'```',
+		].join('\n'),
+		'Never send message.blocks, components of type actions, elements arrays, action_id, radio_buttons, or formatted text objects such as { type: "plain_text", text: "..." } or { type: "mrkdwn", text: "..." }.',
+	];
 }
 
 function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
