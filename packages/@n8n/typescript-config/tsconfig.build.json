@@ -3,7 +3,8 @@
 		"types": ["node"],
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
-		"declaration": true
+		"declaration": true,
+		"noCheck": true
 	},
 	"tsc-alias": {
 		"replacers": {

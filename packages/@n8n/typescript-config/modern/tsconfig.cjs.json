@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"ignoreDeprecations": "6.0",
 		"composite": true,
+		"noCheck": true,
 		"module": "umd",
 		"moduleResolution": "node",
 		"verbatimModuleSyntax": false,

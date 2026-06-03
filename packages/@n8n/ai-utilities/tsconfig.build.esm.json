@@ -4,7 +4,8 @@
 		"rootDir": "src",
 		"outDir": "dist/esm",
 		"tsBuildInfoFile": "dist/esm/typecheck.tsbuildinfo",
-		"declaration": true
+		"declaration": true,
+		"noCheck": true
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "src/**/__tests__/**", "src/**/*.test.ts", "integration-tests/**"],
