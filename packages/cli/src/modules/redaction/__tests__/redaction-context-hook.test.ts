@@ -20,77 +20,86 @@ describe('RedactionContextHook', () => {
 			}),
 		});
 
-	const setEnforcement = (enforcement: RedactionFloor | undefined) => {
-		service.buildContext.mockResolvedValue(enforcement ? { enforcement } : undefined);
+	const setFloor = (floor: RedactionFloor) => {
+		service.get.mockResolvedValue(floor);
 	};
+
+	const expectChannels = (production: boolean, manual: boolean) => ({
+		contextUpdate: { redaction: { version: 2, production, manual } },
+	});
 
 	beforeEach(() => {
 		service = mock<InstanceRedactionEnforcementService>();
 		hook = new RedactionContextHook(service);
 	});
 
-	describe('when enforcement is active', () => {
-		it('emits "all" when floor is "all"', async () => {
-			setEnforcement('all');
+	describe("floor 'off' — workflow setting applies", () => {
+		it.each([
+			['none', false, false],
+			['non-manual', true, false],
+			['all', true, true],
+		] as const)('policy %s → production:%s manual:%s', async (policy, production, manual) => {
+			setFloor('off');
 
-			const result = await hook.execute(buildOptions('none'));
+			const result = await hook.execute(buildOptions(policy));
 
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'all' } },
-			});
+			expect(result).toEqual(expectChannels(production, manual));
 		});
 
-		it('emits "non-manual" when floor is "production"', async () => {
-			setEnforcement('production');
+		it('clamps a manual-only workflow policy up to production+manual', async () => {
+			setFloor('off');
 
-			const result = await hook.execute(buildOptions('none'));
+			const result = await hook.execute(buildOptions('manual-only'));
 
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'non-manual' } },
-			});
+			expect(result).toEqual(expectChannels(true, true));
 		});
 
-		it('overrides the workflow-configured policy', async () => {
-			setEnforcement('all');
-
-			const result = await hook.execute(buildOptions('non-manual'));
-
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'all' } },
-			});
-		});
-	});
-
-	describe('when enforcement is inactive', () => {
-		it('falls back to workflow.settings.redactionPolicy when floor is "off"', async () => {
-			setEnforcement('off');
-
-			const result = await hook.execute(buildOptions('non-manual'));
-
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'non-manual' } },
-			});
-		});
-
-		it('falls back to workflow.settings.redactionPolicy when buildContext returns undefined', async () => {
-			setEnforcement(undefined);
-
-			const result = await hook.execute(buildOptions('all'));
-
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'all' } },
-			});
-		});
-
-		it('defaults to "none" when workflow has no redactionPolicy setting', async () => {
-			setEnforcement(undefined);
+		it('defaults to no redaction when workflow has no policy', async () => {
+			setFloor('off');
 
 			const result = await hook.execute(buildOptions(undefined));
 
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'none' } },
-			});
+			expect(result).toEqual(expectChannels(false, false));
 		});
+	});
+
+	describe("floor 'production' — production is the minimum", () => {
+		it('redacts production but not manual when workflow has no policy', async () => {
+			setFloor('production');
+
+			const result = await hook.execute(buildOptions('none'));
+
+			expect(result).toEqual(expectChannels(true, false));
+		});
+
+		it('preserves a stricter workflow policy that also redacts manual', async () => {
+			setFloor('production');
+
+			const result = await hook.execute(buildOptions('all'));
+
+			expect(result).toEqual(expectChannels(true, true));
+		});
+
+		it('stays production-only when workflow matches the floor', async () => {
+			setFloor('production');
+
+			const result = await hook.execute(buildOptions('non-manual'));
+
+			expect(result).toEqual(expectChannels(true, false));
+		});
+	});
+
+	describe("floor 'all' — both channels enforced regardless of workflow", () => {
+		it.each(['none', 'non-manual', 'manual-only', 'all', undefined] as const)(
+			'redacts both channels for workflow policy %s',
+			async (policy) => {
+				setFloor('all');
+
+				const result = await hook.execute(buildOptions(policy));
+
+				expect(result).toEqual(expectChannels(true, true));
+			},
+		);
 	});
 
 	describe('hook metadata', () => {

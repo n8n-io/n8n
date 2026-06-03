@@ -1,4 +1,3 @@
-import type { RedactionFloor } from '@n8n/api-types';
 import {
 	ContextEstablishmentHook,
 	ContextEstablishmentOptions,
@@ -6,22 +5,9 @@ import {
 	HookDescription,
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
-import type { WorkflowSettings } from 'n8n-workflow';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
-
-/**
- * | floor      | policy       |
- * |------------|--------------|
- * | all        | 'all'        |
- * | production | 'non-manual' |
- *
- * `off` is never passed here — it is filtered out by the caller, which falls
- * back to the workflow's own redaction policy when enforcement is off.
- */
-function deriveEnforcedPolicy(enforcement: RedactionFloor): WorkflowSettings.RedactionPolicy {
-	return enforcement === 'all' ? 'all' : 'non-manual';
-}
+import { policyToChannels } from './redaction-channels';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,
@@ -40,19 +26,38 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 		return false;
 	}
 
+	/**
+	 * Captures the effective redaction snapshot per channel at execution time.
+	 *
+	 * The instance floor is a minimum, not an override: each channel is redacted when
+	 * the workflow setting redacts it OR the floor enforces it (strictest-per-channel).
+	 * A workflow can be equal to or stricter than the floor, never weaker.
+	 */
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const context = await this.instanceRedactionEnforcementService.buildContext();
+		const floor = await this.instanceRedactionEnforcementService.get();
+		const workflow = policyToChannels(options.workflow.settings?.redactionPolicy ?? 'none');
 
-		const policy: WorkflowSettings.RedactionPolicy =
-			context && context.enforcement !== 'off'
-				? deriveEnforcedPolicy(context.enforcement)
-				: (options.workflow.settings?.redactionPolicy ?? 'none');
+		const floorEnforcesProduction = floor !== 'off';
+		const floorEnforcesManual = floor === 'all';
+
+		const manual = workflow.manual || floorEnforcesManual;
+		// Manual redaction implies production redaction (IAM-697 + floor normalization
+		// already guarantee this; the clamp keeps the captured snapshot valid regardless).
+		//
+		// Migration note: a legacy workflow persisted with the now-disallowed
+		// `manual-only` policy (manual without production) is captured here as
+		// `{ production: true, manual: true }`, i.e. upgraded to `all`. New executions of
+		// such a workflow therefore redact production data that the old `manual-only`
+		// resolution left revealable. This is the intended fail-safe direction of the
+		// manual-implies-production invariant; past executions keep their V1 snapshot.
+		const production = workflow.production || floorEnforcesProduction || manual;
 
 		return {
 			contextUpdate: {
 				redaction: {
-					version: 1,
-					policy,
+					version: 2,
+					production,
+					manual,
 				},
 			},
 		};

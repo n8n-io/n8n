@@ -18,14 +18,14 @@ export class InstanceRedactionEnforcementService {
 		private readonly logger: Logger,
 	) {}
 
+	/**
+	 * Resolves the instance redaction floor. Returns `'off'` when enforcement is
+	 * disabled or no value is stored. The floor is stored as the enum directly,
+	 * so no translation is needed.
+	 */
 	async get(): Promise<RedactionFloor> {
 		if (!isRedactionEnforcementEnabled()) return REDACTION_FLOOR_DEFAULT;
 		return await this.load();
-	}
-
-	async buildContext(): Promise<{ enforcement: RedactionFloor } | undefined> {
-		if (!isRedactionEnforcementEnabled()) return undefined;
-		return { enforcement: await this.load() };
 	}
 
 	private async load(): Promise<RedactionFloor> {
