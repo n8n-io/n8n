@@ -145,9 +145,9 @@ onMounted(() => {
 			<ConnectionRow
 				v-for="conn in mcpConnections"
 				:key="conn.id"
-				:name="conn.credentialName"
-				:subtitle="conn.serverSlug"
-				:icon="ICON_MAP.mcp"
+				:name="conn.serverTitle"
+				:subtitle="conn.credentialName"
+				:icon="conn.serverIcon ? { type: 'file', src: conn.serverIcon } : ICON_MAP.mcp"
 				status="connected"
 				:actions="MCP_ROW_ACTIONS"
 				:dropdown-portal-target="props.dropdownPortalTarget"
