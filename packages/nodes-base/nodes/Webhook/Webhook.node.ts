@@ -238,6 +238,14 @@ export class Webhook extends Node {
 			return { noWebhookResponse: true };
 		}
 
+		const authMethod = context.getNodeParameter(this.authPropertyName, 'none') as string;
+		// Token-based schemes must advertise a Bearer challenge per RFC 6750;
+		// only the username/password scheme uses a Basic challenge.
+		const bearerSchemes = ['bearerAuth', 'jwtAuth', 'oAuth2OidcBearer'];
+		const wwwAuthenticate = bearerSchemes.includes(authMethod)
+			? 'Bearer realm="Webhook"'
+			: 'Basic realm="Webhook"';
+
 		let validationData: IDataObject | undefined;
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
@@ -245,16 +253,22 @@ export class Webhook extends Node {
 			validationData = await this.validateAuth(context);
 		} catch (error) {
 			if (error instanceof WebhookAuthorizationError) {
-				resp.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+				resp.writeHead(error.responseCode, { 'WWW-Authenticate': wwwAuthenticate });
 				resp.end(error.message);
 				return { noWebhookResponse: true };
 			}
 			throw error;
 		}
 
-		const prepareOutput = setupOutputConnection(context, requestMethod, {
-			jwtPayload: validationData,
-		});
+		// OIDC bearer auth surfaces decoded token claims as `claims`; the legacy
+		// JWT-auth scheme keeps using `jwtPayload`.
+		const prepareOutput = setupOutputConnection(
+			context,
+			requestMethod,
+			authMethod === 'oAuth2OidcBearer'
+				? { claims: validationData }
+				: { jwtPayload: validationData },
+		);
 
 		if (options.binaryData) {
 			return await this.handleBinaryData(context, prepareOutput);

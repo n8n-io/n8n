@@ -94,6 +94,7 @@ export const setupOutputConnection = (
 	method: string,
 	additionalData: {
 		jwtPayload?: IDataObject;
+		claims?: IDataObject;
 	},
 ) => {
 	const httpMethod = ctx.getNodeParameter('httpMethod', []) as string[] | string;
@@ -112,6 +113,9 @@ export const setupOutputConnection = (
 			if (additionalData?.jwtPayload) {
 				outputData.json.jwtPayload = additionalData.jwtPayload;
 			}
+			if (additionalData?.claims) {
+				outputData.json.claims = additionalData.claims;
+			}
 			return [[outputData]];
 		};
 	}
@@ -124,6 +128,9 @@ export const setupOutputConnection = (
 		outputData.json.executionMode = executionMode;
 		if (additionalData?.jwtPayload) {
 			outputData.json.jwtPayload = additionalData.jwtPayload;
+		}
+		if (additionalData?.claims) {
+			outputData.json.claims = additionalData.claims;
 		}
 		outputs[outputIndex] = [outputData];
 		return outputs;

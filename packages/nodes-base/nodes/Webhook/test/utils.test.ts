@@ -200,6 +200,28 @@ describe('Webhook Utils', () => {
 			]);
 		});
 
+		it('should expose OIDC claims under the "claims" key in the output data', () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: jest.fn().mockReturnValue('manual'),
+			};
+			const additionalData = { claims: { sub: 'alice', groups: ['admin'] } };
+			const setupOutput = setupOutputConnection(ctx as IWebhookFunctions, 'GET', additionalData);
+			const result = setupOutput({ json: {} });
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							webhookUrl: 'https://example.com/webhook-test/',
+							executionMode: 'test',
+							claims: { sub: 'alice', groups: ['admin'] },
+						},
+					},
+				],
+			]);
+		});
+
 		it('should return a function that sets the webhookUrl and executionMode in the output data for multiple methods', () => {
 			const ctx: Partial<IWebhookFunctions> = {
 				getNodeParameter: jest.fn().mockReturnValue(['GET', 'POST']),
