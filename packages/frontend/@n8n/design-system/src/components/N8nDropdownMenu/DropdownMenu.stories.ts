@@ -7,6 +7,7 @@ import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
 import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
+import { useDropdownSearch } from './composables/useDropdownSearch';
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
 
@@ -545,18 +546,11 @@ export const SearchableRoot: Story = {
 				{ id: 'settings', label: 'Settings', icon: { type: 'icon', value: 'settings' } },
 			];
 
-			const searchTerm = ref('');
-
-			const filteredItems = computed(() => {
-				if (!searchTerm.value) return allItems;
-				return allItems.filter((item) =>
-					item.label.toLowerCase().includes(searchTerm.value.toLowerCase()),
-				);
-			});
+			const { filteredItems, handleSearch: handleDropdownSearch } = useDropdownSearch(allItems);
 
 			const handleSearch = (term: string) => {
 				console.log('Search term (debounced):', term);
-				searchTerm.value = term;
+				handleDropdownSearch(term);
 			};
 
 			const handleSelect = (action: string) => {
@@ -598,6 +592,10 @@ export const SearchableRootWithSubmenus: Story = {
 						{ id: 'apple', label: 'Apple' },
 						{ id: 'banana', label: 'Banana' },
 						{ id: 'cherry', label: 'Cherry' },
+						...Array.from({ length: 40 }, (_, index) => ({
+							id: `long-fruit-${index + 1}`,
+							label: `Long submenu fruit ${index + 1}`,
+						})),
 					],
 				},
 				{
@@ -623,40 +621,11 @@ export const SearchableRootWithSubmenus: Story = {
 				{ id: 'water', label: 'Water', divided: true },
 			];
 
-			const searchTerm = ref('');
-
-			// Recursive filter function that searches through nested items
-			const filterItems = (
-				items: Array<DropdownMenuItemProps<string>>,
-				term: string,
-			): Array<DropdownMenuItemProps<string>> => {
-				if (!term) return items;
-
-				return items.reduce<Array<DropdownMenuItemProps<string>>>((acc, item) => {
-					const labelMatches = item.label.toLowerCase().includes(term.toLowerCase());
-
-					if (item.children) {
-						const filteredChildren = filterItems(item.children, term);
-						// Include parent if it matches OR if any children match
-						if (labelMatches || filteredChildren.length > 0) {
-							acc.push({
-								...item,
-								children: filteredChildren.length > 0 ? filteredChildren : item.children,
-							});
-						}
-					} else if (labelMatches) {
-						acc.push(item);
-					}
-
-					return acc;
-				}, []);
-			};
-
-			const filteredItems = computed(() => filterItems(allItems, searchTerm.value));
+			const { filteredItems, handleSearch: handleDropdownSearch } = useDropdownSearch(allItems);
 
 			const handleSearch = (term: string) => {
 				console.log('Search term (debounced):', term);
-				searchTerm.value = term;
+				handleDropdownSearch(term);
 			};
 
 			const handleSelect = (action: string) => {
@@ -667,6 +636,10 @@ export const SearchableRootWithSubmenus: Story = {
 		},
 		template: `
 		<div style="padding: 40px;">
+			<p style="margin-bottom: 16px; color: var(--color--text--tint-1);">
+				The main menu is searchable, and the non-searchable "Fruits" submenu has enough
+				items to scroll. Use this to verify hover and keyboard focus do not cause scroll jumps.
+			</p>
 			<DropdownMenu
 				:items="filteredItems"
 				searchable
@@ -722,34 +695,24 @@ export const SearchableRootWithFlatResults: Story = {
 				},
 			];
 
-			const searchTerm = ref('');
-
-			const filteredItems = computed(() => {
-				const query = searchTerm.value.trim().toLowerCase();
-				if (!query) return allItems;
-
-				return allItems.flatMap((group) => {
-					const groupMatches = group.label.toLowerCase().includes(query);
-					const children = group.children ?? [];
-
-					return children.flatMap((child) => {
-						const childMatches = child.label.toLowerCase().includes(query);
-						if (!groupMatches && !childMatches) return [];
-
-						return [
-							{
-								...child,
-								label: `${group.label} › ${child.label}`,
-								divided: false,
-							},
-						];
-					});
-				});
+			const {
+				search,
+				filteredItems: searchResults,
+				handleSearch: handleDropdownSearch,
+			} = useDropdownSearch(allItems, {
+				flatList: true,
+				mapResult: (item, path) => ({
+					...item,
+					label: path.map((pathItem) => pathItem.label).join(' › '),
+					divided: false,
+				}),
 			});
+
+			const filteredItems = computed(() => (search.value.trim() ? searchResults.value : allItems));
 
 			const handleSearch = (term: string) => {
 				console.log('Search term (debounced):', term);
-				searchTerm.value = term;
+				handleDropdownSearch(term);
 			};
 
 			const handleSelect = (action: string) => {
@@ -780,7 +743,7 @@ export const SearchableSubmenu: Story = {
 	render: () => ({
 		components: { DropdownMenu },
 		setup() {
-			const allProjects = [
+			const allProjects: Array<DropdownMenuItemProps<string>> = [
 				{ id: 'personal', label: 'Personal', icon: { type: 'icon', value: 'user' } },
 				{ id: 'adore', label: 'Adore', icon: { type: 'emoji', value: '😍' } },
 				{ id: 'assistant', label: 'AI Assistant', icon: { type: 'emoji', value: '🔮' } },
@@ -790,14 +753,13 @@ export const SearchableSubmenu: Story = {
 				{ id: 'evals', label: 'Evaluations workshop', icon: { type: 'icon', value: 'layers' } },
 			];
 
-			const filteredProjects = ref(allProjects);
+			const { filteredItems: filteredProjects, handleSearch: handleProjectSearch } =
+				useDropdownSearch(allProjects);
 
 			const handleSearch = (term: string, itemId?: string) => {
 				console.log('Search event:', { term, itemId });
 				if (itemId === 'workflow') {
-					filteredProjects.value = term
-						? allProjects.filter((tag) => tag.label.toLowerCase().includes(term.toLowerCase()))
-						: allProjects;
+					handleProjectSearch(term);
 				}
 			};
 
