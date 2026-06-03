@@ -14,6 +14,7 @@ const props = defineProps<{
 	nodeCountLabel?: string;
 	previewUrl: string;
 	previewSent: boolean;
+	previewTheme?: 'light' | 'dark';
 }>();
 
 const emit = defineEmits<{
@@ -74,7 +75,6 @@ async function maybeSendWorkflowToPreview() {
 	);
 	emit('previewSentChange', true);
 }
-
 function handlePreviewMessage(event: MessageEvent) {
 	if (event.source !== iframeRef.value?.contentWindow) return;
 

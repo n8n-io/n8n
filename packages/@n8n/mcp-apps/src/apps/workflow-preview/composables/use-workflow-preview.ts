@@ -1,30 +1,32 @@
-import type { App } from '@modelcontextprotocol/ext-apps';
-import { computed, ref, shallowRef, type ShallowRef, watch } from 'vue';
+import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
+import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
 import { useI18n } from '@mcp-apps/i18n';
 import { isRecord } from '@mcp-apps/utils/guards';
 
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
-import { isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
+import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
 
 type UseWorkflowPreviewOptions = {
 	app: Readonly<ShallowRef<App | undefined>>;
+	hostContext: Readonly<Ref<McpUiHostContext | undefined>>;
 	toolResult: Readonly<ShallowRef<unknown>>;
 };
 
-export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOptions) {
+export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflowPreviewOptions) {
 	const { t } = useI18n();
 
 	const workflowUrl = ref<string>();
 	const workflowId = ref<string>();
 	const workflowName = ref<string>();
 	const workflowNodeCount = ref<number>();
-	const previewUrl = ref<string>();
+	const previewBaseUrl = ref<string>();
 	const previewWorkflow = shallowRef<WorkflowPreviewData>();
 	const previewError = ref<string>();
 	const previewLoading = ref(false);
 	const previewSent = ref(false);
+	const previewTheme = computed(() => hostContext.value?.theme);
 
 	const ariaLabel = computed(() =>
 		previewWorkflow.value
@@ -33,6 +35,8 @@ export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOption
 				? t('workflowPreview.ariaLabel.ready')
 				: t('workflowPreview.ariaLabel.creating'),
 	);
+
+	const previewUrl = ref<string>();
 
 	const isPreviewVisible = computed(
 		() => !!previewUrl.value && !!previewWorkflow.value && !previewError.value,
@@ -58,6 +62,10 @@ export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOption
 
 	watch(toolResult, (structuredContent) => {
 		applyToolResult(structuredContent);
+	});
+
+	watch(previewTheme, () => {
+		previewUrl.value = buildPreviewUrl();
 	});
 
 	async function handleOpenWorkflow() {
@@ -121,10 +129,11 @@ export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOption
 		const candidateUrl = structuredContent.url;
 		if (isAllowedWorkflowUrl(candidateUrl)) {
 			workflowUrl.value = candidateUrl;
-			previewUrl.value = resolveWorkflowDemoUrl({
+			previewBaseUrl.value = resolveWorkflowDemoUrl({
 				workflowUrl: candidateUrl,
 				previewUrl: structuredContent.previewUrl,
 			});
+			previewUrl.value = buildPreviewUrl();
 		} else if (candidateUrl !== undefined) {
 			console.warn('[n8n MCP App] Ignoring unexpected workflow URL in tool result', {
 				url: candidateUrl,
@@ -144,6 +153,13 @@ export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOption
 		}
 	}
 
+	function buildPreviewUrl() {
+		return applyWorkflowDemoTheme({
+			previewUrl: previewBaseUrl.value,
+			theme: previewTheme.value,
+		});
+	}
+
 	return {
 		workflowUrl,
 		workflowName,
@@ -152,6 +168,7 @@ export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOption
 		previewError,
 		previewLoading,
 		previewSent,
+		previewTheme,
 		ariaLabel,
 		isPreviewVisible,
 		nodeCountLabel,

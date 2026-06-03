@@ -28,11 +28,12 @@ const {
 	previewError,
 	previewLoading,
 	previewSent,
+	previewTheme,
 	ariaLabel,
 	isPreviewVisible,
 	nodeCountLabel,
 	handleOpenWorkflow,
-} = useWorkflowPreview({ app, toolResult });
+} = useWorkflowPreview({ app, hostContext, toolResult });
 </script>
 
 <template>
@@ -47,6 +48,7 @@ const {
 			:node-count-label="nodeCountLabel"
 			:preview-url="previewUrl"
 			:preview-sent="previewSent"
+			:preview-theme="previewTheme"
 			@open="handleOpenWorkflow"
 			@preview-error="previewError = $event"
 			@preview-sent-change="previewSent = $event"

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	applyWorkflowDemoTheme,
 	buildWorkflowDemoUrl,
 	isAllowedWorkflowDemoUrl,
 	isAllowedWorkflowUrl,
@@ -137,5 +138,38 @@ describe('resolveWorkflowDemoUrl', () => {
 
 	it('returns undefined when no safe workflow URL is available', () => {
 		expect(resolveWorkflowDemoUrl({ workflowUrl: 'javascript:alert(1)' })).toBeUndefined();
+	});
+});
+
+describe('applyWorkflowDemoTheme', () => {
+	it('adds the theme query parameter', () => {
+		expect(
+			applyWorkflowDemoTheme({
+				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true',
+				theme: 'dark',
+			}),
+		).toBe('https://preview.example.com/workflows/demo?hideControls=true&theme=dark');
+	});
+
+	it('overrides an existing theme query parameter', () => {
+		expect(
+			applyWorkflowDemoTheme({
+				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true&theme=light',
+				theme: 'dark',
+			}),
+		).toBe('https://preview.example.com/workflows/demo?hideControls=true&theme=dark');
+	});
+
+	it('removes the theme query parameter when theme is missing', () => {
+		expect(
+			applyWorkflowDemoTheme({
+				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true&theme=dark',
+				theme: undefined,
+			}),
+		).toBe('https://preview.example.com/workflows/demo?hideControls=true');
+	});
+
+	it('returns undefined when no preview URL is available', () => {
+		expect(applyWorkflowDemoTheme({ previewUrl: undefined, theme: 'light' })).toBeUndefined();
 	});
 });

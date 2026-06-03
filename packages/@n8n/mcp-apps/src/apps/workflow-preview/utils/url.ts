@@ -7,6 +7,7 @@
 const ALLOWED_URL_SCHEMES = new Set(['http:', 'https:']);
 const DEFAULT_WORKFLOW_DEMO_URL =
 	'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true';
+type WorkflowPreviewTheme = 'light' | 'dark';
 
 /**
  * Defense-in-depth check for the workflow URL received from a tool result.
@@ -63,4 +64,23 @@ export function resolveWorkflowDemoUrl({
 	if (isAllowedWorkflowDemoUrl(previewUrl)) return previewUrl;
 	if (!isAllowedWorkflowUrl(workflowUrl)) return undefined;
 	return DEFAULT_WORKFLOW_DEMO_URL;
+}
+
+export function applyWorkflowDemoTheme({
+	previewUrl,
+	theme,
+}: {
+	previewUrl: string | undefined;
+	theme: WorkflowPreviewTheme | undefined;
+}): string | undefined {
+	if (!previewUrl) return undefined;
+
+	const parsed = new URL(previewUrl);
+	if (theme) {
+		parsed.searchParams.set('theme', theme);
+	} else {
+		parsed.searchParams.delete('theme');
+	}
+
+	return parsed.toString();
 }
