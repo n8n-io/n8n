@@ -1,4 +1,3 @@
-import type { RedactionFloor } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { WorkflowSettings } from 'n8n-workflow';
 
@@ -6,22 +5,7 @@ import { settingsToFloor } from './redaction-enforcement-mapper';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
-
-const POLICY_SCOPE: Record<
-	WorkflowSettings.RedactionPolicy,
-	{ production: boolean; manual: boolean }
-> = {
-	none: { production: false, manual: false },
-	'manual-only': { production: false, manual: true },
-	'non-manual': { production: true, manual: false },
-	all: { production: true, manual: true },
-};
-
-const FLOOR_REQUIREMENTS: Record<RedactionFloor, { production: boolean; manual: boolean }> = {
-	off: { production: false, manual: false },
-	production: { production: true, manual: false },
-	all: { production: true, manual: true },
-};
+import { policyMeetsFloor, REDACTION_FLOOR_VIOLATION_MESSAGE } from './redaction-policy';
 
 /**
  * Reports the active instance redaction floor and asserts that incoming
@@ -38,7 +22,7 @@ export class RedactionEnforcementService {
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 	) {}
 
-	private async getFloor(): Promise<RedactionFloor> {
+	private async getFloor() {
 		const settings = await this.instanceRedactionEnforcementService.get();
 		return settingsToFloor(settings);
 	}
@@ -53,22 +37,8 @@ export class RedactionEnforcementService {
 		if (incomingPolicy === currentPolicy) return;
 
 		const floor = await this.getFloor();
-		if (floor === 'off') return;
-
-		this.assertMeetsFloor(incomingPolicy, floor);
-	}
-
-	private assertMeetsFloor(policy: WorkflowSettings.RedactionPolicy, floor: RedactionFloor): void {
-		const required = FLOOR_REQUIREMENTS[floor];
-		const scope = POLICY_SCOPE[policy];
-
-		const weakerThanFloor =
-			(required.production && !scope.production) || (required.manual && !scope.manual);
-
-		if (weakerThanFloor) {
-			throw new UnprocessableRequestError(
-				'Workflow redaction policy cannot be weaker than the instance floor.',
-			);
+		if (!policyMeetsFloor(incomingPolicy, floor)) {
+			throw new UnprocessableRequestError(REDACTION_FLOOR_VIOLATION_MESSAGE);
 		}
 	}
 }
