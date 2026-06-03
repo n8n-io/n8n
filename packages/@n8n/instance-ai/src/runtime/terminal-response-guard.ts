@@ -101,6 +101,14 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
+			if (visibility.hasMessageGroupRootText) {
+				return {
+					status,
+					visibilitySource: 'root-text',
+					action: 'none',
+					reason: 'already-visible',
+				};
+			}
 			if (options.suppressCompletedFallback) {
 				return {
 					status,
@@ -196,6 +204,7 @@ export class InstanceAiTerminalResponseGuard {
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
 		hasRootError: boolean;
+		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
@@ -206,6 +215,14 @@ export class InstanceAiTerminalResponseGuard {
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
 			),
+			hasMessageGroupRootText:
+				this.options.messageGroupId !== undefined &&
+				events.some(
+					(event) =>
+						event.runId !== this.options.runId &&
+						event.agentId === this.options.rootAgentId &&
+						hasText(event),
+				),
 			hasCurrentRunFallback: currentRunEvents.some((event) =>
 				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:${this.options.runId}:`),
 			),
