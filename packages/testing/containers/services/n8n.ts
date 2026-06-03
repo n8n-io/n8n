@@ -59,6 +59,8 @@ const BASE_ENV: Record<string, string> = {
 export interface N8NInstancesOptions {
 	mains: number;
 	workers: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	projectName: string;
 	network: StartedNetwork;
 	serviceEnvironment: Record<string, string>;
@@ -68,6 +70,8 @@ export interface N8NInstancesOptions {
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
+	webhookResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
 }
 
@@ -81,13 +85,14 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	const {
 		mains,
 		workers,
+		webhooks = 0,
 		usePostgres,
 		baseUrl,
 		serviceEnvironment,
 		userEnvironment = {},
 	} = options;
 
-	const isQueueMode = mains > 1 || workers > 0;
+	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
 
 	const env: Record<string, string> = {
 		...BASE_ENV,
@@ -121,9 +126,11 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	return env;
 }
 
+type InstanceRole = 'main' | 'webhook' | 'worker';
+
 interface InstanceConfig {
 	name: string;
-	isWorker: boolean;
+	role: InstanceRole;
 	instanceNumber: number;
 	networkAlias?: string;
 	hostPort?: number;
@@ -143,12 +150,18 @@ interface ContainerStartResult {
 	getLastReadinessBody: () => string | null;
 }
 
+const SERVICE_LABEL: Record<InstanceRole, string> = {
+	main: 'n8n-main',
+	webhook: 'n8n-webhook',
+	worker: 'n8n-worker',
+};
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
 	diagnostics: N8NStartupDiagnostics,
 ): Promise<ContainerStartResult> {
-	const { name, isWorker, instanceNumber, networkAlias, hostPort } = instance;
+	const { name, role, instanceNumber, networkAlias, hostPort } = instance;
 	const { projectName, environment, network, resourceQuota, filesToMount } = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
@@ -161,7 +174,7 @@ async function createContainer(
 		.withEnvironment(environment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
-			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
+			'com.docker.compose.service': SERVICE_LABEL[role],
 			instance: instanceNumber.toString(),
 		})
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
@@ -185,14 +198,16 @@ async function createContainer(
 	const ports: PortWithOptionalBinding[] = hostPort
 		? [{ container: N8N_READINESS_PORT, host: hostPort }]
 		: [N8N_READINESS_PORT];
-	if (isWorker) {
+	if (role === 'worker') {
 		ports.push(5679);
 	}
 
 	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
 
-	if (isWorker) {
+	if (role === 'worker') {
 		container = container.withCommand(['worker']);
+	} else if (role === 'webhook') {
+		container = container.withCommand(['webhook']);
 	}
 
 	try {
@@ -219,11 +234,13 @@ export async function createN8NInstances(
 	const {
 		mains,
 		workers,
+		webhooks = 0,
 		projectName,
 		network,
 		allocatedPort,
 		resourceQuota,
 		workerResourceQuota,
+		webhookResourceQuota,
 		filesToMount,
 	} = options;
 
@@ -248,26 +265,52 @@ export async function createN8NInstances(
 		filesToMount,
 	};
 
+	const webhookShared: SharedConfig = {
+		projectName,
+		environment,
+		network,
+		resourceQuota: webhookResourceQuota ?? resourceQuota,
+		filesToMount,
+	};
+
+	const sharedByRole: Record<InstanceRole, SharedConfig> = {
+		main: mainShared,
+		webhook: webhookShared,
+		worker: workerShared,
+	};
+
 	const instances: InstanceConfig[] = [
-		...Array.from({ length: mains }, (_, i) => {
+		...Array.from({ length: mains }, (_, i): InstanceConfig => {
 			const num = i + 1;
 			const name = mains > 1 ? `${projectName}-n8n-main-${num}` : `${projectName}-n8n`;
 			return {
 				name,
-				isWorker: false,
+				role: 'main',
 				instanceNumber: num,
 				networkAlias: name,
 				hostPort: num === 1 ? allocatedPort : undefined,
 			};
 		}),
-		...Array.from({ length: workers }, (_, i) => ({
-			name: `${projectName}-n8n-worker-${i + 1}`,
-			isWorker: true,
-			instanceNumber: i + 1,
-		})),
+		...Array.from({ length: webhooks }, (_, i): InstanceConfig => {
+			const num = i + 1;
+			const name = `${projectName}-n8n-webhook-${num}`;
+			return {
+				name,
+				role: 'webhook',
+				instanceNumber: num,
+				networkAlias: name,
+			};
+		}),
+		...Array.from(
+			{ length: workers },
+			(_, i): InstanceConfig => ({
+				name: `${projectName}-n8n-worker-${i + 1}`,
+				role: 'worker',
+				instanceNumber: i + 1,
+			}),
+		),
 	];
 
-	// Service-only mode: no n8n containers needed
 	if (instances.length === 0) {
 		log('No n8n instances requested (service-only mode)');
 		return { containers, environment, diagnostics };
@@ -284,12 +327,12 @@ export async function createN8NInstances(
 		throw new N8NStartupError(message, diagnostics, error);
 	};
 
-	// Start main 1 first (handles DB migrations/setup)
+	// Main 1 handles DB migrations and must finish before parallel starts.
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
 	let main1Result: ContainerStartResult;
 	try {
-		main1Result = await createContainer(main1, mainShared, diagnostics);
+		main1Result = await createContainer(main1, sharedByRole[main1.role], diagnostics);
 	} catch (error) {
 		return rethrowWithDiagnostics(error);
 	}
@@ -297,20 +340,14 @@ export async function createN8NInstances(
 	containers.push(main1Result.container);
 	log('main 1 ready');
 
-	// Start remaining instances in parallel
 	if (remaining.length > 0) {
 		log(`Starting ${remaining.length} remaining instances in parallel...`);
 		try {
 			const parallelResults = await Promise.all(
 				remaining.map(async (instance) => {
-					const type = instance.isWorker ? 'worker' : 'main';
-					log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
-					const result = await createContainer(
-						instance,
-						instance.isWorker ? workerShared : mainShared,
-						diagnostics,
-					);
-					log(`${type} ${instance.instanceNumber} ready`);
+					log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
+					const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
+					log(`${instance.role} ${instance.instanceNumber} ready`);
 					return { instance, result };
 				}),
 			);
