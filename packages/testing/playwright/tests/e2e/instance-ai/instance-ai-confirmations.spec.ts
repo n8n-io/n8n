@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
@@ -64,6 +65,71 @@ function workflowSignature(workflow: IWorkflowBase): string {
 	});
 }
 
+type WorkflowApiForAssertions = {
+	getWorkflows(): Promise<Array<Partial<IWorkflowBase> & { id?: string }>>;
+	getWorkflow(workflowId: string): Promise<IWorkflowBase>;
+	getExecutions(workflowId: string, limit?: number): Promise<Array<{ status?: string }>>;
+};
+
+async function hasSuccessfulExecutionForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<boolean> {
+	const workflows = await workflowsApi.getWorkflows();
+	const workflowIds: string[] = [];
+
+	for (const workflowSummary of workflows) {
+		if (!workflowSummary.id) continue;
+
+		const workflow = workflowSummary.nodes
+			? workflowSummary
+			: await workflowsApi.getWorkflow(workflowSummary.id);
+
+		if (
+			workflow.name?.toLowerCase().includes(nodeName) ||
+			workflow.nodes?.some((node) => node.name.toLowerCase().includes(nodeName))
+		) {
+			workflowIds.push(workflowSummary.id);
+		}
+	}
+
+	for (const workflowId of workflowIds) {
+		const executions = await workflowsApi.getExecutions(workflowId, 10);
+		if (executions.some((execution) => execution.status === 'success')) return true;
+	}
+
+	return false;
+}
+
+async function approveBuildPlanIfRequested({
+	n8n,
+	nodeName,
+}: {
+	n8n: {
+		api: { workflows: WorkflowApiForAssertions };
+		instanceAi: { getPlanApproveButton(): Locator };
+	};
+	nodeName: string;
+}): Promise<void> {
+	let clickedApprove = false;
+	const approveButton = n8n.instanceAi.getPlanApproveButton();
+
+	await expect
+		.poll(
+			async () => {
+				if (!clickedApprove && (await approveButton.isVisible().catch(() => false))) {
+					await approveButton.click();
+					clickedApprove = true;
+					return true;
+				}
+
+				return await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName);
+			},
+			{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
+		)
+		.toBe(true);
+}
+
 test.describe(
 	'Instance AI confirmations @capability:proxy',
 	{
@@ -74,6 +140,7 @@ test.describe(
 
 		test.beforeEach(async ({ api }) => {
 			await api.setInstanceAiPermissions({
+				runWorkflow: 'require_approval',
 				updateWorkflow: 'require_approval',
 			});
 		});
@@ -133,49 +200,78 @@ test.describe(
 			}
 		});
 
-		test('should show approval panel and approve workflow execution', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
+		test(
+			'should run workflow after build plan approval without an execution approval panel',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description: 'should-show-approval-panel-and-approve-workflow-execution',
+					},
+				],
+			},
+			async ({ n8n }) => {
+				await n8n.navigate.toInstanceAi();
 
-			// "build and run" triggers a confirmation for the execution step
-			await n8n.instanceAi.sendMessage(
-				'Build a simple workflow with a manual trigger and a set node called "approval test" and run it',
-			);
+				await n8n.instanceAi.sendMessage(
+					'Create a plan to build and run a simple workflow with a manual trigger and a set node called "approval test". Show me the plan for approval before building it.',
+				);
 
-			// Approve the build plan so the orchestrator proceeds to the run step.
-			await n8n.instanceAi.approveBuildPlan();
+				await approveBuildPlanIfRequested({ n8n, nodeName: 'approval test' });
+				await expect
+					.poll(
+						async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'approval test'),
+						{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
+					)
+					.toBe(true);
+				await n8n.instanceAi.waitForResponseComplete();
 
-			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
-			await n8n.instanceAi.getConfirmApproveButton().click();
+				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
+				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
+			},
+		);
 
-			// After approval, execution should proceed
-			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible({
-				timeout: 120_000,
-			});
-		});
+		test(
+			'should run workflow after build plan approval without an execution denial panel',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description: 'should-show-approval-panel-and-deny-workflow-execution',
+					},
+				],
+			},
+			async ({ n8n }) => {
+				await n8n.navigate.toInstanceAi();
 
-		test('should show approval panel and deny workflow execution', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(
+					'Create a plan to build and run a simple workflow with a manual trigger and a set node called "deny test". Show me the plan for approval before building it.',
+				);
 
-			await n8n.instanceAi.sendMessage(
-				'Build a simple workflow with a manual trigger and a set node called "deny test" and run it',
-			);
+				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
+				await expect
+					.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'deny test'), {
+						intervals: [1_000, 2_000, 5_000],
+						timeout: 150_000,
+					})
+					.toBe(true);
+				await n8n.instanceAi.waitForResponseComplete();
 
-			await n8n.instanceAi.approveBuildPlan();
-
-			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
-			await n8n.instanceAi.getConfirmDenyButton().click();
-
-			// After denial, the assistant should acknowledge
-			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible({
-				timeout: 120_000,
-			});
-		});
+				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
+				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
+			},
+		);
 
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
 		// converge on build-workflow-with-agent with a workflowId before the builder spawns.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
+			api,
 			n8n,
 		}) => {
+			await api.setInstanceAiPermissions({
+				runWorkflow: 'always_allow',
+			});
+
 			const workflow = await n8n.api.workflows.createWorkflow(
 				seededEditableWorkflow(APPROVE_EDIT_WORKFLOW_NAME),
 			);
@@ -196,15 +292,28 @@ test.describe(
 
 			await n8n.instanceAi.getConfirmApproveButton().click();
 
+			let approvedUpdate = false;
 			await expect
 				.poll(
 					async () => {
+						if (
+							!approvedUpdate &&
+							(await n8n.instanceAi
+								.getConfirmationText(`Update workflow "${APPROVE_EDIT_WORKFLOW_NAME}"`)
+								.isVisible()
+								.catch(() => false))
+						) {
+							await n8n.instanceAi.getConfirmApproveButton().click();
+							approvedUpdate = true;
+						}
+
 						const updated = await n8n.api.workflows.getWorkflow(workflow.id);
 						return workflowSignature(updated);
 					},
 					{ timeout: 180_000 },
 				)
 				.toContain(APPROVED_STATUS_VALUE);
+			await n8n.instanceAi.waitForResponseComplete();
 		});
 
 		test('should require approval before editing an existing workflow and keep it unchanged when denied', async ({

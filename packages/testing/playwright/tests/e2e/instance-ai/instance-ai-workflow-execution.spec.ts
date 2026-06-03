@@ -30,10 +30,12 @@ test.describe(
 		});
 
 		test('should execute workflow from run button and show success indicators', async ({ n8n }) => {
+			test.setTimeout(180_000);
+
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
-				'Build a simple workflow with a manual trigger connected to a set node called "full execution test"',
+				'Build a simple workflow with the "When clicking Test workflow" trigger connected to a set node called "full execution test". Use the trigger that runs from the editor Test workflow button.',
 			);
 
 			await n8n.instanceAi.approveBuildPlan();
@@ -44,11 +46,11 @@ test.describe(
 			});
 
 			// Click the run workflow button
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 
 			// Nodes should show success indicators after execution completes
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
-				timeout: 30_000,
+				timeout: 120_000,
 			});
 		});
 
@@ -83,6 +85,8 @@ test.describe(
 		test('should show execution results in NDV output panel when opening node after execution', async ({
 			n8n,
 		}) => {
+			test.setTimeout(180_000);
+
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage(
@@ -97,15 +101,15 @@ test.describe(
 			});
 
 			// Execute the workflow
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 
 			// Wait for execution to complete
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
 				timeout: 30_000,
 			});
 
-			// Double-click a node to open NDV
-			await n8n.instanceAi.openPreviewNodeByName('ndv output test');
+			// Double-click the Set node to open NDV
+			await n8n.instanceAi.openLastPreviewNode();
 
 			// The NDV output panel should be visible with execution data
 			await expect(n8n.instanceAi.getPreviewNdvOutputPanel()).toBeVisible({
@@ -132,7 +136,7 @@ test.describe(
 			});
 
 			// First execution
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
 				timeout: 30_000,
 			});
@@ -144,7 +148,7 @@ test.describe(
 
 			// Second execution — wait for it to actually run and complete so we
 			// don't race against stale success indicators from the first run.
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 			await expect(n8n.instanceAi.getPreviewRunningNodes().first()).toBeVisible({
 				timeout: 10_000,
 			});

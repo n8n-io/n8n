@@ -71,7 +71,7 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
 				timeout: 10_000,
 			});
-			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
+			await n8n.instanceAi.runPreviewWorkflow();
 
 			// All three nodes should show the success indicator.
 			await expect(n8n.instanceAi.getPreviewSuccessIndicators()).toHaveCount(3, {

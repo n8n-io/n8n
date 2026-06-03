@@ -41,6 +41,12 @@ export class InstanceAiTestController {
 		return { events: this.instanceAiService.getTraceEvents(slug) };
 	}
 
+	@Get('/test/idle', { skipAuth: true })
+	getIdleState() {
+		this.assertTraceReplayEnabled();
+		return { idle: !this.instanceAiService.hasRunningWorkForTest() };
+	}
+
 	@Post('/test/background-timeout/start', { skipAuth: true })
 	async startBackgroundTimeoutSimulation(@Body payload: { userId: string; threadId?: string }) {
 		this.assertTraceReplayEnabled();
@@ -82,6 +88,7 @@ export class InstanceAiTestController {
 		this.assertTraceReplayEnabled();
 
 		this.instanceAiService.cancelAllBackgroundTasks();
+		this.instanceAiService.clearTraceContextsForTest();
 
 		const threads = await this.threadRepo.find({ select: ['id'] });
 		for (const { id } of threads) {

@@ -51,6 +51,7 @@ import {
 	type WorkflowVerificationReadiness,
 	type WorkflowLoopState,
 } from '../../workflow-loop';
+import { createBuilderWorkItemPathMappedWorkspace } from '../../workspace/builder-work-item-path-mapping';
 import {
 	readFileViaSandbox,
 	writeFileViaSandbox,
@@ -701,6 +702,10 @@ function deterministicSuffix(seed: string, label: string, length: number): strin
 
 function shouldUseDeterministicBuilderIds(context: OrchestrationContext): boolean {
 	return process.env.E2E_TESTS === 'true' && context.tracing?.replayMode !== 'off';
+}
+
+function shouldMapRecordedBuilderWorkItemPaths(context: OrchestrationContext): boolean {
+	return process.env.E2E_TESTS === 'true' && context.tracing?.replayMode === 'replay';
 }
 
 function createDeterministicBuilderIds(input: StartBuildWorkflowAgentInput): {
@@ -1386,6 +1391,13 @@ export async function startBuildWorkflowAgentTask(
 				workspace = materializedRuntimeSkills.workspace;
 				const runtimeSkills = materializedRuntimeSkills.source;
 				const builderLayout = builderWorkflowWorkspaceLayout(root, workItemId);
+				if (shouldMapRecordedBuilderWorkItemPaths(context)) {
+					workspace = createBuilderWorkItemPathMappedWorkspace(
+						workspace,
+						root,
+						builderLayout.workItemRoot,
+					);
+				}
 				let telemetrySession: TemplateTelemetrySession | undefined;
 				let unsubscribeTelemetry: (() => void) | undefined;
 

@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
@@ -203,6 +203,13 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
 	}
 
+	async runPreviewWorkflow(): Promise<void> {
+		const button = this.getPreviewRunWorkflowButton();
+		await expect(button).toBeVisible({ timeout: 10_000 });
+		await expect(button).toBeEnabled({ timeout: 120_000 });
+		await button.click();
+	}
+
 	getPreviewNodeByName(nodeName: string): Locator {
 		return this.getPreviewCanvas().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
@@ -211,6 +218,12 @@ export class InstanceAiPage extends BasePage {
 
 	async openPreviewNodeByName(nodeName: string): Promise<void> {
 		const node = this.getPreviewNodeByName(nodeName);
+		await node.waitFor({ state: 'visible', timeout: 10_000 });
+		await node.dblclick();
+	}
+
+	async openLastPreviewNode(): Promise<void> {
+		const node = this.getPreviewCanvasNodes().last();
 		await node.waitFor({ state: 'visible', timeout: 10_000 });
 		await node.dblclick();
 	}
@@ -232,7 +245,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getPreviewNdvOutputPanel(): Locator {
-		return this.getPreviewCanvas().getByTestId('output-panel');
+		return this.page.getByTestId('ndv').getByTestId('output-panel');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────
