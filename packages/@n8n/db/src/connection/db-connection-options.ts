@@ -112,6 +112,12 @@ export class DbConnectionOptions {
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
+				// Bound how long acquiring a connection from the pool can wait (waiting for a free
+				// slot, or establishing a new connection). Without it, pg-pool waits indefinitely.
+				// Reuse the existing connect-timeout knob rather than adding another env var.
+				...(postgresConfig.connectionTimeoutMs > 0
+					? { connectionTimeoutMillis: postgresConfig.connectionTimeoutMs }
+					: {}),
 				keepAlive: postgresConfig.keepAlive,
 				keepAliveInitialDelayMillis: postgresConfig.keepAliveInitialDelayMs,
 				// pg-pool's `maxLifetimeSeconds` is the upstream knob; we accept ms in config for unit consistency.

@@ -21,20 +21,46 @@ const mockedSetTimeoutP = setTimeoutP as MockedFunction<typeof setTimeoutP>;
 
 const flushMicrotasks = async () => await new Promise((resolve) => setImmediate(resolve));
 
+// DataSource['driver'] is a complex union of every driver TypeORM supports;
+// going through this minimal shape avoids TS2590 ("union type too complex")
+// and matches the unsafe cast the production code uses to reach driver.master.
+type DriverShape = {
+	master?: {
+		connect?: Mock;
+		on?: (event: string, handler: (cause: unknown) => void) => void;
+	};
+};
+
 describe('DbConnectionMonitor', () => {
 	let monitor: DbConnectionMonitor;
 	let onConnectedChange: MockedFunction<(connected: boolean) => void>;
 	const errorReporter = mock<ErrorReporter>();
-	const databaseConfig = mock<DatabaseConfig>({ pingTimeoutMs: 5_000 });
+	// A large pingIntervalSeconds keeps scheduleNextPing's real setTimeout far in the future so
+	// stray re-fired pings can't cascade during a test (and avoids a NaN-timeout from an unset value).
+	const databaseConfig = mock<DatabaseConfig>({ pingTimeoutMs: 5_000, pingIntervalSeconds: 3_600 });
 	const logger = mock<Logger>();
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
+	// The Postgres ping path runs through the pg pool (driver.master.connect) so that a
+	// timed-out ping can destroy its connection and free the slot. These stand in for the
+	// pg PoolClient and pool, recreated each test.
+	let pgClient: { query: Mock; release: Mock };
+	let pgConnect: Mock;
+
+	const setDriver = (driver: DriverShape) => {
+		(dataSource as unknown as { driver: DriverShape }).driver = driver;
+	};
+
 	beforeEach(() => {
 		vi.resetAllMocks();
-		// Default: never resolves, so query wins the ping timeout race and
+		// Default: never resolves, so the real work wins the ping timeout race and
 		// recovery backoff stays suspended unless a test overrides it.
 		mockedSetTimeoutP.mockImplementation(async () => await new Promise(() => {}));
 		onConnectedChange = vi.fn();
+		pgClient = { query: vi.fn(), release: vi.fn() };
+		pgConnect = vi.fn().mockResolvedValue(pgClient);
+		// `on` keeps attachPoolErrorHandler happy when recovery re-attaches the listener.
+		setDriver({ master: { connect: pgConnect, on: vi.fn() } });
 		monitor = new DbConnectionMonitor(
 			dataSource,
 			onConnectedChange,
@@ -48,15 +74,18 @@ describe('DbConnectionMonitor', () => {
 		it('should update connection state on successful ping', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			dataSource.query.mockResolvedValue([{ '1': 1 }]);
+			pgClient.query.mockResolvedValue([{ '1': 1 }]);
 			// @ts-expect-error private property
 			monitor.connected = false;
 
 			// @ts-expect-error private property
 			await monitor.ping();
 
-			expect(dataSource.query).toHaveBeenCalledWith('SELECT 1');
+			expect(pgClient.query).toHaveBeenCalledWith(
+				expect.objectContaining({ text: 'SELECT 1' }),
+			);
+			// Healthy connection is returned to the pool, not destroyed.
+			expect(pgClient.release).toHaveBeenCalledWith();
 			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
 		});
 
@@ -68,19 +97,21 @@ describe('DbConnectionMonitor', () => {
 			dataSource.isInitialized = true;
 			// @ts-expect-error private property
 			monitor.connected = true;
-			dataSource.query.mockRejectedValue(new Error('pool dead'));
+			pgClient.query.mockRejectedValue(new Error('pool dead'));
 
 			// @ts-expect-error private property
 			await monitor.ping();
 
 			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			// A failed query destroys the connection (truthy release arg) to free the slot.
+			expect(pgClient.release).toHaveBeenCalledWith(expect.any(Error));
 		});
 
 		it('should report errors on failed ping', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			const error = new Error('Connection error');
-			dataSource.query.mockRejectedValue(error);
+			pgClient.query.mockRejectedValue(error);
 
 			// @ts-expect-error private property
 			await monitor.ping();
@@ -88,12 +119,17 @@ describe('DbConnectionMonitor', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(error);
 		});
 
-		it('should not report OperationalError (ping timeout) to error reporter', async () => {
+		it('should not report OperationalError (ping timeout) to error reporter and should free the slot', async () => {
+			// Regression guard for #30612: when the ping times out, the in-flight query must not be
+			// left holding its pool slot. We destroy the connection (release with an error) so a later
+			// ping can acquire a slot and flip the instance back to healthy once the DB recovers.
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			// Query never resolves; the timeout race wins and throws an OperationalError.
-			dataSource.query.mockReturnValue(new Promise(() => {}));
-			// Force the timeout side of the Promise.race to resolve immediately.
+			pgClient.query.mockReturnValue(new Promise(() => {}));
+			// First raceTimeout (connect) keeps its default never-resolving timer so connect wins;
+			// second raceTimeout (query) gets a timer that fires immediately.
+			mockedSetTimeoutP.mockImplementationOnce(async () => await new Promise(() => {}));
 			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
 
 			// @ts-expect-error private property
@@ -103,13 +139,78 @@ describe('DbConnectionMonitor', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('Database connection timed out'),
 			);
+			expect(pgClient.release).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it('should destroy a late-resolving connection when the connect phase times out', async () => {
+			// If the timeout wins the connect race, pool.connect may still resolve a client
+			// afterwards. That late arrival must be destroyed rather than parked back in the pool.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			let resolveConnect!: (client: typeof pgClient) => void;
+			pgConnect.mockReturnValue(
+				new Promise<typeof pgClient>((resolve) => (resolveConnect = resolve)),
+			);
+			// First raceTimeout (connect) fires immediately.
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			// Connect resolves only now, after the ping already bailed on the timeout.
+			resolveConnect(pgClient);
+			await flushMicrotasks();
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(pgClient.release).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it('should fall back to dataSource.query when the pg pool is unavailable', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			setDriver({}); // postgres datasource, but driver.master is gone
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			dataSource.query.mockResolvedValue([{ '1': 1 }]);
+			// Start disconnected so the successful fallback ping produces a transition to fire onConnectedChange.
+			// @ts-expect-error private property
+			monitor.connected = false;
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(dataSource.query).toHaveBeenCalledWith('SELECT 1');
+			expect(pgConnect).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('driver.master is unavailable'),
+			);
+			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
+		});
+
+		it('should use dataSource.query for non-postgres datasources', async () => {
+			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
+			// @ts-expect-error readonly property
+			sqliteDataSource.isInitialized = true;
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			sqliteDataSource.query.mockResolvedValue([{ '1': 1 }]);
+			const sqliteMonitor = new DbConnectionMonitor(
+				sqliteDataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+			);
+
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+
+			expect(sqliteDataSource.query).toHaveBeenCalledWith('SELECT 1');
+			expect(pgConnect).not.toHaveBeenCalled();
 		});
 
 		it('should schedule next ping after execution', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			dataSource.query.mockResolvedValue([{ '1': 1 }]);
+			pgClient.query.mockResolvedValue([{ '1': 1 }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
 
@@ -126,6 +227,7 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			await monitor.ping();
 
+			expect(pgConnect).not.toHaveBeenCalled();
 			expect(dataSource.query).not.toHaveBeenCalled();
 		});
 
@@ -137,15 +239,15 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			await monitor.ping();
 
+			expect(pgConnect).not.toHaveBeenCalled();
 			expect(dataSource.query).not.toHaveBeenCalled();
 		});
 
 		it('should reset failure counter on successful ping', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			dataSource.query
+			pgClient.query
 				.mockRejectedValueOnce(new Error('Connection terminated unexpectedly'))
-				// eslint-disable-next-line @typescript-eslint/naming-convention
 				.mockResolvedValueOnce([{ '1': 1 }])
 				.mockRejectedValueOnce(new Error('read ECONNRESET'))
 				.mockRejectedValueOnce(
@@ -171,7 +273,7 @@ describe('DbConnectionMonitor', () => {
 		it('should trigger recovery after consecutive failures', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			dataSource.query.mockRejectedValue(new Error('pool poisoned'));
+			pgClient.query.mockRejectedValue(new Error('pool poisoned'));
 			const recoverSpy = vi
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				.spyOn(monitor as any, 'recoverDataSource')
@@ -194,7 +296,7 @@ describe('DbConnectionMonitor', () => {
 			// flag so subsequent pings can keep probing.
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			dataSource.query.mockRejectedValue(new Error('pool poisoned'));
+			pgClient.query.mockRejectedValue(new Error('pool poisoned'));
 			// Throw from the "Attempting to recover" warn — this fires after recovering=true
 			// but before the inner try/catch that protects destroy/initialize.
 			const loggerError = new Error('logger broke');
@@ -219,7 +321,7 @@ describe('DbConnectionMonitor', () => {
 			// Outer catch surfaces the unexpected throw to Sentry.
 			expect(errorReporter.error).toHaveBeenCalledWith(loggerError);
 			// Finally clears `recovering` so the 4th ping runs instead of early-returning.
-			expect(dataSource.query).toHaveBeenCalledTimes(4);
+			expect(pgClient.query).toHaveBeenCalledTimes(4);
 		});
 
 		it('should skip query while recovery is in progress', async () => {
@@ -231,6 +333,7 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error private property
 			await monitor.ping();
 
+			expect(pgConnect).not.toHaveBeenCalled();
 			expect(dataSource.query).not.toHaveBeenCalled();
 		});
 
@@ -521,16 +624,6 @@ describe('DbConnectionMonitor', () => {
 	});
 
 	describe('attachPoolErrorHandler', () => {
-		// DataSource['driver'] is a complex union of every driver TypeORM supports;
-		// going through this minimal shape avoids TS2590 ("union type too complex")
-		// and matches the unsafe cast the production code uses to reach driver.master.
-		type DriverShape = {
-			master?: { on?: (event: string, handler: (cause: unknown) => void) => void };
-		};
-		const setDriver = (driver: DriverShape) => {
-			(dataSource as unknown as { driver: DriverShape }).driver = driver;
-		};
-
 		it('should attach an error listener to the Postgres driver pool', () => {
 			const on = vi.fn();
 			setDriver({ master: { on } });
@@ -626,7 +719,7 @@ describe('DbConnectionMonitor', () => {
 			);
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
-			dataSource.query.mockRejectedValue(new Error('pool dead'));
+			pgClient.query.mockRejectedValue(new Error('pool dead'));
 
 			// @ts-expect-error private property
 			await freshMonitor.ping();
