@@ -46,7 +46,8 @@ import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 type McpContentBlock = McpToolCallResult['content'][number];
 type ModelContentPart =
 	| { type: 'text'; text: string }
-	| { type: 'image-data'; data: string; mediaType: string };
+	| { type: 'image-data'; data: string; mediaType: string }
+	| { type: 'file-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools

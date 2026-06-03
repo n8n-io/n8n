@@ -314,13 +314,13 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('keeps resource payloads out of the JSON tool result shown to the model', () => {
+		it('returns AI SDK content output for gateway resource results', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer(server).get('write_file');
 
 			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
 				type: 'content',
-				value: [{ type: 'text', text: '[file: application/pdf]' }],
+				value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
 			});
 		});
 	});
