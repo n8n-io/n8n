@@ -57,13 +57,9 @@ import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
-const INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
+const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	RECALL_MEMORY_TOOL_NAME,
-	'clarify',
-	'memory',
-	'execute_code',
-	'code_execution',
 ]);
 
 interface DeferredToolOptions {
@@ -822,7 +818,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
-			providerTools: this.providerTools,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -860,7 +855,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
-			providerTools: BuiltProviderTool[];
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -873,6 +867,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const runInlineSubAgent = this.createInlineSubAgentRunner({
 				...options,
 				tools,
+				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
@@ -901,18 +896,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
-		providerTools: BuiltProviderTool[];
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
 		tools: BuiltTool[];
+		inlineSubAgentBlockedTools?: string[];
 	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
 		return async (request) => {
-			const tools = filterInlineSubAgentTools(options.tools, request.allowedTools);
-			const deferredTools = filterInlineSubAgentTools(options.deferredTools, request.allowedTools);
-			const providerTools = filterInlineSubAgentProviderTools(
-				options.providerTools,
+			const tools = filterInlineSubAgentTools(
+				options.tools,
 				request.allowedTools,
+				options.inlineSubAgentBlockedTools,
+			);
+			const deferredTools = filterInlineSubAgentTools(
+				options.deferredTools,
+				request.allowedTools,
+				options.inlineSubAgentBlockedTools,
 			);
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
@@ -922,7 +921,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				tools: tools.length > 0 ? tools : undefined,
 				deferredTools: deferredTools.length > 0 ? deferredTools : undefined,
 				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
-				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				checkpointStorage: this.checkpointStore,
 				thinking: this.thinkingConfig,
@@ -960,24 +958,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 }
 
-function filterInlineSubAgentTools(
-	tools: BuiltTool[],
-	allowedTools: string[] | undefined,
-): BuiltTool[] {
-	const allowed = allowedTools ? new Set(allowedTools) : undefined;
-	return tools.filter((tool) => {
-		if (INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES.has(tool.name)) return false;
-		return allowed ? allowed.has(tool.name) : true;
-	});
+export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {
+	return new Set([...SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES, ...(hostBlockedTools ?? [])]);
 }
 
-function filterInlineSubAgentProviderTools(
-	tools: BuiltProviderTool[],
+export function filterInlineSubAgentTools(
+	tools: BuiltTool[],
 	allowedTools: string[] | undefined,
-): BuiltProviderTool[] {
+	hostBlockedTools?: string[],
+): BuiltTool[] {
+	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
 	const allowed = allowedTools ? new Set(allowedTools) : undefined;
 	return tools.filter((tool) => {
-		if (INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES.has(tool.name)) return false;
+		if (blocked.has(tool.name)) return false;
 		return allowed ? allowed.has(tool.name) : true;
 	});
 }

@@ -150,6 +150,12 @@ export interface CreateDelegateSubAgentToolOptions {
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	/** Fan-out limits and spawn switch enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
+	/**
+	 * Additional local/deferred tool names the host removes from inline children.
+	 * These cannot be re-added through `allowedTools`. Provider tools are not
+	 * inherited by inline children and are out of scope for this list.
+	 */
+	inlineSubAgentBlockedTools?: string[];
 	/** Run the child for this delegation and return its result. */
 	runSubAgent?: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
 }
@@ -207,6 +213,9 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 					? { availableSubAgents: options.availableSubAgents }
 					: {}),
 				...(options.policy !== undefined ? { policy: options.policy } : {}),
+				...(options.inlineSubAgentBlockedTools !== undefined
+					? { inlineSubAgentBlockedTools: options.inlineSubAgentBlockedTools }
+					: {}),
 				...(options.runSubAgent !== undefined ? { runSubAgent: options.runSubAgent } : {}),
 			} satisfies DelegateSubAgentToolMetadata,
 		},

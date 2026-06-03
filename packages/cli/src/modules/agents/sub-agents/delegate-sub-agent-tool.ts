@@ -12,6 +12,13 @@ import type {
 	SubAgentForegroundRunner,
 } from './sub-agent-foreground-runner';
 
+const N8N_INLINE_SUB_AGENT_BLOCKED_TOOLS = [
+	'clarify',
+	'memory',
+	'execute_code',
+	'code_execution',
+] as const;
+
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;
 	sourcesById: Record<string, SubAgentSource>;
@@ -23,6 +30,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 	const { runner, sourcesById, availableSubAgents, policy, ...runContext } = options;
 
 	return createDelegateSubAgentTool({
+		inlineSubAgentBlockedTools: [...N8N_INLINE_SUB_AGENT_BLOCKED_TOOLS],
 		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
 		...(policy !== undefined ? { policy } : {}),
 		runSubAgent: async (request) => {

@@ -216,6 +216,25 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 		expect(runner.runForeground).not.toHaveBeenCalled();
 	});
+
+	it('passes n8n inline blocked tool names into delegate tool metadata', () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: {},
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+		});
+
+		expect(
+			(
+				tool.metadata?.inlineDelegateSubAgent as
+					| { inlineSubAgentBlockedTools?: string[] }
+					| undefined
+			)?.inlineSubAgentBlockedTools,
+		).toEqual(['clarify', 'memory', 'execute_code', 'code_execution']);
+	});
 });
 
 describe('formatSubAgentToolOutput', () => {
