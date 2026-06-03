@@ -93,6 +93,56 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('mcpAccessEnabled', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('defaults to true', () => {
+			expect(service.getAdminSettings().mcpAccessEnabled).toBe(true);
+		});
+
+		it('round-trips an update through getAdminSettings and persists it', async () => {
+			const result = await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(result.mcpAccessEnabled).toBe(false);
+			expect(service.getAdminSettings().mcpAccessEnabled).toBe(false);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"mcpAccessEnabled":false'),
+				}),
+				['key'],
+			);
+		});
+	});
+
+	describe('executeMcpTool permission', () => {
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('defaults to require_approval', () => {
+			expect(service.getAdminSettings().permissions.executeMcpTool).toBe('require_approval');
+		});
+
+		it('persists and reflects an update', async () => {
+			const result = await service.updateAdminSettings({
+				permissions: { executeMcpTool: 'always_allow' },
+			});
+
+			expect(result.permissions.executeMcpTool).toBe('always_allow');
+			expect(service.getAdminSettings().permissions.executeMcpTool).toBe('always_allow');
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"executeMcpTool":"always_allow"'),
+				}),
+				['key'],
+			);
+		});
+	});
+
 	describe('instance-ai-settings-updated event', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);

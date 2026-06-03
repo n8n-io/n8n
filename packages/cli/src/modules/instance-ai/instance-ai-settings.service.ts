@@ -67,6 +67,7 @@ interface PersistedAdminSettings {
 	subAgentMaxSteps?: number;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
+	mcpAccessEnabled?: boolean;
 	sandboxEnabled?: boolean;
 	sandboxProvider?: string;
 	sandboxImage?: string;
@@ -85,6 +86,9 @@ export class InstanceAiSettingsService {
 
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
+
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -160,6 +164,7 @@ export class InstanceAiSettingsService {
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,
@@ -195,6 +200,7 @@ export class InstanceAiSettingsService {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
 		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
+		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
 		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
 		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
 		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
@@ -551,6 +557,8 @@ export class InstanceAiSettingsService {
 			};
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
+		if (persisted.mcpAccessEnabled !== undefined)
+			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
 		if (persisted.sandboxProvider !== undefined) c.sandboxProvider = persisted.sandboxProvider;
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
@@ -576,6 +584,7 @@ export class InstanceAiSettingsService {
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,

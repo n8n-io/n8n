@@ -20,7 +20,23 @@ const store = useInstanceAiSettingsStore();
 
 const isAdmin = computed(() => store.canManage);
 
-const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTextKey }> = [
+const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
+	'require_approval',
+	'always_allow',
+	'blocked',
+];
+
+const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
+	require_approval: 'settings.n8nAgent.permissions.needsApproval',
+	always_allow: 'settings.n8nAgent.permissions.alwaysAllow',
+	blocked: 'settings.n8nAgent.permissions.blocked',
+};
+
+const permissionKeys: Array<{
+	key: keyof InstanceAiPermissions;
+	labelKey: BaseTextKey;
+	options?: InstanceAiPermissionMode[];
+}> = [
 	{ key: 'createWorkflow', labelKey: 'settings.n8nAgent.permissions.createWorkflow' },
 	{ key: 'updateWorkflow', labelKey: 'settings.n8nAgent.permissions.updateWorkflow' },
 	{ key: 'runWorkflow', labelKey: 'settings.n8nAgent.permissions.runWorkflow' },
@@ -45,7 +61,21 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 		key: 'restoreWorkflowVersion',
 		labelKey: 'settings.n8nAgent.permissions.restoreWorkflowVersion',
 	},
+	{
+		key: 'executeMcpTool',
+		labelKey: 'settings.n8nAgent.permissions.executeMcpTool',
+		options: ['require_approval', 'always_allow'],
+	},
 ];
+
+const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
+
+/** Permission rows with options defaulted; Execute MCP tools is hidden when MCP access is off. */
+const permissionRows = computed(() =>
+	permissionKeys
+		.filter((perm) => perm.key !== 'executeMcpTool' || isMcpAccessEnabled.value)
+		.map((perm) => ({ ...perm, options: perm.options ?? PERMISSION_OPTIONS })),
+);
 
 const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
@@ -63,6 +93,11 @@ function handleEnabledToggle(value: string | number | boolean) {
 
 function handleComputerUseToggle(value: string | number | boolean) {
 	store.setField('localGatewayDisabled', !Boolean(value));
+	void store.save();
+}
+
+function handleMcpAccessToggle(value: string | number | boolean) {
+	store.setField('mcpAccessEnabled', Boolean(value));
 	void store.save();
 }
 
@@ -131,6 +166,25 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 					</div>
 				</div>
 
+				<div v-if="isAdmin" :class="$style.card">
+					<div :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.mcpAccess.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.mcpAccess.description') }}
+							</span>
+						</div>
+						<ElSwitch
+							:model-value="isMcpAccessEnabled"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-mcp-access-toggle"
+							@update:model-value="handleMcpAccessToggle"
+						/>
+					</div>
+				</div>
+
 				<template v-if="isAdmin">
 					<div :class="$style.permissionsHeader">
 						<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
@@ -143,11 +197,11 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 
 					<div :class="$style.card">
 						<div
-							v-for="(perm, index) in permissionKeys"
+							v-for="(perm, index) in permissionRows"
 							:key="perm.key"
 							:class="[
 								$style.settingsRow,
-								{ [$style.settingsRowBorder]: index < permissionKeys.length - 1 },
+								{ [$style.settingsRowBorder]: index < permissionRows.length - 1 },
 							]"
 						>
 							<div :class="$style.settingsRowLeft">
@@ -166,16 +220,10 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 								"
 							>
 								<N8nOption
-									value="require_approval"
-									:label="i18n.baseText('settings.n8nAgent.permissions.needsApproval')"
-								/>
-								<N8nOption
-									value="always_allow"
-									:label="i18n.baseText('settings.n8nAgent.permissions.alwaysAllow')"
-								/>
-								<N8nOption
-									value="blocked"
-									:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
+									v-for="option in perm.options"
+									:key="option"
+									:value="option"
+									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
 								/>
 							</N8nSelect>
 						</div>
