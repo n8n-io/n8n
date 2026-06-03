@@ -355,6 +355,8 @@ function moveResource() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
+	line-height: 1;
+	vertical-align: middle;
 }
 
 .tooltipContent {

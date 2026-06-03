@@ -1468,13 +1468,13 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
 		});
 
-		it('does not render the callout when connectedByMe is true', async () => {
+		it('shows connected status row when connectedByMe is true', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: true },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
+			expect(screen.getByText('Your account is connected')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
 		});
 

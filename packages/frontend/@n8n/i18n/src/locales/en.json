@@ -1146,6 +1146,7 @@
 	"credentials.dynamic.badge": "Dynamic",
 	"credentials.private.badge": "Private",
 	"credentials.private.callout.title": "This node is set up to use end user accounts",
+	"credentials.private.callout.connected": "Your account is connected",
 	"credentials.private.callout.notConnected": "Your account isn't connected yet.",
 	"credentials.private.callout.connect": "Connect",
 	"credentials.search.placeholder": "Search credentials...",
