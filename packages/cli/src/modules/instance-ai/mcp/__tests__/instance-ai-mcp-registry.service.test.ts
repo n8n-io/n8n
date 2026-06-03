@@ -1,9 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -67,6 +71,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		const credentialsService = mock<CredentialsService>();
 		const oauthService = mock<OauthService>();
+		const eventService = mock<EventService>();
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -75,6 +80,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsFinderService,
 			credentialsService,
 			oauthService,
+			eventService,
 		);
 
 		return {
@@ -85,6 +91,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsFinderService,
 			credentialsService,
 			oauthService,
+			eventService,
 		};
 	}
 
@@ -300,5 +307,149 @@ describe('InstanceAiMcpRegistryService', () => {
 			credential.id,
 			'project-1',
 		);
+	});
+
+	describe('listConnectionsForUser', () => {
+		it('returns rows scoped to the requesting user', async () => {
+			const { service, connectionRepository } = createService();
+			const rows = [
+				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: 'cred-1' },
+			] as InstanceAiMcpRegistryConnection[];
+			connectionRepository.findBy.mockResolvedValue(rows);
+
+			const result = await service.listConnectionsForUser(user);
+
+			expect(connectionRepository.findBy).toHaveBeenCalledWith({ userId: user.id });
+			expect(result).toBe(rows);
+		});
+	});
+
+	describe('createConnection', () => {
+		it('creates a connection and emits a telemetry event', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				eventService,
+			} = createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+
+			const result = await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			});
+
+			expect(result).toMatchObject({
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			});
+			expect(result.id).toBeDefined();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-mcp-registry-connection-created',
+				{ userId: user.id, serverSlug: 'linear' },
+			);
+		});
+
+		it('throws NotFoundError when the server slug is unknown', async () => {
+			const { service, mcpRegistryService, eventService } = createService();
+			mcpRegistryService.get.mockResolvedValue(undefined);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'unknown', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the credential is not accessible to the user', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, eventService } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws ConflictError when a connection for the (user, server) pair already exists', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				eventService,
+			} = createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			connectionRepository.findOneBy.mockResolvedValue({
+				id: 'existing',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-other',
+			} as InstanceAiMcpRegistryConnection);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('translates unique-index violations into ConflictError', async () => {
+			const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.create.mockImplementation((entity) => entity as never);
+			const uniqueErr = new QueryFailedError('insert', [], new Error('uniq'));
+			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
+				code: 'SQLITE_CONSTRAINT_UNIQUE',
+			};
+			connectionRepository.save.mockRejectedValue(uniqueErr);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
+			).rejects.toBeInstanceOf(ConflictError);
+		});
+	});
+
+	describe('deleteConnection', () => {
+		it('deletes the row and emits a telemetry event', async () => {
+			const { service, connectionRepository, eventService } = createService();
+			const row = {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			} as InstanceAiMcpRegistryConnection;
+			connectionRepository.findOneBy.mockResolvedValue(row);
+
+			await service.deleteConnection(user, 'conn-1');
+
+			expect(connectionRepository.findOneBy).toHaveBeenCalledWith({
+				id: 'conn-1',
+				userId: user.id,
+			});
+			expect(connectionRepository.delete).toHaveBeenCalledWith({ id: 'conn-1' });
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-mcp-registry-connection-deleted',
+				{ userId: user.id, serverSlug: 'linear' },
+			);
+		});
+
+		it('throws NotFoundError when the row does not belong to the user', async () => {
+			const { service, connectionRepository, eventService } = createService();
+			connectionRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.deleteConnection(user, 'conn-1')).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
 	});
 });

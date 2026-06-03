@@ -1021,5 +1021,15 @@ export type RelayEventMap = {
 		mcpSettingsChanged: boolean;
 	};
 
+	'instance-ai-mcp-registry-connection-created': {
+		userId: string;
+		serverSlug: string;
+	};
+
+	'instance-ai-mcp-registry-connection-deleted': {
+		userId: string;
+		serverSlug: string;
+	};
+
 	// #endregion
 } & AiEventMap;
