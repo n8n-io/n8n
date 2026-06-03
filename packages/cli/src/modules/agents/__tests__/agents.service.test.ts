@@ -2713,7 +2713,7 @@ describe('AgentsService', () => {
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('clears builder runtime cache entries for the changed agent', async () => {
+		it('does not clear builder runtime cache entries for the changed agent', async () => {
 			const cacheKey = builderRuntimeCacheKey({ projectId, agentId, userId });
 			const cachedAgent = { close: jest.fn().mockResolvedValue(undefined) };
 			const rebuiltAgent = { close: jest.fn().mockResolvedValue(undefined) };
@@ -2736,9 +2736,9 @@ describe('AgentsService', () => {
 			const runtime = await agentsRuntimeService.getOrCreateRuntime(cacheKey, rebuildFactory);
 
 			expect(factory).toHaveBeenCalledTimes(1);
-			expect(cachedAgent.close).toHaveBeenCalledTimes(1);
-			expect(rebuildFactory).toHaveBeenCalledTimes(1);
-			expect(runtime.agent).toBe(rebuiltAgent);
+			expect(cachedAgent.close).not.toHaveBeenCalled();
+			expect(rebuildFactory).not.toHaveBeenCalled();
+			expect(runtime.agent).toBe(cachedAgent);
 		});
 
 		it('aborts a local active stream and stores the steering message', () => {
