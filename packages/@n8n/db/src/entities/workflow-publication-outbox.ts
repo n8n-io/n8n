@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
 
@@ -10,6 +10,10 @@ export type WorkflowPublicationOutboxStatus =
 	| 'failed';
 
 @Entity({ name: 'workflow_publication_outbox' })
+@Index('IDX_workflow_publication_outbox_pending_workflow', ['workflowId'], {
+	unique: true,
+	where: "status = 'pending'",
+})
 export class WorkflowPublicationOutbox extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;

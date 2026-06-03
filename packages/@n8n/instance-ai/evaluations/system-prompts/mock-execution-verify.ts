@@ -15,13 +15,30 @@ Credential ID values in the workflow JSON (real, placeholder strings, or stale r
 
 ## What you receive
 
-The verification artifact contains:
+The artifact is split into two blocks:
+1. **Workflow structure** (stable across scenarios for the same build): all nodes, their saved configs, and the connections JSON.
+2. **Scenario context** (fresh per scenario): pre-analysis flags, execution summary, errors, and per-node execution trace.
+
+The full layout:
 - **Pre-analysis**: Automated flags for known issues (builder config problems, mock generation failures)
-- **Execution summary**: Which nodes were mocked, pinned, or real
+- **Execution summary**: Which nodes were mocked, pinned, real, or did not run
 - **Errors**: Any runtime errors from the execution
-- **Workflow structure**: ALL nodes that were built, whether they executed or not, the saved config for every node, plus the full connections JSON showing how nodes are wired. Use this to verify node existence, wiring, and configuration before making claims about missing nodes, wrong connections, or unverified parameters.
-- **Execution trace**: Per-node detail including HTTP requests sent, mock responses returned, and node output. Only includes nodes that actually ran. **IMPORTANT: The trace is NOT in chronological order.** Do not infer execution sequence from the order nodes appear in the trace. Use the connections JSON in the workflow structure to determine execution flow.
-- **Output truncation**: Each node's \`output\` array is capped at 10 items for artifact size. The full untruncated count is preserved in the node's \`outputCount\` field. **Do not treat a smaller \`output\` array as a bug.** If \`outputCount\` > 10, the node emitted more items than are shown — downstream nodes processed the full set. Only flag a count mismatch as a real issue when \`outputCount\` itself is inconsistent with what the mock returned or what the scenario requires.
+- **Workflow structure**: ALL nodes that were built, the saved config for every node, plus the full connections JSON. Use this to verify node existence, wiring, and configuration before making claims about missing nodes, wrong connections, or unverified parameters.
+- **Execution trace**: Per-node detail with HTTP requests sent, mock responses, and node outputs. **NOT in chronological order** — use the connections JSON to determine flow. Per-node header tags include \`ran Nx\` for loop iterations and \`first error at iter K\` when an early iteration errored.
+
+### Reading per-node outputs
+
+Each node's outputs are grouped by **connection type** (\`main\`, \`ai_languageModel\`, \`ai_memory\`, \`ai_tool\`, …) and then by **output port (branch)**:
+- Most nodes have a single \`main\` port: \`Output [main]\`.
+- **Filter / IF**: two \`main\` branches — \`Output [main branch 0]\` (matched / true) and \`Output [main branch 1]\` (unmatched / false). Items go to one branch OR the other, never both.
+- **Switch**: one branch per route — \`Output [main branch 0]\`, \`Output [main branch 1]\`, etc.
+- **AI sub-nodes**: emit via non-main connections such as \`ai_languageModel\`.
+
+Each branch is labelled with the downstream node it connects to (e.g. \`→ Aggregate Posts\`) or \`(no downstream connection)\` when the branch isn't wired up. **Only items in connected branches reach downstream nodes** — items in unconnected branches are correctly excluded from the flow, not a bug.
+
+### Output truncation
+
+Each branch's items are capped at 10 for artifact size. The full untruncated total across all branches is in the node's \`outputCount\` field, and \`truncated: true\` is set when any branch was sliced. **Do not treat a smaller items array as a bug.** Downstream nodes processed the full set; only flag a count mismatch if \`outputCount\` itself contradicts the scenario.
 
 ## How to evaluate
 
@@ -42,11 +59,12 @@ The verification artifact contains:
 6. **Workflows can branch.** Not every node runs in every execution. A crashed or misconfigured node prevents all downstream branches from running. When diagnosing, identify the single root cause (the first node that crashed) rather than listing each unexecuted downstream node as a separate issue.
 7. Check the **success criteria** against the execution trace and node outputs
 8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
+9. **0 items flowing into a downstream node = that node doesn't run.** This is n8n's default branching behavior, not a defect. When a Filter / IF / Switch routes 0 items to a branch, its downstream nodes simply don't execute — no crash, no side effects. **Do not require an explicit guard (IF count > 0, early-exit branch) unless the success criteria explicitly demands intentional handling.** Verify against what the criteria actually say, not against an implicit "must use a guard" requirement.
 
 ## Failure categories
 
 When a checklist item fails, categorize the root cause:
-- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when a filter/code node receives correct input data but produces wrong output — this means the node logic is wrong, not the mock data. **Also applies when the builder produced an empty or trivial workflow (0 nodes, or only a trigger and no action nodes) — even if the build phase appears to have completed.** A "No trigger or start node found" execution error caused by zero nodes in the saved workflow is a builder failure, not a framework failure: the builder is responsible for committing at least a trigger.
+- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when a Code node receives correct input data but its connected downstream branch produces wrong output — that's wrong node logic. **For Filter / IF / Switch: an item appearing in the unmatched branch is NOT wrong output — it's correctly routed there by the predicate. Only flag a builder_issue when items that should have matched the predicate end up in the wrong branch.** **Also applies when the builder produced an empty or trivial workflow (0 nodes, or only a trigger and no action nodes) — even if the build phase appears to have completed.** A "No trigger or start node found" execution error caused by zero nodes in the saved workflow is a builder failure, not a framework failure: the builder is responsible for committing at least a trigger.
 - **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, mock data missing fields that downstream nodes reference. IMPORTANT: Trace the data flow carefully — if the mock returned correct data but a downstream filter or code node transformed it incorrectly, that is a builder_issue, not a mock_issue.
 - **legitimate_failure**: The workflow genuinely doesn't meet the success criteria and neither the builder nor mock is at fault. The test is working as designed — for example, the workflow lacks error handling that the scenario tests for.
 - **framework_issue**: The evaluation framework itself failed delivering input to an otherwise-built workflow. Evidence: a built workflow with at least a trigger node exists, but Phase 1 returned an error or the trigger output is empty (empty JSON object), causing cascading failures. Pre-analysis flags starting with "FRAMEWORK ISSUE", "Phase 1 error" warnings. DOES NOT apply when the workflow is empty (0 nodes) — that is a builder_issue, see above.

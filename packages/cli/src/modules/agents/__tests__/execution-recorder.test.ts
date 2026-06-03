@@ -11,6 +11,82 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	describe('per-tool execution timing', () => {
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		it('records distinct per-tool end times from tool-execution-end for concurrent tools', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			// Two concurrent tool calls emitted together by the model.
+			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
+			recorder.record(makeToolCallChunk('b', {}, 'tc-2'));
+
+			// Both start executing together (server-stamped on the chunk).
+			recorder.record({
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'a',
+				startTime: 1_100,
+			});
+			recorder.record({
+				type: 'tool-execution-start',
+				toolCallId: 'tc-2',
+				toolName: 'b',
+				startTime: 1_100,
+			});
+
+			// They finish at different real times (server-stamped on the chunk).
+			recorder.record({
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'a',
+				isError: false,
+				endTime: 1_500,
+			});
+			recorder.record({
+				type: 'tool-execution-end',
+				toolCallId: 'tc-2',
+				toolName: 'b',
+				isError: false,
+				endTime: 3_000,
+			});
+
+			// The batched tool-results arrive together, after the slowest finished.
+			jest.setSystemTime(3_001);
+			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
+			recorder.record(makeToolResultChunk('b', 'rb', 'tc-2'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const { timeline } = recorder.getMessageRecord();
+			const a = timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-1');
+			const b = timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-2');
+
+			// startTime from tool-execution-start, endTime from tool-execution-end —
+			// NOT the shared batched tool-result timestamp (3001).
+			expect(a).toMatchObject({ startTime: 1_100, endTime: 1_500, output: 'ra', success: true });
+			expect(b).toMatchObject({ startTime: 1_100, endTime: 3_000, output: 'rb', success: true });
+		});
+
+		it('falls back to the tool-result time when tool-execution-end is absent', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
+			jest.setSystemTime(2_000);
+			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const { timeline } = recorder.getMessageRecord();
+			const a = timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-1');
+			expect(a).toMatchObject({ endTime: 2_000, output: 'ra', success: true });
+		});
+	});
+
 	describe('timeline ordering', () => {
 		it('captures text → tool call → text in order', () => {
 			const recorder = new ExecutionRecorder();

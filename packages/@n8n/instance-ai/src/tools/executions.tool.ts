@@ -241,6 +241,7 @@ async function handleRun(
 		}
 	}
 	const allowedByScope =
+		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
 		(allowList === undefined || allowList.has(workflowId) || allowedByName);
 	const needsApproval = !allowedByScope;

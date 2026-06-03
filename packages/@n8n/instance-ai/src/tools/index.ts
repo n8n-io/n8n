@@ -27,10 +27,6 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
-const loadBuildWorkflowAgentTool = lazyMod(
-	() =>
-		require('./orchestration/build-workflow-agent.tool') as typeof import('./orchestration/build-workflow-agent.tool'),
-);
 const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
@@ -74,6 +70,9 @@ const loadApplyWorkflowCredentialsTool = lazyMod(
 	() =>
 		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
 );
+const loadBuildWorkflowTool = lazyMod(
+	() => require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+);
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
@@ -96,6 +95,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
+		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -106,21 +106,22 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 }
 
 /**
- * Creates orchestrator-scoped domain tools. Workflow and node tools keep
- * orchestrator-specific surfaces; data tables stay writable so the
- * data-table-manager skill can act directly without delegating.
+ * Creates orchestrator domain tools. Skills run in the orchestrator now, so
+ * domain tools must keep their full action surface rather than the old
+ * orchestration-only subset.
  */
 export function createOrchestratorDomainTools(context: InstanceAiContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.WORKFLOWS, loadWorkflowsTool().createWorkflowsTool(context)],
 		[DOMAIN_TOOL_IDS.EVALS, loadEvalsTool().createEvalsTool(context)],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, loadExecutionsTool().createExecutionsTool(context)],
 		[DOMAIN_TOOL_IDS.CREDENTIALS, loadCredentialsTool().createCredentialsTool(context)],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, loadResearchTool().createResearchTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context, 'orchestrator')],
+		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
+		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -140,10 +141,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
 		[ORCHESTRATION_TOOL_IDS.DELEGATE, loadDelegateTool().createDelegateTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.BUILD_WORKFLOW_WITH_AGENT,
-			loadBuildWorkflowAgentTool().createBuildWorkflowAgentTool(context),
-		],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),

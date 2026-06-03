@@ -81,7 +81,7 @@ describe('createSandbox', () => {
 	});
 
 	it('should pass getAuthToken through to DaytonaSandbox in proxy mode (lazy resolution)', async () => {
-		const getAuthToken = jest.fn().mockResolvedValue('jwt-token-123');
+		const getAuthToken = vi.fn().mockResolvedValue('jwt-token-123');
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',

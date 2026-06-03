@@ -71,6 +71,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiObservationLock } = await import(
 			'./entities/instance-ai-observation-lock.entity'
 		);
+		const { InstanceAiMcpRegistryConnection } = await import(
+			'./entities/instance-ai-mcp-registry-connection.entity'
+		);
 
 		return [
 			InstanceAiThread,
@@ -83,6 +86,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiObservation,
 			InstanceAiObservationCursor,
 			InstanceAiObservationLock,
+			InstanceAiMcpRegistryConnection,
 		];
 	}
 

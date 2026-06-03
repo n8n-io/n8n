@@ -2,8 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import {
 	buildDisplayGroups,
 	type ChatMessage,
@@ -11,10 +9,12 @@ import {
 	type InteractivePayload,
 } from '../composables/agentChatMessages';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
+import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
-import AgentChatMessageActions from './AgentChatMessageActions.vue';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -323,7 +323,11 @@ onBeforeUnmount(() => {
 						</summary>
 						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
 					</details>
-					<AgentChatToolSteps v-if="group.toolCalls.length" :tool-calls="group.toolCalls" />
+					<AgentChatToolSteps
+						v-if="group.toolCalls.length"
+						:tool-calls="group.toolCalls"
+						:project-id="projectId"
+					/>
 					<div v-if="group.interactives.some((p) => !p.resolvedAt)" :class="$style.interactives">
 						<InteractiveCard
 							v-for="payload in group.interactives.filter((p) => !p.resolvedAt)"
@@ -342,10 +346,7 @@ onBeforeUnmount(() => {
 						]"
 					>
 						<div :class="$style.markdownContent">
-							<ChatMarkdownChunk
-								:source="{ type: 'text', content: group.finalMessage.content }"
-								@open-artifact="() => {}"
-							/>
+							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
 					<div
@@ -367,7 +368,7 @@ onBeforeUnmount(() => {
 							@read-aloud="toggleReadAloud(group.id)"
 						/>
 					</div>
-					<ChatTypingIndicator
+					<AgentTypingIndicator
 						v-if="
 							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.finalMessage.content &&
@@ -392,6 +393,7 @@ onBeforeUnmount(() => {
 					<AgentChatToolSteps
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
+						:project-id="projectId"
 					/>
 
 					<div
@@ -408,10 +410,7 @@ onBeforeUnmount(() => {
 						]"
 					>
 						<div :class="$style.markdownContent">
-							<ChatMarkdownChunk
-								:source="{ type: 'text', content: group.message.content }"
-								@open-artifact="() => {}"
-							/>
+							<AgentMarkdownChunk :source="group.message.content" />
 						</div>
 					</div>
 					<div
@@ -445,7 +444,7 @@ onBeforeUnmount(() => {
 							@submit="onInteractiveSubmit(group.message.interactive, $event)"
 						/>
 					</div>
-					<ChatTypingIndicator
+					<AgentTypingIndicator
 						v-if="
 							group.message.role === 'assistant' &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
@@ -460,7 +459,7 @@ onBeforeUnmount(() => {
 
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
 			<div :class="$style.content">
-				<ChatTypingIndicator :class="$style.typingIndicator" />
+				<AgentTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
 	</div>

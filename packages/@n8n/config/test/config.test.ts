@@ -96,6 +96,9 @@ describe('GlobalConfig', () => {
 				connectionTimeoutMs: 20_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
+				maxConnectionLifetimeMs: 60 * 60 * 1000,
+				keepAlive: true,
+				keepAliveInitialDelayMs: 10_000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -113,6 +116,7 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 			pingIntervalSeconds: 2,
+			pingTimeoutMs: 5_000,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -239,6 +243,7 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
+			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
@@ -263,6 +268,10 @@ describe('GlobalConfig', () => {
 		},
 		chatTrigger: {
 			disablePublicChat: false,
+		},
+		compressionNode: {
+			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
+			maxZipEntries: 5000,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
@@ -555,6 +564,8 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			subAgentMaxChildren: 5,
+			subAgentTimeoutMs: 300000,
 			modules: [],
 		},
 	} satisfies GlobalConfigShape;
@@ -602,6 +613,7 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 				pingIntervalSeconds: 2,
+				pingTimeoutMs: 5_000,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,

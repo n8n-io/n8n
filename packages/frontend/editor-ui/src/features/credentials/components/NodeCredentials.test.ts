@@ -7,6 +7,7 @@ import { setActivePinia } from 'pinia';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
 import NodeCredentials from './NodeCredentials.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -131,6 +132,7 @@ function createCredential(
 		type: string;
 		isManaged: boolean;
 		isResolvable: boolean;
+		scopes: Scope[];
 	}> = {},
 ) {
 	return {
@@ -1417,6 +1419,7 @@ describe('NodeCredentials', () => {
 			name: 'My Slack',
 			type: 'openAiApi',
 			isResolvable: true,
+			scopes: ['credential:update'],
 		});
 
 		const notionNode: INodeUi = {
@@ -1483,6 +1486,20 @@ describe('NodeCredentials', () => {
 
 			expect(screen.getByText("Your account isn't connected yet.")).toBeInTheDocument();
 			expect(screen.getByTestId('node-credential-private-connect')).toBeInTheDocument();
+		});
+
+		it('hides the Connect link when the user lacks update permission', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': {
+					...privateCredential,
+					connectedByMe: false,
+					scopes: ['credential:read'],
+				},
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByText("Your account isn't connected yet.")).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
 		});
 
 		it('clicking Connect link calls uiStore.openExistingCredential with the credential id', async () => {

@@ -244,6 +244,14 @@ export class InstanceAiPage extends BasePage {
 		);
 	}
 
+	/**
+	 * NDV is rendered through a `<Teleport :to="#app-modals">`, and `#app-modals`
+	 * is mounted in `App.vue` as a sibling of the router view — i.e. OUTSIDE both
+	 * `workflow-canvas-host` and `instance-ai-container`. So unlike the canvas
+	 * content above, this must be page-scoped, not scoped to the preview canvas.
+	 * On the `/instance-ai` route the main editor isn't mounted, so the preview's
+	 * NDV is the only `output-panel` on the page.
+	 */
 	getPreviewNdvOutputPanel(): Locator {
 		return this.page.getByTestId('ndv').getByTestId('output-panel');
 	}

@@ -16,6 +16,11 @@ import { publishPlanUpdate } from './add-plan-item.tool';
 import type { BlueprintAccumulator } from './blueprint-accumulator';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
+function textRequestsPostBuildRun(text: string | undefined): boolean {
+	const normalized = text?.toLowerCase().replace(/\s+/g, ' ') ?? '';
+	return /\b(build|create|make)\b.{0,120}\b(then|and)\s+(run|execute|test)\b/.test(normalized);
+}
+
 export function createSubmitPlanTool(
 	accumulator: BlueprintAccumulator,
 	context: OrchestrationContext,
@@ -106,6 +111,7 @@ export function createSubmitPlanTool(
 				{
 					planRunId: context.runId,
 					messageGroupId: context.messageGroupId,
+					postBuildRunApprovalRequired: textRequestsPostBuildRun(context.currentUserMessage),
 				},
 			);
 

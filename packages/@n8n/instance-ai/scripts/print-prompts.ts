@@ -14,7 +14,6 @@ import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
-import { createSandboxBuilderAgentPrompt } from '../src/tools/orchestration/build-workflow-agent.prompt';
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
@@ -116,18 +115,6 @@ function collectAgents(): AgentEntry[] {
 			displayName: 'Sub-Agent — Workflow Planner',
 			source: 'src/tools/orchestration/plan-agent-prompt.ts → PLANNER_AGENT_PROMPT',
 			variants: [{ file: 'prompt', body: PLANNER_AGENT_PROMPT }],
-		},
-		{
-			folder: 'builder',
-			displayName: 'Sub-Agent — Workflow Builder',
-			source: 'src/tools/orchestration/build-workflow-agent.prompt.ts',
-			variants: [
-				{
-					file: 'sandbox',
-					label: 'sandbox mode → createSandboxBuilderAgentPrompt(workspaceRoot: /workspace)',
-					body: createSandboxBuilderAgentPrompt('/workspace'),
-				},
-			],
 		},
 		{
 			folder: 'delegate',

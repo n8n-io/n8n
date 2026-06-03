@@ -38,22 +38,24 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
+				`with \`workflowId: "${action.workflowId}"\` ` +
 				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
 				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
+				`Use SDK code or a targeted patch to apply this structural repair: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
+				`with \`workflowId: "${action.workflowId}"\` ` +
 				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
 				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				'In the `task` parameter, describe the targeted fix to apply.'
+				'Use patch mode when the edit is small.'
 			);
 	}
 }

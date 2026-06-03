@@ -56,7 +56,7 @@ jest.mock('@n8n/instance-ai', () => {
 			evaluateTerminal(
 				_events: unknown[],
 				status: 'completed' | 'cancelled' | 'errored',
-				options: { errorMessage?: string } = {},
+				options: { errorMessage?: string; suppressCompletedFallback?: boolean } = {},
 			) {
 				if (status === 'errored') {
 					return {
@@ -75,6 +75,15 @@ jest.mock('@n8n/instance-ai', () => {
 									'I hit an error before I could finish that response. Please try again.',
 							},
 						},
+					};
+				}
+
+				if (status === 'completed' && options.suppressCompletedFallback) {
+					return {
+						status,
+						visibilitySource: 'none',
+						action: 'none',
+						reason: 'completed-silent-suppressed',
 					};
 				}
 
@@ -635,7 +644,11 @@ type TerminalGuardOrderServiceInternals = {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
-		options?: { messageGroupId?: string; errorMessage?: string },
+		options?: {
+			messageGroupId?: string;
+			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
+		},
 	) => { action: string; reason: string } | undefined;
 	evaluateWaitingResponse: (
 		threadId: string,
@@ -1600,6 +1613,7 @@ function createPlannedTaskSchedulerService(): {
 		tick: jest.Mock;
 		revertToActive: jest.Mock;
 		revertCheckpointToPlanned: jest.Mock;
+		revertBuildWorkflowToPlanned: jest.Mock;
 		markRunning: jest.Mock;
 	};
 	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
@@ -1613,6 +1627,7 @@ function createPlannedTaskSchedulerService(): {
 		tick: jest.fn(async () => ({ type: 'none' })),
 		revertToActive: jest.fn(async () => {}),
 		revertCheckpointToPlanned: jest.fn(async () => {}),
+		revertBuildWorkflowToPlanned: jest.fn(async () => {}),
 		markRunning: jest.fn(async () => {}),
 	};
 
@@ -1903,6 +1918,48 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			true,
 		);
 	});
+
+	it('runs planned workflow builds as orchestrator follow-up turns', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		const buildTask = {
+			id: 'wf-1',
+			title: 'Build workflow',
+			kind: 'build-workflow',
+			spec: 'Build the workflow',
+			deps: [],
+			workflowId: 'existing-wf',
+		};
+		graph.tasks = [buildTask];
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'orchestrate-build-workflow',
+			graph,
+			tasks: [buildTask],
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
+			agentId: 'agent-001',
+		});
+		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
+			buildTask,
+		});
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			false,
+			undefined,
+			expect.objectContaining({
+				isPlannedBuildFollowUp: true,
+				buildTaskId: 'wf-1',
+				workItemId: 'plan-run-1:default',
+			}),
+		);
+	});
 });
 
 describe('InstanceAiService — suspended run user revalidation', () => {
@@ -2176,6 +2233,21 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'text-delta',
 			'run-finish',
 		]);
+	});
+
+	it('does not publish completed fallback output when silence is expected', () => {
+		const service = createTerminalGuardOrderService();
+
+		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+			suppressCompletedFallback: true,
+		});
+
+		expect(decision).toMatchObject({
+			action: 'none',
+			reason: 'completed-silent-suppressed',
+		});
+		expect(service.eventBus.events).toEqual([]);
 	});
 
 	it('publishes fallback error before run-finish on a silent failed run', () => {

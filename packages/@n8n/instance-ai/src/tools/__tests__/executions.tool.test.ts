@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
@@ -14,18 +15,18 @@ function createMockContext(
 	return {
 		userId: 'user-1',
 		workflowService: {
-			get: jest.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
-			list: jest.fn().mockResolvedValue([]),
+			get: vi.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
+			list: vi.fn().mockResolvedValue([]),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {
-			list: jest.fn(),
-			getStatus: jest.fn(),
-			run: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
-			getResolvedNodeParameters: jest.fn(),
+			list: vi.fn(),
+			getStatus: vi.fn(),
+			run: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
+			getResolvedNodeParameters: vi.fn(),
 		},
 		credentialService: {} as never,
 		nodeService: {} as never,
@@ -35,10 +36,10 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createAgentCtx(opts: { resumeData?: unknown; suspend?: jest.Mock } = {}) {
+function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
 	return {
 		resumeData: opts.resumeData,
-		suspend: opts.suspend ?? jest.fn(),
+		suspend: opts.suspend ?? vi.fn(),
 	};
 }
 
@@ -60,7 +61,7 @@ describe('executions tool', () => {
 				},
 			];
 			const context = createMockContext();
-			(context.executionService.list as jest.Mock).mockResolvedValue(executions);
+			(context.executionService.list as Mock).mockResolvedValue(executions);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, {} as never);
@@ -75,7 +76,7 @@ describe('executions tool', () => {
 
 		it('should pass filters to executionService.list', async () => {
 			const context = createMockContext();
-			(context.executionService.list as jest.Mock).mockResolvedValue([]);
+			(context.executionService.list as Mock).mockResolvedValue([]);
 
 			const tool = createExecutionsTool(context);
 			await executeTool(
@@ -106,7 +107,7 @@ describe('executions tool', () => {
 				status: 'running',
 			};
 			const context = createMockContext();
-			(context.executionService.getStatus as jest.Mock).mockResolvedValue(executionStatus);
+			(context.executionService.getStatus as Mock).mockResolvedValue(executionStatus);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
@@ -145,11 +146,11 @@ describe('executions tool', () => {
 		});
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const context = createMockContext({
 				permissions: {},
 			});
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf-1',
 				name: 'My Workflow',
 			});
@@ -177,9 +178,9 @@ describe('executions tool', () => {
 		});
 
 		it('should fall back to workflowId in message when lookup fails', async () => {
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const context = createMockContext({ permissions: {} });
-			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
+			(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
 
 			const tool = createExecutionsTool(context);
 			await executeTool(
@@ -222,7 +223,7 @@ describe('executions tool', () => {
 				status: 'success',
 			};
 			const context = createMockContext({ permissions: {} });
-			(context.executionService.run as jest.Mock).mockResolvedValue(executionResult);
+			(context.executionService.run as Mock).mockResolvedValue(executionResult);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
@@ -252,9 +253,9 @@ describe('executions tool', () => {
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
 			});
-			(context.executionService.run as jest.Mock).mockResolvedValue(executionResult);
+			(context.executionService.run as Mock).mockResolvedValue(executionResult);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
 				tool,
@@ -273,7 +274,7 @@ describe('executions tool', () => {
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
 			});
-			(context.executionService.run as jest.Mock).mockResolvedValue({
+			(context.executionService.run as Mock).mockResolvedValue({
 				executionId: 'exec-1',
 				status: 'success',
 			});
@@ -296,11 +297,11 @@ describe('executions tool', () => {
 					permissions: { runWorkflow: 'always_allow' },
 					allowedRunWorkflowIds: new Set(['wf-1']),
 				});
-				(context.executionService.run as jest.Mock).mockResolvedValue({
+				(context.executionService.run as Mock).mockResolvedValue({
 					executionId: 'exec-1',
 					status: 'success',
 				});
-				const suspendFn = jest.fn();
+				const suspendFn = vi.fn();
 
 				const tool = createExecutionsTool(context);
 				await executeTool(
@@ -320,8 +321,8 @@ describe('executions tool', () => {
 					permissions: { runWorkflow: 'always_allow' },
 					allowedRunWorkflowIds: new Set(['wf-other']),
 				});
-				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Off-scope WF' });
-				const suspendFn = jest.fn();
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Off-scope WF' });
+				const suspendFn = vi.fn();
 
 				const tool = createExecutionsTool(context);
 				const result = await executeTool(
@@ -341,12 +342,12 @@ describe('executions tool', () => {
 					allowedRunWorkflowIds: new Set(['wf-recorded']),
 					allowedRunWorkflowNames: new Set(['Replay Created WF']),
 				});
-				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Replay Created WF' });
-				(context.executionService.run as jest.Mock).mockResolvedValue({
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Replay Created WF' });
+				(context.executionService.run as Mock).mockResolvedValue({
 					executionId: 'exec-1',
 					status: 'success',
 				});
-				const suspendFn = jest.fn();
+				const suspendFn = vi.fn();
 
 				const tool = createExecutionsTool(context);
 				await executeTool(
@@ -367,14 +368,14 @@ describe('executions tool', () => {
 					allowedRunWorkflowIds: new Set(['wf-recorded']),
 					allowedRunWorkflowNames: new Set(['full execution test']),
 				});
-				(context.workflowService.get as jest.Mock).mockResolvedValue({
+				(context.workflowService.get as Mock).mockResolvedValue({
 					name: 'Full Execution Test',
 				});
-				(context.executionService.run as jest.Mock).mockResolvedValue({
+				(context.executionService.run as Mock).mockResolvedValue({
 					executionId: 'exec-1',
 					status: 'success',
 				});
-				const suspendFn = jest.fn();
+				const suspendFn = vi.fn();
 
 				const tool = createExecutionsTool(context);
 				await executeTool(
@@ -399,15 +400,15 @@ describe('executions tool', () => {
 						allowedRunWorkflowIds: new Set(['wf-recorded']),
 						allowedRunWorkflowNames: new Set(['Replay Created WF']),
 					});
-					(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
-					(context.workflowService.list as jest.Mock).mockResolvedValue([
+					(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
+					(context.workflowService.list as Mock).mockResolvedValue([
 						{ id: 'wf-current', name: 'Replay Created WF' },
 					]);
-					(context.executionService.run as jest.Mock).mockResolvedValue({
+					(context.executionService.run as Mock).mockResolvedValue({
 						executionId: 'exec-1',
 						status: 'success',
 					});
-					const suspendFn = jest.fn();
+					const suspendFn = vi.fn();
 
 					const tool = createExecutionsTool(context);
 					await executeTool(
@@ -439,8 +440,8 @@ describe('executions tool', () => {
 					allowedRunWorkflowIds: new Set(['wf-recorded']),
 					allowedRunWorkflowNames: new Set(['Allowed WF']),
 				});
-				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Other WF' });
-				const suspendFn = jest.fn();
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Other WF' });
+				const suspendFn = vi.fn();
 
 				const tool = createExecutionsTool(context);
 				const result = await executeTool(
@@ -477,7 +478,7 @@ describe('executions tool', () => {
 				],
 			};
 			const context = createMockContext();
-			(context.executionService.getDebugInfo as jest.Mock).mockResolvedValue(debugInfo);
+			(context.executionService.getDebugInfo as Mock).mockResolvedValue(debugInfo);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
@@ -502,7 +503,7 @@ describe('executions tool', () => {
 				returned: { from: 0, to: 0 },
 			};
 			const context = createMockContext();
-			(context.executionService.getNodeOutput as jest.Mock).mockResolvedValue(nodeOutput);
+			(context.executionService.getNodeOutput as Mock).mockResolvedValue(nodeOutput);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
@@ -526,7 +527,7 @@ describe('executions tool', () => {
 
 		it('should pass undefined options when not provided', async () => {
 			const context = createMockContext();
-			(context.executionService.getNodeOutput as jest.Mock).mockResolvedValue({
+			(context.executionService.getNodeOutput as Mock).mockResolvedValue({
 				nodeName: 'Set',
 				items: [],
 				totalItems: 0,
@@ -565,9 +566,7 @@ describe('executions tool', () => {
 				emptyResolutions: [],
 			};
 			const context = createMockContext();
-			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue(
-				resolution,
-			);
+			(context.executionService.getResolvedNodeParameters as Mock).mockResolvedValue(resolution);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
@@ -592,7 +591,7 @@ describe('executions tool', () => {
 
 		it('should pass undefined options when itemIndex/runIndex are omitted', async () => {
 			const context = createMockContext();
-			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue({
+			(context.executionService.getResolvedNodeParameters as Mock).mockResolvedValue({
 				nodeName: 'Set',
 				runIndex: 0,
 				itemIndex: 0,
@@ -632,9 +631,7 @@ describe('executions tool', () => {
 				suppressed: 'parameter-values-disabled',
 			};
 			const context = createMockContext();
-			(context.executionService.getResolvedNodeParameters as jest.Mock).mockResolvedValue(
-				suppressed,
-			);
+			(context.executionService.getResolvedNodeParameters as Mock).mockResolvedValue(suppressed);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(
@@ -657,7 +654,7 @@ describe('executions tool', () => {
 		it('should call executionService.stop with execution ID', async () => {
 			const stopResult = { success: true, message: 'Execution cancelled' };
 			const context = createMockContext();
-			(context.executionService.stop as jest.Mock).mockResolvedValue(stopResult);
+			(context.executionService.stop as Mock).mockResolvedValue(stopResult);
 
 			const tool = createExecutionsTool(context);
 			const result = await executeTool(

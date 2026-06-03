@@ -7,8 +7,6 @@ import type * as McpClientManagerMod from './mcp/mcp-client-manager';
 import type * as TitleUtilsMod from './memory/title-utils';
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
-import type * as BuildWorkflowAgentPromptMod from './tools/orchestration/build-workflow-agent.prompt';
-import type * as BuildWorkflowAgentToolMod from './tools/orchestration/build-workflow-agent.tool';
 import type * as DelegateToolMod from './tools/orchestration/delegate.tool';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as EvalAgentsMod from './utils/eval-agents';
@@ -64,14 +62,6 @@ const loadInstanceAgent = lazyModule(
 );
 const loadSubAgentFactory = lazyModule(
 	() => require('./agent/sub-agent-factory') as typeof SubAgentFactoryMod,
-);
-const loadBuildWorkflowAgentTool = lazyModule(
-	() =>
-		require('./tools/orchestration/build-workflow-agent.tool') as typeof BuildWorkflowAgentToolMod,
-);
-const loadBuildWorkflowAgentPrompt = lazyModule(
-	() =>
-		require('./tools/orchestration/build-workflow-agent.prompt') as typeof BuildWorkflowAgentPromptMod,
 );
 const loadDelegateTool = lazyModule(
 	() => require('./tools/orchestration/delegate.tool') as typeof DelegateToolMod,
@@ -167,8 +157,8 @@ export const buildRuntimeSkillWorkspaceBundle: typeof MaterializeRuntimeSkillsMo
 	lazyFunction(() => loadMaterializeRuntimeSkills().buildRuntimeSkillWorkspaceBundle);
 export const materializeRuntimeSkillsIntoWorkspace: typeof MaterializeRuntimeSkillsMod.materializeRuntimeSkillsIntoWorkspace =
 	lazyFunction(() => loadMaterializeRuntimeSkills().materializeRuntimeSkillsIntoWorkspace);
-export const createPrebakedRuntimeSkillsFromWorkspace: typeof MaterializeRuntimeSkillsMod.createPrebakedRuntimeSkillsFromWorkspace =
-	lazyFunction(() => loadMaterializeRuntimeSkills().createPrebakedRuntimeSkillsFromWorkspace);
+export const loadPrebakedRuntimeSkillsBundle: typeof MaterializeRuntimeSkillsMod.loadPrebakedRuntimeSkillsBundle =
+	lazyFunction(() => loadMaterializeRuntimeSkills().loadPrebakedRuntimeSkillsBundle);
 export declare const SANDBOX_RUNTIME_SKILLS_DIR: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILLS_DIR;
 export declare const SANDBOX_RUNTIME_SKILL_REGISTRY_FILE: typeof MaterializeRuntimeSkillsMod.SANDBOX_RUNTIME_SKILL_REGISTRY_FILE;
 export declare const RUNTIME_SKILL_MANIFEST_FILE: typeof MaterializeRuntimeSkillsMod.RUNTIME_SKILL_MANIFEST_FILE;
@@ -196,12 +186,6 @@ export {
 	createSubAgentResourceIdPrefix,
 	SUB_AGENT_RESOURCE_PREFIX,
 } from './tools/orchestration/agent-persistence';
-
-export const startBuildWorkflowAgentTask: typeof BuildWorkflowAgentToolMod.startBuildWorkflowAgentTask =
-	lazyFunction(() => loadBuildWorkflowAgentTool().startBuildWorkflowAgentTask);
-
-export const createSandboxBuilderAgentPrompt: typeof BuildWorkflowAgentPromptMod.createSandboxBuilderAgentPrompt =
-	lazyFunction(() => loadBuildWorkflowAgentPrompt().createSandboxBuilderAgentPrompt);
 
 export const startDetachedDelegateTask: typeof DelegateToolMod.startDetachedDelegateTask =
 	lazyFunction(() => loadDelegateTool().startDetachedDelegateTask);
@@ -436,7 +420,6 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 } from './types';
-export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export {
 	classifyAttachments,

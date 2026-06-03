@@ -734,6 +734,8 @@ export interface InstanceAiContext {
 	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
 	allowedRunWorkflowNames?: ReadonlySet<string>;
+	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	requireRunWorkflowApproval?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -770,6 +772,25 @@ export interface InstanceAiContext {
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * reports build outcomes here so planned build follow-ups and verification
+	 * tools can share the same work item without a detached builder sub-agent.
+	 */
+	workflowBuildContext?: {
+		threadId: string;
+		runId: string;
+		taskId: string;
+		workItemId: string;
+		/**
+		 * True for replan/checkpoint follow-ups where an approved plan already
+		 * exists and the builder may retry directly without creating a new plan.
+		 */
+		allowPostPlanWorkflowCreate?: boolean;
+		plannedTaskService?: PlannedTaskService;
+		workflowTaskService?: WorkflowTaskService;
+		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
+	};
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -819,6 +840,7 @@ export type PlannedTaskGraphStatus =
 export interface PlannedTaskGraph {
 	planRunId: string;
 	messageGroupId?: string;
+	postBuildRunApprovalRequired?: boolean;
 	status: PlannedTaskGraphStatus;
 	tasks: PlannedTaskRecord[];
 }
@@ -826,6 +848,7 @@ export interface PlannedTaskGraph {
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
@@ -834,7 +857,11 @@ export interface PlannedTaskService {
 	createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph>;
 	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
 	markRunning(
@@ -877,6 +904,9 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
+	/** Rewind a running build-workflow task after a scheduling race prevented
+	 *  its orchestrator follow-up from starting. */
+	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },
@@ -911,9 +941,17 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
