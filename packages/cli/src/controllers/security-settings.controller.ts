@@ -11,10 +11,9 @@ import type { Response } from 'express';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { floorToSettings, settingsToFloor } from '@/modules/redaction/redaction-enforcement-mapper';
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
-
-import { floorToSettings, settingsToFloor } from './redaction-enforcement-mapper';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
