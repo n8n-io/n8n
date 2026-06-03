@@ -67,13 +67,13 @@ const experimentalNdvStore = useExperimentalNdvStore();
 const { callDebounced } = useDebounce();
 
 const issues = computed(() => {
-	if (!ndvStore.activeNode) return {};
-	return ndvStore.activeNode?.issues?.parameters ?? {};
+	if (!ndvStore.value.activeNode) return {};
+	return ndvStore.value.activeNode?.issues?.parameters ?? {};
 });
 
 const empty = computed(() => state.paramValue.assignments.length === 0);
-const activeDragField = computed(() => propertyNameFromExpression(ndvStore.draggableData));
-const inputData = computed(() => ndvStore.ndvInputData?.[0]?.json);
+const activeDragField = computed(() => propertyNameFromExpression(ndvStore.value.draggableData));
+const inputData = computed(() => ndvStore.value.ndvInputData?.[0]?.json);
 const actions = computed(() => {
 	return [
 		{

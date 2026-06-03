@@ -118,11 +118,39 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('## LLM Selection Guidance');
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
+		expect(prompt).toContain('## Sub Agents');
 		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
 		expect(prompt).not.toContain('agent-builder-config-mutation');
 		expect(prompt).not.toContain('agent-builder-llm-selection');
 		expect(prompt).not.toContain('agent-builder-memory');
 		expect(prompt).not.toContain('agent-builder-tools');
+	});
+
+	it('tells the builder to write target agent descriptions', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain('Fresh agents must include a brief `description`');
+		expect(prompt).toContain(
+			'Requires `name`, `description`, `model`, `credential`, and `instructions`',
+		);
+		expect(prompt).toContain(
+			'"description": "Answers support questions and helps triage customer issues."',
+		);
+	});
+
+	it('teaches the builder how to configure subagent delegation', () => {
+		const prompt = buildPrompt(null);
+
+		expect(prompt).toContain('`subAgents: { "agents": [{ "agentId": "<published-agent-id>" }] }`');
+		expect(prompt).toContain('the runtime injects');
+		expect(prompt).toContain('`delegate_subagent`');
+		expect(prompt).toContain('If no saved agents');
+		expect(prompt).toContain('no subagent tool is available');
+		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
+		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
+		expect(prompt).toContain('If no published agents are available');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {
@@ -177,14 +205,21 @@ describe('builder model recommendations', () => {
 	});
 
 	it('registers only optional builder runtime skills', () => {
-		expect(getBuilderRuntimeSkills({ enabledModules: [] }).map((skill) => skill.id)).toEqual([
+		const skills = getBuilderRuntimeSkills();
+
+		expect(skills.map((skill) => skill.id)).toEqual([
 			'agent-builder-integrations',
+			'agent-builder-mcp',
 			'agent-builder-target-skills',
+			'agent-builder-target-tasks',
 		]);
+		expect(skills[0].description).toContain('chat integration/trigger versus a node tool');
+		expect(skills[0].instructions).toContain('Integration vs Node Tool Decision');
+		expect(skills[0].instructions).toContain('Linear node tools');
 	});
 
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
-		const integrationsSkill = getBuilderRuntimeSkills({ enabledModules: [] }).find(
+		const integrationsSkill = getBuilderRuntimeSkills().find(
 			(skill) => skill.id === 'agent-builder-integrations',
 		);
 

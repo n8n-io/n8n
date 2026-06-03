@@ -55,6 +55,20 @@ describe('AskQuestionCard', () => {
 		expect(wrapper.find('[data-testid="ask-question-other-input"]').exists()).toBe(true);
 	});
 
+	it('renders only the freeform field for an open-ended question (no options)', async () => {
+		const wrapper = mountCard({ options: [] });
+
+		expect(wrapper.findAll('button[aria-pressed]')).toHaveLength(0);
+		const input = wrapper.find('[data-testid="ask-question-other-input"]');
+		expect(input.exists()).toBe(true);
+
+		await input.setValue('Summarize my inbox');
+		await wrapper.find('[data-testid="ask-question-other-submit"]').trigger('click');
+
+		const emitted = wrapper.emitted('submit') as unknown[][];
+		expect(emitted[0][0]).toEqual({ values: ['Summarize my inbox'] });
+	});
+
 	it('emits submit with selected value after clicking a single-choice option', async () => {
 		vi.useFakeTimers();
 		const wrapper = mountCard();

@@ -11,6 +11,7 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -533,7 +534,9 @@ async function onExecuteWithMockData() {
 	});
 
 	await runWorkflow({
-		triggerNode: workflowsStore.selectedTriggerNodeName ?? triggerNode?.name,
+		triggerNode:
+			useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
+				.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 
@@ -866,7 +869,7 @@ defineExpose({
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template v-if="builderStore.isPlanModeAvailable" #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"
@@ -904,7 +907,7 @@ defineExpose({
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template v-if="builderStore.isPlanModeAvailable" #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"

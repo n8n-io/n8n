@@ -1421,7 +1421,9 @@ export class WorkflowDataProxy {
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.first() should have no arguments');
+								throw createExpressionError(
+									"$input.first() takes no arguments. To get items from a specific upstream node, use $('NodeName').first() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
@@ -1434,7 +1436,9 @@ export class WorkflowDataProxy {
 					if (property === 'last') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.last() should have no arguments');
+								throw createExpressionError(
+									"$input.last() takes no arguments. To get items from a specific upstream node, use $('NodeName').last() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
