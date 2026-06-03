@@ -84,19 +84,20 @@ export type BuilderRuntimeCacheKeyParams = {
 };
 
 export function agentRuntimeCacheKey(params: RuntimeCacheKeyParams): string {
+	const parts = ['agent', params.agentId];
 	if (params.usePublishedVersion) {
-		const parts = [params.agentId, 'published'];
+		parts.push('published');
 		if (params.integrationType) parts.push(params.integrationType);
 		return parts.join(':');
 	}
-	const parts = [params.agentId, 'draft'];
+	parts.push('draft');
 	if (params.n8nUserId) parts.push(params.n8nUserId);
 	return parts.join(':');
 }
 
 export function builderRuntimeCacheKey(params: BuilderRuntimeCacheKeyParams): string {
 	const { projectId, agentId, userId } = params;
-	const parts = [agentId, 'builder', projectId, userId];
+	const parts = ['builder', agentId, projectId, userId];
 	return parts.join(':');
 }
 
@@ -162,7 +163,8 @@ export class AgentsRuntimeService {
 
 	clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
 		for (const key of this.runtimes.keys()) {
-			if (key === agentId || key.startsWith(`${agentId}:`)) {
+			// clear only built agents, don't clear builder runtimes
+			if (key === agentId || key.startsWith(`agent:${agentId}:`)) {
 				const entry = this.runtimes.get(key);
 				this.runtimes.delete(key);
 				if (entry) this.closeAgentResources(entry.agent, agentId);
