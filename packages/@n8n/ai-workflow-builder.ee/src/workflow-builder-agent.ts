@@ -34,6 +34,7 @@ import {
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
+import type { SsrfGuard } from './tools/utils/ssrf-guard';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
@@ -96,6 +97,8 @@ export interface WorkflowBuilderAgentConfig {
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	/** Assistant handler for routing help/debug queries via the SDK (code builder only) */
 	assistantHandler?: AssistantHandler;
+	/** SSRF guard for web_fetch (real service when enabled, passthrough otherwise). */
+	ssrf?: SsrfGuard;
 }
 
 export interface ExpressionValue {
@@ -158,6 +161,7 @@ export class WorkflowBuilderAgent {
 	private nodeDefinitionDirs?: string[];
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	private assistantHandler?: AssistantHandler;
+	private ssrf?: SsrfGuard;
 	/** Feature flags stored from the first chat call to ensure consistency across a session */
 	private sessionFeatureFlags?: BuilderFeatureFlags;
 
@@ -172,6 +176,7 @@ export class WorkflowBuilderAgent {
 		this.nodeDefinitionDirs = config.nodeDefinitionDirs;
 		this.onTelemetryEvent = config.onTelemetryEvent;
 		this.assistantHandler = config.assistantHandler;
+		this.ssrf = config.ssrf;
 	}
 
 	/**
@@ -186,6 +191,7 @@ export class WorkflowBuilderAgent {
 			checkpointer: this.checkpointer,
 			featureFlags,
 			assistantHandler: this.assistantHandler,
+			ssrf: this.ssrf,
 		});
 	}
 

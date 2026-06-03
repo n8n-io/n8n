@@ -23,7 +23,8 @@ import {
 	type ToolCall,
 } from './agentChatMessages';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
-import { summariseInteractiveOutput } from '../utils/interactive-summary';
+import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
@@ -186,6 +187,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return null;
 	}
 
+	function dropOrphanMintedBubbles(session: StreamSession): void {
+		for (const msg of session.minted) {
+			if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
+				messages.value = messages.value.filter((m) => m !== msg);
+				session.minted.delete(msg);
+			}
+		}
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -243,9 +253,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						toolCallId: event.toolCallId,
 						input: event.input,
 						state: TOOL_CALL_STATE.PENDING,
+						displaySummary: summariseToolCall(event.toolName, undefined, event.input),
 					});
 				} else {
 					existing.input = event.input;
+					existing.displaySummary = summariseToolCall(
+						existing.tool,
+						existing.output,
+						existing.input,
+					);
 					if (
 						existing.state !== TOOL_CALL_STATE.RUNNING &&
 						existing.state !== TOOL_CALL_STATE.DONE
@@ -256,13 +272,33 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-execution-start': {
+				// Timing is server-measured: store the backend `startTime` verbatim
+				// (no client clock) so the live duration matches the persisted one.
 				const found = findToolCallById(event.toolCallId);
-				if (
-					found &&
-					found.tc.state !== TOOL_CALL_STATE.DONE &&
-					found.tc.state !== TOOL_CALL_STATE.ERROR
-				) {
-					found.tc.state = TOOL_CALL_STATE.RUNNING;
+				if (found) {
+					found.tc.startTime = event.startTime;
+					if (found.tc.state !== TOOL_CALL_STATE.DONE && found.tc.state !== TOOL_CALL_STATE.ERROR) {
+						found.tc.state = TOOL_CALL_STATE.RUNNING;
+					}
+				}
+				break;
+			}
+			case 'tool-execution-end': {
+				// Per-tool completion bridged from the runtime event bus. Flips a
+				// concurrent tool call to its terminal state the moment it settles,
+				// rather than waiting for the batched `tool-result` events. The later
+				// `tool-result` still fills in the output/summary. `endTime` is the
+				// server-measured settle time (no client clock).
+				const found = findToolCallById(event.toolCallId);
+				if (found) {
+					if (
+						found.tc.state !== TOOL_CALL_STATE.DONE &&
+						found.tc.state !== TOOL_CALL_STATE.ERROR &&
+						found.tc.state !== TOOL_CALL_STATE.SUSPENDED
+					) {
+						found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					}
+					found.tc.endTime = event.endTime;
 				}
 				break;
 			}
@@ -270,12 +306,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.output = event.output;
-					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
-					found.tc.displaySummary = summariseInteractiveOutput(
-						found.tc.tool,
-						event.output,
-						found.tc.input,
-					);
+					const failed = event.isError || isFailedDelegateOutput(found.tc.tool, event.output);
+					found.tc.state = failed ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved
 					// (disabled) state immediately. No separate "resumed" event needed.
@@ -335,29 +368,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
+				dropOrphanMintedBubbles(session);
 				if (event.errorCode === 'agent_misconfigured') {
-					// Misconfiguration is a distinct class of error: the agent
-					// can't run until its config is fixed. Surface it via the
-					// banner (`fatalError`) rather than an inline error bubble
-					// so the user sees what's missing and can act on it.
-					// Drop any orphan empty assistant bubble we minted before
-					// the error arrived so the banner is the only surface.
-					fatalError.value = {
-						message: event.message,
-						missing: event.missing ?? [],
-					};
-					for (const msg of session.minted) {
-						if (!msg.content && (msg.toolCalls?.length ?? 0) === 0) {
-							messages.value = messages.value.filter((m) => m !== msg);
-							session.minted.delete(msg);
-						}
-					}
-					break;
-				}
-				const lastMsg = messages.value[messages.value.length - 1];
-				if (lastMsg) {
-					lastMsg.content += `\n\nError: ${event.message}`;
-					lastMsg.status = 'error';
+					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else {
+					messages.value.push(
+						reactive<ChatMessage>({
+							id: crypto.randomUUID(),
+							role: 'assistant',
+							content: event.message,
+							thinking: '',
+							toolCalls: [],
+							status: CHAT_MESSAGE_STATUS.ERROR,
+						}),
+					);
 				}
 				break;
 			}
@@ -523,7 +547,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (found) {
 			found.tc.state = TOOL_CALL_STATE.DONE;
 			found.tc.output = payload.resumeData;
-			found.tc.displaySummary = summariseInteractiveOutput(
+			found.tc.displaySummary = summariseToolCall(
 				found.tc.tool,
 				payload.resumeData,
 				found.tc.input,

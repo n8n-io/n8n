@@ -26,6 +26,7 @@ describe('EvaluationErrorCode', () => {
 			'METRIC_NODE_REF_DELETED',
 			'LLM_PROVIDER_REMOVED',
 			'COMPILATION_FAILED',
+			'METRIC_INPUT_EMPTY',
 		];
 		for (const code of expected) {
 			expect(EvaluationErrorCode[code as keyof typeof EvaluationErrorCode]).toBe(code);

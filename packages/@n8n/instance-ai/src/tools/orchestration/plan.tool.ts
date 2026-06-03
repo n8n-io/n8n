@@ -4,18 +4,18 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { PlanValidationError } from '../../planned-tasks/planned-task-service';
-import type { OrchestrationContext, PlannedTask } from '../../types';
+import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
 	title: z.string().describe('Short user-facing task title'),
-	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research', 'checkpoint']),
+	kind: z.enum(PLANNED_TASK_KINDS),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
 		.array(z.string())
 		.describe(
 			'Task IDs that must succeed before this task can start. ' +
-				'Data stores before workflows that use them; independent workflows in parallel.',
+				'Workflows that consume outputs depend on workflows that produce them; independent workflows run in parallel.',
 		),
 	tools: z.array(z.string()).optional().describe('Required tool subset for delegate tasks'),
 	workflowId: z
@@ -44,6 +44,11 @@ const planInputSchema = z.object({
 
 function isReplanContext(context: OrchestrationContext): boolean {
 	return context.isReplanFollowUp === true;
+}
+
+function textRequestsPostBuildRun(text: string | undefined): boolean {
+	const normalized = text?.toLowerCase().replace(/\s+/g, ' ') ?? '';
+	return /\b(build|create|make)\b.{0,120}\b(then|and)\s+(run|execute|test)\b/.test(normalized);
 }
 
 /**
@@ -196,6 +201,7 @@ export function createPlanTool(context: OrchestrationContext) {
 						{
 							planRunId: context.runId,
 							messageGroupId: context.messageGroupId,
+							postBuildRunApprovalRequired: textRequestsPostBuildRun(context.currentUserMessage),
 						},
 					);
 				} catch (error) {

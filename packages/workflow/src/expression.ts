@@ -551,14 +551,14 @@ export class Expression {
 
 		// Expression extensions — only attached for the legacy engine.
 		//
-		// In the VM engine, every host function reachable from `data` becomes
-		// a callable target the isolate can reach via `callFunctionAtPath`.
-		// To minimise that surface we keep the VM-path data object as small as
-		// possible and let the in-isolate runtime resolve helpers itself
-		// (see packages/@n8n/expression-runtime/src/runtime/context.ts, where
-		// Tournament's polyfill rewrites bare `extend(...)` calls to the
-		// in-isolate copy on `target.extend`). Setting them on `data` in VM
-		// mode would be dead code AND an unnecessary host-callable.
+		// In the VM engine, function-typed bindings on `data` are
+		// structurally unreachable: the bridge's `getValueAtPath` returns
+		// `undefined` for any function-typed value, and the in-isolate
+		// runtime resolves helpers itself via Tournament's polyfill
+		// (see packages/@n8n/expression-runtime/src/runtime/context.ts,
+		// where bare `extend(...)` calls bind to the in-isolate copy on
+		// `target.extend`). Setting them on `data` in VM mode would be
+		// dead code.
 		if (!usingVm) {
 			data.extend = extend;
 			data.extendOptional = extendOptional;

@@ -1938,6 +1938,19 @@ export class WorkflowExecute {
 							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 					};
 
+					// Record the n8n user a dynamically-resolved private credential
+					// belongs to onto the execution context, so the redaction layer
+					// can grant that user access to their own data. The identity is
+					// execution-scoped, so this is the same value across nodes.
+					if (
+						this.additionalData.currentNodeUsedDynamicCredentials &&
+						this.additionalData.dynamicCredentialsResolvedUserId &&
+						this.runExecutionData.executionData?.runtimeData
+					) {
+						this.runExecutionData.executionData.runtimeData.executedByUserId =
+							this.additionalData.dynamicCredentialsResolvedUserId;
+					}
+
 					if (executionError !== undefined) {
 						taskData.error = executionError;
 						taskData.executionStatus = 'error';
@@ -1956,14 +1969,29 @@ export class WorkflowExecute {
 							},
 						]);
 
+						// AI tools default to continue-on-fail so the agent receives the
+						// error as a tool response. Explicit `onError: 'stopWorkflow'`
+						// still wins.
+						const isAiToolExecution =
+							executionNode.rewireOutputLogTo === NodeConnectionTypes.AiTool;
+						const aiToolDefaultsToContinue =
+							isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
+
 						if (
 							executionData.node.continueOnFail === true ||
 							['continueRegularOutput', 'continueErrorOutput'].includes(
 								executionData.node.onError || '',
-							)
+							) ||
+							aiToolDefaultsToContinue
 						) {
 							// Workflow should continue running even if node errors
-							if (Object.hasOwn(executionData.data, 'main') && executionData.data.main.length > 0) {
+							if (isAiToolExecution) {
+								// Surface the error on the ai_tool channel so the agent receives it
+								nodeSuccessData = [[{ json: { error: executionError.message } }]];
+							} else if (
+								Object.hasOwn(executionData.data, 'main') &&
+								executionData.data.main.length > 0
+							) {
 								// Simply get the input data of the node if it has any and pass it through
 								// to the next node
 								if (executionData.data.main[0] !== null) {

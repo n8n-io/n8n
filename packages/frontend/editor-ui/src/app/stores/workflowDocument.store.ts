@@ -10,16 +10,17 @@ import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
-import {
-	useWorkflowDocumentSettings,
-	DEFAULT_SETTINGS,
-} from './workflowDocument/useWorkflowDocumentSettings';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
 import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
-import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import {
+	useWorkflowDocumentNodes,
+	type NodeRemovedPayload,
+} from './workflowDocument/useWorkflowDocumentNodes';
 import { useWorkflowDocumentVersionData } from './workflowDocument/useWorkflowDocumentVersionData';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
@@ -29,6 +30,8 @@ import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentN
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
+import { useWorkflowDocumentNodeGroups } from './workflowDocument/useWorkflowDocumentNodeGroups';
+import { CHANGE_ACTION } from './workflowDocument/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -78,6 +81,7 @@ type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
 type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
+type NodeGroupsReturn = ReturnType<typeof useWorkflowDocumentNodeGroups>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -103,6 +107,7 @@ void (0 as unknown as [
 	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
 	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
 	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
+	AssertNoOverlap<NodeGroupsReturn, NodesReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -189,6 +194,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
 		});
+		const { onStateDirty: onNodeGroupsStateDirty, ...workflowDocumentNodeGroups } =
+			useWorkflowDocumentNodeGroups();
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -198,11 +205,19 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
+		onNodeGroupsStateDirty(() => useUIStore().markStateDirty());
+
+		workflowDocumentNodes.onNodesChange((event) => {
+			if (event.action !== CHANGE_ACTION.DELETE) return;
+			const { id } = event.payload as NodeRemovedPayload;
+			if (id) workflowDocumentNodeGroups.removeNodeFromGroups(id);
+		});
 
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
+			workflowDocumentNodeGroups.clearNodeGroups();
 		}
 
 		function serialize(): WorkflowData {
@@ -222,10 +237,14 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				connections,
 				active: workflowDocumentActive.active.value,
-				settings: workflowDocumentSettings.settings.value,
+				settings: workflowDocumentSettings.getSettingsSnapshot(),
 				tags: [...workflowDocumentTags.tags.value],
 				versionId: workflowDocumentVersionData.versionId.value,
 				meta: workflowDocumentMeta.meta.value,
+				nodeGroups: workflowDocumentNodeGroups.allGroups.value.map((group) => ({
+					...group,
+					nodeIds: [...group.nodeIds],
+				})),
 			};
 
 			if (workflowId) {
@@ -275,6 +294,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.setNodes(workflow.nodes ?? []);
 			workflowDocumentConnections.setConnections(workflow.connections ?? {});
 			workflowDocumentPinData.setPinData(workflow.pinData ?? {});
+			workflowDocumentNodeGroups.setNodeGroups(workflow.nodeGroups ?? []);
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
 				id: workflow.id,
@@ -310,6 +330,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.setNodes([]);
 			workflowDocumentConnections.setConnections({});
 			workflowDocumentPinData.setPinData({});
+			workflowDocumentNodeGroups.clearNodeGroups();
 			workflowDocumentViewport.setViewport(null);
 
 			workflowDocumentWorkflowObject.initWorkflowObject({
@@ -352,7 +373,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				updatedAt: workflowDocumentTimestamps.updatedAt.value,
 				nodes: workflowDocumentNodes.allNodes.value,
 				connections: workflowDocumentConnections.connectionsBySourceNode.value,
-				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
+				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.getSettingsSnapshot() },
 				tags: [...workflowDocumentTags.tags.value],
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??
@@ -366,6 +387,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				meta: workflowDocumentMeta.meta.value,
 				parentFolder: workflowDocumentParentFolder.parentFolder.value ?? undefined,
 				checksum: workflowDocumentChecksum.checksum.value,
+				nodeGroups: [...workflowDocumentNodeGroups.allGroups.value],
 			};
 		}
 
@@ -396,6 +418,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
+			...workflowDocumentNodeGroups,
 			removeAllNodes,
 			hydrate,
 			reset,
