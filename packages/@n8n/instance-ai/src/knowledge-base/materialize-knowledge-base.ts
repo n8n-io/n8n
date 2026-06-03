@@ -7,6 +7,7 @@ import {
 import { join as posixJoin } from 'node:path/posix';
 
 import type { Logger } from '../logger';
+import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
 	loadPrebakedWorkspaceBundle,
@@ -18,8 +19,9 @@ import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
 export const SANDBOX_KNOWLEDGE_BASE_DIR = 'knowledge-base';
 export const KNOWLEDGE_BASE_BEST_PRACTICES_DIR = 'best-practices';
+export const KNOWLEDGE_BASE_TEMPLATES_DIR = 'templates';
 export const KNOWLEDGE_BASE_MANIFEST_FILE = WORKSPACE_MANIFEST_FILE;
-export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 1;
+export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 2;
 
 export interface KnowledgeBaseIndexEntry {
 	id: BestPracticesGuideId;
@@ -46,17 +48,40 @@ export interface KnowledgeBaseWorkspaceBundle {
 	contentHash: string;
 }
 
-interface MaterializeKnowledgeBaseOptions {
-	workspace: SandboxWorkspace;
+export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 	root: string;
+	templatesArchive?: Buffer | null;
 	logger?: Logger;
 }
 
-export function buildKnowledgeBaseWorkspaceBundle({
-	root,
-}: {
-	root: string;
-}): KnowledgeBaseWorkspaceBundle {
+interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
+	workspace: SandboxWorkspace;
+}
+
+function addTemplatesToKnowledgeBaseFiles(
+	files: Map<string, string>,
+	rootDir: string,
+	templatesArchive: Buffer,
+	logger?: Logger,
+): void {
+	const extracted = extractBuilderTemplatesArchive(templatesArchive);
+	if (!extracted) {
+		logger?.warn('[knowledge-base] rejected templates archive during bundle build', {
+			archiveBytes: templatesArchive.byteLength,
+		});
+		return;
+	}
+
+	for (const [name, content] of extracted) {
+		const relativePath = posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, name);
+		files.set(posixJoin(rootDir, relativePath), content);
+	}
+}
+
+export function buildKnowledgeBaseWorkspaceBundle(
+	options: BuildKnowledgeBaseWorkspaceBundleOptions,
+): KnowledgeBaseWorkspaceBundle {
+	const { root, templatesArchive = null, logger } = options;
 	const rootDir = posixJoin(root, SANDBOX_KNOWLEDGE_BASE_DIR);
 	const files = new Map<string, string>();
 	const entries: KnowledgeBaseIndexEntry[] = [];
@@ -84,6 +109,10 @@ export function buildKnowledgeBaseWorkspaceBundle({
 	const index: KnowledgeBaseBestPracticesIndex = { entries };
 	files.set(indexPath, stringifyWorkspaceJson(index));
 
+	if (templatesArchive) {
+		addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger);
+	}
+
 	const manifestPath = posixJoin(rootDir, KNOWLEDGE_BASE_MANIFEST_FILE);
 	const contentHash = computeWorkspaceContentHash(files);
 	const manifest: KnowledgeBaseWorkspaceManifest = {
@@ -103,21 +132,19 @@ export function buildKnowledgeBaseWorkspaceBundle({
 
 const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
 
-export async function loadPrebakedKnowledgeBaseBundle({
-	workspace,
-	root,
-	logger,
-}: MaterializeKnowledgeBaseOptions): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
-	const bundle = buildKnowledgeBaseWorkspaceBundle({ root });
+export async function loadPrebakedKnowledgeBaseBundle(
+	options: MaterializeKnowledgeBaseOptions,
+): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
+	const bundle = buildKnowledgeBaseWorkspaceBundle(options);
 
 	return await loadPrebakedWorkspaceBundle({
-		workspace,
+		workspace: options.workspace,
 		manifestPath: bundle.manifestPath,
 		expectedHash: bundle.contentHash,
 		hashField: 'contentHash',
 		schemaVersion: KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
-		logger,
+		logger: options.logger,
 		invalidManifestLogMessage: 'Ignoring invalid prebaked knowledge base manifest',
 		staleManifestLogMessage: 'Ignoring stale prebaked knowledge base manifest',
 		staleManifestLogKeys: {
@@ -126,7 +153,7 @@ export async function loadPrebakedKnowledgeBaseBundle({
 		},
 		successLogMessage: 'Using prebaked knowledge base from workspace',
 		successLogContext: (loadedBundle) => ({
-			root,
+			root: options.root,
 			knowledgeBaseRoot: loadedBundle.rootDir,
 			contentHash: loadedBundle.contentHash,
 			fileCount: loadedBundle.files.size,
@@ -143,7 +170,7 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
 		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
-		buildBundle: () => buildKnowledgeBaseWorkspaceBundle({ root: options.root }),
+		buildBundle: () => buildKnowledgeBaseWorkspaceBundle(options),
 		materializedLogMessage: 'Materialized knowledge base into workspace',
 		materializedLogContext: (bundle) => ({
 			root: options.root,

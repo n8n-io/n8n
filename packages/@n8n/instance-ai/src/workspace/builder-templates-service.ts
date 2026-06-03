@@ -1,8 +1,8 @@
 /**
  * Builder templates service: fetches the curated workflow-template bundle from
  * the n8n-sdk-templates CDN as a single `templates.tar.gz`, caches it on disk,
- * and hands the raw bytes to the sandbox where `tar -xzf` expands them into
- * `examples/`. No host-side extraction.
+ * and hands the raw bytes to `buildKnowledgeBaseWorkspaceBundle`, which extracts
+ * them on the host into `knowledge-base/templates/`.
  *
  * The archive is produced by `n8n-io/n8n-sdk-templates` and is flat:
  *   - `index.txt`        — pipe-delimited catalog used for grep-style lookup

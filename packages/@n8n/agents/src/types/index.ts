@@ -41,6 +41,7 @@ export type {
 	ResumeOptions,
 	GenerateResult,
 	StreamResult,
+	SubAgentUsage,
 	BuiltAgent,
 	AgentRunState,
 	AgentResumeData,
@@ -52,7 +53,6 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
-	ToolExecutionContext,
 	InterruptibleToolContext,
 	BuiltTool,
 	BuiltProviderTool,
@@ -92,6 +92,7 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ObservationCapableMemory,
 	MemoryDescriptor,
+	SemanticRecallConfig,
 	MemoryConfig,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,

@@ -110,6 +110,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('call `plan` immediately');
 			expect(prompt).toContain('Do not load the `workflow-builder` skill');
 			expect(prompt).toContain('workflow tasks include any data table names');
+			expect(prompt).toContain('The planner sub-agent discovers credentials and data tables');
+			expect(prompt).not.toContain('discovers credentials, data tables, and best practices');
 		});
 
 		it('routes standalone data-table work through direct tools and the skill', () => {
@@ -279,18 +281,26 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('sandbox workspace', () => {
-		it('includes sandbox workspace guidance when sandboxWorkspaceAvailable is true', () => {
-			const prompt = getSystemPrompt({ sandboxWorkspaceAvailable: true });
+		it('always includes sandbox workspace and knowledge-base guidance', () => {
+			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
+			expect(prompt).toContain('Consult the knowledge base before planning or building');
+			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
 		});
 
-		it('omits sandbox workspace guidance when sandboxWorkspaceAvailable is false', () => {
-			const prompt = getSystemPrompt({ sandboxWorkspaceAvailable: false });
+		it('includes the resolved workspace root when workspaceRoot is provided', () => {
+			const prompt = getSystemPrompt({
+				workspaceRoot: '/home/daytona/workspace',
+			});
 
-			expect(prompt).not.toContain('## Sandbox workspace');
+			expect(prompt).toContain('Workspace root: `/home/daytona/workspace`');
+			expect(prompt).toContain('/home/daytona/workspace/knowledge-base/best-practices/index.json');
+			expect(prompt).not.toContain('<workspace_root>');
 		});
 	});
 

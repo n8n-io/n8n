@@ -4,10 +4,12 @@ import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 import {
 	buildKnowledgeBaseWorkspaceBundle,
 	KNOWLEDGE_BASE_MANIFEST_FILE,
+	KNOWLEDGE_BASE_TEMPLATES_DIR,
 	loadPrebakedKnowledgeBaseBundle,
 	materializeKnowledgeBaseIntoWorkspace,
 	SANDBOX_KNOWLEDGE_BASE_DIR,
 } from '../materialize-knowledge-base';
+import { makeBuilderTemplatesTarGz } from './builder-templates-archive.fixtures';
 
 const ROOT = '/home/daytona/workspace';
 
@@ -46,7 +48,7 @@ function createSandboxWorkspace(files: Map<string, string>): {
 }
 
 describe('buildKnowledgeBaseWorkspaceBundle', () => {
-	it('builds best-practice markdown files, index, and manifest', () => {
+	it('builds best-practice markdown files, index, and manifest v2', () => {
 		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 
 		expect(bundle.rootDir).toBe(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}`);
@@ -56,9 +58,15 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		expect(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/best-practices/index.json`),
 		).toBeDefined();
-		expect(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_MANIFEST_FILE}`),
-		).toBeDefined();
+		const manifest = jsonParse<{
+			schemaVersion: number;
+			contentHash: string;
+		}>(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_MANIFEST_FILE}`) ??
+				'',
+		);
+		expect(manifest.schemaVersion).toBe(2);
+		expect(manifest.contentHash).toBe(bundle.contentHash);
 		expect(bundle.contentHash).toMatch(/^[a-f0-9]{12}$/);
 
 		const index = jsonParse<{ entries: Array<{ id: string; hasDocumentation: boolean }> }>(
@@ -70,6 +78,24 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		expect(
 			index.entries.some((entry) => entry.id === 'monitoring' && !entry.hasDocumentation),
 		).toBe(true);
+	});
+
+	it('includes templates in the bundle and changes the content hash', () => {
+		const withoutTemplates = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const archive = makeBuilderTemplatesTarGz([
+			{ name: 'index.txt', content: 'example.ts | Example' },
+		]);
+		const withTemplates = buildKnowledgeBaseWorkspaceBundle({
+			root: ROOT,
+			templatesArchive: archive,
+		});
+
+		expect(
+			withTemplates.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.txt`,
+			),
+		).toBe('example.ts | Example');
+		expect(withTemplates.contentHash).not.toBe(withoutTemplates.contentHash);
 	});
 });
 
