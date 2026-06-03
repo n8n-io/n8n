@@ -1,8 +1,7 @@
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { computed, ref, shallowRef, type ShallowRef, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 
-import type { MessageSchema } from '@mcp-apps/i18n';
+import { useI18n } from '@mcp-apps/i18n';
 import { isRecord } from '@mcp-apps/utils/guards';
 
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
@@ -15,7 +14,7 @@ type UseWorkflowPreviewOptions = {
 };
 
 export function useWorkflowPreview({ app, toolResult }: UseWorkflowPreviewOptions) {
-	const { t } = useI18n<{ message: MessageSchema }>({ useScope: 'global' });
+	const { t } = useI18n();
 
 	const workflowUrl = ref<string>();
 	const workflowId = ref<string>();

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { N8nSpinner } from '@n8n/design-system';
-import { useI18n } from 'vue-i18n';
 
 import McpAppContainer from '@mcp-apps/components/mcp-app-container.vue';
 import McpFallbackCard from '@mcp-apps/components/mcp-fallback-card.vue';
@@ -8,11 +7,11 @@ import OpenInN8nButton from '@mcp-apps/components/open-in-n8n-button.vue';
 import WorkflowPreviewCard from '@mcp-apps/components/workflow-preview/workflow-preview-card.vue';
 import { useMcpHostApp } from '@mcp-apps/composables/use-mcp-host-app';
 import { useMcpHostContextStyles } from '@mcp-apps/composables/use-mcp-host-context-styles';
-import { type MessageSchema } from '@mcp-apps/i18n';
+import { useI18n } from '@mcp-apps/i18n';
 
 import { useWorkflowPreview } from './composables/use-workflow-preview';
 
-const { t } = useI18n<{ message: MessageSchema }>({ useScope: 'global' });
+const { t } = useI18n();
 
 const { app, hostContext, toolResult } = useMcpHostApp({
 	name: 'n8n Workflow Preview',

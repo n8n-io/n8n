@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { N8nSpinner } from '@n8n/design-system';
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 
 import type { WorkflowPreviewData } from '@mcp-apps/apps/workflow-preview/types';
-import type { MessageSchema } from '@mcp-apps/i18n';
+import { useI18n } from '@mcp-apps/i18n';
 import { readJsonMessage } from '@mcp-apps/utils/post-message';
 
 import OpenInN8nButton from '../open-in-n8n-button.vue';
@@ -23,7 +22,7 @@ const emit = defineEmits<{
 	previewSentChange: [value: boolean];
 }>();
 
-const { t } = useI18n<{ message: MessageSchema }>({ useScope: 'global' });
+const { t } = useI18n();
 
 const previewReady = ref(false);
 const iframeRef = ref<HTMLIFrameElement>();
