@@ -261,8 +261,8 @@ export class InstanceAiPage extends BasePage {
 
 	// ── Artifacts ─────────────────────────────────────────────────────
 
-	getArtifactCards(): Locator {
-		return this.container.getByTestId('instance-ai-artifact-card');
+	getArtifactPanelLinkByName(name: string | RegExp): Locator {
+		return this.container.getByTestId('instance-ai-artifacts-sidebar').getByRole('link', { name });
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────

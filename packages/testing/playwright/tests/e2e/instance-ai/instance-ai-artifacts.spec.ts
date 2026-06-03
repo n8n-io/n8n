@@ -49,8 +49,8 @@ test.describe(
 			await n8n.instanceAi.getPreviewToggleButton().click();
 			await expect(n8n.instanceAi.getPreviewIframeLocator()).toBeHidden();
 
-			// Click the artifact card to re-open the preview
-			await n8n.instanceAi.getArtifactCards().first().click();
+			// Click the artifact entry to re-open the preview
+			await n8n.instanceAi.getArtifactPanelLinkByName(/Open artifact click test/i).click();
 
 			// Preview should open again with canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

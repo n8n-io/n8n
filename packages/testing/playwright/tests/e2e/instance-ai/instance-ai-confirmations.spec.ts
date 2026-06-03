@@ -211,7 +211,7 @@ test.describe(
 					},
 				],
 			},
-			async ({ n8n }) => {
+			async ({ n8n }, testInfo) => {
 				await n8n.navigate.toInstanceAi();
 
 				await n8n.instanceAi.sendMessage(
@@ -222,12 +222,21 @@ test.describe(
 				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 				await n8n.instanceAi.getConfirmApproveButton().click();
 
-				await expect
-					.poll(
-						async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'approval test'),
-						{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
-					)
-					.toBe(true);
+				if (testInfo.project.name.includes('multi-main')) {
+					await expect(n8n.instanceAi.getAssistantMessageText(/built and verified/i)).toBeVisible({
+						timeout: 150_000,
+					});
+					await expect(
+						n8n.instanceAi.getAssistantMessageText(/confirmed it completes successfully/i),
+					).toBeVisible({ timeout: 150_000 });
+				} else {
+					await expect
+						.poll(
+							async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'approval test'),
+							{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
+						)
+						.toBe(true);
+				}
 				await n8n.instanceAi.waitForResponseComplete();
 
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
