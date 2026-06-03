@@ -1,0 +1,15 @@
+
+> @n8n/design-system@2.24.0 test /Users/robn8n/code/n8n/packages/frontend/@n8n/design-system
+> vitest run src/components/N8nDropdownMenu/DropdownMenu.test.ts src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+
+
+[1m[46m RUN [49m[22m [36mv4.1.1 [39m[90m/Users/robn8n/code/n8n/packages/frontend/@n8n/design-system[39m
+
+ [32m✓[39m src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 191[2mms[22m[39m
+ [32m✓[39m src/components/N8nDropdownMenu/DropdownMenu.test.ts [2m([22m[2m47 tests[22m[2m)[22m[33m 654[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m72 passed[39m[22m[90m (72)[39m
+[2m   Start at [22m 17:26:43
+[2m   Duration [22m 3.21s[2m (transform 1.31s, setup 760ms, import 2.30s, tests 845ms, environment 779ms)[22m
+

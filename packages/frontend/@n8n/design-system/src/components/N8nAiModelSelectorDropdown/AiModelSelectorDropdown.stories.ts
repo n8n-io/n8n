@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { computed, ref } from 'vue';
 
 import N8nAiModelSelectorDropdown from './AiModelSelectorDropdown.vue';
 import type { AiModelSelectorMenuItem } from './AiModelSelectorDropdown.types';
@@ -342,13 +343,47 @@ const meta: Meta<typeof N8nAiModelSelectorDropdown> = {
 	render: (args) => ({
 		components: { N8nAiModelSelectorDropdown },
 		setup: () => {
+			const searchQuery = ref('');
 			const getProviderId = (id: string) => id.split('::')[0];
 			const getProviderLogo = (id: string) => `https://models.dev/logos/${getProviderId(id)}.svg`;
 
-			return { args, getProviderLogo };
+			const filteredItems = computed(() => {
+				const query = searchQuery.value.trim().toLowerCase();
+				if (!query) return args.items;
+
+				return args.items.flatMap((provider) => {
+					const providerMatches = provider.label.toLowerCase().includes(query);
+					const children = provider.children ?? [];
+
+					return children.flatMap((model) => {
+						const modelMatches = `${model.label} ${model.data?.fullName ?? ''}`
+							.toLowerCase()
+							.includes(query);
+
+						if (!providerMatches && !modelMatches) return [];
+
+						return [
+							{
+								...model,
+								divided: false,
+								data: model.data
+									? { ...model.data, parts: [provider.label, model.label] }
+									: undefined,
+							},
+						];
+					});
+				});
+			});
+
+			const storyArgs = computed(() => ({ ...args, items: filteredItems.value }));
+			const handleSearch = (query: string) => {
+				searchQuery.value = query;
+			};
+
+			return { storyArgs, getProviderLogo, handleSearch };
 		},
 		template: `
-			<N8nAiModelSelectorDropdown v-bind="args">
+			<N8nAiModelSelectorDropdown v-bind="storyArgs" @search="handleSearch">
 				<template #trigger-leading="{ ui }">
 					<img
 						:class="ui.class"
