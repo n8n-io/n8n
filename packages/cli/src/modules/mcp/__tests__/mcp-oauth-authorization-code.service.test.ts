@@ -25,6 +25,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			const redirectUri = 'https://example.com/callback';
 			const codeChallenge = 'challenge-abc';
 			const state = 'state-xyz';
+			const resource = 'https://n8n.example.com/mcp-server/http';
 
 			authorizationCodeRepository.insert.mockResolvedValue(mock());
 
@@ -34,6 +35,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				redirectUri,
 				codeChallenge,
 				state,
+				resource,
 			);
 
 			expect(result).toHaveLength(64); // 32 bytes hex = 64 characters
@@ -45,6 +47,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				codeChallenge,
 				codeChallengeMethod: 'S256',
 				state,
+				resource,
 				expiresAt: expect.any(Number),
 				used: false,
 			});
@@ -64,6 +67,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					state: null,
+					resource: null,
 				}),
 			);
 		});
@@ -96,7 +100,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			await expect(
 				service.findAndValidateAuthorizationCode('invalid-code', 'client-123'),
-			).rejects.toThrow('Invalid authorization code');
+			).rejects.toThrow('invalid_grant');
 		});
 
 		it('should throw error and remove when authorization code expired', async () => {
@@ -111,7 +115,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			await expect(
 				service.findAndValidateAuthorizationCode('code-123', 'client-123'),
-			).rejects.toThrow('Authorization code expired');
+			).rejects.toThrow('invalid_grant');
 
 			expect(authorizationCodeRepository.remove).toHaveBeenCalledWith(authRecord);
 		});
@@ -158,7 +162,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 
 			await expect(
 				service.validateAndConsumeAuthorizationCode('code-123', 'client-123'),
-			).rejects.toThrow('Authorization code already used');
+			).rejects.toThrow('invalid_grant');
 		});
 
 		it('should throw error when redirect URI mismatch', async () => {
@@ -223,8 +227,19 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			authorizationCodeRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.getCodeChallenge('invalid-code', 'client-123')).rejects.toThrow(
-				'Invalid authorization code',
+				'invalid_grant',
 			);
+		});
+
+		it('should not leak PKCE challenge for a consumed code', async () => {
+			authorizationCodeRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.getCodeChallenge('code-123', 'client-123')).rejects.toThrow(
+				'invalid_grant',
+			);
+			expect(authorizationCodeRepository.findOne).toHaveBeenCalledWith({
+				where: { code: 'code-123', clientId: 'client-123', used: false },
+			});
 		});
 	});
 });

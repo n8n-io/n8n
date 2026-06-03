@@ -37,6 +37,7 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
 
@@ -47,7 +48,6 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nLink,
-	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -184,6 +184,16 @@ function canConnectPrivateCredential(credentialType: string): boolean {
 	const credential = getSelectedPrivateCredential(credentialType);
 	return getResourcePermissions(credential?.scopes).credential.update === true;
 }
+
+// The connect / connected callout is only relevant when the workflow uses the
+// default (system) resolver, where resolution maps to the n8n user's own
+// connection. With a custom resolver (e.g. Slack, OAuth) the runtime account is
+// chosen by the resolver, not the n8n user, so their own connection state is
+// irrelevant and we don't surface it.
+const isDefaultResolver = computed(() => {
+	const resolverId = workflowDocumentStore?.value.settings?.credentialResolverId;
+	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
+});
 
 watch(
 	() => props.node.parameters,
@@ -820,7 +830,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											placement="top"
 										>
 											<template #content>{{
-												i18n.baseText('credentials.dynamic.tooltip')
+												i18n.baseText('credentials.private.tooltip')
 											}}</template>
 											<N8nBadge
 												theme="tertiary"
@@ -828,7 +838,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 												data-test-id="credential-option-private-badge"
 											>
 												<span :class="$style.dynamicBadgeText">
-													<N8nIcon icon="key-round" size="medium" />
+													<N8nIcon icon="key-round" size="small" />
 													{{ i18n.baseText('credentials.private.badge') }}
 												</span>
 											</N8nBadge>
@@ -853,14 +863,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</N8nSelect>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
-								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
+								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
 								<N8nBadge
 									theme="tertiary"
 									class="pl-3xs pr-3xs"
 									data-test-id="node-credential-private-icon"
 								>
 									<span :class="$style.dynamicBadgeText">
-										<N8nIcon icon="key-round" size="medium" />
+										<N8nIcon icon="key-round" size="small" />
 										{{ i18n.baseText('credentials.private.badge') }}
 									</span>
 								</N8nBadge>
@@ -893,39 +903,60 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<div v-if="getSelectedPrivateCredential(type.name)" :class="$style.noticesContainer">
-					<N8nNotice
-						v-if="getSelectedPrivateCredential(type.name)"
-						:theme="isPrivateConnected(type.name) ? 'info' : 'warning'"
+				<div
+					v-if="getSelectedPrivateCredential(type.name) && isDefaultResolver"
+					:class="$style.noticesContainer"
+				>
+					<div
+						v-if="isPrivateConnected(type.name)"
+						:class="$style.privateConnectedNotice"
 						data-test-id="node-credential-private-callout"
 					>
-						<div :class="$style.privateNoticeContent">
-							<N8nIcon icon="user" size="small" :class="$style.privateNoticeIcon" />
-							<div>
-								<span>{{ i18n.baseText('credentials.private.callout.title') }}</span>
-								<div :class="$style.privateStatusRow">
-									<template v-if="isPrivateConnected(type.name)">
-										<N8nIcon icon="circle-check" color="success" size="small" />
-										<N8nText size="small">{{
-											i18n.baseText('credentials.private.callout.connected')
-										}}</N8nText>
-									</template>
-									<template v-else>
-										<N8nText size="small" :class="$style.privateNotConnectedText">{{
-											i18n.baseText('credentials.private.callout.notConnected')
-										}}</N8nText>
-										<N8nLink
-											v-if="canConnectPrivateCredential(type.name)"
-											data-test-id="node-credential-private-connect"
-											@click="editCredential(type.name)"
-										>
-											{{ i18n.baseText('credentials.private.callout.connect') }}
-										</N8nLink>
-									</template>
-								</div>
+						<span :class="$style.privateNoticeIconBadge">
+							<N8nIcon icon="user" size="medium" />
+						</span>
+						<div>
+							<N8nText size="small">{{
+								i18n.baseText('credentials.private.callout.title')
+							}}</N8nText>
+							<div :class="$style.privateStatusRow">
+								<N8nIcon icon="circle-check" color="success" size="small" />
+								<N8nText size="small" color="success">{{
+									i18n.baseText('credentials.private.callout.connected')
+								}}</N8nText>
 							</div>
 						</div>
-					</N8nNotice>
+					</div>
+					<div
+						v-else
+						:class="$style.privateConnectPrompt"
+						data-test-id="node-credential-private-callout"
+					>
+						<span :class="$style.privateNoticeIconBadge">
+							<N8nIcon icon="user" size="medium" />
+						</span>
+						<div :class="$style.privateConnectText">
+							<N8nText bold>{{
+								i18n.baseText('credentials.private.callout.connectTitle')
+							}}</N8nText>
+							<N8nText size="small">{{
+								getServiceName(type.name)
+									? i18n.baseText('credentials.private.callout.connectDescription', {
+											interpolate: { service: getServiceName(type.name) },
+										})
+									: i18n.baseText('credentials.private.callout.connectDescriptionGeneric')
+							}}</N8nText>
+						</div>
+						<N8nButton
+							v-if="canConnectPrivateCredential(type.name)"
+							:class="$style.privateConnectButton"
+							variant="outline"
+							size="small"
+							:label="i18n.baseText('credentials.private.callout.connect')"
+							data-test-id="node-credential-private-connect"
+							@click="editCredential(type.name)"
+						/>
+					</div>
 				</div>
 			</N8nInputLabel>
 		</div>
@@ -1025,8 +1056,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
+	font-size: var(--font-size--2xs);
+	line-height: 1;
+	vertical-align: middle;
 }
 
 .noticesContainer {
@@ -1035,10 +1067,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	gap: var(--spacing--3xs);
 	margin-top: var(--spacing--2xs);
 	margin-bottom: var(--spacing--xs);
-
-	:global(.notice) {
-		margin: 0;
-	}
 }
 
 .privateStatusRow {
@@ -1048,18 +1076,56 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	margin-top: var(--spacing--3xs);
 }
 
-.privateNotConnectedText {
-	color: var(--color--text--tint-1);
-}
-
-.privateNoticeContent {
+.privateConnectedNotice {
 	display: flex;
-	gap: var(--spacing--xs);
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius);
+	color: var(--color--text);
+
+	.privateNoticeIconBadge {
+		background-color: var(--color--foreground--tint-1);
+		color: var(--color--text--tint-1);
+	}
 }
 
-.privateNoticeIcon {
+.privateConnectPrompt {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border-width) var(--border-style) var(--callout--border-color--warning);
+	border-radius: var(--radius);
+	background-color: var(--callout--color--background--warning);
+	color: var(--color--text);
+
+	.privateNoticeIconBadge {
+		background-color: var(--color--warning--tint-1);
+		color: var(--color--warning);
+	}
+}
+
+.privateNoticeIconBadge {
+	display: flex;
 	flex-shrink: 0;
-	margin-top: 1px;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+}
+
+.privateConnectText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.privateConnectButton {
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .newCredential {

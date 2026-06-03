@@ -79,20 +79,23 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const {
 		mains = 1,
 		workers = 0,
+		webhooks = 0,
 		postgres: usePostgresConfig = false,
 		env = {},
 		projectName,
 		resourceQuota,
 		workerResourceQuota,
+		webhookResourceQuota,
 		services: enabledServices = [],
 		external = false,
 		networkName,
+		coverageHostDir,
 	} = config;
 
 	const log = createElapsedLogger('stack');
 
-	const isQueueMode = mains > 1 || workers > 0;
-	const needsLoadBalancer = mains > 1;
+	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
+	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 
@@ -131,6 +134,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			projectName: uniqueProjectName,
 			mains,
 			workers,
+			webhooks,
 			isQueueMode,
 			usePostgres,
 			needsLoadBalancer,
@@ -213,6 +217,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		const n8nResult = await createN8NInstances({
 			mains,
 			workers,
+			webhooks,
 			projectName: uniqueProjectName,
 			network,
 			serviceEnvironment: environment,
@@ -222,14 +227,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 			resourceQuota,
 			workerResourceQuota,
+			webhookResourceQuota,
 			filesToMount,
+			coverageHostDir,
 		});
 		containers.push(...n8nResult.containers);
 		telemetry.recordN8nStartup(
 			Math.round(performance.now() - n8nStartupStart),
 			n8nResult.containers.length,
 		);
-		log(`n8n ready: ${mains} main(s), ${workers} worker(s)`);
+		log(`n8n ready: ${mains} main(s), ${webhooks} webhook(s), ${workers} worker(s)`);
 
 		if (lbResult) {
 			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
@@ -312,7 +319,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		return {
 			baseUrl,
 			projectName: uniqueProjectName,
-			stop: async () => await stopN8NStack(containers, network, uniqueProjectName),
+			stop: async () => await stopN8NStack(containers, network, uniqueProjectName, coverageHostDir),
 			containers,
 			serviceResults,
 			services: servicesProxy,
@@ -355,12 +362,18 @@ async function stopN8NStack(
 	containers: StartedTestContainer[],
 	network: StartedNetwork,
 	uniqueProjectName: string,
+	coverageHostDir?: string,
 ): Promise<void> {
 	const errors: Error[] = [];
+	// testcontainers stops with timeout:0 (immediate SIGKILL). When collecting
+	// Node V8 coverage we need a graceful SIGTERM + grace so n8n flushes
+	// NODE_V8_COVERAGE to the bind-mounted dir before exit (~1s in practice).
+	// testcontainers `timeout` is in milliseconds (→ docker stop -t seconds).
+	const stopOptions = coverageHostDir ? { timeout: 30_000 } : undefined;
 	try {
 		const stopPromises = containers.reverse().map(async (container) => {
 			try {
-				await container.stop();
+				await container.stop(stopOptions);
 			} catch (error) {
 				errors.push(
 					new Error(`Failed to stop container ${container.getId()}: ${getErrorMessage(error)}`),
