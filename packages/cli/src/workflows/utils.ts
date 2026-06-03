@@ -40,20 +40,6 @@ export function getErrorDescription(error: unknown): string | undefined {
 	return undefined;
 }
 
-export function clampPolicyToFloor(
-	policy: WorkflowSettings.RedactionPolicy | undefined,
-	floor: RedactionEnforcementSettings,
-): WorkflowSettings.RedactionPolicy | undefined {
-	if (!floor.enforced) return policy;
-
-	const redactsProduction = policy === 'non-manual' || policy === 'all' || floor.production;
-	const redactsManual = policy === 'manual-only' || policy === 'all' || floor.manual;
-
-	if (redactsManual) return 'all';
-	if (redactsProduction) return 'non-manual';
-	return policy;
-}
-
 export function dropRedactionPolicy(newWorkflow: WorkflowEntity): void {
 	if (newWorkflow.settings?.redactionPolicy !== undefined) {
 		delete newWorkflow.settings.redactionPolicy;

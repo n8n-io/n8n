@@ -1,4 +1,4 @@
-import type { RedactionEnforcementSettings } from '@n8n/api-types';
+import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, Project, User } from '@n8n/db';
@@ -23,7 +23,7 @@ import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
+import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { FolderService } from '@/services/folder.service';
@@ -31,7 +31,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { clampPolicyToFloor, dropRedactionPolicy } from './utils';
+import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -256,10 +256,9 @@ export class WorkflowCreationService {
 		return savedWorkflow;
 	}
 
-	private async readActiveRedactionFloor(): Promise<RedactionEnforcementSettings | undefined> {
-		if (!this.licenseState.isDataRedactionLicensed()) return undefined;
-		if (!isRedactionEnforcementEnabled()) return undefined;
-		return await this.instanceRedactionEnforcementService.get();
+	private async readActiveRedactionFloor(): Promise<RedactionFloor> {
+		if (!this.licenseState.isDataRedactionLicensed()) return 'off';
+		return await this.instanceRedactionEnforcementService.getFloor();
 	}
 
 	private async resolveRedactionPolicyOnCreate(
@@ -267,7 +266,7 @@ export class WorkflowCreationService {
 		user: User,
 		effectiveProjectId: string,
 		transactionManager: EntityManager,
-		floor: RedactionEnforcementSettings | undefined,
+		floor: RedactionFloor,
 	): Promise<void> {
 		// No license — the field is meaningless, drop any incoming value.
 		if (!this.licenseState.isDataRedactionLicensed()) {
@@ -279,7 +278,7 @@ export class WorkflowCreationService {
 		const hasIncoming = incomingPolicy !== undefined && incomingPolicy !== 'none';
 
 		// Nothing to validate, nothing to clamp — skip the scope check entirely.
-		if (!hasIncoming && floor === undefined) return;
+		if (!hasIncoming && floor === 'off') return;
 
 		const canUpdateRedaction = await userHasScopes(
 			user,
@@ -294,15 +293,14 @@ export class WorkflowCreationService {
 			dropRedactionPolicy(newWorkflow);
 		}
 
-		if (floor === undefined || !canUpdateRedaction) return;
+		if (floor === 'off' || !canUpdateRedaction) return;
 
 		const current = newWorkflow.settings?.redactionPolicy;
-		const clamped = clampPolicyToFloor(current, floor);
-		if (clamped !== current) {
-			newWorkflow.settings = {
-				...(newWorkflow.settings ?? {}),
-				redactionPolicy: clamped,
-			};
-		}
+		if (current !== undefined && policyMeetsFloor(current, floor)) return;
+
+		const seed = policyForFloor(floor);
+		if (seed === undefined) return;
+
+		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), redactionPolicy: seed };
 	}
 }
