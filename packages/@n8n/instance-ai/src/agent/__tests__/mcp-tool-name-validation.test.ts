@@ -24,7 +24,7 @@ describe('MCP tool name validation', () => {
 
 	it('still skips exact normalized name collisions with native tools', () => {
 		const target = createToolRegistry();
-		const warn = jest.fn();
+		const warn = vi.fn();
 
 		addSafeMcpTools(target, makeTools(['work-flows']), {
 			source: 'external MCP',
