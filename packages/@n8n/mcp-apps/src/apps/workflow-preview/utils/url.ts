@@ -6,7 +6,7 @@
  */
 const ALLOWED_URL_SCHEMES = new Set(['http:', 'https:']);
 const DEFAULT_WORKFLOW_DEMO_URL =
-	'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true';
+	'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false';
 type WorkflowPreviewTheme = 'light' | 'dark';
 
 /**
@@ -42,6 +42,7 @@ export function buildWorkflowDemoUrl(workflowUrl: string): string | undefined {
 	parsed.pathname = demoPath;
 	parsed.search = '';
 	parsed.searchParams.set('hideControls', 'true');
+	parsed.searchParams.set('canOpenNDV', 'false');
 	parsed.hash = '';
 
 	return parsed.toString();
@@ -76,6 +77,7 @@ export function applyWorkflowDemoTheme({
 	if (!previewUrl) return undefined;
 
 	const parsed = new URL(previewUrl);
+	parsed.searchParams.set('canOpenNDV', 'false');
 	if (theme) {
 		parsed.searchParams.set('theme', theme);
 	} else {

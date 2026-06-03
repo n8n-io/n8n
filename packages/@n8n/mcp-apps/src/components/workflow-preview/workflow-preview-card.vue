@@ -66,6 +66,7 @@ async function maybeSendWorkflowToPreview() {
 		JSON.stringify({
 			command: 'openWorkflow',
 			workflow: props.workflow,
+			canOpenNDV: false,
 			hideNodeIssues: true,
 			suppressNotifications: true,
 		}),

@@ -1,4 +1,4 @@
-import { nextTick, type ShallowRef } from 'vue';
+import { nextTick, ref, type ShallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -31,6 +31,16 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
+}
+
+const canOpenNDV = ref(true);
+
+export function usePostMessageControls() {
+	return { canOpenNDV };
+}
+
+function canOpenNDVFromRouteQuery(queryValue: unknown) {
+	return queryValue !== 'false';
 }
 
 export function usePostMessageHandler({
@@ -77,9 +87,13 @@ export function usePostMessageHandler({
 		workflow: WorkflowDataUpdate;
 		projectId?: string;
 		tidyUp?: boolean;
+		canOpenNDV?: boolean;
 		suppressNotifications?: boolean;
 		allowErrorNotifications?: boolean;
 	}) {
+		canOpenNDV.value =
+			canOpenNDVFromRouteQuery(route.query.canOpenNDV) && json.canOpenNDV !== false;
+
 		uiStore.setNotificationsSuppressed(json.suppressNotifications === true, {
 			allowErrors: json.allowErrorNotifications === true,
 		});
@@ -272,12 +286,14 @@ export function usePostMessageHandler({
 	}
 
 	function setup() {
+		canOpenNDV.value = canOpenNDVFromRouteQuery(route.query.canOpenNDV);
 		window.addEventListener('message', onPostMessageReceived);
 		emitPostMessageReady();
 	}
 
 	function cleanup() {
 		window.removeEventListener('message', onPostMessageReceived);
+		canOpenNDV.value = true;
 	}
 
 	return {

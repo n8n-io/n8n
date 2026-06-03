@@ -66,17 +66,17 @@ describe('buildWorkflowDemoUrl', () => {
 		[
 			'hosted at root',
 			'https://n8n.example.com/workflow/abc123',
-			'https://n8n.example.com/workflows/demo?hideControls=true',
+			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false',
 		],
 		[
 			'hosted under a path',
 			'https://n8n.example.com/n8n/workflow/abc123',
-			'https://n8n.example.com/n8n/workflows/demo?hideControls=true',
+			'https://n8n.example.com/n8n/workflows/demo?hideControls=true&canOpenNDV=false',
 		],
 		[
 			'clears query and hash',
 			'https://n8n.example.com/workflow/abc123?foo=bar#section',
-			'https://n8n.example.com/workflows/demo?hideControls=true',
+			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false',
 		],
 	])('builds the demo URL for %s', (_label, input, expected) => {
 		expect(buildWorkflowDemoUrl(input)).toBe(expected);
@@ -122,7 +122,9 @@ describe('resolveWorkflowDemoUrl', () => {
 				workflowUrl: 'https://self-hosted.example.com/workflow/abc123',
 				previewUrl: 'https://preview.example.com/workflow/abc123',
 			}),
-		).toBe('https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true');
+		).toBe(
+			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false',
+		);
 	});
 
 	it.each([
@@ -132,7 +134,7 @@ describe('resolveWorkflowDemoUrl', () => {
 		['unexpected valid path', 'https://self-hosted.example.com/rest/workflows/abc123'],
 	])('uses the shared preview service for %s', (_label, workflowUrl) => {
 		expect(resolveWorkflowDemoUrl({ workflowUrl })).toBe(
-			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true',
+			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false',
 		);
 	});
 
@@ -148,7 +150,9 @@ describe('applyWorkflowDemoTheme', () => {
 				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true',
 				theme: 'dark',
 			}),
-		).toBe('https://preview.example.com/workflows/demo?hideControls=true&theme=dark');
+		).toBe(
+			'https://preview.example.com/workflows/demo?hideControls=true&canOpenNDV=false&theme=dark',
+		);
 	});
 
 	it('overrides an existing theme query parameter', () => {
@@ -157,7 +161,9 @@ describe('applyWorkflowDemoTheme', () => {
 				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true&theme=light',
 				theme: 'dark',
 			}),
-		).toBe('https://preview.example.com/workflows/demo?hideControls=true&theme=dark');
+		).toBe(
+			'https://preview.example.com/workflows/demo?hideControls=true&theme=dark&canOpenNDV=false',
+		);
 	});
 
 	it('removes the theme query parameter when theme is missing', () => {
@@ -166,7 +172,7 @@ describe('applyWorkflowDemoTheme', () => {
 				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true&theme=dark',
 				theme: undefined,
 			}),
-		).toBe('https://preview.example.com/workflows/demo?hideControls=true');
+		).toBe('https://preview.example.com/workflows/demo?hideControls=true&canOpenNDV=false');
 	});
 
 	it('returns undefined when no preview URL is available', () => {

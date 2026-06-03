@@ -119,6 +119,7 @@ import {
 } from '@/features/workflows/canvas/canvas.utils';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
@@ -166,6 +167,7 @@ const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 const $style = useCssModule();
 const router = useRouter();
 const route = useRoute();
+const { canOpenNDV } = usePostMessageControls();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
@@ -505,6 +507,8 @@ function onClickNode(_id: string, event: VueFlowXYPosition) {
 }
 
 async function onSetNodeActivated(id: string, event?: MouseEvent) {
+	if (isDemoRoute.value && !canOpenNDV.value) return;
+
 	// Handle Ctrl/Cmd + Double Click case
 	if (event?.metaKey || event?.ctrlKey) {
 		const didOpen = await tryToOpenSubworkflowInNewTab(id);
