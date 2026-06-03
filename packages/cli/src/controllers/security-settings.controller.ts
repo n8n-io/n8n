@@ -11,10 +11,9 @@ import type { Response } from 'express';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { floorToSettings, settingsToFloor } from '@/modules/redaction/redaction-enforcement-mapper';
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
-
-import { floorToSettings, settingsToFloor } from './redaction-enforcement-mapper';
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
@@ -95,14 +94,28 @@ export class SecuritySettingsController {
 			this.emitInstancePolicyUpdated(req, 'workflow_sharing', dto.personalSpaceSharing);
 		}
 
-		// TODO(IAM-622): emit a dedicated audit event with before/after state for
-		// redaction enforcement changes. The existing `instance-policies-updated`
-		// event carries a single boolean and can't represent the `floor` enum.
 		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
-			await this.instanceRedactionEnforcementService.set(
-				floorToSettings(dto.redactionEnforcement.floor),
-			);
+			const before = await this.instanceRedactionEnforcementService.get();
+			const after = floorToSettings(dto.redactionEnforcement.floor);
 			updatedSettings.redactionEnforcement = { floor: dto.redactionEnforcement.floor };
+			if (
+				before.enforced !== after.enforced ||
+				before.manual !== after.manual ||
+				before.production !== after.production
+			) {
+				await this.instanceRedactionEnforcementService.set(after);
+				this.eventService.emit('redaction-enforcement-updated', {
+					user: {
+						id: req.user.id,
+						email: req.user.email,
+						firstName: req.user.firstName,
+						lastName: req.user.lastName,
+						role: req.user.role,
+					},
+					before,
+					after,
+				});
+			}
 		}
 
 		return updatedSettings;

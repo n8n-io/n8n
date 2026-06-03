@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
@@ -33,6 +34,7 @@ describe('ActiveWorkflowManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -52,6 +54,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			instanceSettings,
 			mock(),
+			workflowsConfig,
 			mock(),
 			mock(),
 			mock(),
@@ -188,6 +191,7 @@ describe('ActiveWorkflowManager', () => {
 				publisher,
 				mock(),
 				push,
+				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -351,9 +355,10 @@ describe('ActiveWorkflowManager', () => {
 				workflowExecutionService,
 				instanceSettings,
 				mock(),
-				mock(),
+				workflowsConfig,
 				mock(),
 				eventService,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -377,10 +382,13 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emit(triggerData);
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
@@ -392,8 +400,6 @@ describe('ActiveWorkflowManager', () => {
 					undefined,
 					undefined,
 				);
-
-				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
@@ -417,10 +423,13 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 					workflowData,
@@ -451,6 +460,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -479,6 +489,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -518,6 +529,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -555,6 +567,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 

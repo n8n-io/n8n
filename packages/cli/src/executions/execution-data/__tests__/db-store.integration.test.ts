@@ -93,6 +93,35 @@ describe('read', () => {
 	});
 });
 
+describe('readMany', () => {
+	it('should return a map of bundles keyed by executionId, omitting missing ones', async () => {
+		const [a, b] = await Promise.all([createExecution(), createExecution()]);
+		const refA = createExecutionRef(workflowId, a.id);
+		const refB = createExecutionRef(workflowId, b.id);
+		await dbStore.write(refA, payload);
+
+		const bundles = await dbStore.readMany([refA, refB]);
+
+		expect(bundles.size).toBe(1);
+		expect(bundles.get(a.id)).toMatchObject({ ...payload, version: 1 });
+		expect(bundles.has(b.id)).toBe(false);
+	});
+
+	it('should return an empty map for an empty array', async () => {
+		const bundles = await dbStore.readMany([]);
+
+		expect(bundles.size).toBe(0);
+	});
+
+	it('should batch the IN-clause so a large id set stays within the DB parameter limit', async () => {
+		const refs = Array.from({ length: 2500 }, (_, i) =>
+			createExecutionRef(workflowId, String(100000 + i)),
+		);
+
+		await expect(dbStore.readMany(refs)).resolves.toEqual(new Map());
+	});
+});
+
 describe('delete', () => {
 	it('should delete data for single execution', async () => {
 		const execution = await createExecution();

@@ -35,12 +35,7 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import {
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
-} from '@/constants';
+import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
@@ -303,6 +298,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
+	/**
+	 * Throws if the credential type has opted into node-level restriction and this
+	 * node is not listed in its supportedNodes. Extracted to keep `_getCredentials`
+	 * below the cyclomatic-complexity lint threshold.
+	 */
+	private assertCredentialUsableByNode(type: string, nodeType: string): void {
+		if (!this.additionalData.credentialsHelper.isCredentialUsableByNode(type, nodeType)) {
+			throw new NodeOperationError(
+				this.node,
+				`Credential type "${type}" is restricted to specific nodes`,
+				{ level: 'warning' },
+			);
+		}
+	}
+
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
@@ -336,12 +346,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// Hardcode for now for security reasons that only a single node can access
-		// all credentials
-		const fullAccess = [
-			HTTP_REQUEST_NODE_TYPE,
-			HTTP_REQUEST_TOOL_NODE_TYPE,
-			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-		].includes(node.type);
+		// all credentials. Set is shared with save-time validators (see
+		// `FULL_ACCESS_NODE_TYPES` in `@/constants`) — add new entries there.
+		const fullAccess = FULL_ACCESS_NODE_TYPES.has(node.type);
+
+		// Strict opt-in restriction: credentials that set restrictToSupportedNodes
+		// are only usable by nodes listed in their supportedNodes — overriding the
+		// fullAccess bypass that HTTP Request and its tool variants enjoy.
+		this.assertCredentialUsableByNode(type, node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -490,7 +502,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
+			throw new ApplicationError(`Could not get parameter "${parameterName}"`, {
+				extra: { parameterName },
+			});
 		}
 
 		if (options?.rawExpressions) {

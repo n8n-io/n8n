@@ -191,6 +191,31 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			expect(result).toContain('There was an error');
 			expect(context.addOutputData).toHaveBeenCalled();
 		});
+
+		it('should throw on tool error when manualLogging is false so the engine records the failure', async () => {
+			const toolParams = {
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockRejectedValueOnce(
+				new Error('Workflow execution failed'),
+			);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool(toolParams);
+
+			await expect(tool.func('test query')).rejects.toThrow(/Workflow execution failed/);
+		});
 	});
 
 	describe('handleToolResponse', () => {

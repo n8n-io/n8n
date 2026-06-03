@@ -1,7 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { isAgentCredentialIntegration } from '@n8n/api-types';
 import { Agent } from '../entities/agent.entity';
 
 @Service()
@@ -62,10 +61,7 @@ export class AgentRepository extends Repository<Agent> {
 		return agents.filter(
 			(agent) =>
 				agent.id !== excludeAgentId &&
-				(agent.integrations ?? []).some(
-					(i) =>
-						isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
-				),
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
 		);
 	}
 }
