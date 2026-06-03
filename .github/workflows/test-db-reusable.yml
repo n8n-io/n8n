@@ -26,17 +26,19 @@ jobs:
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
           # Postgres 16 integration suite is split across two 2-vCPU shards.
-          # Postgres saturates before the Jest workers do, so two lightly-loaded
-          # PG instances beat one larger box (see DEVP-200 / DEVP-315).
+          # The suite is I/O-bound (blocks on PG round-trips), so we set
+          # --maxWorkers=2 to oversubscribe the 2 vCPUs rather than inherit
+          # jest's core-derived default of cores-1 (=1 worker, near-serial).
+          # See DEVP-315.
           - name: Postgres 16 (1/2)
             runner: blacksmith-2vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc --shard=1/2
+            test-cmd: pnpm test:postgres:integration:tc --shard=1/2 --maxWorkers=2
             migration-cmd: pnpm test:postgres:migrations:tc
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
           - name: Postgres 16 (2/2)
             runner: blacksmith-2vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc --shard=2/2
+            test-cmd: pnpm test:postgres:integration:tc --shard=2/2 --maxWorkers=2
             migration-cmd: ''
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
