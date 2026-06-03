@@ -202,7 +202,7 @@ test.describe(
 		});
 
 		test(
-			'should run workflow after build plan approval without an execution approval panel',
+			'should show approval panel and approve workflow execution',
 			{
 				annotation: [
 					{
@@ -219,6 +219,9 @@ test.describe(
 				);
 
 				await approveBuildPlanIfRequested({ n8n, nodeName: 'approval test' });
+				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
+				await n8n.instanceAi.getConfirmApproveButton().click();
+
 				await expect
 					.poll(
 						async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'approval test'),
@@ -233,7 +236,7 @@ test.describe(
 		);
 
 		test(
-			'should run workflow after build plan approval without an execution denial panel',
+			'should show approval panel and deny workflow execution',
 			{
 				annotation: [
 					{
@@ -250,14 +253,13 @@ test.describe(
 				);
 
 				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
-				await expect
-					.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'deny test'), {
-						intervals: [1_000, 2_000, 5_000],
-						timeout: 150_000,
-					})
-					.toBe(true);
+				await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
+				await n8n.instanceAi.getConfirmDenyButton().click();
 				await n8n.instanceAi.waitForResponseComplete();
 
+				await expect
+					.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'deny test'))
+					.toBe(false);
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
 				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
 			},
