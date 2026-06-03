@@ -142,8 +142,13 @@ export class PublicApiKeyService {
 		const direction = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
 		if (field === 'scopes') {
-			const scopesText =
-				qb.connection.options.type === 'postgres' ? 'apiKey.scopes::text' : 'apiKey.scopes';
+			// TypeORM doesn't auto-quote identifiers inside raw expressions, so on
+			// Postgres we must explicitly double-quote the alias/column (otherwise
+			// `apiKey.scopes` gets case-folded to `apikey.scopes` and fails). The
+			// `::text` cast is also Postgres-only — the column type resolves to
+			// `json` there but `simple-json` (text) on sqlite.
+			const isPostgres = qb.connection.options.type === 'postgres';
+			const scopesText = isPostgres ? '"apiKey"."scopes"::text' : 'apiKey.scopes';
 			const scopesCountExpr = `CASE WHEN ${scopesText} = '[]' THEN 0 ELSE LENGTH(${scopesText}) - LENGTH(REPLACE(${scopesText}, ',', '')) + 1 END`;
 			qb.addSelect(scopesCountExpr, 'scopes_count');
 			qb.addOrderBy('scopes_count', direction);
