@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
+	connect: [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
@@ -37,55 +38,60 @@ function handleRowClick() {
 	emit('open-detail', props.item);
 }
 
-function handleAction(event: MouseEvent) {
-	event.stopPropagation();
+function handleConnect() {
+	emit('connect', props.item);
+}
+
+function handleOpenDetail() {
 	emit('open-detail', props.item);
 }
 </script>
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`], $style.clickable]"
+		:class="[$style.row, $style[`row--${item.kind}`]]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
-		role="button"
-		tabindex="0"
-		@click="handleRowClick"
-		@keydown.enter="handleRowClick"
-		@keydown.space.prevent="handleRowClick"
 	>
-		<template v-if="item.kind === 'workflow'">
-			<div :class="$style.workflowIcon" aria-hidden="true">
-				<N8nIcon icon="workflow" :size="20" />
-			</div>
-			<N8nText :class="$style.workflowTitle" tag="div" bold>{{ item.title }}</N8nText>
-		</template>
+		<button
+			type="button"
+			:class="$style.mainAction"
+			data-test-id="tools-connection-row-main"
+			@click="handleRowClick"
+		>
+			<template v-if="item.kind === 'workflow'">
+				<span :class="$style.workflowIcon" aria-hidden="true">
+					<N8nIcon icon="workflow" :size="20" />
+				</span>
+				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
+			</template>
 
-		<template v-else>
-			<div :class="$style.iconWrapper" aria-hidden="true">
-				<N8nNodeIcon
-					v-if="resolvedIcon"
-					:type="resolvedIcon.type"
-					:src="resolvedIcon.type === 'file' ? resolvedIcon.src : undefined"
-					:name="resolvedIcon.type === 'icon' ? resolvedIcon.name : undefined"
-					:color="resolvedIcon.type === 'icon' ? resolvedIcon.color : undefined"
-					:size="20"
-				/>
-				<N8nIcon v-else :icon="placeholderIcon" :size="20" :class="$style.iconFallback" />
-			</div>
-			<div :class="$style.text">
-				<N8nText :class="$style.title" tag="div" bold>{{ item.title }}</N8nText>
-				<N8nText
-					v-if="item.description"
-					:class="$style.description"
-					tag="div"
-					size="small"
-					color="text-light"
-				>
-					{{ item.description }}
-				</N8nText>
-			</div>
-		</template>
+			<template v-else>
+				<span :class="$style.iconWrapper" aria-hidden="true">
+					<N8nNodeIcon
+						v-if="resolvedIcon"
+						:type="resolvedIcon.type"
+						:src="resolvedIcon.type === 'file' ? resolvedIcon.src : undefined"
+						:name="resolvedIcon.type === 'icon' ? resolvedIcon.name : undefined"
+						:color="resolvedIcon.type === 'icon' ? resolvedIcon.color : undefined"
+						:size="20"
+					/>
+					<N8nIcon v-else :icon="placeholderIcon" :size="20" :class="$style.iconFallback" />
+				</span>
+				<span :class="$style.text">
+					<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
+					<N8nText
+						v-if="item.description"
+						:class="$style.description"
+						tag="span"
+						size="small"
+						color="text-light"
+					>
+						{{ item.description }}
+					</N8nText>
+				</span>
+			</template>
+		</button>
 
 		<div :class="$style.action">
 			<template v-if="item.isConnected">
@@ -99,7 +105,7 @@ function handleAction(event: MouseEvent) {
 					size="small"
 					:aria-label="i18n.baseText('tools.connection.action.configure')"
 					data-test-id="tools-connection-row-configure"
-					@click="handleAction"
+					@click="handleOpenDetail"
 				/>
 			</template>
 			<template v-else>
@@ -108,7 +114,7 @@ function handleAction(event: MouseEvent) {
 					variant="outline"
 					size="small"
 					data-test-id="tools-connection-row-connect"
-					@click="handleAction"
+					@click="handleConnect"
 				/>
 			</template>
 		</div>
@@ -129,14 +135,25 @@ function handleAction(event: MouseEvent) {
 	&:hover {
 		background: var(--color--background--light-2);
 	}
+}
 
-	&.clickable {
-		cursor: pointer;
+.mainAction {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	flex: 1 1 0;
+	min-width: 0;
+	align-self: stretch;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
 
-		&:focus-visible {
-			outline: var(--focus--border-width) solid var(--focus--border-color);
-			outline-offset: -2px;
-		}
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
 	}
 }
 

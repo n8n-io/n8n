@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -39,24 +40,26 @@ const baseWorkflow: WorkflowConnectionItem = {
 };
 
 describe('ToolRow', () => {
-	it('shows a Connect button for an available mcp-server and emits open-detail on click', async () => {
+	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
 		const connect = getByTestId('tools-connection-row-connect');
 		expect(connect.textContent).toContain('Connect');
 
 		await fireEvent.click(connect);
-		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
+		expect(emitted().connect?.[0]).toEqual([baseMcp]);
+		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
-	it('shows a Connect button for an available node and emits open-detail on click', async () => {
+	it('shows a Connect button for an available node and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseNode);
 
 		const connect = getByTestId('tools-connection-row-connect');
 		expect(connect.textContent).toContain('Connect');
 
 		await fireEvent.click(connect);
-		expect(emitted()['open-detail']?.[0]).toEqual([baseNode]);
+		expect(emitted().connect?.[0]).toEqual([baseNode]);
+		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
 	it('shows a Connect button for an available workflow', () => {
@@ -77,27 +80,48 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']?.[0]).toEqual([connected]);
 	});
 
-	it('emits open-detail when an mcp-server row is clicked', async () => {
+	it('emits open-detail when the main row action is clicked', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
-		const row = getByTestId('tools-connection-row');
-		await fireEvent.click(row);
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
 
 		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
 	});
 
-	it('fires open-detail exactly once when clicking the Connect action', async () => {
+	it('emits open-detail when the main row action is keyboard activated', async () => {
+		const { getByTestId, emitted } = render(baseMcp);
+
+		getByTestId('tools-connection-row-main').focus();
+		await userEvent.keyboard('{Enter}');
+
+		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
+	});
+
+	it('does not fire open-detail when clicking the Connect action', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
 		await fireEvent.click(getByTestId('tools-connection-row-connect'));
-		expect(emitted()['open-detail']).toHaveLength(1);
+		expect(emitted().connect).toHaveLength(1);
+		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
 	it('emits open-detail when a node row is clicked', async () => {
 		const { getByTestId, emitted } = render(baseNode);
 
-		await fireEvent.click(getByTestId('tools-connection-row'));
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
 		expect(emitted()['open-detail']?.[0]).toEqual([baseNode]);
+	});
+
+	it('keeps row actions as sibling interactive controls', () => {
+		const { getByTestId } = render(baseMcp);
+
+		expect(getByTestId('tools-connection-row').getAttribute('role')).toBeNull();
+		expect(getByTestId('tools-connection-row-main').tagName).toBe('BUTTON');
+		expect(
+			getByTestId('tools-connection-row-main').contains(
+				getByTestId('tools-connection-row-connect'),
+			),
+		).toBe(false);
 	});
 
 	it('renders a file-type iconSource as an N8nNodeIcon img', () => {

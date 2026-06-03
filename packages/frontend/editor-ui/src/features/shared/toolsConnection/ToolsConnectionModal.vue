@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { N8nDialog, N8nIcon, N8nInput, N8nRecycleScroller, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 
@@ -40,12 +40,12 @@ const emit = defineEmits<{
 	save: [item: ToolConnectionItem, settings?: ToolConnectionSettings];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'open-detail': [item: ToolConnectionItem];
+	connect: [item: ToolConnectionItem];
 }>();
 
 const i18n = useI18n();
 
 const ITEM_HEIGHT = 58;
-const SECTION_HEADER_HEIGHT = 32;
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
@@ -58,7 +58,14 @@ watch(searchQuery, (value) => {
 
 const activeTab = ref<TabId>('services');
 
-const listWrapperRef = ref<HTMLElement | null>(null);
+const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
+const scrollerRef = ref<{ scrollToKey: (key: string) => void } | null>(null);
+
+function focusSearchInput() {
+	void nextTick(() => {
+		searchInputRef.value?.focus();
+	});
+}
 
 watch(
 	() => props.open,
@@ -67,9 +74,16 @@ watch(
 			searchQuery.value = '';
 			debouncedSearchQuery.value = '';
 			activeTab.value = 'services';
+			focusSearchInput();
 		}
 	},
 );
+
+onMounted(() => {
+	if (props.open) {
+		focusSearchInput();
+	}
+});
 
 const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
 
@@ -99,7 +113,7 @@ function itemsForSection(section: SectionKey): ToolConnectionItem[] {
 	);
 }
 
-const SECTION_I18N_KEY: Record<Exclude<SectionKey, 'connected'>, string> = {
+const SECTION_I18N_KEY: Record<Exclude<SectionKey, 'connected'>, BaseTextKey> = {
 	nodes: 'tools.connection.sections.availableNodes',
 	agents: 'tools.connection.sections.availableAgents',
 	data: 'tools.connection.sections.availableData',
@@ -108,7 +122,7 @@ const SECTION_I18N_KEY: Record<Exclude<SectionKey, 'connected'>, string> = {
 
 function sectionTitle(section: SectionKey): string | null {
 	if (section === 'connected') return null;
-	return i18n.baseText(SECTION_I18N_KEY[section] as Parameters<typeof i18n.baseText>[0]);
+	return i18n.baseText(SECTION_I18N_KEY[section]);
 }
 
 const flattenedRows = computed<FlattenedRow[]>(() => {
@@ -127,7 +141,7 @@ const flattenedRows = computed<FlattenedRow[]>(() => {
 			});
 		}
 		for (const item of sectionItems) {
-			rows.push({ kind: 'item', key: `item:${section}:${item.id}`, item });
+			rows.push({ kind: 'item', key: `item:${section}:${item.id}`, section, item });
 		}
 	}
 	return rows;
@@ -145,36 +159,24 @@ const availableTabs = computed<TabId[]>(() => {
 
 const tabsVisible = computed(() => availableTabs.value.length > 1);
 
-function findFirstRowIndexForTab(tab: TabId): number {
-	return flattenedRows.value.findIndex((row) => {
-		const section: SectionKey | undefined =
-			row.kind === 'section-header'
-				? row.section
-				: (row.key.split(':')[1] as SectionKey | undefined);
-		return section !== undefined && SECTION_TAB[section] === tab;
-	});
+function findFirstRowKeyForTab(tab: TabId): string | undefined {
+	return flattenedRows.value.find((row) => SECTION_TAB[row.section] === tab)?.key;
 }
 
 async function selectTab(tab: TabId) {
 	activeTab.value = tab;
-	const targetIndex = findFirstRowIndexForTab(tab);
-	if (targetIndex < 0) return;
+	const targetKey = findFirstRowKeyForTab(tab);
+	if (!targetKey) return;
 	await nextTick();
-	const scroller = listWrapperRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
-	if (!scroller) return;
-	scroller.scrollTop = targetIndex * ITEM_HEIGHT - SECTION_HEADER_HEIGHT;
+	scrollerRef.value?.scrollToKey(targetKey);
 }
 
-const TAB_I18N: Record<TabId, string> = {
+const TAB_I18N: Record<TabId, BaseTextKey> = {
 	services: 'tools.connection.tabs.services',
 	agents: 'tools.connection.tabs.agents',
 	data: 'tools.connection.tabs.data',
 	workflows: 'tools.connection.tabs.workflows',
 };
-
-function tabLabelKey(id: TabId): Parameters<typeof i18n.baseText>[0] {
-	return TAB_I18N[id] as Parameters<typeof i18n.baseText>[0];
-}
 
 watch(availableTabs, (matching) => {
 	if (matching.length > 0 && !matching.includes(activeTab.value)) {
@@ -251,6 +253,7 @@ function handleOpenChange(value: boolean) {
 			</ToolDetailView>
 			<template v-else>
 				<N8nInput
+					ref="searchInputRef"
 					v-model="searchQuery"
 					:placeholder="i18n.baseText('tools.connection.search.placeholder')"
 					clearable
@@ -278,15 +281,16 @@ function handleOpenChange(value: boolean) {
 						:data-test-id="`tools-connection-tab-${tab}`"
 						@click="selectTab(tab)"
 					>
-						{{ i18n.baseText(tabLabelKey(tab)) }}
+						{{ i18n.baseText(TAB_I18N[tab]) }}
 					</button>
 				</div>
 
 				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
 					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 				</div>
-				<div v-else ref="listWrapperRef" :class="$style.listWrapper">
+				<div v-else :class="$style.listWrapper">
 					<N8nRecycleScroller
+						ref="scrollerRef"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
@@ -302,7 +306,12 @@ function handleOpenChange(value: boolean) {
 									{{ row.title }}
 								</N8nText>
 							</div>
-							<ToolRow v-else :item="row.item" @open-detail="openDetail($event)" />
+							<ToolRow
+								v-else
+								:item="row.item"
+								@open-detail="openDetail($event)"
+								@connect="emit('connect', $event)"
+							/>
 						</template>
 					</N8nRecycleScroller>
 				</div>

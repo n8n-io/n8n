@@ -103,7 +103,11 @@ function renderWithTrigger(
 				detailMode.value = item.isConnected ? 'settings' : 'detail';
 			}
 
-			return { args, isOpen, detailItem, detailMode, onOpenDetail };
+			function onConnect(item: ToolConnectionItem) {
+				console.log('[story] connect', item);
+			}
+
+			return { args, isOpen, detailItem, detailMode, onOpenDetail, onConnect };
 		},
 		template: `
 			<div style="padding: var(--spacing--md); display: flex; flex-direction: column; gap: var(--spacing--sm); align-items: flex-start;">
@@ -114,6 +118,7 @@ function renderWithTrigger(
 					v-model:detailItem="detailItem"
 					:detail-mode="detailMode"
 					@open-detail="onOpenDetail"
+					@connect="onConnect"
 					@disconnect="(item) => console.log('[story] disconnect', item)"
 					@save="(item, settings) => console.log('[story] save', item, settings)"
 					@select-credential="(item, authType, credentialId) => console.log('[story] select-credential', item, authType, credentialId)"
