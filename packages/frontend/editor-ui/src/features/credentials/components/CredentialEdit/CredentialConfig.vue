@@ -424,7 +424,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							<N8nButton
 								v-if="showDisconnectButton"
 								variant="outline"
-								size="small"
+								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
 								data-test-id="oauth-disconnect-button"
 								@click="$emit('disconnect')"

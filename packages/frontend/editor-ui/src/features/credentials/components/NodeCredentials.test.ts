@@ -1478,17 +1478,17 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
 		});
 
-		it('shows not-connected status row with Connect link when connectedByMe is false', async () => {
+		it('shows the connect prompt with a Connect button when connectedByMe is false', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText("Your account isn't connected yet.")).toBeInTheDocument();
+			expect(screen.getByText('Connect your account')).toBeInTheDocument();
 			expect(screen.getByTestId('node-credential-private-connect')).toBeInTheDocument();
 		});
 
-		it('hides the Connect link when the user lacks update permission', async () => {
+		it('hides the Connect button when the user lacks update permission', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': {
 					...privateCredential,
@@ -1498,11 +1498,11 @@ describe('NodeCredentials', () => {
 			};
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
-			expect(screen.getByText("Your account isn't connected yet.")).toBeInTheDocument();
+			expect(screen.getByText('Connect your account')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
 		});
 
-		it('clicking Connect link calls uiStore.openExistingCredential with the credential id', async () => {
+		it('clicking the Connect button calls uiStore.openExistingCredential with the credential id', async () => {
 			credentialsStore.state.credentials = {
 				'private-cred-id': { ...privateCredential, connectedByMe: false },
 			};
