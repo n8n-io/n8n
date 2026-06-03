@@ -76,6 +76,10 @@ export class AgentExecutionService {
 		);
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
+			// Sync title from the SDK memory thread if we don't have one yet
+			if (!thread.title) {
+				await this.syncTitleFromMemory(threadId, agentId);
+			}
 		}
 
 		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611> or plain @U0ANB4K6611)
@@ -135,9 +139,10 @@ export class AgentExecutionService {
 			duration: record.duration,
 		});
 
-		// Fallback: sync title from SDK memory when the runtime event was missed
-		// (older runtimes) or title generation hadn't finished yet.
-		if (created || !thread.title) {
+		// Title generation now runs synchronously (sync: true) before the stream
+		// ends, so by this point the memory thread should have the title.
+		// Sync it to our execution thread on the first message.
+		if (created) {
 			await this.syncTitleFromMemory(threadId, agentId);
 		}
 
@@ -160,8 +165,8 @@ export class AgentExecutionService {
 
 	/**
 	 * Try to read the title from the SDK memory thread and sync it to our execution thread.
-	 * Primary sync happens via {@link AgentEvent.ThreadTitleGenerated}; this is a fallback
-	 * for older runtimes or races where title generation hadn't finished yet.
+	 * The SDK's titleGeneration runs fire-and-forget after the first message,
+	 * so the title is typically available by the second message.
 	 */
 	private async syncTitleFromMemory(threadId: string, agentId: string): Promise<void> {
 		try {
@@ -179,17 +184,6 @@ export class AgentExecutionService {
 		} catch {
 			// Memory thread may not exist (agent without memory configured) — ignore
 		}
-	}
-
-	/** Sync a generated thread title from the SDK runtime event. */
-	async syncThreadTitle(
-		threadId: string,
-		{ title, emoji }: { title: string; emoji?: string },
-	): Promise<void> {
-		await this.agentExecutionThreadRepository.update(threadId, {
-			title,
-			...(emoji && { emoji }),
-		});
 	}
 
 	/**

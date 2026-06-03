@@ -1,5 +1,5 @@
 import type * as agents from '@n8n/agents';
-import { AgentEvent, DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
+import { DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
 import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -16,7 +16,6 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -59,7 +58,6 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
-		agentExecutionService?: AgentExecutionService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -79,7 +77,6 @@ function makeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		agentsToolsService,
 		mock<N8nMemory>(),
-		overrides.agentExecutionService ?? mock<AgentExecutionService>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
@@ -338,110 +335,5 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		expect(toolNames.filter((name) => name.endsWith('_action'))).toHaveLength(0);
 		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).not.toContain(WRITE_TODOS_TOOL_NAME);
-	});
-});
-
-describe('AgentRuntimeReconstructionService — thread title sync listener', () => {
-	const agentId = 'agent-1';
-	const projectId = 'project-1';
-
-	async function attachListenerAndGetHandler(options: {
-		logger: Logger;
-		agentExecutionService: AgentExecutionService;
-	}): Promise<(event: unknown) => void> {
-		const handlers = new Map<AgentEvent, (event: unknown) => void>();
-		const runtimeAgent = {
-			tool: jest.fn(),
-			on: jest.fn((event: AgentEvent, handler: (event: unknown) => void) => {
-				handlers.set(event, handler);
-			}),
-			hasCheckpointStorage: jest.fn().mockReturnValue(true),
-			checkpoint: jest.fn(),
-		};
-
-		const agentsToolsService = mock<AgentsToolsService>();
-		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
-		const service = makeReconstructionService(agentsToolsService, [], options);
-
-		await (
-			service as unknown as {
-				injectRuntimeDependencies(params: {
-					agent: typeof runtimeAgent;
-					agentId: string;
-					projectId: string;
-					credentialProvider: unknown;
-					userId: string;
-					runtimeProfile: 'top-level';
-					nodeToolsEnabled: boolean;
-					subAgentDelegation: {
-						sourcesById: Record<string, never>;
-						availableSubAgents: [];
-					};
-					parentAgentIdForDelegation: string;
-					credentialIntegrations: Array<{ type: string; credentialId: string }>;
-				}): Promise<void>;
-			}
-		).injectRuntimeDependencies({
-			agent: runtimeAgent,
-			agentId,
-			projectId,
-			credentialProvider: mock(),
-			userId: 'user-1',
-			runtimeProfile: 'top-level',
-			nodeToolsEnabled: false,
-			parentAgentIdForDelegation: agentId,
-			subAgentDelegation: {
-				sourcesById: {},
-				availableSubAgents: [],
-			},
-			credentialIntegrations: [],
-		});
-
-		const handler = handlers.get(AgentEvent.ThreadTitleGenerated);
-		expect(handler).toBeDefined();
-		return handler!;
-	}
-
-	it('syncs generated thread titles to execution threads', async () => {
-		const agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.syncThreadTitle.mockResolvedValue(undefined);
-		const handler = await attachListenerAndGetHandler({
-			logger: mock<Logger>(),
-			agentExecutionService,
-		});
-
-		handler({
-			type: AgentEvent.ThreadTitleGenerated,
-			threadId: 'thread-1',
-			resourceId: 'resource-1',
-			title: 'Workflow chat',
-			emoji: '🤖',
-		});
-
-		expect(agentExecutionService.syncThreadTitle).toHaveBeenCalledWith('thread-1', {
-			title: 'Workflow chat',
-			emoji: '🤖',
-		});
-	});
-
-	it('logs a warning when thread title sync fails', async () => {
-		const logger = mock<Logger>();
-		const agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.syncThreadTitle.mockRejectedValue(new Error('db unavailable'));
-		const handler = await attachListenerAndGetHandler({ logger, agentExecutionService });
-
-		handler({
-			type: AgentEvent.ThreadTitleGenerated,
-			threadId: 'thread-1',
-			resourceId: 'resource-1',
-			title: 'Workflow chat',
-		});
-
-		await new Promise((resolve) => setImmediate(resolve));
-
-		expect(logger.warn).toHaveBeenCalledWith('Failed to sync thread title', {
-			threadId: 'thread-1',
-			error: 'db unavailable',
-		});
 	});
 });
