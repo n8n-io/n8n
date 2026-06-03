@@ -1193,7 +1193,7 @@ export class WorkflowExecute {
 	): Promise<IRunNodeResponse> {
 		if (mode === 'manual') {
 			// In manual mode start the trigger
-			const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
+			const triggerResponse = await Container.get(TriggersAndPollers).runTriggerFunction(
 				workflow,
 				node,
 				NodeExecuteFunctions.getExecuteTriggerFunctions,
