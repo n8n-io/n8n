@@ -581,7 +581,7 @@ export const SearchableRoot: Story = {
 	args: {
 		items: [] as Array<DropdownMenuItemProps<string>>,
 		searchPlaceholder: 'Search items',
-		searchDebounce: 300,
+		searchDebounce: 0,
 	},
 };
 
@@ -671,6 +671,99 @@ export const SearchableRootWithSubmenus: Story = {
 				:items="filteredItems"
 				searchable
 				search-placeholder="Search all items..."
+				:search-debounce="200"
+				@search="handleSearch"
+				@select="handleSelect"
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const SearchableRootWithFlatResults: Story = {
+	render: () => ({
+		components: { DropdownMenu },
+		setup() {
+			type Item = DropdownMenuItemProps<string>;
+
+			const allItems: Item[] = [
+				{
+					id: 'fruits',
+					label: 'Fruits',
+					icon: { type: 'icon', value: 'folder' },
+					children: [
+						{ id: 'apple', label: 'Apple' },
+						{ id: 'banana', label: 'Banana' },
+						{ id: 'cherry', label: 'Cherry' },
+					],
+				},
+				{
+					id: 'vegetables',
+					label: 'Vegetables',
+					icon: { type: 'icon', value: 'folder' },
+					children: [
+						{ id: 'carrot', label: 'Carrot' },
+						{ id: 'broccoli', label: 'Broccoli' },
+						{ id: 'spinach', label: 'Spinach' },
+					],
+				},
+				{
+					id: 'dairy',
+					label: 'Dairy',
+					icon: { type: 'icon', value: 'folder' },
+					children: [
+						{ id: 'milk', label: 'Milk' },
+						{ id: 'cheese', label: 'Cheese' },
+						{ id: 'yogurt', label: 'Yogurt' },
+					],
+				},
+			];
+
+			const searchTerm = ref('');
+
+			const filteredItems = computed(() => {
+				const query = searchTerm.value.trim().toLowerCase();
+				if (!query) return allItems;
+
+				return allItems.flatMap((group) => {
+					const groupMatches = group.label.toLowerCase().includes(query);
+					const children = group.children ?? [];
+
+					return children.flatMap((child) => {
+						const childMatches = child.label.toLowerCase().includes(query);
+						if (!groupMatches && !childMatches) return [];
+
+						return [
+							{
+								...child,
+								label: `${group.label} › ${child.label}`,
+								divided: false,
+							},
+						];
+					});
+				});
+			});
+
+			const handleSearch = (term: string) => {
+				console.log('Search term (debounced):', term);
+				searchTerm.value = term;
+			};
+
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+
+			return { filteredItems, handleSearch, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu
+				:items="filteredItems"
+				searchable
+				search-placeholder="Search and flatten results..."
 				:search-debounce="200"
 				@search="handleSearch"
 				@select="handleSelect"
