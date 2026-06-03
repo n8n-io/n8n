@@ -54,6 +54,29 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 	return fakeExecuteFunction;
 };
 
+const createArrayQueryReplacementMockExecuteFunction = (
+	nodeParameters: IDataObject,
+	evaluateExpressionResult: unknown,
+) => {
+	return {
+		getNodeParameter(
+			parameterName: string,
+			_itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) {
+			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+			return get(nodeParameters, parameter, fallbackValue);
+		},
+		getNode() {
+			return node;
+		},
+		evaluateExpression(_str: string, _index: number) {
+			return evaluateExpressionResult;
+		},
+	} as unknown as IExecuteFunctions;
+};
+
 const createMockDb = (columnInfo: ColumnInfo[]) => {
 	return {
 		async any() {
@@ -515,28 +538,10 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		// Override evaluateExpression to return an array for this test
-		const mockExecute = {
-			getNodeParameter(
-				parameterName: string,
-				_itemIndex: number,
-				fallbackValue?: IDataObject,
-				options?: IGetNodeParameterOptions,
-			) {
-				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-				return get(nodeParameters, parameter, fallbackValue);
-			},
-			getNode() {
-				return node;
-			},
-			evaluateExpression(str: string, _: number) {
-				// Detect array expression pattern and return a JS array
-				if (str.includes("['a', 'b', 'c']")) {
-					return ['a', 'b', 'c'];
-				}
-				return str.replace('{{', '').replace('}}', '');
-			},
-		} as unknown as IExecuteFunctions;
+		const mockExecute = createArrayQueryReplacementMockExecuteFunction(
+			nodeParameters,
+			['a', 'b', 'c'],
+		);
 
 		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
 
@@ -562,27 +567,10 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		// Override evaluateExpression to return an array of objects
-		const mockExecute = {
-			getNodeParameter(
-				parameterName: string,
-				_itemIndex: number,
-				fallbackValue?: IDataObject,
-				options?: IGetNodeParameterOptions,
-			) {
-				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-				return get(nodeParameters, parameter, fallbackValue);
-			},
-			getNode() {
-				return node;
-			},
-			evaluateExpression(str: string, _: number) {
-				if (str.includes('[{id: 1}, {id: 2}]')) {
-					return [{ id: 1 }, { id: 2 }];
-				}
-				return str.replace('{{', '').replace('}}', '');
-			},
-		} as unknown as IExecuteFunctions;
+		const mockExecute = createArrayQueryReplacementMockExecuteFunction(nodeParameters, [
+			{ id: 1 },
+			{ id: 2 },
+		]);
 
 		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
 
@@ -591,6 +579,37 @@ describe('Test PostgresV2, executeQuery operation', () => {
 				{
 					query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
 					values: ['{"id":1}', '{"id":2}'],
+					options: { partial: true },
+				},
+			],
+			nodeOptions,
+		);
+	});
+
+	it('should serialize null, number, and boolean array elements to strings', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'INSERT INTO my_table (col1, col2, col3, col4) VALUES ($1, $2, $3, $4)',
+			options: {
+				queryReplacement: '={{ [null, 42, true, "x"] }}',
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const mockExecute = createArrayQueryReplacementMockExecuteFunction(nodeParameters, [
+			null,
+			42,
+			true,
+			'x',
+		]);
+
+		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'INSERT INTO my_table (col1, col2, col3, col4) VALUES ($1, $2, $3, $4)',
+					values: ['null', '42', 'true', 'x'],
 					options: { partial: true },
 				},
 			],
