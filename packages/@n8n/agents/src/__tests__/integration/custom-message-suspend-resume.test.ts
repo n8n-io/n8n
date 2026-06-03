@@ -8,7 +8,7 @@ const describe = describeIf('anthropic');
 
 describe('custom message survives suspend/resume', () => {
 	it('preserves custom tool message in stream after resume + complete', async () => {
-		const memory = new Memory().storage('memory').lastMessages(20);
+		const memory = new Memory().storage('memory');
 
 		const deleteTool = new Tool('delete_file')
 			.description('Delete a file at the given path')

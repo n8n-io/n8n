@@ -7,16 +7,16 @@ import { N8nIconButton, N8nInputNumber, N8nText, N8nTooltip } from '@n8n/design-
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
 
-const hoveringItem = computed(() => ndvStore.getHoveringItem);
+const hoveringItem = computed(() => ndvStore.value.getHoveringItem);
 const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
 const isHoveringItem = computed(() => Boolean(hoveringItem.value));
-const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
+const itemsLength = computed(() => ndvStore.value.ndvInputDataWithPinnedData.length);
 const itemIndex = computed(
-	() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex ?? 0,
+	() => hoveringItemIndex.value ?? ndvStore.value.expressionOutputItemIndex ?? 0,
 );
 const max = computed(() => Math.max(itemsLength.value - 1, 0));
 const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
-const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);
+const hideTableHoverHint = computed(() => ndvStore.value.isTableHoverOnboarded);
 const canSelectPrevItem = computed(() => isItemIndexEditable.value && itemIndex.value !== 0);
 const canSelectNextItem = computed(
 	() => isItemIndexEditable.value && itemIndex.value < itemsLength.value - 1,
@@ -25,15 +25,15 @@ const canSelectNextItem = computed(
 const inputCharWidth = computed(() => itemIndex.value.toString().length);
 
 function updateItemIndex(index: number) {
-	ndvStore.expressionOutputItemIndex = index;
+	ndvStore.value.expressionOutputItemIndex = index;
 }
 
 function nextItem() {
-	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
+	ndvStore.value.expressionOutputItemIndex = ndvStore.value.expressionOutputItemIndex + 1;
 }
 
 function prevItem() {
-	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
+	ndvStore.value.expressionOutputItemIndex = ndvStore.value.expressionOutputItemIndex - 1;
 }
 </script>
 

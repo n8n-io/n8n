@@ -25,7 +25,7 @@ export class McpRegistryTestController {
 
 		const entities = [notionMockServer, linearMockServer].map(toEntity);
 
-		// Replace rather than upsert: a startup refresh can leave rows whose slug collides with our mocks at a different id, which `ON CONFLICT (id) DO UPDATE` does not cover.
+		// Replace rather than upsert to keep test seeds deterministic.
 		await this.repository.manager.transaction(async (manager) => {
 			await manager.createQueryBuilder().delete().from(McpRegistryServerEntity).execute();
 			await manager.insert(McpRegistryServerEntity, entities);

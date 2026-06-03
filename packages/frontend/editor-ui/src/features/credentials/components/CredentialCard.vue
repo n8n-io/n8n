@@ -5,6 +5,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,6 +33,7 @@ const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
 	MOVE: 'move',
+	DISCONNECT: 'disconnect',
 };
 
 const emit = defineEmits<{
@@ -53,6 +55,7 @@ const props = withDefaults(
 
 const locale = useI18n();
 const message = useMessage();
+const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
@@ -72,14 +75,8 @@ const isPrivateUnconnected = computed(
 	() =>
 		isDynamicCredentialsEnabled.value &&
 		props.data.isResolvable === true &&
-		props.data.connectedByMe === false,
-);
-
-const isPrivateConnected = computed(
-	() =>
-		isDynamicCredentialsEnabled.value &&
-		props.data.isResolvable === true &&
-		props.data.connectedByMe === true,
+		props.data.connectedByMe === false &&
+		credentialPermissions.value.update === true,
 );
 
 const actions = computed(() => {
@@ -101,6 +98,13 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	if (isDynamicCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
+		items.push({
+			label: locale.baseText('credentials.item.disconnect'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT,
 		});
 	}
 
@@ -155,6 +159,9 @@ async function onAction(action: string) {
 		case CREDENTIAL_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
 			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT:
+			await disconnectResource();
+			break;
 	}
 }
 
@@ -173,6 +180,35 @@ async function deleteResource() {
 
 	if (deleteConfirmed === MODAL_CONFIRM) {
 		await credentialsStore.deleteCredential({ id: props.data.id });
+	}
+}
+
+async function disconnectResource() {
+	const confirmed = await message.confirm(
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.message', {
+			interpolate: { savedCredentialName: props.data.name },
+		}),
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.headline'),
+		{
+			confirmButtonText: locale.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.disconnectCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: props.data.id });
+		toast.showMessage({
+			title: locale.baseText('credentialEdit.credentialEdit.showMessage.disconnected.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			locale.baseText('credentialEdit.credentialEdit.showError.disconnectCredential.title'),
+		);
 	}
 }
 
@@ -205,8 +241,8 @@ function moveResource() {
 				<N8nTooltip v-if="isDynamicCredentialsEnabled && data.isResolvable" placement="top">
 					<template #content>
 						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('credentials.dynamic.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('credentials.dynamic.tooltip') }}</span>
+							<strong>{{ locale.baseText('credentials.private.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('credentials.private.tooltip') }}</span>
 						</div>
 					</template>
 					<N8nBadge
@@ -215,8 +251,8 @@ function moveResource() {
 						data-test-id="credential-card-dynamic"
 					>
 						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.dynamic.badge') }}
+							<N8nIcon icon="key-round" size="small" />
+							{{ locale.baseText('credentials.private.badge') }}
 						</span>
 					</N8nBadge>
 				</N8nTooltip>
@@ -265,16 +301,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect') }}
 					</N8nButton>
 				</N8nTooltip>
-				<span
-					v-else-if="isPrivateConnected"
-					:class="$style.connectedLabel"
-					data-test-id="credential-card-connected"
-				>
-					<N8nIcon icon="circle-check" size="small" color="success" />
-					<N8nText size="small" color="success">
-						{{ locale.baseText('credentials.item.connected') }}
-					</N8nText>
-				</span>
 				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
@@ -324,18 +350,13 @@ function moveResource() {
 	cursor: default;
 }
 
-.connectedLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
 .dynamicBadgeText {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
+	font-size: var(--font-size--2xs);
+	line-height: 1;
+	vertical-align: middle;
 }
 
 .tooltipContent {
