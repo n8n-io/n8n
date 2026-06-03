@@ -1,0 +1,25 @@
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/parse-incoming-message.test.ts
+  9ba1f05380753d2b 54-63,156-169
+packages/core/src/execution-engine/node-execution-context/utils/parse-incoming-message.ts
+  9ba1f05380753d2b 6-33,35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.20",
+  "base_commit_sha": "f571da68c8fcb40ddbd653713839d7b96cdba5f7",
+  "prompts": {
+    "9ba1f05380753d2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7ca9535-d968-473d-89eb-a7f1bcc68be1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 64,
+      "total_deletions": 13,
+      "accepted_lines": 57,
+      "overriden_lines": 0
+    }
+  }
+}
