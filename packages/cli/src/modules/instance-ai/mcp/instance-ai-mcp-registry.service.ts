@@ -110,6 +110,20 @@ export class InstanceAiMcpRegistryService {
 			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
 		}
 
+		// v1 invariant: at most one connection per (user, serverSlug). To switch
+		// credentials the user must disconnect first (the FE orchestrates this
+		// as a two-step swap). The DB unique index is currently looser; this
+		// request-layer check is the canonical enforcement.
+		const existing = await this.connectionRepository.findOneBy({
+			userId: user.id,
+			serverSlug: input.serverSlug,
+		});
+		if (existing) {
+			throw new ConflictError(
+				'This MCP server is already connected. Disconnect first to use a different credential.',
+			);
+		}
+
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			input.credentialId,
 			user,
