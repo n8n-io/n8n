@@ -1,89 +1,38 @@
 <script setup lang="ts">
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { N8nIcon, N8nScrollArea, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import {
-	N8nInput,
-	N8nSelect2,
-	N8nSelect2Item,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-} from '@n8n/design-system/v2/components/Select/Select.types';
-import { computed, nextTick, ref, watch } from 'vue';
+	ComboboxAnchor,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxPortal,
+	ComboboxRoot,
+	ComboboxTrigger,
+} from 'reka-ui';
+import { computed, ref } from 'vue';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-interface ProjectSelectItem extends SelectItemProps {
-	project: ProjectListItem;
-}
-
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 const FALLBACK_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layers' };
+const PROJECT_SELECT_TOOLTIP = 'Where AI assistant creates automations';
 
 const projectsStore = useProjectsStore();
 const model = defineModel<string | null>();
 const open = ref(false);
-const search = ref('');
-const activeProjectId = ref<string | null>(null);
-const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
-let searchFocusTimeout: ReturnType<typeof setTimeout> | undefined;
 
 const selectedProject = computed(() =>
 	projectsStore.myProjects.find((project) => project.id === model.value),
 );
 const showSearch = computed(() => projectsStore.myProjects.length > 5);
-const filteredProjects = computed(() => {
-	const query = search.value.trim().toLowerCase();
-
-	if (!query) return projectsStore.myProjects;
-
-	return projectsStore.myProjects.filter((project) =>
-		getProjectName(project).toLowerCase().includes(query),
-	);
-});
-const projectItems = computed<ProjectSelectItem[]>(() =>
-	filteredProjects.value.map((project) => ({
-		value: project.id,
-		label: getProjectName(project),
-		project,
-	})),
-);
 const selectedProjectName = computed(() =>
 	selectedProject.value ? getProjectName(selectedProject.value) : 'Select a project',
 );
 const selectedProjectIcon = computed(() => getProjectIcon(selectedProject.value));
-
-watch(open, async (isOpen) => {
-	clearTimeout(searchFocusTimeout);
-
-	if (!isOpen) {
-		search.value = '';
-		return;
-	}
-
-	if (showSearch.value) {
-		activeProjectId.value = model.value;
-		await nextTick();
-		searchFocusTimeout = setTimeout(() => searchInputRef.value?.focus(), 0);
-	}
-});
-
-watch(projectItems, (items) => {
-	if (!open.value) return;
-
-	if (items.length === 0) {
-		activeProjectId.value = null;
-		return;
-	}
-
-	if (!items.some((item) => item.value === activeProjectId.value)) {
-		activeProjectId.value = typeof items[0]?.value === 'string' ? items[0].value : null;
-	}
-});
 
 function getProjectName(project: ProjectListItem) {
 	return project.type === 'personal' ? 'Personal space' : (project.name ?? '');
@@ -94,167 +43,156 @@ function getProjectIcon(project?: ProjectListItem): IconOrEmoji {
 
 	return project?.icon && isIconOrEmoji(project.icon) ? project.icon : FALLBACK_PROJECT_ICON;
 }
-
-function onSelect(value: SelectValue | undefined) {
-	if (typeof value !== 'string') return;
-
-	model.value = value;
-}
-
-function moveActiveProject(delta: 1 | -1) {
-	if (projectItems.value.length === 0) return;
-
-	const currentIndex = projectItems.value.findIndex((item) => item.value === activeProjectId.value);
-	const nextIndex =
-		currentIndex === -1
-			? 0
-			: (currentIndex + delta + projectItems.value.length) % projectItems.value.length;
-	const nextValue = projectItems.value[nextIndex]?.value;
-
-	activeProjectId.value = typeof nextValue === 'string' ? nextValue : null;
-}
-
-function selectActiveProject() {
-	if (!activeProjectId.value) return;
-
-	model.value = activeProjectId.value;
-	open.value = false;
-}
-
-function onSearchKeydown(event: KeyboardEvent) {
-	event.stopPropagation();
-
-	if (event.key === 'ArrowDown') {
-		event.preventDefault();
-		moveActiveProject(1);
-		return;
-	}
-
-	if (event.key === 'ArrowUp') {
-		event.preventDefault();
-		moveActiveProject(-1);
-		return;
-	}
-
-	if (event.key === 'Enter') {
-		event.preventDefault();
-		selectActiveProject();
-		return;
-	}
-
-	if (event.key === 'Escape') {
-		event.preventDefault();
-		open.value = false;
-	}
-}
 </script>
 
 <template>
-	<N8nSelect2
-		v-model:open="open"
-		:items="projectItems"
-		:model-value="model"
-		variant="ghost"
-		size="xsmall"
-		position="popper"
-		:content-class="$style.content"
-		:class="$style.select"
-		@update:model-value="onSelect"
-	>
-		<template #default>
-			<N8nTooltip
-				placement="bottom"
-				as-child
-				:content-class="$style.tooltip"
-				:disabled="open"
-				:show-after="TOOLTIP_DELAY_MS"
-			>
-				<span :class="$style.triggerContent">
-					<ProjectIcon
-						:icon="selectedProjectIcon"
-						size="small"
-						border-less
-						:class="$style.triggerProjectIcon"
-					/>
-					<span :class="$style.triggerLabel">{{ selectedProjectName }}</span>
-				</span>
-				<template #content>
-					<span style="white-space: nowrap">Where AI assistant creates automations</span>
-				</template>
-			</N8nTooltip>
-		</template>
+	<ComboboxRoot v-model="model" v-model:open="open">
+		<ComboboxAnchor as-child>
+			<ComboboxTrigger as-child>
+				<N8nTooltip
+					placement="bottom"
+					as-child
+					:content-class="$style.tooltip"
+					:disabled="open"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<button type="button" :class="$style.select">
+						<span :class="$style.triggerContent">
+							<ProjectIcon
+								:icon="selectedProjectIcon"
+								size="small"
+								border-less
+								:class="$style.triggerProjectIcon"
+							/>
+							<span :class="$style.triggerLabel">{{ selectedProjectName }}</span>
+						</span>
+						<N8nIcon icon="chevron-down" size="small" :class="$style.trailingIcon" />
+					</button>
 
-		<template v-if="showSearch" #header>
-			<N8nInput
-				ref="searchInputRef"
-				v-model="search"
-				placeholder="Search projects"
-				size="medium"
-				:class="$style.input"
-				@click.stop
-				@keydown="onSearchKeydown"
-			/>
-		</template>
+					<template #content>
+						<span style="white-space: nowrap">{{ PROJECT_SELECT_TOOLTIP }}</span>
+					</template>
+				</N8nTooltip>
+			</ComboboxTrigger>
+		</ComboboxAnchor>
 
-		<template #item="{ item }">
-			<N8nSelect2Item
-				v-bind="item"
-				:class="[$style.item, { [$style.activeItem]: item.value === activeProjectId }]"
-			>
-				<template #item-leading>
-					<ProjectIcon
-						:icon="getProjectIcon((item as ProjectSelectItem).project)"
-						size="small"
-						border-less
-					/>
-				</template>
-				<template #item-label>
-					<span :class="$style.label">{{ item.label }}</span>
-				</template>
-			</N8nSelect2Item>
-		</template>
+		<ComboboxPortal>
+			<ComboboxContent position="popper" align="start" :class="$style.content">
+				<ComboboxInput
+					v-if="showSearch"
+					placeholder="Search projects"
+					:class="$style.input"
+					:display-value="() => ''"
+				/>
 
-		<template v-if="showSearch && projectItems.length === 0" #footer>
-			<div :class="$style.empty">No results</div>
-		</template>
-	</N8nSelect2>
+				<ComboboxEmpty :class="$style.empty">No results</ComboboxEmpty>
+
+				<N8nScrollArea
+					:class="[$style.scrollArea, { [$style.scrollAreaWithSearch]: showSearch }]"
+					type="hover"
+					max-height="min(320px, var(--reka-combobox-content-available-height))"
+					as-child
+				>
+					<template v-for="project in projectsStore.myProjects" :key="project.id">
+						<ComboboxItem
+							:value="project.id"
+							:text-value="getProjectName(project)"
+							:class="$style.item"
+						>
+							<ProjectIcon :icon="getProjectIcon(project)" size="small" border-less />
+							<span :class="$style.label">{{ getProjectName(project) }}</span>
+							<N8nIcon
+								v-if="selectedProject?.id === project.id"
+								icon="check"
+								size="small"
+								:class="$style.check"
+							/>
+						</ComboboxItem>
+					</template>
+				</N8nScrollArea>
+			</ComboboxContent>
+		</ComboboxPortal>
+	</ComboboxRoot>
 </template>
 
 <style module lang="scss">
 .select {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-start;
 	max-width: 190px;
+	height: var(--spacing--lg);
+	min-height: var(--spacing--lg);
+	padding: 0 var(--spacing--2xs);
+	gap: var(--spacing--3xs);
 	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--md);
+	color: var(--text-color--subtle);
 	background-color: transparent;
+	border: 1px solid transparent;
+	border-radius: var(--radius);
+	appearance: none;
+	cursor: pointer;
 
-	&:not([data-disabled]):hover {
+	&:hover {
 		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-700));
 	}
 
-	&:not([data-disabled]):active,
+	&:active,
+	&[aria-expanded='true'],
 	&[data-state='open'] {
 		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+	}
+
+	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		box-shadow: 0 0 0 2px var(--color--secondary);
 	}
 }
 
 .content {
-	// Cap the width so long names truncate. max-width also clamps the popper's
-	// trigger-derived min width, so the dropdown won't grow to fit the longest item.
+	display: flex;
+	flex-direction: column;
+	min-width: var(--reka-combobox-trigger-width);
 	max-width: 320px;
+	overflow: hidden;
+	background: var(--background--surface);
+	border: 0.5px solid var(--border-color);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow--sm);
+}
+
+.scrollArea {
+	flex: 1;
+	min-height: 0;
+	padding: var(--spacing--2xs) 0;
+}
+
+.scrollAreaWithSearch {
+	padding-top: 0;
+	padding-bottom: var(--spacing--4xs);
 }
 
 .input {
+	position: sticky;
+	top: 0;
 	width: 100%;
-	--input--color--background: var(--color--background--light-2);
-	--input--radius--bottom-right: 0;
-	--input--radius--bottom-left: 0;
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--border--shadow--focus: 0 0 0 0 transparent;
-	--input--shadow--focus: 0 0 0 0 transparent;
+	height: var(--height--lg);
+	padding: 0 var(--spacing--sm);
+	font-size: var(--font-size--sm);
+	color: var(--text-color);
+	background-color: var(--background--surface);
+	border: none;
+	border-top-left-radius: inherit;
+	border-top-right-radius: inherit;
+	outline: none;
 
-	:global(.n8n-input__wrapper:focus-within) {
-		outline: none;
+	&::placeholder {
+		color: var(--color--text--tint-1);
 	}
 }
 
@@ -265,13 +203,20 @@ function onSearchKeydown(event: KeyboardEvent) {
 }
 
 .item {
-	width: 100%;
+	display: flex;
+	align-items: center;
 	height: var(--height--lg);
+	padding: 0 var(--spacing--2xs);
+	margin: 0 var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	font-size: var(--font-size--sm);
-}
+	color: var(--text-color);
+	border-radius: var(--radius--2xs);
+	cursor: default;
 
-.activeItem {
-	background-color: var(--color--background--light-1);
+	&[data-highlighted] {
+		background-color: var(--color--background--light-1);
+	}
 }
 
 .triggerContent {
@@ -289,6 +234,11 @@ function onSearchKeydown(event: KeyboardEvent) {
 	}
 }
 
+.trailingIcon {
+	flex-shrink: 0;
+	color: var(--text-color--subtle);
+}
+
 .triggerLabel,
 .label {
 	min-width: 0;
@@ -304,6 +254,11 @@ function onSearchKeydown(event: KeyboardEvent) {
 .label {
 	// Take the row's free space (right-aligns the trailing check) and truncate.
 	flex: 1;
+}
+
+.check {
+	flex-shrink: 0;
+	color: var(--color--text);
 }
 
 .tooltip {
