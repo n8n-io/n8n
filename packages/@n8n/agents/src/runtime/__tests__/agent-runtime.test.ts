@@ -2733,7 +2733,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 	it('schedules observation after a persisted stream turn', async () => {
 		streamText.mockReturnValue(makeStreamSuccess('Remembered response'));
-		const memory = new InMemoryMemory() as InMemoryMemory;
+		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
 
 		const runtime = new AgentRuntime({
@@ -2773,7 +2773,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 	it('schedules observation after a persisted generate turn', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
-		const memory = new InMemoryMemory() as InMemoryMemory;
+		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
 
 		const runtime = new AgentRuntime({
@@ -2811,7 +2811,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
 		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } });
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
-		const memory = new InMemoryMemory() as InMemoryMemory;
+		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
 		const observationLockSpy = vi.spyOn(memory, 'acquireObservationLogTaskLock');
 		const episodicLockSpy = vi.spyOn(memory.episodic.taskLock!, 'acquire');

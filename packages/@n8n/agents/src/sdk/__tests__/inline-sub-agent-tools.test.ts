@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { BuiltTool } from '../../types';
+import type * as AgentRuntimeModule from '../../runtime/agent-runtime';
 import type { DelegateSubAgentRequest } from '../../runtime/delegate-sub-agent-tool';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -8,12 +8,13 @@ import {
 } from '../../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/episodic-memory';
 import { WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
+import type { BuiltTool } from '../../types';
 import { Agent, buildInlineSubAgentBlockedToolNames, filterInlineSubAgentTools } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 
 vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../../runtime/agent-runtime')>();
+	const actual = await importOriginal<typeof AgentRuntimeModule>();
 	return {
 		...actual,
 		AgentRuntime: class MockAgentRuntime {

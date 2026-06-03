@@ -98,11 +98,11 @@ export function createWriteTodosTool(): BuiltTool {
 		.handler(async (input) => {
 			const todos = [...input.todos];
 
-			return {
+			return await Promise.resolve({
 				status: 'ok' as const,
 				todoCount: todos.length,
 				todos,
-			};
+			});
 		})
 		.build();
 }

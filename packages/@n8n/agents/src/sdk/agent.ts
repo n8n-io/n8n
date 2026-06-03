@@ -7,6 +7,7 @@ import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './me
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -17,7 +18,6 @@ import {
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
 } from '../runtime/delegate-sub-agent-tool';
-import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
 import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
