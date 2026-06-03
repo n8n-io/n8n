@@ -15,6 +15,7 @@
 		"clean": "rimraf dist .turbo",
 		"check": "tsx src/cli.ts",
 		"build": "tsc -p tsconfig.build.json",
+		"build:unchecked": "tsc -p tsconfig.build.json --noCheck",
 		"dev": "tsc --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",

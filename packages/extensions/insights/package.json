@@ -39,6 +39,7 @@
     "build:backend": "tsdown",
     "build:frontend": "vite build",
     "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
+    "build:unchecked": "pnpm cleanup && pnpm run build:backend && pnpm run build:frontend",
     "preview": "vite preview"
   },
   "peerDependencies": {
