@@ -217,12 +217,15 @@ export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangs
 export const withCurrentTraceSpan: typeof LangsmithTracingMod.withCurrentTraceSpan = lazyFunction(
 	() => loadLangsmithTracing().withCurrentTraceSpan,
 );
+export type IdRemapper = TraceReplayMod.IdRemapper;
 export const IdRemapper: typeof TraceReplayMod.IdRemapper = lazyClass(
 	() => loadTraceReplay().IdRemapper,
 );
+export type TraceIndex = TraceReplayMod.TraceIndex;
 export const TraceIndex: typeof TraceReplayMod.TraceIndex = lazyClass(
 	() => loadTraceReplay().TraceIndex,
 );
+export type TraceWriter = TraceReplayMod.TraceWriter;
 export const TraceWriter: typeof TraceReplayMod.TraceWriter = lazyClass(
 	() => loadTraceReplay().TraceWriter,
 );
@@ -291,22 +294,27 @@ export declare const iterationEntrySchema: typeof StorageMod.iterationEntrySchem
 export const formatPreviousAttempts: typeof StorageMod.formatPreviousAttempts = lazyFunction(
 	() => loadStorage().formatPreviousAttempts,
 );
+export type ThreadIterationLogStorage = StorageMod.ThreadIterationLogStorage;
 export const ThreadIterationLogStorage: typeof StorageMod.ThreadIterationLogStorage = lazyClass(
 	() => loadStorage().ThreadIterationLogStorage,
 );
+export type ThreadTaskStorage = StorageMod.ThreadTaskStorage;
 export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
 );
+export type PlannedTaskStorage = StorageMod.PlannedTaskStorage;
 export const PlannedTaskStorage: typeof StorageMod.PlannedTaskStorage = lazyClass(
 	() => loadStorage().PlannedTaskStorage,
 );
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
+export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
 export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
 	() => loadStorage().TerminalOutcomeStorage,
 );
 export const patchThread: typeof StorageMod.patchThread = lazyFunction(
 	() => loadStorage().patchThread,
 );
+export type WorkflowLoopStorage = StorageMod.WorkflowLoopStorage;
 export const WorkflowLoopStorage: typeof StorageMod.WorkflowLoopStorage = lazyClass(
 	() => loadStorage().WorkflowLoopStorage,
 );
@@ -411,6 +419,7 @@ export const getWorkspaceRoot: typeof SandboxSetupMod.getWorkspaceRoot = lazyFun
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
+export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
 export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
@@ -425,10 +434,12 @@ export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFuncti
 export const createWorkspace: typeof CreateWorkspaceMod.createWorkspace = lazyFunction(
 	() => loadCreateWorkspace().createWorkspace,
 );
+export type SnapshotManager = SnapshotManagerMod.SnapshotManager;
 export const SnapshotManager: typeof SnapshotManagerMod.SnapshotManager = lazyClass(
 	() => loadSnapshotManager().SnapshotManager,
 );
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
+export type BackgroundTaskManager = BackgroundTaskManagerMod.BackgroundTaskManager;
 export const BackgroundTaskManager: typeof BackgroundTaskManagerMod.BackgroundTaskManager =
 	lazyClass(() => loadBackgroundTaskManager().BackgroundTaskManager);
 export const enrichMessageWithRunningTasks: typeof BackgroundTaskManagerMod.enrichMessageWithRunningTasks =
@@ -440,6 +451,7 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
+export type RunStateRegistry = RunStateRegistryMod.RunStateRegistry;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
@@ -452,6 +464,8 @@ export type {
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export type InstanceAiTerminalResponseGuard =
+	TerminalResponseGuardMod.InstanceAiTerminalResponseGuard;
 export const InstanceAiTerminalResponseGuard: typeof TerminalResponseGuardMod.InstanceAiTerminalResponseGuard =
 	lazyClass(() => loadTerminalResponseGuard().InstanceAiTerminalResponseGuard);
 export type {
@@ -480,6 +494,7 @@ export const streamAgentRun: typeof StreamRunnerMod.streamAgentRun = lazyFunctio
 export const createInstanceAiLivenessPolicyConfig: typeof LivenessPolicyMod.createInstanceAiLivenessPolicyConfig =
 	lazyFunction(() => loadLivenessPolicy().createInstanceAiLivenessPolicyConfig);
 export declare const INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG: typeof LivenessPolicyMod.INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG;
+export type InstanceAiLivenessPolicy = LivenessPolicyMod.InstanceAiLivenessPolicy;
 export const InstanceAiLivenessPolicy: typeof LivenessPolicyMod.InstanceAiLivenessPolicy =
 	lazyClass(() => loadLivenessPolicy().InstanceAiLivenessPolicy);
 export type {
@@ -507,6 +522,7 @@ export const handleVerificationVerdict: typeof WorkflowLoopMod.handleVerificatio
 export const formatAttemptHistory: typeof WorkflowLoopMod.formatAttemptHistory = lazyFunction(
 	() => loadWorkflowLoop().formatAttemptHistory,
 );
+export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
 );
@@ -521,9 +537,11 @@ export type {
 	VerificationResult,
 	AttemptRecord,
 } from './workflow-loop';
+export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
 	() => loadWorkflowLoopRuntime().WorkflowLoopRuntime,
 );
+export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
 export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
 export const applyPlannedTaskPermissions: typeof PlannedTaskPermissionsMod.applyPlannedTaskPermissions =
@@ -618,6 +636,7 @@ export const isSupportedAttachmentMimeType: typeof ValidateAttachmentsMod.isSupp
 	lazyFunction(() => loadValidateAttachments().isSupportedAttachmentMimeType);
 export const validateAttachmentMimeTypes: typeof ValidateAttachmentsMod.validateAttachmentMimeTypes =
 	lazyFunction(() => loadValidateAttachments().validateAttachmentMimeTypes);
+export type UnsupportedAttachmentError = ValidateAttachmentsMod.UnsupportedAttachmentError;
 export const UnsupportedAttachmentError: typeof ValidateAttachmentsMod.UnsupportedAttachmentError =
 	lazyClass(() => loadValidateAttachments().UnsupportedAttachmentError);
 export type { UnsupportedAttachmentDetail } from './parsers/validate-attachments';
