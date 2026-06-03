@@ -1,9 +1,8 @@
 import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
-import { useI18n } from '@mcp-apps/i18n';
-import { isRecord } from '@mcp-apps/utils/guards';
-
+import { useI18n } from '../../../i18n';
+import { isRecord } from '../../../utils/guards';
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
 import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
@@ -134,10 +133,16 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 				previewUrl: structuredContent.previewUrl,
 			});
 			previewUrl.value = buildPreviewUrl();
-		} else if (candidateUrl !== undefined) {
-			console.warn('[n8n MCP App] Ignoring unexpected workflow URL in tool result', {
-				url: candidateUrl,
-			});
+		} else {
+			workflowUrl.value = undefined;
+			previewBaseUrl.value = undefined;
+			previewUrl.value = undefined;
+
+			if (candidateUrl !== undefined) {
+				console.warn('[n8n MCP App] Ignoring unexpected workflow URL in tool result', {
+					url: candidateUrl,
+				});
+			}
 		}
 
 		if (typeof structuredContent.workflowId === 'string') {
