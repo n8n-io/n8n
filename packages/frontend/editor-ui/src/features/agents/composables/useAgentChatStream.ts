@@ -292,7 +292,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
 					found.tc.startTime = event.startTime;
-					if (found.tc.state !== TOOL_CALL_STATE.DONE && found.tc.state !== TOOL_CALL_STATE.ERROR && found.tc.state !== TOOL_CALL_STATE.CANCELLED) {
+					if (
+						found.tc.state !== TOOL_CALL_STATE.DONE &&
+						found.tc.state !== TOOL_CALL_STATE.ERROR &&
+						found.tc.state !== TOOL_CALL_STATE.CANCELLED
+					) {
 						found.tc.state = TOOL_CALL_STATE.RUNNING;
 					}
 				}
