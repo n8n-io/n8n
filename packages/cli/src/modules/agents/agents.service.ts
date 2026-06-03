@@ -911,16 +911,7 @@ export class AgentsService {
 		let agentData: Agent = agentEntity;
 
 		if (usePublishedVersion) {
-			const activeVersionSchema = agentEntity.activeVersion?.schema;
-			if (!activeVersionSchema) {
-				throw new NotFoundError(`Agent ${agentId} is not published`);
-			}
-			agentData = {
-				...agentEntity,
-				schema: activeVersionSchema,
-				tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
-				skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
-			} as Agent;
+			agentData = this.getPublishedAgent(agentEntity);
 
 			// Resolve n8n user from publishedById when not provided by the caller.
 			n8nUserId ??= agentEntity.activeVersion?.publishedById ?? undefined;
@@ -1622,6 +1613,22 @@ export class AgentsService {
 		}
 	}
 
+	private getPublishedAgent(agentEntity: Agent): Agent {
+		const activeVersionSchema = agentEntity.activeVersion?.schema;
+		if (!activeVersionSchema) {
+			throw new OperationalError(
+				'Agent is not published. Publish the agent before using it in a workflow.',
+			);
+		}
+
+		return {
+			...agentEntity,
+			schema: activeVersionSchema,
+			tools: agentEntity.activeVersion?.tools ?? agentEntity.tools ?? {},
+			skills: agentEntity.activeVersion?.skills ?? agentEntity.skills ?? {},
+		} as Agent;
+	}
+
 	async executeForWorkflow(
 		agentId: string,
 		message: string,
@@ -1630,16 +1637,11 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		telemetryUserId?: string,
+		useDraftVersion?: boolean,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
 			throw new OperationalError('Agent not found or not accessible.');
-		}
-
-		if (!agentEntity.activeVersionId) {
-			throw new OperationalError(
-				'Agent is not published. Publish the agent before using it in a workflow.',
-			);
 		}
 
 		const credentialProvider = new AgentsCredentialProvider(
@@ -1647,7 +1649,13 @@ export class AgentsService {
 			projectId,
 		);
 
-		const compiled = await this.compileIsolated(agentEntity, credentialProvider, userId);
+		let agentData: Agent = agentEntity;
+
+		if (!useDraftVersion) {
+			agentData = this.getPublishedAgent(agentEntity);
+		}
+
+		const compiled = await this.compileIsolated(agentData, credentialProvider, userId);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
