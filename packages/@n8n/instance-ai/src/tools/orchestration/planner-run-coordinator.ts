@@ -5,7 +5,7 @@ import { createAddPlanItemTool, createRemovePlanItemTool } from './add-plan-item
 import { createSubAgentPersistence } from './agent-persistence';
 import { BlueprintAccumulator } from './blueprint-accumulator';
 import { truncateLabel } from './display-utils';
-import { PLANNER_AGENT_PROMPT } from './plan-agent-prompt';
+import { getPlannerAgentPrompt } from './plan-agent-prompt';
 import {
 	buildPlannerBriefingContext,
 	formatMessagesForBriefing,
@@ -32,7 +32,6 @@ import { resumeAgentStream } from '../../utils/stream-helpers';
 import { CREDENTIALS_TOOL_ID } from '../credentials.tool';
 import { DATA_TABLES_TOOL_ID } from '../data-tables.tool';
 import { ASK_USER_TOOL_ID } from '../shared/ask-user.tool';
-import { createTemplatesTool } from '../templates.tool';
 
 /** Read-only discovery tools the planner gets from domainTools. */
 const PLANNER_DOMAIN_TOOL_NAMES = [
@@ -165,7 +164,6 @@ function buildPlannerTools(context: OrchestrationContext, accumulator: Blueprint
 		if (tool) plannerTools.set(name, tool);
 	}
 
-	plannerTools.set('templates', createTemplatesTool());
 	plannerTools.set('add-plan-item', createAddPlanItemTool(accumulator, context));
 	plannerTools.set('remove-plan-item', createRemovePlanItemTool(accumulator, context));
 	plannerTools.set('submit-plan', createSubmitPlanTool(accumulator, context));
@@ -179,9 +177,12 @@ function buildPlannerSubAgent(
 	tracedPlannerTools: ReturnType<typeof traceSubAgentTools>,
 	subAgentId: string,
 ) {
+	const plannerPrompt = getPlannerAgentPrompt({
+		sandboxWorkspaceAvailable: Boolean(context.workspace),
+	});
 	const subAgent = new Agent('Workflow Planner Agent')
 		.model(context.modelId)
-		.instructions(PLANNER_AGENT_PROMPT, {
+		.instructions(plannerPrompt, {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
@@ -189,6 +190,7 @@ function buildPlannerSubAgent(
 		.tool(toolRegistryValues(tracedPlannerTools))
 		.checkpoint(context.checkpointStore ?? 'memory');
 	attachRuntimeWorkspaceCapabilities(subAgent, {
+		workspace: context.workspace,
 		runtimeSkills: context.runtimeSkills,
 	});
 	const telemetry = context.tracing?.getTelemetry?.({
@@ -287,10 +289,13 @@ export class PlannerRunCoordinator {
 			kind: 'planner',
 			inputs: { guidance, messageCount: messages.length },
 		});
+		const plannerPrompt = getPlannerAgentPrompt({
+			sandboxWorkspaceAvailable: Boolean(context.workspace),
+		});
 		mergeTraceRunInputs(
 			this.traceRun,
 			buildAgentTraceInputs({
-				systemPrompt: PLANNER_AGENT_PROMPT,
+				systemPrompt: plannerPrompt,
 				tools: tracedPlannerTools,
 				modelId: context.modelId,
 			}),
@@ -345,10 +350,13 @@ export class PlannerRunCoordinator {
 			kind: 'planner',
 			inputs: { resumed: true },
 		});
+		const plannerPrompt = getPlannerAgentPrompt({
+			sandboxWorkspaceAvailable: Boolean(context.workspace),
+		});
 		mergeTraceRunInputs(
 			this.traceRun,
 			buildAgentTraceInputs({
-				systemPrompt: PLANNER_AGENT_PROMPT,
+				systemPrompt: plannerPrompt,
 				tools: tracedPlannerTools,
 				modelId: context.modelId,
 			}),
