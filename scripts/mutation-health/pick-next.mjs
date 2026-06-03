@@ -67,8 +67,16 @@ function parseArgs(argv) {
 // Files with no useful mutation surface: barrels, declarations, type-only modules.
 const LOW_VALUE_BASENAMES = new Set(['interfaces', 'index', 'constants', 'types']);
 
+// Directories whose contents are tests/fixtures/mocks, not production code.
+// Pruned in `walkSources` so we don't descend; `isMutationWorthy` re-checks as a
+// safety net for packages that co-locate tests as siblings (e.g. `foo.test.ts`).
+const NON_SOURCE_DIRS = new Set(['__tests__', '__mocks__', 'fixtures']);
+
 function isMutationWorthy(absPath) {
 	if (absPath.endsWith('.d.ts')) return false;
+	if (/\.(test|spec)\.ts$/.test(absPath)) return false;
+	if (absPath.includes(`${path.sep}__tests__${path.sep}`)) return false;
+	if (absPath.includes(`${path.sep}__mocks__${path.sep}`)) return false;
 	const base = path.basename(absPath, '.ts');
 	if (LOW_VALUE_BASENAMES.has(base)) return false;
 	return true;
@@ -80,6 +88,7 @@ async function walkSources(dir) {
 	for (const e of entries) {
 		const full = path.join(dir, e.name);
 		if (e.isDirectory()) {
+			if (NON_SOURCE_DIRS.has(e.name)) continue;
 			out.push(...(await walkSources(full)));
 		} else if (e.isFile() && e.name.endsWith('.ts')) {
 			out.push(full);

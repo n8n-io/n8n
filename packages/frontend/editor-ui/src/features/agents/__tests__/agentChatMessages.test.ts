@@ -3,6 +3,7 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 
@@ -195,6 +196,33 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.output).toEqual([{ name: 'Slack' }]);
 	});
 
+	it('treats cancelled resolved tool calls as cancelled', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delete_file',
+						toolCallId: 'tc-cancel',
+						input: { path: '/tmp/foo.txt' },
+						state: 'resolved',
+						output: 'The sibling tool call was skipped',
+						canceled: true,
+					} as AgentPersistedMessageContentPart,
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat).toHaveLength(1);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('cancelled');
+		expect(tc?.output).toBe('The sibling tool call was skipped');
+		expect(tc?.canceled).toBe(true);
+	});
+
 	it('renders a resolved-but-failed delegate_subagent call as an error', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
@@ -205,7 +233,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 						type: 'tool-call',
 						toolName: 'delegate_subagent',
 						toolCallId: 'tc-d',
-						input: { taskName: 'research' },
+						input: { subAgentId: 'inline', taskName: 'research' },
 						state: 'resolved',
 						output: { status: 'failed', answer: '', error: 'child failed' },
 					},
@@ -229,7 +257,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 						type: 'tool-call',
 						toolName: 'delegate_subagent',
 						toolCallId: 'tc-d2',
-						input: {},
+						input: { subAgentId: 'inline' },
 						state: 'resolved',
 						output: { status: 'completed', answer: 'all good' },
 					},
