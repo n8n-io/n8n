@@ -29,11 +29,11 @@ jobs:
           # The suite is worker-bound (throughput scales with jest workers),
           # so more cores -> more workers (jest default = cores-1) -> faster.
           # See DEVP-315.
-          - name: Postgres 16
+          - name: Postgres 18
             runner: blacksmith-8vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
-            TEST_IMAGE_POSTGRES: 'postgres:16'
+            TEST_IMAGE_POSTGRES: 'postgres:18'
             collectCoverage: 'true'
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
