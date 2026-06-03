@@ -94,12 +94,7 @@ const handleOpenChange = (open: boolean) => {
 			>
 				<slot />
 			</TooltipTrigger>
-			<TooltipTrigger
-				v-else
-				as="span"
-				v-bind="attrs"
-				:class="{ [$style.disabledTrigger]: disabled }"
-			>
+			<TooltipTrigger v-else as="span" :class="{ [$style.disabledTrigger]: disabled }">
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">

@@ -1318,6 +1318,7 @@ describe('createNodeAdapter', () => {
 
 function createDataTableAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
+	projectId?: string;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1392,7 +1393,9 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
-	const adapter = service.createContext(mockUser).dataTableService;
+	const adapter = service.createContext(mockUser, {
+		projectId: overrides?.projectId,
+	}).dataTableService;
 
 	return {
 		adapter,
@@ -1561,6 +1564,7 @@ describe('createDataTableAdapter', () => {
 		it('allows write operations when instance is not in read-only mode', async () => {
 			const { adapter, mockDataTableService } = createDataTableAdapterForTests({
 				branchReadOnly: false,
+				projectId: 'team-project-id',
 			});
 
 			const result = await adapter.create('Test', []);
@@ -1580,6 +1584,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
+	// Defaults to a bound project (every production run has one). Pass `null` to
+	// simulate a run with no bound project.
+	projectId?: string | null;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1705,7 +1712,12 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
-	const context = service.createContext(mockUser, { threadId: 'thread-1' });
+	const boundProjectId =
+		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
+	const context = service.createContext(mockUser, {
+		threadId: 'thread-1',
+		projectId: boundProjectId,
+	});
 	const adapter = context.workflowService;
 
 	return {
@@ -1791,6 +1803,7 @@ describe('createWorkflowAdapter', () => {
 			filter: {
 				isArchived: false,
 				query: 'Test',
+				projectId: 'team-project-id',
 			},
 		});
 		expect(result).toEqual([
@@ -1810,6 +1823,7 @@ describe('createWorkflowAdapter', () => {
 			take: 50,
 			filter: {
 				isArchived: true,
+				projectId: 'team-project-id',
 			},
 		});
 	});
@@ -1821,30 +1835,30 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
 			take: 50,
-			filter: {},
+			filter: { projectId: 'team-project-id' },
 		});
 	});
 
-	it('defaults to personal project when no projectId provided', async () => {
+	it('creates the workflow in the bound project', async () => {
 		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
 			createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-		expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-1');
+		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
 			['wf-new'],
-			'personal-project-id',
+			'team-project-id',
 			expect.any(Object),
 		);
 	});
 
-	it('creates workflow in specified project when projectId provided', async () => {
+	it('ignores an LLM-supplied projectId and uses the bound project', async () => {
 		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
 			createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-			projectId: 'team-project-id',
+			projectId: 'other-project-id',
 		});
 
 		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
@@ -1855,15 +1869,21 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
-	it('rejects when user lacks workflow:create scope in project', async () => {
+	it('throws when the run has no bound project', async () => {
+		const { adapter } = createWorkflowAdapterForTests({ projectId: null });
+
+		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(
+			'this Instance AI run has no bound project',
+		);
+	});
+
+	it('rejects when the user lacks workflow:create scope in the bound project', async () => {
 		mockedUserHasScopes.mockResolvedValue(false);
 		const { adapter } = createWorkflowAdapterForTests();
 
-		await expect(
-			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-				projectId: 'restricted-project-id',
-			}),
-		).rejects.toThrow('User does not have the required permissions in this project');
+		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(
+			'User does not have the required permissions in this project',
+		);
 	});
 
 	it('tracks workflow id when publishing a builder workflow', async () => {
@@ -1896,7 +1916,7 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowRepository.manager.transaction).toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
 			['wf-new'],
-			'personal-project-id',
+			'team-project-id',
 			expect.any(Object),
 		);
 		expect(mockAiBuilderTemporaryWorkflowRepository.mark).toHaveBeenCalledWith(
