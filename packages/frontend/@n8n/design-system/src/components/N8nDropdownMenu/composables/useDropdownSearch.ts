@@ -1,4 +1,4 @@
-import { computed, ref, unref, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
 
 import type { DropdownMenuItemProps } from '../DropdownMenu.types';
 
@@ -44,12 +44,32 @@ function defaultSearchFields<T, D>(item: DropdownMenuItemProps<T, D>): SearchFie
 	return [item.label];
 }
 
+function normalizeSearchValue(value: string) {
+	return value
+		.toLowerCase()
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9]/g, '');
+}
+
+function fieldMatches(field: SearchField, query: string, normalizedQuery: string) {
+	if (!field) return false;
+
+	const normalizedField = field.toLowerCase();
+
+	return (
+		normalizedField.includes(query) ||
+		(normalizedQuery !== '' && normalizeSearchValue(normalizedField).includes(normalizedQuery))
+	);
+}
+
 function itemMatches<T, D>(
 	item: DropdownMenuItemProps<T, D>,
 	query: string,
+	normalizedQuery: string,
 	searchFields: (item: DropdownMenuItemProps<T, D>) => SearchField[],
 ) {
-	return searchFields(item).some((field) => field?.toLowerCase().includes(query));
+	return searchFields(item).some((field) => fieldMatches(field, query, normalizedQuery));
 }
 
 function defaultMapResult<T, D>(item: DropdownMenuItemProps<T, D>) {
@@ -62,9 +82,12 @@ function filterNestedItems<T, D>(
 	options: Required<UseDropdownSearchOptions<T, D>>,
 	parentMatched = false,
 ): Array<DropdownMenuItemProps<T, D>> {
+	const normalizedQuery = normalizeSearchValue(query);
+
 	return items.flatMap((item) => {
 		const children = item.children ?? [];
-		const matches = parentMatched || itemMatches(item, query, options.searchFields);
+		const matches =
+			parentMatched || itemMatches(item, query, normalizedQuery, options.searchFields);
 
 		if (children.length === 0) {
 			return matches && options.isSearchable(item) ? [options.mapResult(item, [item])] : [];
@@ -97,10 +120,13 @@ function flattenItems<T, D>(
 	path: Array<DropdownMenuItemProps<T, D>> = [],
 	parentMatched = false,
 ): Array<DropdownMenuItemProps<T, D>> {
+	const normalizedQuery = normalizeSearchValue(query);
+
 	return items.flatMap((item) => {
 		const currentPath = [...path, item];
 		const children = item.children ?? [];
-		const matches = parentMatched || itemMatches(item, query, options.searchFields);
+		const matches =
+			parentMatched || itemMatches(item, query, normalizedQuery, options.searchFields);
 
 		if (children.length === 0) {
 			return matches && options.isSearchable(item) ? [options.mapResult(item, currentPath)] : [];
@@ -131,7 +157,7 @@ export function useDropdownSearch<T = string, D = never>(
 
 	const filteredItems = computed(() => {
 		const query = search.value.trim().toLowerCase();
-		const sourceItems = unref(items);
+		const sourceItems = toValue(items);
 
 		if (!query) return sourceItems;
 

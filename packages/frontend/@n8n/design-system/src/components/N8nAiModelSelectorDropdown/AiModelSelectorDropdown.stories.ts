@@ -1,8 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
+import { useDropdownSearch } from '../N8nDropdownMenu/composables/useDropdownSearch';
 import N8nAiModelSelectorDropdown from './AiModelSelectorDropdown.vue';
-import type { AiModelSelectorMenuItem } from './AiModelSelectorDropdown.types';
+import type {
+	AiModelSelectorMenuItem,
+	AiModelSelectorMenuItemData,
+} from './AiModelSelectorDropdown.types';
 
 const items: AiModelSelectorMenuItem[] = [
 	{
@@ -329,7 +333,11 @@ const items: AiModelSelectorMenuItem[] = [
 	},
 ];
 
-const meta: Meta<typeof N8nAiModelSelectorDropdown> = {
+type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
+	component: Record<keyof C, unknown>;
+};
+
+const meta = {
 	title: 'AI/AiModelSelectorDropdown',
 	component: N8nAiModelSelectorDropdown,
 	parameters: {
@@ -343,42 +351,24 @@ const meta: Meta<typeof N8nAiModelSelectorDropdown> = {
 	render: (args) => ({
 		components: { N8nAiModelSelectorDropdown },
 		setup: () => {
-			const searchQuery = ref('');
 			const getProviderId = (id: string) => id.split('::')[0];
 			const getProviderLogo = (id: string) => `https://models.dev/logos/${getProviderId(id)}.svg`;
-
-			const filteredItems = computed(() => {
-				const query = searchQuery.value.trim().toLowerCase();
-				if (!query) return args.items;
-
-				return args.items.flatMap((provider) => {
-					const providerMatches = provider.label.toLowerCase().includes(query);
-					const children = provider.children ?? [];
-
-					return children.flatMap((model) => {
-						const modelMatches = `${model.label} ${model.data?.fullName ?? ''}`
-							.toLowerCase()
-							.includes(query);
-
-						if (!providerMatches && !modelMatches) return [];
-
-						return [
-							{
-								...model,
-								divided: false,
-								data: model.data
-									? { ...model.data, parts: [provider.label, model.label] }
-									: undefined,
-							},
-						];
-					});
-				});
+			const { search, filteredItems, handleSearch } = useDropdownSearch(() => args.items ?? [], {
+				flatList: true,
+				searchFields: (item) => [item.label, item.data?.fullName],
+				mapResult: (item, path) => ({
+					...item,
+					divided: false,
+					data: item.data
+						? { ...item.data, parts: path.map((pathItem) => pathItem.label) }
+						: undefined,
+				}),
 			});
 
-			const storyArgs = computed(() => ({ ...args, items: filteredItems.value }));
-			const handleSearch = (query: string) => {
-				searchQuery.value = query;
-			};
+			const storyArgs = computed(() => ({
+				...args,
+				items: search.value.trim() ? filteredItems.value : args.items,
+			}));
 
 			return { storyArgs, getProviderLogo, handleSearch };
 		},
@@ -403,11 +393,11 @@ const meta: Meta<typeof N8nAiModelSelectorDropdown> = {
 			</N8nAiModelSelectorDropdown>
 		`,
 	}),
-};
+} satisfies GenericMeta<typeof N8nAiModelSelectorDropdown<AiModelSelectorMenuItemData>>;
 
 export default meta;
 
-type Story = StoryObj<typeof N8nAiModelSelectorDropdown>;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
 	args: {

@@ -153,7 +153,6 @@ const handleItemHover = (index: number) => {
 	highlightedIndex.value = index;
 	if (hasSubMenu(item)) {
 		openHighlightedSubMenu();
-		console.log(item, hasSubMenu(item), index);
 	} else {
 		openSubMenuIndex.value = -1;
 	}
@@ -275,5 +274,9 @@ defineExpose({ resetNavigation });
 	min-height: 0;
 	overflow-y: auto;
 	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 </style>

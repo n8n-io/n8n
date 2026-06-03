@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import {
 	N8nAiModelSelectorDropdown,
 	N8nIcon,
+	useDropdownSearch,
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
 } from '@n8n/design-system';
@@ -64,8 +65,6 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const searchQuery = ref('');
-
 const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
 );
@@ -255,40 +254,28 @@ function isSearchableModelItem(item: MenuItem): boolean {
 	return item.id.includes('::model::') && !item.disabled;
 }
 
-function collectMatchingModelItems(
-	item: MenuItem,
-	query: string,
-	parts: string[],
-	parentMatched = false,
-): MenuItem[] {
-	const children = item.children ?? [];
-	const currentParts = [...parts, item.label];
-	const labelMatched = item.label.toLowerCase().includes(query);
-	const isMatched = parentMatched || labelMatched;
-
-	if (children.length === 0) {
-		const searchText = `${item.data?.fullName ?? item.label}`.toLowerCase();
-		if (!isSearchableModelItem(item) || (!isMatched && !searchText.includes(query))) return [];
-		return [
-			{
-				...item,
-				divided: false,
-				data: item.data ? { ...item.data, parts: currentParts } : undefined,
-			},
-		];
-	}
-
-	return children.flatMap((child) =>
-		collectMatchingModelItems(child, query, currentParts, isMatched),
-	);
-}
+const {
+	search: searchQuery,
+	filteredItems: matchingModelItems,
+	handleSearch,
+} = useDropdownSearch(menu, {
+	flatList: true,
+	isSearchable: isSearchableModelItem,
+	searchFields: (item) => [item.label, item.data?.fullName],
+	mapResult: (item, path) => ({
+		...item,
+		divided: false,
+		data: item.data ? { ...item.data, parts: path.map((pathItem) => pathItem.label) } : undefined,
+	}),
+});
 
 const filteredMenu = computed(() => {
-	const query = searchQuery.value.trim().toLowerCase();
-	if (!query) return menu.value;
+	if (!searchQuery.value.trim()) return menu.value;
 
 	return menu.value.flatMap<MenuItem>((providerItem) => {
-		const results = collectMatchingModelItems(providerItem, query, []);
+		const results = matchingModelItems.value.filter(
+			(item) => item.data?.provider === providerItem.id,
+		);
 		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
 
 		return [
@@ -331,11 +318,6 @@ function onSelect(id: string) {
 	if (action === 'model') {
 		emit('change', { provider: providerId, model: value });
 	}
-}
-
-function handleSearch(query: string) {
-	if (disabled) return;
-	searchQuery.value = query;
 }
 
 defineExpose({

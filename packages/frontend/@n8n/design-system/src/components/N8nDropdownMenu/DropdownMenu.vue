@@ -371,9 +371,7 @@ defineExpose({ open, close });
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
 	--shadow-color--outline: var(--border-color);
-	box-shadow:
-		var(--shadow--md),
-		inset var(--shadow--outline);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	z-index: 9999;

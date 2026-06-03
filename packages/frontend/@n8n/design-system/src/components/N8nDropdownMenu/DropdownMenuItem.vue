@@ -296,8 +296,13 @@ watch(
 
 .children-container {
 	padding: var(--spacing--4xs);
-	max-height: var(--reka-dropdown-menu-content-available-height);
+	max-height: inherit;
 	overflow-y: auto;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 .item {
@@ -349,11 +354,21 @@ watch(
 }
 
 .sub-content {
-	min-width: 160px;
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
 	z-index: 999999;
+	width: fit-content;
+	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
+	max-width: var(--n8n--dropdown-menu-width);
+	max-height: min(var(--reka-dropdown-menu-content-available-height), var(--spacing--5xl));
+	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	overflow: hidden;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 .item-leading {
