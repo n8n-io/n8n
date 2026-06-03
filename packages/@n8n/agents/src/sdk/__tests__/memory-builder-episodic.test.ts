@@ -19,7 +19,7 @@ type EmbeddingProviderOpts = {
 	baseURL?: string;
 };
 
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: (opts?: EmbeddingProviderOpts) =>
 		Object.assign(
 			(model: string) => ({
@@ -43,12 +43,12 @@ jest.mock('@ai-sdk/openai', () => ({
 
 describe('Memory builder — episodic memory', () => {
 	const minimalBackend = {
-		getThread: jest.fn().mockResolvedValue(null),
-		saveThread: jest.fn().mockResolvedValue({}),
-		deleteThread: jest.fn().mockResolvedValue(undefined),
-		getMessages: jest.fn().mockResolvedValue([]),
-		saveMessages: jest.fn().mockResolvedValue(undefined),
-		deleteMessages: jest.fn().mockResolvedValue(undefined),
+		getThread: vi.fn().mockResolvedValue(null),
+		saveThread: vi.fn().mockResolvedValue({}),
+		deleteThread: vi.fn().mockResolvedValue(undefined),
+		getMessages: vi.fn().mockResolvedValue([]),
+		saveMessages: vi.fn().mockResolvedValue(undefined),
+		deleteMessages: vi.fn().mockResolvedValue(undefined),
 		describe: () => ({
 			name: 'minimal',
 			constructorName: 'MinimalMemory',
@@ -154,7 +154,6 @@ describe('Memory builder — episodic memory', () => {
 		expect(() =>
 			normalizeMemoryConfig({
 				memory: minimalBackend,
-				lastMessages: 10,
 				episodicMemory: {
 					embedder: { specificationVersion: 'v2' } as never,
 					extract: async () => await Promise.resolve({ entries: [] }),
@@ -168,7 +167,6 @@ describe('Memory builder — episodic memory', () => {
 			resolveMemoryConfigDefaults(
 				{
 					memory: minimalBackend,
-					lastMessages: 10,
 					episodicMemory: {},
 				},
 				{ defaultModel: 'openai/gpt-4o-mini' },

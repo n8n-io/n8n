@@ -47,6 +47,9 @@ describe('McpServerMiddlewareService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		oauthTokenService.getCanonicalResourceUrl.mockReturnValue(
+			'https://n8n.example.com/mcp-server/http',
+		);
 	});
 
 	describe('getUserForToken', () => {
@@ -63,7 +66,10 @@ describe('McpServerMiddlewareService', () => {
 			const result = await service.getUserForToken(oauthToken);
 
 			expect(result).toEqual({ user, authType: 'oauth' });
-			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
+			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(
+				oauthToken,
+				'https://n8n.example.com/mcp-server/http',
+			);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
 

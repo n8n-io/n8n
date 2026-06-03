@@ -72,8 +72,6 @@ interface BridgeCallback {
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
  *     lazy-proxy system. Hot path; one ivm.Reference each for minimum overhead.
- *   - `callFunctionAtPath`: legacy generic dispatch; to be removed once
- *     every consumer has migrated to typed messages.
  *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
@@ -82,14 +80,13 @@ interface BridgeCallback {
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
  *
- * The bridge wires all four callbacks unconditionally before invoking
+ * The bridge wires all three callbacks unconditionally before invoking
  * `buildContext`, so the runtime treats them as present — no defensive
  * null/undefined checks at each call site.
  */
 export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
-	callFunctionAtPath: BridgeCallback;
 	callHost: BridgeCallback;
 }
 
@@ -333,6 +330,46 @@ export function buildContext(
 	target.$fromAi = sendFromAi;
 	target.$fromai = sendFromAi;
 
+	// $evaluateExpression — recursive expression evaluator. Forwards the
+	// inner expression string to the host, which re-invokes the engine.
+	// Under the VM engine this re-enters the bridge on a fresh evaluation;
+	// the legacy engine handles it inline.
+	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[{ type: 'evaluateExpression', expression, itemIndex }],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
+	// $getPairedItem — walks the paired-item ancestry chain back to the
+	// named upstream node. The host validates the structural shape of
+	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
+	// schema; bad input surfaces as a schema-parse error sentinel rather
+	// than a host throw, keeping the protocol surface tight.
+	target.$getPairedItem = (
+		destinationNodeName: string,
+		incomingSourceData: unknown,
+		initialPairedItem: unknown,
+	) => {
+		const result = callbacks.callHost.applySync(
+			null,
+			[
+				{
+					type: 'getPairedItem',
+					destinationNodeName,
+					incomingSourceData,
+					initialPairedItem,
+				},
+			],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+		throwIfErrorSentinel(result);
+		return result;
+	};
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target
@@ -364,19 +401,6 @@ export function buildContext(
 		if (value === undefined) return false;
 
 		throwIfErrorSentinel(value);
-
-		// Function metadata — create a callable wrapper
-		if (value && typeof value === 'object' && (value as any).__isFunction) {
-			target[key] = function (...args: unknown[]) {
-				const result = callbacks.callFunctionAtPath.applySync(null, [[key], ...args], {
-					arguments: { copy: true },
-					result: { copy: true },
-				});
-				throwIfErrorSentinel(result);
-				return result;
-			};
-			return true;
-		}
 
 		// Object / array metadata — create a shape-matched lazy proxy for deep access
 		if (isArrayMetadata(value)) {

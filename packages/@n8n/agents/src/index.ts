@@ -19,7 +19,6 @@ export type {
 	InterruptibleToolContext,
 	CheckpointStore,
 	StreamChunk,
-	SubAgentUsage,
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
@@ -63,7 +62,6 @@ export type {
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
-	SemanticRecallConfig,
 	ResumeOptions,
 	McpServerConfig,
 	McpVerifyResult,
@@ -99,6 +97,8 @@ export {
 	OBSERVATION_LOG_STATUSES,
 } from './types';
 
+export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
+export type { Cancellation } from './sdk/cancellation';
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
@@ -161,7 +161,6 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
-export { Network } from './sdk/network';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
@@ -198,6 +197,35 @@ export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
+export {
+	ROOT_SUB_AGENT_TASK_PATH,
+	assertSubAgentPolicyAllowsChildCount,
+	assertSubAgentTaskPath,
+	createChildSubAgentTaskPath,
+	isSubAgentTaskPath,
+	sanitizeSubAgentTaskName,
+} from './runtime/sub-agent-task-path';
+export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
+export {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	INLINE_SUB_AGENT_ID,
+	createDelegateSubAgentTool,
+	failedDelegatedChildSuspendOutput,
+	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
+	renderDelegateSubAgentPrompt,
+} from './runtime/delegate-sub-agent-tool';
+export type {
+	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentInput,
+	DelegateSubAgentPolicy,
+	DelegateSubAgentRequest,
+	DelegateSubAgentRunner,
+	DelegateSubAgentRunnerHelpers,
+	DelegateSubAgentToolOutput,
+} from './runtime/delegate-sub-agent-tool';
+export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 export {

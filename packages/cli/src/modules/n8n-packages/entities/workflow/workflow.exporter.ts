@@ -6,8 +6,10 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
-import { generateSlug } from '../../io/slug.utils';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
+import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -15,14 +17,24 @@ export interface WorkflowExportRequest {
 	writer: PackageWriter;
 }
 
+export interface WorkflowExportRequirements {
+	credentials: WorkflowCredentialRequirement[];
+}
+
+export interface WorkflowExportResult {
+	entries: ManifestEntry[];
+	requirements: WorkflowExportRequirements;
+}
+
 @Service()
 export class WorkflowExporter {
 	constructor(
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 	) {}
 
-	async export(request: WorkflowExportRequest): Promise<ManifestEntry[]> {
+	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			request.workflowIds,
 			request.user,
@@ -33,10 +45,11 @@ export class WorkflowExporter {
 		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
 
 		const entries: ManifestEntry[] = [];
-		const usedTargets = new Set<string>();
+		const credentials: WorkflowCredentialRequirement[] = [];
+		const fileNames = new UniqueFilenameAllocator('workflows');
 
 		for (const workflow of workflows) {
-			const target = this.allocateUniqueFileName(workflow.name, usedTargets);
+			const target = fileNames.allocate(workflow.name);
 			const serialized = this.workflowSerializer.serialize(workflow);
 
 			request.writer.writeDirectory(target);
@@ -47,26 +60,11 @@ export class WorkflowExporter {
 				name: workflow.name,
 				target,
 			});
+
+			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
 		}
 
-		return entries;
-	}
-
-	private allocateUniqueFileName(name: string, used: Set<string>): string {
-		const base = `workflows/${generateSlug(name)}`;
-
-		if (!used.has(base)) {
-			used.add(base);
-			return base;
-		}
-
-		for (let suffix = 2; ; suffix++) {
-			const candidate = `${base}-${suffix}`;
-			if (!used.has(candidate)) {
-				used.add(candidate);
-				return candidate;
-			}
-		}
+		return { entries, requirements: { credentials } };
 	}
 
 	private assertAllRequestedWorkflowsFound(

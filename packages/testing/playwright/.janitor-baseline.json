@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"generated": "2026-05-18T14:07:20.233Z",
+	"generated": "2026-05-25T15:20:35.251Z",
 	"totalViolations": 412,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
@@ -50,13 +50,13 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 99,
+				"line": 65,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 144,
+				"line": 140,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			}
@@ -2556,7 +2556,7 @@
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 17,
+				"line": 18,
 				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 250 msg/s × 240s (1 main + 1 worker)\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
 				"hash": "388616eecbaa"
 			}
@@ -2564,7 +2564,7 @@
 		"tests/infrastructure/benchmarks/kafka/single-instance-ceiling.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 17,
+				"line": 18,
 				"message": "Duplicate test logic: \"Kafka trigger + 1 noop, 1KB payload, 150k msgs\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
 				"hash": "1c5033214063"
 			}
@@ -2572,7 +2572,7 @@
 		"tests/infrastructure/benchmarks/kafka/steady-rate-breaking-point.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 34,
+				"line": 35,
 				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/burst-drain-capacity.spec.ts:\"Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)\"",
 				"hash": "5579d3e330e1"
 			}
@@ -2580,25 +2580,33 @@
 		"tests/infrastructure/benchmarks/kafka/output-size-impact.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 25,
+				"line": 26,
 				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/kafka/node-count-scaling.spec.ts:\"anonymous\"",
 				"hash": "d676f700b46d"
 			}
 		],
-		"tests/infrastructure/benchmarks/webhook/webhook-otel-overhead.spec.ts": [
+		"tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-2w.spec.ts": [
 			{
 				"rule": "duplicate-logic",
-				"line": 26,
-				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-main-scaling.spec.ts:\"anonymous\"",
-				"hash": "61c8c9b0f1ff"
+				"line": 44,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+				"hash": "bc07737c363b"
+			}
+		],
+		"tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-baseline.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 38,
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+				"hash": "20c97ee82b2c"
 			}
 		],
 		"tests/infrastructure/benchmarks/webhook/webhook-single-instance.spec.ts": [
 			{
 				"rule": "duplicate-logic",
 				"line": 27,
-				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-queue-baseline.spec.ts:\"anonymous\"",
-				"hash": "51d2d4fe3fdb"
+				"message": "Duplicate test logic: \"anonymous\" has identical structure to tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-1w.spec.ts:\"anonymous\"",
+				"hash": "46d8dc14acc3"
 			}
 		],
 		"tests/infrastructure/benchmarks-local/instance-ai/thread-churn-delegation.spec.ts": [
@@ -2615,14 +2623,6 @@
 				"line": 17,
 				"message": "Duplicate test logic: \"heap returns to baseline after parallel build rounds\" has identical structure to tests/infrastructure/benchmarks-local/instance-ai/thread-churn-datatables.spec.ts:\"heap returns to baseline after data table create/delete rounds\"",
 				"hash": "3ac5475c5814"
-			}
-		],
-		"tests/performance/memory-consumption-instance-ai.spec.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 22,
-				"message": "Duplicate test logic: \"Idle baseline with Instance AI module loaded\" has identical structure to tests/performance/memory-consumption-agents.spec.ts:\"Idle baseline with Agents module loaded\"",
-				"hash": "ef1cde8770e1"
 			}
 		],
 		"tests/infrastructure/benchmarks-local/instance-ai/cancel-abort.spec.ts": [

@@ -19,7 +19,8 @@ import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey } from '../session-timeline.utils';
+import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const i18n = useI18n();
@@ -40,7 +41,7 @@ const fullExecutionHref = computed((): string => {
 	return router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
 		params: {
-			name: props.item.workflowId,
+			workflowId: props.item.workflowId,
 			executionId: props.item.workflowExecutionId,
 		},
 	}).href;
@@ -127,9 +128,14 @@ const toolDisplayName = computed((): string => {
 	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
 });
 
+const isSubAgent = computed((): boolean =>
+	props.item ? isSubAgentTimelineItem(props.item) : false,
+);
+
 const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
+	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
@@ -141,6 +147,7 @@ const headerTitle = computed((): string => {
 const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
+	if (isSubAgent.value) return 'bot';
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';

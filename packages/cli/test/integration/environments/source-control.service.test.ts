@@ -796,26 +796,26 @@ describe('SourceControlService', () => {
 			});
 
 			describe('global:member user', () => {
-				it('should see nothing', async () => {
-					const result = await service.getStatus(globalMember, {
-						direction: 'push',
-						preferLocalVersion: true,
-						verbose: false,
-					});
-
-					expect(result).toBeEmptyArray();
+				it('should not be allowed to get push status', async () => {
+					await expect(
+						service.getStatus(globalMember, {
+							direction: 'push',
+							preferLocalVersion: true,
+							verbose: false,
+						}),
+					).rejects.toThrow(ForbiddenError);
 				});
 			});
 
 			describe('global:chatUser user', () => {
-				it('should see nothing', async () => {
-					const result = await service.getStatus(globalChatUser, {
-						direction: 'push',
-						preferLocalVersion: true,
-						verbose: false,
-					});
-
-					expect(result).toBeEmptyArray();
+				it('should not be allowed to get push status', async () => {
+					await expect(
+						service.getStatus(globalChatUser, {
+							direction: 'push',
+							preferLocalVersion: true,
+							verbose: false,
+						}),
+					).rejects.toThrow(ForbiddenError);
 				});
 			});
 

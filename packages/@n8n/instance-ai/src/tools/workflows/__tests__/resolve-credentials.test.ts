@@ -1,4 +1,5 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
 import {
@@ -16,16 +17,16 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 	return {
 		userId: 'test-user',
 		workflowService: {
-			getAsWorkflowJSON: jest
+			getAsWorkflowJSON: vi
 				.fn()
 				.mockResolvedValue(existingWorkflow ?? { name: 'existing', nodes: [], connections: {} }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
@@ -305,7 +306,7 @@ describe('resolveCredentials', () => {
 
 		it('keeps a raw credential id from a type with multiple available credentials', async () => {
 			const ctx = createMockContext();
-			(ctx.credentialService.list as jest.Mock).mockResolvedValueOnce([
+			(ctx.credentialService.list as Mock).mockResolvedValueOnce([
 				{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
 				{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
 			]);

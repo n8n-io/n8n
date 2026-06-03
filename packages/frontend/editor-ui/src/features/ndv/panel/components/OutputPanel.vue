@@ -28,6 +28,7 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -82,6 +83,9 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const activeNode = computed(() => ndvStore.value.activeNode);
@@ -162,7 +166,7 @@ const isNodeRunning = computed(() => {
 	);
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 
 const runTaskData = computed(() => {
 	if (!node.value || workflowExecution.value === null) {

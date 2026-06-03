@@ -64,9 +64,7 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	lastMessages?: number;
 	subAgentMaxSteps?: number;
-	browserMcp?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
 	sandboxEnabled?: boolean;
@@ -159,9 +157,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
 			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
 			sandboxEnabled: c.sandboxEnabled,
@@ -193,11 +189,8 @@ export class InstanceAiSettingsService {
 		}
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
-		const previousBrowserMcp = c.browserMcp;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
-		if (update.browserMcp !== undefined) c.browserMcp = update.browserMcp;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
@@ -217,8 +210,7 @@ export class InstanceAiSettingsService {
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged:
-				c.mcpServers !== previousMcpServers || c.browserMcp !== previousBrowserMcp,
+			mcpSettingsChanged: c.mcpServers !== previousMcpServers,
 		});
 
 		return this.getAdminSettings();
@@ -499,9 +491,7 @@ export class InstanceAiSettingsService {
 	private static readonly CLOUD_MANAGED_ADMIN_FIELDS: readonly string[] = [
 		...InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS,
 		'n8nSandboxCredentialId',
-		'lastMessages',
 		'subAgentMaxSteps',
-		'browserMcp',
 		'mcpServers',
 	];
 
@@ -553,9 +543,7 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
 		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
-		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
 			this.permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -585,9 +573,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
 			enabled: this.enabled,
-			lastMessages: c.lastMessages,
 			subAgentMaxSteps: c.subAgentMaxSteps,
-			browserMcp: c.browserMcp,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
 			sandboxEnabled: c.sandboxEnabled,
