@@ -1,7 +1,7 @@
 import type { BrowserContext, Page, TestInfo } from '@playwright/test';
+import { CoverageReport } from 'monocart-coverage-reports';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { CoverageReport } from 'monocart-coverage-reports';
 
 import { BY_SPEC_DIR, coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
 
@@ -50,7 +50,9 @@ export const v8CoverageFixtures = {
 			}
 		};
 
-		context.on('page', (page) => void startCoverage(page));
+		context.on('page', (page) => {
+			startCoverage(page).catch(() => {});
+		});
 		await Promise.all(context.pages().map(startCoverage));
 
 		await use(context);
