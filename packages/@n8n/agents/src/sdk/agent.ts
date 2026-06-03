@@ -10,6 +10,13 @@ import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
 import { createAgentToolResult } from '../runtime/tool-adapter';
+import {
+	appendSkillCatalogToInstructions,
+	createRuntimeSkillSource,
+	createRuntimeSkillTools,
+	RUNTIME_SKILL_TOOL_NAMES,
+} from '../skills';
+import type { RuntimeSkill, RuntimeSkillSource } from '../skills';
 import type {
 	AgentEventHandler,
 	AgentMiddleware,
@@ -39,8 +46,6 @@ import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
-const DEFAULT_LAST_MESSAGES = 10;
-
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
 interface DeferredToolOptions {
@@ -66,6 +71,8 @@ export interface AgentSnapshot {
 	hasMemory: boolean;
 	/** True when observation-log memory has been configured on the memory builder. */
 	hasObservationalMemory: boolean;
+	/** True when episodic memory has been configured on the memory builder. */
+	hasEpisodicMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -105,6 +112,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private providerTools: BuiltProviderTool[] = [];
 
+	private skillSource?: RuntimeSkillSource;
+
+	private hasRuntimeSkillTool = false;
+
 	private memoryConfig?: MemoryConfig;
 
 	// TODO: Guardrails are accepted by the builder API for forward
@@ -134,6 +145,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private requireToolApprovalValue = false;
 
 	private mcpClients: McpClient[] = [];
+
+	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntime> | undefined;
 
@@ -183,14 +196,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
 	tool(t: ToolParameter | ToolParameter[]): this {
-		if (Array.isArray(t)) {
-			for (const tool of t) {
-				this.tool(tool);
-			}
-			return this;
+		const tools = Array.isArray(t) ? t : [t];
+		const builtTools = tools.map((tool) => ('build' in tool ? tool.build() : tool));
+		for (const built of builtTools) {
+			this.assertToolNameAvailable(built.name);
 		}
-		const built = 'build' in t ? t.build() : t;
-		this.tools.push(built);
+		this.tools.push(...builtTools);
 		return this;
 	}
 
@@ -204,6 +215,30 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
 		}
+		return this;
+	}
+
+	/**
+	 * Add runtime-loadable skills to the agent. The model sees only a compact
+	 * name/description catalog in the system prompt, then calls `load_skill`
+	 * to retrieve the full instructions for a relevant skill.
+	 */
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this {
+		const source = Array.isArray(sourceOrSkills)
+			? createRuntimeSkillSource(sourceOrSkills)
+			: sourceOrSkills;
+
+		this.removeRuntimeSkillTools();
+		this.skillSource = source;
+		if (source.registry.skills.length === 0) return this;
+
+		const reservedTool = this.tools.find((tool) => RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		if (reservedTool) {
+			throw new Error(`Tool name "${reservedTool.name}" is reserved for runtime skills`);
+		}
+
+		this.tools.push(...createRuntimeSkillTools(source));
+		this.hasRuntimeSkillTool = true;
 		return this;
 	}
 
@@ -223,7 +258,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (m instanceof Memory) {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
-		} else if ('memory' in m && 'lastMessages' in m) {
+		} else if ('memory' in m) {
 			// MemoryConfig — validate the same invariants as the builder path
 			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
@@ -233,11 +268,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			typeof m.saveMessages === 'function'
 		) {
 			// Bare BuiltMemory — wrap in minimal config
-			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+			this.memoryConfig = { memory: m };
 		} else {
 			throw new Error(
-				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
+				'Invalid memory configuration. Use: new Memory() for in-process memory, ' +
+					'or new Memory().storage(myBuiltMemoryBackend) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
@@ -411,6 +446,29 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/**
+	 * Set default execution options for all `generate()` and `stream()` calls.
+	 * Options passed directly to those methods take precedence over these defaults.
+	 *
+	 * @example
+	 * ```typescript
+	 * const agent = new Agent('assistant')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .instructions('You are a helpful assistant.')
+	 *   .configuration({ maxIterations: 5 });
+	 *
+	 * // Uses maxIterations: 5 from defaults
+	 * await agent.generate('Hello');
+	 *
+	 * // Overrides maxIterations to 10 for this call only
+	 * await agent.generate('Hello', { maxIterations: 10 });
+	 * ```
+	 */
+	configuration(options: ExecutionOptions): this {
+		this.defaultExecutionOptions = options;
+		return this;
+	}
+
 	/** Get the evals attached to this agent. */
 	get evaluations(): BuiltEval[] {
 		return [...this.agentEvals];
@@ -528,6 +586,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
 			hasMemory: this.memoryConfig !== undefined,
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
+			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 			requireToolApproval: this.requireToolApprovalValue,
@@ -556,12 +615,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Wait for any in-flight background tasks (title generation, future
-	 * observer cycles) to settle. Call before letting the agent go out of
-	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client attached via `.mcp()`. Errors from
+	 *   individual client disconnects are swallowed so a single misbehaving
+	 *   server does not prevent the others from closing.
+	 *
+	 * Safe to call multiple times.
 	 */
 	async close(): Promise<void> {
-		if (this.runtime) await this.runtime.dispose();
+		const tasks: Array<Promise<unknown>> = [];
+		if (this.runtime) tasks.push(this.runtime.dispose());
+		tasks.push(...this.mcpClients.map(async (c) => await c.close()));
+		await Promise.allSettled(tasks);
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -570,7 +638,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
 		const runtime = await this.ensureBuilt();
-		return await runtime.generate(this.toMessages(input), options);
+		const mergedOptions = this.mergeWithDefaults(options);
+		return await runtime.generate(this.toMessages(input), mergedOptions);
 	}
 
 	/** Stream a response. Lazy-builds on first call. */
@@ -579,7 +648,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
 		const runtime = await this.ensureBuilt();
-		return await runtime.stream(this.toMessages(input), options);
+		const mergedOptions = this.mergeWithDefaults(options);
+		return await runtime.stream(this.toMessages(input), mergedOptions);
 	}
 
 	/** Resume a suspended tool call with data. Lazy-builds on first call. */
@@ -629,6 +699,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return await this.resume('stream', { approved: false }, options);
 	}
 
+	private mergeWithDefaults(
+		options?: RunOptions & ExecutionOptions,
+	): (RunOptions & ExecutionOptions) | undefined {
+		if (!this.defaultExecutionOptions) return options;
+		return { ...this.defaultExecutionOptions, ...options };
+	}
+
 	/**
 	 * @internal Lazy-build the agent on first use. Stores the promise so
 	 * concurrent callers share one build operation. On error the promise is
@@ -671,7 +748,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		let finalDeferredTools = configuredDeferredTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
+				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
+					? t
+					: wrapToolForApproval(t, { requireApproval: true }),
 			);
 			finalDeferredTools = configuredDeferredTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
@@ -707,8 +786,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		// Detect collisions between direct, deferred, and MCP tools.
+		const staticCollisions = findDuplicateToolNames(finalStaticTools);
+		if (staticCollisions.length > 0) {
+			throw new Error(
+				`Static tool name collision — the following tool names resolve to duplicates: ${staticCollisions.join(', ')}`,
+			);
+		}
+
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
-		const reservedDeferredToolNames = new Set([SEARCH_TOOLS_TOOL_NAME, LOAD_TOOL_TOOL_NAME]);
+		const reservedDeferredToolNames = new Set([
+			SEARCH_TOOLS_TOOL_NAME,
+			LOAD_TOOL_TOOL_NAME,
+			...RUNTIME_SKILL_TOOL_NAMES,
+		]);
 		const deferredNames = new Set<string>();
 		const deferredCollisions: string[] = [];
 		for (const tool of finalDeferredTools) {
@@ -756,6 +846,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			: undefined;
 
 		let instructions = this.instructionsText;
+		if (this.skillSource) {
+			await this.skillSource.prepare?.();
+			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
 			if (wsInstructions) {
@@ -776,9 +870,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
-			lastMessages: memoryConfig?.lastMessages,
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
+			episodicMemory: memoryConfig?.episodicMemory,
 			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
@@ -791,4 +885,29 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		return this.runtime;
 	}
+
+	private assertToolNameAvailable(toolName: string): void {
+		if (!this.hasRuntimeSkillTool || !RUNTIME_SKILL_TOOL_NAMES.has(toolName)) return;
+
+		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
+	}
+
+	private removeRuntimeSkillTools(): void {
+		if (!this.hasRuntimeSkillTool) return;
+
+		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		this.hasRuntimeSkillTool = false;
+	}
+}
+
+function findDuplicateToolNames(tools: BuiltTool[]): string[] {
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
+	for (const tool of tools) {
+		if (seen.has(tool.name)) {
+			duplicates.add(tool.name);
+		}
+		seen.add(tool.name);
+	}
+	return [...duplicates].sort();
 }

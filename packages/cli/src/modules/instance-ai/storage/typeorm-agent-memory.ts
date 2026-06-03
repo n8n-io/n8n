@@ -1,3 +1,19 @@
+import {
+	type BuiltObservationLogStore,
+	type BuiltObservationLogTaskLockStore,
+	type MemoryDescriptor,
+	type NewObservationLogEntry,
+	type ObservationCursor,
+	type ObservationLogEntry,
+	type ObservationLogReadOptions,
+	type ObservationLogReflection,
+	type ObservationLogReflectionResult,
+	type ObservationLogScope,
+	type ObservationLogTaskKind,
+	type ObservationLogTaskLockHandle,
+} from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
 import type {
 	AgentDbMessage,
 	AgentMessage,
@@ -5,14 +21,15 @@ import type {
 	Thread,
 	ThreadPatch,
 } from '@n8n/instance-ai';
-import { Logger } from '@n8n/backend-common';
-import type { MemoryDescriptor } from '@n8n/agents';
-import { Service } from '@n8n/di';
 import { In, LessThan, Like } from '@n8n/typeorm';
 
+import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
 import { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
+import { InstanceAiObservationCursorRepository } from '../repositories/instance-ai-observation-cursor.repository';
+import { InstanceAiObservationLockRepository } from '../repositories/instance-ai-observation-lock.repository';
+import { InstanceAiObservationRepository } from '../repositories/instance-ai-observation.repository';
 import { InstanceAiResourceRepository } from '../repositories/instance-ai-resource.repository';
 import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
@@ -74,7 +91,6 @@ function workingMemoryKey(params: {
 }
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
-	'instanceAiConversationSummary',
 	'instanceAiIterationLog',
 	'instanceAiPlannedTasks',
 	'instanceAiTasks',
@@ -104,16 +120,29 @@ function mergeSaveThreadMetadata(
 }
 
 @Service()
-export class TypeORMAgentMemory implements BuiltMemory {
+export class TypeORMAgentMemory
+	implements BuiltMemory, BuiltObservationLogStore, BuiltObservationLogTaskLockStore
+{
 	private readonly threadMutationQueues = new Map<string, Promise<unknown>>();
+	private readonly observationLog: TypeORMObservationLogStore;
 
 	constructor(
 		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly resourceRepo: InstanceAiResourceRepository,
+		observationRepo: InstanceAiObservationRepository,
+		observationCursorRepo: InstanceAiObservationCursorRepository,
+		observationLockRepo: InstanceAiObservationLockRepository,
 		logger: Logger,
 	) {
 		this.logger = logger.scoped('instance-ai');
+		this.observationLog = new TypeORMObservationLogStore(
+			observationRepo,
+			observationCursorRepo,
+			observationLockRepo,
+			this.messageRepo,
+			(entity) => this.toAgentMessage(entity),
+		);
 	}
 
 	private readonly logger: Logger;
@@ -315,6 +344,68 @@ export class TypeORMAgentMemory implements BuiltMemory {
 				metadata: { scope: params.scope },
 			}),
 		);
+	}
+
+	async appendObservationLogEntries(
+		rows: NewObservationLogEntry[],
+	): Promise<ObservationLogEntry[]> {
+		return await this.observationLog.appendObservationLogEntries(rows);
+	}
+
+	async getActiveObservationLog(
+		scope: ObservationLogScope & { limit?: number; order?: 'asc' | 'desc' },
+	): Promise<ObservationLogEntry[]> {
+		return await this.observationLog.getActiveObservationLog(scope);
+	}
+
+	async getObservationLog(opts: ObservationLogReadOptions): Promise<ObservationLogEntry[]> {
+		return await this.observationLog.getObservationLog(opts);
+	}
+
+	async getMessagesForObservationScope(
+		observationScopeId: string,
+		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
+	): Promise<AgentDbMessage[]> {
+		return await this.observationLog.getMessagesForObservationScope(observationScopeId, opts);
+	}
+
+	async dropObservationLogEntries(ids: string[]): Promise<void> {
+		return await this.observationLog.dropObservationLogEntries(ids);
+	}
+
+	async supersedeObservationLogEntries(ids: string[], supersededBy: string): Promise<void> {
+		return await this.observationLog.supersedeObservationLogEntries(ids, supersededBy);
+	}
+
+	async applyObservationLogReflection(
+		scope: ObservationLogScope,
+		reflection: ObservationLogReflection,
+	): Promise<ObservationLogReflectionResult> {
+		return await this.observationLog.applyObservationLogReflection(scope, reflection);
+	}
+
+	async getCursor(observationScopeId: string): Promise<ObservationCursor | null> {
+		return await this.observationLog.getCursor(observationScopeId);
+	}
+
+	async setCursor(cursor: ObservationCursor): Promise<void> {
+		return await this.observationLog.setCursor(cursor);
+	}
+
+	async acquireObservationLogTaskLock(
+		observationScopeId: string,
+		taskKind: ObservationLogTaskKind,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<ObservationLogTaskLockHandle | null> {
+		return await this.observationLog.acquireObservationLogTaskLock(
+			observationScopeId,
+			taskKind,
+			opts,
+		);
+	}
+
+	async releaseObservationLogTaskLock(handle: ObservationLogTaskLockHandle): Promise<void> {
+		return await this.observationLog.releaseObservationLogTaskLock(handle);
 	}
 
 	private async serializeThreadMutation<T>(

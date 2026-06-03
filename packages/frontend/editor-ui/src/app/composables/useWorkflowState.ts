@@ -1,28 +1,21 @@
-import * as workflowsApi from '@/app/api/workflows';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
+import { WorkflowStateKey } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import {
-	createWorkflowExecutionStateId,
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
 	IExecutionResponse,
 	IExecutionsStopData,
 } from '@/features/execution/executions/executions.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
-import type { INewWorkflowData } from '@/Interface';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
 import { useDocumentTitle } from './useDocumentTitle';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
@@ -30,70 +23,41 @@ import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const workflowStateStore = useWorkflowStateStore();
-	const rootStore = useRootStore();
 
 	////
 	// Workflow editing state
 	////
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(ws.workflowId),
 		);
 		if (workflowResultData === null) {
-			stateStore.setPendingExecution(null);
-			stateStore.clearDisplayedExecution();
+			workflowExecutionStateStore.setPendingExecution(null);
+			workflowExecutionStateStore.clearDisplayedExecution();
 		} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
-			stateStore.setPendingExecution(workflowResultData);
-			stateStore.setActiveExecutionId(null);
+			workflowExecutionStateStore.setPendingExecution(workflowResultData);
+			workflowExecutionStateStore.setActiveExecutionId(null);
 			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
 				workflowResultData,
 			);
 		} else {
-			stateStore.trackExecutionId(workflowResultData.id);
+			workflowExecutionStateStore.trackExecutionId(workflowResultData.id);
 			useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
 				workflowResultData,
 			);
-			if (typeof stateStore.activeExecutionId !== 'string') {
-				stateStore.setPendingExecution(null);
-				stateStore.setActiveExecutionId(undefined);
-				stateStore.setDisplayedExecutionId(workflowResultData.id);
+			if (typeof workflowExecutionStateStore.activeExecutionId !== 'string') {
+				workflowExecutionStateStore.setPendingExecution(null);
+				workflowExecutionStateStore.setActiveExecutionId(undefined);
+				workflowExecutionStateStore.setDisplayedExecutionId(workflowResultData.id);
 			}
 		}
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		).setActiveExecutionId(id);
-	}
-
-	async function getNewWorkflowData(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		let workflowData: { name: string; settings: IWorkflowSettings } = {
-			name: '',
-			settings: { ...DEFAULT_SETTINGS },
-		};
-		try {
-			const data: IDataObject = {
-				name,
-				projectId,
-				parentFolderId,
-			};
-
-			workflowData = await workflowsApi.getNewWorkflow(
-				rootStore.restApiContext,
-				isEmpty(data) ? undefined : data,
-			);
-		} catch (e) {
-			// in case of error, default to original name
-			workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;
-		}
-
-		return workflowData;
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(ws.workflowId)).setActiveExecutionId(
+			id,
+		);
 	}
 
 	////
@@ -103,16 +67,16 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		const stateStore = useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		);
-		const activeExecutionId = stateStore.activeExecutionId;
-
-		stateStore.setActiveExecutionId(undefined);
-		workflowStateStore.executingNode.clearNodeExecutionQueue();
-		stateStore.setExecutionWaitingForWebhook(false);
-
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			workflowDocumentStore.documentId,
+		);
+		const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
+
+		workflowExecutionStateStore.setActiveExecutionId(undefined);
+		workflowStateStore.executingNode.clearNodeExecutionQueue();
+		workflowExecutionStateStore.setExecutionWaitingForWebhook(false);
+
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 		if (typeof activeExecutionId === 'string') {
@@ -128,12 +92,12 @@ export function useWorkflowState() {
 			executionDataStore.clearExecutionStartedData();
 			executionDataStore.markAsStopped(stopData);
 			if (stopData) {
-				stateStore.applyStopDataToPendingExecution(stopData);
+				workflowExecutionStateStore.applyStopDataToPendingExecution(stopData);
 			}
 		} else {
 			// activeExecutionId === undefined: fall back to displayedExecutionId for the
 			// stop-race-with-finished case where active was just cleared.
-			const displayedExecutionId = stateStore.displayedExecutionId;
+			const displayedExecutionId = workflowExecutionStateStore.displayedExecutionId;
 			if (typeof displayedExecutionId === 'string') {
 				const executionDataStore = useExecutionDataStore(
 					createExecutionDataId(displayedExecutionId),
@@ -153,13 +117,15 @@ export function useWorkflowState() {
 			useBuilderStore().resetManualExecutionStats();
 			return;
 		}
-		const stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId(wid));
+		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(wid),
+		);
 		// Disposes every tracked executionData store + IN_PROGRESS placeholder, then clears all
 		// session-level fields.
-		stateStore.resetExecutionState();
+		workflowExecutionStateStore.resetExecutionState();
 		// Then dispose the per-workflow state store so pinia state doesn't accumulate one entry
 		// per workflow ever opened in this session.
-		disposeWorkflowExecutionStateStore(stateStore);
+		disposeWorkflowExecutionStateStore(workflowExecutionStateStore);
 
 		workflowStateStore.executingNode.executingNode.length = 0;
 		useBuilderStore().resetManualExecutionStats();
@@ -170,7 +136,6 @@ export function useWorkflowState() {
 		resetState,
 		setWorkflowExecutionData,
 		setActiveExecutionId,
-		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,

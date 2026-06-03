@@ -14,34 +14,6 @@ const SemanticRecallSchema = z.object({
 	embedder: z.string().optional(),
 });
 
-const ObservationalMemoryConfigSchema = z.object({
-	enabled: z.boolean().optional(),
-	observerThresholdTokens: z.number().int().min(1).optional(),
-	reflectorThresholdTokens: z.number().int().min(1).optional(),
-	renderTokenBudget: z.number().int().min(1).optional(),
-	observationLogTailLimit: z.number().int().min(1).optional(),
-	lockTtlMs: z.number().int().min(0).optional(),
-});
-
-const MemoryConfigSchema = z.object({
-	enabled: z.boolean(),
-	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
-	semanticRecall: SemanticRecallSchema.optional(),
-	observationalMemory: ObservationalMemoryConfigSchema.optional(),
-});
-
-const ThinkingConfigSchema = z.object({
-	provider: z.enum(['anthropic', 'openai']),
-	budgetTokens: z.number().int().optional(),
-	reasoningEffort: z.string().optional(),
-});
-
-const NodeToolCredentialSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-});
-
 export const AgentModelSchema = z
 	.string()
 	.min(1)
@@ -54,6 +26,61 @@ export const AgentModelSchema = z
 		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
 		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 	);
+
+const MemoryWorkerModelSchema = z.object({
+	model: AgentModelSchema,
+	credential: z.string().trim().min(1),
+});
+
+const ObservationalMemoryConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	observerModel: MemoryWorkerModelSchema.optional(),
+	reflectorModel: MemoryWorkerModelSchema.optional(),
+	observerThresholdTokens: z.number().int().min(1).optional(),
+	reflectorThresholdTokens: z.number().int().min(1).optional(),
+	renderTokenBudget: z.number().int().min(1).optional(),
+	observationLogTailLimit: z.number().int().min(1).optional(),
+	lockTtlMs: z.number().int().min(0).optional(),
+});
+
+const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
+	z.object({
+		enabled: z.literal(false),
+	}),
+	z.object({
+		enabled: z.literal(true),
+		credential: z.string().trim().min(1),
+		extractorModel: MemoryWorkerModelSchema.optional(),
+		reflectorModel: MemoryWorkerModelSchema.optional(),
+		topK: z.number().int().min(1).max(100).optional(),
+		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+	}),
+]);
+
+const MemoryConfigSchema = z.object({
+	enabled: z.boolean(),
+	storage: z.enum(['n8n']),
+	semanticRecall: SemanticRecallSchema.optional(),
+	observationalMemory: ObservationalMemoryConfigSchema.optional(),
+	episodicMemory: EpisodicMemoryConfigSchema.optional(),
+});
+
+const ThinkingConfigSchema = z.object({
+	provider: z.enum(['anthropic', 'openai']),
+	budgetTokens: z.number().int().optional(),
+	reasoningEffort: z.string().optional(),
+});
+
+const WebSearchConfigSchema = z.object({
+	enabled: z.boolean(),
+	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
+	credential: z.string().optional(),
+});
+
+const NodeToolCredentialSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+});
 
 const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 
@@ -71,6 +98,107 @@ const AgentJsonSkillConfigSchema = z.object({
 		.min(1)
 		.regex(/^[A-Za-z0-9_-]+$/),
 });
+
+const AgentJsonTaskConfigSchema = z.object({
+	type: z.literal('task'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[A-Za-z0-9_-]+$/),
+	enabled: z.boolean(),
+});
+
+export const McpAuthenticationSchemaTypes = z.enum([
+	'none',
+	'bearerAuth',
+	'headerAuth',
+	'multipleHeadersAuth',
+	'mcpOAuth2Api',
+]);
+
+/**
+ * Configuration for a single MCP (Model Context Protocol) server attached to
+ * an agent. Tool entries from MCP servers are sourced separately from the
+ * `tools[]` array — the SDK's `McpClient` prefixes each tool name with the
+ * server name to avoid collisions.
+ */
+export const McpServerConfigSchema = z
+	.object({
+		name: z
+			.string()
+			.min(1)
+			.max(64)
+			.regex(/^[a-zA-Z0-9_-]+$/)
+			.describe(
+				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
+			),
+		description: z.string().max(512).optional().describe('Human-readable server description'),
+		url: z.string().min(1).describe('MCP server endpoint URL'),
+		transport: z
+			.enum(['sse', 'streamableHttp'])
+			.default('streamableHttp')
+			.describe('Transport protocol'),
+		authentication: z
+			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+			.default('none')
+			.describe(
+				'Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types',
+			),
+		credential: z
+			.string()
+			.optional()
+			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
+		metadata: z
+			.object({
+				nodeTypeName: z
+					.string()
+					.optional()
+					.describe(
+						'Source node type for registry servers (e.g. @n8n/mcp-registry.github). Enables correct UI form',
+					),
+			})
+			.optional()
+			.describe(
+				'Server-generated metadata. Do not set this manually, only copy from search_mcp_servers result if present',
+			),
+		toolFilter: z
+			.discriminatedUnion('mode', [
+				z
+					.object({
+						mode: z.literal('allow'),
+						tools: z.array(z.string().min(1)).default([]),
+					})
+					.strict(),
+				z
+					.object({
+						mode: z.literal('exclude'),
+						tools: z.array(z.string().min(1)).default([]),
+					})
+					.strict(),
+			])
+			.optional()
+			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
+		approval: z
+			.discriminatedUnion('mode', [
+				z.object({ mode: z.literal('global') }).strict(),
+				z
+					.object({
+						mode: z.literal('selected'),
+						tools: z.array(z.string().min(1)).min(1),
+					})
+					.strict(),
+			])
+			.optional()
+			.describe('Human-in-the-loop approval. Absent = no approval required'),
+		connectionTimeoutMs: z
+			.number()
+			.int()
+			.min(1)
+			.max(120_000)
+			.optional()
+			.describe('Connection timeout in milliseconds'),
+	})
+	.strict();
 
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
@@ -114,12 +242,30 @@ export const AgentJsonConfigSchema = z.object({
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationSchema).optional(),
+	mcpServers: z
+		.array(McpServerConfigSchema)
+		.max(20)
+		.refine((servers) => new Set(servers.map((s) => s.name)).size === servers.length, {
+			message: 'MCP server names must be unique within an agent',
+		})
+		.optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			maxIterations: z
+				.number()
+				.int()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe(
+					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
+				),
 			nodeTools: z
 				.object({
 					enabled: z.boolean(),
@@ -144,8 +290,11 @@ export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: '
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
+export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
+export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 
 export interface ConfigValidationError {
 	path: string;

@@ -3,10 +3,18 @@ const mockAgentInstances: Array<{
 	instructions: jest.Mock;
 	tool: jest.Mock;
 	deferredTool: jest.Mock;
+	skills: jest.Mock;
 	checkpoint: jest.Mock;
 	memory: jest.Mock;
 	telemetry: jest.Mock;
+	workspace: jest.Mock;
 }> = [];
+
+const mockMemoryBuilder = {
+	storage: jest.fn(),
+	observationalMemory: jest.fn(),
+	build: jest.fn(),
+};
 
 jest.mock('@n8n/agents', () => ({
 	Agent: jest.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
@@ -14,10 +22,15 @@ jest.mock('@n8n/agents', () => ({
 		this.instructions = jest.fn().mockReturnThis();
 		this.tool = jest.fn().mockReturnThis();
 		this.deferredTool = jest.fn().mockReturnThis();
+		this.skills = jest.fn().mockReturnThis();
 		this.checkpoint = jest.fn().mockReturnThis();
 		this.memory = jest.fn().mockReturnThis();
 		this.telemetry = jest.fn().mockReturnThis();
+		this.workspace = jest.fn().mockReturnThis();
 		mockAgentInstances.push(this);
+	}),
+	Memory: jest.fn().mockImplementation(function Memory() {
+		return mockMemoryBuilder;
 	}),
 }));
 
@@ -76,9 +89,12 @@ jest.mock('../system-prompt', () => ({
 const { createInstanceAgent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../instance-agent') as typeof import('../instance-agent');
-const { Agent } =
+const { Agent, Memory } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@n8n/agents') as { Agent: jest.Mock };
+	require('@n8n/agents') as {
+		Agent: jest.Mock;
+		Memory: jest.Mock;
+	};
 const { createToolsFromLocalMcpServer } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
@@ -90,11 +106,9 @@ const { createOrchestratorDomainTools } =
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
-	browserTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
 ) {
 	return {
 		getRegularTools: jest.fn().mockResolvedValue(regularTools),
-		getBrowserTools: jest.fn().mockResolvedValue(browserTools),
 		disconnect: jest.fn().mockResolvedValue(undefined),
 	};
 }
@@ -126,15 +140,19 @@ function getToolKey(tool: Record<string, unknown>) {
 describe('createInstanceAgent', () => {
 	beforeEach(() => {
 		Agent.mockClear();
+		Memory.mockClear();
+		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.build.mockReset().mockReturnValue({
+			memory: {},
+		});
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
-		const memoryConfig = {
-			lastMessages: 20,
-		} as never;
+		const memoryConfig = {} as never;
 
 		const mcpManager = createMcpManagerStub();
 		const createOptions = (runId: string) =>
@@ -148,7 +166,6 @@ describe('createInstanceAgent', () => {
 				},
 				orchestrationContext: {
 					runId,
-					browserMcpConfig: undefined,
 				},
 				memoryConfig,
 				mcpManager,
@@ -187,10 +204,9 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'checkpoint-run',
-				browserMcpConfig: undefined,
 				isCheckpointFollowUp: true,
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
@@ -208,7 +224,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
 		await createInstanceAgent({
@@ -221,25 +237,15 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'ws-test',
-				browserMcpConfig: undefined,
 				workspace: fakeWorkspace,
 			},
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
-			// Exercise the deprecated field to confirm it is ignored.
 			workspace: fakeWorkspace,
 		} as never);
 
 		expect(Agent).toHaveBeenCalledWith('n8n-instance-agent');
-		expect(mockAgentInstances[0]?.tool).toHaveBeenCalledTimes(1);
-		expect(
-			JSON.stringify([
-				mockAgentInstances[0]?.model.mock.calls,
-				mockAgentInstances[0]?.instructions.mock.calls,
-				mockAgentInstances[0]?.tool.mock.calls,
-				mockAgentInstances[0]?.checkpoint.mock.calls,
-			]),
-		).not.toContain('should-be-ignored');
+		expect(mockAgentInstances[0]?.workspace).not.toHaveBeenCalled();
 	});
 
 	it('attaches native telemetry from the trace context when present', async () => {
@@ -255,26 +261,65 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
-				browserMcpConfig: undefined,
 				tracing: {
 					getTelemetry: jest.fn().mockReturnValue(telemetry),
 					wrapTools: jest.fn((tools: unknown) => tools),
 				},
 			},
-			memoryConfig: { lastMessages: 20 },
+			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 	});
 
+	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [
+					{
+						id: 'data-table-manager',
+						name: 'data-table-manager',
+						description: 'Manage data tables.',
+						hash: 'skill-hash',
+						linkedFiles: {
+							references: [],
+							templates: [],
+							scripts: [],
+							assets: [],
+							examples: [],
+							other: [],
+						},
+					},
+				],
+			},
+			loadSkill: jest.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'skills-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'skills-test',
+				runtimeSkills,
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
+	});
+
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
 		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([
-				['workflows', { id: 'workflows' }],
-				['browser_connect', { id: 'browser_connect' }],
-				['browser_navigate', { id: 'browser_navigate' }],
-			]),
+			new Map([['workflows', { id: 'workflows' }]]),
 		);
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
@@ -298,7 +343,7 @@ describe('createInstanceAgent', () => {
 				licenseHints: undefined,
 				localMcpServer,
 			},
-			orchestrationContext: { runId: 'browser-test', browserMcpConfig: undefined },
+			orchestrationContext: { runId: 'browser-test' },
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
 			disableDeferredTools: true,
@@ -312,7 +357,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('prefers local gateway tools over external MCP tools when names collide', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: jest.fn().mockReturnValue([]),
 		};
@@ -324,7 +369,6 @@ describe('createInstanceAgent', () => {
 		]);
 		const orchestrationContext: Record<string, unknown> = {
 			runId: 'local-priority',
-			browserMcpConfig: undefined,
 		};
 		createToolsFromLocalMcpServer.mockReturnValue(localTools);
 
@@ -355,7 +399,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('keeps evals always loaded so user-requested eval setup can route directly', async () => {
-		const memoryConfig = { lastMessages: 20 } as never;
+		const memoryConfig = {} as never;
 
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -367,7 +411,6 @@ describe('createInstanceAgent', () => {
 			},
 			orchestrationContext: {
 				runId: 'evals-test',
-				browserMcpConfig: undefined,
 			},
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
@@ -380,5 +423,38 @@ describe('createInstanceAgent', () => {
 			name: 'evals-evals-test',
 		});
 		expect(deferredTools['evals-evals-test']).toBeUndefined();
+	});
+
+	it('configures observational memory on the Memory builder when provided', async () => {
+		const memoryStore = { id: 'memory-store' };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: memoryStore,
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(Memory).toHaveBeenCalledTimes(1);
+		expect(mockMemoryBuilder.storage).toHaveBeenCalledWith(memoryStore);
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+		});
+		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 });

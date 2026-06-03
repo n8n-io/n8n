@@ -75,21 +75,37 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 		case 'tool-input-delta':
 			return { type: 'tool-input-delta', toolCallId: c.id, delta: c.delta };
 
-		case 'tool-call':
+		case 'tool-call': {
+			if (c.invalid || c.error) {
+				// usually tool results are sent from agent-runtime
+				// AI SDK handles input parsing and may include errored tool result before runtime gets to process it
+				return {
+					type: 'tool-result',
+					toolCallId: c.toolCallId,
+					toolName: c.toolName ?? '',
+					output: c.error,
+					isError: true,
+				};
+			}
 			return {
 				type: 'tool-call',
 				toolCallId: c.toolCallId,
 				toolName: c.toolName ?? '',
 				input: c.input as JSONValue,
 			};
+		}
 
 		case 'tool-result':
+			// The fullStream emits the raw tool output here, not the
+			// `{ type, value }` ToolResultOutput wrapper used on the message
+			// side — so pass it through verbatim. Only provider-executed tools
+			// (e.g. native web search) reach this branch; local tool results are
+			// written directly by the runtime and never pass through convertChunk.
 			return {
 				type: 'tool-result',
 				toolCallId: c.toolCallId ?? '',
 				toolName: c.toolName ?? '',
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				output: c.output && 'value' in c.output ? (c.output.value as JSONValue) : null,
+				output: c.output,
 			};
 
 		case 'error':

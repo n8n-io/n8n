@@ -11,6 +11,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialType,
 	ICredentialsExpressionResolveValues,
 	IHttpRequestOptions,
 	INode,
@@ -39,6 +40,7 @@ import {
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 import { CredentialTypes } from '@/credential-types';
@@ -290,10 +292,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 	): Promise<CredentialsEntity> {
 		if (!nodeCredential.id) {
-			throw new UnexpectedError('Found credential with no ID.', {
-				extra: { credentialName: nodeCredential.name },
-				tags: { credentialType: type },
-			});
+			throw new CredentialMissingIdError(nodeCredential.name, type);
 		}
 
 		let credential: CredentialsEntity;
@@ -312,6 +311,22 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return credential;
+	}
+
+	isCredentialUsableByNode(credentialType: string, nodeType: string): boolean {
+		let typeDef: ICredentialType;
+		try {
+			typeDef = this.credentialTypes.getByName(credentialType);
+		} catch {
+			// Unknown credential type — let downstream code surface the real error.
+			return true;
+		}
+
+		if (!typeDef.restrictToSupportedNodes) return true;
+
+		// `typeDef.supportedNodes` from the loader holds short node names; the FQ
+		// list (matching the `nodeType` we receive) is exposed via `getSupportedNodes`.
+		return this.credentialTypes.getSupportedNodes(credentialType).includes(nodeType);
 	}
 
 	/**
@@ -414,6 +429,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {
 				additionalData.currentNodeUsedDynamicCredentials = true;
+				if (resolveResult.resolvedUserId) {
+					additionalData.dynamicCredentialsResolvedUserId = resolveResult.resolvedUserId;
+				}
 			}
 		}
 
@@ -590,7 +608,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
 		const resolverId =
-			credentialsEntity.resolverId ?? additionalData.workflowSettings?.credentialResolverId;
+			credentialsEntity.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(additionalData.workflowSettings);
 
 		if (
 			credentialsEntity.isResolvable &&

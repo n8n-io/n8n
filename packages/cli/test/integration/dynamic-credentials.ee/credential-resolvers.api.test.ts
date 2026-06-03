@@ -42,7 +42,6 @@ describe('Credential Resolvers API', () => {
 	let memberAgent: SuperAgentTest;
 	let service: DynamicCredentialResolverService;
 	let repository: DynamicCredentialResolverRepository;
-	let isLeaderSpy: jest.SpyInstance;
 
 	beforeAll(async () => {
 		owner = await createUser({ role: GLOBAL_OWNER_ROLE });
@@ -53,20 +52,14 @@ describe('Credential Resolvers API', () => {
 
 		service = Container.get(DynamicCredentialResolverService);
 		repository = Container.get(DynamicCredentialResolverRepository);
-
-		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers).
-		// Spy on the getter so the override is scoped to this file and restored in afterAll
-		// — otherwise it leaks across the Jest worker and any follower-path test sees `true`.
-		isLeaderSpy = jest
-			.spyOn(Container.get(InstanceSettings), 'isLeader', 'get')
-			.mockReturnValue(true);
-	});
-
-	afterAll(() => {
-		isLeaderSpy.mockRestore();
 	});
 
 	beforeEach(async () => {
+		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers).
+		// The global `restoreMocks: true` restores all spies between tests, so we
+		// re-create this one per test.
+		jest.spyOn(Container.get(InstanceSettings), 'isLeader', 'get').mockReturnValue(true);
+
 		await repository.delete({});
 		await Container.get(N8nResolverSeeder).seed();
 		nock.cleanAll();

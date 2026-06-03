@@ -171,7 +171,8 @@ async function setupStore() {
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
-	const ndvStore = useNDVStore();
+	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	settingsStore.setSettings(defaultSettings);
 
 	nodeTypesStore.setNodeTypes([
@@ -201,7 +202,6 @@ async function setupStore() {
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
-	workflowsStore.setWorkflowId(workflow.id);
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
@@ -584,7 +584,7 @@ describe('VirtualSchema.vue', () => {
 	});
 
 	it('should show connections', async () => {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId('123'));
 		vi.spyOn(ndvStore, 'ndvNodeInputNumber', 'get').mockReturnValue({
 			[defaultNodes[0].name]: [0],
 			[defaultNodes[1].name]: [0, 1, 2],
@@ -602,7 +602,7 @@ describe('VirtualSchema.vue', () => {
 
 	describe('telemetry', () => {
 		function dragDropPill(pill: HTMLElement) {
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId('123'));
 			const reset = vi.spyOn(ndvStore, 'resetMappingTelemetry');
 			fireEvent(
 				pill,

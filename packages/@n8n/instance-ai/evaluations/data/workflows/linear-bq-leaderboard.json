@@ -1,9 +1,31 @@
 {
-	"prompt": "Every two weeks I want to check the amount of n8n usage and bug reporting that the team has done and produce a leaderboard that then gets posted to Slack (channel ID: D034WT7G4CW).\n\nHere are the users in the team:\n\n- David Roberts (id: 1)\n- David Arens (id: 2)\n- Niklas Hatje (id: 3)\n\nHere is an example leaderboard:\n\n```\nUsage in the last two weeks:\n\nJonathan Clift: 7 tickets (5 execs, 3 hours)\nFabian Puehringer: 7 tickets (4 execs, 1 hours)\nTuukka Kantola: 6 tickets (16 execs, 6 hours)\n\nTickets = Linear bug tickets created\nExecs = Manual execs on registered accounts\n```\n\nIt is ordered by the number of tickets created (desc) then the number of execs (desc).\n\nTo get the number of bugs that a user has reported, query Linear and get the number of issues created by them in any team that have the `bug` label (case-sensitive), matched by name.\n\nTo get the number of hours that each user was using n8n for, connect to BigQuery and use something similar to the following query:\n\nwith\nsettings as (\n    select\n        timestamp('<start_cutoff>') as start_cutoff,\n        timestamp('<end_cutoff>') as end_cutoff,\n),\nuser_accounts as (\n    select * from unnest([\n        struct<name string, user_id string>\n        ...\n    ])\n),\nnode_exec as (\n    select\n        timestamp,\n        timestamp_trunc(timestamp, hour) as timestamp_hour,\n        name,\n        f.user_id,\n        f.instance_id,\n        status,\n    from rudder_schema.manual_node_exec_finished f\n    inner join user_accounts a on a.user_id = f.user_id\n    cross join settings\n    where f.timestamp between start_cutoff and end_cutoff\n),\nworkflow_exec as (\n    select\n        timestamp,\n        timestamp_trunc(timestamp, hour) as timestamp_hour,\n        name,\n        f.user_id,\n        f.instance_id,\n        status,\n    from rudder_schema.manual_workflow_exec_finished f\n    inner join user_accounts a on a.user_id = f.user_id\n    cross join settings\n    where f.timestamp between start_cutoff and end_cutoff\n),\nexec as (\n    select * from node_exec\n    union all\n    select * from workflow_exec\n),\nexec_summary as (\n    select\n        name,\n        count(distinct instance_id) as instances,\n        count(distinct timestamp_hour) as hours,\n        count(*) as manual_execs,\n    from exec\n    group by 1\n)\n\nselect * from exec_summary\n\nConfigure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want a workflow that posts a bi-weekly Slack message ranking my team by how engaged they are with our product."
+		},
+		{
+			"role": "assistant",
+			"text": "How should engagement be measured, and where should the ranking post?"
+		},
+		{
+			"role": "user",
+			"text": "Each person's score combines their Linear bugs filed (any team, `bug` label, case-sensitive, matched by name) and their n8n usage hours from BigQuery. Order the list by bugs filed (desc), then by execs (desc). Team is David Roberts (id 1), David Arens (id 2), Niklas Hatje (id 3). Post to Slack channel D034WT7G4CW."
+		},
+		{
+			"role": "assistant",
+			"text": "What format should the Slack message use, and do you have a BigQuery query I should reuse?"
+		},
+		{
+			"role": "user",
+			"text": "Format like this:\n\n```\nUsage in the last two weeks:\n\nJonathan Clift: 7 tickets (5 execs, 3 hours)\nFabian Puehringer: 7 tickets (4 execs, 1 hours)\nTuukka Kantola: 6 tickets (16 execs, 6 hours)\n\nTickets = Linear bug tickets created\nExecs = Manual execs on registered accounts\n```\n\nBigQuery:\n\nwith\nsettings as (\n    select\n        timestamp('<start_cutoff>') as start_cutoff,\n        timestamp('<end_cutoff>') as end_cutoff,\n),\nuser_accounts as (\n    select * from unnest([\n        struct<name string, user_id string>\n        ...\n    ])\n),\nnode_exec as (\n    select\n        timestamp,\n        timestamp_trunc(timestamp, hour) as timestamp_hour,\n        name,\n        f.user_id,\n        f.instance_id,\n        status,\n    from rudder_schema.manual_node_exec_finished f\n    inner join user_accounts a on a.user_id = f.user_id\n    cross join settings\n    where f.timestamp between start_cutoff and end_cutoff\n),\nworkflow_exec as (\n    select\n        timestamp,\n        timestamp_trunc(timestamp, hour) as timestamp_hour,\n        name,\n        f.user_id,\n        f.instance_id,\n        status,\n    from rudder_schema.manual_workflow_exec_finished f\n    inner join user_accounts a on a.user_id = f.user_id\n    cross join settings\n    where f.timestamp between start_cutoff and end_cutoff\n),\nexec as (\n    select * from node_exec\n    union all\n    select * from workflow_exec\n),\nexec_summary as (\n    select\n        name,\n        count(distinct instance_id) as instances,\n        count(distinct timestamp_hour) as hours,\n        count(*) as manual_execs,\n    from exec\n    group by 1\n)\n\nselect * from exec_summary"
+		}
+	],
+	"messageBudget": 6,
 	"complexity": "simple",
 	"tags": ["build", "schedule", "http-request", "bigquery"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "Leaderboard is posted to Slack",

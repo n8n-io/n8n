@@ -2,10 +2,11 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Three harnesses live here:
+Four harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
 Sections:
@@ -13,6 +14,7 @@ Sections:
 - [Running e2e + sub-agent evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
+- [Running discovery evals](#discovery-evals)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the sub-agent harness works](#how-the-sub-agent-harness-works)
@@ -33,6 +35,12 @@ Each run:
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
+
+### Binary / file scenarios
+
+The mock layer synthesizes minimal-valid binary fixtures (PNG, JPEG, GIF, WebP, PDF, ZIP, GZIP, MP3, WAV, OGG/Opus, MP4, SVG, CSV/JSON/HTML/XML plaintext, octet-stream fallback) on every `type: "binary"` response, so file-download endpoints round-trip through `prepareBinaryData` with the correct `mimeType` / `fileExtension` / `fileType`. Multipart and raw-binary request bodies are redacted to part metadata (`name`, `filename`, `contentType`, `size`) before the LLM prompt so uploads never crash on JSON-serializing raw bytes. The LLM picks `type: "binary"` and the MIME, and the mock layer fills in the bytes.
+
+Common upload flows (webhook → file upload to Slack/Telegram/S3) are also covered on the input side: the trigger pin data automatically includes a `binary` map when a downstream node references `$binary.<key>` or is a known binary consumer (`Extract from File`, `Read Binary File`, LangChain document loader).
 
 ## Quick start
 
@@ -106,7 +114,9 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --verbose
 # Single test case (filename substring match)
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --verbose
 
-# Keep built workflows for inspection after the run
+# Keep built workflows for inspection after the run. With --keep-workflows,
+# each scenario's persisted canvas execution is reachable via the
+# "view in n8n" link in the HTML report.
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --keep-workflows
 
 # Multi-iteration for pass@k / pass^k metrics
@@ -121,7 +131,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--filter` | — | Filter test cases by filename substring. Comma-separated values mean OR (e.g. `contact-form,deduplication`) |
 | `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
 | `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
-| `--keep-workflows` | `false` | Don't delete built workflows after the run |
+| `--keep-workflows` | `false` | Don't delete built workflows after the run. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
@@ -131,8 +141,22 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--concurrency` | `16` | Max concurrent scenarios (builds are separately capped at 4) |
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
+| `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
 
 **pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
+
+### Test-case datasets (logical groupings)
+
+Each test case declares a `datasets` array in its JSON (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Two named groupings exist today:
+
+| Value | What it means |
+|------|----------------|
+| `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
+| `pr` | Curated thin set for PR-time runs. ~6 cases, chosen for capability diversity and high baseline reliability. |
+
+A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
+
+**Adding a case to `pr`**: edit the case's JSON, add `"pr"` to its `datasets` array, re-sync. No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
 
 ### Outputs
 
@@ -140,8 +164,36 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, and verifier reasoning.
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
+
+### Workflow checks (per built workflow)
+
+After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
+
+The 28 checks are grouped into 7 WHAT-side rubric dimensions (the 8th, `execution_outcome`, is served by the existing execution verifier):
+
+| Dimension | Checks |
+|---|---|
+| `structure` | 4 — workflow shape (nodes, triggers, start) |
+| `connection_topology` | 4 — graph reachability, branch wiring, multi-item handling |
+| `parameter_correctness` | 8 — node config, expressions, field references |
+| `intent_match` | 1 — workflow fulfills the user's request |
+| `ai_nodes` | 6 — agent / memory / vector-store / tool wiring |
+| `nodes_craftsmanship` | 3 — naming, no-code preference, response honesty |
+| `security` | 2 — hardcoded credentials, inbound auth defaults |
+
+The signal surfaces in:
+
+- **HTML report** — a "Workflow checks" disclosure on each test case, grouped by dimension. Pass / fail / N/A counts per group and per-check rows.
+- **PR comment / `eval-results.json`** — a "Workflow checks" table with pass / fail / N/A counts and pass rate per check, sorted by dimension, aggregated across every successful build in the run.
+- **LangSmith Feedback** — one `evals.workflows.<dimension>.<check_name>` Feedback per non-N/A outcome per scenario row (score 1 for pass, 0 for fail). N/A is omitted so per-experiment column averages reduce to per-check pass-rate cleanly. The dotted key sorts naturally in LangSmith's column UI.
+
+Operational details:
+
+- Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
+- Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
 ## Environment variables
 
@@ -254,6 +306,24 @@ For runs that need to leave the n8n repo (for example, driving the build from a 
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
 
+## Discovery evals
+
+Discovery evals run the orchestrator in-process and assert first-hop tool or
+sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+`agent-spawned` events. Use them when a regression is about which path the
+agent chooses, not whether a generated workflow executes.
+
+To inspect runtime skill loading, run a focused verbose pass:
+
+```bash
+pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fail-on-zero-pass
+```
+
+Verbose output lists each trial's completed tool calls with argument previews.
+For data-table routing, look for `load_skill(skillId="data-table-manager")`
+and `data-tables(action="list")`, and verify there are no planner,
+workflow-builder, or delegate sub-agent entries in the spawned-agent section.
+
 ## Pairwise evals
 
 Pairwise evals score a built workflow against the dataset's `dos` / `donts`
@@ -290,10 +360,10 @@ pnpm eval:pairwise:langsmith \
 ### Sandbox
 
 Pairwise evals always run inside a sandbox — the same path production uses.
-The agent writes TypeScript to `~/workspace/src/workflow.ts` inside the
-sandbox, runs `tsc` to validate, and calls `submit-workflow` to save the
-parsed `WorkflowJSON`. This exercises the production builder agent
-end-to-end (sandbox prompt, file I/O, real type checking).
+The agent writes TypeScript to a builder root under the shared sandbox
+workspace, runs `tsc` to validate, and calls `submit-workflow` to save the
+parsed `WorkflowJSON`. This exercises the production builder agent end-to-end
+(sandbox prompt, file I/O, real type checking).
 
 Required env vars (Daytona provider — the default):
 
@@ -546,7 +616,7 @@ packages/cli/src/modules/instance-ai/eval/
 ## Known limitations
 
 - **LangChain/AI nodes** — use their own SDKs, not the HTTP mock layer. They fail with credential errors; use pin data instead.
-- **Binary / file nodes** — media attachments, image generation, file downloads. Mock metadata works; realistic binary content is out of scope.
+- **Binary / file nodes** — minimal-valid synthetic fixtures (PDF, PNG, JPEG, OGG/Opus, WAV, MP3, MP4, ZIP, plaintext) are generated per content type and round-trip correctly through `prepareBinaryData`. Image-content correctness and OOXML formats (docx/xlsx — currently mime-sniffed as `application/zip`) remain out of scope. See [Binary / file scenarios](#binary--file-scenarios) for the synthesis path.
 - **Streaming nodes** — mocks return complete responses, not streams.
 - **GraphQL APIs** — response shape depends on the query, not just the endpoint. Quality depends on the LLM knowing the API schema.
 - **Non-determinism** — the agent builds different workflows each run. Pass rates vary between 40–65%.

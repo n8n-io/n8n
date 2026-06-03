@@ -2,20 +2,19 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type {
-	IDataObject,
-	INodeCredentialsDetails,
-	INodeTypes,
-	IRun,
-	ITaskData,
-	IWorkflowBase,
-	IWorkflowSettings,
-	RelatedExecution,
-} from 'n8n-workflow';
 import {
 	formatWorkflowStructureIssuePath,
 	resolveNodeWebhookId,
 	safeParseWorkflowStructure,
+	type IDataObject,
+	type INodeCredentialsDetails,
+	type INodeTypes,
+	type IRun,
+	type ITaskData,
+	type IWorkflowBase,
+	type IWorkflowSettings,
+	type RelatedExecution,
+	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -55,11 +54,23 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 }
 
 /**
- * Returns the data of the last executed node
+ * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
  */
-export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, pinData = {} } = inputData.data.resultData;
-	const { lastNodeExecuted } = inputData.data.resultData;
+export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	if (lastNodeExecuted === undefined) {
+		return [];
+	}
+	const runs = runData[lastNodeExecuted];
+	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
+}
+
+/**
+ * Final-run output of the last executed node, with pinData substituted in manual mode.
+ */
+export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
+	const { runData, lastNodeExecuted } = inputData.data.resultData;
+	const pinData = inputData.data.resultData.pinData ?? {};
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
@@ -165,6 +176,25 @@ export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes'
 	}
 }
 
+/**
+ * BadRequestError thrown by validateWorkflowStructure when a workflow fails
+ * structural Zod / graph validation. Carries the original WorkflowStructureIssue[]
+ * so downstream consumers (e.g. the Instance AI submit-workflow tool) can build
+ * rich diagnostics — node JSON at the offending path, value at the path, and a
+ * full nodes[] name map — without reparsing the flattened message string.
+ *
+ * The status code (400) and `Workflow structure is invalid. <details>` message
+ * are unchanged from before this class existed, so REST clients are unaffected.
+ */
+export class WorkflowStructureBadRequestError extends BadRequestError {
+	constructor(
+		message: string,
+		readonly issues: WorkflowStructureIssue[],
+	) {
+		super(message);
+	}
+}
+
 export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>) {
 	const result = safeParseWorkflowStructure(workflow);
 
@@ -180,7 +210,10 @@ export function validateWorkflowStructure(workflow: Pick<IWorkflowBase, 'nodes' 
 		})
 		.join('; ');
 
-	throw new BadRequestError(`Workflow structure is invalid. ${details}`);
+	throw new WorkflowStructureBadRequestError(
+		`Workflow structure is invalid. ${details}`,
+		result.issues,
+	);
 }
 
 /**
@@ -411,7 +444,7 @@ export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 ): Promise<void> {
-	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
 	if (!lastExecutedNodeData?.data) return;
 	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
 		includeData: true,

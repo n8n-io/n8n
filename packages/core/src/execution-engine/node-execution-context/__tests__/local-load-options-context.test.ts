@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	INodeTypes,
@@ -7,13 +6,14 @@ import type {
 	IWorkflowLoader,
 } from 'n8n-workflow';
 import { ApplicationError, Workflow } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LocalLoadOptionsContext } from '../local-load-options-context';
 import { LoadWorkflowNodeContext } from '../workflow-node-context';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	Workflow: jest.fn(),
+vi.mock('n8n-workflow', async (importActual) => ({
+	...(await importActual()),
+	Workflow: vi.fn(),
 }));
 
 describe('LocalLoadOptionsContext', () => {
@@ -23,7 +23,7 @@ describe('LocalLoadOptionsContext', () => {
 	const path = '';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getWorkflowNodeContext', () => {

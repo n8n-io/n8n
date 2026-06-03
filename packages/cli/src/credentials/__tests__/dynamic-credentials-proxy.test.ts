@@ -222,4 +222,33 @@ describe('DynamicCredentialsProxy', () => {
 			expect(mockResolverProvider.getSystemResolverId).toHaveBeenCalled();
 		});
 	});
+
+	describe('getEffectiveResolverId', () => {
+		it('returns the workflow override when set, ignoring the system resolver', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+			const settings: IWorkflowSettings = { credentialResolverId: 'override-id' };
+
+			expect(proxy.getEffectiveResolverId(settings)).toBe('override-id');
+			expect(mockResolverProvider.getSystemResolverId).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the system resolver id when no override is set', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getEffectiveResolverId({})).toBe('system-id');
+		});
+
+		it('returns null when neither the workflow nor the provider provides an id', () => {
+			expect(proxy.getEffectiveResolverId(undefined)).toBeNull();
+		});
+
+		it('handles undefined settings without throwing', () => {
+			mockResolverProvider.getSystemResolverId.mockReturnValue('system-id');
+			proxy.setResolverProvider(mockResolverProvider);
+
+			expect(proxy.getEffectiveResolverId(undefined)).toBe('system-id');
+		});
+	});
 });

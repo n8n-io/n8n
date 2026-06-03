@@ -40,6 +40,19 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
 	return false;
 }
 
+const SUPPORTED_AWS_REGIONS: ReadonlySet<string> = new Set(regions.map((r) => r.name));
+
+/**
+ * Ensures the region value belongs to the supported AWS regions list before it
+ * is interpolated into request URLs or signing options. Anything outside the
+ * known set is rejected with a controlled error.
+ */
+export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
+	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+		throw new ApplicationError('Unsupported AWS region');
+	}
+}
+
 /**
  * Gets the AWS domain for a specific region.
  *
@@ -108,6 +121,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 	service: string,
 	region: AWSRegion,
 ): { signOpts: Request; url: string } {
+	assertSupportedAwsRegion(region);
 	let body = requestOptions.body;
 	let endpoint: URL;
 	let query = requestOptions.qs?.query as IDataObject;
@@ -242,6 +256,7 @@ export async function assumeRole(
 	secretAccessKey: string;
 	sessionToken: string;
 }> {
+	assertSupportedAwsRegion(region);
 	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
