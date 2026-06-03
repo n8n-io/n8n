@@ -90,6 +90,18 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
 	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
 
+	/** Maximum lifetime in milliseconds of a pooled Postgres connection before it is recycled. Set to 0 to disable. */
+	@Env('DB_POSTGRESDB_MAX_CONNECTION_LIFETIME_MS')
+	maxConnectionLifetimeMs: number = 60 * 60 * 1000;
+
+	/** Whether to enable TCP keepalive on Postgres connections so dead peers are detected without waiting for a query. */
+	@Env('DB_POSTGRESDB_KEEP_ALIVE')
+	keepAlive: boolean = true;
+
+	/** Initial delay in milliseconds before the first TCP keepalive probe is sent. */
+	@Env('DB_POSTGRESDB_KEEP_ALIVE_INITIAL_DELAY_MS')
+	keepAliveInitialDelayMs: number = 10_000;
+
 	@Nested
 	ssl: PostgresSSLConfig;
 }
@@ -118,6 +130,23 @@ export class SqliteConfig {
 const dbTypeSchema = z.enum(['sqlite', 'postgresdb']);
 type DbType = z.infer<typeof dbTypeSchema>;
 
+const DEFAULT_PING_TIMEOUT_MS = 5_000;
+
+function readLegacyPingTimeoutMs(): number {
+	const raw = process.env.N8N_DB_PING_TIMEOUT;
+	if (!raw) {
+		return DEFAULT_PING_TIMEOUT_MS;
+	}
+	const parsed = Number.parseInt(raw, 10);
+	if (Number.isNaN(parsed) || parsed <= 0) {
+		console.warn(
+			`Invalid N8N_DB_PING_TIMEOUT="${raw}", falling back to ${DEFAULT_PING_TIMEOUT_MS}ms. Prefer the supported DB_PING_TIMEOUT_MS env var.`,
+		);
+		return DEFAULT_PING_TIMEOUT_MS;
+	}
+	return parsed;
+}
+
 @Config
 export class DatabaseConfig {
 	/** Database type: `sqlite` or `postgresdb`. */
@@ -131,6 +160,15 @@ export class DatabaseConfig {
 	/** Interval in seconds between health-check pings to the database. */
 	@Env('DB_PING_INTERVAL_SECONDS')
 	pingIntervalSeconds: number = 2;
+
+	/**
+	 * Timeout in milliseconds for an individual database health-check ping.
+	 *
+	 * Falls back to the legacy `N8N_DB_PING_TIMEOUT` env var if set. The legacy
+	 * name is deprecated and may be removed in a future release.
+	 */
+	@Env('DB_PING_TIMEOUT_MS')
+	pingTimeoutMs: number = readLegacyPingTimeoutMs();
 
 	@Nested
 	logging: LoggingConfig;

@@ -40,6 +40,7 @@ import {
 
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 import { CredentialTypes } from '@/credential-types';
@@ -291,10 +292,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 	): Promise<CredentialsEntity> {
 		if (!nodeCredential.id) {
-			throw new UnexpectedError('Found credential with no ID.', {
-				extra: { credentialName: nodeCredential.name },
-				tags: { credentialType: type },
-			});
+			throw new CredentialMissingIdError(nodeCredential.name, type);
 		}
 
 		let credential: CredentialsEntity;
@@ -431,6 +429,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {
 				additionalData.currentNodeUsedDynamicCredentials = true;
+				if (resolveResult.resolvedUserId) {
+					additionalData.dynamicCredentialsResolvedUserId = resolveResult.resolvedUserId;
+				}
 			}
 		}
 

@@ -180,6 +180,11 @@ function isPrivateConnected(credentialType: string): boolean {
 	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
 }
 
+function canConnectPrivateCredential(credentialType: string): boolean {
+	const credential = getSelectedPrivateCredential(credentialType);
+	return getResourcePermissions(credential?.scopes).credential.update === true;
+}
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -815,7 +820,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											placement="top"
 										>
 											<template #content>{{
-												i18n.baseText('credentials.dynamic.tooltip')
+												i18n.baseText('credentials.private.tooltip')
 											}}</template>
 											<N8nBadge
 												theme="tertiary"
@@ -848,7 +853,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</N8nSelect>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
-								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
+								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
 								<N8nBadge
 									theme="tertiary"
 									class="pl-3xs pr-3xs"
@@ -910,6 +915,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											i18n.baseText('credentials.private.callout.notConnected')
 										}}</N8nText>
 										<N8nLink
+											v-if="canConnectPrivateCredential(type.name)"
 											data-test-id="node-credential-private-connect"
 											@click="editCredential(type.name)"
 										>

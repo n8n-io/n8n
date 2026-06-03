@@ -16,7 +16,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationService } from '../chat-integration.service';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
@@ -55,7 +55,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-const slackIntegration: AgentCredentialIntegrationConfig = {
+const slackIntegration: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-1',
 };
@@ -723,7 +723,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		it('publishes settings alongside a connect broadcast', async () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
-			const integration: AgentCredentialIntegrationConfig = {
+			const integration: AgentIntegrationConfig = {
 				type: 'telegram',
 				credentialId: 'c1',
 				settings: {

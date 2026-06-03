@@ -7,6 +7,8 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import * as workflowsApi from '@/app/api/workflows';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -44,6 +46,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const documentTitle = useDocumentTitle();
 	const externalHooks = useExternalHooks();
 
+	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
@@ -308,7 +311,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
 		});
 
-		const workflowData = await workflowState.getNewWorkflowData(
+		const workflowData = await workflowsApi.getNewWorkflowData(
+			rootStore.restApiContext,
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
