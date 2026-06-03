@@ -14,8 +14,6 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
-import { floorToSettings, settingsToFloor } from './redaction-enforcement-mapper';
-
 @RestController('/settings/security')
 export class SecuritySettingsController {
 	constructor(
@@ -47,11 +45,7 @@ export class SecuritySettingsController {
 				: Promise.resolve(undefined),
 		]);
 
-		// API surface uses a single `floor` enum, while the service stores the
-		// three booleans the cache layer was built around. Translate at the boundary.
-		const redactionEnforcement = redactionSettings
-			? { floor: settingsToFloor(redactionSettings) }
-			: undefined;
+		const redactionEnforcement = redactionSettings ? { floor: redactionSettings } : undefined;
 
 		return {
 			...settings,
@@ -97,13 +91,9 @@ export class SecuritySettingsController {
 
 		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
 			const before = await this.instanceRedactionEnforcementService.get();
-			const after = floorToSettings(dto.redactionEnforcement.floor);
-			updatedSettings.redactionEnforcement = { floor: dto.redactionEnforcement.floor };
-			if (
-				before.enforced !== after.enforced ||
-				before.manual !== after.manual ||
-				before.production !== after.production
-			) {
+			const after = dto.redactionEnforcement.floor;
+			updatedSettings.redactionEnforcement = { floor: after };
+			if (before !== after) {
 				await this.instanceRedactionEnforcementService.set(after);
 				this.eventService.emit('redaction-enforcement-updated', {
 					user: {

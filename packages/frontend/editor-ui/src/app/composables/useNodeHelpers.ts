@@ -436,13 +436,10 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			if (!credential.connectedByMe) {
-				foundIssues[credTypeName] = [
-					i18n.baseText('nodeIssues.credentials.privateNotConnected', {
-						interpolate: { name: credential.name },
-					}),
-				];
-			} else if (incompatibleTrigger) {
+			// An unconnected private credential is a missing setup step, not a hard
+			// error — it's surfaced as a warning via the credential callout/banner in
+			// the UI rather than a node issue, so we don't add it here.
+			if (credential.connectedByMe && incompatibleTrigger) {
 				foundIssues[credTypeName] = [
 					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
 				];

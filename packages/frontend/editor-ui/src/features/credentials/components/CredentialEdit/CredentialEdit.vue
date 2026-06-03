@@ -582,7 +582,14 @@ async function beforeClose() {
 			{ cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose1.cancelButtonText`) },
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
+	} else if (
+		credentialPermissions.value.update &&
+		isOAuthType.value &&
+		!isOAuthConnected.value &&
+		// Private credentials are only the reusable "blueprint" — connecting is a
+		// per-user step done later, so we don't prompt to connect before closing.
+		!isResolvable.value
+	) {
 		const confirmAction = await confirmModal('beforeClose2', undefined, {
 			cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose2.cancelButtonText`),
 		});

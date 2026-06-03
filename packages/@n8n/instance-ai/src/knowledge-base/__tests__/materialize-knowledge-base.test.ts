@@ -19,14 +19,14 @@ function createSandboxWorkspace(files: Map<string, string>): {
 	const workspace: SandboxWorkspace = {
 		filesystem: {
 			provider: 'local',
-			writeFile: jest.fn(async (path: string, content: string | Buffer) => {
+			writeFile: vi.fn(async (path: string, content: string | Buffer) => {
 				writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
 				await Promise.resolve();
 			}),
-			mkdir: jest.fn(async () => await Promise.resolve()),
+			mkdir: vi.fn(async () => await Promise.resolve()),
 		},
 		sandbox: {
-			executeCommand: jest.fn(async (command: string) => {
+			executeCommand: vi.fn(async (command: string) => {
 				const readMatch = /^cat '([^']+)' 2>\/dev\/null$/.exec(command);
 				if (readMatch) {
 					const content = files.get(readMatch[1]);

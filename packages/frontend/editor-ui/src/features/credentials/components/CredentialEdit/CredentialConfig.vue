@@ -416,13 +416,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				>
 					<template #button>
 						<div :class="$style.bannerActions">
-							<template v-if="isGoogleOAuthType">
-								<p
-									:class="$style.googleReconnectLabel"
-									v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-								/>
-								<GoogleAuthButton @click="$emit('oauth')" />
-							</template>
+							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
 							<QuickConnectButton
 								v-else
 								size="small"
@@ -434,8 +428,8 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							/>
 							<N8nButton
 								v-if="showDisconnectButton"
-								variant="subtle"
-								size="small"
+								variant="outline"
+								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
 								data-test-id="oauth-disconnect-button"
 								@click="$emit('disconnect')"
@@ -585,10 +579,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	> * + * {
 		margin-bottom: var(--spacing--lg);
 	}
-}
-
-.googleReconnectLabel {
-	margin-right: var(--spacing--3xs);
 }
 
 .bannerActions {

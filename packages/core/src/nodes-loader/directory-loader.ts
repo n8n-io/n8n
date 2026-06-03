@@ -424,14 +424,21 @@ export abstract class DirectoryLoader implements NodeLoader {
 
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
+		const absoluteIconPath = path.isAbsolute(iconPath)
+			? iconPath
+			: path.join(this.directory, iconPath);
 
-		if (!isContainedWithin(this.directory, path.join(this.directory, iconPath))) {
+		if (!isContainedWithin(this.directory, absoluteIconPath)) {
 			throw new UnexpectedError(
 				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
 			);
 		}
 
-		return `icons/${this.packageName}/${iconPath}`;
+		const relativeIconPath = path.isAbsolute(iconPath)
+			? path.relative(this.directory, absoluteIconPath).replaceAll(path.sep, '/')
+			: iconPath;
+
+		return `icons/${this.packageName}/${relativeIconPath}`;
 	}
 
 	private fixIconPaths(
