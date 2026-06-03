@@ -1,7 +1,6 @@
 import { Service } from '@n8n/di';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { settingsToFloor } from './redaction-enforcement-mapper';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
@@ -22,11 +21,6 @@ export class RedactionEnforcementService {
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 	) {}
 
-	private async getFloor() {
-		const settings = await this.instanceRedactionEnforcementService.get();
-		return settingsToFloor(settings);
-	}
-
 	async assertPolicyChangeAllowed(
 		currentPolicy: WorkflowSettings.RedactionPolicy | undefined,
 		incomingPolicy: WorkflowSettings.RedactionPolicy | undefined,
@@ -36,7 +30,8 @@ export class RedactionEnforcementService {
 		// Unchanged: preserve legacy below-floor state (no retroactive application).
 		if (incomingPolicy === currentPolicy) return;
 
-		const floor = await this.getFloor();
+		// The floor is stored as the enum directly, so no translation is needed.
+		const floor = await this.instanceRedactionEnforcementService.get();
 		if (!policyMeetsFloor(incomingPolicy, floor)) {
 			throw new UnprocessableRequestError(REDACTION_FLOOR_VIOLATION_MESSAGE);
 		}
