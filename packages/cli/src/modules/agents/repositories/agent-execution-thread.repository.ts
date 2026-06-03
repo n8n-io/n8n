@@ -5,6 +5,11 @@ import { AgentExecutionThread } from '../entities/agent-execution-thread.entity'
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 
+export interface AgentExecutionThreadMetadata {
+	parentThreadId?: string;
+	parentAgentId?: string;
+}
+
 export interface AgentExecutionThreadPage {
 	threads: AgentExecutionThread[];
 	nextCursor: string | null;
@@ -25,6 +30,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
@@ -35,6 +41,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 					agentId,
 					agentName,
 					projectId,
+					metadata,
 					taskId,
 					taskVersionId,
 				);
@@ -51,6 +58,7 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		agentName: string,
 		projectId: string,
+		metadata?: AgentExecutionThreadMetadata,
 		taskId?: string | null,
 		taskVersionId?: string | null,
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
@@ -77,6 +85,8 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 				taskId: taskId ?? null,
 				taskVersionId: taskVersionId ?? null,
 				sessionNumber,
+				parentThreadId: metadata?.parentThreadId ?? null,
+				parentAgentId: metadata?.parentAgentId ?? null,
 			});
 			const saved = await repository.save(thread);
 			return { thread: saved, created: true };

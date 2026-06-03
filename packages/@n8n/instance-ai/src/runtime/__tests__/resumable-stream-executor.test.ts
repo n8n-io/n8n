@@ -3,17 +3,17 @@ import { executeResumableStream, normalizeStreamSource } from '../resumable-stre
 
 function createEventBus() {
 	return {
-		publish: jest.fn(),
-		subscribe: jest.fn(),
-		getEventsAfter: jest.fn(),
-		getNextEventId: jest.fn(),
-		getEventsForRun: jest.fn().mockReturnValue([]),
-		getEventsForRuns: jest.fn().mockReturnValue([]),
+		publish: vi.fn(),
+		subscribe: vi.fn(),
+		getEventsAfter: vi.fn(),
+		getNextEventId: vi.fn(),
+		getEventsForRun: vi.fn().mockReturnValue([]),
+		getEventsForRuns: vi.fn().mockReturnValue([]),
 	};
 }
 
 function createLogger() {
-	return { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 }
 
 async function* fromChunks(chunks: unknown[]) {
@@ -92,7 +92,7 @@ describe('normalizeStreamSource', () => {
 					},
 				},
 			]),
-			getState: jest.fn(),
+			getState: vi.fn(),
 		});
 
 		expect(source.runId).toBe('agent-run-1');
@@ -178,7 +178,7 @@ describe('executeResumableStream', () => {
 	});
 
 	it('reports liveness activity for each consumed chunk', async () => {
-		const onActivity = jest.fn();
+		const onActivity = vi.fn();
 
 		await executeResumableStream({
 			agent: {},
@@ -234,9 +234,7 @@ describe('executeResumableStream', () => {
 			control: { mode: 'manual' },
 		});
 
-		const publishedEvents = eventBus.publish.mock.calls.map(
-			([, event]: [string, PublishedEvent]) => event,
-		);
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
 		const firstText = publishedEvents.find((event) => event.payload?.text === 'First');
 		const toolCall = publishedEvents.find((event) => event.type === 'tool-call');
 		const firstStepContinuation = publishedEvents.find((event) => event.payload?.text === ' step');
@@ -250,11 +248,11 @@ describe('executeResumableStream', () => {
 
 	it('auto-resumes suspended streams and passes drained corrections to resume data', async () => {
 		const eventBus = createEventBus();
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
-		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
+		const waitForConfirmation = vi.fn().mockResolvedValue({ approved: true });
 		let hasDrainedCorrection = false;
 
 		const result = await executeResumableStream({
@@ -317,7 +315,7 @@ describe('executeResumableStream', () => {
 	});
 
 	it('passes resume options from the control hook', async () => {
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
@@ -365,11 +363,11 @@ describe('executeResumableStream', () => {
 		const finishGate = createDeferred<undefined>();
 		const approval = createDeferred<Record<string, unknown>>();
 		const waitStarted = createDeferred<undefined>();
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
-		const waitForConfirmation = jest.fn().mockImplementation(async () => {
+		const waitForConfirmation = vi.fn().mockImplementation(async () => {
 			waitStarted.resolve(undefined);
 			return await approval.promise;
 		});
@@ -429,12 +427,12 @@ describe('executeResumableStream', () => {
 
 	it('surfaces only the first actionable suspension in a drain', async () => {
 		const eventBus = createEventBus();
-		const resume = jest.fn().mockResolvedValue({
+		const resume = vi.fn().mockResolvedValue({
 			runId: 'agent-run-2',
 			stream: readableFromChunks([textChunk('Done.')]),
 		});
-		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
-		const onSuspension = jest.fn((_: SuspensionInfo) => undefined);
+		const waitForConfirmation = vi.fn().mockResolvedValue({ approved: true });
+		const onSuspension = vi.fn((_: SuspensionInfo) => undefined);
 
 		await executeResumableStream({
 			agent: { resume },
