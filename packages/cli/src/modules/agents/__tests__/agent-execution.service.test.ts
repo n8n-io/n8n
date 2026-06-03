@@ -149,6 +149,35 @@ describe('AgentExecutionService', () => {
 				'version-1',
 			);
 		});
+
+		it('syncs a generated title from memory on later messages when the thread has no title yet', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: null }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			memoryBackend.getThread.mockResolvedValue({
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Workflow builder chat',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
+				title: 'Workflow builder chat',
+			});
+		});
 	});
 
 	describe('getThreadDetail', () => {

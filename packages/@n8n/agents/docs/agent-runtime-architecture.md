@@ -381,8 +381,7 @@ implement TTL or eviction as needed.
 ## Memory persistence
 
 At end of turn, `saveToMemory()` uses `list.turnDelta()` and
-`saveMessagesToThread`. If **semantic recall** is configured with an embedder
-and `memory.saveEmbeddings`, new messages are embedded and stored.
+`saveMessagesToThread`.
 
 **Working memory:** when configured, the runtime injects an `update_working_memory`
 tool into the agent's tool set. The current state is included in the system prompt

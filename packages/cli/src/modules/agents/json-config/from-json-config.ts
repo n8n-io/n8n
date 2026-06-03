@@ -313,10 +313,6 @@ async function applyMemoryFromConfig(
 	const builtMemory = memoryFactory(memoryConfig);
 	memory.storage(await Promise.resolve(builtMemory));
 
-	if (memoryConfig.semanticRecall) {
-		memory.semanticRecall(memoryConfig.semanticRecall);
-	}
-
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
 			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
@@ -365,7 +361,7 @@ async function applyMemoryFromConfig(
 		});
 	}
 
-	memory.titleGeneration({ sync: true });
+	memory.titleGeneration(true);
 
 	agent.memory(memory);
 }

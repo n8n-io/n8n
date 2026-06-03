@@ -76,10 +76,6 @@ export class AgentExecutionService {
 		);
 		if (!created) {
 			await this.agentExecutionThreadRepository.bumpUpdatedAt(threadId);
-			// Sync title from the SDK memory thread if we don't have one yet
-			if (!thread.title) {
-				await this.syncTitleFromMemory(threadId, agentId);
-			}
 		}
 
 		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611> or plain @U0ANB4K6611)
@@ -139,10 +135,9 @@ export class AgentExecutionService {
 			duration: record.duration,
 		});
 
-		// Title generation now runs synchronously (sync: true) before the stream
-		// ends, so by this point the memory thread should have the title.
-		// Sync it to our execution thread on the first message.
-		if (created) {
+		// Title generation runs fire-and-forget after the stream ends. Sync when
+		// available — the title may not exist yet on the first message.
+		if (created || !thread.title) {
 			await this.syncTitleFromMemory(threadId, agentId);
 		}
 

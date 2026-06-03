@@ -62,7 +62,6 @@ export type {
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
-	SemanticRecallConfig,
 	ResumeOptions,
 	McpServerConfig,
 	McpVerifyResult,
