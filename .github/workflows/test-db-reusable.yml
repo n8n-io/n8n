@@ -25,21 +25,14 @@ jobs:
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
-          # Postgres 16 integration suite is split across two 2-vCPU shards.
-          # The suite is I/O-bound (blocks on PG round-trips), so we set
-          # --maxWorkers=2 to oversubscribe the 2 vCPUs rather than inherit
-          # jest's core-derived default of cores-1 (=1 worker, near-serial).
+          # Postgres 16 integration suite runs on an 8-vCPU runner.
+          # The suite is worker-bound (throughput scales with jest workers),
+          # so more cores -> more workers (jest default = cores-1) -> faster.
           # See DEVP-315.
-          - name: Postgres 16 (1/2)
-            runner: blacksmith-2vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc --shard=1/2 --maxWorkers=2
+          - name: Postgres 16
+            runner: blacksmith-8vcpu-ubuntu-2204
+            test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
-            TEST_IMAGE_POSTGRES: 'postgres:16'
-            collectCoverage: 'true'
-          - name: Postgres 16 (2/2)
-            runner: blacksmith-2vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc --shard=2/2 --maxWorkers=2
-            migration-cmd: ''
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
     env:
