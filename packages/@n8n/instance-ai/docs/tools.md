@@ -43,7 +43,7 @@ for approval before execution starts.
 - On denial: returns feedback for the LLM to revise the plan
 
 **Task kinds** map to executors:
-- `build-workflow` → workflow builder agent (sandbox or tool mode)
+- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
 - `checkpoint` → orchestrator-executed verification step
 
@@ -87,34 +87,6 @@ tracking during synchronous work.
 **Returns**: `{ result: string }`
 
 **Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
-
-### `build-workflow-with-agent`
-
-Spawn a specialized builder sub-agent as a background task. Returns immediately —
-the builder runs detached from the orchestrator.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `task` | string | yes | What to build and any context |
-| `workflowId` | string | no | Existing workflow ID to modify |
-| `conversationContext` | string | no | What user already knows |
-
-**Returns**: `{ result: string }` — contains task ID for background tracking.
-
-**Two modes** (selected based on sandbox availability):
-
-- **Sandbox mode** (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
-  to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
-  Gets filesystem and `execute_command` tools from the workspace.
-- **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
-  `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
-
-Both modes: max 30 steps, publishes events to the event bus, non-blocking.
-
-**Sandbox-only tools** (not in `createAllTools`, only available to the builder):
-- `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
-- `materialize-node-type` — fetches `.d.ts` definitions and writes to sandbox for `tsc`
-- `write-sandbox-file` — writes files to sandbox workspace (path-traversal protected)
 
 ### `cancel-background-task` *(conditional)*
 

@@ -1,0 +1,86 @@
+import {
+	createDelegateSubAgentTool,
+	generateResultToDelegateSubAgentOutput,
+	type DelegateSubAgentToolOutput,
+} from '@n8n/agents';
+import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
+
+import type {
+	SubAgentForegroundRunContext,
+	SubAgentForegroundResult,
+	SubAgentForegroundRunner,
+} from './sub-agent-foreground-runner';
+
+export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
+	runner: SubAgentForegroundRunner;
+	sourcesById: Record<string, SubAgentSource>;
+	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
+	policy?: SubAgentRunPolicy;
+}
+
+export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
+	const { runner, sourcesById, availableSubAgents, policy, ...runContext } = options;
+
+	return createDelegateSubAgentTool({
+		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
+		...(policy !== undefined ? { policy } : {}),
+		runSubAgent: async (request) => {
+			const selectedSource = selectSubAgentSource({
+				sourcesById,
+				subAgentId: request.subAgentId,
+			});
+			if (!selectedSource) {
+				return {
+					status: 'failed',
+					answer:
+						'No subagent matched this request. Provide subAgentId when multiple configured subagents are available.',
+				};
+			}
+
+			const result = await runner.runForeground(
+				{
+					goal: request.goal,
+					source: selectedSource,
+					executionMode: 'foreground',
+					...(request.context !== undefined ? { context: request.context } : {}),
+					...(request.expectedOutput !== undefined
+						? { expectedOutput: request.expectedOutput }
+						: {}),
+					...(policy !== undefined ? { policy } : {}),
+					...(request.parentThreadId !== undefined
+						? { parentThreadId: request.parentThreadId }
+						: {}),
+					...(request.parentResourceId !== undefined
+						? { parentResourceId: request.parentResourceId }
+						: {}),
+					taskPath: request.taskPath,
+				},
+				{
+					...runContext,
+					...(request.parentAbortSignal !== undefined
+						? { abortSignal: request.parentAbortSignal }
+						: {}),
+				},
+			);
+
+			return formatSubAgentToolOutput(result);
+		},
+	});
+}
+
+function selectSubAgentSource(options: {
+	sourcesById: Record<string, SubAgentSource>;
+	subAgentId?: string;
+}): SubAgentSource | undefined {
+	const { sourcesById, subAgentId } = options;
+	if (subAgentId) return sourcesById?.[subAgentId];
+
+	const sources = Object.values(sourcesById);
+	return sources.length === 1 ? sources[0] : undefined;
+}
+
+export function formatSubAgentToolOutput(
+	result: SubAgentForegroundResult,
+): DelegateSubAgentToolOutput {
+	return generateResultToDelegateSubAgentOutput(result.taskPath, result.result, result.threadId);
+}

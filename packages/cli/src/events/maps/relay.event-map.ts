@@ -1,8 +1,4 @@
-import type {
-	AuthenticationMethod,
-	ProjectRelation,
-	RedactionEnforcementSettings,
-} from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -94,6 +90,7 @@ export type RelayEventMap = {
 		workflowIds: string[];
 		packageSourceId: string;
 		packageVersion: string;
+		matchedCredentialIds: string[];
 	};
 
 	'workflow-deleted': {
@@ -156,6 +153,7 @@ export type RelayEventMap = {
 		runData?: IRun;
 		projectId?: string;
 		projectName?: string;
+		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	};
 
 	'workflow-sharing-updated': {
@@ -435,6 +433,44 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'oauth-callback-binding-rejected': {
+		reason: 'cookie-missing' | 'hash-mismatch';
+		credentialId?: string;
+		origin?: 'static-credential' | 'dynamic-credential';
+	};
+
+	'private-credential-created': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		projectId?: string;
+		projectType?: string;
+	};
+
+	'private-credential-toggled-to-private': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-toggled-to-static': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-deleted': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
+	'private-credential-user-connected': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	// #endregion
 
 	// #region Community package
@@ -534,8 +570,9 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: string;
-		members: ProjectRelation[];
+		members?: ProjectRelation[];
 		projectId: string;
+		otelProjectCustomTagsCount?: number;
 	};
 
 	'team-project-deleted': {
@@ -949,8 +986,8 @@ export type RelayEventMap = {
 
 	'redaction-enforcement-updated': {
 		user: UserLike;
-		before: RedactionEnforcementSettings;
-		after: RedactionEnforcementSettings;
+		before: RedactionFloor;
+		after: RedactionFloor;
 	};
 
 	// #endregion

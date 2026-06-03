@@ -148,12 +148,10 @@ jobs:
           path: |
             packages/testing/playwright/test-results/
             packages/testing/playwright/playwright-report/
-            packages/testing/playwright/.nyc_output/
+            packages/testing/playwright/coverage/lcov.info
+            packages/testing/playwright/coverage/by-spec/
           retention-days: 1
           if-no-files-found: ignore
-          # upload-artifact@v7 defaults this to false, which silently drops
-          # `.nyc_output/` (dotfile) — needed for the weekly coverage workflow.
-          include-hidden-files: true
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}

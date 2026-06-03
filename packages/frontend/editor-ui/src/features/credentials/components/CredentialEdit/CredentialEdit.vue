@@ -51,7 +51,7 @@ import {
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/app/utils/typeGuards';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
@@ -98,6 +98,28 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const i18n = useI18n();
+
+const I18N_PREFIX = 'credentialEdit.credentialEdit.confirmMessage';
+
+async function confirmModal(
+	key: string,
+	interpolate?: Record<string, string>,
+	extra?: { cancelButtonText?: string },
+): Promise<string | boolean> {
+	const t = (suffix: string) =>
+		i18n.baseText(
+			`${I18N_PREFIX}.${key}.${suffix}` as BaseTextKey,
+			interpolate ? { interpolate } : {},
+		);
+
+	const cancelButton =
+		extra?.cancelButtonText !== undefined ? { cancelButtonText: extra.cancelButtonText } : {};
+
+	return await message.confirm(t('message'), t('headline'), {
+		confirmButtonText: i18n.baseText(`${I18N_PREFIX}.${key}.confirmButtonText` as BaseTextKey),
+		...cancelButton,
+	});
+}
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
@@ -544,34 +566,23 @@ async function beforeClose() {
 
 	if (hasUnsavedChanges.value && !isNewCredential.value) {
 		const displayName = credentialType.value ? credentialType.value.displayName : '';
-		const confirmAction = await message.confirm(
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', {
-				interpolate: { credentialDisplayName: displayName },
-			}),
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
-			{
-				cancelButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText',
-				),
-				confirmButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText',
-				),
-			},
+		const confirmAction = await confirmModal(
+			'beforeClose1',
+			{ credentialDisplayName: displayName },
+			{ cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose1.cancelButtonText`) },
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
-		const confirmAction = await message.confirm(
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
-			{
-				cancelButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText',
-				),
-				confirmButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText',
-				),
-			},
-		);
+	} else if (
+		credentialPermissions.value.update &&
+		isOAuthType.value &&
+		!isOAuthConnected.value &&
+		// Private credentials are only the reusable "blueprint" — connecting is a
+		// per-user step done later, so we don't prompt to connect before closing.
+		!isResolvable.value
+	) {
+		const confirmAction = await confirmModal('beforeClose2', undefined, {
+			cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose2.cancelButtonText`),
+		});
 		keepEditing = confirmAction === MODAL_CONFIRM;
 	}
 
@@ -708,17 +719,6 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 	}
 }
 
-async function refreshConnectedByMe(id: string) {
-	try {
-		const refreshed = await credentialsStore.getCredentialData({ id });
-		if (refreshed && 'connectedByMe' in refreshed && typeof refreshed.connectedByMe === 'boolean') {
-			connectedByMe.value = refreshed.connectedByMe;
-		}
-	} catch {
-		// Refresh is best-effort; the optimistic update remains in place.
-	}
-}
-
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
@@ -772,7 +772,33 @@ function restoreOrReset(): void {
 	}
 }
 
-function onResolvableChange(value: boolean) {
+async function onResolvableChange(value: boolean) {
+	const credName = credentialName.value;
+	const isTogglingToPrivate = value && !isResolvable.value;
+	const isTogglingToStatic = !value && isResolvable.value;
+
+	if (isTogglingToPrivate && credentialData.value.oauthTokenData) {
+		// Static → Private: warn only when there is a shared token to lose
+		const confirmAction = await confirmModal('switchToPrivate', { credentialName: credName });
+
+		if (confirmAction !== MODAL_CONFIRM) {
+			return;
+		}
+	} else if (isTogglingToStatic) {
+		// Private → Static: warn only when there are connected users to disconnect
+		const connectedUserCount = currentCredential.value?.connectedUserCount ?? 0;
+		if (connectedUserCount > 0) {
+			const confirmAction = await confirmModal('switchToStatic', {
+				count: String(connectedUserCount),
+				credentialName: credName,
+			});
+
+			if (confirmAction !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+	}
+
 	isResolvable.value = value;
 	hasUnsavedChanges.value = true;
 }
@@ -1182,17 +1208,7 @@ async function deleteCredential() {
 
 	const savedCredentialName = currentCredential.value.name;
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
-			interpolate: { savedCredentialName },
-		}),
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-			),
-		},
-	);
+	const deleteConfirmed = await confirmModal('deleteCredential', { savedCredentialName });
 
 	if (deleteConfirmed !== MODAL_CONFIRM) {
 		return;
@@ -1330,9 +1346,12 @@ async function oAuthCredentialAuthorize() {
 				...credentialData.value,
 				oauthTokenData: {} as CredentialInformation,
 			};
+
 			connectedByMe.value = true;
 
-			void refreshConnectedByMe(credential.id);
+			void credentialsStore.fetchAllCredentials().then(() => {
+				nodeHelpers.updateNodesCredentialsIssues();
+			});
 
 			void credentialsStore.fetchAllCredentials().then(() => {
 				nodeHelpers.updateNodesCredentialsIssues();

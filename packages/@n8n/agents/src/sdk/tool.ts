@@ -125,6 +125,8 @@ export class Tool<
 
 	private providerOptionsValue?: Record<string, JSONObject>;
 
+	private handleCancellationValue?: boolean;
+
 	private requireApprovalValue?: boolean;
 
 	private needsApprovalFnValue?: (args: unknown) => Promise<boolean> | boolean;
@@ -214,6 +216,15 @@ export class Tool<
 		return this;
 	}
 
+	/**
+	 * Opt in to handle cancellations in the tool handler (`ctx.cancellation`).
+	 * By default, the runtime bypasses the handler and injects the steering message directly.
+	 */
+	handleCancellation(): this {
+		this.handleCancellationValue = true;
+		return this;
+	}
+
 	/** Require human approval before this tool executes. Mutually exclusive with .suspend()/.resume(). */
 	requireApproval(): this {
 		this.requireApprovalValue = true;
@@ -281,6 +292,7 @@ export class Tool<
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
 			resumeSchema: this.resumeSchemaValue,
+			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			handler: this.handlerFn as (
