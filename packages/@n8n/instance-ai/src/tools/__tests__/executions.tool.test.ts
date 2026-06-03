@@ -340,16 +340,16 @@ describe('executions tool', () => {
 					allowedRunWorkflowIds: new Set(['wf-1']),
 					requireRunWorkflowApproval: true,
 				});
-				const suspendFn = jest.fn();
+				const agentCtx = createAgentCtx();
 
 				const tool = createExecutionsTool(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
-					createAgentCtx({ suspend: suspendFn }) as never,
+					agentCtx as never,
 				);
 
-				expect(suspendFn).toHaveBeenCalled();
+				expect(agentCtx.suspend).toHaveBeenCalled();
 				expect(context.executionService.run).not.toHaveBeenCalled();
 				expect(result).toBeUndefined();
 			});

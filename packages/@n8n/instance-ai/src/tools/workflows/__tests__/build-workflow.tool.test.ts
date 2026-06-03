@@ -157,12 +157,18 @@ describe('createBuildWorkflowTool', () => {
 	it('suspends existing workflow edits before saving by default', async () => {
 		const context = {
 			workflowService: {
-				getAsWorkflowJSON: jest.fn(async () => await Promise.resolve({ name: 'Target workflow' })),
-				updateFromWorkflowJSON: jest.fn(),
+				getAsWorkflowJSON: async () => await Promise.resolve({ name: 'Target workflow' }),
+				updateFromWorkflowJSON: () => {
+					throw new Error('should not update workflow');
+				},
 			},
 			permissions: { updateWorkflow: 'require_approval' },
 		} as unknown as InstanceAiContext;
-		const suspend = jest.fn(async () => await Promise.reject(new Error('suspended')));
+		let suspension: unknown;
+		const suspend = async (request: unknown) => {
+			suspension = request;
+			return await Promise.reject(new Error('suspended'));
+		};
 
 		await expect(
 			executeTool(
@@ -172,13 +178,12 @@ describe('createBuildWorkflowTool', () => {
 			),
 		).rejects.toThrow('suspended');
 
-		expect(suspend).toHaveBeenCalledWith(
+		expect(suspension).toEqual(
 			expect.objectContaining({
 				message: 'Edit Target workflow (ID: wf-1)?',
 				severity: 'warning',
 			}),
 		);
-		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
 	it('allows new workflow builds during post-plan follow-up repairs', async () => {
