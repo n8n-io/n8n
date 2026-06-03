@@ -3,20 +3,19 @@
 	lang="ts"
 	generic="TData extends AiModelSelectorMenuItemData = AiModelSelectorMenuItemData"
 >
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nDropdownMenu,
-	N8nIcon,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
+import { Primitive } from 'reka-ui';
+import { computed, getCurrentInstance, useCssModule, useTemplateRef } from 'vue';
+
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
-} from '@/features/ai/modelSelector/types';
+} from './AiModelSelectorDropdown.types';
+import N8nBadge from '../N8nBadge';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 const {
 	items,
@@ -48,6 +47,10 @@ const {
 
 const emit = defineEmits<{
 	select: [id: string];
+	/**
+	 * Use this to handle custom search logic in the parent.
+	 * Provide filtered `items` from the parent when handling this event.
+	 */
 	search: [query: string];
 }>();
 
@@ -57,18 +60,18 @@ defineSlots<{
 }>();
 
 const dropdownRef = useTemplateRef('dropdownRef');
-const searchQuery = ref('');
 const $style = useCssModule();
+const instance = getCurrentInstance();
 
-const extraPopperClass = computed(() =>
-	[$style.component, searchQuery.value ? $style.searching : ''].join(' '),
+const hasSearchListener = computed(() => Boolean(instance?.vnode.props?.onSearch));
+
+const extraPopperClass = computed(() => $style.component);
+
+const searchListenerAttrs = computed(() =>
+	hasSearchListener.value && !disabled
+		? { onSearch: (query: string) => emit('search', query) }
+		: {},
 );
-
-function handleSearch(query: string) {
-	if (disabled) return;
-	searchQuery.value = query;
-	emit('search', query);
-}
 
 function handleSelect(id: string) {
 	if (disabled) return;
@@ -86,31 +89,34 @@ defineExpose({
 	<N8nDropdownMenu
 		ref="dropdownRef"
 		:items="items"
+		v-bind="searchListenerAttrs"
 		teleported
 		placement="bottom-start"
 		:extra-popper-class="extraPopperClass"
 		searchable
-		:empty-text="searchQuery ? noMatchLabel : undefined"
-		@search="handleSearch"
+		:empty-text="noMatchLabel"
 		@select="handleSelect"
 	>
 		<template #trigger>
-			<N8nButton
-				:variant="text ? 'ghost' : 'outline'"
-				:class="[$style.dropdownButton, horizontal && $style.dropdownButtonHorizontal]"
-				:text="text"
+			<Primitive
+				as="button"
+				:class="[
+					$style.dropdownButton,
+					horizontal && $style.dropdownButtonHorizontal,
+					text && $style.dropdownButtonText,
+				]"
 				:disabled="disabled"
-				size="large"
 				:data-test-id="dataTestId"
 			>
-				<slot name="trigger-leading" :ui="{ class: $style.icon }" />
 				<div :class="[$style.selected, horizontal && $style.selectedHorizontal]">
-					<N8nText>
+					<slot name="trigger-leading" :ui="{ class: $style.icon }" />
+					<N8nText bold truncate :class="$style.selectedLabel">
 						{{ truncateBeforeLast(selectedLabel, maxSelectedNameChars) }}
 					</N8nText>
 					<N8nText
 						v-if="selectedCredentialName"
-						:size="horizontal ? 'small' : 'xsmall'"
+						size="small"
+						bold
 						color="text-light"
 						:data-test-id="credentialDataTestId"
 					>
@@ -125,12 +131,8 @@ defineExpose({
 						{{ credentialsMissingLabel }}
 					</N8nText>
 				</div>
-				<N8nIcon
-					:class="horizontal && $style.chevronHorizontal"
-					icon="chevron-down"
-					size="medium"
-				/>
-			</N8nButton>
+				<N8nIcon :class="$style.chevron" icon="chevron-down" size="medium" />
+			</Primitive>
 		</template>
 
 		<template #item-leading="{ item, ui }">
@@ -192,18 +194,60 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
 .component {
-	z-index: var(--floating-ui--z);
-	width: auto !important;
+	width: fit-content;
 }
 
 .dropdownButton {
+	flex: 1;
 	display: flex;
+	flex-direction: row;
 	align-items: center;
+	justify-content: center;
+	height: var(--height--lg);
+	padding: 0 var(--spacing--xs);
 	gap: var(--spacing--xs);
-	width: fit-content;
-	padding-block: var(--spacing--2xs);
-	text-decoration: none !important;
+	border: var(--border);
+	background-color: var(--background--surface);
+	border-radius: var(--radius--2xs);
+	font-size: var(--font-size--sm);
+	outline: none;
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		border-color: var(--focus--border-color) !important;
+		transition: none;
+	}
+
+	&:hover {
+		background-color: color-mix(in srgb, var(--background--surface) 90%, black 5%);
+	}
+
+	&:active,
+	&[aria-expanded='true'],
+	:global([aria-expanded='true']) & {
+		background-color: color-mix(in srgb, var(--background--surface) 90%, black 10%);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+}
+
+.dropdownButtonHorizontal {
+	width: 100%;
+	justify-content: stretch;
+}
+
+.dropdownButtonText {
+	border-color: transparent;
+	background-color: transparent;
+
+	&:hover {
+		background-color: var(--color--foreground);
+	}
 }
 
 .credentialsMissingIcon {
@@ -213,68 +257,36 @@ defineExpose({
 
 .selected {
 	display: flex;
-	flex-direction: column;
-	align-items: start;
-	gap: var(--spacing--4xs);
-}
-
-.dropdownButtonHorizontal {
-	width: 100%;
-	display: flex;
-	justify-content: stretch;
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	border-radius: var(--radius--2xs);
-
-	> div {
-		width: 100%;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	&:hover {
-		border-color: var(--border-color--strong);
-	}
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-start;
+	flex: 1;
+	min-width: 0;
+	gap: var(--spacing--2xs);
+	overflow: hidden;
 }
 
 .selectedHorizontal {
-	flex-direction: row;
-	align-items: center;
 	gap: var(--spacing--xs);
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-
-	> :global(.n8n-text) {
-		font-weight: var(--font-weight--bold);
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
 }
 
-.chevronHorizontal {
-	align-self: flex-end;
-	margin-bottom: var(--spacing--5xs);
+.chevron {
+	color: var(--text-color--subtler);
 }
 
 .icon {
-	flex-shrink: 0;
-	margin-block: calc(-1 * var(--spacing--5xs));
+	min-width: var(--spacing--sm);
+	min-height: var(--spacing--sm);
 }
 
-.infoIcon,
-.menuIcon {
+.infoIcon {
 	flex-shrink: 0;
+	margin-inline: var(--spacing--5xs);
 }
 
 .emoji {
 	font-size: var(--font-size--sm);
 	line-height: 1;
-}
-
-.infoIcon {
-	margin-inline: var(--spacing--5xs);
 }
 
 .flattenedLabel {

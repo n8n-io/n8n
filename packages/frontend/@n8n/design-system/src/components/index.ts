@@ -12,6 +12,11 @@ export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
+export { default as N8nAiModelSelectorDropdown } from './N8nAiModelSelectorDropdown';
+export type {
+	AiModelSelectorMenuItem,
+	AiModelSelectorMenuItemData,
+} from './N8nAiModelSelectorDropdown';
 export type {
 	DropdownMenuProps,
 	DropdownMenuItemProps,
