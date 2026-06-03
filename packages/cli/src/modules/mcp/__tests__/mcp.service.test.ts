@@ -328,6 +328,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(LicenseState),
 				opts.postHogClient,
 			);
 
@@ -528,6 +529,7 @@ describe('McpService', () => {
 					mockInstance(ExecutionService),
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
+					mockInstance(LicenseState),
 					postHogClient,
 				);
 
