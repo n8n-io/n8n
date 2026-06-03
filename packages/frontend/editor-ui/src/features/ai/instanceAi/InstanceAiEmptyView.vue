@@ -107,14 +107,9 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
 
-<<<<<<< HEAD
-=======
-useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
 function handleWorkflowPreview(workflowFile: string | null) {
 	activeWorkflowPreviewFile.value = workflowFile;
 }
-
->>>>>>> ef3a5606 (feat: Implements AI Assistant empty state workflow previews experiment  (#31519))
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
