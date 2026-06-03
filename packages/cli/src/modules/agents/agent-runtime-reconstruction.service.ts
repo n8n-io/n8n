@@ -456,10 +456,17 @@ export class AgentRuntimeReconstructionService {
 	private attachThreadTitleSyncListener(agent: RuntimeAgent): void {
 		agent.on(AgentEvent.ThreadTitleGenerated, (event) => {
 			if (event.type !== AgentEvent.ThreadTitleGenerated) return;
-			void this.agentExecutionService.syncThreadTitle(event.threadId, {
-				title: event.title,
-				...(event.emoji !== undefined && { emoji: event.emoji }),
-			});
+			void this.agentExecutionService
+				.syncThreadTitle(event.threadId, {
+					title: event.title,
+					...(event.emoji !== undefined && { emoji: event.emoji }),
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to sync thread title', {
+						threadId: event.threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 		});
 	}
 
