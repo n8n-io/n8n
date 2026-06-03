@@ -224,14 +224,15 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Node configuration is invalid after schema change');
 		});
 
-		it('should instruct to call build-workflow-with-agent directly with workflowId', () => {
+		it('should instruct to load the workflow-builder skill and call build-workflow with workflowId', () => {
 			const action: WorkflowLoopAction = {
 				type: 'rebuild',
 				workflowId: 'wf-rebuild-2',
 				failureDetails: 'Broken connections',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('build-workflow-with-agent');
+			expect(result).toContain('workflow-builder');
+			expect(result).toContain('build-workflow');
 			expect(result).toContain('workflowId: "wf-rebuild-2"');
 			expect(result).toContain('no plan');
 			expect(result).toContain('structural repair');
@@ -279,7 +280,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Suggested fix');
 		});
 
-		it('should instruct to call build-workflow-with-agent directly with workflowId', () => {
+		it('should instruct to load the workflow-builder skill and call build-workflow with workflowId', () => {
 			const action: WorkflowLoopAction = {
 				type: 'patch',
 				workflowId: 'wf-patch-4',
@@ -287,7 +288,8 @@ describe('formatWorkflowLoopGuidance', () => {
 				diagnosis: 'Condition always evaluates to true',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('build-workflow-with-agent');
+			expect(result).toContain('workflow-builder');
+			expect(result).toContain('build-workflow');
 			expect(result).toContain('workflowId: "wf-patch-4"');
 			expect(result).toContain('no plan');
 			expect(result).toContain('targeted fix');

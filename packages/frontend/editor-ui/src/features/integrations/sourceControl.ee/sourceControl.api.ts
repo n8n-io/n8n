@@ -7,6 +7,8 @@ import type {
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	SourceControlPreferences,
+	SourceControlProjectPreferences,
+	SourceControlPublicPreferences,
 	SourceControlStatus,
 	SshKeyTypes,
 } from './sourceControl.types';
@@ -50,7 +52,9 @@ export const updatePreferences = createPreferencesRequestFn('PATCH');
 
 export const getPreferences = async (
 	context: IRestApiContext,
-): Promise<SourceControlPreferences> => {
+): Promise<
+	SourceControlPublicPreferences | SourceControlProjectPreferences | SourceControlPreferences
+> => {
 	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/preferences`);
 };
 

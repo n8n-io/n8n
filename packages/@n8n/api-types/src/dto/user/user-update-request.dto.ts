@@ -1,7 +1,13 @@
+import xss from 'xss';
 import { z } from 'zod';
 
-import { xssCheck } from '../../utils/xss-check';
 import { Z } from '../../zod-class';
+
+const xssCheck = (value: string) =>
+	value ===
+	xss(value, {
+		whiteList: {}, // no tags are allowed
+	});
 
 const URL_REGEX = /^(https?:\/\/|www\.)|(\.[\p{L}\d-]+)/iu;
 const urlCheck = (value: string) => !URL_REGEX.test(value);

@@ -7,7 +7,7 @@ describe('formatPreviousAttempts', () => {
 
 	it('formats a single failed attempt', () => {
 		const entries: IterationEntry[] = [
-			{ attempt: 1, action: 'build-workflow-with-agent', result: '', error: 'invalid_auth' },
+			{ attempt: 1, action: 'build-workflow', result: '', error: 'invalid_auth' },
 		];
 		const result = formatPreviousAttempts(entries);
 		expect(result).toContain('<previous-attempts>');
@@ -28,7 +28,7 @@ describe('formatPreviousAttempts', () => {
 		const entries: IterationEntry[] = [
 			{
 				attempt: 1,
-				action: 'build-workflow-with-agent',
+				action: 'build-workflow',
 				result: '',
 				error: 'missing credential',
 				diagnosis: 'Slack credential not connected',

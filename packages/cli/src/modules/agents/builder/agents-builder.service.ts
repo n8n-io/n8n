@@ -188,23 +188,20 @@ export class AgentsBuilderService {
 			modelRecommendationsSection,
 			enabledModules,
 		});
-		const runtimeSkills = getBuilderRuntimeSkills({
-			enabledModules,
-		});
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
 			projectId,
 			credentialProvider,
 			user,
-			enabledModules,
 		);
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
 		const builderMemory = new Memory()
 			.storage(this.n8nMemory.getImplementation(agentId))
-			.lastMessages(40);
+			.observationalMemory();
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)

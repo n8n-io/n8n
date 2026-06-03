@@ -17,6 +17,11 @@ describe('generateSlug', () => {
 		expect(generateSlug('--')).toBe('workflow');
 	});
 
+	it('uses a caller-provided fallback when the name yields an empty slug', () => {
+		expect(generateSlug('--', 'credential')).toBe('credential');
+		expect(generateSlug('', 'credential')).toBe('credential');
+	});
+
 	it('strips leading and trailing hyphens', () => {
 		expect(generateSlug('---foo---')).toBe('foo');
 	});

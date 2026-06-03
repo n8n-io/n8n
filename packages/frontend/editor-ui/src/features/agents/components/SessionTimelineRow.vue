@@ -7,7 +7,8 @@ import { truncate } from '@n8n/utils';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey } from '../session-timeline.utils';
+import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
@@ -20,6 +21,11 @@ const emit = defineEmits<{ select: [] }>();
 
 const router = useRouter();
 const i18n = useI18n();
+
+// A delegate_subagent call renders as a sub-agent (bot icon + "Sub-agent · name")
+// to match the chat, rather than as a plain tool.
+const isSubAgent = computed((): boolean => isSubAgentTimelineItem(props.item));
+const pillKind = computed(() => (isSubAgent.value ? 'subagent' : props.item.kind));
 
 const time = computed((): string => {
 	if (!props.item.timestamp) return '';
@@ -39,6 +45,7 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
+			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
 			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
 			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
 		}
@@ -54,6 +61,7 @@ const infoText = computed((): string => {
 });
 
 const label = computed((): string => {
+	if (isSubAgent.value) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (props.item.kind) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
@@ -76,7 +84,7 @@ const label = computed((): string => {
 <template>
 	<div :class="[$style.row, selected && $style.selected]" @click="emit('select')">
 		<N8nTooltip :content="label" placement="top">
-			<SessionTimelinePill :kind="item.kind" />
+			<SessionTimelinePill :kind="pillKind" />
 		</N8nTooltip>
 		<div :class="$style.info">
 			<template v-if="item.kind === 'workflow' && workflowHref">

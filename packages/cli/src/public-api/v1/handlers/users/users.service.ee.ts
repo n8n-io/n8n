@@ -61,6 +61,7 @@ const userProperties = [
 	'createdAt',
 	'updatedAt',
 	'isPending',
+	'mfaEnabled',
 ];
 function pickUserSelectableProperties(user: User, options?: { includeRole: boolean }) {
 	return pick(user, userProperties.concat(options?.includeRole ? ['role'] : []));
