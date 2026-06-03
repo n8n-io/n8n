@@ -46,6 +46,11 @@ function isReplanContext(context: OrchestrationContext): boolean {
 	return context.isReplanFollowUp === true;
 }
 
+function textRequestsPostBuildRun(text: string | undefined): boolean {
+	const normalized = text?.toLowerCase().replace(/\s+/g, ' ') ?? '';
+	return /\b(build|create|make)\b.{0,120}\b(then|and)\s+(run|execute|test)\b/.test(normalized);
+}
+
 /**
  * Returns true when the thread has a non-terminal planned-task graph — meaning
  * `create-tasks` is being called as a revision (after user rejection of a
@@ -196,6 +201,7 @@ export function createPlanTool(context: OrchestrationContext) {
 						{
 							planRunId: context.runId,
 							messageGroupId: context.messageGroupId,
+							postBuildRunApprovalRequired: textRequestsPostBuildRun(context.currentUserMessage),
 						},
 					);
 				} catch (error) {
