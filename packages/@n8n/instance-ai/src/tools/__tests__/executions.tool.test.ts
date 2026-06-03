@@ -426,56 +426,56 @@ describe('executions tool', () => {
 						timeout: undefined,
 					});
 				} finally {
-						if (originalE2ETests === undefined) {
-							delete process.env.E2E_TESTS;
-						} else {
+					if (originalE2ETests === undefined) {
+						delete process.env.E2E_TESTS;
+					} else {
 						process.env.E2E_TESTS = originalE2ETests;
 					}
 				}
 			});
 
 			it('still requires HITL when neither workflow id nor name is in the allow-list', async () => {
-					const context = createMockContext({
-						permissions: { runWorkflow: 'always_allow' },
-						allowedRunWorkflowIds: new Set(['wf-recorded']),
-						allowedRunWorkflowNames: new Set(['Allowed WF']),
-					});
-					(context.workflowService.get as Mock).mockResolvedValue({ name: 'Other WF' });
-					const suspendFn = vi.fn();
-
-					const tool = createExecutionsTool(context);
-					const result = await executeTool(
-						tool,
-						{ action: 'run' as const, workflowId: 'wf-replayed' },
-						createAgentCtx({ suspend: suspendFn }) as never,
-					);
-
-					expect(suspendFn).toHaveBeenCalled();
-					expect(context.executionService.run).not.toHaveBeenCalled();
-					expect(result).toBeUndefined();
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-recorded']),
+					allowedRunWorkflowNames: new Set(['Allowed WF']),
 				});
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Other WF' });
+				const suspendFn = vi.fn();
 
-				it('requires HITL when a checkpoint run represents an explicit user-requested execution', async () => {
-					const context = createMockContext({
-						permissions: { runWorkflow: 'always_allow' },
-						allowedRunWorkflowIds: new Set(['wf-1']),
-						requireRunWorkflowApproval: true,
-					});
-					const agentCtx = createAgentCtx();
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-replayed' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
 
-					const tool = createExecutionsTool(context);
-					const result = await executeTool(
-						tool,
-						{ action: 'run' as const, workflowId: 'wf-1' },
-						agentCtx as never,
-					);
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
+			});
 
-					expect(agentCtx.suspend).toHaveBeenCalled();
-					expect(context.executionService.run).not.toHaveBeenCalled();
-					expect(result).toBeUndefined();
+			it('requires HITL when a checkpoint run represents an explicit user-requested execution', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-1']),
+					requireRunWorkflowApproval: true,
 				});
+				const agentCtx = createAgentCtx();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					agentCtx as never,
+				);
+
+				expect(agentCtx.suspend).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
 			});
 		});
+	});
 
 	// ── debug ───────────────────────────────────────────────────────────────
 

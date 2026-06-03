@@ -71,7 +71,8 @@ const loadApplyWorkflowCredentialsTool = lazyMod(
 		require('./workflows/apply-workflow-credentials.tool') as typeof import('./workflows/apply-workflow-credentials.tool'),
 );
 const loadBuildWorkflowTool = lazyMod(
-	() => require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
+	() =>
+		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
 );
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
