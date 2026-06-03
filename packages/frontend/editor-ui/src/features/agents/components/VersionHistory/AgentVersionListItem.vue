@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import AgentVersionStatusIndicator from './AgentVersionStatusIndicator.vue';
 import { formatTimestamp, generateVersionLabel } from './agentVersionHistory.utils';
 
-export type AgentVersionAction = 'revert' | 'publish';
+export type AgentVersionAction = 'revert' | 'publish' | 'unpublish';
 
 const props = defineProps<{
 	item: AgentVersionListItemDto;

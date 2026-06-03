@@ -61,6 +61,7 @@ const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
 	'cancel-plan-edit': [];
+	'workflow-preview': [workflowFile: string | null];
 }>();
 
 const i18n = useI18n();
@@ -72,8 +73,17 @@ const previewPromptKey = ref<BaseTextKey | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
+function focus() {
+	chatInputRef.value?.focus();
+}
+
+function appendText(text: string) {
+	inputText.value += text;
+}
+
 defineExpose({
-	focus: () => chatInputRef.value?.focus(),
+	focus,
+	appendText,
 });
 
 const isBusy = computed(() =>
@@ -135,6 +145,7 @@ watch(
 		}
 
 		previewPromptKey.value = null;
+		emit('workflow-preview', null);
 	},
 	{ immediate: true },
 );
@@ -372,6 +383,7 @@ const resizable = computed(() => {
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
+				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
 	</div>

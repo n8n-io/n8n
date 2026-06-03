@@ -1,6 +1,7 @@
 import { SandboxManager } from '@anthropic-ai/sandbox-runtime';
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 
 import { getSettingsDir } from '../../config';
 import { textOf } from '../test-utils';
@@ -9,21 +10,19 @@ import { buildShellResource } from './build-shell-resource';
 import { ShellModule } from './index';
 import { shellExecuteTool } from './shell-execute';
 
-jest.mock('child_process');
-jest.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
-jest.mock('@anthropic-ai/sandbox-runtime', () => ({
+vi.mock('child_process');
+vi.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
+vi.mock('@anthropic-ai/sandbox-runtime', () => ({
 	// eslint-disable-next-line
 	SandboxManager: {
-		initialize: jest.fn().mockResolvedValue(undefined),
-		wrapWithSandbox: jest
-			.fn()
-			.mockImplementation(async (cmd: string) => await Promise.resolve(cmd)),
+		initialize: vi.fn().mockResolvedValue(undefined),
+		wrapWithSandbox: vi.fn().mockImplementation(async (cmd: string) => await Promise.resolve(cmd)),
 	},
 }));
 
-const mockSandboxManager = SandboxManager as jest.Mocked<typeof SandboxManager>;
+const mockSandboxManager = SandboxManager as Mocked<typeof SandboxManager>;
 
-const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
+const mockSpawn = spawn as MockedFunction<typeof spawn>;
 
 const DUMMY_CONTEXT = { dir: '/test/base' };
 
@@ -31,25 +30,25 @@ function makeMockChild(
 	overrides: Partial<{
 		stdout: EventEmitter;
 		stderr: EventEmitter;
-		kill: jest.Mock;
-		on: jest.Mock;
+		kill: Mock;
+		on: Mock;
 	}> = {},
 ) {
 	const stdout = overrides.stdout ?? new EventEmitter();
 	const stderr = overrides.stderr ?? new EventEmitter();
-	const kill = overrides.kill ?? jest.fn();
-	const on = overrides.on ?? jest.fn();
+	const kill = overrides.kill ?? vi.fn();
+	const on = overrides.on ?? vi.fn();
 	return { stdout, stderr, kill, on };
 }
 
-function getCloseHandler(on: jest.Mock): ((code: number) => void) | undefined {
+function getCloseHandler(on: Mock): ((code: number) => void) | undefined {
 	const call = on.mock.calls.find((args: unknown[]) => args[0] === 'close') as
 		| [string, (code: number) => void]
 		| undefined;
 	return call?.[1];
 }
 
-function getErrorHandler(on: jest.Mock): ((error: Error) => void) | undefined {
+function getErrorHandler(on: Mock): ((error: Error) => void) | undefined {
 	const call = on.mock.calls.find((args: unknown[]) => args[0] === 'error') as
 		| [string, (error: Error) => void]
 		| undefined;
@@ -70,7 +69,7 @@ describe('shell_execute tool', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform);
 	});
 
@@ -162,7 +161,7 @@ describe('shell_execute tool', () => {
 	});
 
 	it('kills the child and returns timedOut:true when timeout is exceeded', async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		const child = makeMockChild();
 		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
 
@@ -173,7 +172,7 @@ describe('shell_execute tool', () => {
 
 		await flushMicrotasks();
 
-		jest.advanceTimersByTime(1001);
+		vi.advanceTimersByTime(1001);
 
 		const result = await resultPromise;
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
@@ -188,7 +187,7 @@ describe('shell_execute tool', () => {
 		expect(parsed.exitCode).toBeNull();
 		expect(child.kill).toHaveBeenCalled();
 
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('resolves with an error result when spawn emits an error event', async () => {
