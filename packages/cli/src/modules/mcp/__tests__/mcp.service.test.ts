@@ -329,6 +329,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(NodeResourceExplorerService),
 				opts.postHogClient,
 			);
 
