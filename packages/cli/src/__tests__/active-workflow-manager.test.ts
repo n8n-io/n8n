@@ -108,9 +108,9 @@ describe('ActiveWorkflowManager', () => {
 				'should skip inactive workflow in `%s` activation mode',
 				async (mode) => {
 					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-					const addTriggersAndPollersSpy = jest.spyOn(
+					const addNonWebhookTriggersSpy = jest.spyOn(
 						activeWorkflowManager,
-						'addTriggersAndPollers',
+						'addNonWebhookTriggers',
 					);
 					workflowRepository.findById.mockResolvedValue(
 						mock<WorkflowEntity>({ active: false, activeVersionId: null, activeVersion: null }),
@@ -119,7 +119,7 @@ describe('ActiveWorkflowManager', () => {
 					const added = await activeWorkflowManager.add('some-id', mode);
 
 					expect(addWebhooksSpy).not.toHaveBeenCalled();
-					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(addNonWebhookTriggersSpy).not.toHaveBeenCalled();
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
@@ -128,9 +128,9 @@ describe('ActiveWorkflowManager', () => {
 				'should skip archived workflow in `%s` activation mode',
 				async (mode) => {
 					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-					const addTriggersAndPollersSpy = jest.spyOn(
+					const addNonWebhookTriggersSpy = jest.spyOn(
 						activeWorkflowManager,
-						'addTriggersAndPollers',
+						'addNonWebhookTriggers',
 					);
 					workflowRepository.findById.mockResolvedValue(
 						mock<WorkflowEntity>({
@@ -144,7 +144,7 @@ describe('ActiveWorkflowManager', () => {
 					const added = await activeWorkflowManager.add('archived-id', mode);
 
 					expect(addWebhooksSpy).not.toHaveBeenCalled();
-					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(addNonWebhookTriggersSpy).not.toHaveBeenCalled();
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
@@ -168,7 +168,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
-	describe('handleAddWebhooksTriggersAndPollers', () => {
+	describe('handleAddWebhooksAndNonWebhookTriggers', () => {
 		const push = mock<Push>();
 		const publisher = mock<Publisher>();
 
@@ -206,7 +206,7 @@ describe('ActiveWorkflowManager', () => {
 
 			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
 
-			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
 				workflowId: 'wf-1',
 				activeVersionId: 'v1',
 				activationMode: 'activate',
@@ -234,7 +234,7 @@ describe('ActiveWorkflowManager', () => {
 		test('should not include nodeId in broadcast when error has no node', async () => {
 			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
 
-			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
 				workflowId: 'wf-1',
 				activeVersionId: 'v1',
 				activationMode: 'activate',
