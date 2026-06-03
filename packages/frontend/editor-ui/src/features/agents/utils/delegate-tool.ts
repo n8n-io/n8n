@@ -23,7 +23,7 @@ const delegateOutputSchema = z.object({
 	// A failed delegation still RESOLVES the tool call (the SDK never throws for
 	// it), so the chat relies on `status`/`error` rather than the tool-call's
 	// own error flag to render it as a failure.
-	status: z.enum(['completed', 'failed']).optional(),
+	status: z.enum(['completed', 'failed', 'suspended']).optional(),
 	answer: z.string().optional(),
 	error: z.string().optional(),
 });

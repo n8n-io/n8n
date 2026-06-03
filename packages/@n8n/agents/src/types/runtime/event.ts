@@ -19,7 +19,7 @@ export interface SubAgentStartedPayload extends SubAgentLifecycleBase {
 }
 
 export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
-	status: 'completed' | 'failed';
+	status: 'completed' | 'failed' | 'suspended';
 	startedAt: number;
 	finishedAt: number;
 	durationMs: number;

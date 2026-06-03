@@ -325,4 +325,62 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			error: 'boom',
 		});
 	});
+
+	it('maps a suspended child result to suspended with pendingSuspend metadata', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-3',
+			messages: [
+				{
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'awaiting approval' }],
+				},
+			],
+			finishReason: 'tool-calls',
+			pendingSuspend: [
+				{
+					runId: 'child-run-3',
+					toolCallId: 'tool-call-1',
+					toolName: 'delete_file',
+					input: { path: '/tmp/foo.txt' },
+					suspendPayload: { message: 'Delete file?' },
+				},
+			],
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toEqual({
+			status: 'suspended',
+			taskPath: '/root/x_0',
+			runId: 'child-run-3',
+			answer: 'awaiting approval',
+			finishReason: 'tool-calls',
+			pendingSuspend: result.pendingSuspend,
+		});
+	});
+
+	it('prefers failed over suspended when the child result also has pendingSuspend', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-4',
+			messages: [],
+			finishReason: 'error',
+			error: new Error('child failed'),
+			pendingSuspend: [
+				{
+					runId: 'child-run-4',
+					toolCallId: 'tool-call-1',
+					toolName: 'delete_file',
+					input: {},
+					suspendPayload: {},
+				},
+			],
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			error: 'child failed',
+		});
+		expect(
+			generateResultToDelegateSubAgentOutput('/root/x_0', result).pendingSuspend,
+		).toBeUndefined();
+	});
 });

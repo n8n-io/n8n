@@ -73,7 +73,7 @@ function lastText(messages: AgentMessage[]): string {
 }
 
 function isDelegateOutput(value: unknown): value is {
-	status: 'completed' | 'failed';
+	status: 'completed' | 'failed' | 'suspended';
 	taskPath: string;
 	runId: string;
 	answer: string;

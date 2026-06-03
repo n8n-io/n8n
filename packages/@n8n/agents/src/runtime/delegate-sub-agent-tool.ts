@@ -51,7 +51,7 @@ const delegateSubAgentInputSchema = z.object({
 // returned object (not this schema) is what is actually sent back to the model,
 // so this is kept in sync with DelegateSubAgentToolOutput by hand.
 const delegateSubAgentOutputSchema = z.object({
-	status: z.enum(['completed', 'failed']),
+	status: z.enum(['completed', 'failed', 'suspended']),
 	taskPath: z.string().optional(),
 	runId: z.string().optional(),
 	threadId: z.string().optional(),
@@ -67,6 +67,18 @@ const delegateSubAgentOutputSchema = z.object({
 		.optional(),
 	finishReason: z.string().optional(),
 	error: z.string().optional(),
+	pendingSuspend: z
+		.array(
+			z.object({
+				runId: z.string(),
+				toolCallId: z.string(),
+				toolName: z.string(),
+				input: z.unknown(),
+				suspendPayload: z.unknown(),
+				resumeSchema: z.unknown().optional(),
+			}),
+		)
+		.optional(),
 });
 
 /** The arguments the LLM provides when calling delegate_subagent. */
@@ -112,7 +124,7 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 
 /** The result a delegation returns to the parent model and to lifecycle events. */
 export interface DelegateSubAgentToolOutput {
-	status: 'completed' | 'failed';
+	status: 'completed' | 'failed' | 'suspended';
 	/** Echoed back so consumers can correlate the result with the delegation. */
 	taskPath?: SubAgentTaskPath;
 	/** The child run's id, when the executor produced one. */
@@ -131,6 +143,8 @@ export interface DelegateSubAgentToolOutput {
 	finishReason?: FinishReason;
 	/** Present when status is 'failed'. */
 	error?: string;
+	/** Present when status is 'suspended' — child run paused awaiting tool resume. */
+	pendingSuspend?: GenerateResult['pendingSuspend'];
 }
 
 /**
@@ -453,14 +467,27 @@ export function renderDelegateSubAgentPrompt(request: {
 	return sections.join('\n\n');
 }
 
+function resolveDelegateSubAgentStatus(
+	result: GenerateResult,
+): DelegateSubAgentToolOutput['status'] {
+	if (result.finishReason === 'error' || result.error !== undefined) {
+		return 'failed';
+	}
+	if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
+		return 'suspended';
+	}
+	return 'completed';
+}
+
 /** Map an agent {@link GenerateResult} into the delegate tool's output shape. */
 export function generateResultToDelegateSubAgentOutput(
 	taskPath: SubAgentTaskPath,
 	result: GenerateResult,
 	threadId?: string,
 ): DelegateSubAgentToolOutput {
+	const status = resolveDelegateSubAgentStatus(result);
 	return {
-		status: result.finishReason === 'error' || result.error !== undefined ? 'failed' : 'completed',
+		status,
 		taskPath,
 		runId: result.runId,
 		...(threadId !== undefined ? { threadId } : {}),
@@ -478,6 +505,9 @@ export function generateResultToDelegateSubAgentOutput(
 			: {}),
 		...(result.finishReason !== undefined ? { finishReason: result.finishReason } : {}),
 		...(result.error !== undefined ? { error: stringifyUnknown(result.error) } : {}),
+		...(status === 'suspended' && result.pendingSuspend !== undefined
+			? { pendingSuspend: result.pendingSuspend }
+			: {}),
 	};
 }
 
