@@ -73,8 +73,8 @@ const delegateSubAgentOutputSchema = z.object({
 export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
 
 /**
- * Limits the delegate tool enforces structurally for a delegation: nesting
- * depth, fan-out, and the on/off switch (see {@link SubAgentTaskPathPolicy}).
+ * Limits the delegate tool enforces structurally for a delegation: fan-out
+ * and the on/off switch (see {@link SubAgentTaskPathPolicy}).
  *
  * Per-run runtime constraints (e.g. a wall-clock timeout) are intentionally not
  * here — they're a host concern, enforced inside the `runSubAgent` callback (as
@@ -89,7 +89,7 @@ export type DelegateSubAgentPolicy = SubAgentTaskPathPolicy;
  * execution context and are used for tracing/linkage, not required to run.
  */
 export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
-	/** Hierarchical id assigned to this delegation (e.g. `/root/research_api`). */
+	/** Direct child path assigned to this delegation (e.g. `/root/research_api_0`). */
 	taskPath: SubAgentTaskPath;
 	/** Parent run id (`ctx.runId`), e.g. for memory scoping / correlation. */
 	parentRunId?: string;

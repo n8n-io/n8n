@@ -48,7 +48,7 @@ function stepLabel(tc: ToolCall): string {
 function rowSummary(tc: ToolCall): string | undefined {
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
-		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todoCount);
+		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todos.length);
 	}
 	if (tc.displaySummary) return tc.displaySummary;
 	return undefined;

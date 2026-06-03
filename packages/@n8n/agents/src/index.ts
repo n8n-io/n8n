@@ -219,17 +219,7 @@ export type {
 	DelegateSubAgentRequest,
 	DelegateSubAgentToolOutput,
 } from './runtime/delegate-sub-agent-tool';
-export {
-	WRITE_TODOS_TOOL_NAME,
-	createWriteTodosTool,
-	todoItemSchema,
-} from './runtime/write-todos-tool';
-export type {
-	TodoItem,
-	TodoStatus,
-	WriteTodosInput,
-	WriteTodosOutput,
-} from './runtime/write-todos-tool';
+export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 export {

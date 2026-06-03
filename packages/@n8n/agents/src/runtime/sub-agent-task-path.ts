@@ -2,11 +2,10 @@
  * Task paths for sub-agent delegation.
  *
  * A "task path" is a filesystem-like address that gives every agent run a
- * stable, human-readable position in the delegation tree, e.g.:
+ * stable, human-readable position in the delegation flow, e.g.:
  *
- *   /root                                      ← the top-level (orchestrating) agent
- *   /root/research_api_0                       ← the agent's first delegation
- *   /root/research_api_0/compare_pricing_0     ← a grandchild that child delegated to
+ *   /root                ← the top-level (orchestrating) agent
+ *   /root/research_api_0 ← a direct child delegation from the orchestrator
  *
  * Each child segment carries the parent's 0-based child index (`_0`, `_1`, …) so
  * that delegations with the same task name stay distinct.
@@ -25,11 +24,11 @@
  */
 
 /**
- * A delegation task path: always begins at `/root`, followed by zero or more
- * `/segment` parts. Modeled as a template-literal type so a plain string can be
- * narrowed to a validated path via {@link assertSubAgentTaskPath}.
+ * A delegation task path: `/root` or a single direct-child segment under `/root`.
+ * Modeled as a template-literal type so a plain string can be narrowed to a
+ * validated path via {@link assertSubAgentTaskPath}.
  */
-export type SubAgentTaskPath = `/root${'' | `/${string}`}`;
+export type SubAgentTaskPath = '/root' | `/root/${string}`;
 
 /**
  * Guardrails applied when a parent tries to spawn a child sub-agent. Every limit
@@ -42,13 +41,13 @@ export interface SubAgentTaskPathPolicy {
 	canSpawnSubAgents?: boolean;
 }
 
-/** Top of the tree — the path of the initiating (orchestrating) agent, depth 0. */
+/** Path of the initiating (orchestrating) agent. */
 export const ROOT_SUB_AGENT_TASK_PATH = '/root' satisfies SubAgentTaskPath;
 
 /** Upper bound on a single path segment, so paths stay bounded and readable. */
 const MAX_TASK_NAME_LENGTH = 64;
-/** A valid path is `/root` plus zero or more lowercase alphanumeric/underscore segments. */
-const SUB_AGENT_TASK_PATH_PATTERN = /^\/root(?:\/[a-z0-9_]+)*$/;
+/** A valid path is `/root` or `/root` plus one lowercase alphanumeric/underscore segment. */
+const SUB_AGENT_TASK_PATH_PATTERN = /^\/root(?:\/[a-z0-9_]+)?$/;
 
 /**
  * Turn a free-text, model-supplied task name (e.g. "Research API pricing!")
@@ -79,7 +78,7 @@ export function sanitizeSubAgentTaskName(taskName: string): string {
 	return sanitized;
 }
 
-/** Type guard: does this string match the `/root[/segment]*` shape? */
+/** Type guard: does this string match `/root` or `/root/<segment>`? */
 export function isSubAgentTaskPath(value: string): value is SubAgentTaskPath {
 	return SUB_AGENT_TASK_PATH_PATTERN.test(value);
 }
@@ -87,7 +86,7 @@ export function isSubAgentTaskPath(value: string): value is SubAgentTaskPath {
 /**
  * Assert (and type-narrow) that a string is a valid task path. Used to validate
  * paths that were constructed here or received from elsewhere before we rely on
- * their shape (e.g. before computing depth).
+ * their shape.
  */
 export function assertSubAgentTaskPath(value: string): asserts value is SubAgentTaskPath {
 	if (!isSubAgentTaskPath(value)) {

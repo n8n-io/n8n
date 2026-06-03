@@ -97,6 +97,26 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
 	});
 
+	it('uses todos.length for summary when todoCount disagrees with the list', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: WRITE_TODOS_TOOL_NAME,
+				toolCallId: 'tc-todos-mismatch',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'ok',
+					todoCount: 5,
+					todos: [
+						{ id: 'a', content: 'First task', status: 'pending' },
+						{ id: 'b', content: 'Second task', status: 'pending' },
+					],
+				},
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('2 tasks');
+	});
+
 	it('uses singular summary for one write_todos task even when displaySummary is plural', async () => {
 		const wrapper = mountSteps([
 			{

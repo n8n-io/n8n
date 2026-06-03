@@ -22,7 +22,7 @@ const todoDelegateHintSchema = z
 	})
 	.optional();
 
-export const todoItemSchema = z.object({
+const todoItemSchema = z.object({
 	id: z.string().min(1).describe('Stable identifier for this task within the current plan.'),
 	content: z.string().min(1).describe('Concrete, self-contained task description.'),
 	status: todoStatusSchema,
@@ -54,11 +54,6 @@ const writeTodosOutputSchema = z.object({
 	todoCount: z.number(),
 	todos: z.array(todoItemSchema),
 });
-
-export type TodoItem = z.infer<typeof todoItemSchema>;
-export type TodoStatus = z.infer<typeof todoStatusSchema>;
-export type WriteTodosInput = z.infer<typeof writeTodosInputSchema>;
-export type WriteTodosOutput = z.infer<typeof writeTodosOutputSchema>;
 
 const WRITE_TODOS_DESCRIPTION =
 	'Create or update a structured task list for complex agent work. Use it to decompose a larger request into concrete workstreams, track progress, and identify which tasks should be handled separately with delegate_subagent. Do not use it for trivial work, single-step tasks, or purely conversational answers. This tool only updates the task list; it does not run sub-agents or answer the user.';

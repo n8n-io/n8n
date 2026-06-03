@@ -20,10 +20,10 @@ describe('sub-agent task paths', () => {
 		expect(() => sanitizeSubAgentTaskName('!!!')).toThrow('task name');
 	});
 
-	it('recognizes valid rooted task paths', () => {
+	it('recognizes root and first-level child task paths', () => {
 		expect(isSubAgentTaskPath(ROOT_SUB_AGENT_TASK_PATH)).toBe(true);
 		expect(isSubAgentTaskPath('/root/research')).toBe(true);
-		expect(isSubAgentTaskPath('/root/research/check_tests')).toBe(true);
+		expect(isSubAgentTaskPath('/root/research_api_0')).toBe(true);
 	});
 
 	it('rejects malformed task paths', () => {
@@ -36,6 +36,7 @@ describe('sub-agent task paths', () => {
 			'/root/../child',
 			'/Root/child',
 			'/root/child with spaces',
+			'/root/research/check_tests',
 		]) {
 			expect(isSubAgentTaskPath(path)).toBe(false);
 			expect(() => assertSubAgentTaskPath(path)).toThrow('Invalid sub-agent task path');
