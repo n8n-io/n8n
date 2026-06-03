@@ -35,7 +35,6 @@ vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
 	return {
 		...actual,
 		useWorkflowState: vi.fn(() => ({
-			getNewWorkflowDataAndMakeShareable: vi.fn(),
 			setActiveExecutionId: vi.fn(),
 			resetState: vi.fn(),
 		})),

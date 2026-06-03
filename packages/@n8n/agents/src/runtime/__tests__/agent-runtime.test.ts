@@ -9,7 +9,7 @@ import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
-import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
+import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
 import { AgentEventBus } from '../event-bus';
@@ -135,6 +135,60 @@ async function collectChunks(stream: ReadableStream<unknown>): Promise<StreamChu
 function makeStreamSuccess(text = 'Hello') {
 	return {
 		fullStream: makeChunkStream([{ type: 'text-delta', textDelta: text }]),
+		finishReason: Promise.resolve('stop'),
+		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+		response: Promise.resolve({
+			messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
+		}),
+		toolCalls: Promise.resolve([]),
+	};
+}
+
+/**
+ * streamText response where the model invokes a provider-executed tool (e.g.
+ * native web search): the SDK streams a `tool-call` and its terminal part
+ * (`tool-result` on success, `tool-error` on failure) with `providerExecuted`,
+ * then finishes with `stop` (the provider runs the tool server-side mid-step).
+ */
+function makeStreamWithProviderTool(opts: {
+	toolCallId: string;
+	toolName: string;
+	input: unknown;
+	output?: unknown;
+	error?: unknown;
+	text?: string;
+}) {
+	const terminal =
+		opts.error !== undefined
+			? {
+					type: 'tool-error',
+					toolCallId: opts.toolCallId,
+					toolName: opts.toolName,
+					input: opts.input,
+					error: opts.error,
+					providerExecuted: true,
+				}
+			: {
+					type: 'tool-result',
+					toolCallId: opts.toolCallId,
+					toolName: opts.toolName,
+					input: opts.input,
+					output: opts.output,
+					providerExecuted: true,
+				};
+	const text = opts.text ?? 'done';
+	return {
+		fullStream: makeChunkStream([
+			{
+				type: 'tool-call',
+				toolCallId: opts.toolCallId,
+				toolName: opts.toolName,
+				input: opts.input,
+				providerExecuted: true,
+			},
+			terminal,
+			{ type: 'text-delta', textDelta: text },
+		]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 		response: Promise.resolve({
@@ -1435,6 +1489,80 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(finishChunks.length).toBe(1);
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
 	});
+
+	it('bridges subagent lifecycle events from tool context into stream chunks', async () => {
+		const lifecycleTool: BuiltTool = {
+			name: 'delegate_subagent',
+			description: 'Delegate work',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async (_input, ctx) => {
+				const toolCtx = ctx as ToolContext;
+				const base = {
+					taskName: 'Research API',
+					taskPath: '/root/research_api',
+					...(toolCtx.runId !== undefined ? { parentRunId: toolCtx.runId } : {}),
+					...(toolCtx.toolCallId !== undefined ? { parentToolCallId: toolCtx.toolCallId } : {}),
+				};
+				toolCtx.emitEvent?.({
+					type: AgentEvent.SubAgentStarted,
+					...base,
+					startedAt: 100,
+				});
+				toolCtx.emitEvent?.({
+					type: AgentEvent.SubAgentCompleted,
+					...base,
+					status: 'completed',
+					startedAt: 100,
+					finishedAt: 200,
+					durationMs: 100,
+					runId: 'child-run-1',
+					finishReason: 'stop',
+				});
+				return await Promise.resolve({ ok: true });
+			},
+		};
+		const { runtime } = createRuntimeWithTools([lifecycleTool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'delegate_subagent',
+									args: { value: 'a' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'delegate_subagent', input: { value: 'a' } },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('done'));
+
+		const { stream: readableStream } = await runtime.stream('run tools');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'subagent-started', taskPath: '/root/research_api' }),
+				expect.objectContaining({
+					type: 'subagent-completed',
+					status: 'completed',
+					runId: 'child-run-1',
+				}),
+			]),
+		);
+	});
 });
 
 // Structured output — generate()
@@ -1515,6 +1643,80 @@ describe('AgentRuntime.generate() — structured output', () => {
 
 		expect(result.structuredOutput).toEqual(expected);
 		expect(result.finishReason).toBe('stop');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Provider-executed tool timing — stream()
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — provider-executed tool timing', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('emits tool-execution-start/end for a provider-executed tool result', async () => {
+		streamText.mockReturnValue(
+			makeStreamWithProviderTool({
+				toolCallId: 'tc-ws',
+				toolName: 'web_search',
+				input: { query: 'n8n' },
+				output: [{ url: 'https://n8n.io' }],
+			}),
+		);
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('search please');
+		const chunks = await collectChunks(stream);
+
+		const start = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-execution-start' }> =>
+				c.type === 'tool-execution-start' && c.toolCallId === 'tc-ws',
+		);
+		const end = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-execution-end' }> =>
+				c.type === 'tool-execution-end' && c.toolCallId === 'tc-ws',
+		);
+
+		expect(start).toBeDefined();
+		expect(start?.toolName).toBe('web_search');
+		expect(typeof start?.startTime).toBe('number');
+
+		expect(end).toBeDefined();
+		expect(end?.isError).toBe(false);
+		expect(typeof end?.endTime).toBe('number');
+	});
+
+	it('emits tool-execution-end with isError on a provider-executed tool error', async () => {
+		streamText.mockReturnValue(
+			makeStreamWithProviderTool({
+				toolCallId: 'tc-ws-err',
+				toolName: 'web_search',
+				input: { query: 'n8n' },
+				error: new Error('search failed'),
+			}),
+		);
+		const { runtime } = createRuntime();
+
+		const { stream } = await runtime.stream('search please');
+		const chunks = await collectChunks(stream);
+
+		const end = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-execution-end' }> =>
+				c.type === 'tool-execution-end' && c.toolCallId === 'tc-ws-err',
+		);
+
+		expect(end).toBeDefined();
+		expect(end?.isError).toBe(true);
+		expect(typeof end?.endTime).toBe('number');
+
+		const toolResult = chunks.find(
+			(c): c is Extract<StreamChunk, { type: 'tool-result' }> =>
+				c.type === 'tool-result' && c.toolCallId === 'tc-ws-err',
+		);
+		expect(toolResult).toBeDefined();
+		expect(toolResult?.isError).toBe(true);
+		expect(toolResult?.output).toEqual(new Error('search failed'));
 	});
 });
 

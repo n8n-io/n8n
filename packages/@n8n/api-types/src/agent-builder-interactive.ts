@@ -83,7 +83,7 @@ export const askQuestionInputSchema = z.object({
 	options: z
 		.array(askQuestionOptionSchema)
 		.describe(
-			'Choices to present. Pass an empty array for an open-ended question (the card shows only a freeform input). With a single option the tool auto-resolves to that option without rendering a card.',
+			'Choices to present. Pass an empty array for an open-ended question (the card shows only a freeform input). With a single non-multiple option the tool auto-resolves to that option without rendering a card.',
 		),
 	allowMultiple: z
 		.boolean()

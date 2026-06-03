@@ -51,6 +51,11 @@ export interface CliArgs {
 	 *  wire-server interception path. Useful for A/B comparison or when a
 	 *  specific root needs to stay on the pinned baseline. CSV of node names. */
 	pinAiRoots?: string[];
+	/** Filter test cases by the `datasets` field (e.g. `pr`, `full`). When set,
+	 *  only test cases whose `datasets` array contains this value will run, and
+	 *  LangSmith examples are queried via the matching split. Defaults to
+	 *  unset → run everything matched by `--filter` / `--exclude`. */
+	tier?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +78,7 @@ const cliArgsSchema = z.object({
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
 	pinAiRoots: z.array(z.string().min(1)).optional(),
+	tier: z.string().min(1).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -99,6 +105,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
 		pinAiRoots: validated.pinAiRoots,
+		tier: validated.tier,
 	};
 }
 
@@ -122,6 +129,7 @@ interface RawArgs {
 	experimentName?: string;
 	iterations: number;
 	pinAiRoots?: string[];
+	tier?: string;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -224,6 +232,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 			}
+
+			case '--tier':
+				result.tier = nextArg(argv, i, '--tier');
+				i++;
+				break;
 
 			default:
 				// Fail loudly on unknown flags. Strip any =value payload before

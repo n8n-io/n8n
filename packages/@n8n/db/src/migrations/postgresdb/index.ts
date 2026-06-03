@@ -197,6 +197,9 @@ import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-Crea
 import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
 import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
 import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
+import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
+import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -399,4 +402,7 @@ export const postgresMigrations: Migration[] = [
 	AddCustomTelemetryTagsToProject1784000000019,
 	CreateWorkflowPublicationOutboxTable1784000000020,
 	CreateAgentTaskDefinitionTable1784000000021,
+	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
+	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	AddResourceToOAuthAuthorizationCodes1784000000024,
 ];

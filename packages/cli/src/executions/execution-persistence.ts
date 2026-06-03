@@ -372,14 +372,16 @@ export class ExecutionPersistence {
 				if ((result.affected ?? 0) === 0) return false;
 			} else if (conditions) {
 				// No entity columns to update, but the caller still requested a guarded write.
-				// Re-verify the conditions inside the transaction so a data-only update can't slip
-				// past a `requireStatus` / `requireNotFinished` / `requireNotCanceled` check.
-				// TODO(CAT-3212): In Postgres this COUNT alone does not prevent a concurrent
-				// transaction from changing the row's status between the check and the data write —
-				// a row-level lock (e.g. `SELECT ... FOR UPDATE`) is required for true race-safety.
-				// SQLite is unaffected because `BEGIN` already takes an exclusive write lock.
-				const matchingRows = await tx.count(ExecutionEntity, { where: whereCondition });
-				if (matchingRows === 0) return false;
+				const lock =
+					this.databaseConfig.type === 'postgresdb'
+						? { mode: 'pessimistic_write' as const }
+						: undefined;
+				const matchingRow = await tx.findOne(ExecutionEntity, {
+					where: whereCondition,
+					select: ['id'],
+					lock,
+				});
+				if (!matchingRow) return false;
 			}
 
 			// TODO(CAT-3213): callers may supply only `data` or only `workflowData`, so we read
