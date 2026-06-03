@@ -104,8 +104,6 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	 * cancelling the parent run also cancels the delegated work.
 	 */
 	parentAbortSignal?: AbortSignal;
-	/** Parent's own task path (this child's path is derived from it). */
-	parentTaskPath?: SubAgentTaskPath;
 	/** How many siblings the parent already spawned before this one (0-based). */
 	childCount: number;
 	/** Effective policy for this delegation. */
@@ -150,11 +148,6 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * model selects one by passing its id as `subAgentId`.
 	 */
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
-	/**
-	 * This (parent) agent's own task path; child paths are derived from it. Omit
-	 * for a top-level agent — children then hang off `/root`.
-	 */
-	parentTaskPath?: SubAgentTaskPath;
 	/** Fan-out limits and spawn switch enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
 	/** Run the child for this delegation and return its result. */
@@ -213,7 +206,6 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...(options.availableSubAgents !== undefined
 					? { availableSubAgents: options.availableSubAgents }
 					: {}),
-				...(options.parentTaskPath !== undefined ? { parentTaskPath: options.parentTaskPath } : {}),
 				...(options.policy !== undefined ? { policy: options.policy } : {}),
 				...(options.runSubAgent !== undefined ? { runSubAgent: options.runSubAgent } : {}),
 			} satisfies DelegateSubAgentToolMetadata,
@@ -244,7 +236,7 @@ function formatAvailableSubAgents(
 }
 
 /**
- * Tool handler: enforce policy (depth + fan-out), assign the child's task path,
+ * Tool handler: enforce policy (fan-out), assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
  * parent tool context, then run the child via the host `runSubAgent` callback
  * while emitting started/progress/completed lifecycle events. Any error is
@@ -261,13 +253,12 @@ async function handleDelegateSubAgent(
 	let request: DelegateSubAgentRequest | undefined;
 	let startedAt: number | undefined;
 	try {
-		const parentTaskPath = options.parentTaskPath;
 		assertSubAgentPolicyAllowsChild(options.policy);
-		const childCountKey = getChildCountKey(ctx, parentTaskPath);
+		const childCountKey = getChildCountKey(ctx);
 		const childCount = childCounts.get(childCountKey) ?? 0;
 		assertSubAgentPolicyAllowsChildCount(childCount, options.policy);
 
-		taskPath = createChildSubAgentTaskPath(parentTaskPath, input.taskName, childCount);
+		taskPath = createChildSubAgentTaskPath(input.taskName, childCount);
 		childCounts.set(childCountKey, childCount + 1);
 
 		request = {
@@ -283,7 +274,6 @@ async function handleDelegateSubAgent(
 				: {}),
 			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
-			...(parentTaskPath !== undefined ? { parentTaskPath } : {}),
 			...(options.policy !== undefined ? { policy: options.policy } : {}),
 		};
 
@@ -366,8 +356,8 @@ function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
 	};
 }
 
-function getChildCountKey(ctx: ToolContext, parentTaskPath: SubAgentTaskPath | undefined): string {
-	return ctx.runId ?? ctx.persistence?.threadId ?? parentTaskPath ?? 'adhoc';
+function getChildCountKey(ctx: ToolContext): string {
+	return ctx.runId ?? ctx.persistence?.threadId ?? 'adhoc';
 }
 
 function stringifyUnknown(value: unknown): string {

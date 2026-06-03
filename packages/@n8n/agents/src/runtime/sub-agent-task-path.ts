@@ -96,25 +96,17 @@ export function assertSubAgentTaskPath(value: string): asserts value is SubAgent
 }
 
 /**
- * Build a child path by appending `<sanitized task name>_<childCount>` to the
- * parent path (defaulting to `/root` when there is no parent — i.e. the first
- * level of delegation). This is how the tree grows: every delegate call extends
- * its parent's path by exactly one segment.
+ * Build a first-level child path: `/root/<sanitized task name>_<childCount>`.
  *
  * `childCount` is the parent's 0-based index for this child (the number of
  * children it had already spawned). Appending it disambiguates same-named
- * siblings within a single parent run, keeping each delegation's path — and the
- * memory scope derived from it — unique even when the model reuses a task name.
+ * siblings within a single parent run.
  */
 export function createChildSubAgentTaskPath(
-	parentPath: SubAgentTaskPath | undefined,
 	taskName: string,
 	childCount: number,
 ): SubAgentTaskPath {
-	const parent = parentPath ?? ROOT_SUB_AGENT_TASK_PATH;
-	assertSubAgentTaskPath(parent);
-
-	const childPath = `${parent}/${sanitizeSubAgentTaskName(taskName)}_${childCount}`;
+	const childPath = `${ROOT_SUB_AGENT_TASK_PATH}/${sanitizeSubAgentTaskName(taskName)}_${childCount}`;
 	assertSubAgentTaskPath(childPath);
 
 	return childPath;

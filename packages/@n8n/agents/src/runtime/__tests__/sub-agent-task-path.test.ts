@@ -43,15 +43,13 @@ describe('sub-agent task paths', () => {
 	});
 
 	it('creates child paths with the parent child index appended', () => {
-		expect(createChildSubAgentTaskPath(undefined, 'Research API', 0)).toBe('/root/research_api_0');
-		expect(createChildSubAgentTaskPath('/root/research_api_0', 'Check tests', 1)).toBe(
-			'/root/research_api_0/check_tests_1',
-		);
+		expect(createChildSubAgentTaskPath('Research API', 0)).toBe('/root/research_api_0');
+		expect(createChildSubAgentTaskPath('Check tests', 1)).toBe('/root/check_tests_1');
 	});
 
 	it('disambiguates same-named siblings by child index', () => {
-		const first = createChildSubAgentTaskPath('/root', 'research', 0);
-		const second = createChildSubAgentTaskPath('/root', 'research', 1);
+		const first = createChildSubAgentTaskPath('research', 0);
+		const second = createChildSubAgentTaskPath('research', 1);
 		expect(first).toBe('/root/research_0');
 		expect(second).toBe('/root/research_1');
 		expect(first).not.toBe(second);
