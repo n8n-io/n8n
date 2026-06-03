@@ -1,14 +1,16 @@
+import type { Mocked } from 'vitest';
+
 import type { PlannedTaskStorage } from '../../storage/planned-task-storage';
 import type { PlannedTask, PlannedTaskGraph, PlannedTaskRecord } from '../../types';
 import { PlannedTaskCoordinator } from '../planned-task-service';
 
-function makeStorage(): jest.Mocked<PlannedTaskStorage> {
+function makeStorage(): Mocked<PlannedTaskStorage> {
 	return {
-		get: jest.fn(),
-		save: jest.fn(),
-		update: jest.fn(),
-		clear: jest.fn(),
-	} as unknown as jest.Mocked<PlannedTaskStorage>;
+		get: vi.fn(),
+		save: vi.fn(),
+		update: vi.fn(),
+		clear: vi.fn(),
+	} as unknown as Mocked<PlannedTaskStorage>;
 }
 
 function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
@@ -44,11 +46,11 @@ function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTask
 }
 
 describe('PlannedTaskCoordinator', () => {
-	let storage: jest.Mocked<PlannedTaskStorage>;
+	let storage: Mocked<PlannedTaskStorage>;
 	let coordinator: PlannedTaskCoordinator;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		storage = makeStorage();
 		coordinator = new PlannedTaskCoordinator(storage);
 	});
