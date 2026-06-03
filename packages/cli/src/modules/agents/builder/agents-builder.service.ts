@@ -121,7 +121,7 @@ export class AgentsBuilderService {
 	 * message. No-op if no build stream is currently in progress for this agent.
 	 */
 	steerBuilderAgent(agentId: string, projectId: string, userId: string, message: string): boolean {
-		return this.agentsRuntimeService.requestAgentStreamSteer(
+		return this.agentsRuntimeService.requestAgentStreamAbort(
 			builderRuntimeCacheKey({ projectId, agentId, userId }),
 			message,
 		);

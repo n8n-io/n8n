@@ -212,15 +212,15 @@ export class AgentsRuntimeService {
 		};
 	}
 
-	requestAgentStreamSteer(streamKey: string, message: string): boolean {
-		const aborted = this.abortLocalAgentStream(streamKey, message);
-		this.publishAgentStreamAbort(streamKey, message);
-		return aborted;
-	}
-
-	requestAgentStreamAbort(streamKey: string): boolean {
-		const aborted = this.abortLocalAgentStream(streamKey);
-		this.publishAgentStreamAbort(streamKey);
+	/**
+	 * Aborts the local agent stream and publishes a command to abort the stream in multi-main mode.
+	 * @param streamKey - The key of the agent stream to abort.
+	 * @param steerMessage - The optional message to steer the agent with.
+	 * @returns True if **local** agent stream was aborted, false otherwise.
+	 */
+	requestAgentStreamAbort(streamKey: string, steerMessage?: string): boolean {
+		const aborted = this.abortLocalAgentStream(streamKey, steerMessage);
+		this.publishAgentStreamAbort(streamKey, steerMessage);
 		return aborted;
 	}
 

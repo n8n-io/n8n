@@ -2744,7 +2744,7 @@ describe('AgentsService', () => {
 		it('aborts a local active stream and stores the steering message', () => {
 			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
 
-			service.requestAgentStreamSteer('stream-key', 'new message');
+			service.requestAgentStreamAbort('stream-key', 'new message');
 
 			expect(control.wasAborted()).toBe(true);
 			expect(control.takePendingSteerMessage()).toBe('new message');
@@ -2755,7 +2755,7 @@ describe('AgentsService', () => {
 			enableMultiMain();
 			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
 
-			service.requestAgentStreamSteer('stream-key', 'new message');
+			service.requestAgentStreamAbort('stream-key', 'new message');
 
 			expect(control.wasAborted()).toBe(true);
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
@@ -2767,7 +2767,7 @@ describe('AgentsService', () => {
 		it('returns false for multi-main steer requests when no local stream was aborted', () => {
 			enableMultiMain();
 
-			const interrupted = service.requestAgentStreamSteer('missing-stream-key', 'new message');
+			const interrupted = service.requestAgentStreamAbort('missing-stream-key', 'new message');
 
 			expect(interrupted).toBe(false);
 			expect(publisher.publishCommand).toHaveBeenCalledWith({

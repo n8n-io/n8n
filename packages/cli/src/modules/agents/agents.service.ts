@@ -238,12 +238,8 @@ interface SaveCredentialIntegrationOptions {
 
 @Service()
 export class AgentsService {
-	requestAgentStreamSteer(streamKey: string, message: string): boolean {
-		return this.agentsRuntimeService.requestAgentStreamSteer(streamKey, message);
-	}
-
-	requestAgentStreamAbort(streamKey: string): boolean {
-		return this.agentsRuntimeService.requestAgentStreamAbort(streamKey);
+	requestAgentStreamAbort(streamKey: string, steerMessage?: string): boolean {
+		return this.agentsRuntimeService.requestAgentStreamAbort(streamKey, steerMessage);
 	}
 
 	constructor(
@@ -1436,7 +1432,7 @@ export class AgentsService {
 		threadId: string,
 		message: string,
 	): boolean {
-		return this.requestAgentStreamSteer(
+		return this.requestAgentStreamAbort(
 			testChatAgentStreamKey(projectId, agentId, userId, threadId),
 			message,
 		);
