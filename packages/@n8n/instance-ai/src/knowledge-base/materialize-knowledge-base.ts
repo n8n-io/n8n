@@ -100,6 +100,10 @@ function addTemplatesToKnowledgeBaseFiles(
 	const templatesIndexPath = posixJoin(templatesDir, KNOWLEDGE_BASE_INDEX_FILE);
 	files.set(templatesIndexPath, stringifyWorkspaceJson(templatesIndex));
 
+	// The decompressed archive has been copied into `files`; release the
+	// intermediate map so the duplicate copy isn't held until GC.
+	extracted.clear();
+
 	return templatesIndex.entries;
 }
 
