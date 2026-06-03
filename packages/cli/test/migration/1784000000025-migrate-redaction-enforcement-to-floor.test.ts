@@ -75,9 +75,9 @@ describe('MigrateRedactionEnforcementToFloor Migration', () => {
 		['{"enforced":false,"manual":false,"production":false}', 'off'],
 		['{"enforced":true,"manual":false,"production":true}', 'production'],
 		['{"enforced":true,"manual":true,"production":true}', 'all'],
-		// Unreachable-but-storable combination normalises upward (mirrors the retired mapper).
+		// Impossible-but-storable combinations normalise up to the strictest 'all'.
 		['{"enforced":true,"manual":true,"production":false}', 'all'],
-		['{"enforced":true,"manual":false,"production":false}', 'production'],
+		['{"enforced":true,"manual":false,"production":false}', 'all'],
 	])('maps stored boolean shape %s to floor "%s"', async (stored, expected) => {
 		const value = await migrateValue(stored);
 		expect(value).toBe(JSON.stringify(expected));

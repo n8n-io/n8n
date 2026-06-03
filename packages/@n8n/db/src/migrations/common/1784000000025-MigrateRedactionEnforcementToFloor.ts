@@ -18,11 +18,13 @@ interface BooleanSettings {
  * Migrates the stored redaction enforcement setting from the boolean triple
  * `{ enforced, manual, production }` to the floor enum `'off' | 'production' | 'all'`.
  *
- * Mapping (mirrors the controller-boundary mapper this change retires):
- *   - `enforced: false`                       -> 'off'
- *   - `enforced: true,  manual: false`        -> 'production'
- *   - `enforced: true,  manual: true`         -> 'all'
- *   - unparseable / malformed                 -> 'all' (strictest, safe fallback)
+ * Only the three combinations the API could produce map to a floor; every other
+ * (impossible) combination normalises up to the strictest `'all'` — never weaker
+ * than what was stored:
+ *   - `enforced: false`                                  -> 'off'
+ *   - `{ enforced: true, manual: false, production: true }` -> 'production'
+ *   - `{ enforced: true, manual: true,  production: true }` -> 'all'
+ *   - anything else (impossible tuple, unparseable, malformed) -> 'all'
  *
  * The value is stored as a JSON-encoded string (e.g. the literal `"off"`), matching
  * how the service serialises it, so the read path stays unchanged.
@@ -77,9 +79,12 @@ export class MigrateRedactionEnforcementToFloor1784000000025 implements Irrevers
 
 		if (!this.isBooleanSettings(parsed)) return 'all';
 
+		// Map only the API-producible combinations; every other (impossible)
+		// enforced combination — including `{ manual: false, production: false }`
+		// and `{ manual: true, production: false }` — normalises up to 'all'.
 		if (!parsed.enforced) return 'off';
-		if (parsed.manual) return 'all';
-		return 'production';
+		if (!parsed.manual && parsed.production) return 'production';
+		return 'all';
 	}
 
 	private isBooleanSettings(value: unknown): value is BooleanSettings {
