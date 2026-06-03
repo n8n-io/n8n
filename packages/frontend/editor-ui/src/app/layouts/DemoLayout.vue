@@ -3,7 +3,7 @@ import { computed, provide, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
+import { WorkflowStateKey } from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
@@ -31,16 +31,12 @@ const {
 	initializeData,
 	initializeWorkflow,
 	currentWorkflowDocumentStore,
-	currentNDVStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
-
-provide(NDVStoreKey, currentNDVStore);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
-	currentNDVStore,
 });
 
 useReportWorkflowFailuresToParent();
@@ -87,7 +83,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView v-if="currentWorkflowDocumentStore && currentNDVStore" />
+		<RouterView v-if="currentWorkflowDocumentStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>

@@ -5,7 +5,8 @@ import { Network } from 'testcontainers';
 import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
-import { createN8NInstances } from './services/n8n';
+import type { N8NStartupDiagnostics } from './services/n8n';
+import { createN8NInstances, N8NStartupError } from './services/n8n';
 import { helperFactories, services } from './services/registry';
 import type {
 	FileToMount,
@@ -18,6 +19,7 @@ import type {
 	StackConfig,
 	StartContext,
 } from './services/types';
+import { recordStartupFailure } from './startup-diagnostics';
 import { createTelemetryRecorder } from './telemetry';
 
 const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
@@ -37,6 +39,7 @@ export interface N8NStack {
 	stopContainer: (namePattern: string | RegExp) => Promise<StoppedTestContainer | null>;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
+	startupDiagnostics: N8NStartupDiagnostics;
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
@@ -83,6 +86,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		workerResourceQuota,
 		services: enabledServices = [],
 		external = false,
+		networkName,
 	} = config;
 
 	const log = createElapsedLogger('stack');
@@ -112,7 +116,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	let network: StartedNetwork;
 	try {
 		const networkStart = performance.now();
-		network = await new Network().start();
+		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
+		network = await new Network(uuid).start();
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -327,9 +332,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				return container ? await container.stop() : null;
 			},
 			mainUrls,
+			startupDiagnostics: n8nResult.diagnostics,
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
+		if (error instanceof N8NStartupError) {
+			recordStartupFailure(uniqueProjectName, error.diagnostics, message);
+		}
 		telemetry.flush(false, message);
 		throw error;
 	}

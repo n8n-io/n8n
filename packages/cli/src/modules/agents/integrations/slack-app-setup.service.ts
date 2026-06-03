@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type {
-	AgentCredentialIntegrationConfig,
+	AgentIntegrationConfig,
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifest,
 	SlackAgentAppManifestResponse,
@@ -31,8 +31,12 @@ const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 const REQUIRED_BOT_EVENTS = [
 	'app_mention',
+	'assistant_thread_started',
 	'assistant_thread_context_changed',
+	'message.channels',
+	'message.groups',
 	'message.im',
+	'message.mpim',
 ] as const;
 
 const REQUIRED_BOT_SCOPES = [
@@ -46,10 +50,12 @@ const REQUIRED_BOT_SCOPES = [
 	'chat:write.customize',
 	'files:read',
 	'files:write',
+	'groups:history',
 	'groups:read',
 	'im:history',
 	'im:read',
 	'im:write',
+	'mpim:history',
 	'mpim:read',
 	'mpim:write',
 	'search:read.public',
@@ -248,7 +254,7 @@ export class SlackAppSetupService {
 		const integration = {
 			type: 'slack',
 			credentialId: credential.id,
-		} satisfies AgentCredentialIntegrationConfig;
+		} satisfies AgentIntegrationConfig;
 
 		await this.chatIntegrationService.connect(
 			session.agentId,
@@ -289,7 +295,7 @@ export class SlackAppSetupService {
 			features: {
 				app_home: {
 					home_tab_enabled: true,
-					messages_tab_enabled: false,
+					messages_tab_enabled: true,
 					messages_tab_read_only_enabled: false,
 				},
 				bot_user: {
