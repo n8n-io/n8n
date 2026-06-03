@@ -25,10 +25,19 @@ jobs:
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
-          - name: Postgres 16
-            runner: blacksmith-4vcpu-ubuntu-2204
-            test-cmd: pnpm test:postgres:integration:tc
+          # Postgres 16 integration suite is split across two 2-vCPU shards.
+          # Postgres saturates before the Jest workers do, so two lightly-loaded
+          # PG instances beat one larger box (see DEVP-200 / DEVP-315).
+          - name: Postgres 16 (1/2)
+            runner: blacksmith-2vcpu-ubuntu-2204
+            test-cmd: pnpm test:postgres:integration:tc -- --shard=1/2
             migration-cmd: pnpm test:postgres:migrations:tc
+            TEST_IMAGE_POSTGRES: 'postgres:16'
+            collectCoverage: 'true'
+          - name: Postgres 16 (2/2)
+            runner: blacksmith-2vcpu-ubuntu-2204
+            test-cmd: pnpm test:postgres:integration:tc -- --shard=2/2
+            migration-cmd: ''
             TEST_IMAGE_POSTGRES: 'postgres:16'
             collectCoverage: 'true'
     env:
@@ -50,6 +59,7 @@ jobs:
         run: ${{ matrix.test-cmd }}
 
       - name: Run Migration Tests
+        if: matrix.migration-cmd != ''
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
 
