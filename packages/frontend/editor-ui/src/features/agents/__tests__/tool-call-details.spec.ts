@@ -113,6 +113,31 @@ describe('tool-call-details', () => {
 			expect(details).toContain('- Write summary');
 		});
 
+		it('passes sub-agent name map through for write_todos delegate hints', () => {
+			const nameById = new Map([['agent-2', 'Helper agent']]);
+			const details = getToolCallDetails(
+				{
+					tool: WRITE_TODOS_TOOL_NAME,
+					output: {
+						status: 'ok',
+						todoCount: 1,
+						todos: [
+							{
+								id: 'a',
+								content: 'Delegated work',
+								status: 'pending',
+								delegateHint: { subAgentId: 'agent-2' },
+							},
+						],
+					},
+					state: TOOL_CALL_STATE.DONE,
+				},
+				writeTodosI18n,
+				nameById,
+			);
+			expect(details).toContain('_(Sub-agent: Helper agent)_');
+		});
+
 		it('returns undefined for write_todos without i18n', () => {
 			expect(
 				getToolCallDetails({

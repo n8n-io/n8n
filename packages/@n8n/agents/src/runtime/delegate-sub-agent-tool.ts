@@ -396,7 +396,6 @@ export function renderDelegateSubAgentPrompt(request: {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
-	workspacePath?: string;
 }): string {
 	const sections = [
 		'You are a focused subagent working on a specific delegated task.',
@@ -409,16 +408,6 @@ export function renderDelegateSubAgentPrompt(request: {
 
 	if (request.expectedOutput) {
 		sections.push(`EXPECTED OUTPUT:\n${request.expectedOutput}`);
-	}
-
-	if (request.workspacePath) {
-		sections.push(
-			[
-				'WORKSPACE PATH:',
-				request.workspacePath,
-				'Use this exact path for local repository/workdir operations unless the task explicitly says otherwise.',
-			].join('\n'),
-		);
 	}
 
 	sections.push(

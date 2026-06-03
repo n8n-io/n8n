@@ -73,6 +73,19 @@ export function humanizeTaskName(taskName: string | undefined): string {
  * `''`. Shared by the chat tool step and the session timeline so both label a
  * delegation identically.
  */
+/** Friendly label for a raw sub-agent id (delegate hints, todo delegateHint, etc.). */
+export function resolveSubAgentIdForDisplay(
+	subAgentId: string,
+	nameById: Map<string, string>,
+): string {
+	if (subAgentId === INLINE_SUB_AGENT_ID) {
+		return humanizeTaskName('inline');
+	}
+	const resolved = nameById.get(subAgentId)?.trim();
+	if (resolved) return resolved;
+	return humanizeTaskName(subAgentId) || subAgentId;
+}
+
 export function resolveSubAgentName(input: unknown, nameById: Map<string, string>): string {
 	const parsed = parseDelegateInput(input);
 	// A blank/empty resolved name must fall through to the task name, so this is a

@@ -51,6 +51,7 @@ function formatSpecializedDetails(
 	toolName: string,
 	output: unknown,
 	i18n?: WriteTodosI18n,
+	subAgentNameById?: Map<string, string>,
 ): string | undefined {
 	if (isDelegateSubAgentTool(toolName)) {
 		return formatDelegateDetails(output);
@@ -58,7 +59,7 @@ function formatSpecializedDetails(
 
 	if (isWriteTodosTool(toolName)) {
 		if (!i18n) return undefined;
-		return formatWriteTodosMarkdown(output, i18n);
+		return formatWriteTodosMarkdown(output, i18n, subAgentNameById);
 	}
 
 	return formatGenericToolOutput(output);
@@ -71,14 +72,16 @@ function formatSpecializedDetails(
 export function getToolCallDetails(
 	tc: Pick<ToolCall, 'tool' | 'output' | 'state'>,
 	i18n?: WriteTodosI18n,
+	subAgentNameById?: Map<string, string>,
 ): string | undefined {
 	if (!isSettledState(tc.state)) return undefined;
-	return formatSpecializedDetails(tc.tool, tc.output, i18n);
+	return formatSpecializedDetails(tc.tool, tc.output, i18n, subAgentNameById);
 }
 
 export function isToolCallExpandable(
 	tc: Pick<ToolCall, 'tool' | 'output' | 'state'>,
 	i18n?: WriteTodosI18n,
+	subAgentNameById?: Map<string, string>,
 ): boolean {
-	return getToolCallDetails(tc, i18n) !== undefined;
+	return getToolCallDetails(tc, i18n, subAgentNameById) !== undefined;
 }

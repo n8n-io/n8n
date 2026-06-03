@@ -1,5 +1,7 @@
-import type { useI18n } from '@n8n/i18n';
+import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { z } from 'zod';
+
+import { resolveSubAgentIdForDisplay } from './delegate-tool';
 
 /**
  * Name of the SDK tool the parent agent calls to maintain a structured task list.
@@ -33,7 +35,7 @@ export type TodoStatus = z.infer<typeof todoStatusSchema>;
 
 export type WriteTodosI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 
-const STATUS_I18N_KEY: Record<TodoStatus, string> = {
+const STATUS_I18N_KEY: Record<TodoStatus, BaseTextKey> = {
 	in_progress: 'agents.chat.writeTodos.status.inProgress',
 	pending: 'agents.chat.writeTodos.status.pending',
 	completed: 'agents.chat.writeTodos.status.completed',
@@ -68,12 +70,18 @@ function writeTodosStatusLabel(i18n: WriteTodosI18n, status: TodoStatus): string
 	return i18n.baseText(STATUS_I18N_KEY[status]);
 }
 
-function formatTodoItem(todo: TodoItem, i18n: WriteTodosI18n): string {
+function formatTodoItem(
+	todo: TodoItem,
+	i18n: WriteTodosI18n,
+	subAgentNameById?: Map<string, string>,
+): string {
 	const hints: string[] = [];
 	if (todo.delegateHint?.subAgentId) {
-		hints.push(
-			`${i18n.baseText('agents.chat.writeTodos.hint.subAgent')}: ${todo.delegateHint.subAgentId}`,
+		const displayName = resolveSubAgentIdForDisplay(
+			todo.delegateHint.subAgentId,
+			subAgentNameById ?? new Map(),
 		);
+		hints.push(`${i18n.baseText('agents.chat.writeTodos.hint.subAgent')}: ${displayName}`);
 	}
 	if (todo.delegateHint?.expectedOutput) {
 		hints.push(
@@ -89,6 +97,7 @@ function formatTodoItem(todo: TodoItem, i18n: WriteTodosI18n): string {
 export function formatWriteTodosMarkdown(
 	output: unknown,
 	i18n: WriteTodosI18n,
+	subAgentNameById?: Map<string, string>,
 ): string | undefined {
 	const parsed = parseWriteTodosOutput(output);
 	if (!parsed || parsed.todos.length === 0) return undefined;
@@ -98,7 +107,7 @@ export function formatWriteTodosMarkdown(
 		const items = parsed.todos.filter((todo) => todo.status === status);
 		if (items.length === 0) continue;
 		sections.push(`**${writeTodosStatusLabel(i18n, status)}**`);
-		sections.push(items.map((todo) => formatTodoItem(todo, i18n)).join('\n'));
+		sections.push(items.map((todo) => formatTodoItem(todo, i18n, subAgentNameById)).join('\n'));
 	}
 
 	return sections.join('\n\n');

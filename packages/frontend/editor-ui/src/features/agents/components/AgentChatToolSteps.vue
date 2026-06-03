@@ -7,7 +7,7 @@ import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatDuration } from '../session-timeline.utils';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
 import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
-import { getToolCallDetails, isToolCallExpandable } from '../utils/tool-call-details';
+import { getToolCallDetails } from '../utils/tool-call-details';
 import {
 	isWriteTodosTool,
 	parseWriteTodosOutput,
@@ -22,22 +22,39 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-// Resolve sub-agent ids → friendly names for the delegate step's label, loaded
-// lazily and only when the chat actually contains delegations.
+function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
+	return toolCalls.some((tc) => {
+		if (isDelegateSubAgentTool(tc.tool)) return true;
+		if (!isWriteTodosTool(tc.tool)) return false;
+		const parsed = parseWriteTodosOutput(tc.output);
+		return parsed?.todos.some((todo) => Boolean(todo.delegateHint?.subAgentId)) ?? false;
+	});
+}
+
+// Resolve sub-agent ids → friendly names for delegate labels and write_todos hints.
 const projectIdRef = toRef(() => props.projectId ?? '');
 const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
-	props.toolCalls.some((tc) => isDelegateSubAgentTool(tc.tool)),
+	toolCallsNeedSubAgentNames(props.toolCalls),
 );
 
 // Track which tool steps are expanded (by tool-call id).
 const expandedIds = reactive(new Set<string>());
+
+interface ToolStepDisplay {
+	label: string;
+	summary: string | undefined;
+	duration: string;
+	details: string;
+	expandable: boolean;
+	expanded: boolean;
+}
 
 function getToolDisplayName(toolName: string): string {
 	const translationKey = getToolNameTranslationKey(toolName);
 	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
 }
 
-function stepLabel(tc: ToolCall): string {
+function toolStepLabel(tc: ToolCall): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
 	}
@@ -45,7 +62,7 @@ function stepLabel(tc: ToolCall): string {
 	return getToolDisplayName(tc.tool);
 }
 
-function rowSummary(tc: ToolCall): string | undefined {
+function toolStepSummary(tc: ToolCall): string | undefined {
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
 		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todos.length);
@@ -54,104 +71,104 @@ function rowSummary(tc: ToolCall): string | undefined {
 	return undefined;
 }
 
-function toolDetails(tc: ToolCall): string {
-	return getToolCallDetails(tc, i18n) ?? '';
-}
-
-function isExpandable(tc: ToolCall): boolean {
-	return isToolCallExpandable(tc, i18n);
-}
-
-function isExpanded(tc: ToolCall): boolean {
-	return expandedIds.has(tc.toolCallId);
-}
-
-function toggle(tc: ToolCall): void {
-	if (!isExpandable(tc)) return;
-	if (expandedIds.has(tc.toolCallId)) expandedIds.delete(tc.toolCallId);
-	else expandedIds.add(tc.toolCallId);
-}
-
-// Show the elapsed duration only once the tool has settled (start + end both
-// recorded). No live ticking — the spinner already conveys the running state.
-function toolDuration(tc: ToolCall): string {
+function toolStepDuration(tc: ToolCall): string {
 	if (tc.startTime === undefined || tc.endTime === undefined) return '';
 	return formatDuration(tc.endTime - tc.startTime);
+}
+
+function toolStepView(tc: ToolCall): ToolStepDisplay {
+	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	return {
+		label: toolStepLabel(tc),
+		summary: toolStepSummary(tc),
+		duration: toolStepDuration(tc),
+		details,
+		expandable: details.length > 0,
+		expanded: expandedIds.has(tc.toolCallId),
+	};
+}
+
+function toggle(tc: ToolCall, view: ToolStepDisplay): void {
+	if (!view.expandable) return;
+	if (expandedIds.has(tc.toolCallId)) expandedIds.delete(tc.toolCallId);
+	else expandedIds.add(tc.toolCallId);
 }
 </script>
 
 <template>
 	<ol :class="$style.toolSteps">
 		<li v-for="(tc, i) in toolCalls" :key="i" :class="$style.toolStep">
-			<!-- Rail: the status icon plus a line that grows to fill the step's
-			     height, so consecutive steps stay visually connected even when one
-			     expands its answer. -->
-			<div :class="$style.rail">
-				<div :class="$style.indicator">
-					<N8nIcon
-						v-if="tc.state === 'done'"
-						icon="circle-check"
-						size="large"
-						:class="$style.indicatorDone"
-					/>
-					<N8nIcon
-						v-else-if="tc.state === 'error'"
-						icon="circle-x"
-						size="large"
-						:class="$style.indicatorError"
-					/>
-					<N8nTooltip
-						v-else-if="tc.state === 'suspended'"
-						placement="top"
-						:content="i18n.baseText('agents.chat.toolStep.waitingForInput')"
-					>
-						<N8nIcon icon="clock" size="large" :class="$style.indicatorSuspended" />
-					</N8nTooltip>
-					<N8nIcon
-						v-else
-						icon="spinner"
-						size="large"
-						:spin="true"
-						:class="$style.indicatorLoading"
-					/>
+			<template v-for="view in [toolStepView(tc)]" :key="tc.toolCallId">
+				<!-- Rail: the status icon plus a line that grows to fill the step's
+				     height, so consecutive steps stay visually connected even when one
+				     expands its answer. -->
+				<div :class="$style.rail">
+					<div :class="$style.indicator">
+						<N8nIcon
+							v-if="tc.state === 'done'"
+							icon="circle-check"
+							size="large"
+							:class="$style.indicatorDone"
+						/>
+						<N8nIcon
+							v-else-if="tc.state === 'error'"
+							icon="circle-x"
+							size="large"
+							:class="$style.indicatorError"
+						/>
+						<N8nTooltip
+							v-else-if="tc.state === 'suspended'"
+							placement="top"
+							:content="i18n.baseText('agents.chat.toolStep.waitingForInput')"
+						>
+							<N8nIcon icon="clock" size="large" :class="$style.indicatorSuspended" />
+						</N8nTooltip>
+						<N8nIcon
+							v-else
+							icon="spinner"
+							size="large"
+							:spin="true"
+							:class="$style.indicatorLoading"
+						/>
+					</div>
+					<div :class="$style.railLine" />
 				</div>
-				<div :class="$style.railLine" />
-			</div>
 
-			<div :class="$style.stepBody">
-				<component
-					:is="isExpandable(tc) ? 'button' : 'div'"
-					:type="isExpandable(tc) ? 'button' : undefined"
-					:aria-expanded="isExpandable(tc) ? isExpanded(tc) : undefined"
-					:class="[$style.stepRow, { [$style.stepRowButton]: isExpandable(tc) }]"
-					@click="toggle(tc)"
-				>
-					<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
-						{{ stepLabel(tc) }}
-					</span>
-					<span v-if="rowSummary(tc)" :class="$style.summary" data-testid="tool-step-summary">
-						· {{ rowSummary(tc) }}
-					</span>
-					<span v-if="toolDuration(tc)" :class="$style.duration">
-						{{ toolDuration(tc) }}
-					</span>
-					<N8nIcon
-						v-if="isExpandable(tc)"
-						:icon="isExpanded(tc) ? 'chevron-down' : 'chevron-right'"
-						size="small"
-						:class="$style.chevron"
-					/>
-				</component>
-				<div v-if="isExpandable(tc) && isExpanded(tc)" :class="$style.answer">
-					<N8nMarkdownEditor
-						:model-value="toolDetails(tc)"
-						readonly
-						variant="ghost"
-						show-toolbar="never"
-						max-height="240px"
-					/>
+				<div :class="$style.stepBody">
+					<component
+						:is="view.expandable ? 'button' : 'div'"
+						:type="view.expandable ? 'button' : undefined"
+						:aria-expanded="view.expandable ? view.expanded : undefined"
+						:class="[$style.stepRow, { [$style.stepRowButton]: view.expandable }]"
+						@click="toggle(tc, view)"
+					>
+						<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
+							{{ view.label }}
+						</span>
+						<span v-if="view.summary" :class="$style.summary" data-testid="tool-step-summary">
+							· {{ view.summary }}
+						</span>
+						<span v-if="view.duration" :class="$style.duration">
+							{{ view.duration }}
+						</span>
+						<N8nIcon
+							v-if="view.expandable"
+							:icon="view.expanded ? 'chevron-down' : 'chevron-right'"
+							size="small"
+							:class="$style.chevron"
+						/>
+					</component>
+					<div v-if="view.expandable && view.expanded" :class="$style.answer">
+						<N8nMarkdownEditor
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+						/>
+					</div>
 				</div>
-			</div>
+			</template>
 		</li>
 	</ol>
 </template>

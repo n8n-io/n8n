@@ -252,18 +252,17 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).not.toContain('WORKSPACE PATH:');
 	});
 
-	it('includes context, expected output, and workspace path when provided', () => {
+	it('includes context and expected output when provided', () => {
 		const prompt = renderDelegateSubAgentPrompt({
 			goal: 'Find it.',
 			context: 'auth endpoints',
 			expectedOutput: 'a summary',
-			workspacePath: '/repo',
 		});
 
 		expect(prompt).toContain('YOUR TASK:\nFind it.');
 		expect(prompt).toContain('CONTEXT:\nauth endpoints');
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
-		expect(prompt).toContain('WORKSPACE PATH:\n/repo');
+		expect(prompt).not.toContain('WORKSPACE PATH:');
 	});
 });
 

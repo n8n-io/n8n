@@ -65,7 +65,7 @@ describe('write-todos-tool', () => {
 	describe('formatWriteTodosMarkdown', () => {
 		const i18n = createWriteTodosI18n();
 
-		it('groups todos by status and includes delegate hints', () => {
+		it('groups todos by status and humanizes inline delegate hints', () => {
 			const markdown = formatWriteTodosMarkdown(
 				{
 					status: 'ok',
@@ -93,9 +93,52 @@ describe('write-todos-tool', () => {
 			expect(markdown).toContain('**In progress**');
 			expect(markdown).toContain('- Research auth options');
 			expect(markdown).toContain(
-				'- Research auth options _(Sub-agent: inline; Expected output: Short comparison)_',
+				'- Research auth options _(Sub-agent: Inline; Expected output: Short comparison)_',
 			);
 			expect(markdown).toContain('**Pending**');
+		});
+
+		it('resolves configured sub-agent ids to friendly names in delegate hints', () => {
+			const nameById = new Map([['agent-2', 'Research specialist']]);
+			const markdown = formatWriteTodosMarkdown(
+				{
+					status: 'ok',
+					todoCount: 1,
+					todos: [
+						{
+							id: 'research',
+							content: 'Research auth options',
+							status: 'pending',
+							delegateHint: { subAgentId: 'agent-2' },
+						},
+					],
+				},
+				i18n,
+				nameById,
+			);
+
+			expect(markdown).toContain('_(Sub-agent: Research specialist)_');
+		});
+
+		it('falls back to the raw sub-agent id when no friendly name is known', () => {
+			const markdown = formatWriteTodosMarkdown(
+				{
+					status: 'ok',
+					todoCount: 1,
+					todos: [
+						{
+							id: 'research',
+							content: 'Research auth options',
+							status: 'pending',
+							delegateHint: { subAgentId: 'unknown-agent-id' },
+						},
+					],
+				},
+				i18n,
+				new Map(),
+			);
+
+			expect(markdown).toContain('_(Sub-agent: Unknown agent id)_');
 		});
 
 		it('returns undefined for empty todo lists', () => {
