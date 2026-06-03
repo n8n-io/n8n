@@ -1,0 +1,11 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"types": ["node", "vitest/globals"],
+		"paths": {
+			"@/*": ["./src/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}
