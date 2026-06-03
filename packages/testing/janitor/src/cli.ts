@@ -38,14 +38,6 @@ import {
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
 import {
-	type ImpactMap,
-	type InternedImpactMap,
-	decodeImpactMap,
-	encodeImpactMap,
-	mergeCoverage,
-	resolveImpact,
-} from './core/coverage-map.js';
-import {
 	generateBaseline,
 	saveBaseline,
 	loadBaseline,
@@ -53,6 +45,14 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
+import {
+	type ImpactMap,
+	type InternedImpactMap,
+	decodeImpactMap,
+	encodeImpactMap,
+	mergeCoverage,
+	resolveImpact,
+} from './core/coverage-map.js';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -706,9 +706,11 @@ function runSelectE2e(options: CliOptions): void {
 	let failOpen: string | undefined;
 	if (options.mapFile && fs.existsSync(options.mapFile)) {
 		try {
-			const parsed = JSON.parse(fs.readFileSync(options.mapFile, 'utf8'));
+			const parsed: unknown = JSON.parse(fs.readFileSync(options.mapFile, 'utf8'));
 			// Interned form ({specs, files}) is decoded; a plain ImpactMap is used as-is.
-			map = parsed?.specs && parsed?.files ? decodeImpactMap(parsed as InternedImpactMap) : parsed;
+			const isInterned =
+				typeof parsed === 'object' && parsed !== null && 'specs' in parsed && 'files' in parsed;
+			map = isInterned ? decodeImpactMap(parsed as InternedImpactMap) : (parsed as ImpactMap);
 		} catch (error) {
 			failOpen = `unreadable map: ${String(error)}`;
 		}
