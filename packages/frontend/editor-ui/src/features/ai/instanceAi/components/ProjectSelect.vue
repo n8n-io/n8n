@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { N8nButton, N8nIcon, N8nScrollArea, N8nTooltip } from '@n8n/design-system';
+import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import {
 	ComboboxAnchor,
 	ComboboxContent,
@@ -22,6 +23,10 @@ const selectedProject = computed(() =>
 const showSearch = computed(() => projectsStore.myProjects.length > 5);
 
 const model = defineModel<string | null>();
+
+function projectIcon(icon: unknown): IconOrEmoji {
+	return isIconOrEmoji(icon) ? icon : { type: 'icon', value: 'layers' };
+}
 </script>
 
 <template>
@@ -35,11 +40,7 @@ const model = defineModel<string | null>();
 							Personal space
 						</template>
 						<template v-else-if="selectedProject">
-							<ProjectIcon
-								:icon="selectedProject.icon ?? { type: 'icon', value: 'layer-group' }"
-								size="small"
-								border-less
-							/>
+							<ProjectIcon :icon="projectIcon(selectedProject.icon)" size="small" border-less />
 							{{ selectedProject.name }}
 						</template>
 						<template v-else> 'Select a project' </template>
@@ -87,11 +88,7 @@ const model = defineModel<string | null>();
 						</ComboboxItem>
 
 						<ComboboxItem v-else :key="project.id" :value="project.id" :class="$style.item">
-							<ProjectIcon
-								:icon="project.icon ?? { type: 'icon', value: 'layer-group' }"
-								size="small"
-								border-less
-							/>
+							<ProjectIcon :icon="projectIcon(project.icon)" size="small" border-less />
 							<span :class="$style.label">{{ project.name }}</span>
 							<N8nIcon
 								v-if="selectedProject?.id === project.id"

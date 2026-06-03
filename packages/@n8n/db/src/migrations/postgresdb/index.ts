@@ -200,8 +200,8 @@ import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/178400000
 import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
-import type { Migration } from '../migration-types';
 import { AddProjectIdToInstanceAiThread1784000000025 } from '../common/1784000000025-AddProjectIdToInstanceAiThread';
+import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
