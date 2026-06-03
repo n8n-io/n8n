@@ -4,6 +4,7 @@ import type {
 	Workflow,
 	INode,
 	INodeExecutionData,
+	INodeType,
 	IPollFunctions,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
@@ -14,9 +15,43 @@ import type {
 	IRun,
 	ExecutionError,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import type { IGetExecuteTriggerFunctions } from './interfaces';
+
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error) return error.message;
+
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'message' in error &&
+		typeof error.message === 'string'
+	) {
+		return error.message;
+	}
+
+	return String(error);
+}
+
+export function createPollErrorOutput(
+	workflow: Workflow,
+	node: INode,
+	nodeType: INodeType,
+	error: unknown,
+): INodeExecutionData[][] {
+	const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType.description);
+	const mainOutputCount = NodeHelpers.getConnectionTypes(outputs).filter(
+		(output) => output === NodeConnectionTypes.Main,
+	).length;
+	const outputCount = Math.max(mainOutputCount, 1);
+	const outputData = Array.from({ length: outputCount }, () => [] as INodeExecutionData[]);
+
+	outputData[outputCount - 1] = [{ json: { error: getErrorMessage(error) } }];
+
+	return outputData;
+}
 
 @Service()
 export class TriggersAndPollers {
@@ -106,6 +141,14 @@ export class TriggersAndPollers {
 			});
 		}
 
-		return await nodeType.poll.call(pollFunctions);
+		try {
+			return await nodeType.poll.call(pollFunctions);
+		} catch (error) {
+			if (node.onError !== 'continueErrorOutput') {
+				throw error;
+			}
+
+			return createPollErrorOutput(workflow, node, nodeType, error);
+		}
 	}
 }

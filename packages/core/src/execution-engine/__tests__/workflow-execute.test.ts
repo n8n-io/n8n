@@ -1614,6 +1614,18 @@ describe('WorkflowExecute', () => {
 			expect(nodeSuccessData[1]).toHaveLength(0);
 		});
 
+		test('should preserve items already routed to the error output', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[],
+				[{ json: { error: 'Poll function failed' } }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([{ json: { error: 'Poll function failed' } }]);
+		});
+
 		test('should route error items to last output', () => {
 			const nodeSuccessData: INodeExecutionData[][] = [
 				[

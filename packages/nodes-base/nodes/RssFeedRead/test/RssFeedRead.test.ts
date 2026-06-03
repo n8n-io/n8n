@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
-import type { IPollFunctions } from 'n8n-workflow';
+import type { INode, IPollFunctions } from 'n8n-workflow';
 import Parser from 'rss-parser';
 
 import { RssFeedReadTrigger } from '../RssFeedReadTrigger.node';
@@ -15,10 +15,14 @@ describe('RssFeedReadTrigger', () => {
 		const feedUrl = 'https://example.com/feed';
 		const lastItemDate = '2022-01-01T00:00:00.000Z';
 		const newItemDate = '2022-01-02T00:00:00.000Z';
+		const connectionRefusedMessage = `It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`;
 
 		const node = new RssFeedReadTrigger();
 		const helpers = mock<IPollFunctions['helpers']>({ returnJsonArray });
 		const pollFunctions = mock<IPollFunctions>({ helpers });
+
+		const createConnectionRefusedError = () =>
+			Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
 
 		beforeEach(() => {
 			jest.clearAllMocks();
@@ -90,6 +94,23 @@ describe('RssFeedReadTrigger', () => {
 			);
 			expect(Parser.prototype.parseString).toHaveBeenCalledWith('<rss />');
 			expect(pollData.lastItemDate).toEqual(lastItemDate);
+		});
+
+		it('should reject when feed request fails without error output enabled', async () => {
+			const pollData = mock({ lastItemDate });
+			pollFunctions.getNode.mockReturnValue(mock<INode>());
+			pollFunctions.getNodeParameter.mockReturnValue(feedUrl);
+			pollFunctions.getWorkflowStaticData.mockReturnValue(pollData);
+			helpers.httpRequest.mockRejectedValue(createConnectionRefusedError());
+
+			await expect(node.poll.call(pollFunctions)).rejects.toThrowError(connectionRefusedMessage);
+
+			expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
+			expect(pollFunctions.getNodeParameter).toHaveBeenCalledWith('feedUrl');
+			expect(helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ method: 'GET', url: feedUrl }),
+			);
+			expect(Parser.prototype.parseString).not.toHaveBeenCalled();
 		});
 	});
 });

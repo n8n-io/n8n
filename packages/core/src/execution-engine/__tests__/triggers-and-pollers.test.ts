@@ -10,6 +10,7 @@ import type {
 	ITriggerFunctions,
 	IRun,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
@@ -29,6 +30,7 @@ describe('TriggersAndPollers', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		node.onError = undefined;
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	});
 
@@ -149,6 +151,25 @@ describe('TriggersAndPollers', () => {
 			pollFn.mockRejectedValue(new Error('Poll function failed'));
 
 			await expect(runPollHelper()).rejects.toThrow('Poll function failed');
+			expect(pollFn).toHaveBeenCalled();
+		});
+
+		it('should route poll errors to the error output when continueErrorOutput is enabled', async () => {
+			node.onError = 'continueErrorOutput';
+			nodeType.poll = pollFn;
+			nodeType.description = {
+				name: 'test.poll',
+				displayName: 'Test Poll',
+				defaultVersion: 1,
+				properties: [],
+				inputs: [],
+				outputs: [NodeConnectionTypes.Main],
+			};
+			pollFn.mockRejectedValue(new Error('Poll function failed'));
+
+			const result = await runPollHelper();
+
+			expect(result).toEqual([[], [{ json: { error: 'Poll function failed' } }]]);
 			expect(pollFn).toHaveBeenCalled();
 		});
 	});

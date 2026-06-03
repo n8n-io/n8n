@@ -61,7 +61,13 @@ export class RssFeedReadTrigger implements INodeType {
 		try {
 			feed = await parseFeedUrl(this.helpers, feedUrl);
 		} catch (error) {
-			if (error.code === 'ECONNREFUSED') {
+			const isConnectionRefusedError =
+				typeof error === 'object' &&
+				error !== null &&
+				'code' in error &&
+				error.code === 'ECONNREFUSED';
+
+			if (isConnectionRefusedError) {
 				throw new NodeOperationError(
 					this.getNode(),
 					`It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`,
