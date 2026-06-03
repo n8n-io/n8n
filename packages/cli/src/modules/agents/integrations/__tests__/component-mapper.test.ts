@@ -53,6 +53,9 @@ jest.mock('../esm-loader', () => {
 });
 
 import { ComponentMapper } from '../component-mapper';
+import { ChatIntegrationRegistry } from '../agent-chat-integration';
+import { SlackIntegration } from '../platforms/slack-integration';
+import { Container } from '@n8n/di';
 
 describe('ComponentMapper', () => {
 	let mapper: ComponentMapper;
@@ -388,6 +391,44 @@ describe('ComponentMapper', () => {
 			expect(mockActions).toHaveBeenCalled();
 		});
 
+		it('should preserve radio_select components for Slack cards', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new SlackIntegration());
+			Container.set(ChatIntegrationRegistry, registry);
+
+			const payload = {
+				components: [
+					{
+						type: 'radio_select' as const,
+						id: 'next-step',
+						label: 'Choose the next step:',
+						options: [
+							{ label: 'Send approved briefing confirmation', value: 'send' },
+							{ label: 'Escalate ticket', value: 'escalate' },
+						],
+					},
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId, undefined, undefined, 'slack');
+
+			expect(mockSelect).not.toHaveBeenCalled();
+			expect(mockRadioSelect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: `ri-sel:next-step:${runId}:${toolCallId}`,
+					label: 'Choose the next step:',
+					options: expect.arrayContaining([
+						expect.objectContaining({
+							label: 'Send approved briefing confirmation',
+							value: 'send',
+						}),
+						expect.objectContaining({ label: 'Escalate ticket', value: 'escalate' }),
+					]),
+				}),
+			);
+			expect(mockActions).toHaveBeenCalled();
+		});
+
 		it('should map fields components', async () => {
 			const payload = {
 				components: [
@@ -403,6 +444,44 @@ describe('ComponentMapper', () => {
 			await mapper.toCard(payload, runId, toolCallId);
 			expect(mockField).toHaveBeenCalledTimes(2);
 			expect(mockFields).toHaveBeenCalled();
+		});
+
+		it('should map fields components that use items aliases', async () => {
+			const payload = {
+				components: [
+					{
+						type: 'fields' as const,
+						items: [
+							{ label: 'Account', value: 'Acme Corporation' },
+							{ label: 'Expansion ARR', value: '~$3,750,000 (30X)' },
+						],
+					},
+				],
+			};
+			await mapper.toCard(payload, runId, toolCallId);
+			expect(mockField).toHaveBeenCalledTimes(2);
+			expect(mockField).toHaveBeenCalledWith({
+				label: 'Account',
+				value: 'Acme Corporation',
+			});
+			expect(mockField).toHaveBeenCalledWith({
+				label: 'Expansion ARR',
+				value: '~$3,750,000 (30X)',
+			});
+			expect(mockFields).toHaveBeenCalled();
+		});
+
+		it('should skip empty fields components', async () => {
+			const payload = {
+				components: [
+					{
+						type: 'fields' as const,
+					},
+				],
+			};
+			await mapper.toCard(payload, runId, toolCallId);
+			expect(mockField).not.toHaveBeenCalled();
+			expect(mockFields).not.toHaveBeenCalled();
 		});
 	});
 

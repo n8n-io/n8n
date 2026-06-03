@@ -24,6 +24,8 @@ export interface SuspendComponent {
 	options?: Array<{ label: string; value: string; description?: string }>;
 	/** Fields for fields component */
 	fields?: Array<{ label: string; value: string }>;
+	/** Alias agents commonly use for fields component entries */
+	items?: Array<{ label: string; value: string }>;
 	/** Elements array for context blocks */
 	elements?: Array<{ type: string; text?: ComponentText; url?: string; altText?: string }>;
 	/** Allow additional properties from the payload */
@@ -277,9 +279,10 @@ export class ComponentMapper {
 	}
 
 	private appendFields({ component, sdk, children }: ComponentRenderContext): void {
-		const fieldElements = (component.fields ?? []).map((f) =>
-			sdk.Field({ label: f.label, value: f.value }),
-		);
+		const fields = component.fields ?? component.items ?? [];
+		if (fields.length === 0) return;
+
+		const fieldElements = fields.map((f) => sdk.Field({ label: f.label, value: f.value }));
 		children.push(sdk.Fields(fieldElements as never));
 	}
 

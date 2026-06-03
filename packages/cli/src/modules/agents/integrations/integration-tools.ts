@@ -3,12 +3,6 @@ import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
-import {
-	cardTextSchema,
-	incomingMessageBlockSchema,
-	messageAwaitsResponse,
-	normalizeMessagePayload,
-} from './message-card-normalizer';
 
 export type IntegrationMessageTarget =
 	| {
@@ -165,6 +159,16 @@ const selectOptionSchema = z.object({
 	description: z.string().optional(),
 });
 
+const cardTextSchema = z.union([
+	z.string(),
+	z
+		.object({
+			type: z.string().optional(),
+			text: z.string(),
+		})
+		.passthrough(),
+]);
+
 const cardComponentSchema = z.object({
 	type: z.string(),
 	text: cardTextSchema.optional(),
@@ -178,6 +182,7 @@ const cardComponentSchema = z.object({
 	placeholder: z.string().optional(),
 	options: z.array(selectOptionSchema).optional(),
 	fields: z.array(fieldPairSchema).optional(),
+	items: z.array(fieldPairSchema).optional(),
 });
 
 const messageSchema = z
@@ -191,7 +196,6 @@ const messageSchema = z
 				components: z.array(cardComponentSchema).min(1),
 			})
 			.optional(),
-		blocks: z.array(incomingMessageBlockSchema).optional(),
 	})
 	.strict();
 
@@ -937,11 +941,22 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
 		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
+		'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
 		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
-		'Platform-specific rendering is handled internally.',
+		...buildPlatformCardGuidance(descriptor.integration.type),
+		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-specific blocks or attachments; rendering is handled internally.',
+		'Do not use message.blocks.',
 		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
 		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
+}
+
+function buildPlatformCardGuidance(platform: string): string[] {
+	if (platform !== 'slack') return [];
+
+	return [
+		'For Slack radio buttons, use a generic radio_select component: { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }. Do not provide Slack radio_buttons directly.',
+	];
 }
 
 function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
@@ -1247,13 +1262,20 @@ function toZodEnumValues<T extends string>(values: T[]): [T, ...T[]] {
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
 	const result = messageSchema.safeParse(value);
-	return result.success
-		? (normalizeMessagePayload(result.data) as z.infer<typeof messageSchema>)
-		: undefined;
+	return result.success ? result.data : undefined;
 }
 
 function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
-	return messageAwaitsResponse(message);
+	const card = message?.card;
+	if (card?.awaitResponse === true) return true;
+	if (
+		card?.components.some((component) =>
+			['button', 'select', 'radio_select'].includes(component.type),
+		)
+	) {
+		return true;
+	}
+	return false;
 }
 
 function withPreviousSubject(

@@ -439,6 +439,10 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('send_dm: input.userId');
 		expect(tool.description).toContain('send_channel_message: input.channelId');
 		expect(tool.description).toContain('Use message.card for cards');
+		expect(tool.description).toContain('For Slack radio buttons');
+		expect(tool.description).toContain('type: "radio_select"');
+		expect(tool.description).toContain('Do not provide Slack radio_buttons directly');
+		expect(tool.description).toContain('Do not use message.blocks');
 	});
 
 	it('action tool schema accepts button text objects in message cards', () => {
@@ -478,7 +482,47 @@ describe('integration tools', () => {
 		).toBe(true);
 	});
 
-	it('action tool schema accepts Slack-shaped blocks for message cards', () => {
+	it('action tool schema preserves fields item aliases in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		const result = schema.safeParse({
+			action: 'respond',
+			input: {
+				message: {
+					card: {
+						components: [
+							{
+								type: 'fields',
+								items: [{ label: 'Account', value: 'Acme Corporation' }],
+							},
+						],
+					},
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const parsed = result.data as {
+			input: {
+				message: {
+					card: {
+						components: Array<{ items?: Array<{ label: string; value: string }> }>;
+					};
+				};
+			};
+		};
+		expect(parsed.input.message.card.components[0].items).toEqual([
+			{ label: 'Account', value: 'Acme Corporation' },
+		]);
+	});
+
+	it('action tool schema rejects platform-specific block arrays', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
 			messageContextStore: mock<IntegrationMessageContextStore>(),
@@ -517,7 +561,7 @@ describe('integration tools', () => {
 					},
 				},
 			}).success,
-		).toBe(true);
+		).toBe(false);
 	});
 
 	it('action tool schema accepts Slack emoji reaction actions', () => {
@@ -757,87 +801,6 @@ describe('integration tools', () => {
 				messageId: '123.456',
 			}),
 		});
-	});
-
-	it('normalizes block messages before executing interactive actions', async () => {
-		const messageContextStore = mock<IntegrationMessageContextStore>();
-		const actionExecutor = mock<IntegrationActionExecutor>();
-		actionExecutor.execute.mockResolvedValue({
-			ok: true,
-			messageContext: {
-				integrationConnectionId: 'slack:cred-a',
-				platform: 'slack',
-				target: { type: 'channel', channelId: 'slack:C123', threadId: 'slack:C123:123.456' },
-				messageId: '123.456',
-				updatedAt: '2026-05-18T10:00:00.000Z',
-			},
-		});
-
-		const tool = createIntegrationActionTool({
-			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
-			messageContextStore,
-			actionExecutor,
-		}).build();
-		const ctx = makeInterruptibleCtx();
-
-		await tool.handler!(
-			{
-				action: 'send_channel_message',
-				input: {
-					channelId: 'slack:C123',
-					message: {
-						text: 'Approve/Reject button demo',
-						blocks: [
-							{
-								type: 'header',
-								text: { type: 'plain_text', text: 'Approve / Reject Demo' },
-							},
-							{
-								type: 'section',
-								text: { type: 'mrkdwn', text: 'Choose an action.' },
-							},
-							{
-								type: 'actions',
-								elements: [
-									{
-										type: 'button',
-										text: { type: 'plain_text', text: 'Approve' },
-										style: 'primary',
-										value: 'approve',
-									},
-								],
-							},
-						],
-					},
-				},
-			},
-			ctx,
-		);
-
-		expect(actionExecutor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({
-				action: 'send_channel_message',
-				awaitResponse: true,
-				input: expect.objectContaining({
-					message: expect.objectContaining({
-						card: expect.objectContaining({
-							title: 'Approve / Reject Demo',
-							components: expect.arrayContaining([
-								expect.objectContaining({
-									type: 'button',
-									label: 'Approve',
-									value: 'approve',
-									style: 'primary',
-								}),
-							]),
-						}),
-					}),
-				}),
-			}),
-		);
-		expect(ctx.suspend).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'integration_action' }),
-		);
 	});
 
 	it('action tool preserves the current subject when updating message context', async () => {

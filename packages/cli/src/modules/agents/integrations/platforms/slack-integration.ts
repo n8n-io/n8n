@@ -18,9 +18,9 @@ import { executeSlackAction, executeSlackContextQuery } from './slack-operations
 /**
  * Slack platform integration.
  *
- * Slack callback_data has no small limit and supports every component type
- * integration action cards emit, so no normalization or callback shortening
- * is required.
+ * Slack callback_data has no small limit, so callback shortening is not required.
+ * Components are normalized only when the Chat SDK can produce Block Kit that
+ * Slack rejects for message actions.
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
