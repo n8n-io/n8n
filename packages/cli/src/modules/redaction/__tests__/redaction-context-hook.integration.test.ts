@@ -80,7 +80,7 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 
 	it('overrides workflow.settings.redactionPolicy when enforcement is active', async () => {
 		enforcementService.buildContext.mockResolvedValue({
-			enforcement: { enforced: true, manual: true, production: true },
+			enforcement: 'all',
 		});
 
 		const workflow = buildWorkflow('non-manual');
@@ -96,7 +96,7 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 
 	it('falls back to workflow.settings.redactionPolicy when enforcement is inactive', async () => {
 		enforcementService.buildContext.mockResolvedValue({
-			enforcement: { enforced: false, manual: true, production: true },
+			enforcement: 'off',
 		});
 
 		const workflow = buildWorkflow('non-manual');

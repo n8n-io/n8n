@@ -1,4 +1,4 @@
-import type { RedactionEnforcementSettings } from '@n8n/api-types';
+import type { RedactionFloor } from '@n8n/api-types';
 import {
 	ContextEstablishmentHook,
 	ContextEstablishmentOptions,
@@ -11,23 +11,16 @@ import type { WorkflowSettings } from 'n8n-workflow';
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
 
 /**
- * | manual | production | policy        |
- * |--------|------------|---------------|
- * | true   | true       | 'all'         |
- * | false  | true       | 'non-manual'  |
- * | true   | false      | 'manual-only' |
- * | false  | false      | 'none'        |
+ * | floor      | policy       |
+ * |------------|--------------|
+ * | all        | 'all'        |
+ * | production | 'non-manual' |
+ *
+ * `off` is never passed here — it is filtered out by the caller, which falls
+ * back to the workflow's own redaction policy when enforcement is off.
  */
-function deriveEnforcedPolicy(
-	enforcement: RedactionEnforcementSettings,
-): WorkflowSettings.RedactionPolicy {
-	const { manual, production } = enforcement;
-
-	if (manual && production) return 'all';
-	if (!manual && production) return 'non-manual';
-	if (manual && !production) return 'manual-only';
-
-	return 'none';
+function deriveEnforcedPolicy(enforcement: RedactionFloor): WorkflowSettings.RedactionPolicy {
+	return enforcement === 'all' ? 'all' : 'non-manual';
 }
 
 @ContextEstablishmentHook({
@@ -50,9 +43,10 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 		const context = await this.instanceRedactionEnforcementService.buildContext();
 
-		const policy: WorkflowSettings.RedactionPolicy = context?.enforcement.enforced
-			? deriveEnforcedPolicy(context.enforcement)
-			: (options.workflow.settings?.redactionPolicy ?? 'none');
+		const policy: WorkflowSettings.RedactionPolicy =
+			context && context.enforcement !== 'off'
+				? deriveEnforcedPolicy(context.enforcement)
+				: (options.workflow.settings?.redactionPolicy ?? 'none');
 
 		return {
 			contextUpdate: {

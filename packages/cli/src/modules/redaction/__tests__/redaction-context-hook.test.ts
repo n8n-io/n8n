@@ -1,4 +1,4 @@
-import type { RedactionEnforcementSettings } from '@n8n/api-types';
+import type { RedactionFloor } from '@n8n/api-types';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
@@ -20,7 +20,7 @@ describe('RedactionContextHook', () => {
 			}),
 		});
 
-	const setEnforcement = (enforcement: RedactionEnforcementSettings | undefined) => {
+	const setEnforcement = (enforcement: RedactionFloor | undefined) => {
 		service.buildContext.mockResolvedValue(enforcement ? { enforcement } : undefined);
 	};
 
@@ -30,8 +30,8 @@ describe('RedactionContextHook', () => {
 	});
 
 	describe('when enforcement is active', () => {
-		it('emits "all" when manual:true production:true', async () => {
-			setEnforcement({ enforced: true, manual: true, production: true });
+		it('emits "all" when floor is "all"', async () => {
+			setEnforcement('all');
 
 			const result = await hook.execute(buildOptions('none'));
 
@@ -40,8 +40,8 @@ describe('RedactionContextHook', () => {
 			});
 		});
 
-		it('emits "non-manual" when manual:false production:true', async () => {
-			setEnforcement({ enforced: true, manual: false, production: true });
+		it('emits "non-manual" when floor is "production"', async () => {
+			setEnforcement('production');
 
 			const result = await hook.execute(buildOptions('none'));
 
@@ -50,28 +50,8 @@ describe('RedactionContextHook', () => {
 			});
 		});
 
-		it('emits "manual-only" when manual:true production:false', async () => {
-			setEnforcement({ enforced: true, manual: true, production: false });
-
-			const result = await hook.execute(buildOptions('all'));
-
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'manual-only' } },
-			});
-		});
-
-		it('emits "none" when manual:false production:false', async () => {
-			setEnforcement({ enforced: true, manual: false, production: false });
-
-			const result = await hook.execute(buildOptions('all'));
-
-			expect(result).toEqual({
-				contextUpdate: { redaction: { version: 1, policy: 'none' } },
-			});
-		});
-
 		it('overrides the workflow-configured policy', async () => {
-			setEnforcement({ enforced: true, manual: true, production: true });
+			setEnforcement('all');
 
 			const result = await hook.execute(buildOptions('non-manual'));
 
@@ -82,8 +62,8 @@ describe('RedactionContextHook', () => {
 	});
 
 	describe('when enforcement is inactive', () => {
-		it('falls back to workflow.settings.redactionPolicy when enforced:false', async () => {
-			setEnforcement({ enforced: false, manual: true, production: true });
+		it('falls back to workflow.settings.redactionPolicy when floor is "off"', async () => {
+			setEnforcement('off');
 
 			const result = await hook.execute(buildOptions('non-manual'));
 
