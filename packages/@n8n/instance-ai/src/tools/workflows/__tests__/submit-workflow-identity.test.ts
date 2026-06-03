@@ -134,6 +134,45 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		expect(chunkAgain.workflowId).toBe(chunkResult.workflowId);
 	});
 
+	it('does not reuse workflow identity across different projectIds for the same filePath', async () => {
+		const { execute, calls } = makeUnderlying();
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath);
+
+		const teamA = await wrapped({ filePath: MAIN_PATH, projectId: 'project-a' });
+		const teamB = await wrapped({ filePath: MAIN_PATH, projectId: 'project-b' });
+		const teamAAgain = await wrapped({ filePath: MAIN_PATH, projectId: 'project-a' });
+
+		expect(teamA.workflowId).toBe('wf_1');
+		expect(teamB.workflowId).toBe('wf_2');
+		expect(teamAAgain.workflowId).toBe('wf_1');
+
+		expect(calls).toHaveLength(3);
+		expect(calls[0].workflowId).toBeUndefined();
+		expect(calls[1].workflowId).toBeUndefined();
+		expect(calls[2].workflowId).toBe('wf_1');
+	});
+
+	it('treats omitted projectId and its resolved default projectId as the same identity', async () => {
+		const { execute, calls } = makeUnderlying();
+		const wrapped = wrapSubmitExecuteWithIdentity(
+			execute,
+			resolvePath,
+			(projectId) => projectId ?? 'personal-project',
+		);
+
+		const implicitPersonal = await wrapped({ filePath: MAIN_PATH });
+		const explicitPersonal = await wrapped({
+			filePath: MAIN_PATH,
+			projectId: 'personal-project',
+		});
+
+		expect(implicitPersonal.workflowId).toBe('wf_1');
+		expect(explicitPersonal.workflowId).toBe('wf_1');
+		expect(calls).toHaveLength(2);
+		expect(calls[0].workflowId).toBeUndefined();
+		expect(calls[1].workflowId).toBe('wf_1');
+	});
+
 	it('resolves differently-spelled paths to the same identity', async () => {
 		const { execute } = makeUnderlying();
 		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath);

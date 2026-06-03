@@ -5,10 +5,11 @@
  * a single assistant turn. When the LLM drops `workflowId` on calls 2..N, each
  * call takes the create branch and persists a duplicate row with the same name.
  *
- * This wrapper keys identity per resolved `filePath`. The first call for a given
- * path synchronously installs a deferred in the pending map before dispatching,
- * so concurrent calls for the same path await the first result and inject the
- * bound `workflowId` — forcing the update branch.
+ * This wrapper keys identity per resolved `filePath` and target `projectId`. The
+ * first call for a given path/project pair synchronously installs a deferred in
+ * the pending map before dispatching, so concurrent calls for the same target
+ * await the first result and inject the bound `workflowId` — forcing the update
+ * branch.
  *
  * The map is scoped to the builder-task closure: it dies with the task. No
  * cross-module coordinator, eviction hook, or TTL sweep is required.
@@ -111,20 +112,35 @@ export function createPreSaveBudgetTracker(): SubmitBudgetTracker {
 }
 
 /**
- * Wrap a submit-workflow `execute` with per-filePath identity enforcement.
+ * Wrap a submit-workflow `execute` with per-filePath/per-project identity enforcement.
  *
- * - First call for a given resolved path dispatches and populates the map on success.
- * - Concurrent calls for the same path await the first result and inject the bound id.
+ * - First call for a given resolved path/project pair dispatches and populates the map on success.
+ * - Concurrent calls for the same target await the first result and inject the bound id.
  * - On dispatch failure, the map entry is cleared and waiters see a failure result.
  *
  * Exposed separately from the tool factory so it can be unit-tested without
  * constructing a tool or a sandbox workspace.
  */
+function buildIdentityKey(resolvedPath: string, projectId: string): string {
+	return JSON.stringify([projectId, resolvedPath]);
+}
+
+type ResolveSubmitProjectId = (projectId: string | undefined) => string | Promise<string>;
+
+type SubmitIdentityOptions = SubmitGuardOptions & { budgetTracker?: SubmitBudgetTracker };
+
 export function wrapSubmitExecuteWithIdentity(
 	underlying: SubmitExecute,
 	resolvePath: (rawFilePath: string | undefined) => string,
-	options: SubmitGuardOptions & { budgetTracker?: SubmitBudgetTracker } = {},
+	optionsOrResolveProjectId: SubmitIdentityOptions | ResolveSubmitProjectId = {},
+	maybeOptions: SubmitIdentityOptions = {},
 ): SubmitExecute {
+	const resolveProjectId: ResolveSubmitProjectId =
+		typeof optionsOrResolveProjectId === 'function'
+			? optionsOrResolveProjectId
+			: (projectId) => projectId ?? 'personal';
+	const options: SubmitIdentityOptions =
+		typeof optionsOrResolveProjectId === 'function' ? maybeOptions : optionsOrResolveProjectId;
 	const pending = new Map<string, Promise<string>>();
 
 	function recordTerminalRemediation(
@@ -176,10 +192,12 @@ export function wrapSubmitExecuteWithIdentity(
 
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
+		const projectId = await resolveProjectId(input.projectId);
+		const identityKey = buildIdentityKey(resolvedPath, projectId);
 		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
 		if (terminalResult) return terminalResult;
 
-		const existing = pending.get(resolvedPath);
+		const existing = pending.get(identityKey);
 
 		if (existing) {
 			let boundId: string;
@@ -218,7 +236,7 @@ export function wrapSubmitExecuteWithIdentity(
 		// Swallow rejections on the stored promise so Node doesn't warn about
 		// unhandled rejections when no concurrent waiter happens to attach.
 		promise.catch(() => {});
-		pending.set(resolvedPath, promise);
+		pending.set(identityKey, promise);
 
 		try {
 			const result = await underlying(input);
@@ -227,12 +245,12 @@ export function wrapSubmitExecuteWithIdentity(
 				resolveFn?.(guarded.workflowId);
 			} else {
 				rejectFn?.(new Error(guarded.errors?.join(' ') ?? 'submit-workflow failed'));
-				pending.delete(resolvedPath);
+				pending.delete(identityKey);
 			}
 			return guarded;
 		} catch (error) {
 			rejectFn?.(error);
-			pending.delete(resolvedPath);
+			pending.delete(identityKey);
 			throw error;
 		}
 	};
@@ -282,6 +300,8 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			rawFilePath
 				? resolveSandboxWorkflowFilePath(rawFilePath, args.root)
 				: (args.defaultFilePath ?? resolveSandboxWorkflowFilePath(rawFilePath, args.root)),
+		(projectId) =>
+			args.context.workflowService.resolveCreateProjectId?.(projectId) ?? projectId ?? 'personal',
 		{
 			budgetTracker,
 			currentRunId: args.currentRunId,
