@@ -28,8 +28,6 @@ import type {
 } from '../types';
 import type { ModelConfig } from '../types/sdk/agent';
 
-const DEFAULT_LAST_MESSAGES = 10;
-
 export { DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS, DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET };
 
 export interface ResolveObservationalMemoryConfigOptions {
@@ -161,15 +159,12 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
  * ```typescript
  * const memory = new Memory()
  *   .storage('memory')
- *   .lastMessages(20)
  *   .observationalMemory({ renderTokenBudget: 4500 });
  *
  * agent.memory(memory);
  * ```
  */
 export class Memory {
-	private lastMessagesValue: number = DEFAULT_LAST_MESSAGES;
-
 	private semanticRecallConfig?: SemanticRecallConfig;
 
 	private episodicMemoryConfig?: EpisodicMemoryConfig;
@@ -179,11 +174,6 @@ export class Memory {
 	private titleGenerationConfig?: TitleGenerationConfig;
 
 	private observationalMemoryConfig?: ObservationalMemoryConfig;
-
-	/** The configured number of recent messages to include. */
-	get lastMessageCount(): number {
-		return this.lastMessagesValue;
-	}
 
 	/**
 	 * Set the storage backend for conversation history.
@@ -197,12 +187,6 @@ export class Memory {
 		} else {
 			this.memoryBackend = backend;
 		}
-		return this;
-	}
-
-	/** Set the number of recent messages to include in context. */
-	lastMessages(count: number): this {
-		this.lastMessagesValue = count;
 		return this;
 	}
 
@@ -279,7 +263,6 @@ export class Memory {
 
 		const baseConfig = {
 			memory,
-			lastMessages: this.lastMessagesValue,
 			semanticRecall: this.semanticRecallConfig,
 			episodicMemory: this.episodicMemoryConfig,
 			titleGeneration: this.titleGenerationConfig,

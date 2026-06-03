@@ -13,17 +13,15 @@ describe('WhatsAppTrigger', () => {
 	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
 	let mockNode: jest.Mocked<INode>;
 
-	const appWebhookSubscriptionListSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionList');
-	const appWebhookSubscriptionCreateSpy = jest.spyOn(
-		GenericFunctions,
-		'appWebhookSubscriptionCreate',
-	);
-	const appWebhookSubscriptionDeleteSpy = jest.spyOn(
-		GenericFunctions,
-		'appWebhookSubscriptionDelete',
-	);
+	let appWebhookSubscriptionListSpy: jest.SpyInstance;
+	let appWebhookSubscriptionCreateSpy: jest.SpyInstance;
+	let appWebhookSubscriptionDeleteSpy: jest.SpyInstance;
 
 	beforeEach(() => {
+		appWebhookSubscriptionListSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionList');
+		appWebhookSubscriptionCreateSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionCreate');
+		appWebhookSubscriptionDeleteSpy = jest.spyOn(GenericFunctions, 'appWebhookSubscriptionDelete');
+
 		node = new WhatsAppTrigger();
 		mockHookFunctions = mockDeep<IHookFunctions>();
 		mockWebhookFunctions = mockDeep<IWebhookFunctions>();
@@ -231,6 +229,7 @@ describe('WhatsAppTrigger', () => {
 				};
 				const mockResponse = {
 					status: jest.fn().mockReturnThis(),
+					type: jest.fn().mockReturnThis(),
 					send: jest.fn().mockReturnThis(),
 					end: jest.fn(),
 				} as unknown as express.Response;
@@ -247,6 +246,7 @@ describe('WhatsAppTrigger', () => {
 
 				expect(result).toEqual({ noWebhookResponse: true });
 				expect(mockResponse.status).toHaveBeenCalledWith(200);
+				expect(mockResponse.type).toHaveBeenCalledWith('text/plain');
 				expect(mockResponse.send).toHaveBeenCalledWith('test-challenge');
 				expect(mockResponse.end).toHaveBeenCalled();
 			});

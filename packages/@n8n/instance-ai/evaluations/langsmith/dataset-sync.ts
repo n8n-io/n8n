@@ -92,9 +92,10 @@ export async function syncDataset(
 		existingByDerivedId.set(`${inputs.data.testCaseFile}/${inputs.data.scenarioName}`, example);
 	}
 
-	// Diff and sync
-	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
-	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
+	// Diff and sync. `split` is multi-valued so a case can belong to multiple
+	// logical groupings (e.g. ['pr', 'full']) in addition to its per-file slug.
+	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
+	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
@@ -114,17 +115,20 @@ export async function syncDataset(
 			triggerType: scenario.triggerType,
 		};
 
+		const split = [scenario.testCaseFile, ...scenario.datasets];
+
 		const existingExample = existingByDerivedId.get(derivedId);
 		if (existingExample) {
 			if (
 				hasInputsChanged(existingExample.inputs, inputs) ||
-				hasMetadataChanged(existingExample.metadata, metadata)
+				hasMetadataChanged(existingExample.metadata, metadata) ||
+				hasSplitChanged(existingExample.split, split)
 			) {
 				toUpdate.push({
 					id: existingExample.id,
 					inputs,
 					metadata,
-					split: scenario.testCaseFile,
+					split,
 				});
 			}
 		} else {
@@ -132,7 +136,7 @@ export async function syncDataset(
 				id: randomUUID(),
 				inputs,
 				metadata,
-				split: scenario.testCaseFile,
+				split,
 			});
 		}
 	}
@@ -183,6 +187,8 @@ interface FlatScenario {
 	complexity?: 'simple' | 'medium' | 'complex';
 	tags?: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
+	/** Logical groupings (e.g. ['pr', 'full']) — written into the LangSmith example's splits alongside the file slug. */
+	datasets: string[];
 }
 
 /**
@@ -211,6 +217,7 @@ function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]
 					complexity: testCase.complexity,
 					tags: testCase.tags,
 					triggerType: testCase.triggerType,
+					datasets: testCase.datasets,
 				});
 			}
 		}
@@ -265,4 +272,13 @@ function hasMetadataChanged(existing: unknown, incoming: DatasetExampleMetadata)
 		e.triggerType !== (incoming.triggerType ?? '') ||
 		JSON.stringify(e.tags) !== JSON.stringify(incoming.tags ?? [])
 	);
+}
+
+// Split (file slug + datasets/tiers) is order-insensitive — compare as sets so a
+// reorder isn't a change, but adding/removing a tier is and triggers a re-sync.
+function hasSplitChanged(existing: string | string[] | undefined, incoming: string[]): boolean {
+	const current = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
+	if (current.length !== incoming.length) return true;
+	const incomingSet = new Set(incoming);
+	return !current.every((s) => incomingSet.has(s));
 }

@@ -119,7 +119,7 @@ import type { AgentConfirmationModalData } from '@/features/agents/components/Ag
 import WorkflowVersionFormModal, {
 	type WorkflowVersionFormModalData,
 } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
-import WorkflowSettings from '@/app/components/WorkflowSettings.vue';
+import WorkflowSettings from '@/app/components/WorkflowSettings/WorkflowSettings.vue';
 import WorkflowShareModal from '@/app/components/WorkflowShareModal.ee.vue';
 import WorkflowDiffModal from '@/features/workflows/workflowDiff/WorkflowDiffModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';

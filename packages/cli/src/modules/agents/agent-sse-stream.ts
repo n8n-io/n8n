@@ -6,6 +6,7 @@ import type {
 	ToolSuspendedPayload,
 } from '@n8n/api-types';
 import type { Response } from 'express';
+import { LoggerProxy } from 'n8n-workflow';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
@@ -112,6 +113,7 @@ function emitToolChunk(
 				| 'tool-input-delta'
 				| 'tool-call'
 				| 'tool-execution-start'
+				| 'tool-execution-end'
 				| 'tool-result'
 				| 'tool-call-suspended';
 		}
@@ -148,6 +150,16 @@ function emitToolChunk(
 				type: 'tool-execution-start',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
+				startTime: chunk.startTime,
+			});
+			break;
+		case 'tool-execution-end':
+			send({
+				type: 'tool-execution-end',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				isError: chunk.isError,
+				endTime: chunk.endTime,
 			});
 			break;
 		case 'tool-result':
@@ -201,6 +213,7 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-input-delta':
 		case 'tool-call':
 		case 'tool-execution-start':
+		case 'tool-execution-end':
 		case 'tool-result':
 		case 'tool-call-suspended':
 			return emitToolChunk(chunk, ctx);
@@ -210,13 +223,28 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			return { suspended: false };
 		}
 		case 'error': {
-			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
+			const errMsg = stringifyError(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });
 			return { suspended: false };
 		}
 		default:
 			return { suspended: false };
 	}
+}
+
+function stringifyError(error: unknown): string {
+	try {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'object') {
+			return JSON.stringify(error, null, 2);
+		}
+		return `Error: ${String(error)}`;
+	} catch (e) {
+		LoggerProxy.warn('Failed to stringify agent streaming error', { error });
+	}
+	return 'Unknown error';
 }
 
 /**

@@ -19,6 +19,7 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 jest.mock('@/permissions.ee/check-access');
@@ -66,7 +67,9 @@ describe('WorkflowService', () => {
 				mock(), // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				webhookServiceMock, // webhookService
 				mock(), // licenseState
@@ -215,7 +218,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				licenseStateMock, // licenseState
@@ -356,12 +361,9 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ workflowId: 'workflow-1' },
-			);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+				projectId: 'project-1',
+			});
 			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
@@ -382,12 +384,9 @@ describe('WorkflowService', () => {
 				{ forceSave: true },
 			);
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ workflowId: 'workflow-1' },
-			);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+				projectId: 'project-1',
+			});
 			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
 				'workflow-1',
 				expect.objectContaining({
@@ -500,6 +499,230 @@ describe('WorkflowService', () => {
 				undefined,
 			);
 		});
+
+		describe('directional scope enforcement', () => {
+			test('should require enableRedaction for upgrade (none → all)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'none' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'all' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:enableRedaction']),
+					false,
+					expect.any(Object),
+				);
+				expect(userHasScopesMock).not.toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:disableRedaction']),
+					false,
+					expect.any(Object),
+				);
+			});
+
+			test('should require disableRedaction for downgrade (all → none)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'all' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'none' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:disableRedaction']),
+					false,
+					expect.any(Object),
+				);
+				expect(userHasScopesMock).not.toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:enableRedaction']),
+					false,
+					expect.any(Object),
+				);
+			});
+
+			test('should require disableRedaction for partial downgrade (all → non-manual)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'all' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'non-manual' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:disableRedaction']),
+					false,
+					expect.any(Object),
+				);
+			});
+
+			test('should require disableRedaction for partial downgrade (all → manual-only)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'all' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'manual-only' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:disableRedaction']),
+					false,
+					expect.any(Object),
+				);
+			});
+
+			test('should require both scopes for mixed transition (non-manual → manual-only)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'non-manual' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'manual-only' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:enableRedaction', 'workflow:disableRedaction']),
+					false,
+					expect.any(Object),
+				);
+			});
+
+			test('should require both scopes for mixed transition (manual-only → non-manual)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'manual-only' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'non-manual' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					user,
+					expect.arrayContaining(['workflow:enableRedaction', 'workflow:disableRedaction']),
+					false,
+					expect.any(Object),
+				);
+			});
+
+			test('should strip policy when user lacks required scope', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'all' });
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'non-manual' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+					'workflow-1',
+					expect.objectContaining({
+						settings: expect.not.objectContaining({ redactionPolicy: 'non-manual' }),
+					}),
+				);
+			});
+
+			test('should preserve policy when user has required scope', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'all' });
+				userHasScopesMock.mockResolvedValue(true);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'non-manual' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+					'workflow-1',
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
+					}),
+				);
+			});
+
+			test('should strip policy when user has only disableRedaction for mixed transition (non-manual → manual-only)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'non-manual' });
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
+						Array.isArray(scopes) &&
+						scopes.includes('workflow:disableRedaction') &&
+						!scopes.includes('workflow:enableRedaction'),
+				);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'manual-only' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+					'workflow-1',
+					expect.objectContaining({
+						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
+					}),
+				);
+			});
+
+			test('should strip policy when user has only enableRedaction for mixed transition (non-manual → manual-only)', async () => {
+				setupExistingWorkflow({ redactionPolicy: 'non-manual' });
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
+						Array.isArray(scopes) &&
+						scopes.includes('workflow:enableRedaction') &&
+						!scopes.includes('workflow:disableRedaction'),
+				);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactionPolicy: 'manual-only' }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+					'workflow-1',
+					expect.objectContaining({
+						settings: expect.not.objectContaining({ redactionPolicy: 'manual-only' }),
+					}),
+				);
+			});
+		});
 	});
 
 	describe('workflow.activate hook', () => {
@@ -571,7 +794,9 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
+				Object.assign(mock<WorkflowValidationService>(), {
+					validateCredentialNodeRestrictions: () => ({ isValid: true }),
+				}), // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState

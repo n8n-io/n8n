@@ -40,7 +40,14 @@ const esmDependencies = [
 ];
 
 const esmDependenciesPattern = esmDependencies.join('|');
-const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js$`;
+
+// On Windows, Jest passes raw backslash paths to transform/ignore pattern regexes
+// without normalizing separators, so we must match both / and \.
+const isWindows = process.platform === 'win32';
+const sep = isWindows ? '[/\\\\]' : '/';
+const nonSep = isWindows ? '[^/\\\\]' : '[^/]';
+
+const esmDependenciesRegex = `node_modules${sep}(${esmDependenciesPattern})${sep}.+\\.m?js$`;
 
 /** @type {import('jest').Config} */
 const config = {
@@ -58,12 +65,27 @@ const config = {
 			},
 		],
 	},
-	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
+	transformIgnorePatterns: [
+		// Exclude the pnpm virtual store dir (.pnpm) and the ESM deps from being ignored.
+		`${sep}node_modules${sep}(?!\\.pnpm|${esmDependenciesPattern})${sep}`,
+		// On Windows with pnpm, ESM deps live inside the virtual store (.pnpm) and are
+		// accessed via hardlinks (no symlinks), so their path goes through
+		// .pnpm/<pkg@version>/node_modules/<pkg>/... — exclude ESM deps from being ignored there too.
+		...(isWindows
+			? [`${sep}\\.pnpm${sep}${nonSep}+${sep}node_modules${sep}(?!${esmDependenciesPattern})${sep}`]
+			: []),
+	],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: {
 		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
 		// jest-resolve@29 doesn't honor `./lib/*` subpath patterns in @anthropic-ai/sdk's exports map
 		'^@anthropic-ai/sdk/lib/(.*)$': '@anthropic-ai/sdk/lib/$1.js',
+		// Core uses vitest-mock-extended (ESM-only) for its own tests; route the
+		// shim to a CJS-friendly variant for Jest-based consumers (nodes-base, cli).
+		'^(\\./|\\.\\./nodes-testing/)mock-extended$': resolve(
+			__dirname,
+			'packages/core/nodes-testing/mock-extended.jest.cjs',
+		),
 		...(compilerOptions?.paths
 			? pathsToModuleNameMapper(compilerOptions.paths, {
 					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
@@ -71,6 +93,7 @@ const config = {
 			: {}),
 	},
 	setupFilesAfterEnv: ['jest-expect-message'],
+	restoreMocks: true,
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
 	workerIdleMemoryLimit: '1MB',

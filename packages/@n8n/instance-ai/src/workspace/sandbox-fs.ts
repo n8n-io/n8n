@@ -15,18 +15,7 @@ interface SandboxCommandResult {
 	stderr: string;
 }
 
-export interface SandboxWorkspace {
-	filesystem?: {
-		provider?: string;
-		basePath?: string;
-		init?: () => Promise<void>;
-		writeFile: (
-			path: string,
-			content: string | Buffer,
-			options?: { recursive?: boolean },
-		) => Promise<void>;
-		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
-	};
+interface SandboxCommandTarget {
 	sandbox?: {
 		provider?: string;
 		executeCommand?: (
@@ -43,6 +32,20 @@ export interface SandboxWorkspace {
 	};
 }
 
+export interface SandboxWorkspace extends SandboxCommandTarget {
+	filesystem?: {
+		provider?: string;
+		basePath?: string;
+		init?: () => Promise<void>;
+		writeFile: (
+			path: string,
+			content: string | Buffer,
+			options?: { recursive?: boolean },
+		) => Promise<void>;
+		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+	};
+}
+
 import { getTemplateTelemetrySession } from './template-telemetry';
 
 const BASE64_WRITE_CHUNK_SIZE = 32_000;
@@ -56,7 +59,7 @@ const BASE64_WRITE_CHUNK_SIZE = 32_000;
  * template-usage events. Failures in the observer never break the command.
  */
 export async function runInSandbox(
-	workspace: SandboxWorkspace,
+	workspace: SandboxCommandTarget,
 	command: string,
 	cwd?: string,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -94,7 +97,7 @@ export async function runInSandbox(
  * Creates parent directories automatically.
  */
 export async function writeFileViaSandbox(
-	workspace: SandboxWorkspace,
+	workspace: SandboxCommandTarget,
 	filePath: string,
 	content: string | Buffer,
 ): Promise<void> {
@@ -127,8 +130,11 @@ export async function writeFileViaSandbox(
 		await runWriteCommand(`printf '%s' '${chunk}' >> '${escapedTempPath}'`);
 	}
 
+	// Decode + cleanup in one shell expression; the exit reflects base64's
+	// status. Avoid the variable name `status` — it's a read-only builtin in
+	// zsh, which silently breaks the assignment and loses base64's exit code.
 	await runWriteCommand(
-		`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; status=$?; rm -f '${escapedTempPath}'; exit $status`,
+		`base64 -d '${escapedTempPath}' > '${escapeSingleQuotes(filePath)}'; rc=$?; rm -f '${escapedTempPath}'; exit $rc`,
 	);
 }
 
@@ -137,7 +143,7 @@ export async function writeFileViaSandbox(
  * Returns null if the file doesn't exist.
  */
 export async function readFileViaSandbox(
-	workspace: SandboxWorkspace,
+	workspace: SandboxCommandTarget,
 	filePath: string,
 ): Promise<string | null> {
 	const result = await runInSandbox(workspace, `cat '${escapeSingleQuotes(filePath)}' 2>/dev/null`);
