@@ -411,9 +411,12 @@ async function writeWorkspaceFile(
  */
 const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
 
-function getLazyFilesystemRoot(workspace: SandboxWorkspace): string | null {
+function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
 	const filesystem = workspace.filesystem;
-	if (filesystem?.provider !== 'lazy') return null;
+	if (!filesystem) return null;
+
+	const provider = filesystem.provider;
+	if (provider !== 'local' && provider !== 'lazy') return null;
 
 	const basePath = Reflect.get(filesystem, 'basePath');
 	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
@@ -430,17 +433,17 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
 
-	const lazyRoot = getLazyFilesystemRoot(workspace);
-	if (lazyRoot) {
-		workspaceRootCache.set(workspace, lazyRoot);
-		return lazyRoot;
+	const localRoot = getLocalFilesystemRoot(workspace);
+	if (localRoot) {
+		workspaceRootCache.set(workspace, localRoot);
+		return localRoot;
 	}
 
 	await initializeLazyFilesystem(workspace);
-	const initializedLazyRoot = getLazyFilesystemRoot(workspace);
-	if (initializedLazyRoot) {
-		workspaceRootCache.set(workspace, initializedLazyRoot);
-		return initializedLazyRoot;
+	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
+	if (initializedLocalRoot) {
+		workspaceRootCache.set(workspace, initializedLocalRoot);
+		return initializedLocalRoot;
 	}
 
 	const result = await runInSandbox(workspace, 'echo $HOME');
@@ -542,6 +545,11 @@ export async function writeCuratedExamples(
 	logger?: Logger,
 ): Promise<void> {
 	if (!bundle?.archive) return;
+
+	if (workspace.filesystem?.provider === 'local') {
+		logger?.debug('[sandbox-setup] skipping curated examples for local provider');
+		return;
+	}
 
 	// Defense-in-depth for the curated CDN bundle. This validates the narrow
 	// archive shape we publish, not arbitrary user-supplied tar files.
