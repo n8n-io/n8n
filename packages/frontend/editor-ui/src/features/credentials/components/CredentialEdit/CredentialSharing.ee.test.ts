@@ -34,6 +34,8 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.info.sharee.personal': 'Shared by personal project',
 		'credentialEdit.credentialSharing.info.personalSpaceRestricted':
 			"You don't have permission to share personal credentials",
+		'credentialEdit.credentialSharing.info.dynamicCredential':
+			"Private credentials can't be shared, since each user connects their own when a workflow runs.",
 		'credentialEdit.credentialSharing.role.user': 'User',
 		'auth.roles.owner': 'Owner',
 		'contextual.credentials.sharing.unavailable.title': 'Upgrade to collaborate',
@@ -394,6 +396,25 @@ describe('CredentialSharing.ee', () => {
 
 			// Team project shows the team sharee message
 			expect(getByText(/shared by team project/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('dynamic credentials', () => {
+		it('should explain why sharing is disabled for a dynamic credential', () => {
+			const credential = createCredential();
+			const { getByText } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					isResolvable: true,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// The reason sharing is unavailable is surfaced to the user
+			expect(getByText(/can't be shared/i)).toBeInTheDocument();
 		});
 	});
 });
