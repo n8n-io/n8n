@@ -21,8 +21,10 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",

@@ -42,6 +42,15 @@ function childText(): InstanceAiEvent {
 	};
 }
 
+function previousRunRootText(): InstanceAiEvent {
+	return {
+		type: 'text-delta',
+		runId: 'run-previous',
+		agentId: rootAgentId,
+		payload: { text: 'Visible message-group text' },
+	};
+}
+
 function confirmation(
 	overrides: Partial<Extract<InstanceAiEvent, { type: 'confirmation-request' }>['payload']> = {},
 ): Extract<InstanceAiEvent, { type: 'confirmation-request' }> {
@@ -90,6 +99,18 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.action).toBe('none');
 		expect(decision.reason).toBe('completed-silent-suppressed');
 		expect(decision.event).toBeUndefined();
+	});
+
+	it('does not emit completed fallback when the message group already has root text', () => {
+		const decision = new InstanceAiTerminalResponseGuard({
+			runId,
+			rootAgentId,
+			messageGroupId: 'mg-1',
+		}).evaluateTerminal([previousRunRootText(), runStart()], 'completed');
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+		expect(decision.reason).toBe('already-visible');
 	});
 
 	it('emits sanitized error when partial root text is followed by failure', () => {

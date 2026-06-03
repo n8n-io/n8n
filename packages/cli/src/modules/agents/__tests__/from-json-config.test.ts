@@ -805,7 +805,7 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
 	});
 
-	it('uses async title generation so chat completion is not blocked', async () => {
+	it('uses synchronous title generation so the first message can sync the title', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
 		});
@@ -820,7 +820,7 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(getMemoryConfig(agent)?.titleGeneration?.sync).not.toBe(true);
+		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
 	it('configures observational memory worker models with their own credentials', async () => {

@@ -12,6 +12,18 @@ export function splitAndTrim(str: string | string[]) {
 	return str;
 }
 
+// The "Analyzers" field is a multiOptions parameter, so it normally resolves to
+// an array of "analyzerId::cortexId" entries. When its value comes from an
+// expression wrapped in surrounding text/whitespace, n8n switches to string
+// interpolation and the array is coerced to a comma-joined string. Normalize
+// both shapes so the operation does not throw "(...).map is not a function".
+export function parseAnalyzers(value: string | string[]) {
+	return splitAndTrim(value).map((analyzer) => {
+		const [analyzerId, cortexId] = analyzer.split('::');
+		return { analyzerId, cortexId };
+	});
+}
+
 export function fixFieldType(fields: IDataObject) {
 	const returnData: IDataObject = {};
 

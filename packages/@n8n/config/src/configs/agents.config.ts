@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 
@@ -28,7 +30,7 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 export class AgentsConfig {
 	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
-	checkpointTtlSeconds: number = 345600; // 96 hours
+	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
 	/** Maximum number of sub-agents a single parent run may spawn. Bounds fan-out width. */
 	@Env('N8N_AGENTS_SUBAGENT_MAX_CHILDREN')
@@ -36,7 +38,7 @@ export class AgentsConfig {
 
 	/** Abort an individual sub-agent run after this many milliseconds. */
 	@Env('N8N_AGENTS_SUBAGENT_TIMEOUT_MS')
-	subAgentTimeoutMs: number = 300000; // 5 minutes
+	subAgentTimeoutMs: number = 5 * Time.minutes.toMilliseconds;
 
 	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
