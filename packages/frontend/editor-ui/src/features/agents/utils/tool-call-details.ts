@@ -1,7 +1,7 @@
 import type { ToolCallState } from '../constants';
 import { TOOL_CALL_STATE } from '../constants';
 import type { ToolCall } from '../composables/agentChatMessages';
-import { isDelegateSubAgentTool, parseDelegateOutput } from './delegate-tool';
+import { formatDelegateError, isDelegateSubAgentTool, parseDelegateOutput } from './delegate-tool';
 import {
 	formatWriteTodosMarkdown,
 	isWriteTodosTool,
@@ -12,7 +12,7 @@ function isSettledState(state: ToolCallState): boolean {
 	return state === TOOL_CALL_STATE.DONE || state === TOOL_CALL_STATE.ERROR;
 }
 
-function formatDelegateDetails(output: unknown): string | undefined {
+function formatDelegateDetails(output: unknown, i18n?: WriteTodosI18n): string | undefined {
 	const parsed = parseDelegateOutput(output);
 	if (!parsed) return undefined;
 
@@ -20,7 +20,7 @@ function formatDelegateDetails(output: unknown): string | undefined {
 	if (answer) return answer;
 
 	const error = parsed.error?.trim();
-	if (error) return error;
+	if (error) return formatDelegateError(error, i18n);
 
 	return undefined;
 }
@@ -32,7 +32,7 @@ function formatExpandableDetails(
 	subAgentNameById?: Map<string, string>,
 ): string | undefined {
 	if (isDelegateSubAgentTool(toolName)) {
-		return formatDelegateDetails(output);
+		return formatDelegateDetails(output, i18n);
 	}
 
 	if (isWriteTodosTool(toolName)) {

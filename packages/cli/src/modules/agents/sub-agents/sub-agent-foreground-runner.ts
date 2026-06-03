@@ -1,5 +1,6 @@
 import {
 	assertSubAgentTaskPath,
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
@@ -113,6 +114,7 @@ export class SubAgentForegroundRunner {
 			});
 			const recorder = new ExecutionRecorder();
 			let structuredOutput: unknown;
+			let childSuspended = false;
 
 			const reader = resultStream.stream.getReader();
 			try {
@@ -120,6 +122,9 @@ export class SubAgentForegroundRunner {
 					const { done, value } = await reader.read();
 					if (done) break;
 					recorder.record(value);
+					if (value.type === 'tool-call-suspended') {
+						childSuspended = true;
+					}
 					if (value.type === 'finish' && value.structuredOutput !== undefined) {
 						structuredOutput = value.structuredOutput;
 					}
@@ -139,6 +144,20 @@ export class SubAgentForegroundRunner {
 				prompt,
 				record: messageRecord,
 			});
+			if (childSuspended) {
+				return {
+					taskPath,
+					threadId,
+					status: 'failed',
+					result: {
+						runId: resultStream.runId,
+						messages: [],
+						finishReason: 'error',
+						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+					},
+				};
+			}
+
 			const result = buildGenerateResultFromRecord(
 				resultStream.runId,
 				messageRecord,

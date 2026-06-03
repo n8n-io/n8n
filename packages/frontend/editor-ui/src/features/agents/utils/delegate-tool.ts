@@ -9,6 +9,9 @@ import { z } from 'zod';
  */
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
+/** Mirrors `DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE` in `@n8n/agents`. */
+export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
+	'agents.chat.delegate.childSuspendUnsupported';
 
 // FE-local parsers for the fields the chat reads off a delegate_subagent call.
 // The full input/output shapes live in `@n8n/agents` (not exported as
@@ -48,6 +51,17 @@ export function parseDelegateInput(input: unknown): DelegateInput | undefined {
 export function parseDelegateOutput(output: unknown): DelegateOutput | undefined {
 	const result = delegateOutputSchema.safeParse(output);
 	return result.success ? result.data : undefined;
+}
+
+/** Localize a delegate tool error when it is a known i18n key. */
+export function formatDelegateError(
+	error: string,
+	i18n?: Pick<ReturnType<typeof useI18n>, 'baseText'>,
+): string {
+	if (i18n && error === DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE) {
+		return i18n.baseText(DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE);
+	}
+	return error;
 }
 
 /**

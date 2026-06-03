@@ -6113,6 +6113,7 @@
 	"agents.chat.toolNames.searchKnowledge": "Search knowledge",
 	"agents.chat.delegate.label": "Sub-agent · {name}",
 	"agents.chat.delegate.labelFallback": "Sub-agent",
+	"agents.chat.delegate.childSuspendUnsupported": "Sub-agent requested user input, which is not supported for delegated runs yet.",
 	"agents.chat.writeTodos.label": "Task list",
 	"agents.chat.writeTodos.summary.one": "{count} task",
 	"agents.chat.writeTodos.summary.other": "{count} tasks",

@@ -56,18 +56,14 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				if (needs) {
 					return await interruptCtx.suspend({ type: 'approval', toolName: tool.name, args: input });
 				}
-				return await originalHandler(input, {
-					parentTelemetry: interruptCtx.parentTelemetry,
-				} as ToolContext);
+				return await originalHandler(input, interruptCtx as ToolContext);
 			}
 
 			const { approved } = interruptCtx.resumeData as z.infer<typeof APPROVAL_RESUME_SCHEMA>;
 			if (!approved) {
 				return { declined: true, message: `Tool "${tool.name}" was not approved` };
 			}
-			return await originalHandler(input, {
-				parentTelemetry: interruptCtx.parentTelemetry,
-			} as ToolContext);
+			return await originalHandler(input, interruptCtx as ToolContext);
 		},
 	};
 }

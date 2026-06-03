@@ -336,8 +336,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		expect(toolNames).not.toContain('rich_interaction');
 		expect(toolNames.filter((name) => name.endsWith('_context'))).toHaveLength(0);
 		expect(toolNames.filter((name) => name.endsWith('_action'))).toHaveLength(0);
-		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
-		expect(toolNames).toContain(WRITE_TODOS_TOOL_NAME);
+		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(toolNames).not.toContain(WRITE_TODOS_TOOL_NAME);
 	});
 });
 

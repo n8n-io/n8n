@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ASK_CREDENTIAL_TOOL_NAME, ASK_QUESTION_TOOL_NAME } from '@n8n/api-types';
 import { TOOL_CALL_STATE } from '../constants';
-import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
+import {
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+} from '../utils/delegate-tool';
 import { getToolCallDetails, isToolCallExpandable } from '../utils/tool-call-details';
 import { WRITE_TODOS_TOOL_NAME, type WriteTodosI18n } from '../utils/write-todos-tool';
 
@@ -97,6 +100,31 @@ describe('tool-call-details', () => {
 					state: TOOL_CALL_STATE.ERROR,
 				}),
 			).toBe('child failed');
+		});
+
+		it('localizes known delegate error i18n keys when i18n is provided', () => {
+			const i18n: WriteTodosI18n = {
+				baseText: (key: string) => {
+					if (key === DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE) {
+						return 'Sub-agent requested user input, which is not supported for delegated runs yet.';
+					}
+					return key;
+				},
+			};
+			expect(
+				getToolCallDetails(
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						output: {
+							status: 'failed',
+							answer: '',
+							error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+						},
+						state: TOOL_CALL_STATE.ERROR,
+					},
+					i18n,
+				),
+			).toBe('Sub-agent requested user input, which is not supported for delegated runs yet.');
 		});
 
 		it('passes sub-agent name map through for write_todos delegate hints', () => {

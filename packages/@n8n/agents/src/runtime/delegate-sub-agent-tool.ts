@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import {
-	assertSubAgentPolicyAllowsChild,
 	assertSubAgentPolicyAllowsChildCount,
 	createChildSubAgentTaskPath,
 	type SubAgentTaskPath,
@@ -17,6 +16,9 @@ import type { BuiltTool, ToolContext } from '../types/sdk/tool';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
+/** i18n key — localized in the agent chat UI; see `agents.chat.delegate.childSuspendUnsupported`. */
+export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
+	'agents.chat.delegate.childSuspendUnsupported';
 export const INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY = 'inlineDelegateSubAgent';
 
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
@@ -201,8 +203,8 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *
  * The tool owns the cross-cutting concerns: the model-facing input/output
  * schema, the description + system instruction that teach the LLM when/how to
- * delegate, task-path bookkeeping, policy enforcement (fan-out /
- * canSpawnSubAgents), and the `subagent-started` / `-completed`
+ * delegate, task-path bookkeeping, fan-out policy enforcement, and the
+ * `subagent-started` / `-completed`
  * lifecycle events. You only supply HOW to run the child, via `runSubAgent`.
  *
  * @example Host-controlled execution (what the n8n CLI does):
@@ -295,7 +297,6 @@ async function handleDelegateSubAgent(
 	let request: DelegateSubAgentRequest | undefined;
 	let startedAt: number | undefined;
 	try {
-		assertSubAgentPolicyAllowsChild(options.policy);
 		const childCountKey = getChildCountKey(ctx);
 		const childCount = childCounts.get(childCountKey) ?? 0;
 		assertSubAgentPolicyAllowsChildCount(childCount, options.policy);
@@ -476,6 +477,18 @@ function resolveDelegateSubAgentStatus(
 		return 'suspended';
 	}
 	return 'completed';
+}
+
+/** Failed delegate output when a child run suspends for user input (not yet resumable). */
+export function failedDelegatedChildSuspendOutput(
+	taskPath: SubAgentTaskPath,
+): DelegateSubAgentToolOutput {
+	return {
+		status: 'failed',
+		taskPath,
+		answer: '',
+		error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	};
 }
 
 /** Map an agent {@link GenerateResult} into the delegate tool's output shape. */

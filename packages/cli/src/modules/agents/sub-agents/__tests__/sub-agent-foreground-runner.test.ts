@@ -1,4 +1,10 @@
-import type { BuiltAgent, CredentialProvider, StreamChunk, StreamResult } from '@n8n/agents';
+import {
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	type BuiltAgent,
+	type CredentialProvider,
+	type StreamChunk,
+	type StreamResult,
+} from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
@@ -248,6 +254,37 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
+	});
+
+	it('marks the run as failed when the child stream emits a suspension', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Choose an option' },
+				{
+					type: 'tool-call-suspended',
+					runId: 'child-run-1',
+					toolCallId: 'tool-call-1',
+					toolName: 'rich_interaction',
+				},
+				{ type: 'finish', finishReason: 'tool-calls' },
+			]),
+		);
+
+		await expect(
+			runner.runForeground(spawnRequest, {
+				projectId,
+				userId,
+				credentialProvider,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'error',
+				error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+			},
+		});
+		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type * as AgentRuntimeModule from '../../runtime/agent-runtime';
 import {
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
@@ -13,6 +14,9 @@ import type { BuiltTool } from '../../types';
 import { Agent } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
+let inlineChildGenerateResult:
+	| Awaited<ReturnType<InstanceType<typeof AgentRuntimeModule.AgentRuntime>['generate']>>
+	| undefined;
 
 vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
@@ -24,6 +28,9 @@ vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 			}
 
 			async generate() {
+				if (inlineChildGenerateResult !== undefined) {
+					return await Promise.resolve(inlineChildGenerateResult);
+				}
 				return await Promise.resolve({
 					runId: 'child-run',
 					finishReason: 'stop',
@@ -63,6 +70,7 @@ const delegateInput = {
 describe('delegate sub-agent routing', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
+		inlineChildGenerateResult = undefined;
 	});
 
 	it('routes inline delegations through a host runner with runInlineSubAgent helpers', async () => {
@@ -166,5 +174,48 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(runInlineSubAgent).toHaveBeenCalledOnce();
+	});
+
+	it('returns a failed delegate output when an inline child run suspends', async () => {
+		inlineChildGenerateResult = {
+			runId: 'child-run-suspended',
+			finishReason: 'tool-calls',
+			messages: [
+				{
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'awaiting approval' }],
+				},
+			],
+			pendingSuspend: [
+				{
+					runId: 'child-run-suspended',
+					toolCallId: 'tool-call-1',
+					toolName: 'delete_file',
+					input: { path: '/tmp/foo.txt' },
+					suspendPayload: { message: 'Delete file?' },
+				},
+			],
+		};
+
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		await (agent as unknown as { build(): Promise<unknown> }).build();
+
+		const builtTools = runtimeConfigs[0]?.tools as BuiltTool[] | undefined;
+		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(delegateTool).toBeDefined();
+
+		await expect(
+			delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' }),
+		).resolves.toMatchObject({
+			status: 'failed',
+			answer: '',
+			error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+		});
 	});
 });

@@ -12,6 +12,7 @@ import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
+	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	renderDelegateSubAgentPrompt,
@@ -958,6 +959,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						: {}),
 					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
 				});
+				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
+					return failedDelegatedChildSuspendOutput(request.taskPath);
+				}
 				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
 			} finally {
 				await childRuntime.dispose();

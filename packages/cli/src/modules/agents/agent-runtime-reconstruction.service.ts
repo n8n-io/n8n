@@ -408,15 +408,17 @@ export class AgentRuntimeReconstructionService {
 			agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
 		}
 
-		this.attachSubAgentDelegationTool({
-			agent,
-			parentAgentId: parentAgentIdForDelegation,
-			projectId,
-			credentialProvider,
-			userId,
-			delegation: subAgentDelegation,
-		});
-		this.attachWriteTodosTool(agent, agentId);
+		if (runtimeProfile === 'top-level') {
+			this.attachSubAgentDelegationTool({
+				agent,
+				parentAgentId: parentAgentIdForDelegation,
+				projectId,
+				credentialProvider,
+				userId,
+				delegation: subAgentDelegation,
+			});
+			this.attachWriteTodosTool(agent, agentId);
+		}
 
 		this.attachThreadTitleSyncListener(agent);
 

@@ -37,8 +37,6 @@ export type SubAgentTaskPath = '/root' | `/root/${string}`;
 export interface SubAgentTaskPathPolicy {
 	/** Maximum number of children a single parent may spawn. Bounds fan-out width. */
 	maxChildren?: number;
-	/** Hard on/off switch: when false the parent may not delegate at all. */
-	canSpawnSubAgents?: boolean;
 }
 
 /** Path of the initiating (orchestrating) agent. */
@@ -109,15 +107,6 @@ export function createChildSubAgentTaskPath(
 	assertSubAgentTaskPath(childPath);
 
 	return childPath;
-}
-
-/**
- * Delegation on/off gate, checked BEFORE a child is spawned.
- */
-export function assertSubAgentPolicyAllowsChild(policy: SubAgentTaskPathPolicy | undefined): void {
-	if (policy?.canSpawnSubAgents === false) {
-		throw new Error('Sub-agent policy does not allow spawning child sub-agents');
-	}
 }
 
 /**

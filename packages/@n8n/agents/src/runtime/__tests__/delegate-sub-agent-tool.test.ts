@@ -342,6 +342,17 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 		});
 	});
 
+	it('returns a failed delegate output for delegated child suspension stopgap', async () => {
+		const { failedDelegatedChildSuspendOutput } = await import('../delegate-sub-agent-tool');
+
+		expect(failedDelegatedChildSuspendOutput('/root/x_0')).toEqual({
+			status: 'failed',
+			taskPath: '/root/x_0',
+			answer: '',
+			error: 'agents.chat.delegate.childSuspendUnsupported',
+		});
+	});
+
 	it('maps a suspended child result to suspended with pendingSuspend metadata', () => {
 		const result: GenerateResult = {
 			runId: 'child-run-3',
