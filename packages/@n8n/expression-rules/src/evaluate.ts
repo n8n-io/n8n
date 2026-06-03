@@ -42,6 +42,11 @@ export function evaluateRules(rules: ClaimRule[], context: EvaluationContext): E
 }
 
 function matches(expression: string, context: EvaluationContext): boolean {
+	// An empty or non-string expression (e.g. a blank rule row) never matches.
+	if (typeof expression !== 'string' || expression.trim() === '') {
+		return false;
+	}
+
 	// n8n marks a value as an expression with a leading "=" (e.g. "={{ ... }}").
 	// resolveWithoutWorkflow expects the unprefixed "{{ ... }}" form, so strip it.
 	const normalized = expression.startsWith('=') ? expression.slice(1) : expression;

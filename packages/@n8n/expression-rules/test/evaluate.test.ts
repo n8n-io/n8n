@@ -63,6 +63,14 @@ describe('evaluateRules (deny-wins claim ACL)', () => {
 		expect(evaluateRules(rules, ctx).allowed).toBe(false);
 	});
 
+	it('treats an empty or missing expression as non-matching (no crash)', () => {
+		const rules = [
+			{ effect: 'allow', expression: '' },
+			{ effect: 'allow', expression: undefined as unknown as string },
+		] as ClaimRule[];
+		expect(evaluateRules(rules, ctx).allowed).toBe(false);
+	});
+
 	it('treats a throwing expression as non-matching (does not grant access)', () => {
 		const rules: ClaimRule[] = [
 			{ effect: 'allow', expression: '{{ (() => { throw new Error("boom") })() }}' },
