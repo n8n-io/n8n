@@ -19,7 +19,10 @@ import { OauthService } from '@/oauth/oauth.service';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { createAuthFetch } from '@/utils/auth-fetch';
 
-import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
+import type {
+	InstanceAiMcpRegistryConnection,
+	InstanceAiMcpToolFilter,
+} from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 type Transport = 'sse' | 'streamableHttp';
@@ -171,6 +174,20 @@ export class InstanceAiMcpRegistryService {
 			}
 			throw error;
 		}
+	}
+
+	async updateConnection(
+		user: User,
+		id: string,
+		input: { toolFilter: InstanceAiMcpToolFilter | null },
+	): Promise<InstanceAiMcpRegistryConnection> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		connection.toolFilter = input.toolFilter;
+		return await this.connectionRepository.save(connection);
 	}
 
 	async deleteConnection(user: User, id: string): Promise<void> {
