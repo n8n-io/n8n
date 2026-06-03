@@ -1,3 +1,5 @@
+import { WORKFLOW_PREVIEW_ORIGIN } from '../../../server/constants';
+
 /**
  * URL schemes accepted for the workflow open-link action. Anything else
  * (`javascript:`, `data:`, `file:`, custom schemes, etc.) is rejected so a
@@ -5,9 +7,9 @@
  * to navigate to a dangerous URL.
  */
 const ALLOWED_URL_SCHEMES = new Set(['http:', 'https:']);
-const DEFAULT_WORKFLOW_DEMO_URL =
-	'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots';
+const DEFAULT_WORKFLOW_DEMO_URL = `${WORKFLOW_PREVIEW_ORIGIN}/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots`;
 type WorkflowPreviewTheme = 'light' | 'dark';
+const WORKFLOW_DEMO_PATH_SUFFIX = '/workflows/demo';
 
 /**
  * Defense-in-depth check for the workflow URL received from a tool result.
@@ -49,11 +51,15 @@ export function buildWorkflowDemoUrl(workflowUrl: string): string | undefined {
 	return parsed.toString();
 }
 
-export function isAllowedWorkflowDemoUrl(input: unknown): input is string {
+export function isAllowedWorkflowDemoUrl(input: unknown, workflowUrl?: unknown): input is string {
 	if (!isAllowedWorkflowUrl(input)) return false;
 
 	const parsed = new URL(input);
-	return parsed.pathname.endsWith('/workflows/demo');
+	if (!parsed.pathname.endsWith(WORKFLOW_DEMO_PATH_SUFFIX)) return false;
+	if (parsed.origin === WORKFLOW_PREVIEW_ORIGIN) return true;
+	if (!isAllowedWorkflowUrl(workflowUrl)) return false;
+
+	return parsed.origin === new URL(workflowUrl).origin;
 }
 
 export function resolveWorkflowDemoUrl({
@@ -63,19 +69,22 @@ export function resolveWorkflowDemoUrl({
 	workflowUrl: unknown;
 	previewUrl?: unknown;
 }): string | undefined {
-	if (isAllowedWorkflowDemoUrl(previewUrl)) return previewUrl;
 	if (!isAllowedWorkflowUrl(workflowUrl)) return undefined;
+	if (isAllowedWorkflowDemoUrl(previewUrl, workflowUrl)) return previewUrl;
+
 	return DEFAULT_WORKFLOW_DEMO_URL;
 }
 
 export function applyWorkflowDemoTheme({
 	previewUrl,
+	workflowUrl,
 	theme,
 }: {
 	previewUrl: string | undefined;
+	workflowUrl?: string | undefined;
 	theme: WorkflowPreviewTheme | undefined;
 }): string | undefined {
-	if (!previewUrl) return undefined;
+	if (!isAllowedWorkflowDemoUrl(previewUrl, workflowUrl)) return undefined;
 
 	const parsed = new URL(previewUrl);
 	parsed.searchParams.set('canOpenNDV', 'false');

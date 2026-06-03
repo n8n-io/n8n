@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerWorkflowPreviewApp } from './workflow-preview';
-import { RESOURCE_MIME_TYPE, WORKFLOW_PREVIEW_APP_URI } from '../constants';
+import {
+	RESOURCE_MIME_TYPE,
+	WORKFLOW_PREVIEW_APP_URI,
+	WORKFLOW_PREVIEW_FRAME_DOMAINS,
+} from '../constants';
 import { loadAppHtml } from '../resource-loader';
 
 vi.mock('../resource-loader', () => ({
@@ -56,7 +60,7 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(captured.metadata._meta).toEqual({
 			ui: {
 				csp: {
-					frameDomains: ['https://*', 'http://*'],
+					frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
 				},
 				prefersBorder: false,
 			},
@@ -71,7 +75,7 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(content.uri).toBe(WORKFLOW_PREVIEW_APP_URI);
 		expect(content.mimeType).toBe(RESOURCE_MIME_TYPE);
 		expect(content.text).toContain('<html');
-		expect(content._meta?.ui?.csp?.frameDomains).toEqual(['https://*', 'http://*']);
+		expect(content._meta?.ui?.csp?.frameDomains).toEqual([...WORKFLOW_PREVIEW_FRAME_DOMAINS]);
 		expect(loadAppHtml).toHaveBeenCalledWith('workflow-preview.html');
 	});
 });

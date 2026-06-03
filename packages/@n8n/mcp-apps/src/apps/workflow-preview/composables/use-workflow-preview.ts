@@ -156,6 +156,7 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 	function buildPreviewUrl() {
 		return applyWorkflowDemoTheme({
 			previewUrl: previewBaseUrl.value,
+			workflowUrl: workflowUrl.value,
 			theme: previewTheme.value,
 		});
 	}

@@ -1,13 +1,16 @@
 import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import { RESOURCE_MIME_TYPE, WORKFLOW_PREVIEW_APP_URI } from '../constants';
+import {
+	RESOURCE_MIME_TYPE,
+	WORKFLOW_PREVIEW_APP_URI,
+	WORKFLOW_PREVIEW_FRAME_DOMAINS,
+} from '../constants';
 import { loadAppHtml } from '../resource-loader';
 
 const WORKFLOW_PREVIEW_UI_META: McpUiResourceMeta = {
 	csp: {
-		// Preview URLs are instance-specific; the app validates the concrete URL before framing it.
-		frameDomains: ['https://*', 'http://*'],
+		frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
 	},
 	prefersBorder: false,
 };

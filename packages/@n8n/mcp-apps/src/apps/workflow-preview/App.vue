@@ -42,8 +42,9 @@ const {
 		:label="ariaLabel"
 	>
 		<WorkflowPreviewCard
-			v-if="isPreviewVisible && previewUrl && previewWorkflow"
+			v-if="isPreviewVisible && workflowUrl && previewUrl && previewWorkflow"
 			:workflow="previewWorkflow"
+			:workflow-url="workflowUrl"
 			:workflow-name="workflowName"
 			:node-count-label="nodeCountLabel"
 			:preview-url="previewUrl"

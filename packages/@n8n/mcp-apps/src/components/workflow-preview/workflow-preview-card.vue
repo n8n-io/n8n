@@ -10,6 +10,7 @@ import OpenInN8nButton from '../open-in-n8n-button.vue';
 
 const props = defineProps<{
 	workflow: WorkflowPreviewData;
+	workflowUrl: string;
 	workflowName?: string;
 	nodeCountLabel?: string;
 	previewUrl: string;
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const previewReady = ref(false);
+const previewReadyOrigin = ref<string>();
 const iframeRef = ref<HTMLIFrameElement>();
 let previewReadyTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -33,6 +35,7 @@ watch(
 	() => [props.previewUrl, props.workflow] as const,
 	() => {
 		previewReady.value = false;
+		previewReadyOrigin.value = undefined;
 		emit('previewSentChange', false);
 		clearPreviewReadyTimeout();
 
@@ -57,7 +60,8 @@ function clearPreviewReadyTimeout() {
 
 async function maybeSendWorkflowToPreview() {
 	const iframe = iframeRef.value;
-	if (!iframe?.contentWindow || !previewReady.value || props.previewSent) {
+	const previewOrigin = previewReadyOrigin.value;
+	if (!iframe?.contentWindow || !previewOrigin || !previewReady.value || props.previewSent) {
 		return;
 	}
 
@@ -70,12 +74,19 @@ async function maybeSendWorkflowToPreview() {
 			hideNodeIssues: true,
 			suppressNotifications: true,
 		}),
-		// The preview service may redirect or run under a host-provided frame origin;
-		// this matches the existing n8n demo preview contract.
-		'*',
+		previewOrigin,
 	);
 	emit('previewSentChange', true);
 }
+
+function getPreviewOrigin() {
+	try {
+		return new URL(props.previewUrl).origin;
+	} catch {
+		return undefined;
+	}
+}
+
 function handlePreviewMessage(event: MessageEvent) {
 	if (event.source !== iframeRef.value?.contentWindow) return;
 
@@ -83,9 +94,14 @@ function handlePreviewMessage(event: MessageEvent) {
 	if (!message) return;
 
 	if (message.command === 'n8nReady') {
+		if (event.origin === 'null') return;
+
+		previewReadyOrigin.value = event.origin;
 		previewReady.value = true;
 		clearPreviewReadyTimeout();
 	} else if (message.command === 'error') {
+		if (event.origin !== previewReadyOrigin.value && event.origin !== getPreviewOrigin()) return;
+
 		emit('previewError', t('workflowPreview.error.previewUnavailable'));
 	}
 }
