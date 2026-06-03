@@ -50,9 +50,9 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "extract-workflows": "npx tsx scripts/extract-workflows.ts",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
@@ -87,9 +87,12 @@
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
     "@types/estree": "^1.0.8",
-    "adm-zip": "^0.5.16"
+    "@vitest/coverage-v8": "catalog:",
+    "adm-zip": "^0.5.16",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",
