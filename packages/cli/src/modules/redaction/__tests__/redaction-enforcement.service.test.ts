@@ -1,8 +1,7 @@
-import type { RedactionEnforcementSettings, RedactionFloor } from '@n8n/api-types';
+import type { RedactionFloor } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { floorToSettings } from '../redaction-enforcement-mapper';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
@@ -11,8 +10,7 @@ import { RedactionEnforcementService } from '../redaction-enforcement.service';
 describe('RedactionEnforcementService', () => {
 	function createService(floor: RedactionFloor) {
 		const instanceRedactionEnforcementService = mock<InstanceRedactionEnforcementService>();
-		const settings: RedactionEnforcementSettings = floorToSettings(floor);
-		instanceRedactionEnforcementService.get.mockResolvedValue(settings);
+		instanceRedactionEnforcementService.get.mockResolvedValue(floor);
 		return new RedactionEnforcementService(instanceRedactionEnforcementService);
 	}
 

@@ -63,6 +63,7 @@ const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
 	'cancel-plan-edit': [];
+	'workflow-preview': [workflowFile: string | null];
 }>();
 
 const i18n = useI18n();
@@ -151,6 +152,7 @@ watch(
 		}
 
 		previewPromptKey.value = null;
+		emit('workflow-preview', null);
 	},
 	{ immediate: true },
 );
@@ -388,6 +390,7 @@ const resizable = computed(() => {
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
+				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
 	</div>

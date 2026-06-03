@@ -21,7 +21,7 @@ describe('RedactionContextHook', () => {
 		});
 
 	const setFloor = (floor: RedactionFloor) => {
-		service.getFloor.mockResolvedValue(floor);
+		service.get.mockResolvedValue(floor);
 	};
 
 	const expectChannels = (production: boolean, manual: boolean) => ({
