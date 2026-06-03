@@ -14,6 +14,11 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 const DEFAULT_PAGE_SIZE = 10;
+const initialTableOptions = (): TableOptions => ({
+	page: 0,
+	itemsPerPage: DEFAULT_PAGE_SIZE,
+	sortBy: [],
+});
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
@@ -21,17 +26,18 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const labelFilter = ref('');
 	const mineCount = ref(0);
 	const allCount = ref(0);
-	// Latched once we've seen any key, so a zero-result search doesn't hide the toolbar.
-	const hasAnyKeys = ref(false);
-	const tableOptions = ref<TableOptions>({
-		page: 0,
-		itemsPerPage: DEFAULT_PAGE_SIZE,
-		sortBy: [],
-	});
+	const totalMineCount = ref(0);
+	const totalAllCount = ref(0);
+	const tableOptions = ref<TableOptions>(initialTableOptions());
+	const availableScopes = ref<ApiKeyScope[]>([]);
+
 	const apiKeysCount = computed(() =>
 		ownership.value === 'mine' ? mineCount.value : allCount.value,
 	);
-	const availableScopes = ref<ApiKeyScope[]>([]);
+	const totalCountForOwnership = computed(() =>
+		ownership.value === 'mine' ? totalMineCount.value : totalAllCount.value,
+	);
+	const hasAnyKeys = computed(() => totalAllCount.value > 0);
 
 	const rootStore = useRootStore();
 
@@ -65,8 +71,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeys.value = response.items;
 		mineCount.value = response.counts.mine;
 		allCount.value = response.counts.all;
-		// Only latch on an unfiltered response so a stale search can't flip the flag.
-		if (!trimmed && response.counts.all > 0) hasAnyKeys.value = true;
+		totalMineCount.value = response.totals.mine;
+		totalAllCount.value = response.totals.all;
 		return response;
 	};
 
@@ -91,6 +97,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const createApiKey = async (payload: CreateApiKeyRequestDto) => {
 		const newApiKey = await publicApiApi.createApiKey(rootStore.restApiContext, payload);
+		// Clear the filter so the newly created key isn't hidden by an active search.
+		labelFilter.value = '';
 		tableOptions.value.page = 0;
 		await fetchApiKeys();
 		return newApiKey;
@@ -98,6 +106,7 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const deleteApiKey = async (id: string) => {
 		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
+		// Clamp against the filtered count so the next fetch can't land past the result set.
 		const remaining = apiKeysCount.value - 1;
 		const lastPage = Math.max(0, Math.ceil(remaining / tableOptions.value.itemsPerPage) - 1);
 		if (tableOptions.value.page > lastPage) tableOptions.value.page = lastPage;
@@ -106,8 +115,19 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 
 	const updateApiKey = async (id: string, payload: UpdateApiKeyRequestDto) => {
 		await publicApiApi.updateApiKey(rootStore.restApiContext, id, payload);
-		apiKeysById.value[id].label = payload.label;
-		apiKeysById.value[id].scopes = payload.scopes;
+		// Refetch so the row re-sorts and any tab/filter narrowing stays consistent.
+		await fetchApiKeys();
+	};
+
+	const $reset = () => {
+		apiKeys.value = [];
+		ownership.value = 'mine';
+		labelFilter.value = '';
+		mineCount.value = 0;
+		allCount.value = 0;
+		totalMineCount.value = 0;
+		totalAllCount.value = 0;
+		tableOptions.value = initialTableOptions();
 	};
 
 	return {
@@ -122,12 +142,16 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeysById,
 		apiKeys,
 		apiKeysCount,
+		totalCountForOwnership,
 		ownership,
 		labelFilter,
 		mineCount,
 		allCount,
+		totalMineCount,
+		totalAllCount,
 		hasAnyKeys,
 		tableOptions,
 		availableScopes,
+		$reset,
 	};
 });

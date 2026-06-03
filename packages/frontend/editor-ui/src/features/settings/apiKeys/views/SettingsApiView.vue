@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -59,10 +59,11 @@ const {
 const {
 	apiKeys,
 	apiKeysCount,
+	totalCountForOwnership,
 	ownership,
 	labelFilter,
-	mineCount,
-	allCount,
+	totalMineCount,
+	totalAllCount,
 	hasAnyKeys,
 	tableOptions,
 } = storeToRefs(apiKeysStore);
@@ -71,9 +72,12 @@ const searchQuery = ref(labelFilter.value);
 
 const onSearch = useDebounceFn(async (value: string) => {
 	try {
+		loading.value = true;
 		await setLabelFilter(value.trim());
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
 	}
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
@@ -94,16 +98,18 @@ const revoking = ref(false);
 
 const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
 
+// Badges show the unfiltered totals so a search-narrowed "Mine (0)" doesn't read
+// as "I have no keys" when the user really has keys that just don't match.
 const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('settings.api.tabs.mine'),
 		value: 'mine' as const,
-		tag: String(mineCount.value),
+		tag: String(totalMineCount.value),
 	},
 	{
 		label: i18n.baseText('settings.api.tabs.all'),
 		value: 'all' as const,
-		tag: String(allCount.value),
+		tag: String(totalAllCount.value),
 	},
 ]);
 
@@ -147,7 +153,15 @@ onMounted(async () => {
 
 	if (!isPublicApiEnabled) return;
 
+	// Reset the Pinia store so a stale page/filter/sort from a prior visit can't
+	// drive the first fetch into an empty page or wrong tab.
+	apiKeysStore.$reset();
+	searchQuery.value = '';
 	await getApiKeysAndScopes();
+});
+
+onBeforeUnmount(() => {
+	apiKeysStore.$reset();
 });
 
 function onUpgrade() {
@@ -266,7 +280,7 @@ function onOpenScopes(apiKey: ApiKey) {
 		/>
 
 		<ApiKeyTable
-			v-if="isPublicApiEnabled && hasAnyKeys && (!labelFilter.trim() || apiKeysCount > 0)"
+			v-if="isPublicApiEnabled && hasAnyKeys && totalCountForOwnership > 0 && apiKeysCount > 0"
 			v-model:table-options="tableOptions"
 			:api-keys="apiKeys"
 			:items-length="apiKeysCount"
@@ -286,6 +300,15 @@ function onOpenScopes(apiKey: ApiKey) {
 			data-test-id="api-keys-no-results"
 		>
 			{{ i18n.baseText('settings.api.search.noResults') }}
+		</N8nText>
+
+		<N8nText
+			v-else-if="isPublicApiEnabled && hasAnyKeys && ownership === 'mine'"
+			color="text-light"
+			:class="$style.noResults"
+			data-test-id="api-keys-empty-mine"
+		>
+			{{ i18n.baseText('settings.api.empty.mine') }}
 		</N8nText>
 
 		<N8nActionBox

@@ -106,7 +106,8 @@ describe('SettingsApiView', () => {
 		];
 		apiKeysStore.allCount = 2;
 		apiKeysStore.mineCount = 2;
-		apiKeysStore.hasAnyKeys = true;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 
 		renderComponent(SettingsApiView);
 
@@ -131,7 +132,8 @@ describe('SettingsApiView', () => {
 		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
 		apiKeysStore.allCount = 1;
 		apiKeysStore.mineCount = 1;
-		apiKeysStore.hasAnyKeys = true;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 
 		renderComponent(SettingsApiView);
 
@@ -145,7 +147,8 @@ describe('SettingsApiView', () => {
 		apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1', apiKey: '****Atcr' })];
 		apiKeysStore.allCount = 1;
 		apiKeysStore.mineCount = 1;
-		apiKeysStore.hasAnyKeys = true;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 
 		renderComponent(SettingsApiView);
 
@@ -160,7 +163,8 @@ describe('SettingsApiView', () => {
 		apiKeysStore.apiKeys = [];
 		apiKeysStore.allCount = 0;
 		apiKeysStore.mineCount = 0;
-		apiKeysStore.hasAnyKeys = true;
+		apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+		apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 		apiKeysStore.labelFilter = 'production';
 
 		renderComponent(SettingsApiView);
@@ -185,7 +189,8 @@ describe('SettingsApiView', () => {
 			apiKeysStore.apiKeys = [makeKey()];
 			apiKeysStore.mineCount = 1;
 			apiKeysStore.allCount = 1;
-			apiKeysStore.hasAnyKeys = true;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 
 			renderComponent(SettingsApiView);
 
@@ -197,7 +202,8 @@ describe('SettingsApiView', () => {
 			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
 			apiKeysStore.mineCount = 1;
 			apiKeysStore.allCount = 2;
-			apiKeysStore.hasAnyKeys = true;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 
 			renderComponent(SettingsApiView);
 
@@ -209,12 +215,31 @@ describe('SettingsApiView', () => {
 			expect(within(tabs).getByText('2')).toBeInTheDocument();
 		});
 
+		it('renders tab badges from unfiltered totals so an active filter does not shrink them', () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [];
+			// Filtered counts collapsed by an active label search…
+			apiKeysStore.mineCount = 0;
+			apiKeysStore.allCount = 0;
+			// …but the unfiltered totals stay at their true population.
+			apiKeysStore.totalMineCount = 3;
+			apiKeysStore.totalAllCount = 7;
+			apiKeysStore.labelFilter = 'nothing-matches';
+
+			renderComponent(SettingsApiView);
+
+			const tabs = screen.getByTestId('api-keys-tabs');
+			expect(within(tabs).getByText('3')).toBeInTheDocument();
+			expect(within(tabs).getByText('7')).toBeInTheDocument();
+		});
+
 		it('switches ownership server-side when the user clicks a tab', async () => {
 			settingsStore.isPublicApiEnabled = true;
 			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
 			apiKeysStore.mineCount = 1;
 			apiKeysStore.allCount = 2;
-			apiKeysStore.hasAnyKeys = true;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
 
 			renderComponent(SettingsApiView);
 

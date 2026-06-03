@@ -11,7 +11,12 @@ import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { Raw, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	Raw,
+	type EntityManager,
+	type FindOptionsWhere,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -83,20 +88,55 @@ export class PublicApiKeyService {
 		if (options.skip !== undefined) qb.skip(options.skip);
 
 		const [apiKeys, count] = await qb.getManyAndCount();
-
-		// For non-admins the two totals are identical, so we skip the extra COUNT query.
-		const counts = canSeeAll
-			? {
-					mine: includeOthers
-						? await this.apiKeyRepository.countBy({ ...baseWhere, ...ownFilter })
-						: count,
-					all: includeOthers ? count : await this.apiKeyRepository.countBy(baseWhere),
-				}
-			: { mine: count, all: count };
+		const counts = await this.countApiKeys(caller, { ...baseWhere, ...ownFilter }, baseWhere, {
+			canSeeAll,
+			includeOthers,
+			pageCount: count,
+		});
+		// `totals` equal `counts` without a label filter; otherwise issue the
+		// unfiltered counts so tab badges + empty-state CTA can render against
+		// the true population.
+		const totals = options.label
+			? await this.countApiKeys(
+					caller,
+					{ audience: API_KEY_AUDIENCE, ...ownFilter },
+					{ audience: API_KEY_AUDIENCE },
+					{ canSeeAll, includeOthers, pageCount: undefined },
+				)
+			: counts;
 
 		return {
 			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			counts,
+			totals,
+		};
+	}
+
+	// For non-admins the two counts are identical; the page total can be reused
+	// when it matches the shape we'd otherwise query separately.
+	private async countApiKeys(
+		_caller: User,
+		mineWhere: FindOptionsWhere<ApiKey>,
+		allWhere: FindOptionsWhere<ApiKey>,
+		{
+			canSeeAll,
+			includeOthers,
+			pageCount,
+		}: { canSeeAll: boolean; includeOthers: boolean; pageCount?: number },
+	) {
+		if (!canSeeAll) {
+			const count = pageCount ?? (await this.apiKeyRepository.countBy(mineWhere));
+			return { mine: count, all: count };
+		}
+		return {
+			mine:
+				pageCount !== undefined && !includeOthers
+					? pageCount
+					: await this.apiKeyRepository.countBy(mineWhere),
+			all:
+				pageCount !== undefined && includeOthers
+					? pageCount
+					: await this.apiKeyRepository.countBy(allWhere),
 		};
 	}
 

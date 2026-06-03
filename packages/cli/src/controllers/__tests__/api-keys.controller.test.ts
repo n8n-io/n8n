@@ -91,6 +91,7 @@ describe('ApiKeysController', () => {
 			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({
 				items: [],
 				counts: { mine: 0, all: 0 },
+				totals: { mine: 0, all: 0 },
 			});
 			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 

@@ -640,6 +640,32 @@ describe('Label search', () => {
 		const labels = (response.body.data.items as Array<{ label: string }>).map((k) => k.label);
 		expect(labels).toEqual(['100% complete']);
 	});
+
+	test('GET /api-keys returns counts under filter and totals over the full list', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const agent = testServer.authAgentFor(owner);
+		for (const label of ['prod-a', 'prod-b', 'staging']) {
+			await agent.post('/api-keys').send({ label, expiresAt: null, scopes: ['workflow:create'] });
+		}
+
+		const filtered = await agent.get('/api-keys?label=prod').expect(200);
+		expect(filtered.body.data.counts.all).toBe(2);
+		expect(filtered.body.data.totals.all).toBe(3);
+
+		const unfiltered = await agent.get('/api-keys').expect(200);
+		expect(unfiltered.body.data.counts.all).toBe(3);
+		expect(unfiltered.body.data.totals.all).toBe(3);
+	});
+});
+
+describe('Multi-value sortBy', () => {
+	test('GET /api-keys rejects array sortBy with 400', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		await testServer
+			.authAgentFor(owner)
+			.get('/api-keys?sortBy=label:asc&sortBy=createdAt:desc')
+			.expect(400);
+	});
 });
 
 describe('Cross-user behavior (admin scope)', () => {
