@@ -4,6 +4,7 @@ import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
+import { integrationAgentStreamKey } from '../agents-runtime.service';
 import type { RichSuspendPayload } from '../types';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
@@ -55,6 +56,8 @@ interface AgentExecutor {
 		resumeData: unknown;
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
+
+	abortAgentStream?(config: { streamKey: string }): void;
 }
 
 const SLACK_THINKING_STATUS = 'Thinking...';
@@ -202,6 +205,9 @@ export class AgentChatBridge {
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
 			},
+			abortAgentStream(config) {
+				agentService.requestAgentStreamAbort(config.streamKey);
+			},
 		};
 		return new AgentChatBridge(
 			chat,
@@ -296,6 +302,14 @@ export class AgentChatBridge {
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
+		const streamKey = integrationAgentStreamKey(
+			this.n8nProjectId,
+			this.agentId,
+			this.integration.type,
+			threadId.id,
+		);
+		this.agentService.abortAgentStream?.({ streamKey });
+
 		const slackThreadContext = this.getSlackThreadContext(message);
 		const useNativeSlackThreadFeatures =
 			this.integration.type !== 'slack' || slackThreadContext?.hasRealThreadTs === true;
@@ -484,8 +498,7 @@ export class AgentChatBridge {
 						await this.postErrorToThread(thread, chunk.error);
 						break;
 					default:
-						// Ignore other chunk types (finish, tool-input-*,
-						// start-step, finish-step, etc.)
+						// Other chunk types (finish, tool-input-*, start-step, finish-step) are ignored.
 						break;
 				}
 			}

@@ -222,6 +222,16 @@ export type PubSubCommandMap = {
 	};
 
 	/**
+	 * Abort an active agent stream across main instances.
+	 * When `steerMessage` is present, the owning stream should stop its current
+	 * generation and start a new turn with that message.
+	 */
+	'agent-stream-abort': {
+		streamKey: string;
+		steerMessage?: string;
+	};
+
+	/**
 	 * Reconcile an agent's scheduled task cron jobs across main instances.
 	 * Published by the main that handled a publish/unpublish/delete after the
 	 * change is persisted. Only the leader owns task crons, so every main runs

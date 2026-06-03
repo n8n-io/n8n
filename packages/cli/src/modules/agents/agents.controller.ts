@@ -2,6 +2,7 @@ import {
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
 	AgentIntegrationSchema,
+	AgentSteerDto,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
@@ -59,7 +60,7 @@ import {
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
 import { AgentTaskService } from './agent-task.service';
-import { AgentsService } from './agents.service';
+import { AgentsService, chatThreadId } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -822,6 +823,49 @@ export class AgentsController {
 		}
 
 		res.end();
+	}
+
+	@Post('/:agentId/build/steer')
+	@ProjectScope('agent:update')
+	async buildSteer(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentSteerDto,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const interrupted = this.agentsBuilderService.steerBuilderAgent(
+			agentId,
+			projectId,
+			req.user.id,
+			payload.message,
+		);
+		res.json({ interrupted });
+	}
+
+	@Post('/:agentId/chat/steer')
+	@ProjectScope('agent:execute')
+	async chatSteer(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentSteerDto,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const interrupted = this.agentsService.steerChatAgent(
+			agentId,
+			projectId,
+			req.user.id,
+			payload.sessionId ?? chatThreadId(agentId, req.user.id),
+			payload.message,
+		);
+		res.json({ interrupted });
 	}
 
 	@Post('/:agentId/integrations/connect')

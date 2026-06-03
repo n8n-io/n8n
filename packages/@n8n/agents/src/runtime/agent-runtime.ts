@@ -540,8 +540,9 @@ export class AgentRuntime {
 				...mergedExecOptions,
 			};
 
-			// Pass abortSignal to event bus
+			// Pass abortSignal to event bus for the resumed run.
 			this.eventBus.resetAbort(resumeOptions.abortSignal);
+			this.updateState({ status: 'running' });
 
 			const pendingResume: PendingResume = {
 				pendingToolCalls: state.pendingToolCalls,
@@ -1414,9 +1415,8 @@ export class AgentRuntime {
 				...this.buildAiSdkOptions(toolMap, options),
 			});
 
-			// Consume the stream. When the AbortSignal fires mid-stream the
-			// AI SDK cancels the underlying fetch and the async iterator throws.
-			// We catch that here and close the consumer stream with an error chunk.
+			// Consume the stream. When the AbortSignal fires, the AI SDK returns {type: 'abort'} chunk. Check the
+			// runtime abort flag after iteration before reading final result data.
 			try {
 				for await (const chunk of result.fullStream) {
 					// Filter only the SDK's terminal `finish` chunk — the runtime

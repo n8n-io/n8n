@@ -76,12 +76,11 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<N8nMemory>(),
 			mock<AgentExecutionService>(),
 			mock(),
+			mock(), // AgentsRuntimeService
 			mock<AgentSkillsService>(),
 			mock(), // AgentTaskRepository
 			mock(), // AgentTaskSnapshotRepository
-			mock(),
 			{ modules: [] } as unknown as AgentsConfig,
-			mock(),
 			mock<Telemetry>(),
 			mock<ChatIntegrationService>(),
 			mock(),

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
@@ -14,8 +14,10 @@ const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
+const enqueueMessageMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
+const messageQueueMock = ref([]);
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -32,7 +34,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		name: 'ChatInputBase',
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled'],
+		props: ['modelValue', 'placeholder', 'isStreaming', 'isInterruptable', 'canSubmit', 'disabled'],
 		emits: ['submit', 'stop', 'update:modelValue'],
 	},
 }));
@@ -51,11 +53,17 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		isStreaming: isStreamingMock,
 		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 		fatalError: ref(null),
+		messageQueue: messageQueueMock,
 		loadHistory: loadHistoryMock,
 		sendMessage: sendMessageMock,
 		stopGenerating: stopGeneratingMock,
 		resume: vi.fn(),
 		cancelAndSteer: cancelAndSteerMock,
+		steerAgent: vi.fn(),
+		enqueueMessage: enqueueMessageMock,
+		removeFromQueue: vi.fn(),
+		updateQueuedMessage: vi.fn(),
+		sendNow: vi.fn(),
 		dismissFatalError: vi.fn(),
 	}),
 }));
@@ -81,6 +89,7 @@ describe('AgentChatPanel', () => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		messageQueueMock.value = [];
 	});
 
 	function mountPanel() {
@@ -252,6 +261,84 @@ describe('AgentChatPanel', () => {
 		// Input should be ENABLED so the user can cancel and steer
 		expect(chatInput.props('disabled')).toBe(false);
 		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
+	});
+
+	it('marks the chat input as interruptable while streaming when input has text', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(true);
+		expect(chatInput.props('isInterruptable')).toBe(false);
+
+		chatInput.vm.$emit('update:modelValue', 'send this next');
+		await nextTick();
+
+		const updatedChatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(updatedChatInput.props('isStreaming')).toBe(true);
+		expect(updatedChatInput.props('isInterruptable')).toBe(true);
+	});
+
+	it('keeps preview chat input enabled while a sent message is streaming', async () => {
+		let finishStream!: () => void;
+		sendMessageMock.mockImplementation(async () => {
+			isStreamingMock.value = true;
+			await new Promise<void>((resolve) => {
+				finishStream = resolve;
+			});
+		});
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'chat',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'production',
+				connectedTriggers: [],
+			},
+		});
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('hello');
+		await flushPromises();
+
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(chatInput.props('isStreaming')).toBe(true);
+		expect(chatInput.props('disabled')).toBe(false);
+
+		finishStream();
+		await flushPromises();
+	});
+
+	it('queues preview chat messages submitted while streaming', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'chat',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'production',
+				connectedTriggers: [],
+			},
+		});
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		chatInput.vm.$emit('update:modelValue', 'send next');
+		await nextTick();
+		await chatInput.trigger('submit');
+
+		expect(enqueueMessageMock).toHaveBeenCalledWith('send next');
+		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('calls cancelAndSteer (not sendMessage) when the user submits while an interactive question is open', async () => {

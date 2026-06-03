@@ -74,12 +74,11 @@ function makeService(
 		mock<N8nMemory>(),
 		mock<AgentExecutionService>(),
 		mock<AgentHistoryRepository>(),
+		mock(), // AgentsRuntimeService
 		mock<AgentSkillsService>(),
 		mock(), // AgentTaskRepository
 		mock(), // AgentTaskSnapshotRepository
-		mock(),
 		{ modules } as unknown as AgentsConfig,
-		mock(),
 		mock<Telemetry>(),
 		mock(),
 		mock(),

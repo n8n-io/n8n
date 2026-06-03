@@ -1,33 +1,39 @@
 import type {
+	Agent as RuntimeAgent,
 	CredentialProvider,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
-	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NodeCatalogService } from '@/node-catalog';
-
-import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { getBuilderRuntimeSkills } from './skills';
+import {
+	AgentsRuntimeService,
+	builderRuntimeCacheKey,
+	type AgentStreamControl,
+	type CachedAgentRuntime,
+} from '../agents-runtime.service';
+import { AgentsService } from '../agents.service';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../integrations/n8n-memory';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeCatalogService } from '@/node-catalog';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -39,6 +45,7 @@ export class AgentsBuilderService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
+		private readonly agentsRuntimeService: AgentsRuntimeService,
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
@@ -80,16 +87,43 @@ export class AgentsBuilderService {
 		credentialProvider: CredentialProvider,
 		user: User,
 	): AsyncGenerator<StreamChunk> {
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const { agent: builder } = await this.getBuilderRuntime(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+		);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
 		const resourceId = user.id;
-		const resultStream = await builder.stream(message, {
-			persistence: { threadId: builderThreadId(agentId), resourceId },
-		});
+		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
+		const streamFromAgent = (resultStream: StreamResult, control?: AgentStreamControl) =>
+			this.streamFromAgent(resultStream, control);
 
-		yield* this.streamFromAgent(resultStream);
+		yield* this.agentsRuntimeService.streamSteerableTurns({
+			message,
+			streamKey,
+			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
+				const resultStream = await builder.stream(turnMessage, {
+					persistence: { threadId: builderThreadId(agentId), resourceId },
+					abortSignal: control?.signal,
+				});
+
+				yield* streamFromAgent(resultStream, control);
+			},
+		});
+	}
+
+	/**
+	 * Interrupt the active builder stream for an agent and steer it with a new
+	 * message. No-op if no build stream is currently in progress for this agent.
+	 */
+	steerBuilderAgent(agentId: string, projectId: string, userId: string, message: string): boolean {
+		return this.agentsRuntimeService.requestAgentStreamSteer(
+			builderRuntimeCacheKey({ projectId, agentId, userId }),
+			message,
+		);
 	}
 
 	/**
@@ -119,16 +153,40 @@ export class AgentsBuilderService {
 			throw new UserError(`Builder checkpoint ${runId} not found`);
 		}
 
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
+		const { agent: builder } = await this.getBuilderRuntime(
+			agentId,
+			projectId,
+			credentialProvider,
+			user,
+		);
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
-		const resultStream = await builder.resume('stream', resumeData, {
-			runId,
-			toolCallId,
-		});
+		const resourceId = user.id;
+		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
+		const streamFromAgent = (resultStream: StreamResult, control?: AgentStreamControl) =>
+			this.streamFromAgent(resultStream, control);
 
-		yield* this.streamFromAgent(resultStream);
+		yield* this.agentsRuntimeService.streamSteerableTurns({
+			streamKey,
+			async *initialTurn(control: AgentStreamControl | undefined) {
+				const resultStream = await builder.resume('stream', resumeData, {
+					runId,
+					toolCallId,
+					abortSignal: control?.signal,
+				});
+
+				yield* streamFromAgent(resultStream, control);
+			},
+			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
+				const resultStream = await builder.stream(turnMessage, {
+					persistence: { threadId: builderThreadId(agentId), resourceId },
+					abortSignal: control?.signal,
+				});
+
+				yield* streamFromAgent(resultStream, control);
+			},
+		});
 	}
 
 	// ---------------------------------------------------------------------------
@@ -227,20 +285,44 @@ export class AgentsBuilderService {
 		return builder;
 	}
 
+	private async getBuilderRuntime(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+		user: User,
+	): Promise<CachedAgentRuntime> {
+		return await this.agentsRuntimeService.getOrCreateRuntime(
+			builderRuntimeCacheKey({ projectId, agentId, userId: user.id }),
+			async () => ({
+				agent: await this.createBuilderAgent(agentId, projectId, credentialProvider, user),
+				agentId,
+				projectId,
+				toolRegistry: new Map(),
+			}),
+		);
+	}
+
 	/**
 	 * Pump SDK stream chunks through to the caller. The runId is now carried
 	 * on each `tool-call-suspended` chunk by the SDK, so this is just a
 	 * plain reader→generator adapter.
 	 */
-	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
+	private async *streamFromAgent(
+		resultStream: StreamResult,
+		control?: AgentStreamControl,
+	): AsyncGenerator<StreamChunk> {
 		const reader = resultStream.stream.getReader();
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				if (control?.wasAborted()) {
+					break;
+				}
 				yield value;
 			}
 		} finally {
+			if (control?.wasAborted()) await reader.cancel().catch(() => {});
 			reader.releaseLock();
 		}
 	}

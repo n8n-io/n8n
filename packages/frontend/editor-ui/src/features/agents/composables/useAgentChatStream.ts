@@ -32,6 +32,11 @@ export interface FatalAgentError {
 	missing: string[];
 }
 
+export interface QueuedMessage {
+	id: string;
+	text: string;
+}
+
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
@@ -70,6 +75,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isStreaming = ref(false);
 	const abortController = ref<AbortController | null>(null);
 	const historyLoaded = ref(false);
+	const messageQueue = ref<QueuedMessage[]>([]);
+	const activeChatSessionId = ref<string | undefined>(params.continueSessionId?.value);
 	/**
 	 * Set when the backend rejects the stream because the agent itself is
 	 * misconfigured (missing instructions / model / credential). Cleared on the
@@ -139,6 +146,126 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			messages.value = [];
 		} catch (error) {
 			showError(error, locale.baseText('agents.chat.clearHistory.error'));
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Steer (interrupt mid-generation with a new message)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Call the /steer backend endpoint to interrupt the running generation and
+	 * redirect the agent with a new user message. Returns false when the backend
+	 * had no matching active stream, so callers can requeue or send normally.
+	 */
+	async function steerAgent(message: string): Promise<boolean> {
+		const { baseUrl } = rootStore.restApiContext;
+		const endpoint = params.endpoint.value;
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}/steer`;
+		const browserId = localStorage.getItem('n8n-browserId') ?? '';
+		const body: Record<string, unknown> = { message };
+		if (endpoint === 'chat') {
+			body.sessionId = getChatSessionId();
+		}
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
+				credentials: 'include',
+				body: JSON.stringify(body),
+			});
+			if (!response.ok) return false;
+			const result = (await response.json().catch(() => null)) as { interrupted?: unknown } | null;
+			return result?.interrupted === true;
+		} catch {
+			return false;
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Message queue (build/editor mode)
+	// -------------------------------------------------------------------------
+
+	function enqueueMessage(text: string): void {
+		messageQueue.value = [...messageQueue.value, { id: crypto.randomUUID(), text }];
+	}
+
+	function removeFromQueue(id: string): void {
+		messageQueue.value = messageQueue.value.filter((m) => m.id !== id);
+	}
+
+	function updateQueuedMessage(id: string, text: string): void {
+		messageQueue.value = messageQueue.value.map((m) => (m.id === id ? { ...m, text } : m));
+	}
+
+	function getOpenInteractiveMessage(): ChatMessage | undefined {
+		return messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
+	}
+
+	function cancelPendingToolCalls(): void {
+		const cancelledAt = Date.now();
+		for (const message of messages.value) {
+			for (const toolCall of message.toolCalls ?? []) {
+				if (
+					toolCall.state !== TOOL_CALL_STATE.PENDING &&
+					toolCall.state !== TOOL_CALL_STATE.RUNNING
+				) {
+					continue;
+				}
+
+				toolCall.state = TOOL_CALL_STATE.CANCELLED;
+				toolCall.canceled = true;
+				toolCall.endTime = cancelledAt;
+			}
+		}
+	}
+
+	/**
+	 * Immediately steer with one queued message. If no stream is running, sends
+	 * the message normally instead. If the agent is waiting for human input,
+	 * cancel that suspended tool first so the queued message becomes the next turn.
+	 */
+	async function sendNow(index = 0): Promise<void> {
+		const selected = messageQueue.value[index];
+		if (!selected) return;
+		messageQueue.value = messageQueue.value.filter((_, i) => i !== index);
+
+		if (getOpenInteractiveMessage()) {
+			await cancelAndSteer(selected.text);
+			return;
+		}
+
+		if (isStreaming.value) {
+			const optimisticUserMessageId = crypto.randomUUID();
+			messages.value = [
+				...messages.value,
+				{
+					id: optimisticUserMessageId,
+					role: 'user',
+					content: selected.text,
+					status: 'success',
+				},
+			];
+			const interrupted = await steerAgent(selected.text);
+			// failed to interrupt to some error or if agent wasn't streaming at the time
+			if (!interrupted) {
+				messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
+				if (isStreaming.value) {
+					// requeue message
+					messageQueue.value = [
+						...messageQueue.value.slice(0, index),
+						selected,
+						...messageQueue.value.slice(index),
+					];
+				} else {
+					// send message normally
+					await sendMessage(selected.text);
+				}
+			} else {
+				cancelPendingToolCalls();
+			}
+		} else {
+			await sendMessage(selected.text);
 		}
 	}
 
@@ -519,6 +646,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			isStreaming.value = false;
 		}
 
+		// Auto-drain only when the turn fully completed. Suspended tool calls wait
+		// for explicit user action, so queued messages stay queued until sent.
+		if (
+			!transportFailed &&
+			!session.errorEmitted &&
+			!getOpenInteractiveMessage() &&
+			messageQueue.value.length > 0
+		) {
+			const next = messageQueue.value[0];
+			messageQueue.value = messageQueue.value.slice(1);
+			if (next) void sendMessage(next.text);
+		}
+
 		return { ok: !transportFailed && !session.errorEmitted };
 	}
 
@@ -526,10 +666,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}`;
 		const body: Record<string, unknown> = { message };
-		if (endpoint === 'chat' && params.continueSessionId?.value) {
-			body.sessionId = params.continueSessionId.value;
+		if (endpoint === 'chat') {
+			body.sessionId = getChatSessionId();
 		}
 		await postAndConsume(url, body);
+	}
+
+	function getChatSessionId(): string {
+		activeChatSessionId.value = params.continueSessionId?.value ?? activeChatSessionId.value;
+		activeChatSessionId.value ??= crypto.randomUUID();
+		return activeChatSessionId.value;
 	}
 
 	async function resume(payload: ResumePayload): Promise<void> {
@@ -619,7 +765,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
+		const openMsg = getOpenInteractiveMessage();
 		if (!openMsg?.interactive?.runId) return;
 
 		await resume({
@@ -657,12 +803,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isStreaming,
 		messagingState,
 		fatalError,
+		messageQueue,
 		loadHistory,
 		clearHistory,
 		sendMessage,
 		stopGenerating,
 		resume,
 		cancelAndSteer,
+		steerAgent,
+		enqueueMessage,
+		removeFromQueue,
+		updateQueuedMessage,
+		sendNow,
 		dismissFatalError,
 	};
 }

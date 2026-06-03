@@ -489,6 +489,32 @@ describe('N8nChatInput', () => {
 			expect(button).not.toHaveClass('sendButton');
 		});
 
+		it('should show enabled send button when streaming and interruptable', () => {
+			const { container } = renderComponent({
+				props: {
+					modelValue: 'Some text',
+					streaming: true,
+					isInterruptable: true,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: {
+							props: ['disabled', 'streaming'],
+							template:
+								'<button :disabled="disabled" :class="{sendButton: !streaming, stopButton: streaming}"></button>',
+						},
+					},
+				},
+			});
+
+			const button = container.querySelector('button');
+			expect(button).toHaveClass('sendButton');
+			expect(button).not.toHaveClass('stopButton');
+			expect(button).not.toHaveAttribute('disabled');
+		});
+
 		it('should emit stop event when stop button is clicked', async () => {
 			const render = renderComponent({
 				props: {

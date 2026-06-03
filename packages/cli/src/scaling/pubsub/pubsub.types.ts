@@ -68,6 +68,7 @@ export namespace PubSub {
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
+		export type AgentStreamAbort = ToCommand<'agent-stream-abort'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 	}
 
@@ -101,6 +102,7 @@ export namespace PubSub {
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
 		| Commands.AgentConfigChanged
+		| Commands.AgentStreamAbort
 		| Commands.AgentTasksChanged;
 
 	// ----------------------------------

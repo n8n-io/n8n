@@ -548,4 +548,125 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(tc?.startTime).toBe(1_000);
 		expect(tc?.endTime).toBe(1_014);
 	});
+
+	it('requeues indexed send-now messages when the backend has no active stream to steer', async () => {
+		globalThis.fetch = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ interrupted: false }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				}),
+		) as typeof fetch;
+
+		const hook = buildHook();
+		hook.isStreaming.value = true;
+		hook.messageQueue.value = [
+			{ id: 'queued-1', text: 'first message' },
+			{ id: 'queued-2', text: 'second message' },
+		];
+
+		await hook.sendNow(1);
+
+		expect(hook.messages.value).toHaveLength(0);
+		expect(hook.messageQueue.value).toEqual([
+			{ id: 'queued-1', text: 'first message' },
+			{ id: 'queued-2', text: 'second message' },
+		]);
+	});
+
+	it('marks pending tool calls as cancelled when a queued message steers the stream', async () => {
+		globalThis.fetch = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ interrupted: true }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+				}),
+		) as typeof fetch;
+
+		const hook = buildHook();
+		hook.isStreaming.value = true;
+		hook.messages.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{ tool: 'pending_tool', toolCallId: 'pending-1', state: 'pending' },
+					{ tool: 'running_tool', toolCallId: 'running-1', state: 'running' },
+					{ tool: 'done_tool', toolCallId: 'done-1', state: 'done' },
+				],
+			},
+		];
+		hook.messageQueue.value = [{ id: 'queued-1', text: 'steer now' }];
+
+		await hook.sendNow(0);
+
+		const toolCalls = hook.messages.value[0].toolCalls ?? [];
+		expect(toolCalls[0]).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(toolCalls[0].endTime).toEqual(expect.any(Number));
+		expect(toolCalls[1]).toMatchObject({ state: 'cancelled', canceled: true });
+		expect(toolCalls[1].endTime).toEqual(expect.any(Number));
+		expect(toolCalls[2]).toMatchObject({ state: 'done' });
+	});
+
+	it('does not auto-drain queued messages when the turn suspends for user input', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					toolName: ASK_LLM_TOOL_NAME,
+					input: { purpose: 'main model' },
+				},
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		hook.messageQueue.value = [{ id: 'queued-1', text: 'next message' }];
+
+		await hook.sendMessage('start');
+		await nextTick();
+
+		expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+		expect(hook.messageQueue.value).toEqual([{ id: 'queued-1', text: 'next message' }]);
+		expect(hook.messages.value[1].status).toBe('awaitingUser');
+	});
+
+	it('uses cancellation resume when sending a queued message while waiting for user input', async () => {
+		globalThis.fetch = vi.fn(async () => makeSseResponse([{ type: 'done' }])) as typeof fetch;
+
+		const hook = buildHook();
+		hook.messages.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'awaitingUser',
+				interactive: {
+					toolName: ASK_LLM_TOOL_NAME,
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					input: { purpose: 'main model' },
+				},
+			},
+		];
+		hook.messageQueue.value = [{ id: 'queued-1', text: 'go another way' }];
+
+		await hook.sendNow(0);
+
+		const [url, init] = vi.mocked(globalThis.fetch).mock.calls[0];
+		expect(String(url)).toContain('/agents/v2/a1/build/resume');
+		expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			resumeData: {
+				_type: 'agent.cancellation',
+				message: 'go another way',
+			},
+		});
+		expect(hook.messageQueue.value).toEqual([]);
+	});
 });

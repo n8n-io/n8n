@@ -14,6 +14,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsRuntimeService, builderRuntimeCacheKey } from '../agents-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
@@ -127,6 +128,7 @@ describe('AgentsService', () => {
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
 	let telemetry: jest.Mocked<Telemetry>;
+	let agentsRuntimeService: AgentsRuntimeService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -152,6 +154,12 @@ describe('AgentsService', () => {
 		} as Partial<GlobalConfig>);
 		telemetry = mock<Telemetry>();
 		const logger = mockLogger();
+		agentsRuntimeService = new AgentsRuntimeService(
+			logger,
+			publisher,
+			globalConfig,
+			agentExecutionService,
+		);
 
 		service = new AgentsService(
 			logger,
@@ -171,12 +179,11 @@ describe('AgentsService', () => {
 			n8nMemory,
 			agentExecutionService,
 			agentHistoryRepository,
+			agentsRuntimeService,
 			new AgentSkillsService(logger, agentRepository),
 			agentTaskRepository,
 			agentTaskSnapshotRepository,
-			publisher,
 			agentsConfig,
-			globalConfig,
 			telemetry,
 			chatIntegrationService,
 			agentKnowledgeService,
@@ -2701,8 +2708,111 @@ describe('AgentsService', () => {
 		it('handleAgentConfigChanged clears the local cache without re-publishing — no broadcast loop', () => {
 			enableMultiMain();
 
-			service.handleAgentConfigChanged({ agentId });
+			agentsRuntimeService.handleAgentConfigChanged({ agentId });
 
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('clears builder runtime cache entries for the changed agent', async () => {
+			const cacheKey = builderRuntimeCacheKey({ projectId, agentId, userId });
+			const cachedAgent = { close: jest.fn().mockResolvedValue(undefined) };
+			const rebuiltAgent = { close: jest.fn().mockResolvedValue(undefined) };
+			const factory = jest.fn().mockResolvedValue({
+				agent: cachedAgent,
+				agentId,
+				projectId,
+				toolRegistry: new Map(),
+			});
+			const rebuildFactory = jest.fn().mockResolvedValue({
+				agent: rebuiltAgent,
+				agentId,
+				projectId,
+				toolRegistry: new Map(),
+			});
+
+			await agentsRuntimeService.getOrCreateRuntime(cacheKey, factory);
+
+			agentsRuntimeService.clearRuntimes(agentId);
+			const runtime = await agentsRuntimeService.getOrCreateRuntime(cacheKey, rebuildFactory);
+
+			expect(factory).toHaveBeenCalledTimes(1);
+			expect(cachedAgent.close).toHaveBeenCalledTimes(1);
+			expect(rebuildFactory).toHaveBeenCalledTimes(1);
+			expect(runtime.agent).toBe(rebuiltAgent);
+		});
+
+		it('aborts a local active stream and stores the steering message', () => {
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamSteer('stream-key', 'new message');
+
+			expect(control.wasAborted()).toBe(true);
+			expect(control.takePendingSteerMessage()).toBe('new message');
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('broadcasts stream aborts in multi-main mode', () => {
+			enableMultiMain();
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamSteer('stream-key', 'new message');
+
+			expect(control.wasAborted()).toBe(true);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'stream-key', steerMessage: 'new message' },
+			});
+		});
+
+		it('returns false for multi-main steer requests when no local stream was aborted', () => {
+			enableMultiMain();
+
+			const interrupted = service.requestAgentStreamSteer('missing-stream-key', 'new message');
+
+			expect(interrupted).toBe(false);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'missing-stream-key', steerMessage: 'new message' },
+			});
+		});
+
+		it('broadcasts abort-only stream interrupts in multi-main mode', () => {
+			enableMultiMain();
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key');
+
+			expect(control.wasAborted()).toBe(true);
+			expect(control.takePendingSteerMessage()).toBeUndefined();
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'stream-key' },
+			});
+		});
+
+		it('returns false for multi-main abort requests when no local stream was aborted', () => {
+			enableMultiMain();
+
+			const interrupted = service.requestAgentStreamAbort('missing-stream-key');
+
+			expect(interrupted).toBe(false);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'missing-stream-key' },
+			});
+		});
+
+		it('handles peer stream abort commands without re-publishing', () => {
+			enableMultiMain();
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			agentsRuntimeService.handleAgentStreamAbort({
+				streamKey: 'stream-key',
+				steerMessage: 'peer message',
+			});
+
+			expect(control.wasAborted()).toBe(true);
+			expect(control.takePendingSteerMessage()).toBe('peer message');
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 

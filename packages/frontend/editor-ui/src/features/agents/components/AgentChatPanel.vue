@@ -6,6 +6,7 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
+import AgentChatQueueBanner from './AgentChatQueueBanner.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
@@ -71,11 +72,16 @@ const {
 	isStreaming,
 	messagingState,
 	fatalError,
+	messageQueue,
 	loadHistory,
 	sendMessage,
 	stopGenerating,
 	resume,
 	cancelAndSteer,
+	enqueueMessage,
+	removeFromQueue,
+	updateQueuedMessage,
+	sendNow,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -133,13 +139,20 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value || isBuilderReadOnly.value) return;
+	if (!text || isPreparingToSend.value || isBuilderReadOnly.value) return;
 
 	// When there is an open interactive question, the user's message cancels
 	// the suspended tool and steers the agent in a new direction.
 	if (hasOpenInteractiveQuestion.value) {
 		inputText.value = '';
 		await cancelAndSteer(text);
+		return;
+	}
+
+	// When the agent is actively generating, queue the message for later.
+	if (isStreaming.value) {
+		inputText.value = '';
+		enqueueMessage(text);
 		return;
 	}
 
@@ -165,11 +178,11 @@ async function onSubmit() {
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
-
-		await sendMessage(text);
 	} finally {
 		isPreparingToSend.value = false;
 	}
+
+	await sendMessage(text);
 }
 
 function sendMessageFromOutside(message: string) {
@@ -282,24 +295,30 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<slot name="above-input" />
-			<ChatInputBase
-				v-model="inputText"
-				:placeholder="chatPlaceholder"
-				:is-streaming="messagingState === 'receiving'"
-				:can-submit="
-					!isStreaming && !isPreparingToSend && !isBuilderReadOnly && inputText.trim().length > 0
-				"
-				:disabled="
-					isBuilderReadOnly || isPreparingToSend || (isStreaming && messagingState !== 'receiving')
-				"
-				data-testid="chat-input"
-				@submit="onSubmit"
-				@stop="stopGenerating"
-			>
-				<template #footer-start>
-					<slot name="footer-start" />
-				</template>
-			</ChatInputBase>
+			<div :class="$style.inputContent">
+				<AgentChatQueueBanner
+					v-if="messageQueue.length > 0"
+					:queue="messageQueue"
+					@send-now="sendNow"
+					@remove="removeFromQueue"
+					@update="updateQueuedMessage"
+				/>
+				<ChatInputBase
+					v-model="inputText"
+					:placeholder="chatPlaceholder"
+					:is-streaming="messagingState === 'receiving'"
+					:is-interruptable="inputText.trim().length > 0"
+					:can-submit="!isPreparingToSend && !isBuilderReadOnly && inputText.trim().length > 0"
+					:disabled="isBuilderReadOnly || isPreparingToSend"
+					data-testid="chat-input"
+					@submit="onSubmit"
+					@stop="stopGenerating"
+				>
+					<template #footer-start>
+						<slot name="footer-start" />
+					</template>
+				</ChatInputBase>
+			</div>
 		</div>
 	</aside>
 </template>
@@ -328,6 +347,11 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.inputContent {
+	display: flex;
+	flex-direction: column;
 }
 
 .errorBanner {

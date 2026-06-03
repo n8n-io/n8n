@@ -19,6 +19,7 @@ export interface N8nChatInputProps {
 	maxLength?: number;
 	maxLinesBeforeScroll?: number;
 	streaming?: boolean;
+	isInterruptable?: boolean;
 	disabled?: boolean;
 	disabledTooltip?: string;
 	/** @deprecated Use disabled/disabledTooltip and leading or trailing slots for credit UI. */
@@ -45,6 +46,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	maxLength: 5000,
 	maxLinesBeforeScroll: 10,
 	streaming: false,
+	isInterruptable: false,
 	disabled: false,
 	disabledTooltip: undefined,
 	creditsQuota: undefined,
@@ -98,11 +100,12 @@ const sendDisabled = computed(
 	() =>
 		props.submitDisabled ??
 		(!textValue.value.trim() ||
-			props.streaming ||
+			(props.streaming && !props.isInterruptable) ||
 			props.disabled ||
 			isOverLimit.value ||
 			props.creditsRemaining === 0),
 );
+const showStopButton = computed(() => props.streaming && !props.isInterruptable);
 
 const containerStyle = computed(() => {
 	return props.layout === 'single-line' ? undefined : { minHeight: '80px' };
@@ -325,7 +328,7 @@ defineExpose({
 						</div>
 						<div :class="$style.actionsContent" @click.stop>
 							<N8nSendStopButton
-								:streaming="streaming"
+								:streaming="showStopButton"
 								:disabled="sendDisabled"
 								:label="buttonLabel"
 								:send-button-test-id="sendButtonTestId"
