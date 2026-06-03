@@ -117,6 +117,7 @@ export type StreamChunk = ContentMetadata &
 				toolName: string;
 				output: unknown;
 				isError?: boolean;
+				canceled?: boolean;
 		  }
 		| {
 				type: 'tool-call-suspended';
@@ -171,6 +172,7 @@ export interface ToolResultEntry {
 	input: unknown;
 	output: unknown;
 	transformed?: boolean;
+	canceled?: boolean;
 }
 
 export interface GenerateResult {

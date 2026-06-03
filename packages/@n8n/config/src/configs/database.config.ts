@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
@@ -88,11 +89,11 @@ class PostgresConfig {
 
 	/** Maximum time in milliseconds for a single query. Queries exceeding this are cancelled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
-	statementTimeoutMs: number = 5 * 60 * 1000; // 5 minutes
+	statementTimeoutMs: number = 5 * Time.minutes.toMilliseconds;
 
 	/** Maximum lifetime in milliseconds of a pooled Postgres connection before it is recycled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_MAX_CONNECTION_LIFETIME_MS')
-	maxConnectionLifetimeMs: number = 60 * 60 * 1000;
+	maxConnectionLifetimeMs: number = 1 * Time.hours.toMilliseconds;
 
 	/** Whether to enable TCP keepalive on Postgres connections so dead peers are detected without waiting for a query. */
 	@Env('DB_POSTGRESDB_KEEP_ALIVE')

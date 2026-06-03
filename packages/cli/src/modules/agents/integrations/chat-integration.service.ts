@@ -210,8 +210,6 @@ export class ChatIntegrationService {
 		// initialization starts, disconnect the state directly. Once initialize()
 		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
 		try {
-			// Use the platform type as the adapter key (e.g. 'slack') so that
-			// bot.webhooks.slack maps correctly to the handler.
 			state = this.chatSubscriptionStateService.createStateAdapter({
 				agentId,
 				integration,
@@ -220,6 +218,8 @@ export class ChatIntegrationService {
 
 			chat = new Chat({
 				userName: `n8n-agent-${agentId}`,
+				// Use the platform type as the adapter key (e.g. 'slack') so that
+				// bot.webhooks.slack maps correctly to the handler.
 				adapters: { [integration.type]: adapter } as Record<string, never>,
 				state,
 			});

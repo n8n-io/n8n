@@ -207,10 +207,14 @@ export type PubSubCommandMap = {
 	};
 
 	/**
-	 * Mirror Chat SDK thread subscription changes across live main instances.
-	 * The originating main persists the subscription before publishing; peers
-	 * update their local Chat SDK memory adapter so load-balanced follow-up
+	 * Keep per-main thread subscription state in sync across the cluster. The
+	 * originating main persists the subscription change before publishing; peers
+	 * update their local in-memory subscription state so load-balanced follow-up
 	 * messages can route to `onSubscribedMessage` without re-mentioning the bot.
+	 *
+	 * Subscriptions are currently backed by the Vercel Chat SDK memory adapter,
+	 * but this event describes the intent (thread subscription changed) rather
+	 * than that implementation detail.
 	 */
 	'agent-chat-subscription-changed': {
 		agentId: string;

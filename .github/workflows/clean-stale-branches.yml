@@ -1,0 +1,26 @@
+on:
+  # schedule:
+  #   - cron: "0 0 * * *" # Everday at midnight
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Is this a dry run or an actual run?'
+        type: boolean
+        default: true
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  remove-stale-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stale Branches
+        uses: crs-k/stale-branches@e876b957ab08f0bad43c8cc271a22cdd7604bd09 # v9.0.1
+        with:
+          dry-run: ${{ inputs.dry-run }}
+          days-before-stale: 90
+          days-before-delete: 100
+          include-protected-branches: false  # Disable legacy branch protection checks
+          include-ruleset-branches: true     # Enable repository ruleset checks

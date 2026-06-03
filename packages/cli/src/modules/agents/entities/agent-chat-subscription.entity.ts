@@ -34,7 +34,7 @@ export class AgentChatSubscription extends WithTimestamps {
 	@PrimaryColumn({
 		type: 'varchar',
 		length: 255,
-		comment: 'Platform thread ID subscribed in the Chat SDK state adapter',
+		comment: 'Platform thread ID the agent is subscribed to',
 	})
 	threadId: string;
 }

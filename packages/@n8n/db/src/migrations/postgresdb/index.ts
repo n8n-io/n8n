@@ -200,7 +200,8 @@ import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/178400000
 import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
-import { CreateAgentChatSubscriptions1784000000025 } from '../common/1784000000025-CreateAgentChatSubscriptions';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
+import { CreateAgentChatSubscriptions1784000000026 } from '../common/1784000000026-CreateAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -406,5 +407,6 @@ export const postgresMigrations: Migration[] = [
 	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
 	AddResourceToOAuthAuthorizationCodes1784000000024,
-	CreateAgentChatSubscriptions1784000000025,
+	MigrateRedactionEnforcementToFloor1784000000025,
+	CreateAgentChatSubscriptions1784000000026,
 ];

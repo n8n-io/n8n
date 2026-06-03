@@ -106,10 +106,18 @@ export type AskQuestionResume = z.infer<typeof askQuestionResumeSchema>;
 // Discriminated union of all resume payloads (used by AgentBuildResumeDto)
 // ---------------------------------------------------------------------------
 
+export const cancellationResumeSchema = z.object({
+	_type: z.literal('agent.cancellation'),
+	message: z.string().min(1),
+});
+
+export type CancellationResumeData = z.infer<typeof cancellationResumeSchema>;
+
 export const interactiveResumeDataSchema = z.union([
 	askLlmResumeSchema,
 	askCredentialResumeSchema,
 	askQuestionResumeSchema,
+	cancellationResumeSchema,
 ]);
 
 export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;
