@@ -8,8 +8,6 @@ import {
 	type AskQuestionResume,
 } from '@n8n/api-types';
 
-import { isWriteTodosTool, summariseWriteTodosOutput } from './write-todos-tool';
-
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
  * Used by `AgentChatToolSteps` to show the user's answer beside the tool name
@@ -63,10 +61,5 @@ export function summariseToolCall(
 	output?: unknown,
 	input?: unknown,
 ): string | undefined {
-	const interactiveSummary = summariseInteractiveOutput(toolName, output, input);
-	if (interactiveSummary !== undefined) return interactiveSummary;
-
-	if (!isWriteTodosTool(toolName)) return undefined;
-
-	return summariseWriteTodosOutput(output);
+	return summariseInteractiveOutput(toolName, output, input);
 }

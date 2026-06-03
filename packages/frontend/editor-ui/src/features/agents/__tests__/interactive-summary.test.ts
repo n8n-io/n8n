@@ -69,14 +69,14 @@ describe('summariseInteractiveOutput', () => {
 });
 
 describe('summariseToolCall', () => {
-	it('returns write_todos task count summaries', () => {
+	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {
 		expect(
 			summariseToolCall(WRITE_TODOS_TOOL_NAME, {
 				status: 'ok',
 				todoCount: 2,
 				todos: [],
 			}),
-		).toBe('2 tasks');
+		).toBeUndefined();
 	});
 
 	it('does not apply write_todos summaries to unrelated tools', () => {

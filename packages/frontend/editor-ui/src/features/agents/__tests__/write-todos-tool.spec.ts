@@ -4,7 +4,6 @@ import {
 	formatWriteTodosMarkdown,
 	isWriteTodosTool,
 	parseWriteTodosOutput,
-	summariseWriteTodosOutput,
 	writeTodosLabel,
 	writeTodosSummaryLabel,
 	type WriteTodosI18n,
@@ -60,28 +59,6 @@ describe('write-todos-tool', () => {
 		it('returns undefined for malformed output', () => {
 			expect(parseWriteTodosOutput({ status: 'failed' })).toBeUndefined();
 			expect(parseWriteTodosOutput('nope')).toBeUndefined();
-		});
-	});
-
-	describe('summariseWriteTodosOutput', () => {
-		it('returns a compact task count summary', () => {
-			expect(
-				summariseWriteTodosOutput({
-					status: 'ok',
-					todoCount: 3,
-					todos: [],
-				}),
-			).toBe('3 tasks');
-		});
-
-		it('uses singular wording for one task', () => {
-			expect(
-				summariseWriteTodosOutput({
-					status: 'ok',
-					todoCount: 1,
-					todos: [{ id: 'a', content: 'Only task', status: 'pending' }],
-				}),
-			).toBe('1 task');
 		});
 	});
 

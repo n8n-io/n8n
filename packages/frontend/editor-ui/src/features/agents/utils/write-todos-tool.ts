@@ -52,16 +52,6 @@ export function parseWriteTodosOutput(output: unknown): WriteTodosOutput | undef
 	return result.success ? result.data : undefined;
 }
 
-export function formatWriteTodosSummaryCount(todoCount: number): string {
-	return `${todoCount} ${todoCount === 1 ? 'task' : 'tasks'}`;
-}
-
-export function summariseWriteTodosOutput(output: unknown): string | undefined {
-	const parsed = parseWriteTodosOutput(output);
-	if (!parsed) return undefined;
-	return formatWriteTodosSummaryCount(parsed.todoCount);
-}
-
 export function writeTodosLabel(i18n: WriteTodosI18n): string {
 	return i18n.baseText('agents.chat.writeTodos.label');
 }
