@@ -15,7 +15,6 @@ import {
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
-import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
@@ -269,73 +268,68 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'tool'">
-						<template v-if="item.toolName === 'rich_interaction'">
-							<RichInteractionCard :input="item.toolInput" :output="item.toolOutput" />
-						</template>
-						<template v-else>
-							<div>
-								<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
-								<div :class="$style.codeBlock">
-									<div :class="$style.codeBlockCopy">
-										<N8nTooltip
-											:content="
+						<div>
+							<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
+							<div :class="$style.codeBlock">
+								<div :class="$style.codeBlockCopy">
+									<N8nTooltip
+										:content="
+											copiedBlock === 'tool-input'
+												? i18n.baseText('agents.builder.addTrigger.copied')
+												: i18n.baseText('agents.builder.addTrigger.copy')
+										"
+									>
+										<N8nButton
+											variant="outline"
+											size="small"
+											icon-only
+											:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
+											:aria-label="
 												copiedBlock === 'tool-input'
 													? i18n.baseText('agents.builder.addTrigger.copied')
 													: i18n.baseText('agents.builder.addTrigger.copy')
 											"
-										>
-											<N8nButton
-												variant="outline"
-												size="small"
-												icon-only
-												:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
-												:aria-label="
-													copiedBlock === 'tool-input'
-														? i18n.baseText('agents.builder.addTrigger.copied')
-														: i18n.baseText('agents.builder.addTrigger.copy')
-												"
-												@click="copyJsonBlock('tool-input', item.toolInput)"
-											/>
-										</N8nTooltip>
-									</div>
-									<!-- eslint-disable vue/no-v-html -->
-									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
-									<!-- eslint-enable vue/no-v-html -->
+											@click="copyJsonBlock('tool-input', item.toolInput)"
+										/>
+									</N8nTooltip>
 								</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
+								<!-- eslint-enable vue/no-v-html -->
 							</div>
-							<div>
-								<div :class="$style.label">
-									{{ i18n.baseText('agentSessions.timeline.output') }}
-								</div>
-								<div :class="$style.codeBlock">
-									<div :class="$style.codeBlockCopy">
-										<N8nTooltip
-											:content="
+						</div>
+						<div>
+							<div :class="$style.label">
+								{{ i18n.baseText('agentSessions.timeline.output') }}
+							</div>
+							<div :class="$style.codeBlock">
+								<div :class="$style.codeBlockCopy">
+									<N8nTooltip
+										:content="
+											copiedBlock === 'tool-output'
+												? i18n.baseText('agents.builder.addTrigger.copied')
+												: i18n.baseText('agents.builder.addTrigger.copy')
+										"
+									>
+										<N8nButton
+											variant="outline"
+											size="small"
+											icon-only
+											:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
+											:aria-label="
 												copiedBlock === 'tool-output'
 													? i18n.baseText('agents.builder.addTrigger.copied')
 													: i18n.baseText('agents.builder.addTrigger.copy')
 											"
-										>
-											<N8nButton
-												variant="outline"
-												size="small"
-												icon-only
-												:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
-												:aria-label="
-													copiedBlock === 'tool-output'
-														? i18n.baseText('agents.builder.addTrigger.copied')
-														: i18n.baseText('agents.builder.addTrigger.copy')
-												"
-												@click="copyJsonBlock('tool-output', item.toolOutput)"
-											/>
-										</N8nTooltip>
-									</div>
-									<!-- eslint-disable vue/no-v-html -->
-									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-									<!-- eslint-enable vue/no-v-html -->
+											@click="copyJsonBlock('tool-output', item.toolOutput)"
+										/>
+									</N8nTooltip>
 								</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
+								<!-- eslint-enable vue/no-v-html -->
 							</div>
-						</template>
+						</div>
 					</template>
 
 					<template v-else-if="item.kind === 'node'">

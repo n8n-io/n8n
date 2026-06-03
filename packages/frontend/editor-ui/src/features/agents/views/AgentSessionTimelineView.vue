@@ -106,9 +106,6 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.suspension');
 		case 'suspension-waiting':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'agentSessions.timeline.tool.richInteraction':
-		case 'agentSessions.timeline.tool.richInteractionDisplay':
-			return i18n.baseText(key);
 		default:
 			return key;
 	}
