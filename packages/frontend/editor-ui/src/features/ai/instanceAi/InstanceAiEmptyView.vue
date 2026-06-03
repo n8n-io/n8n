@@ -22,6 +22,14 @@ import {
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
 	useInstanceAiPromptSuggestionsV2Experiment,
 } from '@/experiments/instanceAiPromptSuggestionsV2';
+import {
+	WorkflowPreviewSuggestions,
+	WorkflowPreviewCanvas,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+	getPreviewWorkflow,
+	useInstanceAiWorkflowPreviewSuggestionsExperiment,
+} from '@/experiments/instanceAiWorkflowPreviewSuggestions';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -33,6 +41,10 @@ const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.input.placeholder';
+const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY =
+	'experiments.instanceAiWorkflowPreviewSuggestions.emptyState.title' as BaseTextKey;
+const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
+	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
 
 const store = useInstanceAiStore();
 const { isLowCredits } = storeToRefs(store);
@@ -45,7 +57,15 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
+const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
+	useInstanceAiWorkflowPreviewSuggestionsExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+const activeWorkflowPreviewFile = ref<string | null>(null);
+const activeWorkflowPreview = computed(() => {
+	if (!activeWorkflowPreviewFile.value) return null;
+	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
+});
+
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
@@ -61,19 +81,35 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		};
 	}
 
+	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
+		return {
+			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+			suggestionsComponent: WorkflowPreviewSuggestions,
+			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+			placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
 	return {
 		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
 	};
 });
-const emptyStateTitleKey = computed<BaseTextKey>(() =>
-	isPromptSuggestionsV2ExperimentEnabled.value
-		? INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY
-		: INSTANCE_AI_DEFAULT_TITLE_KEY,
-);
+const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	if (isPromptSuggestionsV2ExperimentEnabled.value) {
+		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
+	}
+	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
+		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
+	}
+	return INSTANCE_AI_DEFAULT_TITLE_KEY;
+});
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
 
+function handleWorkflowPreview(workflowFile: string | null) {
+	activeWorkflowPreviewFile.value = workflowFile;
+}
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
@@ -141,8 +177,16 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						:is-submitting="isStartingThread"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
+						@workflow-preview="handleWorkflowPreview"
 					/>
 				</div>
+				<Transition name="workflow-preview-fade">
+					<WorkflowPreviewCanvas
+						v-if="isWorkflowPreviewSuggestionsExperimentEnabled && activeWorkflowPreview"
+						:workflow="activeWorkflowPreview"
+						:class="$style.workflowPreview"
+					/>
+				</Transition>
 			</div>
 		</div>
 	</div>
@@ -181,6 +225,11 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	max-width: 680px;
 }
 
+.workflowPreview {
+	width: 100%;
+	max-width: 1600px;
+}
+
 .proactiveLayout {
 	flex: 1;
 	display: flex;
@@ -204,5 +253,27 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	max-width: 750px;
 	margin: 0 auto;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
+}
+
+:global(.workflow-preview-fade-enter-active) {
+	transition:
+		opacity 0.25s ease,
+		transform 0.25s ease;
+}
+
+:global(.workflow-preview-fade-leave-active) {
+	transition:
+		opacity 0.18s ease,
+		transform 0.18s ease;
+}
+
+:global(.workflow-preview-fade-enter-from) {
+	opacity: 0;
+	transform: translateY(8px);
+}
+
+:global(.workflow-preview-fade-leave-to) {
+	opacity: 0;
+	transform: translateY(4px);
 }
 </style>
