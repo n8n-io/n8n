@@ -1,3 +1,5 @@
+import { chmodSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer } from 'testcontainers';
 
@@ -12,6 +14,10 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
+
+// In-container path that NODE_V8_COVERAGE writes to when coverage collection is
+// enabled (via StackConfig.coverageHostDir); bind-mounted to a host subdir.
+const CONTAINER_COVERAGE_DIR = '/cov';
 // Must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
 const N8N_READINESS_PORT = 5678;
 const N8N_STARTUP_TIMEOUT_MS = 60_000;
@@ -73,6 +79,7 @@ export interface N8NInstancesOptions {
 	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
 	webhookResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	coverageHostDir?: string;
 }
 
 export interface N8NInstancesResult {
@@ -142,6 +149,7 @@ interface SharedConfig {
 	network: StartedNetwork;
 	resourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	coverageHostDir?: string;
 }
 
 interface ContainerStartResult {
@@ -162,7 +170,8 @@ async function createContainer(
 	diagnostics: N8NStartupDiagnostics,
 ): Promise<ContainerStartResult> {
 	const { name, role, instanceNumber, networkAlias, hostPort } = instance;
-	const { projectName, environment, network, resourceQuota, filesToMount } = shared;
+	const { projectName, environment, network, resourceQuota, filesToMount, coverageHostDir } =
+		shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		'/healthz/readiness',
@@ -170,8 +179,12 @@ async function createContainer(
 		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
 	);
 
+	const containerEnvironment = coverageHostDir
+		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
+		: environment;
+
 	let container = new GenericContainer(N8N_IMAGE)
-		.withEnvironment(environment)
+		.withEnvironment(containerEnvironment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': SERVICE_LABEL[role],
@@ -180,8 +193,23 @@ async function createContainer(
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
 		.withLogConsumer(consumer)
-		.withReuse()
 		.withNetwork(network);
+
+	if (coverageHostDir) {
+		// Per-container host dir → /cov; n8n flushes V8 here on graceful stop.
+		// Reuse must stay off so the process actually exits and flushes.
+		const hostCoverageDir = join(coverageHostDir, name);
+		mkdirSync(hostCoverageDir, { recursive: true });
+		// The n8n container runs as `node` (uid 1000); on Linux CI the bind mount
+		// is direct (no Docker Desktop uid mapping), so make the dir writable by
+		// the container or NODE_V8_COVERAGE silently fails to flush.
+		chmodSync(hostCoverageDir, 0o777);
+		container = container.withBindMounts([
+			{ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' },
+		]);
+	} else {
+		container = container.withReuse();
+	}
 
 	if (filesToMount?.length) {
 		container = container.withCopyContentToContainer(filesToMount);
@@ -242,6 +270,7 @@ export async function createN8NInstances(
 		workerResourceQuota,
 		webhookResourceQuota,
 		filesToMount,
+		coverageHostDir,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -255,6 +284,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota,
 		filesToMount,
+		coverageHostDir,
 	};
 
 	const workerShared: SharedConfig = {
@@ -263,6 +293,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
+		coverageHostDir,
 	};
 
 	const webhookShared: SharedConfig = {

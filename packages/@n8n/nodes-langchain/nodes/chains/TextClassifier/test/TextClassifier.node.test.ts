@@ -196,5 +196,25 @@ describe('TextClassifier Node', () => {
 
 			expect(result).toEqual([[{ json: { error: 'Test error' }, pairedItem: { item: 0 } }]]);
 		});
+
+		it('should not expose raw model output in parser error messages', async () => {
+			const rawModelOutput = 'customer payload in classifier output';
+			mockExecuteFunction.continueOnFail.mockReturnValue(true);
+			(processItem as Mock).mockRejectedValue(
+				new Error(`Failed to parse. Text: "${rawModelOutput}"`),
+			);
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			expect(result).toEqual([
+				[
+					{
+						json: { error: "Model output doesn't fit required format" },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(result[0][0].json.error).not.toContain(rawModelOutput);
+		});
 	});
 });
