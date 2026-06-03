@@ -199,6 +199,8 @@ import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/178
 import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
 import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -403,4 +405,6 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentTaskDefinitionTable1784000000021,
 	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	AddResourceToOAuthAuthorizationCodes1784000000024,
+	MigrateRedactionEnforcementToFloor1784000000025,
 ];

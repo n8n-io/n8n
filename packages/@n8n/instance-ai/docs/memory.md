@@ -93,8 +93,7 @@ All memory is thread-scoped (isolated per conversation):
 ### Sub-agent memory
 
 Sub-agents are fully stateless — context is passed via the briefing and
-`conversationContext` fields in the `delegate` and `build-workflow-with-agent`
-tools.
+`conversationContext` fields in the `delegate` tool.
 
 Past failed attempts are tracked via the `IterationLog` (stored in thread
 metadata) and appended to sub-agent briefings on retry, providing cross-attempt

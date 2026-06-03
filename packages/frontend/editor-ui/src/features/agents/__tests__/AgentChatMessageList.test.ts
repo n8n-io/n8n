@@ -25,7 +25,7 @@ vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
 }));
 
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
-	default: { template: '<div />', props: ['toolCalls'] },
+	default: { template: '<div />', props: ['toolCalls', 'projectId'] },
 }));
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({

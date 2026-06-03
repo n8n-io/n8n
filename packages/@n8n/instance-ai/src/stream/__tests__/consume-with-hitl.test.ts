@@ -10,17 +10,17 @@ async function* fromChunks(chunks: unknown[]) {
 
 function createEventBus(): InstanceAiEventBus {
 	return {
-		publish: jest.fn(),
-		subscribe: jest.fn().mockReturnValue(() => {}),
-		getEventsAfter: jest.fn(),
-		getNextEventId: jest.fn(),
-		getEventsForRun: jest.fn().mockReturnValue([]),
-		getEventsForRuns: jest.fn().mockReturnValue([]),
+		publish: vi.fn(),
+		subscribe: vi.fn().mockReturnValue(() => {}),
+		getEventsAfter: vi.fn(),
+		getNextEventId: vi.fn(),
+		getEventsForRun: vi.fn().mockReturnValue([]),
+		getEventsForRuns: vi.fn().mockReturnValue([]),
 	};
 }
 
 function createLogger() {
-	return { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 }
 
 describe('consumeStreamWithHitl', () => {
@@ -38,7 +38,7 @@ describe('consumeStreamWithHitl', () => {
 			logger: createLogger(),
 			threadId: 'thread-1',
 			abortSignal: new AbortController().signal,
-			waitForConfirmation: jest.fn(),
+			waitForConfirmation: vi.fn(),
 		});
 
 		expect(result.status).toBe('errored');
@@ -62,7 +62,7 @@ describe('consumeStreamWithHitl', () => {
 			logger: createLogger(),
 			threadId: 'thread-1',
 			abortSignal: new AbortController().signal,
-			waitForConfirmation: jest.fn(),
+			waitForConfirmation: vi.fn(),
 		});
 
 		await expect(requireCompletedHitlText(result, 'Test sub-agent')).resolves.toBe('done');

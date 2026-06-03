@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import type {
 	OrchestrationContext,
 	PlannedTaskGraph,
@@ -12,13 +14,13 @@ function makeContext(overrides: {
 	runId?: string;
 }): {
 	context: OrchestrationContext;
-	clear: jest.Mock;
-	getGraph: jest.Mock;
+	clear: Mock;
+	getGraph: Mock;
 } {
-	const clear = jest.fn(async () => {
+	const clear = vi.fn(async () => {
 		await Promise.resolve();
 	});
-	const getGraph = jest.fn(async () => {
+	const getGraph = vi.fn(async () => {
 		await Promise.resolve();
 		return overrides.graph;
 	});
