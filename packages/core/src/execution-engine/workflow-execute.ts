@@ -1907,7 +1907,7 @@ export class WorkflowExecute {
 								const errorClass = error.name || 'Error';
 								const sanitized = new Error(errorClass);
 								sanitized.name = errorClass;
-								sanitized.stack = error.stack;
+sanitized.stack = error.stack?.replace(/^[^\n]*/, errorClass);
 								toReport = sanitized;
 							}
 							if (toReport) {
