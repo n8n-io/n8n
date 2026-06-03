@@ -1,8 +1,9 @@
 import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
-import { useI18n } from '../../../i18n';
-import { isRecord } from '../../../utils/guards';
+import { useI18n } from '@mcp-apps/i18n';
+import { isRecord } from '@mcp-apps/utils/guards';
+
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
 import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';

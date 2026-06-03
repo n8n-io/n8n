@@ -2,10 +2,11 @@ import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, shallowRef } from 'vue';
 
-import { useWorkflowPreview } from './use-workflow-preview';
-import { WORKFLOW_PREVIEW_ORIGIN } from '../../../server/constants';
+import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 
-vi.mock('../../../i18n', () => ({
+import { useWorkflowPreview } from './use-workflow-preview';
+
+vi.mock('@mcp-apps/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string, params?: { count?: number }) =>
 			params?.count === undefined ? key : `${key}:${params.count}`,
