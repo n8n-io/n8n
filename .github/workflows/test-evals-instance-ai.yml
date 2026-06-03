@@ -59,9 +59,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 10 lanes on 4vcpu — dropped one lane to reduce CPU contention during
-      # execution; bump to 8vcpu if transient infra errors persist.
-      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687'
+      # 11 lanes on 4vcpu. Lane count doesn't drive the rare transient exec
+      # failures (10 vs 11 made no difference); the eval CLI retries those.
+      LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688'
     permissions:
       contents: read
       pull-requests: write

@@ -479,7 +479,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
 		// Retry transient network blips so a momentary lane hiccup isn't recorded as a failure.
-		const maxExecAttempts = 3;
+		const maxExecAttempts = 5;
 		let result;
 		for (let attempt = 1; ; attempt++) {
 			try {
@@ -490,7 +490,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				});
 				break;
 			} catch (error: unknown) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
+				const baseError = error instanceof Error ? error : new Error(String(error));
+				// undici wraps the real reason (ECONNRESET, ECONNREFUSED, timeout) in error.cause.
+				const cause = baseError.cause;
+				const causeText =
+					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
+				const errorMessage =
+					causeText && causeText !== baseError.message
+						? `${baseError.message}: ${causeText}`
+						: baseError.message;
 				const isTransient =
 					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
 						errorMessage,
