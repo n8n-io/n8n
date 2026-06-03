@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ASK_CREDENTIAL_TOOL_NAME, ASK_QUESTION_TOOL_NAME } from '@n8n/api-types';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { getToolCallDetails, isToolCallExpandable } from '../utils/tool-call-details';
@@ -31,44 +32,51 @@ describe('tool-call-details', () => {
 			).toBeUndefined();
 		});
 
-		it('formats generic string output', () => {
+		it('does not expose generic string output', () => {
 			expect(
 				getToolCallDetails({
 					tool: 'search_nodes',
 					output: 'Found 3 nodes',
 					state: TOOL_CALL_STATE.DONE,
 				}),
-			).toBe('Found 3 nodes');
+			).toBeUndefined();
 		});
 
-		it('formats generic object output as fenced JSON', () => {
-			const details = getToolCallDetails({
-				tool: 'search_nodes',
-				output: { nodes: ['Slack'] },
-				state: TOOL_CALL_STATE.DONE,
-			});
-			expect(details).toContain('```json');
-			expect(details).toContain('"nodes"');
-		});
-
-		it('returns undefined for empty generic output', () => {
+		it('does not expose generic object output as JSON', () => {
 			expect(
 				getToolCallDetails({
 					tool: 'search_nodes',
-					output: {},
+					output: { nodes: ['Slack'] },
 					state: TOOL_CALL_STATE.DONE,
 				}),
 			).toBeUndefined();
 		});
 
-		it('shows rejected tool error strings for error state', () => {
+		it('does not expose generic error strings', () => {
 			expect(
 				getToolCallDetails({
 					tool: 'search_nodes',
 					output: 'Credential missing',
 					state: TOOL_CALL_STATE.ERROR,
 				}),
-			).toBe('Credential missing');
+			).toBeUndefined();
+		});
+
+		it('does not expose resolved interactive tool resume payloads', () => {
+			expect(
+				getToolCallDetails({
+					tool: ASK_QUESTION_TOOL_NAME,
+					output: { values: ['slack'] },
+					state: TOOL_CALL_STATE.DONE,
+				}),
+			).toBeUndefined();
+			expect(
+				getToolCallDetails({
+					tool: ASK_CREDENTIAL_TOOL_NAME,
+					output: { credentialId: 'c1', credentialName: 'My Slack' },
+					state: TOOL_CALL_STATE.DONE,
+				}),
+			).toBeUndefined();
 		});
 
 		it('shows delegate answers for completed delegations', () => {
@@ -152,21 +160,24 @@ describe('tool-call-details', () => {
 	});
 
 	describe('isToolCallExpandable', () => {
-		it('is true only when details exist', () => {
+		it('is false for generic tools even when output is present', () => {
 			expect(
 				isToolCallExpandable({
 					tool: 'search_nodes',
 					output: { nodes: ['Slack'] },
 					state: TOOL_CALL_STATE.DONE,
 				}),
-			).toBe(true);
+			).toBe(false);
+		});
+
+		it('is true for delegate_subagent with answer content', () => {
 			expect(
 				isToolCallExpandable({
-					tool: 'search_nodes',
-					output: undefined,
+					tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+					output: { status: 'completed', answer: 'Child result' },
 					state: TOOL_CALL_STATE.DONE,
 				}),
-			).toBe(false);
+			).toBe(true);
 		});
 	});
 });

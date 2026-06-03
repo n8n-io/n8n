@@ -56,7 +56,7 @@ function mountSteps(toolCalls: ToolCall[]) {
 }
 
 describe('AgentChatToolSteps', () => {
-	it('expands generic tool output', async () => {
+	it('does not make generic tool steps expandable', () => {
 		const wrapper = mountSteps([
 			{
 				tool: 'search_nodes',
@@ -68,9 +68,8 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('[data-testid="tool-step-summary"]').exists()).toBe(false);
-
-		await wrapper.find('button').trigger('click');
-		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('"nodes"');
+		expect(wrapper.find('button').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
 	});
 
 	it('expands write_todos output with label and plural summary', async () => {

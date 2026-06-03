@@ -12,31 +12,9 @@ function isSettledState(state: ToolCallState): boolean {
 	return state === TOOL_CALL_STATE.DONE || state === TOOL_CALL_STATE.ERROR;
 }
 
-function formatGenericToolOutput(output: unknown): string | undefined {
-	if (output === undefined || output === null) return undefined;
-
-	if (typeof output === 'string') {
-		const trimmed = output.trim();
-		return trimmed.length > 0 ? trimmed : undefined;
-	}
-
-	if (Array.isArray(output) && output.length === 0) return undefined;
-
-	if (typeof output === 'object' && !Array.isArray(output) && Object.keys(output).length === 0) {
-		return undefined;
-	}
-
-	try {
-		return `\`\`\`json\n${JSON.stringify(output, null, 2)}\n\`\`\``;
-	} catch {
-		const asString = String(output).trim();
-		return asString.length > 0 ? asString : undefined;
-	}
-}
-
 function formatDelegateDetails(output: unknown): string | undefined {
 	const parsed = parseDelegateOutput(output);
-	if (!parsed) return formatGenericToolOutput(output);
+	if (!parsed) return undefined;
 
 	const answer = parsed.answer?.trim();
 	if (answer) return answer;
@@ -47,7 +25,7 @@ function formatDelegateDetails(output: unknown): string | undefined {
 	return undefined;
 }
 
-function formatSpecializedDetails(
+function formatExpandableDetails(
 	toolName: string,
 	output: unknown,
 	i18n?: WriteTodosI18n,
@@ -61,12 +39,13 @@ function formatSpecializedDetails(
 		return formatWriteTodosMarkdown(output, i18n, subAgentNameById);
 	}
 
-	return formatGenericToolOutput(output);
+	return undefined;
 }
 
 /**
  * Returns Markdown/text for the expandable tool-call details panel.
- * Only settled tool calls with non-empty output/error content are expandable.
+ * Only `delegate_subagent` and `write_todos` have purpose-built detail views;
+ * other tools are not expandable until their UX is designed.
  */
 export function getToolCallDetails(
 	tc: Pick<ToolCall, 'tool' | 'output' | 'state'>,
@@ -74,7 +53,7 @@ export function getToolCallDetails(
 	subAgentNameById?: Map<string, string>,
 ): string | undefined {
 	if (!isSettledState(tc.state)) return undefined;
-	return formatSpecializedDetails(tc.tool, tc.output, i18n, subAgentNameById);
+	return formatExpandableDetails(tc.tool, tc.output, i18n, subAgentNameById);
 }
 
 export function isToolCallExpandable(
