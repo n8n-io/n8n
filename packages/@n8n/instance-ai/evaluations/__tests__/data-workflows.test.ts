@@ -4,6 +4,7 @@ jest.mock('fs', () => ({
 }));
 
 import { readdirSync, readFileSync } from 'fs';
+import { jsonParse } from 'n8n-workflow';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 
@@ -22,10 +23,17 @@ const FAKE_FILES = [
 ];
 
 const STUB_TEST_CASE = JSON.stringify({
-	prompt: 'stub',
+	conversation: [{ role: 'user', text: 'stub' }],
 	complexity: 'simple',
 	tags: [],
-	scenarios: [],
+	executionScenarios: [
+		{
+			name: 'happy-path',
+			description: 'stub',
+			dataSetup: 'stub',
+			successCriteria: 'stub',
+		},
+	],
 });
 
 beforeEach(() => {
@@ -115,8 +123,6 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 
 	describe('--filter combined with --exclude', () => {
 		it('applies exclude after filter', () => {
-			// filter narrows to weather-* and form-to-hubspot, then exclude
-			// removes weather-monitoring
 			expect(slugs('weather,form-to-hubspot', 'monitoring')).toEqual([
 				'form-to-hubspot',
 				'weather-alert',
@@ -125,6 +131,68 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 
 		it('returns empty when exclude removes every filtered slug', () => {
 			expect(slugs('weather', 'weather')).toEqual([]);
+		});
+	});
+
+	describe('--tier (datasets-field filter)', () => {
+		it('defaults to ["full"] when a test case omits the datasets field', () => {
+			const cases = loadWorkflowTestCasesWithFiles();
+			expect(cases.every((c) => c.testCase.datasets.includes('full'))).toBe(true);
+		});
+
+		it('filters to test cases whose datasets array contains the tier', () => {
+			mockedReadFile.mockImplementation((p) => {
+				const filename = String(p);
+				if (filename.includes('weather-alert')) {
+					return JSON.stringify({
+						...jsonParse(STUB_TEST_CASE),
+						datasets: ['pr', 'full'],
+					});
+				}
+				return STUB_TEST_CASE;
+			});
+
+			const inPr = loadWorkflowTestCasesWithFiles(undefined, undefined, 'pr')
+				.map((c) => c.fileSlug)
+				.sort();
+			const inFull = loadWorkflowTestCasesWithFiles(undefined, undefined, 'full')
+				.map((c) => c.fileSlug)
+				.sort();
+
+			expect(inPr).toEqual(['weather-alert']);
+			const allSlugs = loadWorkflowTestCasesWithFiles().map((c) => c.fileSlug).sort();
+			expect(inFull).toEqual(allSlugs);
+		});
+
+		it('composes with --filter: tier filter applies after substring filter', () => {
+			mockedReadFile.mockImplementation((p) => {
+				const filename = String(p);
+				if (filename.includes('weather-alert')) {
+					return JSON.stringify({
+						...jsonParse(STUB_TEST_CASE),
+						datasets: ['pr', 'full'],
+					});
+				}
+				return STUB_TEST_CASE;
+			});
+
+			const result = loadWorkflowTestCasesWithFiles('weather', undefined, 'pr')
+				.map((c) => c.fileSlug)
+				.sort();
+			expect(result).toEqual(['weather-alert']);
+		});
+
+		it('throws when --tier matches no test cases (catches typos instead of silent green)', () => {
+			expect(() => loadWorkflowTestCasesWithFiles(undefined, undefined, 'prr')).toThrow(
+				/No test cases match --tier "prr"/,
+			);
+		});
+
+		it('rejects a test case that declares an empty datasets array', () => {
+			mockedReadFile.mockImplementation(() =>
+				JSON.stringify({ ...jsonParse(STUB_TEST_CASE), datasets: [] }),
+			);
+			expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/datasets/i);
 		});
 	});
 });

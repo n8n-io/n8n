@@ -5,6 +5,7 @@ import { Column, Entity, Index } from '@n8n/typeorm';
 @Index(['memoryEntryId', 'observationId', 'evidenceHash'], { unique: true })
 @Index(['observationId'])
 @Index(['agentId', 'threadId'])
+@Index(['threadId'])
 export class AgentMemoryEntrySourceEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	agentId: string;

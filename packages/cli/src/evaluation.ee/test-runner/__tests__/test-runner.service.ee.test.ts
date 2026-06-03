@@ -2,6 +2,7 @@ import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type {
 	EvaluationCollectionRepository,
+	EvaluationConfigRepository,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
@@ -21,6 +22,7 @@ import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
 import { TestRunnerService } from '../test-runner.service.ee';
+import type { WorkflowCompilerService } from '../workflow-compiler.service';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -66,6 +68,8 @@ describe('TestRunnerService', () => {
 	const concurrencyControlService = mock<ConcurrencyControlService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
+	const evaluationConfigRepository = mock<EvaluationConfigRepository>();
+	const workflowCompiler = mock<WorkflowCompilerService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -90,6 +94,8 @@ describe('TestRunnerService', () => {
 			buildLicenseMock(),
 			workflowHistoryService,
 			evaluationCollectionRepository,
+			evaluationConfigRepository,
+			workflowCompiler,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -536,6 +542,8 @@ describe('TestRunnerService', () => {
 				buildLicenseMock(),
 				workflowHistoryService,
 				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -857,6 +865,8 @@ describe('TestRunnerService', () => {
 					buildLicenseMock(),
 					workflowHistoryService,
 					evaluationCollectionRepository,
+					evaluationConfigRepository,
+					workflowCompiler,
 				);
 			});
 
@@ -2318,6 +2328,8 @@ describe('TestRunnerService', () => {
 				buildLicenseMock('Community', 4),
 				workflowHistoryService,
 				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 			setupHappyPathMocks(2);
 			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
@@ -2395,6 +2407,8 @@ describe('TestRunnerService', () => {
 				buildLicenseMock(),
 				workflowHistoryService,
 				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2492,6 +2506,8 @@ describe('TestRunnerService', () => {
 				buildLicenseMock(),
 				workflowHistoryService,
 				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 
 			setupHappyPathMocks(4);
@@ -2587,6 +2603,15 @@ describe('TestRunnerService', () => {
 
 	describe('startTestRun - collection context (TRUST-72)', () => {
 		const USER = mock<{ id: string }>({ id: 'user-1' });
+
+		// Collection-context tests use stub nodes without a `type` field, so the
+		// compile branch's `EVALUATION_TRIGGER_NODE_TYPE` lookup mis-fires. Tell
+		// the config repo to return something and have the compiler passthrough
+		// so these tests can keep asserting only the history-load behaviour.
+		beforeEach(() => {
+			evaluationConfigRepository.findByIdAndWorkflowId.mockResolvedValue({ id: 'cfg-1' } as never);
+			workflowCompiler.compile.mockImplementation((wf) => wf as never);
+		});
 
 		test('loads workflow JSON from WorkflowHistory when workflowVersionId is set', async () => {
 			workflowRepository.findById.mockResolvedValueOnce({
@@ -2720,6 +2745,8 @@ describe('TestRunnerService', () => {
 				buildLicenseMock(),
 				workflowHistoryService,
 				evaluationCollectionRepository,
+				evaluationConfigRepository,
+				workflowCompiler,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);

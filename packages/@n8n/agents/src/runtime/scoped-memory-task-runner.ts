@@ -1,7 +1,6 @@
 import { BackgroundTaskTracker } from './background-task-tracker';
 import type {
 	BuiltObservationLogTaskLockStore,
-	ObservationLogScopeKind,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 } from '../types/sdk/observation-log';
@@ -11,8 +10,7 @@ const DEFAULT_MAX_CAPTURED_ERRORS = 50;
 
 export interface ScopedMemoryTaskDescriptor {
 	taskKind: ObservationLogTaskKind;
-	scopeKind: ObservationLogScopeKind;
-	scopeId: string;
+	observationScopeId: string;
 }
 
 export type ScopedMemoryTaskStatus = 'queued' | 'running';
@@ -118,7 +116,7 @@ export class ScopedMemoryTaskRunner {
 		};
 		this.inFlightTasks.set(id, info);
 
-		const scopeKey = this.scopeKey(descriptor.scopeKind, descriptor.scopeId);
+		const scopeKey = descriptor.observationScopeId;
 		const previous = this.queuesByScope.get(scopeKey) ?? Promise.resolve();
 		const done = previous.catch(() => undefined).then(async () => await this.runTask(info, task));
 		const queued = done.finally(() => {
@@ -167,8 +165,7 @@ export class ScopedMemoryTaskRunner {
 	): Promise<ObservationLogTaskLockHandle | null> {
 		if (!this.lockStore) return null;
 		return await this.lockStore.acquireObservationLogTaskLock(
-			info.scopeKind,
-			info.scopeId,
+			info.observationScopeId,
 			info.taskKind,
 			{ holderId: info.id, ttlMs: this.lockTtlMs },
 		);
@@ -189,8 +186,7 @@ export class ScopedMemoryTaskRunner {
 		this.capturedErrors.push({
 			id: info.id,
 			taskKind: info.taskKind,
-			scopeKind: info.scopeKind,
-			scopeId: info.scopeId,
+			observationScopeId: info.observationScopeId,
 			error,
 			createdAt: new Date(),
 		});
@@ -213,9 +209,5 @@ export class ScopedMemoryTaskRunner {
 			queuedAt: new Date(info.queuedAt),
 			...(info.startedAt ? { startedAt: new Date(info.startedAt) } : {}),
 		};
-	}
-
-	private scopeKey(scopeKind: ObservationLogScopeKind, scopeId: string): string {
-		return `${scopeKind}:${scopeId}`;
 	}
 }

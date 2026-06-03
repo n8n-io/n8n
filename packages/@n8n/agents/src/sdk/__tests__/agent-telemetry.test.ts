@@ -1,25 +1,27 @@
+import * as aiModule from 'ai';
+import type { Mock } from 'vitest';
+
 import type { BuiltTelemetry } from '../../types';
 import { Agent } from '../agent';
 
 // Mock provider packages so createModel() doesn't fail when no API key is set.
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () => () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
 }));
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 type AiImport = typeof import('ai');
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<AiImport>('ai');
 	return {
 		...actual,
-		generateText: jest.fn(),
+		generateText: vi.fn(),
 	};
 });
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { generateText } = require('ai') as {
-	generateText: jest.Mock;
+const { generateText } = aiModule as unknown as {
+	generateText: Mock;
 };
 
 function makeGenerateSuccess(text = 'OK') {
@@ -46,13 +48,13 @@ function makeTelemetry(functionId: string): BuiltTelemetry {
 		recordInputs: true,
 		recordOutputs: true,
 		integrations: [],
-		tracer: { startSpan: jest.fn() },
+		tracer: { startSpan: vi.fn() },
 	};
 }
 
 describe('Agent telemetry', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('updates telemetry on an already-built runtime', async () => {
@@ -66,9 +68,8 @@ describe('Agent telemetry', () => {
 		agent.telemetry(makeTelemetry('updated-agent'));
 		await agent.generate('second');
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const firstCall = generateText.mock.calls[0][0] as Record<string, unknown>;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 		const secondCall = generateText.mock.calls[1][0] as Record<string, unknown>;
 		const firstTelemetry = firstCall.experimental_telemetry as Record<string, unknown>;
 		const secondTelemetry = secondCall.experimental_telemetry as Record<string, unknown>;

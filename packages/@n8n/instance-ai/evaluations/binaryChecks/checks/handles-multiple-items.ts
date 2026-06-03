@@ -3,6 +3,7 @@ import { createLlmCheck } from './create-llm-check';
 export const handlesMultipleItems = createLlmCheck({
 	name: 'handles_multiple_items',
 	description: 'Workflow handles multiple items correctly for its use case',
+	dimension: 'connection_topology',
 	systemPrompt: `You are an evaluator checking whether an n8n workflow handles multiple items correctly.
 
 Important n8n context:

@@ -37,13 +37,14 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 		return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', {});
 	};
 
-	// Both engines wrap `$json` such that property descriptors aren't reachable
-	// from inside an expression. Documented so a future divergence is caught;
-	// neither engine intends to expose the underlying data this way.
+	// Both engines reject property-descriptor access from inside an expression:
+	// `getOwnPropertyDescriptor` is on the sanitizer's blocklist, so the
+	// expression is rejected before evaluation. Documented so a future
+	// divergence is caught; neither engine intends to expose the data this way.
 	it('Object.getOwnPropertyDescriptor on $json properties is not exposed via expressions', () => {
-		expect(
+		expect(() =>
 			evaluate('={{ Object.getOwnPropertyDescriptor($json.arr, "0") }}', { arr: [10, 20, 30] }),
-		).toBeUndefined();
+		).toThrow(/due to security concerns/);
 	});
 
 	it('spread syntax materialises the array via Symbol.iterator', () => {
