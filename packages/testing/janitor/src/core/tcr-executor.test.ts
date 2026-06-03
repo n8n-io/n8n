@@ -2,11 +2,18 @@ import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { saveBaseline, type BaselineFile } from './baseline.js';
 import { TcrExecutor } from './tcr-executor.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
+
+// These are integration tests: each case spins up a real git repo and a
+// ts-morph Project, which runs in ~ms locally but 6–14s on loaded CI runners —
+// well past vitest's 5s default. Scope a generous timeout to this file only so
+// the slow ts-morph/git work doesn't flake, without weakening the timeout
+// signal for the fast unit tests elsewhere in the package.
+vi.setConfig({ testTimeout: 30_000 });
 
 describe('TcrExecutor', () => {
 	let tempDir: string;
