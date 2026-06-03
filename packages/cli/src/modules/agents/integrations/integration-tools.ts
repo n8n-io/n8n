@@ -3,6 +3,12 @@ import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
+import {
+	cardTextSchema,
+	incomingMessageBlockSchema,
+	messageAwaitsResponse,
+	normalizeMessagePayload,
+} from './message-card-normalizer';
 
 export type IntegrationMessageTarget =
 	| {
@@ -159,16 +165,6 @@ const selectOptionSchema = z.object({
 	description: z.string().optional(),
 });
 
-const cardTextSchema = z.union([
-	z.string(),
-	z
-		.object({
-			type: z.string().optional(),
-			text: z.string(),
-		})
-		.passthrough(),
-]);
-
 const cardComponentSchema = z.object({
 	type: z.string(),
 	text: cardTextSchema.optional(),
@@ -195,6 +191,7 @@ const messageSchema = z
 				components: z.array(cardComponentSchema).min(1),
 			})
 			.optional(),
+		blocks: z.array(incomingMessageBlockSchema).optional(),
 	})
 	.strict();
 
@@ -1158,8 +1155,8 @@ async function executeActionToolOperation(params: {
 		allowSuspend,
 	} = params;
 	const persistence = ctx.persistence;
-	const actionInput = operation.input;
-	const message = parseMessage(actionInput.message);
+	const message = parseMessage(operation.input.message);
+	const actionInput = message === undefined ? operation.input : { ...operation.input, message };
 	const awaitsResponse = shouldAwaitResponse(message);
 
 	if (awaitsResponse && !allowSuspend) {
@@ -1250,20 +1247,13 @@ function toZodEnumValues<T extends string>(values: T[]): [T, ...T[]] {
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
 	const result = messageSchema.safeParse(value);
-	return result.success ? result.data : undefined;
+	return result.success
+		? (normalizeMessagePayload(result.data) as z.infer<typeof messageSchema>)
+		: undefined;
 }
 
 function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
-	const card = message?.card;
-	if (card?.awaitResponse === true) return true;
-	if (
-		card?.components.some((component) =>
-			['button', 'select', 'radio_select'].includes(component.type),
-		)
-	) {
-		return true;
-	}
-	return false;
+	return messageAwaitsResponse(message);
 }
 
 function withPreviousSubject(

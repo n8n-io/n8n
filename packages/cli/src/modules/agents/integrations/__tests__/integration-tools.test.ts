@@ -478,6 +478,48 @@ describe('integration tools', () => {
 		).toBe(true);
 	});
 
+	it('action tool schema accepts Slack-shaped blocks for message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Approve/Reject button demo',
+						blocks: [
+							{
+								type: 'header',
+								text: { type: 'plain_text', text: 'Approve / Reject Demo' },
+							},
+							{
+								type: 'section',
+								text: { type: 'mrkdwn', text: 'Choose an action.' },
+							},
+							{ type: 'divider' },
+							{
+								type: 'actions',
+								elements: [
+									{
+										type: 'button',
+										text: { type: 'plain_text', text: 'Approve' },
+										style: 'primary',
+										value: 'approve',
+									},
+								],
+							},
+						],
+					},
+				},
+			}).success,
+		).toBe(true);
+	});
+
 	it('action tool schema accepts Slack emoji reaction actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({
@@ -715,6 +757,87 @@ describe('integration tools', () => {
 				messageId: '123.456',
 			}),
 		});
+	});
+
+	it('normalizes block messages before executing interactive actions', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'channel', channelId: 'slack:C123', threadId: 'slack:C123:123.456' },
+				messageId: '123.456',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+		const ctx = makeInterruptibleCtx();
+
+		await tool.handler!(
+			{
+				action: 'send_channel_message',
+				input: {
+					channelId: 'slack:C123',
+					message: {
+						text: 'Approve/Reject button demo',
+						blocks: [
+							{
+								type: 'header',
+								text: { type: 'plain_text', text: 'Approve / Reject Demo' },
+							},
+							{
+								type: 'section',
+								text: { type: 'mrkdwn', text: 'Choose an action.' },
+							},
+							{
+								type: 'actions',
+								elements: [
+									{
+										type: 'button',
+										text: { type: 'plain_text', text: 'Approve' },
+										style: 'primary',
+										value: 'approve',
+									},
+								],
+							},
+						],
+					},
+				},
+			},
+			ctx,
+		);
+
+		expect(actionExecutor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'send_channel_message',
+				awaitResponse: true,
+				input: expect.objectContaining({
+					message: expect.objectContaining({
+						card: expect.objectContaining({
+							title: 'Approve / Reject Demo',
+							components: expect.arrayContaining([
+								expect.objectContaining({
+									type: 'button',
+									label: 'Approve',
+									value: 'approve',
+									style: 'primary',
+								}),
+							]),
+						}),
+					}),
+				}),
+			}),
+		);
+		expect(ctx.suspend).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'integration_action' }),
+		);
 	});
 
 	it('action tool preserves the current subject when updating message context', async () => {

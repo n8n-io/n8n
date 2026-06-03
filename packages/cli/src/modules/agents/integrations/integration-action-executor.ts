@@ -11,6 +11,7 @@ import {
 	integrationError,
 	normalizePlatformId,
 } from './integration-helpers';
+import { incomingMessageBlockSchema, normalizeMessagePayload } from './message-card-normalizer';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
@@ -31,6 +32,7 @@ const messageSchema = z
 				components: z.array(z.object({ type: z.string() }).passthrough()).min(1),
 			})
 			.optional(),
+		blocks: z.array(incomingMessageBlockSchema).optional(),
 	})
 	.strict();
 
@@ -188,8 +190,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		message: MessagePayload,
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
 	) {
-		const cardPayload = message.card;
-		if (!cardPayload) return message.text ?? '';
+		const normalizedMessage = normalizeMessagePayload(message) as MessagePayload;
+		const cardPayload = normalizedMessage.card;
+		if (!cardPayload) return normalizedMessage.text ?? '';
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');
@@ -197,7 +200,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		const card = await this.componentMapper.toCard(
 			{
-				title: cardPayload.title ?? message.text,
+				title: cardPayload.title ?? normalizedMessage.text,
 				message: cardPayload.message,
 				components: cardPayload.components,
 			},
