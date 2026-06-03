@@ -381,6 +381,7 @@ export type {
 	InstanceAiModelCredential,
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpToolFilter,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,

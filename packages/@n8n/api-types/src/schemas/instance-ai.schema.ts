@@ -1062,6 +1062,16 @@ export interface InstanceAiMcpConnectionToolResponse {
 	description?: string;
 }
 
+/**
+ * Persisted MCP tool filter for an instance AI connection. Mirrors the
+ * `instance_ai_mcp_registry_connections.toolFilter` column on the BE.
+ * `null` means no filter (all tools exposed).
+ */
+export interface InstanceAiMcpToolFilter {
+	mode: 'allow' | 'exclude';
+	tools: string[];
+}
+
 export interface InstanceAiMcpConnectionResponse {
 	id: string;
 	serverSlug: string;
@@ -1076,6 +1086,8 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
+	/** Optional tool filter — `null` means all tools are exposed. */
+	toolFilter: InstanceAiMcpToolFilter | null;
 	createdAt: string;
 	updatedAt: string;
 }

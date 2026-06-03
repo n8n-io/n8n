@@ -29,6 +29,7 @@ describe('InstanceAiMcpConnectionController', () => {
 		userId: user.id,
 		serverSlug: 'linear',
 		credentialId: 'cred-1',
+		toolFilter: null,
 		createdAt: new Date('2026-05-01T00:00:00.000Z'),
 		updatedAt: new Date('2026-05-01T00:00:00.000Z'),
 	} as InstanceAiMcpRegistryConnection;
@@ -169,28 +170,34 @@ describe('InstanceAiMcpConnectionController', () => {
 		});
 	});
 
-	describe('update (no-op)', () => {
-		it('returns the existing connection without persisting the payload', async () => {
+	describe('update', () => {
+		it('persists the toolFilter and returns the updated connection', async () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =
 				createController();
-			service.listConnectionsForUser.mockResolvedValue([baseRow]);
+			const updatedRow = { ...baseRow, toolFilter: { mode: 'exclude' as const, tools: ['t1'] } };
+			service.updateConnection.mockResolvedValue(updatedRow);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			mcpRegistryService.get.mockResolvedValue(linearServer);
 
 			const result = await controller.update(authedRequest(), {} as never, 'conn-1', {
-				inclusionMode: 'except',
-				excludedTools: ['t1'],
+				toolFilter: { mode: 'exclude', tools: ['t1'] },
 			});
 
-			expect(result).toMatchObject({ id: 'conn-1', serverSlug: 'linear', serverTitle: 'Linear' });
+			expect(service.updateConnection).toHaveBeenCalledWith(user, 'conn-1', {
+				toolFilter: { mode: 'exclude', tools: ['t1'] },
+			});
+			expect(result).toMatchObject({
+				id: 'conn-1',
+				toolFilter: { mode: 'exclude', tools: ['t1'] },
+			});
 		});
 
-		it('throws NotFoundError when the connection does not belong to the user', async () => {
+		it('propagates NotFoundError from the service', async () => {
 			const { controller, service } = createController();
-			service.listConnectionsForUser.mockResolvedValue([]);
+			service.updateConnection.mockRejectedValue(new NotFoundError('not found'));
 
 			await expect(
-				controller.update(authedRequest(), {} as never, 'missing', {}),
+				controller.update(authedRequest(), {} as never, 'missing', { toolFilter: null }),
 			).rejects.toBeInstanceOf(NotFoundError);
 		});
 	});
