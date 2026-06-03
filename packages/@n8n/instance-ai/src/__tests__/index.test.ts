@@ -371,10 +371,10 @@ describe('@n8n/instance-ai public entrypoint', () => {
 			entrypoint.PlannedTaskCoordinator,
 		);
 		expect(
-			entrypoint.applyPlannedTaskPermissions({ permissions: {} } as never, 'checkpoint').permissions
-				.runWorkflow,
+			entrypoint.applyPlannedTaskPermissions({ permissions: {} } as never, 'checkpoint')
+				.permissions!.runWorkflow,
 		).toBe('always_allow');
-		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint.runWorkflow).toBe(
+		expect(entrypoint.PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint!.runWorkflow).toBe(
 			'always_allow',
 		);
 
