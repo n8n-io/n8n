@@ -17,10 +17,9 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "clean": "rimraf dist out .turbo",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
-    "postinstall": "node node_modules/electron/install.js"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "dependencies": {
     "@n8n/computer-use": "workspace:*",
@@ -30,10 +29,13 @@
     "@electron/rebuild": "^4.0.4",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "concurrently": "^8.2.0",
     "electron": "^41.3.0",
     "electron-builder": "^26.9.0",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "vitest": "catalog:"
   }
 }

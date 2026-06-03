@@ -136,6 +136,7 @@ describe('streamAgentRun', () => {
 				requestId: 'request-1',
 				toolCallId: 'tool-call-1',
 				toolName: 'pause-for-user',
+				suspendPayload: {},
 			},
 			confirmationEvent: {
 				type: 'confirmation-request',

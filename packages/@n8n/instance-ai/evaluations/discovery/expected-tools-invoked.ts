@@ -11,10 +11,9 @@
 //   - the rule names `spawn_sub_agent:<role>` and a sub-agent with that role
 //     was spawned.
 //
-// The asymmetry (sub-agent existence counts as discovery) matches the way
-// Instance AI dispatches browser-credential-setup: the orchestrator hands off
-// to a sub-agent and discovery has already happened by the time that
-// sub-agent has tools attached.
+// The asymmetry (sub-agent existence counts as discovery) lets planner and
+// builder dispatch checks assert that a specialized background agent was
+// reached even before it emits its own tool calls.
 // ---------------------------------------------------------------------------
 
 import type { EventOutcome } from '../types';
@@ -57,11 +56,12 @@ function matches(name: string, invokedTools: string[], spawnedAgents: string[]):
 function validateRule(rule: ExpectedToolInvocations): void {
 	const hasAnyOf = Array.isArray(rule.anyOf) && rule.anyOf.length > 0;
 	const hasNoneOf = Array.isArray(rule.noneOf) && rule.noneOf.length > 0;
+	const hasAnyOfToolCalls = Array.isArray(rule.anyOfToolCalls) && rule.anyOfToolCalls.length > 0;
 	const hasAllOfToolCalls = Array.isArray(rule.allOfToolCalls) && rule.allOfToolCalls.length > 0;
 	const hasNoneOfToolCalls = Array.isArray(rule.noneOfToolCalls) && rule.noneOfToolCalls.length > 0;
-	if (!hasAnyOf && !hasNoneOf && !hasAllOfToolCalls && !hasNoneOfToolCalls) {
+	if (!hasAnyOf && !hasNoneOf && !hasAnyOfToolCalls && !hasAllOfToolCalls && !hasNoneOfToolCalls) {
 		throw new Error(
-			'expectedToolInvocations must specify a non-empty `anyOf`, `noneOf`, `allOfToolCalls`, or `noneOfToolCalls` list',
+			'expectedToolInvocations must specify a non-empty `anyOf`, `noneOf`, `anyOfToolCalls`, `allOfToolCalls`, or `noneOfToolCalls` list',
 		);
 	}
 }
@@ -96,7 +96,8 @@ export function runExpectedToolsInvokedCheck(
 	const invokedTools = collectInvokedTools(outcome);
 	const spawnedAgents = collectSpawnedAgents(outcome);
 
-	const { anyOf, noneOf, allOfToolCalls, noneOfToolCalls } = scenario.expectedToolInvocations;
+	const { anyOf, noneOf, anyOfToolCalls, allOfToolCalls, noneOfToolCalls } =
+		scenario.expectedToolInvocations;
 
 	if (anyOf && anyOf.length > 0) {
 		const matched = anyOf.find((name) => matches(name, invokedTools, spawnedAgents));
@@ -116,6 +117,21 @@ export function runExpectedToolsInvokedCheck(
 			return {
 				pass: false,
 				comment: `Expected none of [${noneOf.join(', ')}] to be invoked, but [${violated}] was reached.`,
+				invokedTools,
+				spawnedAgents,
+			};
+		}
+	}
+
+	if (anyOfToolCalls && anyOfToolCalls.length > 0) {
+		const matched = anyOfToolCalls.find((expectation) =>
+			outcome.toolCalls.some((toolCall) => toolCallMatchesExpectation(toolCall, expectation)),
+		);
+		if (!matched) {
+			const actualToolCalls = outcome.toolCalls.map((tc) => tc.toolName).join(', ') || '∅';
+			return {
+				pass: false,
+				comment: `Expected at least one actual tool call matching [${anyOfToolCalls.map(formatToolCallExpectation).join(', ')}]. Actual tool calls: [${actualToolCalls}].`,
 				invokedTools,
 				spawnedAgents,
 			};
