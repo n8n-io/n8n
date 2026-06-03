@@ -246,8 +246,6 @@ export class InstanceAiAdapterService {
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
 			threadId?: string;
-			/** The project this thread is bound to. Clamps writes and scopes the
-			 *  default credential list. Absent only in package/test contexts. */
 			projectId?: string;
 		},
 	): InstanceAiContext {
@@ -328,11 +326,6 @@ export class InstanceAiAdapterService {
 			return projectId;
 		};
 
-		// Write operations are clamped to the thread's bound project: any caller- or
-		// LLM-provided projectId is intentionally ignored so the agent cannot create
-		// resources outside its project. projectId is mandatory at thread creation,
-		// so a write with no bound project is an invalid state — fail rather than
-		// silently defaulting to the personal project.
 		const resolveBoundProjectId = async (scopes: Scope[]) => {
 			if (!boundProjectId) {
 				throw new UnexpectedError(
@@ -374,9 +367,6 @@ export class InstanceAiAdapterService {
 				const filter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(options?.query ? { query: options.query } : {}),
-					// Default to the thread's project; the agent opts into instance-wide
-					// with scope:'instance'. Reads carry no escalation (the agent runs as
-					// the user), so broadening is a relevance choice, not a permission one.
 					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
 
@@ -527,7 +517,6 @@ export class InstanceAiAdapterService {
 				options?: { projectId?: string; markAsAiTemporary?: boolean },
 			) {
 				assertNotReadOnly();
-				// Creation is clamped to the thread's project — options.projectId (if any) is ignored.
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -1198,11 +1187,6 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				// Default scope: the thread's bound project. The agent only sees
-				// credentials it can actually use here (project-shared + global) — the
-				// same intersection `preventTampering` enforces at save time — so it
-				// never picks a credential the save layer would later reject. Deliberately
-				// NOT broadenable: for credentials, what's visible must equal what's usable.
 				if (boundProjectId) {
 					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 						projectId: boundProjectId,
@@ -1211,7 +1195,6 @@ export class InstanceAiAdapterService {
 					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
 				}
 
-				// Package/test contexts with no bound project: all credentials the user can access.
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
@@ -1556,7 +1539,6 @@ export class InstanceAiAdapterService {
 
 			async create(name, columns) {
 				assertNotReadOnly();
-				// Creation is clamped to the thread's project — any caller-provided projectId is ignored.
 				const projectId = await resolveBoundProjectId(['dataTable:create']);
 				const result = await dataTableService.createDataTable(projectId, { name, columns });
 

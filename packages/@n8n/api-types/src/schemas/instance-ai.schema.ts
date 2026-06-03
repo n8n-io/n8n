@@ -678,13 +678,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
-	projectId: z
-		.string()
-		.min(1)
-		.describe(
-			'The n8n project this thread is bound to. Required and immutable: scopes the ' +
-				"agent's writes and reads for the lifetime of the thread.",
-		),
+	projectId: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -841,7 +835,6 @@ export interface InstanceAiThreadInfo {
 	id: string;
 	title?: string;
 	resourceId: string;
-	/** The n8n project a user thread is bound to. Set at creation, immutable. */
 	projectId?: string;
 	createdAt: string;
 	updatedAt: string;
@@ -879,8 +872,6 @@ export interface InstanceAiThreadMessagesResponse {
 
 export interface InstanceAiRichMessagesResponse {
 	threadId: string;
-	/** The n8n project this thread is bound to (immutable). The frontend reads it
-	 *  here so each thread runtime knows its project on load. */
 	projectId?: string;
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
@@ -1063,7 +1054,7 @@ export interface InstanceAiModelCredential {
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
@@ -1179,41 +1170,3 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
-
-// ---------------------------------------------------------------------------
-// Sub-agent evaluation endpoint
-// ---------------------------------------------------------------------------
-
-export class InstanceAiEvalSubAgentRequest extends Z.class({
-	/** Role name from the server's sub-agent registry (currently: "builder"). */
-	role: z.string().min(1).max(64),
-	/** The task the sub-agent should perform. */
-	prompt: z.string().min(1).max(10_000),
-	/** Optional model override. Defaults to the server's configured Instance AI model. */
-	modelId: z.string().min(1).optional(),
-	/** Max agent steps. Defaults to 40. */
-	maxSteps: z.number().int().positive().max(200).optional(),
-	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
-	timeoutMs: z.number().int().positive().max(600_000).optional(),
-}) {}
-
-export interface InstanceAiEvalToolCall {
-	toolName: string;
-	args: unknown;
-}
-
-export interface InstanceAiEvalToolResult {
-	toolName: string;
-	result: unknown;
-	isError: boolean;
-}
-
-export interface InstanceAiEvalSubAgentResponse {
-	text: string;
-	toolCalls: InstanceAiEvalToolCall[];
-	toolResults: InstanceAiEvalToolResult[];
-	capturedWorkflowIds: string[];
-	durationMs: number;
-	stopReason?: string;
-	error?: string;
-}

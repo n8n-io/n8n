@@ -909,7 +909,7 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				project_id: 'project123',
 				project_type: 'personal',
-				is_dynamic: false,
+				is_private: false,
 				uses_external_secrets: false,
 				jwe_enabled: false,
 			});
@@ -965,7 +965,7 @@ describe('TelemetryEventRelay', () => {
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
-				is_dynamic: true,
+				is_private: true,
 				uses_external_secrets: false,
 				jwe_enabled: false,
 			});
@@ -1491,7 +1491,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
-				used_dynamic_credentials: false,
+				used_private_credentials: false,
 			});
 		});
 

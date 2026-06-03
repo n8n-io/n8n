@@ -248,8 +248,6 @@ export function createThreadRuntime(
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
-	// The project this thread is bound to (immutable). Seeded for new threads;
-	// for reopened threads it's hydrated from the messages-load response.
 	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());

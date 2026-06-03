@@ -14,6 +14,8 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
+| `N8N_INSTANCE_AI_ENFORCE_CREATE_TASKS_REPLAN` | boolean | `true` | Reject `create-tasks` outside replan contexts unless the request explicitly bypasses planner discovery. |
+| `N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN` | boolean | `true` | Reject direct `build-workflow` calls unless they run from an approved plan or explicitly allowed build context. |
 
 ### Tracing
 

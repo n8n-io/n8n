@@ -41,7 +41,6 @@ export type {
 	ResumeOptions,
 	GenerateResult,
 	StreamResult,
-	SubAgentUsage,
 	BuiltAgent,
 	AgentRunState,
 	AgentResumeData,

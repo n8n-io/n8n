@@ -10,10 +10,8 @@ import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
-import {
-	useWorkflowDocumentSettings,
-	DEFAULT_SETTINGS,
-} from './workflowDocument/useWorkflowDocumentSettings';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';

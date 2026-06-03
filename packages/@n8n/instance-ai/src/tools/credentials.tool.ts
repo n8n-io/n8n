@@ -354,8 +354,6 @@ async function handleSetup(
 				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
 					const existing = await context.credentialService.list({
 						type: req.credentialType,
-						// Scope to the thread's project, never an LLM-supplied one — credential
-						// visibility must equal usability in the bound project.
 						...(context.projectId ? { projectId: context.projectId } : {}),
 					});
 					return {
@@ -380,8 +378,6 @@ async function handleSetup(
 					: `Select or create credentials: ${typeNames}`,
 			severity: 'info' as const,
 			credentialRequests,
-			// The setup card creates the credential in the thread's project, not an
-			// LLM-chosen one — keeps new credentials usable by the workflow being built.
 			...(context.projectId ? { projectId: context.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});

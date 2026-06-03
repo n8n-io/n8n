@@ -92,9 +92,6 @@ describe('applyPlannedTaskPermissions', () => {
 		const context = makeContext();
 		const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
-		// The sub-agent's project scope rides on this shallow clone — if a refactor
-		// ever rebuilt the context instead of spreading it, projectId would drop and
-		// the builder would fall back to the user's personal project.
 		expect(result.projectId).toBe(context.projectId);
 	});
 });

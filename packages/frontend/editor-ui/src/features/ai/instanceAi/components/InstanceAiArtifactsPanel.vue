@@ -2,6 +2,7 @@
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import {
 	N8nHeading,
 	N8nIcon,
@@ -30,9 +31,14 @@ const thread = useThread();
 const project = computed(() => {
 	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
 	if (!match)
-		return { name: 'Unknown project', icon: { type: 'icon' as const, value: 'question' as const } };
+		return {
+			name: 'Unknown project',
+			icon: { type: 'icon' as const, value: 'circle-help' as const },
+		};
 	const isPersonal = match.type === 'personal';
-	const icon = match.icon ?? { type: 'icon' as const, value: 'layer-group' as const };
+	const icon = isIconOrEmoji(match.icon)
+		? match.icon
+		: { type: 'icon' as const, value: 'layers' as const };
 	return {
 		name: isPersonal ? 'Personal space' : match.name,
 		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,

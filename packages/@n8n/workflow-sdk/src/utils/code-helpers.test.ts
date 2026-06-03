@@ -110,9 +110,9 @@ describe('Code Node Helpers', () => {
 				return [{ json: { data: ctx('Config').json } }];
 			});
 
-			// ctx('Config') should become $('Config')
-			expect(result.jsCode).toContain("$('Config')");
-			expect(result.jsCode).not.toContain("ctx('Config')");
+			// ctx('Config') should become $('Config') (quote style depends on the transpiler)
+			expect(result.jsCode).toMatch(/\$\(['"]Config['"]\)/);
+			expect(result.jsCode).not.toMatch(/ctx\(['"]Config['"]\)/);
 		});
 	});
 });

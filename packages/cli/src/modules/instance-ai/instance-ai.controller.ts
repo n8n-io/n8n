@@ -14,7 +14,6 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -39,7 +38,6 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
-import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -97,7 +95,6 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
-		private readonly subAgentEvalService: SubAgentEvalService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -527,11 +524,6 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
 		this.requireInstanceAiEnabled();
-		// Binding a thread to a project requires membership of that project. This is
-		// the one place the client-supplied projectId is trusted — it is validated
-		// here, persisted immutably, and every run thereafter reads it from the
-		// thread row rather than the request. Reads default to this project; writes
-		// are additionally gated by their own scopes at the tool/save layer.
 		const project = await this.projectService.getProjectWithScope(req.user, payload.projectId, [
 			'project:read',
 		]);
@@ -641,19 +633,6 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
-	}
-
-	@Post('/eval/run-sub-agent')
-	@GlobalScope('instanceAi:message')
-	async runSubAgentEval(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalSubAgentRequest,
-	) {
-		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
-			throw new ForbiddenError('Sub-agent evaluation is not enabled');
-		}
-		return await this.subAgentEvalService.run(req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
