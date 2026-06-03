@@ -84,8 +84,8 @@ export class PublicApiKeyService {
 			.leftJoinAndSelect('apiKey.user', 'user')
 			.setFindOptions({ where: { ...baseWhere, ...(includeOthers ? {} : ownFilter) } });
 		this.applyApiKeyListSort(qb, options.sortBy);
-		if (options.take !== undefined) qb.take(options.take);
-		if (options.skip !== undefined) qb.skip(options.skip);
+		qb.take(options.take);
+		qb.skip(options.skip);
 
 		const [apiKeys, count] = await qb.getManyAndCount();
 		const counts = await this.countApiKeys(caller, { ...baseWhere, ...ownFilter }, baseWhere, {
