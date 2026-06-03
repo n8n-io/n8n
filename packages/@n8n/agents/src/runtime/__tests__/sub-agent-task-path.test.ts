@@ -4,7 +4,6 @@ import {
 	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
-	getSubAgentTaskPathDepth,
 	isSubAgentTaskPath,
 	sanitizeSubAgentTaskName,
 } from '../sub-agent-task-path';
@@ -43,12 +42,6 @@ describe('sub-agent task paths', () => {
 		}
 	});
 
-	it('calculates depth below root', () => {
-		expect(getSubAgentTaskPathDepth('/root')).toBe(0);
-		expect(getSubAgentTaskPathDepth('/root/research')).toBe(1);
-		expect(getSubAgentTaskPathDepth('/root/research/check_tests')).toBe(2);
-	});
-
 	it('creates child paths with the parent child index appended', () => {
 		expect(createChildSubAgentTaskPath(undefined, 'Research API', 0)).toBe('/root/research_api_0');
 		expect(createChildSubAgentTaskPath('/root/research_api_0', 'Check tests', 1)).toBe(
@@ -64,14 +57,9 @@ describe('sub-agent task paths', () => {
 		expect(first).not.toBe(second);
 	});
 
-	it('enforces spawn and depth policy before creating a child', () => {
-		expect(() => assertSubAgentPolicyAllowsChild('/root', { canSpawnSubAgents: false })).toThrow(
+	it('enforces spawn policy before creating a child', () => {
+		expect(() => assertSubAgentPolicyAllowsChild({ canSpawnSubAgents: false })).toThrow(
 			'does not allow',
-		);
-
-		expect(() => assertSubAgentPolicyAllowsChild('/root', { maxDepth: 1 })).not.toThrow();
-		expect(() => assertSubAgentPolicyAllowsChild('/root/research', { maxDepth: 1 })).toThrow(
-			'exceeds maxDepth',
 		);
 	});
 

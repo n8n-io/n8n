@@ -155,7 +155,7 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * for a top-level agent — children then hang off `/root`.
 	 */
 	parentTaskPath?: SubAgentTaskPath;
-	/** Depth / fan-out limits enforced before each delegation. */
+	/** Fan-out limits and spawn switch enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
 	/** Run the child for this delegation and return its result. */
 	runSubAgent?: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
@@ -169,7 +169,7 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *
  * The tool owns the cross-cutting concerns: the model-facing input/output
  * schema, the description + system instruction that teach the LLM when/how to
- * delegate, task-path bookkeeping, policy enforcement (depth / fan-out /
+ * delegate, task-path bookkeeping, policy enforcement (fan-out /
  * canSpawnSubAgents), and the `subagent-started` / `-completed`
  * lifecycle events. You only supply HOW to run the child, via `runSubAgent`.
  *
@@ -177,7 +177,7 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *   agent.tool(createDelegateSubAgentTool({
  *     runSubAgent: (request) => runner.run(request),
  *     availableSubAgents,
- *     policy: { maxDepth: 2, maxChildren: 5 },
+ *     policy: { maxChildren: 5 },
  *   }));
  */
 export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions = {}) {
@@ -262,7 +262,7 @@ async function handleDelegateSubAgent(
 	let startedAt: number | undefined;
 	try {
 		const parentTaskPath = options.parentTaskPath;
-		assertSubAgentPolicyAllowsChild(parentTaskPath, options.policy);
+		assertSubAgentPolicyAllowsChild(options.policy);
 		const childCountKey = getChildCountKey(ctx, parentTaskPath);
 		const childCount = childCounts.get(childCountKey) ?? 0;
 		assertSubAgentPolicyAllowsChildCount(childCount, options.policy);
