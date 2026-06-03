@@ -166,18 +166,18 @@ export class TestRunsController {
 
 		const concurrency = payload.concurrency ?? 1;
 
-		// Await the synchronous setup (workflow find + test-run row insert) so
-		// the response carries the new `testRunId` and the FE can route to the
-		// detail view without polling. The actual case-by-case execution is
-		// detached inside `startTestRun` and exposed as `finished`, which we
-		// intentionally discard here — fire-and-forget for the long-running
-		// part is preserved. `startTestRun` clamps `concurrency` against the
-		// effective limit (env override → license tier default), so callers
-		// can request more than the instance allows without erroring.
+		// Await sync setup so the 202 carries testRunId; case execution is
+		// detached inside startTestRun via `finished` (discarded here).
 		const { testRun } = await this.testRunnerService.startTestRun(
 			req.user,
 			workflowId,
 			concurrency,
+			payload.evaluationConfigId
+				? {
+						evaluationConfigId: payload.evaluationConfigId,
+						compileFromConfig: payload.compileFromConfig === true,
+					}
+				: undefined,
 		);
 
 		res.status(202).json({ success: true, testRunId: testRun.id });

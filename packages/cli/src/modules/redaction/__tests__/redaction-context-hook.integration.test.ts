@@ -21,8 +21,8 @@ import { RedactionContextHook } from '../redaction-context-hook';
  * Wires the real RedactionContextHook, ExecutionContextService and
  * ExecutionContextHookRegistry together and drives them through
  * establishExecutionContext. Proves the end-to-end contract: at execution-context
- * establishment time, instance enforcement overrides the workflow-configured
- * redaction policy, and absent enforcement the workflow setting wins.
+ * establishment time the effective redaction is resolved strictest-per-channel — the
+ * instance floor is a minimum, and a workflow can only be equal to or stricter than it.
  */
 describe('RedactionContextHook integration with establishExecutionContext', () => {
 	const buildWorkflow = (redactionPolicy?: WorkflowSettings.RedactionPolicy) =>
@@ -78,49 +78,57 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 		Container.reset();
 	});
 
-	it('overrides workflow.settings.redactionPolicy when enforcement is active', async () => {
-		enforcementService.buildContext.mockResolvedValue({
-			enforcement: { enforced: true, manual: true, production: true },
-		});
+	const establishWith = async (
+		floor: 'off' | 'production' | 'all',
+		workflowPolicy?: WorkflowSettings.RedactionPolicy,
+	) => {
+		enforcementService.get.mockResolvedValue(floor);
 
-		const workflow = buildWorkflow('non-manual');
+		const workflow = buildWorkflow(workflowPolicy);
 		const runExecutionData = buildRunExecutionData();
 
 		await establishExecutionContext(workflow, runExecutionData, additionalData, 'manual');
 
-		expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
-			version: 1,
-			policy: 'all',
+		return runExecutionData.executionData!.runtimeData!.redaction;
+	};
+
+	it("floor 'production' + workflow default → production redacted, manual not", async () => {
+		expect(await establishWith('production', undefined)).toEqual({
+			version: 2,
+			production: true,
+			manual: false,
 		});
 	});
 
-	it('falls back to workflow.settings.redactionPolicy when enforcement is inactive', async () => {
-		enforcementService.buildContext.mockResolvedValue({
-			enforcement: { enforced: false, manual: true, production: true },
-		});
-
-		const workflow = buildWorkflow('non-manual');
-		const runExecutionData = buildRunExecutionData();
-
-		await establishExecutionContext(workflow, runExecutionData, additionalData, 'manual');
-
-		expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
-			version: 1,
-			policy: 'non-manual',
+	it("floor 'production' + workflow redacts manual → both redacted (stricter workflow preserved)", async () => {
+		expect(await establishWith('production', 'all')).toEqual({
+			version: 2,
+			production: true,
+			manual: true,
 		});
 	});
 
-	it('defaults to "none" when neither enforcement nor workflow setting applies', async () => {
-		enforcementService.buildContext.mockResolvedValue(undefined);
+	it("floor 'all' → both channels redacted regardless of workflow setting", async () => {
+		expect(await establishWith('all', 'none')).toEqual({
+			version: 2,
+			production: true,
+			manual: true,
+		});
+	});
 
-		const workflow = buildWorkflow(undefined);
-		const runExecutionData = buildRunExecutionData();
+	it("floor 'off' → workflow setting applies", async () => {
+		expect(await establishWith('off', 'non-manual')).toEqual({
+			version: 2,
+			production: true,
+			manual: false,
+		});
+	});
 
-		await establishExecutionContext(workflow, runExecutionData, additionalData, 'manual');
-
-		expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
-			version: 1,
-			policy: 'none',
+	it("floor 'off' + no workflow setting → nothing redacted", async () => {
+		expect(await establishWith('off', undefined)).toEqual({
+			version: 2,
+			production: false,
+			manual: false,
 		});
 	});
 });

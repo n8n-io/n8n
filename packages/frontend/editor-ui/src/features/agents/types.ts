@@ -71,11 +71,6 @@ export interface ProviderToolSchema {
 export interface MemorySchema {
 	source: string | null;
 	storage: 'memory' | 'custom';
-	semanticRecall: {
-		topK: number;
-		messageRange: { before: number; after: number } | null;
-		embedder: string | null;
-	} | null;
 	workingMemory: {
 		type: 'structured' | 'freeform';
 		schema?: Record<string, unknown>;

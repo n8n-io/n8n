@@ -1,5 +1,5 @@
 import { ApplicationError } from 'n8n-workflow';
-import type { AwsAssumeRoleCredentialsType, AWSRegion } from './types';
+import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
 
 global.fetch = jest.fn();
 
@@ -13,7 +13,7 @@ jest.mock('xml2js', () => ({
 
 import { sign } from 'aws4';
 import { parseString } from 'xml2js';
-import { assumeRole } from './utils';
+import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
 
 describe('assumeRole', () => {
@@ -749,4 +749,144 @@ describe('assumeRole', () => {
 			});
 		});
 	});
+});
+
+describe('assertSupportedAwsRegion', () => {
+	it.each([
+		['us-east-1'],
+		['eu-west-1'],
+		['ap-southeast-2'],
+		['cn-north-1'],
+		['us-gov-west-1'],
+		['eu-central-2'],
+	])('accepts the supported region %s', (region) => {
+		expect(() => assertSupportedAwsRegion(region)).not.toThrow();
+	});
+
+	it.each([
+		[''],
+		['us-east'],
+		['us-fake-1'],
+		['US-EAST-1'],
+		[' us-east-1'],
+		['us-east-1 '],
+		['us-east-1/foo'],
+		['us-east-1?x=1'],
+		['us-east-1#frag'],
+		['us-east-1:8080'],
+		['@example.com#'],
+		['@example.com'],
+		['example.com'],
+		['169.254.169.254'],
+		['localhost'],
+	])('rejects unsupported region value %s', (region) => {
+		expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+		expect(() => assertSupportedAwsRegion(region)).toThrow('Unsupported AWS region');
+	});
+
+	it.each([[undefined], [null], [0], [true], [{}], [['us-east-1']]])(
+		'rejects non-string region value %s',
+		(region) => {
+			expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+		},
+	);
+});
+
+describe('awsGetSignInOptionsAndUpdateRequest', () => {
+	const baseCredentials: AwsIamCredentialsType = {
+		region: 'us-east-1',
+		customEndpoints: false,
+		accessKeyId: 'AKIA-test',
+		secretAccessKey: 'secret-test',
+		temporaryCredentials: false,
+	};
+
+	it('builds an endpoint URL for a supported region without throwing', () => {
+		const { url, signOpts } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			baseCredentials,
+			'/path',
+			'GET',
+			'lambda',
+			'us-east-1',
+		);
+
+		expect(new URL(url).host).toBe('lambda.us-east-1.amazonaws.com');
+		expect(signOpts.host).toBe('lambda.us-east-1.amazonaws.com');
+		expect(signOpts.region).toBe('us-east-1');
+	});
+
+	it('uses the China domain for China regions', () => {
+		const { url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			{ ...baseCredentials, region: 'cn-north-1' },
+			'/path',
+			'GET',
+			'lambda',
+			'cn-north-1',
+		);
+
+		expect(new URL(url).host).toBe('lambda.cn-north-1.amazonaws.com.cn');
+	});
+
+	it.each([
+		'@example.com#',
+		'us-east-1/foo',
+		'us-east-1#frag',
+		'us-east-1:8080',
+		'us-fake-1',
+		'',
+		' us-east-1 ',
+	])('rejects unsupported region value %s before any URL is built', (region) => {
+		expect(() =>
+			awsGetSignInOptionsAndUpdateRequest(
+				{ headers: {} } as any,
+				baseCredentials,
+				'/path',
+				'GET',
+				'lambda',
+				region as any,
+			),
+		).toThrow(ApplicationError);
+	});
+});
+
+describe('assumeRole region validation', () => {
+	let mockFetch: jest.MockedFunction<typeof fetch>;
+	let mockSign: jest.MockedFunction<typeof sign>;
+	let consoleErrorSpy: jest.SpyInstance;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+		mockSign = sign as jest.MockedFunction<typeof sign>;
+		consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+		mockSign.mockImplementation((request: any) => request as any);
+	});
+
+	afterEach(() => {
+		consoleErrorSpy.mockRestore();
+	});
+
+	it.each(['@example.com#', 'us-fake-1', '', 'us-east-1/foo', 'us-east-1#frag'])(
+		'rejects unsupported region value %s without signing or sending a request',
+		async (region) => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-east-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
+			};
+
+			await expect(assumeRole(credentials, region as any)).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, region as any)).rejects.toThrow(
+				'Unsupported AWS region',
+			);
+
+			expect(mockSign).not.toHaveBeenCalled();
+			expect(mockFetch).not.toHaveBeenCalled();
+		},
+	);
 });

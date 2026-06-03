@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { z } from 'zod';
 
 import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
@@ -19,8 +20,8 @@ function makeBuiltTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
 	};
 }
 
-function makeCtx(resumeData?: unknown): { ctx: InterruptibleToolContext; suspendMock: jest.Mock } {
-	const suspendMock = jest.fn().mockImplementation(async (payload: unknown) => {
+function makeCtx(resumeData?: unknown): { ctx: InterruptibleToolContext; suspendMock: Mock } {
+	const suspendMock = vi.fn().mockImplementation(async (payload: unknown) => {
 		return await Promise.resolve({ __suspended: true, payload });
 	});
 	const ctx: InterruptibleToolContext = {
@@ -281,7 +282,7 @@ describe('wrapToolForApproval — telemetry propagation', () => {
 		recordInputs: true,
 		recordOutputs: true,
 		integrations: [],
-		tracer: { startSpan: jest.fn() },
+		tracer: { startSpan: vi.fn() },
 	};
 
 	it('forwards parentTelemetry to the original handler when approval is not needed', async () => {
@@ -318,5 +319,57 @@ describe('wrapToolForApproval — telemetry propagation', () => {
 
 		expect(capturedCtx).toBeDefined();
 		expect(capturedCtx!.parentTelemetry).toBe(fakeTelemetry);
+	});
+
+	it('forwards the full ToolContext to the original handler after approval', async () => {
+		let capturedCtx: ToolContext | undefined;
+		const baseTool = makeBuiltTool({
+			handler: async (_input, ctx) => {
+				capturedCtx = ctx as ToolContext;
+				return await Promise.resolve({ result: 'ok' });
+			},
+		});
+		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
+		const { ctx } = makeCtx({ approved: true });
+		const abortController = new AbortController();
+		const emitEvent = vi.fn();
+		ctx.parentTelemetry = fakeTelemetry;
+		ctx.runId = 'parent-run-1';
+		ctx.toolCallId = 'tool-call-1';
+		ctx.persistence = { resourceId: 'resource-1', threadId: 'thread-1' };
+		ctx.emitEvent = emitEvent;
+		ctx.abortSignal = abortController.signal;
+
+		await wrapped.handler!({ id: 'test' }, ctx);
+
+		expect(capturedCtx).toEqual({
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			persistence: { resourceId: 'resource-1', threadId: 'thread-1' },
+			parentTelemetry: fakeTelemetry,
+			emitEvent,
+			abortSignal: abortController.signal,
+			suspend: ctx.suspend,
+			resumeData: { approved: true },
+		});
+	});
+
+	it('forwards the full ToolContext when approval is not needed', async () => {
+		let capturedCtx: ToolContext | undefined;
+		const baseTool = makeBuiltTool({
+			handler: async (_input, ctx) => {
+				capturedCtx = ctx as ToolContext;
+				return await Promise.resolve({ result: 'ok' });
+			},
+		});
+		const wrapped = wrapToolForApproval(baseTool, { requireApproval: false });
+		const { ctx } = makeCtx();
+		ctx.runId = 'parent-run-2';
+		ctx.toolCallId = 'tool-call-2';
+
+		await wrapped.handler!({ id: 'test' }, ctx);
+
+		expect(capturedCtx?.runId).toBe('parent-run-2');
+		expect(capturedCtx?.toolCallId).toBe('tool-call-2');
 	});
 });

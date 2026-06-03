@@ -90,6 +90,22 @@ describe('isNodeToolsEnabled', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — subAgents', () => {
+	it('accepts saved agent references', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: { agents: [{ agentId: 'agent-1' }] },
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts an empty saved-agent reference list', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { agents: [] } }).success,
+		).toBe(true);
+	});
+});
+
 describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 	const memoryBase = { enabled: true, storage: 'n8n' as const };
 
@@ -168,7 +184,21 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		expect(parsed.success).toBe(false);
 	});
 
-	it('rejects observational memory task models with blank credentials', () => {
+	it('accepts cleared observational memory task model credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: {
+					observerModel: { model: 'openai/gpt-4o-mini', credential: '' },
+				},
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts whitespace-only observational memory task model credentials after trim', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			memory: {
@@ -179,7 +209,13 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 			},
 		});
 
-		expect(parsed.success).toBe(false);
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+
+		expect(parsed.data.memory?.observationalMemory?.observerModel).toEqual({
+			model: 'openai/gpt-4o-mini',
+			credential: '',
+		});
 	});
 
 	it('rejects observer thresholds below one', () => {
@@ -272,7 +308,19 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 		expect(parsed.success).toBe(false);
 	});
 
-	it('rejects enabled episodic memory with a blank credential', () => {
+	it('accepts cleared episodic memory credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: { enabled: true, credential: '' },
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts whitespace-only episodic memory credentials after trim', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			memory: {
@@ -281,10 +329,30 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 			},
 		});
 
-		expect(parsed.success).toBe(false);
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+
+		const episodicMemory = parsed.data.memory?.episodicMemory;
+		expect(episodicMemory).toMatchObject({ enabled: true, credential: '' });
 	});
 
-	it('rejects episodic memory task models with blank credentials', () => {
+	it('accepts cleared episodic memory task model credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: {
+					enabled: true,
+					credential: 'credential-id',
+					extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+				},
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts whitespace-only episodic memory task model credentials after trim', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			memory: {
@@ -297,6 +365,12 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 			},
 		});
 
-		expect(parsed.success).toBe(false);
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+
+		const episodicMemory = parsed.data.memory?.episodicMemory;
+		expect(episodicMemory).toMatchObject({
+			extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+		});
 	});
 });

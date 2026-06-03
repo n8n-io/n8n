@@ -76,6 +76,7 @@ const {
 	sendMessage,
 	stopGenerating,
 	resume,
+	cancelAndSteer,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -116,15 +117,19 @@ const openInteractive = computed(
 			?.interactive,
 );
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
+const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
+const hasOpenInteractiveQuestion = computed(
+	() => hasOpenInteraction.value && !hasOpenApproval.value,
+);
 
 const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
 
 const chatPlaceholder = computed(() =>
 	isBuilderReadOnly.value
 		? locale.baseText('agents.builder.readonly.placeholder')
-		: openInteractive.value?.toolName === APPROVAL_TOOL_NAME
+		: hasOpenApproval.value
 			? locale.baseText('agents.chat.approval.inputPlaceholder')
-			: hasOpenInteraction.value
+			: hasOpenInteractiveQuestion.value
 				? locale.baseText('agents.chat.answerQuestionPlaceholder')
 				: locale.baseText('agents.chat.input.placeholder'),
 );
@@ -143,9 +148,17 @@ async function onSubmit() {
 		isStreaming.value ||
 		isPreparingToSend.value ||
 		isBuilderReadOnly.value ||
-		hasOpenInteraction.value
+		hasOpenApproval.value
 	)
 		return;
+
+	// When there is an open interactive question, the user's message cancels
+	// the suspended tool and steers the agent in a new direction.
+	if (hasOpenInteractiveQuestion.value) {
+		inputText.value = '';
+		await cancelAndSteer(text);
+		return;
+	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -177,7 +190,7 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenInteraction.value) return;
+	if (hasOpenApproval.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -292,7 +305,7 @@ onBeforeUnmount(() => {
 				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
 				:can-submit="
-					!hasOpenInteraction &&
+					!hasOpenApproval &&
 					!isStreaming &&
 					!isPreparingToSend &&
 					!isBuilderReadOnly &&
@@ -300,7 +313,7 @@ onBeforeUnmount(() => {
 				"
 				:disabled="
 					isBuilderReadOnly ||
-					hasOpenInteraction ||
+					hasOpenApproval ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
 				"

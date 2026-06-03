@@ -24,6 +24,8 @@ import { UrlService } from '@/services/url.service';
  */
 @Service()
 export class McpOAuthTokenService {
+	// Pre-RFC-8707 audience value. Do not modify — existing tokens were signed with this string
+	// and changing it would force all active clients to re-authenticate.
 	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
@@ -38,12 +40,16 @@ export class McpOAuthTokenService {
 		private readonly urlService: UrlService,
 	) {}
 
-	private getResourceUrl(): string {
-		return `${this.urlService.getInstanceBaseUrl()}${this.MCP_RESOURCE_PATH}`;
-	}
-
-	private getAcceptedAudiences(): [string, ...string[]] {
-		return [this.LEGACY_MCP_AUDIENCE, this.getResourceUrl()];
+	/**
+	 * Canonical MCP resource URL used as the JWT `aud` claim and advertised as the
+	 * RFC 8707 resource indicator. This is the single source of truth — callers in
+	 * the OAuth service and resource-server middleware must delegate here so the
+	 * minted `aud`, the persisted authorization-code `resource`, and the audience
+	 * the middleware validates against can never drift.
+	 */
+	getCanonicalResourceUrl(): string {
+		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
+		return `${baseUrl}${this.MCP_RESOURCE_PATH}`;
 	}
 
 	getAccessTokenExpirySeconds(): number {
@@ -53,10 +59,13 @@ export class McpOAuthTokenService {
 	generateTokenPair(
 		userId: string,
 		clientId: string,
+		resource?: string,
 	): { accessToken: string; refreshToken: string } {
+		const audience = resource ?? this.getCanonicalResourceUrl();
+
 		const accessToken = this.jwtService.sign({
 			sub: userId,
-			aud: this.getResourceUrl(),
+			aud: audience,
 			client_id: clientId,
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
@@ -96,6 +105,7 @@ export class McpOAuthTokenService {
 	async validateAndRotateRefreshToken(
 		refreshToken: string,
 		clientId: string,
+		resource?: string,
 	): Promise<OAuthTokens> {
 		return await withTransaction(this.refreshTokenRepository.manager, undefined, async (trx) => {
 			const now = Date.now();
@@ -125,6 +135,7 @@ export class McpOAuthTokenService {
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
+				resource,
 			);
 
 			await trx.insert(AccessToken, {
@@ -154,12 +165,19 @@ export class McpOAuthTokenService {
 		});
 	}
 
-	async verifyAccessToken(token: string): Promise<AuthInfo> {
-		let decoded;
+	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
+		let decoded: unknown;
 
 		try {
-			decoded = this.jwtService.verify(token, { audience: this.getAcceptedAudiences() });
+			const allowedAudiences = this.getAllowedAudiences(expectedAudience);
+			decoded = this.verifyJwtWithAllowedAudiences(token, allowedAudiences);
 		} catch (error) {
+			throw new JWTVerificationError();
+		}
+
+		const clientId = this.getStringClaim(decoded, 'client_id');
+		const userId = this.getStringClaim(decoded, 'sub');
+		if (!clientId || !userId) {
 			throw new JWTVerificationError();
 		}
 
@@ -173,19 +191,22 @@ export class McpOAuthTokenService {
 
 		return {
 			token,
-			clientId: decoded.client_id,
+			clientId,
 			scopes: [],
 			extra: {
-				userId: decoded.sub,
+				userId,
 			},
 		};
 	}
 
-	async verifyOAuthAccessToken(token: string): Promise<UserWithContext> {
+	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
 		try {
-			const authInfo = await this.verifyAccessToken(token);
+			const authInfo = await this.verifyAccessToken(token, expectedAudience);
 
-			const userId = authInfo.extra?.userId as string;
+			const userId =
+				authInfo.extra && typeof authInfo.extra === 'object'
+					? this.getStringClaim(authInfo.extra, 'userId')
+					: null;
 			if (!userId) {
 				return { user: null, context: { reason: 'user_id_not_in_auth_info', auth_type: 'oauth' } };
 			}
@@ -247,5 +268,39 @@ export class McpOAuthTokenService {
 		}
 
 		return revoked;
+	}
+
+	private getAllowedAudiences(expectedAudience?: string): string[] {
+		if (expectedAudience && expectedAudience !== this.getCanonicalResourceUrl()) {
+			return [expectedAudience, this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+		}
+		return [this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+	}
+
+	// TODO: drop the legacy 'mcp-server-api' audience and the per-audience fallback once
+	// all legacy tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
+	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
+		try {
+			return this.jwtService.verify(token, {
+				audience: audiences as [string, ...string[]],
+			});
+		} catch (error) {
+			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
+			for (const audience of audiences) {
+				try {
+					return this.jwtService.verify(token, { audience });
+				} catch {
+					continue;
+				}
+			}
+
+			throw error;
+		}
+	}
+
+	private getStringClaim(payload: unknown, claim: string): string | null {
+		if (!payload || typeof payload !== 'object') return null;
+		const claimValue = (payload as Record<string, unknown>)[claim];
+		return typeof claimValue === 'string' ? claimValue : null;
 	}
 }
