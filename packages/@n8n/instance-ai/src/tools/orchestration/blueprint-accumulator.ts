@@ -10,7 +10,6 @@
 
 import type {
 	BlueprintCheckpointItem,
-	BlueprintDataTableItem,
 	BlueprintDelegateItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
@@ -35,7 +34,6 @@ export interface PlannedTaskInput {
 
 type BlueprintItem =
 	| (BlueprintWorkflowItem & { kind: 'workflow' })
-	| (BlueprintDataTableItem & { kind: 'data-table' })
 	| (BlueprintDelegateItem & { kind: 'delegate' })
 	| (BlueprintCheckpointItem & { kind: 'checkpoint' });
 
@@ -43,70 +41,10 @@ type BlueprintItem =
 // Per-item conversion helpers
 // ---------------------------------------------------------------------------
 
-/** Format a data table schema as a compact string for builder context. */
-export function formatTableSchema(dt: BlueprintDataTableItem): string {
-	if (!dt.columns || dt.columns.length === 0) return `Table '${dt.name}'`;
-	const cols = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-	return `Table '${dt.name}': ${cols}`;
-}
-
-function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTaskInput {
-	if (dt.columns && dt.columns.length > 0) {
-		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-		return {
-			id: dt.id,
-			title: `Create '${dt.name}' data table`,
-			kind: 'manage-data-tables',
-			spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
-			deps: dt.dependsOn,
-		};
-	}
-	return {
-		id: dt.id,
-		title: dt.name,
-		kind: 'manage-data-tables',
-		spec: dt.purpose,
-		deps: dt.dependsOn,
-	};
-}
-
-function workflowItemToTask(
-	wf: BlueprintWorkflowItem,
-	knownTables: BlueprintDataTableItem[],
-	assumptions: string[],
-): PlannedTaskInput {
+function workflowItemToTask(wf: BlueprintWorkflowItem, assumptions: string[]): PlannedTaskInput {
 	const specParts = [wf.purpose];
 	if (wf.triggerDescription) specParts.push(`Trigger: ${wf.triggerDescription}`);
 	if (wf.integrations.length > 0) specParts.push(`Integrations: ${wf.integrations.join(', ')}`);
-
-	// Infer missing table dependencies by checking if the workflow's
-	// purpose or integrations mention any table name (word-boundary match).
-	// Skip short names (< 4 chars) — they're too ambiguous for substring inference.
-	const tableIds = new Set(knownTables.map((dt) => dt.id));
-	const explicitDeps = new Set(wf.dependsOn);
-	const inferredDeps = [...explicitDeps];
-	const wfText = `${wf.purpose} ${wf.integrations.join(' ')}`;
-	const tablePatterns = knownTables
-		.filter((dt) => dt.name.length >= 4)
-		.map((dt) => ({
-			id: dt.id,
-			pattern: new RegExp(`\\b${dt.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
-		}));
-	for (const { id, pattern } of tablePatterns) {
-		if (!explicitDeps.has(id) && pattern.test(wfText)) {
-			inferredDeps.push(id);
-		}
-	}
-
-	// Append schemas of tables this workflow depends on (explicit + inferred)
-	const depTableIds = new Set(inferredDeps.filter((id) => tableIds.has(id)));
-	const depTables = knownTables.filter((dt) => depTableIds.has(dt.id));
-	if (depTables.length > 0) {
-		specParts.push('\nData table schemas:');
-		for (const dt of depTables) {
-			specParts.push(`- ${formatTableSchema(dt)}`);
-		}
-	}
 
 	// Append blueprint assumptions so the builder has design context
 	if (assumptions.length > 0) {
@@ -121,7 +59,7 @@ function workflowItemToTask(
 		title: `Build '${wf.name}' workflow`,
 		kind: 'build-workflow',
 		spec: specParts.join('\n'),
-		deps: inferredDeps,
+		deps: wf.dependsOn,
 		workflowId: wf.existingWorkflowId,
 	};
 }
@@ -152,8 +90,6 @@ function checkpointItemToTask(c: BlueprintCheckpointItem): PlannedTaskInput {
 // ---------------------------------------------------------------------------
 
 export class BlueprintAccumulator {
-	private dataTables: BlueprintDataTableItem[] = [];
-
 	private workflows: BlueprintWorkflowItem[] = [];
 
 	private delegateItems: BlueprintDelegateItem[] = [];
@@ -175,16 +111,10 @@ export class BlueprintAccumulator {
 		let task: PlannedTaskInput;
 
 		switch (item.kind) {
-			case 'data-table': {
-				const { kind: _, ...dt } = item;
-				this.upsertArray(this.dataTables, dt);
-				task = dataTableItemToTask(dt);
-				break;
-			}
 			case 'workflow': {
 				const { kind: _, ...wf } = item;
 				this.upsertArray(this.workflows, wf);
-				task = workflowItemToTask(wf, this.dataTables, this.assumptions);
+				task = workflowItemToTask(wf, this.assumptions);
 				break;
 			}
 			case 'delegate': {
@@ -226,13 +156,12 @@ export class BlueprintAccumulator {
 	}
 
 	/**
-	 * Re-run dependency inference for all workflow tasks against the full
-	 * table set. Catches tables that were added after workflows that need them.
+	 * Re-render workflow specs against the latest plan metadata and assumptions.
 	 */
 	reconcileDependencies(): void {
 		for (let i = 0; i < this.workflows.length; i++) {
 			const wf = this.workflows[i];
-			const updatedTask = workflowItemToTask(wf, this.dataTables, this.assumptions);
+			const updatedTask = workflowItemToTask(wf, this.assumptions);
 			this.upsertTask(updatedTask);
 		}
 	}
@@ -246,7 +175,6 @@ export class BlueprintAccumulator {
 		if (taskIdx < 0) return false;
 		this.tasks.splice(taskIdx, 1);
 		// Also remove from the typed item arrays
-		this.removeFromArray(this.dataTables, id);
 		this.removeFromArray(this.workflows, id);
 		this.removeFromArray(this.delegateItems, id);
 		this.removeFromArray(this.checkpoints, id);

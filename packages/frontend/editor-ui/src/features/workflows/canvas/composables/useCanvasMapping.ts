@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { CanvasRenderData } from '../canvas.utils';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
@@ -71,6 +72,9 @@ export function useCanvasMapping({
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+	);
 	const workflowState = injectWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
@@ -197,7 +201,7 @@ export function useCanvasMapping({
 	);
 
 	const nodeTooltipById = computed(() => {
-		if (!workflowsStore.isWorkflowRunning) {
+		if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 			return {};
 		}
 
@@ -255,7 +259,7 @@ export function useCanvasMapping({
 			acc[node.id] =
 				node.name === workflowState.executingNode.lastAddedExecutingNode &&
 				workflowState.executingNode.executingNode.length === 0 &&
-				workflowsStore.isWorkflowRunning;
+				workflowExecutionStateStore.value.isWorkflowRunning;
 
 			return acc;
 		}, {}),

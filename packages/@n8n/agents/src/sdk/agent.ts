@@ -1,15 +1,14 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval } from './tool';
+import { wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { AgentEventBus } from '../runtime/event-bus';
-import { createAgentToolResult } from '../runtime/tool-adapter';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -36,7 +35,6 @@ import type {
 	RunOptions,
 	SerializableAgentState,
 	StreamResult,
-	SubAgentUsage,
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
@@ -45,8 +43,6 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
-
-const DEFAULT_LAST_MESSAGES = 10;
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
 
@@ -260,7 +256,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (m instanceof Memory) {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
-		} else if ('memory' in m && 'lastMessages' in m) {
+		} else if ('memory' in m) {
 			// MemoryConfig — validate the same invariants as the builder path
 			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
@@ -270,11 +266,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			typeof m.saveMessages === 'function'
 		) {
 			// Bare BuiltMemory — wrap in minimal config
-			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+			this.memoryConfig = { memory: m };
 		} else {
 			throw new Error(
-				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
+				'Invalid memory configuration. Use: new Memory() for in-process memory, ' +
+					'or new Memory().storage(myBuiltMemoryBackend) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
@@ -494,67 +490,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Wrap this agent as a tool for use in multi-agent composition.
-	 * The tool sends a text prompt to this agent and returns the text of the response.
-	 *
-	 * @example
-	 * ```typescript
-	 * const coordinatorAgent = new Agent('coordinator')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .instructions('Route tasks to specialist agents.')
-	 *   .tool(writerAgent.asTool('Write content given a topic'));
-	 * ```
-	 */
-	asTool(description: string): BuiltTool {
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const agent = this;
-
-		const tool = new Tool(this.name)
-			.description(description)
-			.input(
-				z.object({
-					input: z.string().describe('The input to send to the agent'),
-				}),
-			)
-			.output(
-				z.object({
-					result: z.string().describe('The result of the agent'),
-				}),
-			)
-			.handler(async (rawInput, ctx) => {
-				const { input } = rawInput as { input: string };
-				const result = await agent.generate(input, {
-					telemetry: ctx.parentTelemetry,
-				} as RunOptions & ExecutionOptions);
-
-				const text = result.messages
-					.filter((m) => 'role' in m && m.role === 'assistant')
-					.flatMap((m) => ('content' in m ? m.content : []))
-					.filter((c) => c.type === 'text')
-					.map((c) => ('text' in c ? c.text : ''))
-					.join('');
-
-				// Collect sub-agent usage: this agent's own + any nested sub-agents
-				const subAgentUsage: SubAgentUsage[] = [];
-				if (result.usage) {
-					subAgentUsage.push({ agent: agent.name, model: result.model, usage: result.usage });
-				}
-				if (result.subAgentUsage) {
-					subAgentUsage.push(...result.subAgentUsage);
-				}
-
-				// Return branded result — the runtime unwraps it to extract sub-agent usage.
-				// createAgentToolResult returns `never`, same pattern as ctx.suspend().
-				if (subAgentUsage.length > 0) {
-					return createAgentToolResult({ result: text }, subAgentUsage);
-				}
-				return { result: text };
-			});
-
-		return tool.build();
-	}
-
-	/**
 	 * Return a lightweight read-only snapshot of the agent's configured state.
 	 * Useful for testing and debugging — does not trigger a build.
 	 */
@@ -617,12 +552,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Wait for any in-flight background tasks (title generation, future
-	 * observer cycles) to settle. Call before letting the agent go out of
-	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client attached via `.mcp()`. Errors from
+	 *   individual client disconnects are swallowed so a single misbehaving
+	 *   server does not prevent the others from closing.
+	 *
+	 * Safe to call multiple times.
 	 */
 	async close(): Promise<void> {
-		if (this.runtime) await this.runtime.dispose();
+		const tasks: Array<Promise<unknown>> = [];
+		if (this.runtime) tasks.push(this.runtime.dispose());
+		tasks.push(...this.mcpClients.map(async (c) => await c.close()));
+		await Promise.allSettled(tasks);
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -840,6 +784,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
+			await this.skillSource.prepare?.();
 			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
 		if (this.workspaceInstance) {
@@ -862,7 +807,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
-			lastMessages: memoryConfig?.lastMessages,
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,

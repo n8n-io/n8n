@@ -70,7 +70,6 @@ export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
 	'delegate',
-	'browser-setup',
 	'planner',
 	'eval-setup',
 ]);
@@ -728,6 +727,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	expired?: boolean;
 }
 
 export interface InstanceAiToolCallState {
@@ -741,9 +741,11 @@ export interface InstanceAiToolCallState {
 		| 'tasks'
 		| 'delegate'
 		| 'builder'
+		| 'researcher'
 		| 'data-table'
 		| 'planner'
 		| 'eval-setup'
+		| 'skill'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
@@ -760,10 +762,9 @@ export interface InstanceAiAgentNode {
 	agentId: string;
 	role: string;
 	tools?: string[];
-	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
+	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate,
-	 * browser-setup, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -994,9 +995,7 @@ export function applyBranchReadOnlyOverrides(
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	lastMessages: number;
 	subAgentMaxSteps: number;
-	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
@@ -1011,9 +1010,7 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	lastMessages: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
-	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
@@ -1054,10 +1051,11 @@ export interface InstanceAiModelCredential {
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
-	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
+	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';
 }
 
@@ -1078,9 +1076,16 @@ export interface InstanceAiEvalInterceptedRequest {
 }
 
 export interface InstanceAiEvalNodeResult {
-	output: unknown;
-	/** Full count of output items (`output` is truncated for artifact size) */
-	outputCount?: number;
+	/** Outputs by connection type → per-branch items. Empty when pinned, errored, or didn't run. */
+	outputs: Record<string, unknown[][]>;
+	/** Total items across all branches (full untruncated count). */
+	outputCount: number;
+	/** True when any branch in `outputs` was truncated for size. */
+	truncated?: boolean;
+	/** Number of times this node ran (>1 inside loops). `outputs` captures the LAST iteration. */
+	iterationCount: number;
+	/** 0-based index of the first iteration that errored, if any. */
+	firstErrorIteration?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
@@ -1124,10 +1129,8 @@ export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_intercepti
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
- * server) during evaluation. Populated when the caller opts into the unpin
- * path via `InstanceAiEvalExecutionRequest.unpinNodes`. Field added in the
- * foundation PR; the rewrite path itself is wired up in a later PR and stays
- * empty until then.
+ * server) during evaluation. Populated for every AI root the server intercepts;
+ * empty when the kill-switch is off or every root was auto-/explicit-pinned.
  */
 export interface InstanceAiEvalRewrittenCredential {
 	nodeName: string;
@@ -1149,65 +1152,18 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 	/**
-	 * AI root node names (Agent, Chain, etc.) whose sub-nodes should run their
-	 * real vendor SDK code instead of being pinned. The eval pipeline rewrites
-	 * matching credentials so vendor traffic lands on the eval wire server.
+	 * AI root nodes (Agent, Chain) that should stay pinned — opt-out from the
+	 * default-on wire-server interception path. Useful when the caller wants
+	 * to keep a specific root on the pinned baseline (e.g. for A/B comparison)
+	 * even though its sub-nodes are interceptable.
 	 *
-	 * The compatibility guard refuses the request up front (no execution
-	 * attempted) when any inbound `ai_*` sub-node of a requested root falls
-	 * into one of these categories:
-	 *   - **Protocol-binary client**: Postgres/Redis/MongoDB memory, native
-	 *     vector stores (PGVector / Mongo / Redis / Milvus). These don't
-	 *     speak HTTP and can't be intercepted by the wire server.
-	 *   - **Unsupported vendor LLM**: any `@n8n/n8n-nodes-langchain.lm*` node
-	 *     not yet on the supported list (currently `lmChatOpenAi` only).
-	 *     These would call the real provider with real credentials because
-	 *     there's no eval URL-rewrite mapping for them.
-	 *   - **Unsafe `options.baseURL` override**: a supported vendor LLM
-	 *     configured with a non-empty `options.baseURL` parameter. The SDK
-	 *     prefers that over the rewritten credential URL, so the override
-	 *     would bypass the wire server.
+	 * The server auto-pins AI roots whose inbound `ai_*` sub-nodes are
+	 * incompatible (protocol-binary memory/vector store, unsupported vendor
+	 * LLM, configured `options.baseURL` override, shared with another root)
+	 * — callers do not need to list those here.
 	 *
-	 * Refused requests come back as an error-shaped `InstanceAiEvalExecutionResult`
-	 * with the offending root → sub-node pairs listed in `errors`.
+	 * Validated up front: unknown / disabled / non-AI-root names come back
+	 * as an error-shaped `InstanceAiEvalExecutionResult`.
 	 */
-	unpinNodes: z.array(z.string().min(1)).max(50).optional(),
+	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
-
-// ---------------------------------------------------------------------------
-// Sub-agent evaluation endpoint
-// ---------------------------------------------------------------------------
-
-export class InstanceAiEvalSubAgentRequest extends Z.class({
-	/** Role name from the server's sub-agent registry (currently: "builder"). */
-	role: z.string().min(1).max(64),
-	/** The task the sub-agent should perform. */
-	prompt: z.string().min(1).max(10_000),
-	/** Optional model override. Defaults to the server's configured Instance AI model. */
-	modelId: z.string().min(1).optional(),
-	/** Max agent steps. Defaults to 40. */
-	maxSteps: z.number().int().positive().max(200).optional(),
-	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
-	timeoutMs: z.number().int().positive().max(600_000).optional(),
-}) {}
-
-export interface InstanceAiEvalToolCall {
-	toolName: string;
-	args: unknown;
-}
-
-export interface InstanceAiEvalToolResult {
-	toolName: string;
-	result: unknown;
-	isError: boolean;
-}
-
-export interface InstanceAiEvalSubAgentResponse {
-	text: string;
-	toolCalls: InstanceAiEvalToolCall[];
-	toolResults: InstanceAiEvalToolResult[];
-	capturedWorkflowIds: string[];
-	durationMs: number;
-	stopReason?: string;
-	error?: string;
-}

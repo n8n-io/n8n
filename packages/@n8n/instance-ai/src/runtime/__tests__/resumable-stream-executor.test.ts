@@ -139,6 +139,7 @@ describe('executeResumableStream', () => {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
 					toolName: 'ask-user',
+					suspendPayload: { requestId: 'request-1', message: 'Need approval' },
 				},
 			}),
 		);
@@ -479,6 +480,7 @@ describe('executeResumableStream', () => {
 			requestId: 'request-1',
 			toolCallId: 'tool-call-1',
 			toolName: 'pause-for-user',
+			suspendPayload: { requestId: 'request-1', message: 'First confirmation' },
 		});
 		expect(waitForConfirmation).toHaveBeenCalledTimes(1);
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');

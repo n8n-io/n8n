@@ -29,7 +29,7 @@ ${getSchemaReferenceSection()}
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
-- Never write placeholder instructions.
+- Never write placeholder instructions or descriptions.
 - Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
@@ -38,13 +38,15 @@ ${getSchemaReferenceSection()}
 
 #### Create Or Replace A Fresh Runnable Agent
 
-- Requires \`name\`, \`model\`, \`credential\`, and \`instructions\`.
+- Requires \`name\`, \`description\`, \`model\`, \`credential\`, and \`instructions\`.
+- \`description\` must be a brief, specific summary of what the agent does.
 - Keep \`tools\` and \`skills\` arrays if present.
 
 Good minimal shape:
 \`\`\`json
 {
   "name": "Support assistant",
+  "description": "Answers support questions and helps triage customer issues.",
   "model": "openrouter/openai/gpt-5.5",
   "credential": "<main-llm-credential-id>",
   "instructions": "Help the user with support questions.",
@@ -66,16 +68,43 @@ Use \`patch_config\` with:
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
+#### Add Saved Agents As Subagents
+
+- Call \`list_sub_agents\` before asking or writing. Only persist agent IDs
+  returned by that tool.
+- If \`subAgents\` is missing, add it as
+  \`{ "agents": [{ "agentId": "<selected-agent-id>" }] }\`.
+- If \`subAgents\` exists without \`agents\`, add \`/subAgents/agents\` with the
+  selected refs.
+- If \`subAgents.agents\` exists, append new refs to \`/subAgents/agents/-\`.
+- Avoid duplicate refs. Ref shape: \`{ "agentId": "<selected-agent-id>" }\`.
+- Never write \`subAgents.enabled\`; saved agent refs alone enable delegation.
+- If an \`ask_question\` resume value is not one of the listed agent IDs, do not
+  write it into config.
+
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
-- The write path fills native provider tool defaults. Do not invent provider tool keys.
+- Web search lives under \`config.webSearch\`.
+- Only OpenAI and Anthropic models support native web search. For those models, set
+  \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
+  user asks to disable web search. Omitting \`provider\` also means native.
+- For every other provider, never use \`provider: "native"\` or omit
+  \`provider\` for enabled web search.
+- For Brave or SearXNG search, call \`ask_credential\`, then set
+  \`config.webSearch = { "enabled": true, "provider": "brave" | "searxng", "credential": "<credentialId>" }\`.
+- Brave and SearXNG remain fallback tools even when the model provider also supports native search.
+- When patching only \`/model\` and \`/credential\`, do not patch
+  \`/config/webSearch\` if the existing provider is \`"brave"\` or \`"searxng"\`
+  unless the user explicitly asked to change the web-search method.
+- Never write \`{ "enabled": true }\` alone for fallback search.
+- The write path fills native provider tool defaults only for native search. Do not invent provider tool keys.
 
 #### Configure Fallback Services
 
-- Services that require credentials must call \`ask_credential\` first.
-- Persist only the credential id returned by \`ask_credential\`.
+- Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
+- For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 
 #### Add Node Or Workflow Tools
 
@@ -87,7 +116,7 @@ Use \`patch_config\` with:
 
 Bad: inventing top-level fields
 \`\`\`json
-{ "temperature": 0.7 }
+{ "webSearch": { "enabled": true } }
 \`\`\`
 
 Bad: provider namespace as provider tool
@@ -102,7 +131,7 @@ Bad: copying credential IDs from \`list_credentials\`
 
 Bad: replacing \`config\` while dropping unrelated settings
 \`\`\`json
-{ "config": { "thinking": { "provider": "anthropic", "budgetTokens": 1024 } } }
+{ "config": { "webSearch": { "enabled": true } } }
 \`\`\`
 
 ### Gotchas
@@ -110,12 +139,14 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`write_config\` replaces the full config; include every field that should survive.
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
-- Empty, placeholder, or guessed \`instructions\` are rejected; ask for details instead.
+- Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
+- Empty, placeholder, or guessed \`instructions\` or \`description\` values are rejected; ask for details instead.
 
 ### Verify
 
 - The final payload validates against the Config schema reference.
 - Existing unrelated config, tools, skills, integrations, and memory remain present unless intentionally changed.
+- Existing Brave or SearXNG web search remains present on model-only changes.
 - Credential fields use ids returned by the correct interactive credential tools.
 - Provider tool keys are valid and match the selected model provider.
 
