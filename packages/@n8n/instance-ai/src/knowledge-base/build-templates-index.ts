@@ -2,7 +2,7 @@ import { jsonParse } from 'n8n-workflow';
 import { join as posixJoin } from 'node:path/posix';
 import { z } from 'zod';
 
-const KNOWLEDGE_BASE_TEMPLATES_DIR = 'templates';
+export const KNOWLEDGE_BASE_TEMPLATES_DIR = 'templates';
 
 export interface KnowledgeBaseTemplateEntry {
 	id: string;

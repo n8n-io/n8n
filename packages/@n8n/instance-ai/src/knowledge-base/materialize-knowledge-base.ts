@@ -9,8 +9,10 @@ import { join as posixJoin } from 'node:path/posix';
 import type { Logger } from '../logger';
 import {
 	buildTemplatesIndexFromArchive,
+	KNOWLEDGE_BASE_TEMPLATES_DIR,
 	type KnowledgeBaseTemplateEntry,
 } from './build-templates-index';
+export { KNOWLEDGE_BASE_TEMPLATES_DIR };
 import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
@@ -23,7 +25,6 @@ import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
 export const SANDBOX_KNOWLEDGE_BASE_DIR = 'knowledge-base';
 export const KNOWLEDGE_BASE_BEST_PRACTICES_DIR = 'best-practices';
-export const KNOWLEDGE_BASE_TEMPLATES_DIR = 'templates';
 export const KNOWLEDGE_BASE_INDEX_FILE = 'index.json';
 export const KNOWLEDGE_BASE_MANIFEST_FILE = WORKSPACE_MANIFEST_FILE;
 export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 4;
