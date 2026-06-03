@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import {
 	GRID_SIZE,
 	DEFAULT_NODE_SIZE,

@@ -18,7 +18,7 @@ const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 128;
 
 /** `package` file + optional `projectId` / `folderId` fields + small margin. */
-const IMPORT_PACKAGE_MAX_PARTS = 5;
+const IMPORT_PACKAGE_MAX_PARTS = 6;
 
 export function createN8nPackageMulterOptions(globalConfig: GlobalConfig): multer.Options {
 	const maxFileSizeBytes = globalConfig.endpoints.payloadSizeMax * 1024 * 1024;

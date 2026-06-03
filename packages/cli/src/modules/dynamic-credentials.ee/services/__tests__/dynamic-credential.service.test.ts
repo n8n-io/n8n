@@ -315,6 +315,77 @@ describe('DynamicCredentialService', () => {
 				expect(result.isDynamic).toBe(true);
 			});
 
+			describe('resolvedUserId (executing user)', () => {
+				const setupDynamicResolution = (resolver: ICredentialResolver) => {
+					const credentialsEntity = createMockCredentialsMetadata({ resolverId: 'resolver-456' });
+					const resolverEntity = createMockResolverEntity();
+					const executionContext = createMockExecutionContext('encrypted-credentials');
+					const credentialContext = createMockCredentialContext();
+
+					mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+					mockResolverRegistry.getResolverByTypename.mockReturnValue(
+						resolver as jest.Mocked<ICredentialResolver>,
+					);
+					mockCipher.decryptV2
+						.mockResolvedValueOnce(JSON.stringify(credentialContext))
+						.mockResolvedValueOnce(JSON.stringify({ prefix: 'test' }));
+
+					return { credentialsEntity, executionContext };
+				};
+
+				it('surfaces the owning user id from a resolver that maps to an n8n user', async () => {
+					const resolver = {
+						...createMockResolver(),
+						resolveOwningUserId: jest.fn().mockResolvedValue('user-789'),
+					};
+					const { credentialsEntity, executionContext } = setupDynamicResolution(resolver);
+
+					const result = await service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						executionContext,
+						{},
+					);
+
+					expect(result.isDynamic).toBe(true);
+					expect(result.resolvedUserId).toBe('user-789');
+				});
+
+				it('leaves resolvedUserId undefined for a resolver that does not map to an n8n user', async () => {
+					// External-identity resolvers (Slack, OAuth) do not implement resolveOwningUserId.
+					const resolver = createMockResolver();
+					const { credentialsEntity, executionContext } = setupDynamicResolution(resolver);
+
+					const result = await service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						executionContext,
+						{},
+					);
+
+					expect(result.isDynamic).toBe(true);
+					expect(result.resolvedUserId).toBeUndefined();
+				});
+
+				it('still resolves when owning-user lookup throws (best-effort)', async () => {
+					const resolver = {
+						...createMockResolver(),
+						resolveOwningUserId: jest.fn().mockRejectedValue(new Error('token expired')),
+					};
+					const { credentialsEntity, executionContext } = setupDynamicResolution(resolver);
+
+					const result = await service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						executionContext,
+						{},
+					);
+
+					expect(result.isDynamic).toBe(true);
+					expect(result.resolvedUserId).toBeUndefined();
+				});
+			});
+
 			it('credential has no resolver ID', async () => {
 				const credentialsEntity = createMockCredentialsMetadata({
 					isResolvable: true,
