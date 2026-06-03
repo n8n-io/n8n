@@ -31,13 +31,6 @@ export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
 	error?: string;
 }
 
-export interface ThreadTitleGeneratedPayload {
-	threadId: string;
-	resourceId: string;
-	title: string;
-	emoji?: string;
-}
-
 export const enum AgentEvent {
 	AgentStart = 'agent_start',
 	AgentEnd = 'agent_end',
@@ -47,7 +40,6 @@ export const enum AgentEvent {
 	ToolExecutionEnd = 'tool_execution_end',
 	SubAgentStarted = 'subagent_started',
 	SubAgentCompleted = 'subagent_completed',
-	ThreadTitleGenerated = 'thread_title_generated',
 	Error = 'error',
 }
 
@@ -66,7 +58,6 @@ export type AgentEventData =
 	  }
 	| ({ type: AgentEvent.SubAgentStarted } & SubAgentStartedPayload)
 	| ({ type: AgentEvent.SubAgentCompleted } & SubAgentCompletedPayload)
-	| ({ type: AgentEvent.ThreadTitleGenerated } & ThreadTitleGeneratedPayload)
 	| {
 			type: AgentEvent.Error;
 			message: string;

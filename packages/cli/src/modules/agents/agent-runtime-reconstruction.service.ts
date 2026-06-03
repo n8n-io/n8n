@@ -1,7 +1,6 @@
 import {
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
-	AgentEvent,
 	BuiltTool,
 	CredentialProvider,
 	ToolDescriptor,
@@ -30,7 +29,6 @@ import { UrlService } from '@/services/url.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentExecutionService } from './agent-execution.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
@@ -102,7 +100,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
-		private readonly agentExecutionService: AgentExecutionService,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
@@ -420,8 +417,6 @@ export class AgentRuntimeReconstructionService {
 			this.attachWriteTodosTool(agent, agentId);
 		}
 
-		this.attachThreadTitleSyncListener(agent);
-
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
 		}
@@ -453,23 +448,6 @@ export class AgentRuntimeReconstructionService {
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
 		agent.tool(createWriteTodosTool());
 		this.logger.debug('Injected write_todos tool', { agentId });
-	}
-
-	private attachThreadTitleSyncListener(agent: RuntimeAgent): void {
-		agent.on(AgentEvent.ThreadTitleGenerated, (event) => {
-			if (event.type !== AgentEvent.ThreadTitleGenerated) return;
-			void this.agentExecutionService
-				.syncThreadTitle(event.threadId, {
-					title: event.title,
-					...(event.emoji !== undefined && { emoji: event.emoji }),
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to sync thread title', {
-						threadId: event.threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
-		});
 	}
 
 	private buildSubAgentPolicy(): SubAgentRunPolicy {

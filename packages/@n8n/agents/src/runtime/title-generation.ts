@@ -230,19 +230,19 @@ export async function generateThreadTitle(opts: {
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
 	executionCounter?: AgentExecutionCounter;
-}): Promise<{ title: string; emoji?: string } | null> {
+}): Promise<void> {
 	try {
 		const thread = await opts.memory.getThread(opts.threadId);
-		if (thread?.title) return null;
+		if (thread?.title) return;
 
 		const userMessage = opts.turnDelta.find((m) => 'role' in m && m.role === 'user');
-		if (!userMessage || !('content' in userMessage)) return null;
+		if (!userMessage || !('content' in userMessage)) return;
 
 		const userText = (userMessage.content as Array<{ type: string; text?: string }>)
 			.filter((c) => c.type === 'text' && c.text)
 			.map((c) => c.text!)
 			.join(' ');
-		if (!userText) return null;
+		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
 		const titleModel = createModel(titleModelId);
@@ -250,7 +250,7 @@ export async function generateThreadTitle(opts: {
 			instructions: opts.titleConfig.instructions,
 			executionCounter: opts.executionCounter,
 		});
-		if (!generated) return null;
+		if (!generated) return;
 
 		const { title, emoji } = generated;
 
@@ -263,10 +263,7 @@ export async function generateThreadTitle(opts: {
 			title,
 			metadata,
 		});
-
-		return emoji !== undefined ? { title, emoji } : { title };
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });
-		return null;
 	}
 }

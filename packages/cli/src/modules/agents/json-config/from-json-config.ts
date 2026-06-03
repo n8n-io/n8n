@@ -361,7 +361,7 @@ async function applyMemoryFromConfig(
 		});
 	}
 
-	memory.titleGeneration(true);
+	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
 }

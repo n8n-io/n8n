@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import { AgentEvent } from '@n8n/agents';
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
@@ -90,7 +89,6 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 
 function makeRuntimeReconstructionService(
 	modules: string[] = [],
-	agentExecutionService: AgentExecutionService = mock<AgentExecutionService>(),
 ): AgentRuntimeReconstructionService {
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -107,7 +105,6 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<AgentsToolsService>(),
 		mock<N8nMemory>(),
-		agentExecutionService,
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
@@ -183,7 +180,6 @@ describe('AgentsService', () => {
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
-		agentExecutionService.syncThreadTitle.mockResolvedValue(undefined);
 		chatIntegrationService = mock<ChatIntegrationService>();
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
@@ -1458,69 +1454,6 @@ describe('AgentsService', () => {
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
-		});
-
-		it('registers a thread title sync listener on the runtime agent', async () => {
-			const handlers = new Map<AgentEvent, (event: unknown) => void>();
-			const runtimeAgent = {
-				tool: jest.fn(),
-				on: jest.fn((event: AgentEvent, handler: (event: unknown) => void) => {
-					handlers.set(event, handler);
-				}),
-				hasCheckpointStorage: jest.fn().mockReturnValue(true),
-				checkpoint: jest.fn(),
-			};
-
-			const reconstructionService = makeRuntimeReconstructionService([], agentExecutionService);
-			await (
-				reconstructionService as unknown as {
-					injectRuntimeDependencies(params: {
-						agent: typeof runtimeAgent;
-						agentId: string;
-						projectId: string;
-						credentialProvider: unknown;
-						userId: string;
-						runtimeProfile: 'top-level';
-						nodeToolsEnabled: boolean;
-						subAgentDelegation: {
-							sourcesById: Record<string, never>;
-							availableSubAgents: [];
-						};
-						parentAgentIdForDelegation: string;
-						credentialIntegrations: Array<{ type: string; credentialId: string }>;
-					}): Promise<void>;
-				}
-			).injectRuntimeDependencies({
-				agent: runtimeAgent,
-				agentId,
-				projectId,
-				credentialProvider: mock(),
-				userId: 'user-1',
-				runtimeProfile: 'top-level',
-				nodeToolsEnabled: false,
-				parentAgentIdForDelegation: agentId,
-				subAgentDelegation: {
-					sourcesById: {},
-					availableSubAgents: [],
-				},
-				credentialIntegrations: [],
-			});
-
-			const handler = handlers.get(AgentEvent.ThreadTitleGenerated);
-			expect(handler).toBeDefined();
-
-			handler!({
-				type: AgentEvent.ThreadTitleGenerated,
-				threadId: 'thread-1',
-				resourceId: 'resource-1',
-				title: 'Workflow chat',
-				emoji: '🤖',
-			});
-
-			expect(agentExecutionService.syncThreadTitle).toHaveBeenCalledWith('thread-1', {
-				title: 'Workflow chat',
-				emoji: '🤖',
-			});
 		});
 	});
 
