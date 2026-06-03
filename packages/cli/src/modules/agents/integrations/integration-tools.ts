@@ -2,6 +2,7 @@ import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agen
 import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
 export type IntegrationMessageTarget =
@@ -148,42 +149,95 @@ export const DEFAULT_INTEGRATION_ACTIONS: IntegrationAction[] = [
 	'send_channel_message',
 ];
 
-const fieldPairSchema = z.object({
-	label: z.string(),
-	value: z.string(),
-});
+const fieldPairSchema = z
+	.object({
+		label: z.string(),
+		value: z.string(),
+	})
+	.strict();
 
-const selectOptionSchema = z.object({
-	label: z.string(),
-	value: z.string(),
-	description: z.string().optional(),
-});
+const selectOptionSchema = z
+	.object({
+		label: z.string(),
+		value: z.string(),
+		description: z.string().optional(),
+	})
+	.strict();
 
-const cardTextSchema = z.union([
-	z.string(),
+const buttonStyles = ['primary', 'danger', 'default'] as const satisfies readonly [
+	ButtonStyle,
+	...ButtonStyle[],
+];
+const buttonStyleSchema = z.enum(buttonStyles);
+
+const cardButtonSchema = z
+	.object({
+		label: z.string().optional(),
+		text: z.string().optional(),
+		value: z.string(),
+		style: buttonStyleSchema.optional(),
+	})
+	.strict();
+
+const cardComponentSchema = z.union([
 	z
 		.object({
-			type: z.string().optional(),
+			type: z.literal('section'),
 			text: z.string(),
+			button: cardButtonSchema.optional(),
 		})
-		.passthrough(),
+		.strict(),
+	z
+		.object({
+			type: z.literal('fields'),
+			fields: z.array(fieldPairSchema).min(1).optional(),
+			items: z.array(fieldPairSchema).min(1).optional(),
+		})
+		.strict()
+		.refine((component) => component.fields !== undefined || component.items !== undefined, {
+			message: 'Provide fields or items.',
+		}),
+	z
+		.object({
+			type: z.literal('image'),
+			url: z.string(),
+			alt: z.string().optional(),
+			altText: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('divider'),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('button'),
+			label: z.string().optional(),
+			text: z.string().optional(),
+			value: z.string(),
+			style: buttonStyleSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('select'),
+			id: z.string().optional(),
+			label: z.string().optional(),
+			placeholder: z.string().optional(),
+			options: z.array(selectOptionSchema).min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('radio_select'),
+			id: z.string().optional(),
+			label: z.string().optional(),
+			placeholder: z.string().optional(),
+			options: z.array(selectOptionSchema).min(1),
+		})
+		.strict(),
 ]);
-
-const cardComponentSchema = z.object({
-	type: z.string(),
-	text: cardTextSchema.optional(),
-	label: z.string().optional(),
-	value: z.string().optional(),
-	style: z.enum(['primary', 'danger']).optional(),
-	url: z.string().optional(),
-	alt: z.string().optional(),
-	altText: z.string().optional(),
-	id: z.string().optional(),
-	placeholder: z.string().optional(),
-	options: z.array(selectOptionSchema).optional(),
-	fields: z.array(fieldPairSchema).optional(),
-	items: z.array(fieldPairSchema).optional(),
-});
 
 const messageSchema = z
 	.object({
@@ -195,6 +249,7 @@ const messageSchema = z
 				message: z.string().optional(),
 				components: z.array(cardComponentSchema).min(1),
 			})
+			.strict()
 			.optional(),
 	})
 	.strict();
@@ -943,20 +998,11 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
 		'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
 		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
-		...buildPlatformCardGuidance(descriptor.integration.type),
-		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-specific blocks or attachments; rendering is handled internally.',
-		'Do not use message.blocks.',
+		'For radio-style choices, use { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }.',
+		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-native component payloads, formatted text objects, or attachments; rendering is handled internally.',
 		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
 		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
-}
-
-function buildPlatformCardGuidance(platform: string): string[] {
-	if (platform !== 'slack') return [];
-
-	return [
-		'For Slack radio buttons, use a generic radio_select component: { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }. Do not provide Slack radio_buttons directly.',
-	];
 }
 
 function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {

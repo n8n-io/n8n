@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
-import type { CardElement } from 'chat';
+import type { ButtonStyle, CardElement } from 'chat';
 
 type ComponentText = string | { text?: string; [key: string]: unknown };
 
@@ -14,19 +14,19 @@ export interface SuspendComponent {
 	text?: ComponentText;
 	label?: string;
 	value?: string;
-	style?: string;
+	style?: ButtonStyle | string;
 	url?: string;
 	altText?: string;
 	placeholder?: string;
 	/** Accessory button on a section */
-	button?: { label?: string; text?: ComponentText; value: string; style?: string };
+	button?: { label?: string; text?: ComponentText; value: string; style?: ButtonStyle | string };
 	/** Options for select / radio_select components */
 	options?: Array<{ label: string; value: string; description?: string }>;
 	/** Fields for fields component */
 	fields?: Array<{ label: string; value: string }>;
 	/** Alias agents commonly use for fields component entries */
 	items?: Array<{ label: string; value: string }>;
-	/** Elements array for context blocks */
+	/** Elements array for context components */
 	elements?: Array<{ type: string; text?: ComponentText; url?: string; altText?: string }>;
 	/** Allow additional properties from the payload */
 	id?: string;
@@ -120,7 +120,7 @@ export class ComponentMapper {
 			return sdk.Button({
 				id,
 				label,
-				style: style === 'danger' ? 'danger' : 'primary',
+				...(isButtonStyle(style) ? { style } : {}),
 				value,
 			});
 		};
@@ -197,9 +197,8 @@ export class ComponentMapper {
 		if (text) {
 			children.push(sdk.Section([sdk.CardText(text)] as never));
 		}
-		// Section accessory buttons must be in a separate Actions block.
-		// Chat SDK's cardToBlockKit silently drops Button children
-		// inside Section — only Actions blocks render buttons.
+		// Chat SDK adapters render interactive controls from Actions containers,
+		// so section accessory buttons are emitted as adjacent actions.
 		if (component.button) {
 			children.push(
 				sdk.Actions([
@@ -223,7 +222,7 @@ export class ComponentMapper {
 	}
 
 	private appendContext({ component, sdk, children }: ComponentRenderContext): void {
-		// Context blocks contain an elements array with text/image items
+		// Context components can contain an elements array with text/image items.
 		if (component.elements && Array.isArray(component.elements)) {
 			for (const el of component.elements) {
 				const text = componentTextToString(el.text);
@@ -417,4 +416,8 @@ function componentTextToString(text: unknown): string | undefined {
 		if (typeof value === 'string') return value;
 	}
 	return undefined;
+}
+
+function isButtonStyle(style: unknown): style is ButtonStyle {
+	return style === 'primary' || style === 'danger' || style === 'default';
 }

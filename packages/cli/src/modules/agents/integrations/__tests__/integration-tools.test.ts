@@ -439,13 +439,12 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('send_dm: input.userId');
 		expect(tool.description).toContain('send_channel_message: input.channelId');
 		expect(tool.description).toContain('Use message.card for cards');
-		expect(tool.description).toContain('For Slack radio buttons');
 		expect(tool.description).toContain('type: "radio_select"');
-		expect(tool.description).toContain('Do not provide Slack radio_buttons directly');
-		expect(tool.description).toContain('Do not use message.blocks');
+		expect(tool.description).toContain('For radio-style choices');
+		expect(tool.description).toContain('Do not provide platform-native component payloads');
 	});
 
-	it('action tool schema accepts button text objects in message cards', () => {
+	it('action tool schema rejects platform-shaped text objects in message cards', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
 			messageContextStore: mock<IntegrationMessageContextStore>(),
@@ -464,13 +463,13 @@ describe('integration tools', () => {
 								{ type: 'section', text: 'Choose an action.' },
 								{
 									type: 'button',
-									text: { type: 'plain_text', text: 'Approve' },
+									text: { format: 'native', text: 'Approve' },
 									style: 'primary',
 									value: 'approve',
 								},
 								{
 									type: 'button',
-									text: { type: 'plain_text', text: 'Reject' },
+									text: { format: 'native', text: 'Reject' },
 									style: 'danger',
 									value: 'reject',
 								},
@@ -479,7 +478,114 @@ describe('integration tools', () => {
 					},
 				},
 			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema rejects unsupported card component types', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [
+								{
+									type: 'actions',
+									elements: [{ type: 'button', label: 'Approve', value: 'approve' }],
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema rejects platform-shaped component keys', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [
+								{
+									type: 'button',
+									label: 'Approve',
+									value: 'approve',
+									action_id: 'approve',
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
+	});
+
+	it('action tool schema accepts default button style in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [
+								{
+									type: 'button',
+									label: 'Approve',
+									value: 'approve',
+									style: 'default',
+								},
+							],
+						},
+					},
+				},
+			}).success,
 		).toBe(true);
+	});
+
+	it('action tool schema rejects empty fields components in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							components: [{ type: 'fields' }],
+						},
+					},
+				},
+			}).success,
+		).toBe(false);
 	});
 
 	it('action tool schema preserves fields item aliases in message cards', () => {
@@ -522,7 +628,7 @@ describe('integration tools', () => {
 		]);
 	});
 
-	it('action tool schema rejects platform-specific block arrays', () => {
+	it('action tool schema rejects unknown message payload keys', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
 			messageContextStore: mock<IntegrationMessageContextStore>(),
@@ -535,29 +641,8 @@ describe('integration tools', () => {
 				action: 'respond',
 				input: {
 					message: {
-						text: 'Approve/Reject button demo',
-						blocks: [
-							{
-								type: 'header',
-								text: { type: 'plain_text', text: 'Approve / Reject Demo' },
-							},
-							{
-								type: 'section',
-								text: { type: 'mrkdwn', text: 'Choose an action.' },
-							},
-							{ type: 'divider' },
-							{
-								type: 'actions',
-								elements: [
-									{
-										type: 'button',
-										text: { type: 'plain_text', text: 'Approve' },
-										style: 'primary',
-										value: 'approve',
-									},
-								],
-							},
-						],
+						text: 'Approve or reject',
+						platformPayload: [{ type: 'native' }],
 					},
 				},
 			}).success,

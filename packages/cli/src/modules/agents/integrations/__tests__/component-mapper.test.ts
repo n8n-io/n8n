@@ -109,7 +109,7 @@ describe('ComponentMapper', () => {
 					{ type: 'button' as const, text: 'Approve', style: 'primary', value: 'approve' },
 					{
 						type: 'button' as const,
-						text: { type: 'plain_text', text: 'Reject' },
+						text: 'Reject',
 						style: 'danger',
 						value: 'reject',
 					},
@@ -129,6 +129,29 @@ describe('ComponentMapper', () => {
 				label: 'Reject',
 				style: 'danger',
 				value: JSON.stringify({ value: 'reject' }),
+			});
+		});
+
+		it('should preserve default button style and omit style when unset', async () => {
+			const payload = {
+				components: [
+					{ type: 'button' as const, label: 'Default', style: 'default', value: 'default' },
+					{ type: 'button' as const, label: 'Unset', value: 'unset' },
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenNthCalledWith(1, {
+				id: `resume:${runId}:${toolCallId}:0`,
+				label: 'Default',
+				style: 'default',
+				value: JSON.stringify({ value: 'default' }),
+			});
+			expect(mockButton).toHaveBeenNthCalledWith(2, {
+				id: `resume:${runId}:${toolCallId}:1`,
+				label: 'Unset',
+				value: JSON.stringify({ value: 'unset' }),
 			});
 		});
 
@@ -232,7 +255,6 @@ describe('ComponentMapper', () => {
 			expect(mockButton).toHaveBeenCalledWith({
 				id: `resume:${runId}:${toolCallId}:0`,
 				label: 'Choose',
-				style: 'primary',
 				value: JSON.stringify({ value: 'date_0' }),
 			});
 			expect(mockActions).toHaveBeenCalledTimes(1);
@@ -329,14 +351,16 @@ describe('ComponentMapper', () => {
 			});
 		});
 
-		it('should default button style to primary when not danger', async () => {
+		it('should omit unsupported button styles', async () => {
 			const payload = {
 				components: [{ type: 'button', label: 'Go', style: 'secondary', value: 'go' }],
 			};
 
 			await mapper.toCard(payload, runId, toolCallId);
 
-			expect(mockButton).toHaveBeenCalledWith(expect.objectContaining({ style: 'primary' }));
+			expect(mockButton).toHaveBeenCalledWith(
+				expect.not.objectContaining({ style: expect.any(String) }),
+			);
 		});
 
 		it('should map select components into Actions', async () => {
