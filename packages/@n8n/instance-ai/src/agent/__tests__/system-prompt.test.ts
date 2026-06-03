@@ -267,6 +267,22 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('sandbox workspace', () => {
+		it('includes sandbox workspace guidance when sandboxWorkspaceAvailable is true', () => {
+			const prompt = getSystemPrompt({ sandboxWorkspaceAvailable: true });
+
+			expect(prompt).toContain('## Sandbox workspace');
+			expect(prompt).toContain('knowledge-base/best-practices/index.json');
+			expect(prompt).toContain('workspace_execute_command');
+		});
+
+		it('omits sandbox workspace guidance when sandboxWorkspaceAvailable is false', () => {
+			const prompt = getSystemPrompt({ sandboxWorkspaceAvailable: false });
+
+			expect(prompt).not.toContain('## Sandbox workspace');
+		});
+	});
+
 	describe('trigger URL patterns', () => {
 		const webhookBaseUrl = 'http://localhost:5678/webhook';
 		const formBaseUrl = 'http://localhost:5678/form';
