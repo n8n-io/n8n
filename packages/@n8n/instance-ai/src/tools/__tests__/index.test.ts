@@ -2,105 +2,109 @@ import { createAllTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext } from '../../types';
 
-jest.mock('../../parsers/structured-file-parser', () => ({
-	isParseableAttachment: jest.fn(() => false),
+vi.mock('../../parsers/structured-file-parser', () => ({
+	isParseableAttachment: vi.fn(() => false),
 }));
 
-jest.mock('../attachments/parse-file.tool', () => ({
-	createParseFileTool: jest.fn(() => ({ id: 'parse-file' })),
+vi.mock('../attachments/parse-file.tool', () => ({
+	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
 }));
 
-jest.mock('../credentials.tool', () => ({
+vi.mock('../credentials.tool', () => ({
 	CREDENTIALS_TOOL_ID: 'credentials',
-	createCredentialsTool: jest.fn(() => ({ id: 'credentials' })),
+	createCredentialsTool: vi.fn(() => ({ id: 'credentials' })),
 }));
 
-jest.mock('../data-tables.tool', () => ({
+vi.mock('../data-tables.tool', () => ({
 	DATA_TABLES_TOOL_ID: 'data-tables',
-	createDataTablesTool: jest.fn((_context: unknown, scope?: string) => ({
+	createDataTablesTool: vi.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `data-tables-${scope}` : 'data-tables',
 	})),
 }));
 
-jest.mock('../executions.tool', () => ({
-	createExecutionsTool: jest.fn(() => ({ id: 'executions' })),
+vi.mock('../executions.tool', () => ({
+	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
 }));
 
-jest.mock('../nodes.tool', () => ({
-	createNodesTool: jest.fn((_context: unknown, scope?: string) => ({
+vi.mock('../nodes.tool', () => ({
+	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `nodes-${scope}` : 'nodes',
 	})),
 }));
 
-jest.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: jest.fn(() => ({ id: 'complete-checkpoint' })),
+vi.mock('../orchestration/build-workflow-agent.tool', () => ({
+	createBuildWorkflowAgentTool: vi.fn(() => ({ id: 'build-workflow-with-agent' })),
 }));
 
-jest.mock('../orchestration/delegate.tool', () => ({
-	createDelegateTool: jest.fn(() => ({ id: 'delegate' })),
+vi.mock('../orchestration/complete-checkpoint.tool', () => ({
+	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
 
-jest.mock('../evals/evals.tool', () => ({
-	createEvalsTool: jest.fn(() => ({ id: 'evals' })),
+vi.mock('../orchestration/delegate.tool', () => ({
+	createDelegateTool: vi.fn(() => ({ id: 'delegate' })),
 }));
 
-jest.mock('../orchestration/eval-setup-agent.tool', () => ({
-	createEvalSetupAgentTool: jest.fn(() => ({ id: 'eval-setup-with-agent' })),
+vi.mock('../evals/evals.tool', () => ({
+	createEvalsTool: vi.fn(() => ({ id: 'evals' })),
 }));
 
-jest.mock('../orchestration/eval-data-agent.tool', () => ({
-	createEvalDataAgentTool: jest.fn(() => ({ id: 'eval-data' })),
+vi.mock('../orchestration/eval-setup-agent.tool', () => ({
+	createEvalSetupAgentTool: vi.fn(() => ({ id: 'eval-setup-with-agent' })),
 }));
 
-jest.mock('../orchestration/plan-with-agent.tool', () => ({
-	createPlanWithAgentTool: jest.fn(() => ({ id: 'plan' })),
+vi.mock('../orchestration/eval-data-agent.tool', () => ({
+	createEvalDataAgentTool: vi.fn(() => ({ id: 'eval-data' })),
 }));
 
-jest.mock('../orchestration/plan.tool', () => ({
-	createPlanTool: jest.fn(() => ({ id: 'create-tasks' })),
+vi.mock('../orchestration/plan-with-agent.tool', () => ({
+	createPlanWithAgentTool: vi.fn(() => ({ id: 'plan' })),
 }));
 
-jest.mock('../orchestration/report-verification-verdict.tool', () => ({
-	createReportVerificationVerdictTool: jest.fn(() => ({ id: 'report-verification-verdict' })),
+vi.mock('../orchestration/plan.tool', () => ({
+	createPlanTool: vi.fn(() => ({ id: 'create-tasks' })),
 }));
 
-jest.mock('../orchestration/verify-built-workflow.tool', () => ({
-	createVerifyBuiltWorkflowTool: jest.fn(() => ({ id: 'verify-built-workflow' })),
+vi.mock('../orchestration/report-verification-verdict.tool', () => ({
+	createReportVerificationVerdictTool: vi.fn(() => ({ id: 'report-verification-verdict' })),
 }));
 
-jest.mock('../research.tool', () => ({
-	createResearchTool: jest.fn(() => ({ id: 'research' })),
+vi.mock('../orchestration/verify-built-workflow.tool', () => ({
+	createVerifyBuiltWorkflowTool: vi.fn(() => ({ id: 'verify-built-workflow' })),
 }));
 
-jest.mock('../shared/ask-user.tool', () => ({
+vi.mock('../research.tool', () => ({
+	createResearchTool: vi.fn(() => ({ id: 'research' })),
+}));
+
+vi.mock('../shared/ask-user.tool', () => ({
 	ASK_USER_TOOL_ID: 'ask-user',
-	createAskUserTool: jest.fn(() => ({ id: 'ask-user' })),
+	createAskUserTool: vi.fn(() => ({ id: 'ask-user' })),
 }));
 
-jest.mock('../task-control.tool', () => ({
-	createTaskControlTool: jest.fn(() => ({ id: 'task-control' })),
+vi.mock('../task-control.tool', () => ({
+	createTaskControlTool: vi.fn(() => ({ id: 'task-control' })),
 }));
 
-jest.mock('../workflows/apply-workflow-credentials.tool', () => ({
-	createApplyWorkflowCredentialsTool: jest.fn(() => ({ id: 'apply-workflow-credentials' })),
+vi.mock('../workflows/apply-workflow-credentials.tool', () => ({
+	createApplyWorkflowCredentialsTool: vi.fn(() => ({ id: 'apply-workflow-credentials' })),
 }));
 
-jest.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: jest.fn(() => ({ id: 'build-workflow' })),
+vi.mock('../workflows/build-workflow.tool', () => ({
+	createBuildWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
 }));
 
-jest.mock('../workflows.tool', () => ({
-	createWorkflowsTool: jest.fn((_context: unknown, options?: unknown) => ({
+vi.mock('../workflows.tool', () => ({
+	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
 		id: options ? 'workflows-filtered' : 'workflows',
 	})),
 }));
 
-jest.mock('../workspace.tool', () => ({
-	createWorkspaceTool: jest.fn(() => ({ id: 'workspace' })),
+vi.mock('../workspace.tool', () => ({
+	createWorkspaceTool: vi.fn(() => ({ id: 'workspace' })),
 }));
 
-jest.mock('../filesystem/create-tools-from-mcp-server', () => ({
-	createToolsFromLocalMcpServer: jest.fn(() => ({
+vi.mock('../filesystem/create-tools-from-mcp-server', () => ({
+	createToolsFromLocalMcpServer: vi.fn(() => ({
 		browser_connect: { id: 'browser_connect' },
 		browser_navigate: { id: 'browser_navigate' },
 	})),
@@ -109,15 +113,15 @@ jest.mock('../filesystem/create-tools-from-mcp-server', () => ({
 function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
 		userId: 'user-a',
-		logger: { warn: jest.fn() },
+		logger: { warn: vi.fn() },
 		...overrides,
 	} as unknown as InstanceAiContext;
 }
 
 describe('domain tool construction', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.mocked(isParseableAttachment).mockReturnValue(false);
+		vi.clearAllMocks();
+		vi.mocked(isParseableAttachment).mockReturnValue(false);
 	});
 
 	it('creates the native full domain tool map', () => {
@@ -139,7 +143,7 @@ describe('domain tool construction', () => {
 		});
 	});
 
-	it('creates the native orchestrator domain tool map', () => {
+	it('creates the native orchestrator domain tool map', async () => {
 		const context = makeContext();
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
@@ -157,9 +161,9 @@ describe('domain tool construction', () => {
 			'build-workflow': { id: 'build-workflow' },
 		});
 
-		const { createWorkflowsTool } = jest.requireMock('../workflows.tool');
-		const { createNodesTool } = jest.requireMock('../nodes.tool');
-		const { createDataTablesTool } = jest.requireMock('../data-tables.tool');
+		const { createWorkflowsTool } = await import('../workflows.tool');
+		const { createNodesTool } = await import('../nodes.tool');
+		const { createDataTablesTool } = await import('../data-tables.tool');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
@@ -177,7 +181,7 @@ describe('domain tool construction', () => {
 	});
 
 	it('includes parse-file tools when attachments are parseable', () => {
-		jest.mocked(isParseableAttachment).mockReturnValue(true);
+		vi.mocked(isParseableAttachment).mockReturnValue(true);
 		const context = makeContext({
 			currentUserAttachments: [{ data: '', mimeType: 'text/html', fileName: 'page.html' }],
 		});

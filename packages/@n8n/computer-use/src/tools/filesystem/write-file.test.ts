@@ -1,24 +1,25 @@
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { writeFileTool } from './write-file';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
 function mockMkdir(): void {
-	(fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+	(fs.mkdir as Mock).mockResolvedValue(undefined);
 }
 
 function mockWriteFile(): void {
-	(fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+	(fs.writeFile as Mock).mockResolvedValue(undefined);
 }
 
 describe('writeFileTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});
