@@ -1258,7 +1258,7 @@ defineExpose({
 			<CanvasNodeGroupTitleBar
 				v-bind="nodeProps"
 				:data="groupNodeDataById[nodeProps.id]"
-				:read-only="readOnly"
+				:read-only="readOnly || suppressInteraction"
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
