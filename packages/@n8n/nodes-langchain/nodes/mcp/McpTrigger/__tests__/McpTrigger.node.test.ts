@@ -87,7 +87,11 @@ describe('McpTrigger', () => {
 			expect(authParam).toBeDefined();
 			expect(authParam?.type).toBe('options');
 			expect(authParam?.default).toBe('none');
-			expect(authParam?.options).toHaveLength(3);
+			expect(authParam?.options).toHaveLength(4);
+			expect(authParam?.options).toContainEqual({
+				name: 'OAuth2/OIDC Bearer Token',
+				value: 'oAuth2OidcBearer',
+			});
 			expect(authParam?.builderHint).toEqual({
 				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 			});

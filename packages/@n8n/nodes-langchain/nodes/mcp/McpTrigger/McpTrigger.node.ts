@@ -79,6 +79,15 @@ export class McpTrigger extends Node {
 					},
 				},
 			},
+			{
+				name: 'oAuth2OidcBearer',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2OidcBearer'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -89,6 +98,7 @@ export class McpTrigger extends Node {
 					{ name: 'None', value: 'none' },
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
+					{ name: 'OAuth2/OIDC Bearer Token', value: 'oAuth2OidcBearer' },
 				],
 				default: 'none',
 				description: 'The way to authenticate',
