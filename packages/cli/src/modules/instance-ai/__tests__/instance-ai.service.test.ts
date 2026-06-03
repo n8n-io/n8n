@@ -1,10 +1,7 @@
-import type * as InstanceAi from '@n8n/instance-ai';
-import type { z as zType } from 'zod';
-
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
-	const { getPromptWorkspaceRoot } = jest.requireActual<typeof InstanceAi>('@n8n/instance-ai');
+	const { z } = jest.requireActual('zod');
+	const { getPromptWorkspaceRoot } = jest.requireActual('@n8n/instance-ai');
 	return {
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
@@ -142,8 +139,8 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
-import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
