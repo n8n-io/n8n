@@ -34,6 +34,7 @@ export interface TerminalResponseDecision {
 		| 'errored-silent'
 		| 'errored-after-text'
 		| 'completed-after-error'
+		| 'completed-silent-suppressed'
 		| 'confirmation-visible'
 		| 'confirmation-invalid';
 	event?: InstanceAiEvent;
@@ -67,7 +68,11 @@ export class InstanceAiTerminalResponseGuard {
 	evaluateTerminal(
 		events: InstanceAiEvent[],
 		status: Exclude<TerminalResponseStatus, 'waiting'>,
-		options: { workSummary?: WorkSummary; errorMessage?: string } = {},
+		options: {
+			workSummary?: WorkSummary;
+			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
+		} = {},
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
 		if (visibility.hasCurrentRunFallback) {
@@ -94,6 +99,14 @@ export class InstanceAiTerminalResponseGuard {
 					visibilitySource: 'root-text',
 					action: 'none',
 					reason: 'already-visible',
+				};
+			}
+			if (options.suppressCompletedFallback) {
+				return {
+					status,
+					visibilitySource: 'none',
+					action: 'none',
+					reason: 'completed-silent-suppressed',
 				};
 			}
 			return this.emitText(

@@ -34,6 +34,7 @@ export {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
+	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
 } from './code-builder';
 export type { ParseAndValidateResult, ValidationWarning } from './code-builder';
 
