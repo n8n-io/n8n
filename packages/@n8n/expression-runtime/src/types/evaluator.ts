@@ -167,6 +167,27 @@ export type FromAi = (
 	defaultValue?: unknown,
 ) => unknown;
 
+/**
+ * Source data describing where an item came from upstream. Mirrors the
+ * `ISourceData` interface from `n8n-workflow` without taking a runtime
+ * dependency on it.
+ */
+export interface SourceData {
+	previousNode: string;
+	previousNodeOutput?: number;
+	previousNodeRun?: number;
+}
+
+/**
+ * Paired-item descriptor. Mirrors the `IPairedItemData` interface from
+ * `n8n-workflow` without taking a runtime dependency on it.
+ */
+export interface PairedItemData {
+	item: number;
+	input?: number;
+	sourceOverwrite?: SourceData;
+}
+
 export interface WorkflowData {
 	$?: (nodeName: string) => NodeProxy | null | undefined;
 	$input?: InputProxy;
@@ -175,6 +196,11 @@ export interface WorkflowData {
 	$fromAi?: FromAi;
 	$fromai?: FromAi;
 	$evaluateExpression?: (expression: string, itemIndex?: number) => unknown;
+	$getPairedItem?: (
+		destinationNodeName: string,
+		incomingSourceData: SourceData | null,
+		initialPairedItem: PairedItemData,
+	) => unknown;
 	[key: string]: unknown;
 }
 
