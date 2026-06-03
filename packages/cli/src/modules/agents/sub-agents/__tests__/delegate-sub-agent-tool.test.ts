@@ -210,6 +210,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			),
 		).resolves.toMatchObject({
 			status: 'failed',
+			taskPath: '/root/research_api_0',
 			answer: '',
 			error:
 				'Inline sub-agent execution is available only after the delegate tool is registered on an Agent.',

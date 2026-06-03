@@ -37,6 +37,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 						: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`;
 				return {
 					status: 'failed',
+					taskPath: request.taskPath,
 					answer: '',
 					error,
 				};
