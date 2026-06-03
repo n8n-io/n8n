@@ -76,12 +76,7 @@ async function openSingletonModal(type: SingletonConnectionType) {
 function openToolsConnectionModal() {
 	mcpTelemetry.trackAddMenuMcpSelected();
 	mcpTelemetry.trackModalOpened();
-	// Pass an empty data payload so any stale `{ connectionId }` from a prior
-	// row Setup click is cleared and the modal lands on the catalog grid.
-	uiStore.openModalWithData({
-		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
-		data: {},
-	});
+	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 }
 
 async function handleSingletonDisconnect(type: SingletonConnectionType) {

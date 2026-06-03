@@ -70,7 +70,10 @@ function handleSelect(action: RowAction) {
 			<img
 				v-if="iconSource.type === 'file'"
 				:src="iconSource.src"
-				:alt="name"
+				alt=""
+				aria-hidden="true"
+				loading="lazy"
+				referrerpolicy="no-referrer"
 				:class="$style.iconImage"
 			/>
 			<N8nIcon v-else :icon="iconSource.name" size="large" :class="$style.icon" />

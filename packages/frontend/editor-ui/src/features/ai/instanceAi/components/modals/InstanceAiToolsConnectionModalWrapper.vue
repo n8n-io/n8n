@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, provide, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
+import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
@@ -28,6 +30,13 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
+const toast = useToast();
+
+function readConnectionIdPayload(data: unknown): string | undefined {
+	if (data === null || typeof data !== 'object') return undefined;
+	const value = (data as Record<string, unknown>).connectionId;
+	return typeof value === 'string' ? value : undefined;
+}
 
 const modalState = computed(() => uiStore.modalsById[props.modalName] ?? null);
 const isOpen = computed({
@@ -54,26 +63,43 @@ const pendingCredentialContext = ref<PendingCredentialContext | null>(null);
 // ModalRoot only renders this wrapper while the modal is open, so isOpen is
 // already true on mount — kick off the lazy catalog fetch here rather than via
 // a transition watcher (which wouldn't fire on initial true).
+//
+// Track in-flight initial fetches so other code paths (deep-link below,
+// auto-connect snapshot) can await them instead of issuing duplicate requests.
+const catalogPromise = ref<Promise<unknown> | null>(null);
+const connectionsPromise = ref<Promise<unknown> | null>(null);
+const credentialsPromise = ref<Promise<unknown> | null>(null);
+
 onMounted(async () => {
-	void mcpStore.fetchCatalogLazy();
+	catalogPromise.value = mcpStore.fetchCatalogLazy();
 	// Also ensure connections are loaded if the user opens the modal before
 	// ConnectionsCard has mounted (e.g. opened via a deep link).
-	void mcpStore.fetchConnections();
+	connectionsPromise.value = mcpStore.fetchConnections();
 	// Pre-load credentials so the picker is populated on first open. The
 	// credentials store is only auto-refreshed by `CredentialEdit.vue` after
 	// OAuth, so without this the picker is empty until the user creates a
 	// credential.
-	void credentialsStore.fetchAllCredentials();
+	credentialsPromise.value = credentialsStore.fetchAllCredentials();
 
-	const payload = modalState.value?.data as { connectionId?: string } | undefined;
-	const connectionId = payload?.connectionId;
+	const connectionId = readConnectionIdPayload(modalState.value?.data);
 	if (!connectionId) return;
 
-	// Deep-link from a sidebar row: wait for both data sources, then snap to
-	// the connection's settings view.
-	await Promise.all([mcpStore.fetchCatalogLazy(), mcpStore.fetchConnections()]);
+	// Deep-link from a sidebar row: wait for the in-flight fetches above and
+	// then snap to the connection's settings view.
+	await Promise.all([catalogPromise.value, connectionsPromise.value]);
 	const item = items.value.find((i) => i.id === connectionId);
 	if (item) detailItem.value = item;
+});
+
+// `closeModal` keeps `modalsById[KEY].data` around, so opening from the +
+// button (which uses plain `openModal(...)`) would inherit a stale payload
+// from a prior row Setup click. Clear it when this wrapper unmounts so the
+// next open starts fresh without every caller needing to pass `data: {}`.
+onBeforeUnmount(() => {
+	const state = uiStore.modalsById[props.modalName];
+	if (state && state.data && Object.keys(state.data).length > 0) {
+		state.data = {};
+	}
 });
 
 watch(isOpen, (open) => {
@@ -139,32 +165,46 @@ const items = computed<ToolConnectionItem[]>(() => {
 	return out;
 });
 
+/**
+ * Open the credential-edit modal for `authType`. The credential dialog needs
+ * to mount on body (not `#app-modals`) so it stacks above the reka-ui-based
+ * `ToolsConnectionModal` we're hosted inside.
+ */
+function openCredentialEditForAuthType(authType: string): void {
+	uiStore.openNewCredential(
+		authType,
+		/* showAuthOptions */ false,
+		/* forceManualMode */ false,
+		/* projectId */ undefined,
+		/* suggestedName */ undefined,
+		/* nodeName */ undefined,
+		/* contextNode */ undefined,
+		{ appendToBody: true },
+	);
+}
+
 const credentialAdapter: ToolConnectionCredentialAdapter = {
 	getCredentialsByType: (authType: string): readonly PickableCredential[] => {
 		const creds = credentialsStore.getCredentialsByType(authType);
 		return creds.map((c) => ({ id: c.id, name: c.name, type: c.type }));
 	},
 	openNewCredential: (authType: string) => {
-		const server = detailItem.value ? findServerForItem(detailItem.value) : undefined;
-		if (server) {
-			pendingCredentialContext.value = {
-				serverSlug: server.slug,
-				credentialType: authType,
-				snapshotIds: new Set(credentialsStore.getCredentialsByType(authType).map((c) => c.id)),
-			};
-		}
-		uiStore.openNewCredential(
-			authType,
-			false,
-			false,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			// Force body mount so the credential dialog stacks above the reka-ui
-			// `ToolsConnectionModal` we're hosted inside.
-			{ appendToBody: true },
-		);
+		void (async () => {
+			// Make sure the snapshot reflects what's actually in the store. If the
+			// initial credentials fetch hasn't resolved yet, an empty snapshot can
+			// later look like the credential is "new" even though it pre-existed.
+			if (credentialsPromise.value) await credentialsPromise.value;
+
+			const server = detailItem.value ? findServerForItem(detailItem.value) : undefined;
+			if (server) {
+				pendingCredentialContext.value = {
+					serverSlug: server.slug,
+					credentialType: authType,
+					snapshotIds: new Set(credentialsStore.getCredentialsByType(authType).map((c) => c.id)),
+				};
+			}
+			openCredentialEditForAuthType(authType);
+		})();
 	},
 };
 
@@ -186,7 +226,21 @@ watch(
 		await credentialsStore.fetchAllCredentials();
 		const current = credentialsStore.getCredentialsByType(ctx.credentialType);
 		const newCreds = current.filter((c) => !ctx.snapshotIds.has(c.id));
-		if (newCreds.length !== 1) return;
+
+		// User cancelled OAuth or the credential wasn't saved — no-op silently.
+		if (newCreds.length === 0) return;
+
+		// More than one new credential appeared during the same window (e.g. a
+		// concurrent tab created one). We can't reliably know which is the
+		// user's choice, so surface a hint instead of guessing.
+		if (newCreds.length > 1) {
+			toast.showMessage({
+				type: 'info',
+				title: i18n.baseText('instanceAi.mcp.error.autoConnectAmbiguous.title'),
+				message: i18n.baseText('instanceAi.mcp.error.autoConnectAmbiguous.message'),
+			});
+			return;
+		}
 
 		const created = await mcpStore.connect({
 			serverSlug: ctx.serverSlug,
