@@ -1,6 +1,7 @@
 import { deepCopy, type INodeTypeDescription } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialTypeName,
 	serverToNodeDescription,
 	serverToCredentialDescription,
 } from '../node-description-transform';
@@ -347,5 +348,17 @@ describe('serverToCredentialDescription', () => {
 		};
 
 		expect(serverToCredentialDescription(invalidUrlServer)).toBeNull();
+	});
+});
+
+describe('getMcpRegistryCredentialTypeName', () => {
+	it.each([
+		{ slug: 'notion', expected: 'notionMcpOAuth2Api' },
+		{ slug: 'linear', expected: 'linearMcpOAuth2Api' },
+		{ slug: 'multi-word-service', expected: 'multiWordServiceMcpOAuth2Api' },
+	])('maps slug "$slug" to credential type "$expected"', ({ slug, expected }) => {
+		expect(
+			getMcpRegistryCredentialTypeName({ ...notionMockServer, slug } as McpRegistryServer),
+		).toBe(expected);
 	});
 });

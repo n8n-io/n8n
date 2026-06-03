@@ -24,7 +24,7 @@ function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
 /**
  * Get credentials type name based on server's slug and auth type
  */
-function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
+export function getMcpRegistryCredentialTypeName(server: McpRegistryServer): string {
 	// for now we support only OAuth2, so the suffix is always `McpOAuth2Api`
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }

@@ -12,6 +12,7 @@ import {
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
@@ -25,10 +26,12 @@ import {
 } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
+import { OtelConfig } from '@/modules/otel/otel.config';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -111,6 +114,7 @@ describe('TelemetryEventRelay', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -129,6 +133,7 @@ describe('TelemetryEventRelay', () => {
 			sharedWorkflowRepository,
 			projectRelationRepository,
 			credentialsRepository,
+			dynamicCredentialsProxy,
 		);
 
 		await telemetryEventRelay.init();
@@ -137,6 +142,9 @@ describe('TelemetryEventRelay', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		globalConfig.diagnostics.enabled = true;
+		const otelConfig = Container.get(OtelConfig);
+		otelConfig.enabled = false;
+		otelConfig.includeNodeSpans = true;
 	});
 
 	describe('init', () => {
@@ -155,6 +163,7 @@ describe('TelemetryEventRelay', () => {
 				sharedWorkflowRepository,
 				projectRelationRepository,
 				credentialsRepository,
+				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -180,6 +189,7 @@ describe('TelemetryEventRelay', () => {
 				sharedWorkflowRepository,
 				projectRelationRepository,
 				credentialsRepository,
+				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
@@ -213,6 +223,40 @@ describe('TelemetryEventRelay', () => {
 					{ user_id: 'user789', role: 'project:editor' },
 				],
 				project_id: 'project123',
+			});
+		});
+
+		it('should track on `team-project-updated` event without members', () => {
+			const event: RelayEventMap['team-project-updated'] = {
+				userId: 'user123',
+				role: 'global:owner',
+				projectId: 'project123',
+			};
+
+			eventService.emit('team-project-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Project settings updated', {
+				user_id: 'user123',
+				role: 'global:owner',
+				project_id: 'project123',
+			});
+		});
+
+		it('should track project custom telemetry tag count on `team-project-updated` event', () => {
+			const event: RelayEventMap['team-project-updated'] = {
+				userId: 'user123',
+				role: 'global:owner',
+				projectId: 'project123',
+				otelProjectCustomTagsCount: 2,
+			};
+
+			eventService.emit('team-project-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Project settings updated', {
+				user_id: 'user123',
+				role: 'global:owner',
+				project_id: 'project123',
+				otel_project_custom_tags_count: 2,
 			});
 		});
 
@@ -904,8 +948,9 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				project_id: 'project123',
 				project_type: 'personal',
-				is_dynamic: false,
+				is_private: false,
 				uses_external_secrets: false,
+				jwe_enabled: false,
 			});
 		});
 
@@ -959,8 +1004,9 @@ describe('TelemetryEventRelay', () => {
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
-				is_dynamic: true,
+				is_private: true,
 				uses_external_secrets: false,
+				jwe_enabled: false,
 			});
 		});
 
@@ -983,6 +1029,119 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
+				credential_id: 'cred123',
+			});
+		});
+
+		it('should track on `private-credential-created` event', () => {
+			const event: RelayEventMap['private-credential-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				credentialType: 'gmailOAuth2',
+				projectId: 'project456',
+				projectType: 'personal',
+			};
+
+			eventService.emit('private-credential-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created private credential', {
+				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
+				credential_type: 'gmailOAuth2',
+				credential_id: 'cred123',
+				project_id: 'project456',
+				project_type: 'personal',
+			});
+		});
+
+		it('should track on `private-credential-toggled-to-private` event', () => {
+			const event: RelayEventMap['private-credential-toggled-to-private'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				credentialType: 'gmailOAuth2',
+			};
+
+			eventService.emit('private-credential-toggled-to-private', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential private', {
+				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
+				credential_type: 'gmailOAuth2',
+				credential_id: 'cred123',
+			});
+		});
+
+		it('should track on `private-credential-toggled-to-static` event', () => {
+			const event: RelayEventMap['private-credential-toggled-to-static'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				credentialType: 'gmailOAuth2',
+			};
+
+			eventService.emit('private-credential-toggled-to-static', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential static', {
+				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
+				credential_type: 'gmailOAuth2',
+				credential_id: 'cred123',
+			});
+		});
+
+		it('should track on `private-credential-deleted` event', () => {
+			const event: RelayEventMap['private-credential-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				credentialType: 'gmailOAuth2',
+			};
+
+			eventService.emit('private-credential-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted private credential', {
+				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
+				credential_type: 'gmailOAuth2',
+				credential_id: 'cred123',
+			});
+		});
+
+		it('should track on `private-credential-user-connected` event', () => {
+			const event: RelayEventMap['private-credential-user-connected'] = {
+				user: { id: 'user123' },
+				credentialId: 'cred123',
+				credentialType: 'gmailOAuth2',
+			};
+
+			eventService.emit('private-credential-user-connected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to private credential', {
+				user_id: 'user123',
+				user_role: undefined,
+				credential_type: 'gmailOAuth2',
 				credential_id: 'cred123',
 			});
 		});
@@ -1119,8 +1278,73 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
+		});
+
+		it('should track OTEL custom telemetry tag counts on `workflow-created` event', async () => {
+			const event: RelayEventMap['workflow-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production' }],
+					},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Node 1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [
+									{ key: 'node-env', value: 'production' },
+									{ key: 'node-team', value: 'engineering' },
+								],
+							},
+						},
+						{
+							id: 'node-2',
+							name: 'Node 2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [{ key: 'node-region', value: 'eu' }],
+							},
+						},
+					],
+				}),
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+			};
+
+			eventService.emit('workflow-created', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User created workflow',
+				expect.objectContaining({
+					otel_workflow_custom_tags_count: 1,
+					otel_nodes_with_custom_tags_count: 2,
+					otel_node_custom_tags_count: 3,
+				}),
+			);
 		});
 
 		it('should truncate node_graph_string when it exceeds size limit', async () => {
@@ -1177,6 +1401,9 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
@@ -1365,12 +1592,13 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith({
+				execution_source: 'user',
 				is_manual: false,
 				success: false,
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
-				used_dynamic_credentials: false,
+				used_private_credentials: false,
 			});
 		});
 
@@ -1407,8 +1635,82 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
+		});
+
+		it('should track OTEL custom telemetry tag counts on `workflow-saved` event', async () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'team', value: 'engineering' },
+						],
+					},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Node 1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [
+									{ key: 'node-env', value: 'production' },
+									{ key: 'node-team', value: 'engineering' },
+								],
+							},
+						},
+						{
+							id: 'node-2',
+							name: 'Node 2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [{ key: 'node-region', value: 'eu' }],
+							},
+						},
+						{
+							id: 'node-3',
+							name: 'Node 3',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					otel_workflow_custom_tags_count: 2,
+					otel_nodes_with_custom_tags_count: 2,
+					otel_node_custom_tags_count: 3,
+				}),
+			);
 		});
 
 		it('should track resolver settings when credentialResolverId changes', async () => {
@@ -1456,8 +1758,49 @@ describe('TelemetryEventRelay', () => {
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
+		});
+
+		it('should emit the system resolver id when credentialResolverId is cleared', async () => {
+			dynamicCredentialsProxy.getSystemResolverId.mockReturnValue('system-resolver');
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					settings: { credentialResolverId: undefined, redactionPolicy: undefined },
+				}),
+				publicApi: false,
+				settingsChanged: {
+					credentialResolverId: {
+						from: 'resolver-123',
+						to: null,
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					credential_resolver_id: 'system-resolver',
+				}),
+			);
 		});
 
 		it('should track redaction policy when it changes', async () => {
@@ -1783,6 +2126,11 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					otel: expect.anything(),
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
@@ -1795,6 +2143,38 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 					},
+					otel: {
+						enabled: false,
+						include_node_spans: true,
+					},
+				}),
+			);
+		});
+
+		it('should track OTEL startup configuration on `server-started` event', async () => {
+			const otelConfig = Container.get(OtelConfig);
+			otelConfig.enabled = true;
+			otelConfig.includeNodeSpans = false;
+			workflowRepository.findOne.mockResolvedValue(null);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Instance started',
+				expect.objectContaining({
+					otel: {
+						enabled: true,
+						include_node_spans: false,
+					},
+				}),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.not.objectContaining({
+						otel: expect.anything(),
+					}),
 				}),
 			);
 		});
@@ -2001,6 +2381,41 @@ describe('TelemetryEventRelay', () => {
 					execution_mode: 'manual',
 				}),
 			);
+		});
+
+		it('should add Instance AI execution metadata to workflow execution telemetry', async () => {
+			const runData = {
+				finished: true,
+				status: 'success',
+				mode: 'manual',
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mockWorkflowBase,
+				executionId: 'execution123',
+				userId: 'user123',
+				runData,
+				telemetryMetadata: {
+					source: 'instance_ai',
+					mockDataSources: ['trigger_input', 'verification_pin_data'],
+				},
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			const expectedProperties = expect.objectContaining({
+				execution_source: 'instance_ai',
+				mock_data_sources: 'trigger_input,verification_pin_data',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Manual workflow exec finished',
+				expectedProperties,
+			);
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(expectedProperties);
 		});
 
 		it('should call telemetry.track when manual node execution finished', async () => {
@@ -2556,6 +2971,32 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
 				user_id: 'user456',
 				'2fa_enforcement': false,
+			});
+		});
+	});
+
+	describe('instance AI MCP events', () => {
+		it('tracks on `instance-ai-mcp-registry-connection-created`', () => {
+			eventService.emit('instance-ai-mcp-registry-connection-created', {
+				userId: 'user-1',
+				serverSlug: 'linear',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI mcp connected', {
+				user_id: 'user-1',
+				server_slug: 'linear',
+			});
+		});
+
+		it('tracks on `instance-ai-mcp-registry-connection-deleted`', () => {
+			eventService.emit('instance-ai-mcp-registry-connection-deleted', {
+				userId: 'user-1',
+				serverSlug: 'linear',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI mcp disconnected', {
+				user_id: 'user-1',
+				server_slug: 'linear',
 			});
 		});
 	});

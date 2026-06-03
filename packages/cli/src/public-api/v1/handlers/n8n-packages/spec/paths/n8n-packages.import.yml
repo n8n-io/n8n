@@ -1,0 +1,179 @@
+post:
+  x-eov-operation-id: importPackage
+  x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
+  tags:
+    - N8nPackage
+  summary: 'Beta: Import an n8n package into a project'
+  description: |
+    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
+    instance to enable this endpoint. While disabled, requests return `404`.
+
+    Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
+    archive as the multipart field `package`. Optional routing uses form fields
+    `projectId`, `folderId`, `credentialMatchingMode`, and `credentialMissingMode`
+    (omit or leave empty for defaults). Maximum upload size is
+    `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
+
+    The package must declare its manifest at `manifest.json` and include every file
+    referenced by the manifest. The caller is authorised through the `workflow:import`
+    scope. Each imported workflow is created with a fresh local id and arrives inactive.
+
+    Credential references are resolved before any workflow is written. Only credentials owned by the
+    target project (with `credential:read`) or global credentials (with `credential:read`)
+    match. Credentials shared into the project as `credential:user` are not matched.
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - package
+          properties:
+            package:
+              type: string
+              format: binary
+              description: Gzip-compressed tar package (`.n8np`).
+            projectId:
+              type: string
+              description: >
+                Target project id. Omit or send empty to import into the caller's
+                personal project.
+            folderId:
+              type: string
+              description: >
+                Optional folder within the target project. Omit or send empty for
+                project root.
+            credentialMatchingMode:
+              type: string
+              enum:
+                - id-only
+              default: id-only
+              description: >
+                How credential references in `requirements.credentials` are matched on
+                the target instance. Only `id-only` is supported today.
+            credentialMissingMode:
+              type: string
+              enum:
+                - must-preexist
+              default: must-preexist
+              description: >
+                What to do when a credential reference cannot be resolved.
+                `must-preexist` requires every referenced credential to already
+                exist and be accessible on the target instance.
+  responses:
+    '200':
+      description: Import succeeded.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - package
+              - workflows
+              - credentials
+            properties:
+              package:
+                type: object
+                required:
+                  - sourceN8nVersion
+                  - sourceId
+                  - exportedAt
+                properties:
+                  sourceN8nVersion:
+                    type: string
+                  sourceId:
+                    type: string
+                  exportedAt:
+                    type: string
+                    format: date-time
+              workflows:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - sourceId
+                    - localId
+                    - name
+                    - projectId
+                    - parentFolderId
+                    - activeVersionId
+                  properties:
+                    sourceId:
+                      type: string
+                      description: Workflow id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Newly minted workflow id on the target instance.
+                    name:
+                      type: string
+                    projectId:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                    activeVersionId:
+                      type: string
+                      nullable: true
+                      description: >
+                        Published version on the target instance. Always null
+                        immediately after import.
+              credentials:
+                type: object
+                required:
+                  - matched
+                properties:
+                  matched:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - sourceId
+                        - targetId
+                      properties:
+                        sourceId:
+                          type: string
+                          description: Credential id from `requirements.credentials` in the package manifest.
+                        targetId:
+                          type: string
+                          description: Matched credential id on the target instance.
+    '422':
+      description: One or more credential references could not be resolved.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - failures
+            properties:
+              message:
+                type: string
+              failures:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - kind
+                    - sourceId
+                    - usedByWorkflows
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - not_found
+                        - unknown_type
+                    sourceId:
+                      type: string
+                    usedByWorkflows:
+                      type: array
+                      items:
+                        type: string
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

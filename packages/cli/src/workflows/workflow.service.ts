@@ -3,10 +3,10 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
-	WorkflowEntity,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
+	WorkflowEntity,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -32,10 +32,16 @@ import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+import {
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+	ensureError,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { getErrorDescription, getErrorNodeId } from './utils';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -340,7 +346,7 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
-		this.redactionEnforcementService.assertPolicyChangeAllowed(
+		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			workflow.settings?.redactionPolicy,
 			workflowUpdateData.settings?.redactionPolicy,
 		);
@@ -402,13 +408,18 @@ export class WorkflowService {
 			delete workflowUpdateData.settings.redactionPolicy;
 		}
 
-		// Strip redactionPolicy if user lacks scope and value is changing
+		// Strip redactionPolicy if user lacks the required directional scope
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
 			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
 		) {
-			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
-				workflowId,
+			const requiredScopes = getRequiredRedactionScopes(
+				workflow.settings?.redactionPolicy,
+				workflowUpdateData.settings.redactionPolicy,
+			);
+
+			const canUpdate = await userHasScopes(user, requiredScopes, false, {
+				projectId: ownerProject.id,
 			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
@@ -445,6 +456,16 @@ export class WorkflowService {
 		// Validate pinData size after all mutations are applied
 		if ('pinData' in workflowUpdateData) {
 			WorkflowHelpers.validatePinDataSize({ ...workflow, ...workflowUpdateData });
+		}
+
+		// Reject illegal credential-to-node bindings before persisting
+		const restrictionValidation = this.workflowValidationService.validateCredentialNodeRestrictions(
+			workflowUpdateData.nodes ?? workflow.nodes,
+		);
+		if (!restrictionValidation.isValid) {
+			throw new WorkflowValidationError(
+				restrictionValidation.error ?? 'Credential binding is not allowed.',
+			);
 		}
 
 		// Run external hook after all validation has passed, right before persisting
@@ -564,7 +585,6 @@ export class WorkflowService {
 	): Promise<void> {
 		let didPublish = false;
 		try {
-			await this.externalHooks.run('workflow.activate', [workflow]);
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
@@ -670,6 +690,7 @@ export class WorkflowService {
 	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
+	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
@@ -731,6 +752,24 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+
+		// Run hook before destructive state changes so a rejection leaves
+		// the previous active version running instead of deactivating it.
+		const candidateWorkflow = this.workflowRepository.create({
+			...workflow,
+			active: true,
+			activeVersionId: versionIdToActivate,
+			activeVersion: versionToActivate,
+		});
+
+		try {
+			await this.externalHooks.run('workflow.activate', [candidateWorkflow]);
+		} catch (error) {
+			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
+				nodeId: getErrorNodeId(error),
+				description: getErrorDescription(error),
+			});
+		}
 
 		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);

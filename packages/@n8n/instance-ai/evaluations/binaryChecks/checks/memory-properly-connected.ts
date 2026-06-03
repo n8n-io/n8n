@@ -10,9 +10,10 @@ export const memoryProperlyConnected: BinaryCheck = {
 	name: 'memory_properly_connected',
 	description: 'Memory nodes are properly connected to a parent node',
 	kind: 'deterministic',
+	dimension: 'ai_nodes',
 	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => isMemoryNode(n.type));
-		if (nodes.length === 0) return { pass: true };
+		if (nodes.length === 0) return { pass: true, applicable: false };
 
 		const connectedMemory = collectSourcesByConnectionType(workflow.connections ?? {}, 'ai_memory');
 		const disconnected = nodes.filter((n) => !connectedMemory.has(n.name)).map((n) => n.name);

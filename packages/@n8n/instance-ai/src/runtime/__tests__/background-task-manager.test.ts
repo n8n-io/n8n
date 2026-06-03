@@ -17,7 +17,7 @@ function makeSpawnOptions(
 		runId: 'run-1',
 		role: 'builder',
 		agentId: 'agent-1',
-		run: jest.fn().mockResolvedValue('done'),
+		run: vi.fn().mockResolvedValue('done'),
 		...overrides,
 	};
 }
@@ -39,8 +39,8 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('fails and settles idle running tasks', async () => {
-			const onFailed = jest.fn((_task: ManagedBackgroundTask) => undefined);
-			const onSettled = jest.fn((_task: ManagedBackgroundTask) => undefined);
+			const onFailed = vi.fn((_task: ManagedBackgroundTask) => undefined);
+			const onSettled = vi.fn((_task: ManagedBackgroundTask) => undefined);
 			let signal: AbortSignal | undefined;
 
 			manager.spawn(
@@ -132,8 +132,8 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('rejects spawn when concurrent limit is reached', () => {
-			const onLimitReached = jest.fn();
-			const createTraceContext = jest.fn();
+			const onLimitReached = vi.fn();
+			const createTraceContext = vi.fn();
 
 			manager.spawn(
 				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
@@ -156,8 +156,8 @@ describe('BackgroundTaskManager', () => {
 
 		it('creates lazy trace context only after a task is accepted', async () => {
 			const traceContext = { projectName: 'instance-ai' } as never;
-			const createTraceContext = jest.fn().mockResolvedValue(traceContext);
-			const run = jest.fn().mockResolvedValue('done');
+			const createTraceContext = vi.fn().mockResolvedValue(traceContext);
+			const run = vi.fn().mockResolvedValue('done');
 
 			manager.spawn(makeSpawnOptions({ createTraceContext, run }));
 			await flushPromises();
@@ -172,8 +172,8 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('calls onCompleted and onSettled when run resolves with string', async () => {
-			const onCompleted = jest.fn();
-			const onSettled = jest.fn();
+			const onCompleted = vi.fn();
+			const onSettled = vi.fn();
 			const { promise, resolve } = createDeferred<string>();
 
 			manager.spawn(
@@ -194,7 +194,7 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('calls onCompleted with structured result', async () => {
-			const onCompleted = jest.fn();
+			const onCompleted = vi.fn();
 			const { promise, resolve } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
@@ -217,8 +217,8 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('calls onFailed and onSettled when run rejects', async () => {
-			const onFailed = jest.fn();
-			const onSettled = jest.fn();
+			const onFailed = vi.fn();
+			const onSettled = vi.fn();
 			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
@@ -239,7 +239,7 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('does not call onFailed when aborted', async () => {
-			const onFailed = jest.fn();
+			const onFailed = vi.fn();
 			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
@@ -257,7 +257,7 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('does not call onSettled when aborted', async () => {
-			const onSettled = jest.fn();
+			const onSettled = vi.fn();
 			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
@@ -298,7 +298,7 @@ describe('BackgroundTaskManager', () => {
 			);
 			expect(first.status).toBe('started');
 
-			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const run = vi.fn(async (): Promise<string> => await new Promise(() => {}));
 			const second = manager.spawn(
 				makeSpawnOptions({
 					taskId: 'second',
@@ -323,7 +323,7 @@ describe('BackgroundTaskManager', () => {
 					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-trace' },
 				}),
 			);
-			const createTraceContext = jest.fn();
+			const createTraceContext = vi.fn();
 
 			const second = manager.spawn(
 				makeSpawnOptions({
@@ -369,7 +369,7 @@ describe('BackgroundTaskManager', () => {
 				}),
 			);
 
-			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const run = vi.fn(async (): Promise<string> => await new Promise(() => {}));
 			const second = manager.spawn(
 				makeSpawnOptions({
 					taskId: 'second',
@@ -400,7 +400,7 @@ describe('BackgroundTaskManager', () => {
 			);
 			expect(first.status).toBe('started');
 
-			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const run = vi.fn(async (): Promise<string> => await new Promise(() => {}));
 			const second = manager.spawn(
 				makeSpawnOptions({
 					taskId: 'task-B',
@@ -430,10 +430,10 @@ describe('BackgroundTaskManager', () => {
 
 			const other = manager.spawn(
 				makeSpawnOptions({
-					taskId: 'researcher',
-					role: 'web-researcher',
+					taskId: 'data-table-manager',
+					role: 'data-table-manager',
 					run: async () => await new Promise(() => {}),
-					dedupeKey: { role: 'web-researcher', workflowId: 'wf-1' },
+					dedupeKey: { role: 'data-table-manager', workflowId: 'wf-1' },
 				}),
 			);
 
@@ -447,7 +447,7 @@ describe('BackgroundTaskManager', () => {
 			manager.spawn({ ...filler, taskId: 't2' });
 			manager.spawn({ ...filler, taskId: 't3' });
 
-			const onLimitReached = jest.fn();
+			const onLimitReached = vi.fn();
 			const result = manager.spawn(
 				makeSpawnOptions({
 					taskId: 't4',

@@ -186,13 +186,13 @@ describe('InstanceAiMessage', () => {
 					content: '',
 					agentTree: makeAgentTree({
 						status: 'active',
-						statusMessage: 'Recalling conversation...',
+						statusMessage: 'Processing request...',
 					}),
 				}),
 			},
 		});
 
-		expect(getByText('Recalling conversation...')).toBeInTheDocument();
+		expect(getByText('Processing request...')).toBeInTheDocument();
 	});
 
 	it('should render agent activity tree when agentTree is present', () => {

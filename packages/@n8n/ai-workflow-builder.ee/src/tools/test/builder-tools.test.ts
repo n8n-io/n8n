@@ -4,140 +4,140 @@ import { createNodeType, nodeTypes } from '../../../test/test-utils';
 import { getAddNodeToolBase } from '../add-node.tool';
 import { getBuilderToolsForDisplay } from '../builder-tools';
 
-jest.mock('../get-documentation.tool', () => ({
+vi.mock('../get-documentation.tool', () => ({
 	GET_DOCUMENTATION_TOOL: {
 		toolName: 'get_documentation',
 		displayTitle: 'Getting documentation',
 	},
 }));
 
-jest.mock('../get-workflow-examples.tool', () => ({
+vi.mock('../get-workflow-examples.tool', () => ({
 	GET_WORKFLOW_EXAMPLES_TOOL: {
 		toolName: 'get_workflow_examples',
 		displayTitle: 'Retrieving workflow examples',
 	},
 }));
 
-jest.mock('../add-node.tool', () => ({
-	getAddNodeToolBase: jest.fn().mockReturnValue({
+vi.mock('../add-node.tool', () => ({
+	getAddNodeToolBase: vi.fn().mockReturnValue({
 		toolName: 'add_node',
 		displayTitle: 'Add a node to the workflow',
 	}),
 }));
 
-jest.mock('../connect-nodes.tool', () => ({
+vi.mock('../connect-nodes.tool', () => ({
 	CONNECT_NODES_TOOL: {
 		toolName: 'connect_nodes',
 		displayTitle: 'Connect two nodes',
 	},
 }));
 
-jest.mock('../get-node-parameter.tool', () => ({
+vi.mock('../get-node-parameter.tool', () => ({
 	GET_NODE_PARAMETER_TOOL: {
 		toolName: 'get_node_parameter',
 		displayTitle: 'Get node parameters',
 	},
 }));
 
-jest.mock('../node-details.tool', () => ({
+vi.mock('../node-details.tool', () => ({
 	NODE_DETAILS_TOOL: {
 		toolName: 'node_details',
 		displayTitle: 'Get node details',
 	},
 }));
 
-jest.mock('../node-search.tool', () => ({
+vi.mock('../node-search.tool', () => ({
 	NODE_SEARCH_TOOL: {
 		toolName: 'node_search',
 		displayTitle: 'Search for nodes',
 	},
 }));
 
-jest.mock('../remove-node.tool', () => ({
+vi.mock('../remove-node.tool', () => ({
 	REMOVE_NODE_TOOL: {
 		toolName: 'remove_node',
 		displayTitle: 'Remove a node',
 	},
 }));
 
-jest.mock('../rename-node.tool', () => ({
+vi.mock('../rename-node.tool', () => ({
 	RENAME_NODE_TOOL: {
 		toolName: 'rename_node',
 		displayTitle: 'Renaming node',
 	},
 }));
 
-jest.mock('../update-node-parameters.tool', () => ({
+vi.mock('../update-node-parameters.tool', () => ({
 	UPDATING_NODE_PARAMETER_TOOL: {
 		toolName: 'update_node_parameters',
 		displayTitle: 'Update node parameters',
 	},
 }));
 
-jest.mock('../remove-connection.tool', () => ({
+vi.mock('../remove-connection.tool', () => ({
 	REMOVE_CONNECTION_TOOL: {
 		toolName: 'remove_connection',
 		displayTitle: 'Remove a connection between two nodes',
 	},
 }));
 
-jest.mock('../validate-structure.tool', () => ({
+vi.mock('../validate-structure.tool', () => ({
 	VALIDATE_STRUCTURE_TOOL: {
 		toolName: 'validate_structure',
 		displayTitle: 'Validate workflow structure',
 	},
 }));
 
-jest.mock('../validate-configuration.tool', () => ({
+vi.mock('../validate-configuration.tool', () => ({
 	VALIDATE_CONFIGURATION_TOOL: {
 		toolName: 'validate_configuration',
 		displayTitle: 'Validate node configuration',
 	},
 }));
 
-jest.mock('../introspect.tool', () => ({
+vi.mock('../introspect.tool', () => ({
 	INTROSPECT_TOOL: {
 		toolName: 'introspect',
 		displayTitle: 'Introspecting',
 	},
 }));
 
-jest.mock('../get-execution-schema.tool', () => ({
+vi.mock('../get-execution-schema.tool', () => ({
 	GET_EXECUTION_SCHEMA_TOOL: {
 		toolName: 'get_execution_schema',
 		displayTitle: 'Getting execution schema',
 	},
 }));
 
-jest.mock('../get-execution-logs.tool', () => ({
+vi.mock('../get-execution-logs.tool', () => ({
 	GET_EXECUTION_LOGS_TOOL: {
 		toolName: 'get_execution_logs',
 		displayTitle: 'Getting execution logs',
 	},
 }));
 
-jest.mock('../get-expression-data-mapping.tool', () => ({
+vi.mock('../get-expression-data-mapping.tool', () => ({
 	GET_EXPRESSION_DATA_MAPPING_TOOL: {
 		toolName: 'get_expression_data_mapping',
 		displayTitle: 'Getting expression data mapping',
 	},
 }));
 
-jest.mock('../get-workflow-overview.tool', () => ({
+vi.mock('../get-workflow-overview.tool', () => ({
 	GET_WORKFLOW_OVERVIEW_TOOL: {
 		toolName: 'get_workflow_overview',
 		displayTitle: 'Getting workflow overview',
 	},
 }));
 
-jest.mock('../get-node-context.tool', () => ({
+vi.mock('../get-node-context.tool', () => ({
 	GET_NODE_CONTEXT_TOOL: {
 		toolName: 'get_node_context',
 		displayTitle: 'Getting node context',
 	},
 }));
 
-jest.mock('@/code-builder/constants', () => ({
+vi.mock('@/code-builder/constants', () => ({
 	CODE_BUILDER_TEXT_EDITOR_TOOL: {
 		toolName: 'str_replace_based_edit_tool',
 		displayTitle: 'Editing workflow',
@@ -164,7 +164,7 @@ describe('builder-tools', () => {
 	let parsedNodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		parsedNodeTypes = [nodeTypes.code, nodeTypes.httpRequest, nodeTypes.webhook];
 	});
 

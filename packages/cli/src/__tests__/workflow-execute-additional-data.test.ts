@@ -1,7 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity, User, Project } from '@n8n/db';
-import { ExecutionRepository, WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	ExecutionDataRepository,
+	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
@@ -13,6 +18,8 @@ import type {
 	IRun,
 	INodeExecutionData,
 	INode,
+	ITaskData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -31,7 +38,6 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { Telemetry } from '@/telemetry';
 import {
 	executeAgent,
@@ -40,8 +46,11 @@ import {
 	getRunData,
 	getDraftWorkflowData,
 	getPublishedWorkflowData,
+	buildSubWorkflowOutput,
+	triggerReturnsLastRunOnly,
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';
@@ -105,6 +114,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
+	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
@@ -689,21 +699,24 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getBase', () => {
 		const mockWebhookBaseUrl = 'https://webhook.example.com/';
 		const mockInstanceBaseUrl = 'https://editor.example.com';
-		jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
-		jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
 
 		const globalConfig = mockInstance(GlobalConfig);
 		Container.set(GlobalConfig, globalConfig);
-		globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
-			rest: '/rest/',
-			formWaiting: '/form-waiting/',
-			webhook: '/webhook/',
-			webhookWaiting: '/webhook-waiting/',
-			webhookTest: '/webhook-test/',
-		});
 
 		const mockVariables = { variable: 1 };
-		jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+
+		beforeEach(() => {
+			jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
+			jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
+			globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
+				rest: '/rest/',
+				formWaiting: '/form-waiting/',
+				webhook: '/webhook/',
+				webhookWaiting: '/webhook-waiting/',
+				webhookTest: '/webhook-test/',
+			});
+			jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+		});
 
 		it('should return base additional data with default values', async () => {
 			const additionalData = await getBase();
@@ -788,7 +801,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 			});
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData);
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
 
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
@@ -799,6 +812,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'user-1',
 				'project-1',
+				'user-1',
+				true,
 			);
 		});
 
@@ -815,7 +830,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<User>({ id: 'owner-1' }),
 			);
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData);
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
 			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-1');
@@ -826,6 +841,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'owner-1',
 				'project-1',
+				undefined,
+				true,
 			);
 		});
 
@@ -841,7 +858,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 
 			await expect(
-				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
+				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
 			expect(agentsService.executeForWorkflow).not.toHaveBeenCalled();
 		});
@@ -854,9 +871,203 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			await expect(
-				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
+				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		});
+
+		it.each<WorkflowExecuteMode>(['manual', 'chat'])(
+			'runs draft agent for %s executions',
+			async (mode) => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					userId: 'user-1',
+					projectId: 'project-1',
+					workflowId: 'workflow-1',
+				});
+
+				await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
+
+				// agentsService.executeForWorkflow should with 8th parameter true
+				expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+					AGENT_ID,
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					'user-1',
+					'project-1',
+					'user-1',
+					true,
+				);
+			},
+		);
+
+		it.each<WorkflowExecuteMode>([
+			'cli',
+			'error',
+			'integrated',
+			'internal',
+			'retry',
+			'trigger',
+			'webhook',
+			'evaluation',
+			'agent',
+		])('runs published agent for %s executions', async (mode) => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
+
+			// agentsService.executeForWorkflow should with 8th parameter true
+			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+				'user-1',
+				false,
+			);
+		});
+	});
+
+	describe('buildSubWorkflowOutput', () => {
+		const twoRunsOnTerminalNode: Record<string, ITaskData[]> = {
+			[LAST_NODE_EXECUTED]: [
+				{ data: { main: [[{ json: { itemId: 0 } }]] } },
+				{ data: { main: [[{ json: { itemId: 1 } }, { json: { itemId: 2 } }]] } },
+			] as unknown as ITaskData[],
+		};
+
+		function buildRun(overrides: {
+			mode?: IRun['mode'];
+			runData?: Record<string, ITaskData[]>;
+			pinData?: Record<string, unknown>;
+			lastNodeExecuted?: string;
+		}): IRun {
+			return {
+				mode: overrides.mode ?? 'manual',
+				data: {
+					resultData: {
+						runData: overrides.runData ?? twoRunsOnTerminalNode,
+						pinData: overrides.pinData,
+						lastNodeExecuted:
+							overrides.lastNodeExecuted === undefined
+								? LAST_NODE_EXECUTED
+								: overrides.lastNodeExecuted,
+					},
+				},
+				finished: true,
+			} as unknown as IRun;
+		}
+
+		function trigger(typeVersion: number, returnOutput?: string): INode {
+			return mock<INode>({
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion,
+				parameters: returnOutput === undefined ? {} : { returnOutput },
+			});
+		}
+
+		const expectedItemsFromBothRunsConcatenated = [
+			[{ json: { itemId: 0 } }, { json: { itemId: 1 } }, { json: { itemId: 2 } }],
+		];
+		const expectedItemsFromTheFinalRunOnly = [[{ json: { itemId: 1 } }, { json: { itemId: 2 } }]];
+
+		it('merges every run when the trigger is v1.2+', () => {
+			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.2)], false);
+			expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
+		});
+
+		it('falls back to `lastRunOnly` for pre-1.2 triggers by default', () => {
+			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.1)], false);
+			expect(output).toEqual(expectedItemsFromTheFinalRunOnly);
+		});
+
+		it('honours a pre-1.2 trigger that opted in via `returnOutput`', () => {
+			const output = buildSubWorkflowOutput(
+				buildRun({ mode: 'trigger' }),
+				[trigger(1.1, 'allRuns')],
+				false,
+			);
+			expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
+		});
+
+		it('caller can force `lastRunOnly` even when the trigger declares `allRuns`', () => {
+			const output = buildSubWorkflowOutput(buildRun({ mode: 'trigger' }), [trigger(1.2)], true);
+			expect(output).toEqual(expectedItemsFromTheFinalRunOnly);
+		});
+
+		describe('pinData substitution', () => {
+			it('ignores pinData when the sub-workflow is not running in manual mode', () => {
+				const output = buildSubWorkflowOutput(
+					buildRun({
+						mode: 'trigger',
+						pinData: { [LAST_NODE_EXECUTED]: [{ pinned: true }] },
+					}),
+					[trigger(1.2)],
+					false,
+				);
+				expect(output).toEqual(expectedItemsFromBothRunsConcatenated);
+			});
+
+			it('substitutes pinData when manual mode, even on the merged-runs path', () => {
+				const output = buildSubWorkflowOutput(
+					buildRun({
+						mode: 'manual',
+						pinData: { [LAST_NODE_EXECUTED]: [{ pinned: true }] },
+					}),
+					[trigger(1.2)],
+					false,
+				);
+
+				const expectedPinnedItems = [[{ json: { pinned: true }, pairedItem: { item: 0 } }]];
+				expect(output).toEqual(expectedPinnedItems);
+			});
+		});
+
+		it('returns `[null]` when the sub-workflow recorded no run data', () => {
+			expect(
+				buildSubWorkflowOutput(
+					buildRun({ mode: 'trigger', runData: {}, lastNodeExecuted: undefined }),
+					[trigger(1.2)],
+					false,
+				),
+			).toEqual([null]);
+		});
+	});
+
+	describe('triggerReturnsLastRunOnly', () => {
+		function trigger(typeVersion: number, returnOutput?: string): INode {
+			return mock<INode>({
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion,
+				parameters: returnOutput === undefined ? {} : { returnOutput },
+			});
+		}
+
+		it('returns true when there is no Execute Workflow Trigger', () => {
+			expect(triggerReturnsLastRunOnly([])).toBe(true);
+			expect(triggerReturnsLastRunOnly([mock<INode>({ type: 'n8n-nodes-base.set' })])).toBe(true);
+		});
+
+		it('defaults pre-1.2 triggers to `lastRunOnly` (backward compat)', () => {
+			expect(triggerReturnsLastRunOnly([trigger(1)])).toBe(true);
+			expect(triggerReturnsLastRunOnly([trigger(1.1)])).toBe(true);
+		});
+
+		it('honours a pre-1.2 trigger that opted in via `returnOutput`', () => {
+			expect(triggerReturnsLastRunOnly([trigger(1.1, 'allRuns')])).toBe(false);
+			expect(triggerReturnsLastRunOnly([trigger(1.1, 'lastRunOnly')])).toBe(true);
+		});
+
+		it('returns false on v1.2+ triggers (option deprecated, allRuns is the default)', () => {
+			expect(triggerReturnsLastRunOnly([trigger(1.2)])).toBe(false);
+			// Parameters on v1.2+ are ignored: the merged-runs behavior is the default.
+			expect(triggerReturnsLastRunOnly([trigger(1.2, 'lastRunOnly')])).toBe(false);
 		});
 	});
 });

@@ -32,7 +32,7 @@ export class DebugController {
 			isLeader: this.instanceSettings.isLeader,
 			activeWorkflows: {
 				webhooks, // webhook-based active workflows
-				triggersAndPollers, // poller- and trigger-based active workflows
+				triggersAndPollers, // non-webhook trigger active workflows
 			},
 			activationErrors,
 		};

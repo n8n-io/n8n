@@ -19,6 +19,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
+		await import('./mcp/instance-ai-mcp-connection.controller');
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');
@@ -57,6 +58,19 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
+		const { InstanceAiPendingConfirmation } = await import(
+			'./entities/instance-ai-pending-confirmation.entity'
+		);
+		const { InstanceAiObservation } = await import('./entities/instance-ai-observation.entity');
+		const { InstanceAiObservationCursor } = await import(
+			'./entities/instance-ai-observation-cursor.entity'
+		);
+		const { InstanceAiObservationLock } = await import(
+			'./entities/instance-ai-observation-lock.entity'
+		);
+		const { InstanceAiMcpRegistryConnection } = await import(
+			'./entities/instance-ai-mcp-registry-connection.entity'
+		);
 
 		return [
 			InstanceAiThread,
@@ -65,6 +79,11 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
+			InstanceAiPendingConfirmation,
+			InstanceAiObservation,
+			InstanceAiObservationCursor,
+			InstanceAiObservationLock,
+			InstanceAiMcpRegistryConnection,
 		];
 	}
 

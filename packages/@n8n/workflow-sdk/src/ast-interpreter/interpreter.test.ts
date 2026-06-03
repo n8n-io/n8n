@@ -1,6 +1,8 @@
 /**
  * Unit tests for the AST interpreter.
  */
+import type { Mock } from 'vitest';
+
 import {
 	InterpreterError,
 	SecurityError,
@@ -13,71 +15,71 @@ import { interpretSDKCode } from './interpreter';
 import { parseSDKCode } from './parser';
 
 /** Helper to get the first call argument from a Jest mock with proper typing */
-function getFirstCallArg<T>(mockFn: jest.Mock): T {
+function getFirstCallArg<T>(mockFn: Mock): T {
 	const calls = mockFn.mock.calls as unknown[][];
 	return calls[0][0] as T;
 }
 
 // Mock SDK functions for testing
 const createMockSDKFunctions = (): SDKFunctions => ({
-	workflow: jest.fn((id: string, name: string) => ({
+	workflow: vi.fn((id: string, name: string) => ({
 		id,
 		name,
 		nodes: [] as unknown[],
-		add: jest.fn(function (this: { nodes: unknown[] }, node: unknown) {
+		add: vi.fn(function (this: { nodes: unknown[] }, node: unknown) {
 			this.nodes.push(node);
 			return this;
 		}),
-		then: jest.fn(function (this: { nodes: unknown[] }, node: unknown) {
+		then: vi.fn(function (this: { nodes: unknown[] }, node: unknown) {
 			this.nodes.push(node);
 			return this;
 		}),
-		toJSON: jest.fn(function (this: { id: string; name: string; nodes: unknown[] }) {
+		toJSON: vi.fn(function (this: { id: string; name: string; nodes: unknown[] }) {
 			return { id: this.id, name: this.name, nodes: this.nodes };
 		}),
 	})),
-	node: jest.fn((config: unknown) => ({
+	node: vi.fn((config: unknown) => ({
 		type: 'node',
 		config,
-		then: jest.fn((target: unknown) => target),
-		to: jest.fn((target: unknown) => target),
-		input: jest.fn(() => ({ index: 0 })),
-		output: jest.fn(() => ({ index: 0 })),
-		onError: jest.fn(),
+		then: vi.fn((target: unknown) => target),
+		to: vi.fn((target: unknown) => target),
+		input: vi.fn(() => ({ index: 0 })),
+		output: vi.fn(() => ({ index: 0 })),
+		onError: vi.fn(),
 	})),
-	trigger: jest.fn((config: unknown) => ({
+	trigger: vi.fn((config: unknown) => ({
 		type: 'trigger',
 		config,
-		then: jest.fn((target: unknown) => target),
-		to: jest.fn((target: unknown) => target),
+		then: vi.fn((target: unknown) => target),
+		to: vi.fn((target: unknown) => target),
 	})),
-	sticky: jest.fn((content: string, options?: unknown) => ({
+	sticky: vi.fn((content: string, options?: unknown) => ({
 		type: 'sticky',
 		content,
 		options,
 	})),
-	placeholder: jest.fn((value: string) => `<__PLACEHOLDER_VALUE__${value}__>`),
-	newCredential: jest.fn((name: string) => ({ __newCredential: true, name })),
-	ifElse: jest.fn(),
-	switchCase: jest.fn(),
-	merge: jest.fn((config: unknown) => ({ type: 'merge', config, input: jest.fn() })),
-	splitInBatches: jest.fn(),
-	nextBatch: jest.fn(),
-	languageModel: jest.fn((config: unknown) => ({ type: 'languageModel', config })),
-	memory: jest.fn((config: unknown) => ({ type: 'memory', config })),
-	tool: jest.fn((config: unknown) => ({ type: 'tool', config })),
-	outputParser: jest.fn((config: unknown) => ({ type: 'outputParser', config })),
-	embedding: jest.fn((config: unknown) => ({ type: 'embedding', config })),
-	embeddings: jest.fn((config: unknown) => ({ type: 'embeddings', config })),
-	vectorStore: jest.fn((config: unknown) => ({ type: 'vectorStore', config })),
-	retriever: jest.fn((config: unknown) => ({ type: 'retriever', config })),
-	documentLoader: jest.fn((config: unknown) => ({ type: 'documentLoader', config })),
-	textSplitter: jest.fn((config: unknown) => ({ type: 'textSplitter', config })),
-	reranker: jest.fn((config: unknown) => ({ type: 'reranker', config })),
-	fromAi: jest.fn(
+	placeholder: vi.fn((value: string) => `<__PLACEHOLDER_VALUE__${value}__>`),
+	newCredential: vi.fn((name: string) => ({ __newCredential: true, name })),
+	ifElse: vi.fn(),
+	switchCase: vi.fn(),
+	merge: vi.fn((config: unknown) => ({ type: 'merge', config, input: vi.fn() })),
+	splitInBatches: vi.fn(),
+	nextBatch: vi.fn(),
+	languageModel: vi.fn((config: unknown) => ({ type: 'languageModel', config })),
+	memory: vi.fn((config: unknown) => ({ type: 'memory', config })),
+	tool: vi.fn((config: unknown) => ({ type: 'tool', config })),
+	outputParser: vi.fn((config: unknown) => ({ type: 'outputParser', config })),
+	embedding: vi.fn((config: unknown) => ({ type: 'embedding', config })),
+	embeddings: vi.fn((config: unknown) => ({ type: 'embeddings', config })),
+	vectorStore: vi.fn((config: unknown) => ({ type: 'vectorStore', config })),
+	retriever: vi.fn((config: unknown) => ({ type: 'retriever', config })),
+	documentLoader: vi.fn((config: unknown) => ({ type: 'documentLoader', config })),
+	textSplitter: vi.fn((config: unknown) => ({ type: 'textSplitter', config })),
+	reranker: vi.fn((config: unknown) => ({ type: 'reranker', config })),
+	fromAi: vi.fn(
 		(key: string, desc?: string) => `={{ $fromAI('${key}'${desc ? `, '${desc}'` : ''}) }}`,
 	),
-	nodeJson: jest.fn((node: { name: string } | string, path: string) => {
+	nodeJson: vi.fn((node: { name: string } | string, path: string) => {
 		const name = typeof node === 'string' ? node : node.name;
 		return `={{ $('${name}').item.json.${path} }}`;
 	}),
@@ -101,7 +103,7 @@ describe('AST Interpreter', () => {
 			const code = 'const x = {;';
 			try {
 				parseSDKCode(code);
-				fail('Should have thrown');
+				expect.fail('Should have thrown');
 			} catch (error) {
 				expect(error).toBeInstanceOf(InterpreterError);
 				expect((error as InterpreterError).location).toBeDefined();
@@ -714,7 +716,7 @@ describe('AST Interpreter', () => {
 			// Verify node was called with the subnode
 			expect(sdkFunctions.node).toHaveBeenCalled();
 			const nodeCallArgs = getFirstCallArg<{ config: { subnodes: { model: unknown } } }>(
-				sdkFunctions.node as jest.Mock,
+				sdkFunctions.node as Mock,
 			);
 			expect(nodeCallArgs.config.subnodes.model).toBeDefined();
 		});
@@ -760,7 +762,7 @@ describe('AST Interpreter', () => {
 			// Verify tool was called with the fromAi result
 			expect(sdkFunctions.tool).toHaveBeenCalled();
 			const toolCallArgs = getFirstCallArg<{ config: { parameters: { sendTo: string } } }>(
-				sdkFunctions.tool as jest.Mock,
+				sdkFunctions.tool as Mock,
 			);
 			expect(toolCallArgs.config.parameters.sendTo).toContain('$fromAI');
 		});
@@ -805,8 +807,8 @@ describe('AST Interpreter', () => {
 		});
 
 		it('should allow connect() method on workflow builder', () => {
-			const connectMock = jest.fn();
-			sdkFunctions.workflow = jest.fn(() => ({
+			const connectMock = vi.fn();
+			sdkFunctions.workflow = vi.fn(() => ({
 				connect: connectMock,
 			}));
 			const code = `
@@ -868,6 +870,69 @@ describe('AST Interpreter', () => {
 		it('should reject WebAssembly access', () => {
 			const code = 'export default WebAssembly;';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should report SecurityError with a clean (non-doubled) message', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(
+				/Security violation: 'fetch' is not allowed/,
+			);
+		});
+	});
+
+	describe('Security - dangerous globals shadowed by declared variables', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		const shadowable = [
+			'fetch',
+			'process',
+			'require',
+			'console',
+			'Object',
+			'Array',
+			'Math',
+			'Date',
+			'Error',
+			'Promise',
+			'Buffer',
+		];
+
+		for (const name of shadowable) {
+			it(`should allow '${name}' as a node variable name`, () => {
+				const code = `
+					const ${name} = node({ name: 'X', type: 'n8n-nodes-base.set' });
+					export default workflow('id', 'name').add(${name});
+				`;
+				const result = interpretSDKCode(code, sdkFunctions) as { nodes: unknown[] };
+				expect(result.nodes).toHaveLength(1);
+			});
+		}
+
+		it('should still reject undeclared fetch reference', () => {
+			const code = 'export default fetch;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared process', () => {
+			const code = 'export default process.env.PATH;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject member access on undeclared Math', () => {
+			const code = 'export default Math.PI;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should resolve member access against the user-declared shadow', () => {
+			const code = `
+				const Math = { custom: 42 };
+				export default Math.custom;
+			`;
+			expect(interpretSDKCode(code, sdkFunctions)).toBe(42);
 		});
 	});
 

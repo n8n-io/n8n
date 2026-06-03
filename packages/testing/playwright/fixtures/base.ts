@@ -15,6 +15,7 @@ import {
 	type QuarantineTestFixtures,
 	type QuarantineWorkerFixtures,
 } from '../fixtures/quarantine';
+import { v8CoverageFixtures } from '../fixtures/v8-coverage';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
@@ -47,6 +48,7 @@ type WorkerFixtures = {
 	backendUrl: string;
 	frontendUrl: string;
 	dbSetup: undefined;
+	n8nStackConfig: N8NConfig;
 	n8nContainer: N8NStack;
 	capability?: CapabilityOption;
 };
@@ -54,12 +56,31 @@ type WorkerFixtures = {
 type CapabilityOption = Capability | N8NConfig;
 type ProjectUse = { containerConfig?: N8NConfig };
 
+function parseGlobalTestEnv(): Record<string, string> {
+	const raw = process.env.N8N_TEST_ENV;
+	if (!raw) return {};
+	try {
+		return JSON.parse(raw) as Record<string, string>;
+	} catch {
+		console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
+		return {};
+	}
+}
+
+function logKeepalive(container: N8NStack): void {
+	console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
+	console.log(`    URL: ${container.baseUrl}`);
+	console.log(`    Project: ${container.projectName}`);
+	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
+	console.log('=========================================================\n');
+}
+
 export const test = base.extend<
 	TestFixtures & CurrentsFixtures & ObservabilityTestFixtures & QuarantineTestFixtures,
 	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
-	...currentsFixtures.coverageFixtures,
+	...v8CoverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,
@@ -68,15 +89,11 @@ export const test = base.extend<
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
 
-	// Creates container from: project.containerConfig (base) + capability (override)
-	// When N8N_BASE_URL is set, skips container creation for local testing
-	n8nContainer: [
+	// Resolves the effective N8NConfig from project.containerConfig (base) +
+	// capability (override) + N8N_TEST_ENV (global). Topology-neutral: it
+	// always produces a config, even when a container will not be provisioned.
+	n8nStackConfig: [
 		async ({ capability }, use, workerInfo) => {
-			if (getBackendUrl()) {
-				await use(null!);
-				return;
-			}
-
 			const { containerConfig: base = {} } = workerInfo.project.use as ProjectUse;
 			const override: N8NConfig = !capability
 				? {}
@@ -84,16 +101,7 @@ export const test = base.extend<
 					? CAPABILITIES[capability]
 					: capability;
 
-			const globalEnv: Record<string, string> = (() => {
-				const raw = process.env.N8N_TEST_ENV;
-				if (!raw) return {};
-				try {
-					return JSON.parse(raw) as Record<string, string>;
-				} catch {
-					console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
-					return {};
-				}
-			})();
+			const globalEnv = parseGlobalTestEnv();
 
 			const config: N8NConfig = {
 				...base,
@@ -106,17 +114,30 @@ export const test = base.extend<
 					E2E_TESTS: 'true',
 					N8N_RESTRICT_FILE_ACCESS_TO: '',
 				},
+				// Coverage pipeline opt-in: when the coverage runner sets N8N_COVERAGE_DIR,
+				// bridge it to the stack's typed config so containers collect V8 coverage.
+				...(process.env.N8N_COVERAGE_DIR ? { coverageHostDir: process.env.N8N_COVERAGE_DIR } : {}),
 			};
 
-			const container = await createN8NStack(config);
+			await use(config);
+		},
+		{ scope: 'worker', box: true },
+	],
+
+	// Creates container from n8nStackConfig.
+	// When N8N_BASE_URL is set, skips container creation for local testing.
+	n8nContainer: [
+		async ({ n8nStackConfig }, use) => {
+			if (getBackendUrl()) {
+				await use(null!);
+				return;
+			}
+
+			const container = await createN8NStack(n8nStackConfig);
 			await use(container);
 
 			if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
-				console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
-				console.log(`    URL: ${container.baseUrl}`);
-				console.log(`    Project: ${container.projectName}`);
-				console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
-				console.log('=========================================================\n');
+				logKeepalive(container);
 				return;
 			}
 
@@ -313,11 +334,12 @@ export { expect };
 
 /*
 Fixture Dependency Graph:
-Worker: capability + project.containerConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
+Worker: capability + project.containerConfig → n8nStackConfig → n8nContainer → [backendUrl, frontendUrl, dbSetup]
 Test:   frontendUrl + dbSetup → baseURL → n8n (uses backendUrl for API calls)
         backendUrl → api
         n8nContainer → services
 
-services: Type-safe helpers (mailpit, gitea, proxy, observability, etc.)
-n8nContainer: Container lifecycle (stop, containers, mainUrls, etc.)
+n8nStackConfig: Resolved N8NConfig (topology-neutral, always produced)
+n8nContainer:   Container lifecycle (stop, containers, mainUrls, etc.)
+services:       Type-safe helpers (mailpit, gitea, proxy, observability, etc.)
 */

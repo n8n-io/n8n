@@ -240,7 +240,18 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			const e = error as {
+				error?: string;
+				error_description?: string;
+				cause?: unknown;
+				message?: string;
+			};
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				oauthError: e.error,
+				oauthErrorDescription: e.error_description,
+				cause: e.cause ? JSON.stringify(e.cause) : undefined,
+				message: e.message,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -415,7 +426,18 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			const e = error as {
+				error?: string;
+				error_description?: string;
+				cause?: unknown;
+				message?: string;
+			};
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				oauthError: e.error,
+				oauthErrorDescription: e.error_description,
+				cause: e.cause ? JSON.stringify(e.cause) : undefined,
+				message: e.message,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 

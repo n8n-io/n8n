@@ -5,11 +5,11 @@ export const NoErrorInstanceInToThrowRule = ESLintUtils.RuleCreator.withoutDocs(
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow passing error instances to `.toThrow()`. Jest compares by reference, not message, making assertions flaky. Pass the error class and message string separately instead.',
+				'Disallow passing error instances to `.toThrow()` and `.toThrowError`. Jest compares by reference, not message, making assertions flaky. Pass the error class and message string separately instead.',
 		},
 		messages: {
 			noErrorInstance:
-				"Do not pass an error instance to `.toThrow()`. Use `.toThrow({{className}})` for type checking and `.toThrow('message')` for message matching.",
+				"Do not pass an error instance to `.toThrow()` or `.toThrowError`. Use `.toThrow({{className}})` for type checking and `.toThrow('message')` for message matching.",
 		},
 		schema: [],
 	},
@@ -19,10 +19,11 @@ export const NoErrorInstanceInToThrowRule = ESLintUtils.RuleCreator.withoutDocs(
 			CallExpression(node) {
 				// Match: expect(...).toThrow(new Foo(...))
 				// Match: expect(...).rejects.toThrow(new Foo(...))
+				// Match: expect(...).rejects.toThrowError(new Foo(...))
 				if (
 					node.callee.type !== TSESTree.AST_NODE_TYPES.MemberExpression ||
 					node.callee.property.type !== TSESTree.AST_NODE_TYPES.Identifier ||
-					node.callee.property.name !== 'toThrow'
+					(node.callee.property.name !== 'toThrow' && node.callee.property.name !== 'toThrowError')
 				) {
 					return;
 				}

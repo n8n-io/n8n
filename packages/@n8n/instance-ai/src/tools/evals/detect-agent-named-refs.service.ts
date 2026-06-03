@@ -74,20 +74,35 @@ export function detectAgentNamedRefs(workflow: WorkflowJSON, agentNodeName: stri
 		arr.push(p);
 		byField.set(p.field, arr);
 	}
-	function columnFor(nodeName: string, field: string): string {
-		const group = byField.get(field) ?? [];
-		return group.length === 1 ? field : `${slug(nodeName)}_${field}`;
+	const columnsByPair = new Map<string, string>();
+	const usedColumns = new Set<string>();
+	function uniqueColumn(base: string): string {
+		let candidate = base;
+		let suffix = 1;
+		while (usedColumns.has(candidate)) {
+			candidate = `${base}_${suffix}`;
+			suffix++;
+		}
+		usedColumns.add(candidate);
+		return candidate;
+	}
+	for (const p of allPairs.values()) {
+		const group = byField.get(p.field) ?? [];
+		const base = group.length === 1 ? p.field : `${slug(p.nodeName)}_${p.field}`;
+		columnsByPair.set(`${p.nodeName}\x00${p.field}`, uniqueColumn(base));
 	}
 
 	// Third pass: emit one NamedRef per (target, source, field).
 	const result: NamedRef[] = [];
 	for (const [target, matches] of targetMatches) {
 		for (const m of matches) {
+			const column = columnsByPair.get(`${m.nodeName}\x00${m.field}`);
+			if (!column) continue;
 			result.push({
 				nodeName: m.nodeName,
 				field: m.field,
 				originalExpression: m.originalExpression,
-				column: columnFor(m.nodeName, m.field),
+				column,
 				targetNodeName: target,
 			});
 		}

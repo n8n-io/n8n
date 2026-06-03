@@ -44,6 +44,8 @@ tags:
     description: Operations about insights
   - name: Folders
     description: Operations about folders
+  - name: N8nPackage
+    description: Beta — operations about n8n packages. Disabled by default; enable with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`.
 
 paths:
   /audit:
@@ -140,6 +142,10 @@ paths:
     $ref: './handlers/folders/spec/paths/folders.yml'
   /projects/{projectId}/folders/{folderId}:
     $ref: './handlers/folders/spec/paths/folders.folderId.yml'
+  /n8n-packages/export:
+    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
+  /n8n-packages/import:
+    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.import.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

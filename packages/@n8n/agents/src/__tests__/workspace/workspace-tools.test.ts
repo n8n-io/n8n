@@ -8,20 +8,20 @@ function makeFakeFilesystem(overrides: Partial<WorkspaceFilesystem> = {}): Works
 		name: 'TestFS',
 		provider: 'test',
 		status: 'ready',
-		readFile: jest.fn().mockResolvedValue('file content'),
-		writeFile: jest.fn().mockResolvedValue(undefined),
-		appendFile: jest.fn().mockResolvedValue(undefined),
-		deleteFile: jest.fn().mockResolvedValue(undefined),
-		copyFile: jest.fn().mockResolvedValue(undefined),
-		moveFile: jest.fn().mockResolvedValue(undefined),
-		mkdir: jest.fn().mockResolvedValue(undefined),
-		rmdir: jest.fn().mockResolvedValue(undefined),
-		readdir: jest.fn().mockResolvedValue([
+		readFile: vi.fn().mockResolvedValue('file content'),
+		writeFile: vi.fn().mockResolvedValue(undefined),
+		appendFile: vi.fn().mockResolvedValue(undefined),
+		deleteFile: vi.fn().mockResolvedValue(undefined),
+		copyFile: vi.fn().mockResolvedValue(undefined),
+		moveFile: vi.fn().mockResolvedValue(undefined),
+		mkdir: vi.fn().mockResolvedValue(undefined),
+		rmdir: vi.fn().mockResolvedValue(undefined),
+		readdir: vi.fn().mockResolvedValue([
 			{ name: 'file1.txt', type: 'file' as const },
 			{ name: 'subdir', type: 'directory' as const },
 		]),
-		exists: jest.fn().mockResolvedValue(true),
-		stat: jest.fn().mockResolvedValue({
+		exists: vi.fn().mockResolvedValue(true),
+		stat: vi.fn().mockResolvedValue({
 			name: 'test.txt',
 			path: '/test.txt',
 			type: 'file' as const,
@@ -46,7 +46,7 @@ function makeFakeSandbox(overrides: Partial<WorkspaceSandbox> = {}): WorkspaceSa
 		name: 'TestSandbox',
 		provider: 'test',
 		status: 'running',
-		executeCommand: jest.fn().mockResolvedValue(mockResult),
+		executeCommand: vi.fn().mockResolvedValue(mockResult),
 		...overrides,
 	};
 }
@@ -131,7 +131,7 @@ describe('createWorkspaceTools', () => {
 
 		it('str_replace_file handler reads then writes changed content', async () => {
 			const fs = makeFakeFilesystem({
-				readFile: jest.fn().mockResolvedValue('first\nsecond'),
+				readFile: vi.fn().mockResolvedValue('first\nsecond'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
 			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
@@ -153,7 +153,7 @@ describe('createWorkspaceTools', () => {
 
 		it('str_replace_file handler returns errors without writing when replacement is not unique', async () => {
 			const fs = makeFakeFilesystem({
-				readFile: jest.fn().mockResolvedValue('same\nsame'),
+				readFile: vi.fn().mockResolvedValue('same\nsame'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
 			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
@@ -176,7 +176,7 @@ describe('createWorkspaceTools', () => {
 
 		it('batch_str_replace_file handler applies all replacements atomically', async () => {
 			const fs = makeFakeFilesystem({
-				readFile: jest.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
+				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
 			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
@@ -203,7 +203,7 @@ describe('createWorkspaceTools', () => {
 
 		it('batch_str_replace_file handler does not write when any replacement fails', async () => {
 			const fs = makeFakeFilesystem({
-				readFile: jest.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
+				readFile: vi.fn().mockResolvedValue('const a = 1;\nconst b = 2;'),
 			});
 			const tools = createWorkspaceTools({ filesystem: fs });
 			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
@@ -248,6 +248,34 @@ describe('createWorkspaceTools', () => {
 
 			expect(fs.writeFile).toHaveBeenCalledWith('/out.txt', 'hello', { recursive: true });
 			expect(result).toEqual({ success: true });
+		});
+
+		it('execute_command handler includes sandbox default command environment', async () => {
+			const executeCommand = vi.fn().mockResolvedValue({
+				success: true,
+				exitCode: 0,
+				stdout: 'ok',
+				stderr: '',
+				executionTimeMs: 5,
+			});
+			const sandbox = makeFakeSandbox({
+				executeCommand,
+				getDefaultCommandEnv: () => ({ CUSTOM_ENV: 'enabled' }),
+			});
+			const tools = createWorkspaceTools({ sandbox });
+			const commandTool = tools.find((t) => t.name === 'workspace_execute_command')!;
+
+			const result = await commandTool.handler!(
+				{ command: 'node script.mjs', cwd: '/home/daytona/workspace' },
+				{} as never,
+			);
+
+			expect(executeCommand).toHaveBeenCalledWith('node script.mjs', undefined, {
+				cwd: '/home/daytona/workspace',
+				env: { CUSTOM_ENV: 'enabled' },
+				timeout: undefined,
+			});
+			expect(result).toMatchObject({ success: true, stdout: 'ok' });
 		});
 
 		it('list_files handler calls filesystem.readdir', async () => {
