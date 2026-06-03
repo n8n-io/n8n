@@ -40,6 +40,14 @@ export const commonOptions: INodeProperties[] = [
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
 	{
+		displayName: 'Use Native Structured Output',
+		name: 'useNativeStructuredOutput',
+		type: 'boolean',
+		default: false,
+		description:
+			"Whether to bind the connected Structured Output Parser's schema directly to the chat model via provider-native constrained decoding (Anthropic <code>output_config.format</code>, OpenAI <code>response_format: json_schema</code>) instead of injecting prompt formatting instructions and a synthetic format tool. When enabled and the model is supported, the response is guaranteed to be schema-conformant JSON. Falls back to the legacy prompt-based path if the connected model isn't supported.",
+	},
+	{
 		displayName: 'Tracing Metadata',
 		name: 'tracingMetadata',
 		type: 'fixedCollection',

@@ -26,6 +26,7 @@ export type ItemContext = {
 	prompt: ChatPromptTemplate;
 	options: AgentOptions;
 	outputParser: N8nOutputParser | undefined;
+	useNativeStructuredOutput: boolean;
 };
 
 /**
@@ -40,6 +41,7 @@ export type ItemContext = {
 export async function prepareItemContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	useNativeStructuredOutput: boolean,
 	response?: EngineResponse<RequestResponseMetadata>,
 ): Promise<ItemContext> {
 	const steps = buildSteps(response, itemIndex);
@@ -55,7 +57,15 @@ export async function prepareItemContext(
 	}
 
 	const outputParser = await getOptionalOutputParser(ctx, itemIndex);
-	const tools = await getTools(ctx, outputParser);
+
+	// When the connected chat model accepts the parser's schema as native
+	// constrained-decoding configuration (applied upstream in `executeBatch`),
+	// we skip the legacy synthetic `format_final_json_response` tool and the
+	// prompt formatting instructions — the model emits schema-conformant JSON
+	// by construction and the parser still validates the final response.
+	const promptOutputParser = useNativeStructuredOutput ? undefined : outputParser;
+
+	const tools = await getTools(ctx, promptOutputParser);
 	const options = ctx.getNodeParameter('options', itemIndex) as AgentOptions;
 
 	if (options.enableStreaming === undefined) {
@@ -66,7 +76,7 @@ export async function prepareItemContext(
 	const messages = await prepareMessages(ctx, itemIndex, {
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
-		outputParser,
+		outputParser: promptOutputParser,
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);
 
@@ -78,5 +88,6 @@ export async function prepareItemContext(
 		prompt,
 		options,
 		outputParser,
+		useNativeStructuredOutput,
 	};
 }

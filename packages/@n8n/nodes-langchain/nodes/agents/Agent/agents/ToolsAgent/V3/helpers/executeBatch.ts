@@ -4,6 +4,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { processHitlResponses } from '@utils/agent-execution';
 import type { RequestResponseMetadata } from '@utils/agent-execution/types';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { tryBindNativeOutputSchema } from '@utils/structured_output/bindNativeOutputSchema';
 import { NodeOperationError, assertParamIsNumber } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -74,12 +75,40 @@ export async function executeBatch(
 	const maxIterations = ctx.getNodeParameter('options.maxIterations', 0, 10);
 	assertParamIsNumber('options.maxIterations', maxIterations, ctx.getNode());
 
+	// When the user opts in and the connected output parser's schema can be
+	// bound natively on every model that could run (primary + fallback), we
+	// use the provider's constrained-decoding API instead of the legacy
+	// synthetic-tool prompt. `tryBindNativeOutputSchema` mutates each model
+	// in place; we read its boolean result to decide per-item whether to
+	// inject the legacy tool.
+	//
+	// Per-item parsers are fetched again inside `prepareItemContext`. The
+	// binding here uses slot-0 because the model instance is shared across
+	// items, so per-item schema divergence isn't supported.
+	const nativeStructuredOutputEnabled = ctx.getNodeParameter(
+		'options.useNativeStructuredOutput',
+		0,
+		false,
+	) as boolean;
+	const upstreamOutputParser = nativeStructuredOutputEnabled
+		? await getOptionalOutputParser(ctx, 0)
+		: undefined;
+	const useNativeStructuredOutput = tryBindNativeOutputSchema(
+		[model, fallbackModel],
+		upstreamOutputParser,
+	);
+
 	const batchPromises = batch.map(async (_item, batchItemIndex) => {
 		const itemIndex = startIndex + batchItemIndex;
 
 		checkMaxIterations(response, maxIterations, ctx.getNode());
 
-		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
+		const itemContext = await prepareItemContext(
+			ctx,
+			itemIndex,
+			useNativeStructuredOutput,
+			processedResponse,
+		);
 
 		const { tools, prompt, options, outputParser } = itemContext;
 
