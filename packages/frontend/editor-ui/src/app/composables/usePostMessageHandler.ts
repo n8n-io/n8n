@@ -27,7 +27,6 @@ import {
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 interface PostMessageHandlerDeps {
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
@@ -48,7 +47,6 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
-	const workflowId = useWorkflowId();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
 	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
 
@@ -103,9 +101,10 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			useWorkflowExecutionStateStore(
-				createWorkflowDocumentId(workflowId.value),
-			).setActiveExecutionId(null);
+			const workflowDocumentStore = currentWorkflowDocumentStore.value;
+			if (workflowDocumentStore) {
+				useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setActiveExecutionId(null);
+			}
 		}
 
 		if (json.tidyUp === true) {
@@ -201,10 +200,13 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 
 		await importWorkflowExact(json);
 
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowId.value),
-		).setWorkflowExecutionData(data);
-		currentWorkflowDocumentStore.value?.setPinData({});
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+		if (workflowDocumentStore) {
+			useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setWorkflowExecutionData(
+				data,
+			);
+			workflowDocumentStore.setPinData({});
+		}
 
 		canvasStore.stopLoading();
 

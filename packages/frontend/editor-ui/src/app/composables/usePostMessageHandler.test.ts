@@ -114,11 +114,10 @@ describe('usePostMessageHandler', () => {
 		mockRoute.params = {};
 	});
 
-	// Production resolves the execution-state store via
-	// `useWorkflowExecutionStateStore(createWorkflowDocumentId(useWorkflowId().value))`.
-	// With the mocked route (name 'workflow', no `params.workflowId`),
-	// `useWorkflowId().value` resolves to '' — so this returns the same store
-	// instance the handler writes to.
+	// The handler resolves the execution-state store via
+	// `currentWorkflowDocumentStore.value.documentId`. Tests pass a mock document
+	// store whose `documentId` is `createWorkflowDocumentId('')`, so this returns the
+	// same store instance the handler writes to.
 	function getExecutionStateStore() {
 		return useWorkflowExecutionStateStore(createWorkflowDocumentId(''));
 	}
@@ -564,7 +563,10 @@ describe('usePostMessageHandler', () => {
 	describe('openExecutionPreview command', () => {
 		it('should call importWorkflowExact and set execution data', async () => {
 			const mockSetPinData = vi.fn();
-			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);
+			const storeRef = shallowRef({
+				documentId: createWorkflowDocumentId(''),
+				setPinData: mockSetPinData,
+			} as never);
 			const mockExecutionData = {
 				workflowData: { id: 'w1' },
 			} as unknown as IExecutionResponse;
@@ -610,7 +612,10 @@ describe('usePostMessageHandler', () => {
 			});
 
 			const mockSetPinData = vi.fn();
-			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);
+			const storeRef = shallowRef({
+				documentId: createWorkflowDocumentId(''),
+				setPinData: mockSetPinData,
+			} as never);
 
 			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: storeRef,
