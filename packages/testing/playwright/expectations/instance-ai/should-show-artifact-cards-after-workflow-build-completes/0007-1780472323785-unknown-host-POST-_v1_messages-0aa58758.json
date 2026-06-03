@@ -1,0 +1,108 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are an expert n8n workflow builder working inside a sandbox with real TypeSc[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-68b251655450185b066147379217e0dd-3937f96b92a68d62-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=DU_1h3iQ0Dj020ze4eNKMhHSh6M6uV5elcI7z4WEVqM-1780472291.0121117-1.0.1.1-cmcXYMBkTp1kVVm9FcVYoY0PdsgbmbCls36FVJfoxdI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CbfwkjQnYoAKjZSahDQU9"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-06-03T07:38:11Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26960000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-06-03T07:38:11Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-06-03T07:38:11Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-06-03T07:38:11Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22460000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 03 Jun 2026 07:38:13 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a05d096adec31e28-PRG"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "DU_1h3iQ0Dj020ze4eNKMhHSh6M6uV5elcI7z4WEVqM-1780472291.0121117-1.0.1.1-cmcXYMBkTp1kVVm9FcVYoY0PdsgbmbCls36FVJfoxdI"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01EEEYTrdaYPbFN1BojPT45P\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":25108,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":25108,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":41,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}           }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01FW7jzMjnvok2uTnDqte9cr\",\"name\":\"workspace_write_file\",\"input\":{},\"caller\":{\"type\":\"direct\"}}         }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"path\\\": \\\"/home/user/workspace/builder\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"-work-items/wi_a86f5d3d-18be\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"8b20/src/workflow.ts\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"content\\\": \\\"import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\\n\\\\nconst manualTrigger = trigger({\\\\n  type: 'n8n-nodes-base.manualTrigger',\\\\n  version: 1,\\\\n  config: {\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" name: 'Manual Trigger' }\\\\n});\\\\n\\\\nconst setNode = node({\\\\n  type: 'n8n-nodes-base.set',\\\\n  version: 3.\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"4,\\\\n  config: {\\\\n    name: 'Set Sample Data',\\\\n    parameters: {\\\\n      mode: 'manual\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"',\\\\n      includeOtherFields: false,\\\\n      assignments: {\\\\n        assignments: [\\\\n          {\\\\n            id: 'field-greeting\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"',\\\\n            name: 'greeting',\\\\n            value: 'Hello from artifact card test!',\\\\n            type: 'string'\\\\n          },\\\\n          {\\\\n            id: 'field-timestamp\"}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"',\\\\n            name: 'timestamp',\\\\n            value: expr('{{ $now.toISO() }}'),\\\\n            type: 'string'\\\\n          },\\\\n          {\\\\n            id: '\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"field-number',\\\\n            name: 'sampleNumber',\\\\n            value: 42,\\\\n            type: 'number'\\\\n          }\\\\n        ]\\\\n      }\\\\n    }\\\\n  }\\\\n});\\\\n\\\\nexport\"}    }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" default workflow('artifact-card-test', 'Artifact Card Test')\\\\n  .add(manualTrigger)\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\\n  .to(setNode);\\\\n\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}      }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0            }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":25108,\"cache_read_input_tokens\":0,\"output_tokens\":445}       }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"     }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxRUVFWVRyZGFZUGJGTjFCb2pQVDQ1UCIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjIsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MjUxMDgsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjoyNTEwOCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQxLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxRlc3anpNam52b2sydVRuRHF0ZTljciIsIm5hbWUiOiJ3b3Jrc3BhY2Vfd3JpdGVfZmlsZSIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX0gICAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wicGF0aFwiOiBcIi9ob21lL3VzZXIvd29ya3NwYWNlL2J1aWxkZXIifSAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6Ii13b3JrLWl0ZW1zL3dpX2E4NmY1ZDNkLTE4YmUifSB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiOGIyMC9zcmMvd29ya2Zsb3cudHMifSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCIsIFwiY29udGVudFwiOiBcImltcG9ydCB7IHdvcmtmbG93LCBub2RlLCB0cmlnZ2VyLCBleHByIH0gZnJvbSAnQG44bi93b3JrZmxvdy1zZGsnOyJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXFxuXFxuY29uc3QgbWFudWFsVHJpZ2dlciA9IHRyaWdnZXIoe1xcbiAgdHlwZTogJ244bi1ub2Rlcy1iYXNlLm1hbnVhbFRyaWdnZXInLFxcbiAgdmVyc2lvbjogMSxcXG4gIGNvbmZpZzogeyJ9ICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiBuYW1lOiAnTWFudWFsIFRyaWdnZXInIH1cXG59KTtcXG5cXG5jb25zdCBzZXROb2RlID0gbm9kZSh7XFxuICB0eXBlOiAnbjhuLW5vZGVzLWJhc2Uuc2V0JyxcXG4gIHZlcnNpb246IDMuIn0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiNCxcXG4gIGNvbmZpZzoge1xcbiAgICBuYW1lOiAnU2V0IFNhbXBsZSBEYXRhJyxcXG4gICAgcGFyYW1ldGVyczoge1xcbiAgICAgIG1vZGU6ICdtYW51YWwifSAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiInLFxcbiAgICAgIGluY2x1ZGVPdGhlckZpZWxkczogZmFsc2UsXFxuICAgICAgYXNzaWdubWVudHM6IHtcXG4gICAgICAgIGFzc2lnbm1lbnRzOiBbXFxuICAgICAgICAgIHtcXG4gICAgICAgICAgICBpZDogJ2ZpZWxkLWdyZWV0aW5nIn0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IicsXFxuICAgICAgICAgICAgbmFtZTogJ2dyZWV0aW5nJyxcXG4gICAgICAgICAgICB2YWx1ZTogJ0hlbGxvIGZyb20gYXJ0aWZhY3QgY2FyZCB0ZXN0IScsXFxuICAgICAgICAgICAgdHlwZTogJ3N0cmluZydcXG4gICAgICAgICAgfSxcXG4gICAgICAgICAge1xcbiAgICAgICAgICAgIGlkOiAnZmllbGQtdGltZXN0YW1wIn0gICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IicsXFxuICAgICAgICAgICAgbmFtZTogJ3RpbWVzdGFtcCcsXFxuICAgICAgICAgICAgdmFsdWU6IGV4cHIoJ3t7ICRub3cudG9JU08oKSB9fScpLFxcbiAgICAgICAgICAgIHR5cGU6ICdzdHJpbmcnXFxuICAgICAgICAgIH0sXFxuICAgICAgICAgIHtcXG4gICAgICAgICAgICBpZDogJyJ9ICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJmaWVsZC1udW1iZXInLFxcbiAgICAgICAgICAgIG5hbWU6ICdzYW1wbGVOdW1iZXInLFxcbiAgICAgICAgICAgIHZhbHVlOiA0MixcXG4gICAgICAgICAgICB0eXBlOiAnbnVtYmVyJ1xcbiAgICAgICAgICB9XFxuICAgICAgICBdXFxuICAgICAgfVxcbiAgICB9XFxuICB9XFxufSk7XFxuXFxuZXhwb3J0In0gICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiBkZWZhdWx0IHdvcmtmbG93KCdhcnRpZmFjdC1jYXJkLXRlc3QnLCAnQXJ0aWZhY3QgQ2FyZCBUZXN0JylcXG4gIC5hZGQobWFudWFsVHJpZ2dlcikifSAgICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJcXG4gIC50byhzZXROb2RlKTtcXG4ifSAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IlwifSJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICAgICAgICAgIH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjI1MTA4LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwib3V0cHV0X3Rva2VucyI6NDQ1fSAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICAgIH0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0007-1780472323785-unknown-host-POST-_v1_messages-0aa58758.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}
