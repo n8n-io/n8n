@@ -18,7 +18,9 @@ describe('getChildNodes', () => {
 	it('uses NodeConnectionTypes.Main as the default type', () => {
 		const mixedTypes: IConnections = {
 			Root: {
-				[NodeConnectionTypes.Main]: [[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 				[NodeConnectionTypes.AiTool]: [
 					[{ node: 'ToolChild', type: NodeConnectionTypes.AiTool, index: 0 }],
 				],
@@ -57,7 +59,9 @@ describe('getChildNodes', () => {
 	it('filters by an explicit non-main connection type', () => {
 		const mixedTypes: IConnections = {
 			Root: {
-				[NodeConnectionTypes.Main]: [[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 				[NodeConnectionTypes.AiTool]: [
 					[{ node: 'ToolChild', type: NodeConnectionTypes.AiTool, index: 0 }],
 				],
@@ -72,7 +76,9 @@ describe('getChildNodes', () => {
 	it('returns children across all types when type is "ALL"', () => {
 		const mixedTypes: IConnections = {
 			Root: {
-				[NodeConnectionTypes.Main]: [[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 				[NodeConnectionTypes.AiTool]: [
 					[{ node: 'ToolChild', type: NodeConnectionTypes.AiTool, index: 0 }],
 				],
@@ -88,7 +94,9 @@ describe('getChildNodes', () => {
 	it('returns only non-main children when type is "ALL_NON_MAIN"', () => {
 		const mixedTypes: IConnections = {
 			Root: {
-				[NodeConnectionTypes.Main]: [[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: 'MainChild', type: NodeConnectionTypes.Main, index: 0 }],
+				],
 				[NodeConnectionTypes.AiTool]: [
 					[{ node: 'ToolChild', type: NodeConnectionTypes.AiTool, index: 0 }],
 				],
