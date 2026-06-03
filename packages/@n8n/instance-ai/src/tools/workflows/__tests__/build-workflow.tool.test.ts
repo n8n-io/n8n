@@ -8,8 +8,8 @@ import { resolveCredentials } from '../resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from '../setup-workflow.service';
 import { ensureWebhookIds } from '../submit-workflow.tool';
 
-jest.mock('../../../workflow-builder', () => ({
-	parseAndValidate: jest.fn(() => ({
+vi.mock('../../../workflow-builder', () => ({
+	parseAndValidate: vi.fn(() => ({
 		workflow: {
 			name: 'Generated workflow',
 			nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook', parameters: {} }],
@@ -17,12 +17,12 @@ jest.mock('../../../workflow-builder', () => ({
 		},
 		warnings: [],
 	})),
-	partitionWarnings: jest.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
+	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
 }));
 
-jest.mock('../resolve-credentials', () => ({
-	buildCredentialMap: jest.fn(async () => await Promise.resolve(new Map())),
-	resolveCredentials: jest.fn(
+vi.mock('../resolve-credentials', () => ({
+	buildCredentialMap: vi.fn(async () => await Promise.resolve(new Map())),
+	resolveCredentials: vi.fn(
 		async () =>
 			await Promise.resolve({
 				mockedNodeNames: [],
@@ -34,12 +34,12 @@ jest.mock('../resolve-credentials', () => ({
 	),
 }));
 
-jest.mock('../setup-workflow.service', () => ({
-	stripStaleCredentialsFromWorkflow: jest.fn(async () => await Promise.resolve()),
+vi.mock('../setup-workflow.service', () => ({
+	stripStaleCredentialsFromWorkflow: vi.fn(async () => await Promise.resolve()),
 }));
 
-jest.mock('../submit-workflow.tool', () => ({
-	ensureWebhookIds: jest.fn(async () => await Promise.resolve()),
+vi.mock('../submit-workflow.tool', () => ({
+	ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
 }));
 
 describe('createBuildWorkflowTool', () => {
@@ -53,7 +53,7 @@ describe('createBuildWorkflowTool', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		restoreBuildViaPlanGuard();
 	});
 
@@ -66,15 +66,15 @@ describe('createBuildWorkflowTool', () => {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(),
-				clearAiTemporary: jest.fn(),
+				createFromWorkflowJSON: vi.fn(),
+				clearAiTemporary: vi.fn(),
 			},
 			credentialService: {},
 			nodeService: {},
 			dataTableService: {},
 			executionService: {},
 			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn: jest.fn() },
+			logger: { warn: vi.fn() },
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
@@ -90,13 +90,13 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('aborts after repeated new workflow build plan-guard rejections', async () => {
-		const warn = jest.fn();
+		const warn = vi.fn();
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(),
-				clearAiTemporary: jest.fn(),
+				createFromWorkflowJSON: vi.fn(),
+				clearAiTemporary: vi.fn(),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -129,15 +129,15 @@ describe('createBuildWorkflowTool', () => {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
-				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
 			dataTableService: {},
 			executionService: {},
 			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn: jest.fn() },
+			logger: { warn: vi.fn() },
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
@@ -154,16 +154,48 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
 	});
 
+	it('suspends existing workflow edits before saving by default', async () => {
+		const context = {
+			workflowService: {
+				getAsWorkflowJSON: async () => await Promise.resolve({ name: 'Target workflow' }),
+				updateFromWorkflowJSON: () => {
+					throw new Error('should not update workflow');
+				},
+			},
+			permissions: { updateWorkflow: 'require_approval' },
+		} as unknown as InstanceAiContext;
+		let suspension: unknown;
+		const suspend = async (request: unknown) => {
+			suspension = request;
+			return await Promise.reject(new Error('suspended'));
+		};
+
+		await expect(
+			executeTool(
+				createBuildWorkflowTool(context),
+				{ workflowId: 'wf-1', code: 'workflow code' },
+				{ suspend },
+			),
+		).rejects.toThrow('suspended');
+
+		expect(suspension).toEqual(
+			expect.objectContaining({
+				message: 'Edit Target workflow (ID: wf-1)?',
+				severity: 'warning',
+			}),
+		);
+	});
+
 	it('allows new workflow builds during post-plan follow-up repairs', async () => {
-		const reportBuildOutcome = jest.fn(
+		const reportBuildOutcome = vi.fn(
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
 		);
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
-				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -180,7 +212,7 @@ describe('createBuildWorkflowTool', () => {
 				},
 			},
 			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn: jest.fn() },
+			logger: { warn: vi.fn() },
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
@@ -206,16 +238,16 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('updates existing workflows during post-plan follow-ups without redundant approval', async () => {
-		const reportBuildOutcome = jest.fn(
+		const reportBuildOutcome = vi.fn(
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
 		);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				updateFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
-				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+				updateFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -232,7 +264,7 @@ describe('createBuildWorkflowTool', () => {
 				},
 			},
 			permissions: { updateWorkflow: 'ask' },
-			logger: { warn: jest.fn() },
+			logger: { warn: vi.fn() },
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
@@ -263,18 +295,17 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('does not finalize the planned task when saving a supporting workflow', async () => {
-		const reportBuildOutcome = jest.fn<
-			Promise<{ type: 'verify'; workflowId: string }>,
-			[WorkflowBuildOutcome]
+		const reportBuildOutcome = vi.fn<
+			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>
 		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-support' }));
-		const markSucceeded = jest.fn(async () => await Promise.resolve(null));
-		const onBuildOutcome = jest.fn();
+		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
+		const onBuildOutcome = vi.fn();
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-support' })),
-				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-support' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -294,7 +325,7 @@ describe('createBuildWorkflowTool', () => {
 				onBuildOutcome,
 			},
 			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn: jest.fn() },
+			logger: { warn: vi.fn() },
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
@@ -324,19 +355,22 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('reports a workflow-loop outcome when saving succeeds', async () => {
-		const reportBuildOutcome = jest.fn(
+		const reportBuildOutcome = vi.fn(
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
 		);
-		const markSucceeded = jest.fn<
-			Promise<null>,
-			[string, string, { result?: string; outcome?: WorkflowBuildOutcome }]
+		const markSucceeded = vi.fn<
+			(
+				threadId: string,
+				taskId: string,
+				update: { result?: string; outcome?: WorkflowBuildOutcome },
+			) => Promise<null>
 		>(async () => await Promise.resolve(null));
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
-				clearAiTemporary: jest.fn(async () => await Promise.resolve()),
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -355,7 +389,7 @@ describe('createBuildWorkflowTool', () => {
 				},
 			},
 			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn: jest.fn() },
+			logger: { warn: vi.fn() },
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
@@ -395,13 +429,13 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('keeps the build successful when main workflow promotion fails', async () => {
-		const warn = jest.fn();
+		const warn = vi.fn();
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: jest.fn(async () => await Promise.resolve({ id: 'wf-1' })),
-				clearAiTemporary: jest.fn(async () => {
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => {
 					await Promise.resolve();
 					throw new Error('temporary marker cleanup failed');
 				}),
@@ -416,12 +450,12 @@ describe('createBuildWorkflowTool', () => {
 				taskId: 'task-1',
 				workItemId: 'wi-1',
 				workflowTaskService: {
-					reportBuildOutcome: jest.fn(
+					reportBuildOutcome: vi.fn(
 						async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
 					),
 				},
 				plannedTaskService: {
-					markSucceeded: jest.fn(async () => await Promise.resolve(null)),
+					markSucceeded: vi.fn(async () => await Promise.resolve(null)),
 				},
 			},
 			permissions: { createWorkflow: 'always_allow' },

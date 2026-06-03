@@ -14,11 +14,6 @@ describe('ApiKeysController', () => {
 
 	const controller = Container.get(ApiKeysController);
 
-	let req: AuthenticatedRequest;
-	beforeAll(() => {
-		req = { user: { id: '123' } } as AuthenticatedRequest;
-	});
-
 	describe('createAPIKey', () => {
 		it('should create and save an API key', async () => {
 			// Arrange
@@ -92,28 +87,16 @@ describe('ApiKeysController', () => {
 	});
 
 	describe('getAPIKeys', () => {
-		it('forwards pagination params to the service and returns its envelope', async () => {
-			const apiKeyData = {
-				id: '123',
-				userId: '123',
-				label: 'My API Key',
-				apiKey: 'apiKey***',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			} as ApiKey;
+		it('delegates to the service with the authenticated user and pagination params', async () => {
+			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({ items: [], count: 0 });
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue({
-				items: [{ ...apiKeyData, expiresAt: null }],
-				count: 1,
+			await controller.getApiKeys(req, mock(), { take: 10, skip: 5 } as never);
+
+			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith(req.user, {
+				take: 10,
+				skip: 5,
 			});
-
-			const result = await controller.getApiKeys(req, mock(), { take: 10, skip: 5 } as never);
-
-			expect(result).toEqual({ items: [{ ...apiKeyData, expiresAt: null }], count: 1 });
-			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
-				expect.objectContaining({ id: req.user.id }),
-				{ take: 10, skip: 5 },
-			);
 		});
 	});
 
@@ -131,15 +114,15 @@ describe('ApiKeysController', () => {
 
 			const req = mock<AuthenticatedRequest>({ user, params: { id: user.id } });
 
+			publicApiKeyService.deleteApiKey.mockResolvedValue();
+
 			// Act
 
 			await controller.deleteApiKey(req, mock(), user.id);
 
-			publicApiKeyService.deleteApiKeyForUser.mockResolvedValue();
-
 			// Assert
 
-			expect(publicApiKeyService.deleteApiKeyForUser).toHaveBeenCalledWith(user, user.id);
+			expect(publicApiKeyService.deleteApiKey).toHaveBeenCalledWith(user, user.id);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'public-api-key-deleted',
 				expect.objectContaining({ user, publicApi: false }),

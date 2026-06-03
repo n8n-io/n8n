@@ -881,6 +881,17 @@ export function useCanvasOperations() {
 		}
 	}
 
+	function showMaxNodeTypeErrorToast(nodeTypeDescription: INodeTypeDescription) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
+			message: i18n.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
+				adjustToNumber: nodeTypeDescription.maxNodes,
+				interpolate: { nodeTypeDataDisplayName: nodeTypeDescription.displayName },
+			}),
+		});
+	}
+
 	function addNode(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
@@ -2431,6 +2442,7 @@ export function useCanvasOperations() {
 			trackHistory = false,
 			viewport = DEFAULT_VIEWPORT_BOUNDARIES,
 			setStateDirty = true,
+			showMaxNodeTypeError = false,
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
@@ -2456,6 +2468,7 @@ export function useCanvasOperations() {
 		let oldName: string;
 		let newName: string;
 		const createNodes: INode[] = [];
+		const skippedMaxNodeTypes = new Map<string, INodeTypeDescription>();
 
 		await nodeHelpers.loadNodesProperties(
 			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
@@ -2469,6 +2482,12 @@ export function useCanvasOperations() {
 					// add the name of the existing node
 					// that this one gets linked up instead.
 					nodeNameTable[node.name] = nodeTypesCount[node.type].nodeNames[0];
+					if (showMaxNodeTypeError) {
+						const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+						if (nodeTypeDescription) {
+							skippedMaxNodeTypes.set(node.type, nodeTypeDescription);
+						}
+					}
 					return;
 				} else {
 					// Node can be created but increment the
@@ -2490,6 +2509,10 @@ export function useCanvasOperations() {
 
 			createNodes.push(node);
 		});
+
+		if (showMaxNodeTypeError) {
+			skippedMaxNodeTypes.forEach(showMaxNodeTypeErrorToast);
+		}
 
 		// Get only the connections of the nodes that get created
 		const newConnections: IConnections = {};
@@ -2800,6 +2823,7 @@ export function useCanvasOperations() {
 				trackHistory,
 				viewport,
 				setStateDirty,
+				showMaxNodeTypeError: source === 'paste' || source === 'duplicate',
 			});
 
 			applyImportedNodeGroups(

@@ -5,6 +5,7 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
@@ -125,6 +126,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
+	const sandboxWorkspaceAvailable = Boolean(orchestrationContext?.workspace);
 	const systemPrompt = getSystemPrompt({
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
@@ -134,10 +136,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
+		sandboxWorkspaceAvailable,
 	});
 
-	// The orchestrator intentionally does not receive a workspace. Sandbox access
-	// is attached only to sandbox-capable sub-agents.
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
@@ -162,6 +163,10 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
+	attachRuntimeWorkspaceCapabilities(agent, {
+		workspace: orchestrationContext?.workspace,
+		runtimeSkills: orchestrationContext?.runtimeSkills,
+	});
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
