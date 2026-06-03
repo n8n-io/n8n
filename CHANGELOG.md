@@ -1,3 +1,12 @@
+## [2.25.2](https://github.com/n8n-io/n8n/compare/n8n@2.25.1...n8n@2.25.2) (2026-06-03)
+
+
+### Bug Fixes
+
+* **core:** External agent channels correctly utilise the user ID for episodic memory ([#31589](https://github.com/n8n-io/n8n/issues/31589)) ([db938fc](https://github.com/n8n-io/n8n/commit/db938fc9390f68f9b477b34a8bb01b1243a19456))
+* **core:** The n8n import:workflow --activeState=fromJson cli can fail for subworkflow dependencies ([#31569](https://github.com/n8n-io/n8n/issues/31569)) ([1671eca](https://github.com/n8n-io/n8n/commit/1671eca21fc6ca3ca03dc908b16021eb3be3a7c0))
+
+
 # [2.25.0](https://github.com/n8n-io/n8n/compare/n8n@2.24.0...n8n@2.25.0) (2026-06-02)
 
 
