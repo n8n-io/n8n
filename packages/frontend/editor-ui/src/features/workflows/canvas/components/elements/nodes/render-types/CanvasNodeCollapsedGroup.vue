@@ -2,8 +2,12 @@
 import { computed } from 'vue';
 import { Position } from '@vue-flow/core';
 import { useI18n } from '@n8n/i18n';
-import { N8nActionDropdown, N8nIconButton, type ActionDropdownItem } from '@n8n/design-system';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import {
+	N8nActionDropdown,
+	N8nIconButton,
+	N8nTooltip,
+	type ActionDropdownItem,
+} from '@n8n/design-system';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -82,70 +86,64 @@ const currentGroup = computed(() => {
 	return groupId ? workflowDocumentStore.value.getGroupById(groupId) : undefined;
 });
 
-function iconSourceForNodeId(nodeId: string): NodeIconSource | undefined {
-	const node = workflowDocumentStore.value.getNodeById(nodeId);
-	if (!node) return undefined;
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	return getNodeIconSource(nodeType, node, workflowDocumentStore.value.getExpressionHandler());
-}
-
-// Execution-order rank: a node executes after all its main-connection
-// ancestors, so a node always has strictly more ancestors than any of its
-// predecessors — making the ancestor count a valid topological sort key.
-function executionRank(nodeName: string): number {
-	return workflowDocumentStore.value.getParentNodes(nodeName, NodeConnectionTypes.Main, -1).length;
-}
-
-interface PinnedNodeDisplay {
-	id: string;
+interface ServiceGroup {
+	key: string;
 	name: string;
-	iconSource: NodeIconSource | undefined;
+	iconSource: NodeIconSource;
+	nodes: Array<{ id: string; name: string }>;
 }
 
-// Nodes the user chose to surface on the box, shown as icon + name in
-// execution order (not the order they were pinned).
-const pinnedNodes = computed<PinnedNodeDisplay[]>(() => {
-	const group = currentGroup.value;
-	if (!group?.pinnedNodeIds?.length) return [];
-	const store = workflowDocumentStore.value;
-	const entries: Array<PinnedNodeDisplay & { rank: number }> = [];
-	for (const id of group.pinnedNodeIds) {
-		const node = store.getNodeById(id);
-		if (!node) continue;
-		entries.push({
-			id,
-			name: node.name,
-			iconSource: iconSourceForNodeId(id),
-			rank: executionRank(node.name),
-		});
-	}
-	// Array.sort is stable, so equal-rank nodes keep their pinned order.
-	entries.sort((a, b) => a.rank - b.rank);
-	return entries.map(({ id, name, iconSource }) => ({ id, name, iconSource }));
-});
-
-// Direct member nodes (sub-nodes excluded) not already pinned, in execution
-// order — the options the "+" picker offers.
-const pickableItems = computed<Array<ActionDropdownItem<string>>>(() => {
+// The group's contents reduced to a set of "services" — one entry per unique
+// icon. A node counts as a service when it's an external app (file/brand icon)
+// OR an agent/host (a node that accepts sub-nodes, i.e. has non-main inputs),
+// even though agents are core nodes. Sub-nodes (model/memory/tools feeding a
+// host via a non-main output) are always excluded. Nodes sharing an icon are
+// grouped so the icon can surface its node list on hover/click.
+const services = computed<ServiceGroup[]>(() => {
 	const group = currentGroup.value;
 	if (!group) return [];
 	const store = workflowDocumentStore.value;
-	const pinned = new Set(group.pinnedNodeIds ?? []);
-	const items: Array<ActionDropdownItem<string> & { rank: number }> = [];
+	const expression = store.getExpressionHandler();
+	const byKey = new Map<string, ServiceGroup>();
+
 	for (const nodeId of group.nodeIds) {
-		if (pinned.has(nodeId)) continue;
 		const node = store.getNodeById(nodeId);
 		if (!node) continue;
-		// A sub-node (model/memory/tool) feeds its host via a non-main OUTGOING
-		// connection, so it has non-main children; a regular node does not.
+
+		// Sub-nodes feed their host via a non-main outgoing connection — skip them.
 		if (store.getChildNodes(node.name, 'ALL_NON_MAIN', 1).length > 0) continue;
-		items.push({ id: nodeId, label: node.name, rank: executionRank(node.name) });
+
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		const iconSource = getNodeIconSource(nodeType, node, expression);
+		if (!iconSource) continue;
+
+		// Hosts/agents accept sub-nodes (non-main inputs) — include them even
+		// though their icon is a core font icon.
+		const isHost = store.getParentNodes(node.name, 'ALL_NON_MAIN', 1).length > 0;
+		if (iconSource.type !== 'file' && !isHost) continue;
+
+		const key = iconSource.type === 'file' ? `file:${iconSource.src}` : `icon:${iconSource.name}`;
+		let service = byKey.get(key);
+		if (!service) {
+			service = { key, name: nodeType?.displayName ?? node.type, iconSource, nodes: [] };
+			byKey.set(key, service);
+		}
+		service.nodes.push({ id: node.id, name: node.name });
 	}
-	items.sort((a, b) => a.rank - b.rank);
-	return items.map(({ id, label }) => ({ id, label }));
+
+	return [...byKey.values()];
 });
 
-const canPickNodes = computed(() => !isReadOnly.value && pickableItems.value.length > 0);
+function serviceTooltip(service: ServiceGroup): string {
+	return i18n.baseText('canvas.nodeGroup.serviceNodeCount', {
+		adjustToNumber: service.nodes.length,
+		interpolate: { name: service.name, count: service.nodes.length },
+	});
+}
+
+function dropdownItems(service: ServiceGroup): Array<ActionDropdownItem<string>> {
+	return service.nodes.map((node) => ({ id: node.id, label: node.name }));
+}
 
 function onExpand() {
 	const groupId = options.value?.groupId;
@@ -157,20 +155,9 @@ function onContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
 
-function onPickNode(nodeId: string) {
-	const groupId = options.value?.groupId;
-	if (!groupId) return;
-	workflowDocumentStore.value.addPinnedNodeToGroup(groupId, nodeId);
-}
-
-function onOpenNode(name: string) {
-	ndvStore.value.setActiveNodeName(name, 'other');
-}
-
-function onUnpinNode(nodeId: string) {
-	const groupId = options.value?.groupId;
-	if (!groupId) return;
-	workflowDocumentStore.value.removePinnedNodeFromGroup(groupId, nodeId);
+function onOpenNode(nodeId: string) {
+	const node = workflowDocumentStore.value.getNodeById(nodeId);
+	if (node) ndvStore.value.setActiveNodeName(node.name, 'other');
 }
 </script>
 
@@ -215,73 +202,60 @@ function onUnpinNode(nodeId: string) {
 			<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{
 				options.title
 			}}</span>
-			<!-- Stop propagation on the wrapper (not the button): the dropdown's
-				trigger is a descendant and opens first, then we halt the event so it
-				doesn't reach Vue Flow's node drag/select. Stopping on the button
-				itself would swallow the click before the trigger sees it. -->
+		</div>
+
+		<div
+			v-if="services.length"
+			:class="$style.serviceIcons"
+			data-test-id="canvas-collapsed-group-services"
+		>
+			<!-- `nodrag` stops the group box from being dragged when interacting
+				with an icon (without swallowing pointerdown, which the open dropdown
+				needs to detect an outside click and close). @click/@dblclick.stop keep
+				the click from selecting / expanding the group. -->
 			<div
-				v-if="canPickNodes"
-				:class="$style.pinButton"
-				@pointerdown.stop
-				@mousedown.stop
+				v-for="service in services"
+				:key="service.key"
+				:class="[$style.serviceIcon, 'nodrag']"
 				@click.stop
 				@dblclick.stop
 			>
+				<!-- One node: clicking the icon opens its NDV directly. -->
+				<N8nTooltip v-if="service.nodes.length === 1" :content="serviceTooltip(service)">
+					<button
+						:class="$style.iconButton"
+						type="button"
+						data-test-id="canvas-collapsed-group-service"
+						@click="onOpenNode(service.nodes[0].id)"
+					>
+						<NodeIcon :icon-source="service.iconSource" :size="20" />
+					</button>
+				</N8nTooltip>
+
+				<!-- Multiple nodes: clicking the icon opens a dropdown of the nodes. -->
 				<N8nActionDropdown
-					:items="pickableItems"
-					placement="bottom-end"
-					data-test-id="canvas-collapsed-group-pin"
-					@select="onPickNode"
+					v-else
+					:items="dropdownItems(service)"
+					placement="bottom-start"
+					data-test-id="canvas-collapsed-group-service"
+					@select="onOpenNode"
 				>
 					<template #activator>
-						<N8nIconButton
-							variant="ghost"
-							icon="plus"
-							:aria-label="i18n.baseText('canvas.nodeGroup.pinNode')"
-						/>
+						<N8nTooltip :content="serviceTooltip(service)">
+							<button :class="$style.iconButton" type="button">
+								<NodeIcon :icon-source="service.iconSource" :size="20" />
+							</button>
+						</N8nTooltip>
 					</template>
 					<template #menuItem="item">
 						<span :class="$style.menuItem">
-							<NodeIcon :icon-source="iconSourceForNodeId(item.id)" :size="14" />
+							<NodeIcon :icon-source="service.iconSource" :size="16" />
 							<span :class="$style.menuItemLabel">{{ item.label }}</span>
 						</span>
 					</template>
 				</N8nActionDropdown>
 			</div>
 		</div>
-
-		<ul
-			v-if="pinnedNodes.length"
-			:class="$style.pinnedList"
-			data-test-id="canvas-collapsed-group-pinned"
-		>
-			<li
-				v-for="pinned in pinnedNodes"
-				:key="pinned.id"
-				:class="$style.pinnedItem"
-				data-test-id="canvas-collapsed-group-pinned-item"
-				@pointerdown.stop
-				@mousedown.stop
-				@click.stop="onOpenNode(pinned.name)"
-			>
-				<div :class="$style.iconWrapper">
-					<NodeIcon :icon-source="pinned.iconSource" :size="14" />
-				</div>
-				<span :class="$style.pinnedName">{{ pinned.name }}</span>
-				<N8nIconButton
-					v-if="!isReadOnly"
-					:class="$style.unpinButton"
-					variant="ghost"
-					size="small"
-					icon="x"
-					:aria-label="i18n.baseText('canvas.nodeGroup.unpinNode')"
-					data-test-id="canvas-collapsed-group-unpin"
-					@click.stop="onUnpinNode(pinned.id)"
-					@mousedown.stop
-					@pointerdown.stop
-				/>
-			</li>
-		</ul>
 	</div>
 </template>
 
@@ -310,20 +284,8 @@ function onUnpinNode(nodeId: string) {
 	gap: var(--spacing--3xs);
 }
 
-.expandToggle,
-.pinButton {
+.expandToggle {
 	flex-shrink: 0;
-}
-
-// The "+" picker only appears while hovering the collapsed box.
-.pinButton {
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
-}
-
-.collapsedGroup:hover .pinButton,
-.pinButton:focus-within {
-	opacity: 1;
 }
 
 .title {
@@ -333,54 +295,33 @@ function onUnpinNode(nodeId: string) {
 	white-space: nowrap;
 }
 
-.pinnedList {
+.serviceIcons {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin: 0;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 0 var(--spacing--xs);
+	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
-	list-style: none;
 }
 
-.pinnedItem {
+.serviceIcon {
+	display: flex;
+}
+
+.iconButton {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) 0;
+	justify-content: center;
+	padding: var(--spacing--4xs);
+	border: 0;
 	border-radius: var(--radius);
-	font-weight: var(--font-weight--regular);
-	font-size: var(--font-size--sm);
+	background: transparent;
 	cursor: pointer;
 
 	&:hover {
 		background: var(--color--foreground--tint-2);
 	}
-}
-
-.iconWrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-}
-
-.pinnedName {
-	flex: 1;
-	min-width: 0;
-
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.unpinButton {
-	flex-shrink: 0;
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
-}
-
-.pinnedItem:hover .unpinButton,
-.unpinButton:focus-visible {
-	opacity: 1;
 }
 
 .menuItem {

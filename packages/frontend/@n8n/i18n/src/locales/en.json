@@ -3828,6 +3828,7 @@
 	"canvas.nodeGroup.titlePlaceholder": "Group name",
 	"canvas.nodeGroup.collapse": "Collapse group",
 	"canvas.nodeGroup.expand": "Expand group",
+	"canvas.nodeGroup.serviceNodeCount": "{name} · {count} node | {name} · {count} nodes",
 	"canvas.nodeGroup.pinNode": "Show a node on the collapsed group",
 	"canvas.nodeGroup.unpinNode": "Remove from collapsed group",
 	"canvas.nodeGroup.pinnedNodesEmpty": "No nodes available",
