@@ -35,7 +35,15 @@ src/
       main.ts               # mounts App with i18n
       index.html            # entry HTML (built into dist/apps/<app>.html)
       tokens.scss           # design tokens / global styles
-      url.ts                # defense-in-depth URL validation
+      types.ts              # workflow preview data types
+      type-guards.ts        # workflow preview data guards
+      composables/
+        use-workflow-preview.ts # workflow preview state and host tool handling
+      utils/
+        url.ts              # defense-in-depth URL validation
+  components/               # reusable MCP app Vue components
+    workflow-preview/       # workflow-preview-specific reusable components
+  composables/              # reusable MCP host/runtime composables
   i18n/                     # vue-i18n setup + host locale resolution
   locales/                  # flat-key locale files (en.json, …)
   server/                   # consumed by packages/cli
@@ -44,6 +52,7 @@ src/
     register-mcp-app-tool.ts
     resource-loader.ts      # lazy reads built HTML from dist/apps
     index.ts                # public entry: @n8n/mcp-apps/server
+  utils/                    # framework-agnostic client helpers
 ```
 
 `apps-manifest.ts` is the canonical registry of MCP apps. Both the Vite
@@ -72,7 +81,7 @@ Each app:
   links itself.
 
 URL handling is locked down by `isAllowedWorkflowUrl` in
-`src/apps/workflow-preview/url.ts`: only `http(s)://` URLs with a non-empty
+`src/apps/workflow-preview/utils/url.ts`: only `http(s)://` URLs with a non-empty
 host are accepted, both when reading the tool result and right before calling
 `openLink`. This is defense in depth on top of the host's own validation.
 
