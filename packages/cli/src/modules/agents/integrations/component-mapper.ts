@@ -149,8 +149,15 @@ export class ComponentMapper {
 		const { component, children, buttons, makeButton } = ctx;
 		switch (component.type) {
 			case 'button':
+				// `label` is the canonical caption field, but models trained on real
+				// Slack Block Kit (where buttons carry `text`) frequently emit the
+				// caption under `text`. Fall back to it before the generic placeholder.
 				buttons.push(
-					await makeButton(component.label ?? 'Action', component.value ?? '', component.style),
+					await makeButton(
+						component.label ?? component.text ?? 'Action',
+						component.value ?? '',
+						component.style,
+					),
 				);
 				return;
 			case 'section':

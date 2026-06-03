@@ -89,8 +89,20 @@ function buildComponentSchema(supportedComponents: string[]) {
 
 	const shape: Record<string, z.ZodTypeAny> = {
 		type: z.enum(types).describe('Component type'),
-		text: z.string().optional().describe('Text content (supports markdown)'),
-		label: z.string().optional().describe('Display label'),
+		text: z
+			.string()
+			.optional()
+			.describe(
+				'Body text for section and context components (markdown). NOT the button caption — ' +
+					'for a button, put the visible caption in `label`, not here.',
+			),
+		label: z
+			.string()
+			.optional()
+			.describe(
+				'The visible caption shown on a button, or the label for a select/radio_select. ' +
+					'For a button this is the text the user clicks (e.g. "Approve") — always set it.',
+			),
 		value: z.string().optional().describe('Value returned on interaction'),
 		style: z.enum(['primary', 'danger']).optional().describe('Button style'),
 		fields: z.array(fieldPairSchema).optional().describe('Key-value pairs for fields component'),

@@ -14,6 +14,36 @@ describe('createRichInteractionTool', () => {
 		expect(tool.resumeSchema).toBeDefined();
 	});
 
+	describe('component schema descriptions (model-facing contract)', () => {
+		// Reads the JSON Schema the model actually sees for a single component.
+		function componentFieldDescriptions(): Record<string, string> {
+			const descriptor = createRichInteractionTool('slack').describe();
+			const schema = descriptor.inputSchema as {
+				properties: {
+					components: { items: { properties: Record<string, { description?: string }> } };
+				};
+			};
+			const props = schema.properties.components.items.properties;
+			return Object.fromEntries(
+				Object.entries(props).map(([key, value]) => [key, value.description ?? '']),
+			);
+		}
+
+		it('should steer the model to use `label` for the button caption', () => {
+			const { label } = componentFieldDescriptions();
+
+			expect(label.toLowerCase()).toContain('button');
+		});
+
+		it('should warn the model that `text` is not the button caption', () => {
+			const { text } = componentFieldDescriptions();
+
+			// The model's Slack Block Kit prior pulls it toward putting the caption
+			// in `text`; the description must explicitly steer caption -> `label`.
+			expect(text.toLowerCase()).toContain('button');
+		});
+	});
+
 	function makeCtx() {
 		return {
 			resumeData: undefined,

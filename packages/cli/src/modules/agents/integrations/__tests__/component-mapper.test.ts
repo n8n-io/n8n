@@ -99,6 +99,38 @@ describe('ComponentMapper', () => {
 			});
 		});
 
+		it('should use a button text field as its label when label is absent', async () => {
+			// Models trained on real Slack Block Kit (where buttons carry `text`)
+			// often emit the caption under `text` instead of `label`. Recover it
+			// rather than falling back to the generic 'Action' placeholder.
+			const payload = {
+				components: [
+					{
+						type: 'button',
+						text: 'Approve & Send to Acme',
+						value: 'approve_send',
+						style: 'primary',
+					},
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenCalledWith(
+				expect.objectContaining({ label: 'Approve & Send to Acme' }),
+			);
+		});
+
+		it('should prefer label over text when both are present on a button', async () => {
+			const payload = {
+				components: [{ type: 'button', label: 'Approve', text: 'ignored', value: 'yes' }],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenCalledWith(expect.objectContaining({ label: 'Approve' }));
+		});
+
 		it('should map section components with text wrapped in CardText', async () => {
 			const payload = {
 				components: [{ type: 'section', text: 'Some section text' }],
