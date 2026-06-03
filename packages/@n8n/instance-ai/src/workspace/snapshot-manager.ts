@@ -141,8 +141,6 @@ export class SnapshotManager {
 	async createSnapshot(daytona: Daytona, options?: CreateSnapshotOptions): Promise<string> {
 		const name = await this.snapshotName();
 
-		console.log('createSnapshot --- ', name);
-
 		try {
 			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
 			this.logger.info('Created versioned Daytona snapshot', { name });
