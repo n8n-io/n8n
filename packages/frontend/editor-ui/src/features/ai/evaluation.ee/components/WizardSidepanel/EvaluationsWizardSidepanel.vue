@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
+import { useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
@@ -38,10 +39,13 @@ import { useWizardHydration } from './useWizardHydration';
 import CheckCard from './CheckCard.vue';
 import CheckResultCard from './CheckResultCard.vue';
 import TestCaseForm from './TestCaseForm.vue';
+import SystemSelector from './SystemSelector.vue';
 import CustomCheckModal from './CustomCheckModal.vue';
+import { VIEWS } from '@/app/constants/navigation';
 
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const locale = useI18n();
+const router = useRouter();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
@@ -108,7 +112,7 @@ watch(
 watch(
 	[activeStep, aiRootNodes],
 	([step, nodes]) => {
-		if (step !== 1) return;
+		if (step !== 0 && step !== 2) return;
 		void workflowsStore.fetchLastSuccessfulExecution();
 		void loadFallbackUserExecution();
 		if (wizardStore.aiNodeName) return;
@@ -245,12 +249,12 @@ watch(
 	{ immediate: true },
 );
 
-// On reload/hot-nav into step 3, the store's run poller never ran — fetch
+// On reload/hot-nav into step 4 (results), the store's run poller never ran — fetch
 // case executions here so the output block isn't stuck empty.
 watch(
 	[activeStep, latestRun],
 	([step, run]) => {
-		if (step !== 2 || !run) return;
+		if (step !== 3 || !run) return;
 		if (['new', 'running'].includes(run.status)) return;
 		const workflowId = workflowDocumentStore.value?.workflowId;
 		if (!workflowId) return;
@@ -262,15 +266,36 @@ const isRunning = computed(() =>
 	latestRun.value ? ['new', 'running'].includes(latestRun.value.status) : false,
 );
 const showLoadingState = computed(
-	() => isRunning.value || (activeStep.value === 2 && !latestRun.value),
+	() => isRunning.value || (activeStep.value === 3 && !latestRun.value),
 );
 
+// step0Complete: system chosen (node or slice)
+const step0Complete = computed(() => {
+	if (isSliceMode.value) {
+		return Boolean(startNodeName.value && endNodeName.value);
+	}
+	return Boolean(aiNodeName.value);
+});
+
+// step1Complete: at least one check selected, with judge selection for any LLM-judge metric
 const step1Complete = computed(() => {
 	if (selectedMetricKeys.value.length === 0 && customChecks.value.length === 0) return false;
 	for (const key of selectedMetricKeys.value) {
 		if (LLM_JUDGE_METRIC_KEYS.has(key) && !judgeSelectionByMetric.value[key]) return false;
 	}
 	return true;
+});
+
+// step2Complete: has execution + all inputs + all expected values filled
+const step2Complete = computed(() => {
+	if (!sliceInputs.value.hasExecution) return false;
+	const inputsFilled = sliceInputs.value.fieldNames.every(
+		(name) => (inputs.value[name] ?? '').length > 0,
+	);
+	const expectedFilled = expectedFields.value.every(
+		(f) => (expectedValues.value[f.name] ?? '').length > 0,
+	);
+	return inputsFilled && expectedFilled;
 });
 
 function isLlmJudgeMetric(key: CannedMetricKey): boolean {
@@ -331,33 +356,24 @@ function onJudgeCredentialChange(
 		wizardStore.setJudgeSelection(key, undefined);
 	}
 }
-const step2Complete = computed(() => {
-	const slicePicked = isSliceMode.value
-		? Boolean(startNodeName.value && endNodeName.value)
-		: Boolean(aiNodeName.value);
-	if (!slicePicked) return false;
-	if (!sliceInputs.value.hasExecution) return false;
-	const inputsFilled = sliceInputs.value.fieldNames.every(
-		(name) => (inputs.value[name] ?? '').length > 0,
-	);
-	const expectedFilled = expectedFields.value.every(
-		(f) => (expectedValues.value[f.name] ?? '').length > 0,
-	);
-	return inputsFilled && expectedFilled;
-});
 
+// Indexed by activeStep (0-3); WizardStep is constrained to those values.
 const STEP_I18N = [
 	{
-		title: 'evaluations.wizardSidepanel.step1.title',
-		description: 'evaluations.wizardSidepanel.step1.description',
+		title: 'evaluations.wizardSidepanel.step.chooseSystem.title',
+		description: 'evaluations.wizardSidepanel.step.chooseSystem.description',
 	},
 	{
-		title: 'evaluations.wizardSidepanel.step2.title',
-		description: 'evaluations.wizardSidepanel.step2.description',
+		title: 'evaluations.wizardSidepanel.step.setupChecks.title',
+		description: 'evaluations.wizardSidepanel.step.setupChecks.description',
 	},
 	{
-		title: 'evaluations.wizardSidepanel.step3.title',
-		description: 'evaluations.wizardSidepanel.step3.description',
+		title: 'evaluations.wizardSidepanel.step.addTestCases.title',
+		description: 'evaluations.wizardSidepanel.step.addTestCases.description',
+	},
+	{
+		title: 'evaluations.wizardSidepanel.step.results.title',
+		description: 'evaluations.wizardSidepanel.step.results.description',
 	},
 ] as const;
 
@@ -379,6 +395,10 @@ async function handleNext() {
 		return;
 	}
 	if (current === 1) {
+		wizardStore.goNext();
+		return;
+	}
+	if (current === 2) {
 		const ok = await persistAndDispatch();
 		if (!ok) return;
 		wizardStore.goNext();
@@ -393,7 +413,19 @@ function handleBack() {
 	wizardStore.goBack();
 }
 
-function handleFinish() {
+async function handleRunAgain() {
+	await persistAndDispatch();
+}
+
+function handleViewResults() {
+	const runId = wizardStore.activeRunId;
+	const workflowId = workflowDocumentStore.value?.workflowId;
+	if (runId && workflowId) {
+		void router.push({
+			name: VIEWS.EVALUATION_RUNS_DETAIL,
+			params: { workflowId, runId },
+		});
+	}
 	wizardStore.close();
 }
 </script>
@@ -402,7 +434,7 @@ function handleFinish() {
 	<div :class="$style.sidepanel" data-test-id="evaluations-wizard-sidepanel">
 		<div :class="$style.progressBar" data-test-id="evaluations-wizard-sidepanel-progress">
 			<div
-				v-for="step in 3"
+				v-for="step in 4"
 				:key="step"
 				:class="[
 					$style.progressSegment,
@@ -422,6 +454,10 @@ function handleFinish() {
 
 		<div :class="$style.body">
 			<section v-if="activeStep === 0" :class="$style.section">
+				<SystemSelector />
+			</section>
+
+			<section v-if="activeStep === 1" :class="$style.section">
 				<ul :class="$style.checkList">
 					<li v-for="metric in cannedMetrics" :key="metric.key">
 						<CheckCard
@@ -497,11 +533,11 @@ function handleFinish() {
 				</ul>
 			</section>
 
-			<section v-if="activeStep === 1" :class="$style.section">
+			<section v-if="activeStep === 2" :class="$style.section">
 				<TestCaseForm :slice-inputs="sliceInputs" />
 			</section>
 
-			<section v-if="activeStep === 2" :class="$style.section">
+			<section v-if="activeStep === 3" :class="$style.section">
 				<div
 					v-if="showLoadingState"
 					:class="$style.runningState"
@@ -607,30 +643,63 @@ function handleFinish() {
 				data-test-id="evaluations-wizard-sidepanel-back"
 				@click.stop="handleBack"
 			>
-				{{ locale.baseText('evaluations.wizardSidepanel.back') }}
+				{{ locale.baseText('evaluations.wizardSidepanel.nav.chooseSystem') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="activeStep === 2"
+				variant="ghost"
+				size="small"
+				type="button"
+				data-test-id="evaluations-wizard-sidepanel-back"
+				@click.stop="handleBack"
+			>
+				{{ locale.baseText('evaluations.wizardSidepanel.nav.setupChecks') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="activeStep === 3"
+				variant="ghost"
+				size="small"
+				type="button"
+				:loading="isPersisting"
+				data-test-id="evaluations-wizard-sidepanel-run-again"
+				@click.stop="handleRunAgain"
+			>
+				{{ locale.baseText('evaluations.wizardSidepanel.nav.runAgain') }}
 			</N8nButton>
 			<span :class="$style.footerSpacer" />
 			<N8nButton
-				v-if="activeStep < 2"
+				v-if="activeStep < 3"
 				variant="outline"
 				size="small"
 				type="button"
 				:loading="isPersisting"
-				:disabled="(activeStep === 0 && !step1Complete) || (activeStep === 1 && !step2Complete)"
+				:disabled="
+					(activeStep === 0 && !step0Complete) ||
+					(activeStep === 1 && !step1Complete) ||
+					(activeStep === 2 && !step2Complete)
+				"
 				data-test-id="evaluations-wizard-sidepanel-next"
 				@click.stop="handleNext"
 			>
-				{{ locale.baseText('evaluations.wizardSidepanel.next') }}
+				<span v-if="activeStep === 0">
+					{{ locale.baseText('evaluations.wizardSidepanel.nav.setupChecks') }}
+				</span>
+				<span v-else-if="activeStep === 1">
+					{{ locale.baseText('evaluations.wizardSidepanel.nav.addTestCases') }}
+				</span>
+				<span v-else>
+					{{ locale.baseText('evaluations.wizardSidepanel.nav.runTests') }}
+				</span>
 			</N8nButton>
 			<N8nButton
 				v-else
 				variant="outline"
 				size="small"
 				type="button"
-				data-test-id="evaluations-wizard-sidepanel-done"
-				@click.stop="handleFinish"
+				data-test-id="evaluations-wizard-sidepanel-view-results"
+				@click.stop="handleViewResults"
 			>
-				{{ locale.baseText('evaluations.wizardSidepanel.done') }}
+				{{ locale.baseText('evaluations.wizardSidepanel.nav.viewResults') }}
 			</N8nButton>
 		</footer>
 
@@ -650,7 +719,7 @@ function handleFinish() {
 
 .progressBar {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	grid-template-columns: repeat(4, 1fr);
 	gap: 4px;
 	padding: var(--spacing--xs) var(--spacing--md) 0;
 }
