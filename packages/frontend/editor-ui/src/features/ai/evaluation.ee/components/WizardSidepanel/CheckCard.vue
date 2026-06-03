@@ -30,8 +30,8 @@ defineEmits<{
 		:role="readonly ? undefined : 'button'"
 		:tabindex="readonly ? undefined : 0"
 		@click="!readonly && $emit('toggle')"
-		@keydown.enter.prevent="!readonly && $emit('toggle')"
-		@keydown.space.prevent="!readonly && $emit('toggle')"
+		@keydown.enter.self.prevent="!readonly && $emit('toggle')"
+		@keydown.space.self.prevent="!readonly && $emit('toggle')"
 	>
 		<CheckHeader :icon="icon" :icon-bg="iconBg" :icon-fg="iconFg" :title="title" :badge="badge">
 			<template v-if="description" #description>

@@ -1,12 +1,29 @@
+import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
+
+const isSetupPanelEnabled = ref(true);
+vi.mock('@/features/setupPanel/setupPanel.store', () => ({
+	useSetupPanelStore: () => ({
+		get isFeatureEnabled() {
+			return isSetupPanelEnabled.value;
+		},
+	}),
+}));
+
+const isEvaluationsEnabled = ref(false);
+vi.mock('@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment', () => ({
+	useEvaluationsWizardSidepanelExperiment: () => ({ isFeatureEnabled: isEvaluationsEnabled }),
+}));
 
 const renderComponent = createComponentRenderer(FocusSidebarTabs);
 
 describe('FocusSidebarTabs', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		isSetupPanelEnabled.value = true;
+		isEvaluationsEnabled.value = false;
 	});
 
 	it('should render tabs with default labels', () => {
@@ -51,6 +68,16 @@ describe('FocusSidebarTabs', () => {
 		expect(getByText('My Focus')).toBeInTheDocument();
 		expect(queryByText('Setup')).not.toBeInTheDocument();
 		expect(queryByText('Focus')).not.toBeInTheDocument();
+	});
+
+	it('hides the Setup tab when the setup feature is disabled', () => {
+		isSetupPanelEnabled.value = false;
+		isEvaluationsEnabled.value = true;
+		const { getByText, queryByText } = renderComponent();
+
+		expect(queryByText('Setup')).not.toBeInTheDocument();
+		expect(getByText('Focus')).toBeInTheDocument();
+		expect(getByText('Evaluations')).toBeInTheDocument();
 	});
 
 	it('should emit update:modelValue when a tab is clicked', async () => {

@@ -1,23 +1,28 @@
 import { nanoid } from 'nanoid';
-import type { EvaluationMetric, UpsertEvaluationConfigDto } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	EvaluationMetric,
+	UpsertEvaluationConfigDto,
+} from '@n8n/api-types';
 
 import {
 	CANNED_METRICS,
 	LLM_JUDGE_METRIC_KEYS,
+	LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER,
 	type CannedMetricKey,
 } from '../evaluation.constants';
 import type { CustomCheck, JudgeSelection } from '../wizardSidepanel.store';
 
-const CHATHUB_PROVIDER_TO_NODE_TYPE: Record<string, string> = {
-	openai: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-	anthropic: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-	google: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-	'google-vertex': '@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
-	'azure-openai': '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-	'aws-bedrock': '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
-	ollama: '@n8n/n8n-nodes-langchain.lmChatOllama',
-	'vercel-ai-gateway': '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
-};
+// Derive the provider→node-type map by inverting the node-type→provider map
+// used during hydration. Defining it by hand let the two drift: the keys here
+// were kebab-cased ('azure-openai') while `JudgeSelection.provider` is a
+// `ChatHubLLMProvider` ('azureOpenAi'), so the lookup below missed every
+// multi-word provider and rejected it as unsupported. Inverting guarantees any
+// provider we can hydrate is also one we can map back when re-saving.
+const CHATHUB_PROVIDER_TO_NODE_TYPE: Partial<Record<ChatHubLLMProvider, string>> = {};
+for (const [nodeType, provider] of Object.entries(LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER)) {
+	CHATHUB_PROVIDER_TO_NODE_TYPE[provider] = nodeType;
+}
 
 export type BuildDtoInput = {
 	workflowName: string;

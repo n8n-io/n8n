@@ -318,8 +318,14 @@ function onJudgeCredentialChange(
 ) {
 	selectCredential(provider, credentialId);
 	const current = judgeSelectionByMetric.value[key];
-	if (current && current.provider === provider && credentialId) {
+	if (!current || current.provider !== provider) return;
+	if (credentialId) {
 		wizardStore.setJudgeSelection(key, { ...current, credentialId });
+	} else {
+		// Credential cleared — drop the stored selection so the removed id can't
+		// be persisted or dispatched. The default-judge seed re-fills it if the
+		// workflow still offers a usable judge model.
+		wizardStore.setJudgeSelection(key, undefined);
 	}
 }
 const step2Complete = computed(() => {
