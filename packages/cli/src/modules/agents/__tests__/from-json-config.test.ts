@@ -81,7 +81,6 @@ describe('buildFromJson()', () => {
 		(
 			agent as {
 				memoryConfig?: {
-					lastMessages: number;
 					observationLog?: {
 						renderTokenBudget?: number;
 					};
@@ -749,7 +748,6 @@ describe('buildFromJson()', () => {
 			memory: {
 				enabled: true,
 				storage: 'n8n',
-				lastMessages: 15,
 				observationalMemory: {
 					observerThresholdTokens: 4_000,
 					reflectorThresholdTokens: 12_000,
@@ -774,7 +772,6 @@ describe('buildFromJson()', () => {
 
 		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
-		expect(getMemoryConfig(agent)?.lastMessages).toBe(15);
 		expect(getMemoryConfig(agent)?.observationLog).toEqual({ renderTokenBudget: 4_000 });
 		expect(getMemoryConfig(agent)?.observationalMemory).toMatchObject({
 			observerThresholdTokens: 4_000,
@@ -1296,25 +1293,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
@@ -1386,25 +1378,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',

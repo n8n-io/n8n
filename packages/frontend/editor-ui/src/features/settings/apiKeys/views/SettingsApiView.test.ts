@@ -108,6 +108,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '2',
@@ -117,6 +118,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '3',
@@ -126,6 +128,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -167,6 +170,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '2',
@@ -176,6 +180,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Bdcr',
 				expiresAt: dateInTheFuture.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 			{
 				id: '3',
@@ -185,6 +190,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Wtcr',
 				expiresAt: dateInThePast.toSeconds(),
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 
@@ -207,6 +213,58 @@ describe('SettingsApiView', () => {
 		assertHintsAreShown({ isSwaggerUIEnabled: false });
 	});
 
+	it('should hide the pagination when there is one page or fewer of keys', () => {
+		settingsStore.isPublicApiEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [
+			{
+				id: '1',
+				label: 'test-key-1',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Atcr',
+				expiresAt: null,
+				scopes: ['user:create'],
+				lastUsedAt: null,
+			},
+		];
+		apiKeysStore.apiKeysCount = 1;
+		apiKeysStore.pageSize = 10;
+
+		renderComponent(SettingsApiView);
+
+		expect(screen.queryByTestId('api-keys-pagination')).not.toBeInTheDocument();
+	});
+
+	it('should show the pagination and switch pages when there are more keys than fit on one page', async () => {
+		settingsStore.isPublicApiEnabled = true;
+		cloudStore.userIsTrialing = false;
+		apiKeysStore.apiKeys = [
+			{
+				id: '1',
+				label: 'test-key-1',
+				createdAt: new Date().toString(),
+				updatedAt: new Date().toString(),
+				apiKey: '****Atcr',
+				expiresAt: null,
+				scopes: ['user:create'],
+				lastUsedAt: null,
+			},
+		];
+		apiKeysStore.apiKeysCount = 25;
+		apiKeysStore.pageSize = 10;
+		apiKeysStore.page = 1;
+
+		renderComponent(SettingsApiView);
+
+		const pagination = screen.getByTestId('api-keys-pagination');
+		expect(pagination).toBeInTheDocument();
+
+		await fireEvent.click(within(pagination).getByText('2'));
+
+		expect(apiKeysStore.setPage).toHaveBeenCalledWith(2);
+	});
+
 	it('should show delete warning when trying to delete an API key', async () => {
 		settingsStore.isPublicApiEnabled = true;
 		cloudStore.userIsTrialing = false;
@@ -219,6 +277,7 @@ describe('SettingsApiView', () => {
 				apiKey: '****Atcr',
 				expiresAt: null,
 				scopes: ['user:create'],
+				lastUsedAt: null,
 			},
 		];
 

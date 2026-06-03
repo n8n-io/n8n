@@ -1,12 +1,12 @@
 # Demo handover: stacked PR on #30956
 
-Use this prompt to drive the strengthen-tests loop end-to-end and open a stacked PR that demonstrates the trial.
+Use this prompt to drive the mutant-fix loop end-to-end and open a stacked PR that demonstrates the trial.
 
 ---
 
 ## Prompt
 
-> I want to demo the mutation-health strengthen-tests loop from PR #30956. Drive the whole flow from a fresh branch and open a stacked PR.
+> I want to demo the mutation-health mutant-fix loop from PR #30956. Drive the whole flow from a fresh branch and open a stacked PR.
 >
 > **Base branch**: `devp-stryker-mvp-spike` (the PR's branch — not master yet).
 >
@@ -22,23 +22,23 @@ Use this prompt to drive the strengthen-tests loop end-to-end and open a stacked
 >    Use whatever it returns. As of 2026-05-22, that's `src/workflow-checksum.ts` at 38.64% — but check live state first.
 >
 > 3. Run the local mutation-testing skill on that file:
->    `/n8n:mutation-test packages/workflow/src/<picked-file>`
+>    `/n8n:mutant-score packages/workflow/src/<picked-file>`
 >
 >    Confirm the output JSON shows the score and a list of survivors with mutator + location + covering tests.
 >
 > 4. Run the strengthen skill:
->    `/n8n:strengthen-tests`
+>    `/n8n:mutant-fix`
 >
->    It'll triage survivors (HIGH/MODERATE/LOW), edit the covering test file with targeted assertions, and re-run `n8n:mutation-test` to verify the score climbed. Max 5 survivors per pass.
+>    It'll triage survivors (HIGH/MODERATE/LOW), edit the covering test file with targeted assertions, and re-run `n8n:mutant-score` to verify the score climbed. Max 5 survivors per pass.
 >
 > 5. Review the diff yourself: `git diff packages/workflow/test/`
 >
 >    Sanity-check each new assertion. Reject anything that's mocking-the-mock, asserting trivia, or pinning behaviour the source doesn't actually have. The skill is supposed to refuse to fabricate but humans verify.
 >
-> 6. If you want to push further, re-invoke `/n8n:strengthen-tests` for the next 5 survivors. Or move on.
+> 6. If you want to push further, re-invoke `/n8n:mutant-fix` for the next 5 survivors. Or move on.
 >
 > 7. Final verification:
->    `/n8n:mutation-test packages/workflow/src/<picked-file>`
+>    `/n8n:mutant-score packages/workflow/src/<picked-file>`
 >
 >    Capture the before/after score for the PR body.
 >
@@ -55,7 +55,7 @@ Use this prompt to drive the strengthen-tests loop end-to-end and open a stacked
 > ```markdown
 > ## Summary
 >
-> Demo PR for #30956. Drives the `n8n:strengthen-tests` loop against `packages/workflow/src/<file>` to show the trial loop end-to-end.
+> Demo PR for #30956. Drives the `n8n:mutant-fix` loop against `packages/workflow/src/<file>` to show the trial loop end-to-end.
 >
 > **Before**: <X>% mutation score, <N> survivors
 > **After**:  <Y>% mutation score, <M> survivors
@@ -65,7 +65,7 @@ Use this prompt to drive the strengthen-tests loop end-to-end and open a stacked
 > 2. ...
 >
 > ## Test plan
-> - [ ] `pnpm --filter=n8n-workflow mutate src/<file>` reproduces the post-score locally
+> - [ ] `pnpm mutate packages/workflow/src/<file>` reproduces the post-score locally
 > - [ ] `pnpm --filter=n8n-workflow test test/<file>.test.ts` passes
 > - [ ] Each new assertion has a clear "this would have caught X bug" justification
 > ```

@@ -21,9 +21,9 @@ import type { IGetExecuteTriggerFunctions } from './interfaces';
 @Service()
 export class TriggersAndPollers {
 	/**
-	 * Runs the given trigger node so that it can trigger the workflow when the node has data.
+	 * Runs the trigger() implementation for an active trigger or schedule trigger node.
 	 */
-	async runTrigger(
+	async runTriggerFunction(
 		workflow: Workflow,
 		node: INode,
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
@@ -90,9 +90,9 @@ export class TriggersAndPollers {
 	}
 
 	/**
-	 * Runs the given poller node so that it can trigger the workflow when the node has data.
+	 * Runs the poll() implementation for a poll trigger node.
 	 */
-	async runPoll(
+	async runPollFunction(
 		workflow: Workflow,
 		node: INode,
 		pollFunctions: IPollFunctions,

@@ -251,6 +251,16 @@ export interface InstanceAiWorkflowService {
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Cheap version-only lookup. The adapter projects just `versionId` and
+	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
+	 *  Use to validate per-session caches when the body isn't needed. */
+	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Single fetch returning the SDK WorkflowJSON together with the version it
+	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
+	 *  versionId you'll pin to it land in one round-trip. */
+	getWorkflowSnapshot(
+		workflowId: string,
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
@@ -732,6 +742,8 @@ export interface InstanceAiContext {
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
+	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	requireRunWorkflowApproval?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -768,6 +780,25 @@ export interface InstanceAiContext {
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * reports build outcomes here so planned build follow-ups and verification
+	 * tools can share the same work item without a detached builder sub-agent.
+	 */
+	workflowBuildContext?: {
+		threadId: string;
+		runId: string;
+		taskId: string;
+		workItemId: string;
+		/**
+		 * True for replan/checkpoint follow-ups where an approved plan already
+		 * exists and the builder may retry directly without creating a new plan.
+		 */
+		allowPostPlanWorkflowCreate?: boolean;
+		plannedTaskService?: PlannedTaskService;
+		workflowTaskService?: WorkflowTaskService;
+		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
+	};
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -817,6 +848,7 @@ export type PlannedTaskGraphStatus =
 export interface PlannedTaskGraph {
 	planRunId: string;
 	messageGroupId?: string;
+	postBuildRunApprovalRequired?: boolean;
 	status: PlannedTaskGraphStatus;
 	tasks: PlannedTaskRecord[];
 }
@@ -824,6 +856,7 @@ export interface PlannedTaskGraph {
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
@@ -832,7 +865,11 @@ export interface PlannedTaskService {
 	createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph>;
 	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
 	markRunning(
@@ -875,6 +912,9 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
+	/** Rewind a running build-workflow task after a scheduling race prevented
+	 *  its orchestrator follow-up from starting. */
+	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },
@@ -909,15 +949,22 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	lastMessages?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 	observationalMemory?: {
@@ -1161,12 +1208,9 @@ export interface OrchestrationContext {
 			skipped?: boolean;
 		}>;
 	}>;
-	/** Chrome DevTools MCP config — only present when browser automation is enabled */
-	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
-	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** MCP tools loaded from external servers — available for delegation to sub-agents */
+	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
 	mcpTools?: InstanceAiToolRegistry;
 	/**
 	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
@@ -1220,6 +1264,34 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/**
+	 * Resume info for a suspended sub-agent of this thread, looked up from the
+	 * persisted checkpoint store by the deterministic sub-agent resourceId
+	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
+	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
+	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
+	 * + the persistence the planner was running under, so the resume path
+	 * can rebuild the sub-agent with the same persistence and call
+	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
+	 * without stashing anything across its own suspend/resume cycle.
+	 */
+	findSubAgentResumeInfo?: (agentKind: string) => Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	>;
+	/**
+	 * Persist the current user message to thread memory immediately, so it
+	 * survives a restart that happens while the orchestrator is suspended on
+	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
+	 * loop completion, which a suspended run never reaches — without this the
+	 * user's bubble is invisible on reload until the turn eventually completes.
+	 * Idempotent: safe to call multiple times within a run.
+	 */
+	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

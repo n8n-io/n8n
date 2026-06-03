@@ -182,6 +182,11 @@ watch(
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);
+
+		const pending = nodeCreatorStore.consumePendingInitialViewStack();
+		if (pending) {
+			pushViewStack(pending);
+		}
 	},
 	{ immediate: true },
 );

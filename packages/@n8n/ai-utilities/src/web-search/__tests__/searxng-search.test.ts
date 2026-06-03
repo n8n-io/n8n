@@ -1,6 +1,6 @@
 import { searxngSearch } from '../searxng-search';
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {

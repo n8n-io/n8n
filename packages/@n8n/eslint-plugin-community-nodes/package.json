@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -17,7 +17,7 @@
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint src",
+    "lint": "eslint src && pnpm lint:docs",
     "lint:fix": "eslint src --fix",
     "lint:docs": "pnpm build && eslint-doc-generator --check",
     "test": "vitest run",
@@ -27,6 +27,7 @@
     "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
+    "@typescript-eslint/typescript-estree": "^8.35.0",
     "@typescript-eslint/utils": "^8.35.0",
     "fastest-levenshtein": "catalog:"
   },

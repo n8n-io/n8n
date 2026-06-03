@@ -268,13 +268,54 @@ describe('TestRunsController', () => {
 				{ concurrency: 5 } as any,
 			);
 
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 5);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
+				mockUser,
+				mockWorkflowId,
+				5,
+				undefined,
+			);
 		});
 
 		it('omitted concurrency body → service called with concurrency=1 (sequential default)', async () => {
 			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
+				mockUser,
+				mockWorkflowId,
+				1,
+				undefined,
+			);
+		});
+
+		it('forwards evaluationConfigId from the request body to the service', async () => {
+			await testRunsController.create(
+				buildCreateRequest(),
+				mockResponse() as any,
+				{
+					evaluationConfigId: 'config-1',
+				} as any,
+			);
+
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1, {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: false,
+			});
+		});
+
+		it('forwards compileFromConfig when set', async () => {
+			await testRunsController.create(
+				buildCreateRequest(),
+				mockResponse() as any,
+				{
+					evaluationConfigId: 'config-1',
+					compileFromConfig: true,
+				} as any,
+			);
+
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1, {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+			});
 		});
 
 		it('returns 202 with the new testRunId', async () => {

@@ -7,12 +7,12 @@
  * `target.<name>` (set in `runtime/context.ts`) and returns the in-isolate
  * copy before any host lookup happens.
  *
- * Why this matters under the threat model: every host function reachable
- * from `data` becomes a callable target via the bridge's `callFunctionAtPath`.
- * Confirming that helpers resolve in-isolate lets us safely strip them from
- * the VM-path `data` object (see `expression.ts` shouldUseVm guard) without
- * losing functionality. Keeping the helpers shadowed is a load-bearing
- * structural invariant of the security model.
+ * Why this matters under the threat model: function-typed bindings on
+ * `data` are now structurally unreachable — `getValueAtPath` returns
+ * `undefined` for any function-typed value and there is no `__isFunction`
+ * wrapper path. Confirming that helpers resolve in-isolate also lets us
+ * safely strip them from the VM-path `data` object (see `expression.ts`
+ * `shouldUseVm` guard) without losing functionality.
  *
  * If this test ever fails, one of the following changed:
  *   - Tournament's polyfill no longer rewrites bare identifiers to context-first
