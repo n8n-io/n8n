@@ -492,6 +492,27 @@ describe('Webhook Utils', () => {
 				);
 			});
 
+			it('treats a rule with no effect as "allow" (n8n strips default values)', async () => {
+				mockValidateToken.mockResolvedValue({ sub: 'user-123', groups: ['admin'] });
+				mockEvaluateRules.mockReturnValue({ allowed: true });
+				const ctx = buildCtx(
+					{
+						validationMethod: 'jwks',
+						issuer: 'https://idp.test',
+						// effect omitted, as n8n does when it equals the default "allow"
+						claimRules: { rule: [{ expression: '{{ $claims.groups.includes("admin") }}' }] },
+					},
+					'Bearer valid-token',
+				);
+
+				await validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+
+				expect(mockEvaluateRules).toHaveBeenCalledWith(
+					[{ effect: 'allow', expression: '{{ $claims.groups.includes("admin") }}' }],
+					{ $claims: { sub: 'user-123', groups: ['admin'] } },
+				);
+			});
+
 			it('throws 403 when configured claim rules deny the caller', async () => {
 				mockValidateToken.mockResolvedValue({ sub: 'user-123', groups: ['guest'] });
 				mockEvaluateRules.mockReturnValue({ allowed: false });

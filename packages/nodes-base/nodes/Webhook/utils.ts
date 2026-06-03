@@ -403,8 +403,16 @@ export async function validateWebhookAuthentication(
 
 		// A valid signature alone does not grant access when claim rules are
 		// configured: the claims must satisfy the allow/deny rules (deny-wins).
-		const claimRules = ((expectedAuth.claimRules as { rule?: ClaimRule[] })?.rule ??
-			[]) as ClaimRule[];
+		// n8n omits parameter values left at their default, so a rule using the
+		// default effect ("allow") is persisted without an `effect` key; treat a
+		// missing/non-"deny" effect as "allow".
+		const rawRules =
+			(expectedAuth.claimRules as { rule?: Array<{ effect?: string; expression: string }> })
+				?.rule ?? [];
+		const claimRules: ClaimRule[] = rawRules.map((rule) => ({
+			effect: rule.effect === 'deny' ? 'deny' : 'allow',
+			expression: rule.expression,
+		}));
 		if (claimRules.length > 0) {
 			const { allowed } = evaluateRules(claimRules, buildClaimsContext(claims));
 			if (!allowed) {
