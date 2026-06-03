@@ -48,6 +48,9 @@ function makeStreamResult(
 				controller.close();
 			},
 		}),
+		getState: () => {
+			throw new Error('not implemented');
+		},
 	};
 }
 
