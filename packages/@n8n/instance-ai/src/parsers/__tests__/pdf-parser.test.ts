@@ -1,16 +1,18 @@
 import { extractPdfText } from '../pdf-parser';
 import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
-const mockGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
-const mockDestroy = jest.fn<Promise<void>, []>();
-
-jest.mock('pdf-parse', () => ({
-	__esModule: true,
-	PDFParse: jest.fn().mockImplementation(() => ({
-		getText: mockGetText,
-		destroy: mockDestroy,
-	})),
+const { mockGetText, mockDestroy } = vi.hoisted(() => ({
+	mockGetText: vi.fn<() => Promise<{ text: string; total: number }>>(),
+	mockDestroy: vi.fn<() => Promise<void>>(),
 }));
+
+vi.mock('pdf-parse', () => {
+	class PDFParse {
+		getText = mockGetText;
+		destroy = mockDestroy;
+	}
+	return { PDFParse };
+});
 
 function toBase64(content: string | Buffer): string {
 	const buf = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;

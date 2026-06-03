@@ -60,6 +60,7 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
+import * as workflowsApi from '@/app/api/workflows';
 import {
 	injectWorkflowState,
 	useWorkflowState,
@@ -93,6 +94,7 @@ vi.mock('@/app/api/workflows', async (importOriginal) => {
 	return {
 		...actual,
 		getNewWorkflow: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
+		getNewWorkflowData: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
 	};
 });
 
@@ -433,6 +435,41 @@ describe('useCanvasOperations', () => {
 					}),
 				);
 			});
+		});
+
+		it('re-evaluates all credential issues when the added node is a trigger', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { addNode } = useCanvasOperations();
+			addNode({ type: 'trigger', typeVersion: 1 }, mockNodeTypeDescription({ name: 'trigger' }));
+
+			await waitFor(() => expect(updateNodesCredentialsIssuesSpy).toHaveBeenCalled());
+		});
+
+		it('does not re-evaluate all credential issues when the added node is not a trigger', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { addNode } = useCanvasOperations();
+			addNode({ type: 'set', typeVersion: 1 }, mockNodeTypeDescription({ name: 'set' }));
+
+			await nextTick();
+			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1450,6 +1487,48 @@ describe('useCanvasOperations', () => {
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
+		});
+
+		it('re-evaluates all credential issues when the deleted node is a trigger', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'trigger-1', type: 'trigger', name: 'Trigger' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id);
+
+			expect(updateNodesCredentialsIssuesSpy).toHaveBeenCalled();
+		});
+
+		it('does not re-evaluate all credential issues when the deleted node is not a trigger', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'set-1', type: 'set', name: 'Set' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode(node.id);
+
+			expect(updateNodesCredentialsIssuesSpy).not.toHaveBeenCalled();
 		});
 
 		it('should delete node without tracking history', () => {
@@ -4736,6 +4815,11 @@ describe('useCanvasOperations', () => {
 				canvasOperations.importWorkflowData(workflowDataToImport, 'paste'),
 			).resolves.not.toThrow();
 			expect(toast.showError).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'Could not insert node',
+				message: `Only one '${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}' node is allowed in a workflow`,
+			});
 		});
 
 		it('should remove connections for nodes filtered out during import', async () => {
@@ -5289,6 +5373,39 @@ describe('useCanvasOperations', () => {
 			expect(duplicatedNodeIds).not.toContain('2');
 		});
 
+		it('should show max node type error when duplicating nodes that exceed maxNodes limit', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				maxNodes: 1,
+			});
+			const node = createTestNode({
+				id: '1',
+				name: 'Execute Workflow Trigger',
+				type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+			});
+
+			nodeTypesStore.nodeTypes = {
+				[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: { 1: nodeTypeDescription },
+			};
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([node]);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.duplicateNodes(['1']);
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'Could not insert node',
+				message: `Only one '${EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE}' node is allowed in a workflow`,
+			});
+		});
+
 		it('should not crash when TelemetryHelpers.generateNodesGraph throws error', async () => {
 			const telemetry = useTelemetry();
 			const nodeTypesStore = useNodeTypesStore();
@@ -5358,7 +5475,7 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
-			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
+			const getNewWorkflowData = vi.mocked(workflowsApi.getNewWorkflowData);
 			const setConnectionsSpy = vi.spyOn(workflowDocumentStoreInstance, 'setConnections');
 
 			const { importTemplate } = useCanvasOperations();
@@ -5382,7 +5499,11 @@ describe('useCanvasOperations', () => {
 				disabled: false,
 			});
 			expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
-			expect(getNewWorkflowData).toHaveBeenCalledWith(templateName, projectsStore.currentProjectId);
+			expect(getNewWorkflowData).toHaveBeenCalledWith(
+				expect.anything(),
+				templateName,
+				projectsStore.currentProjectId,
+			);
 		});
 	});
 	describe('replaceNodeParameters', () => {
@@ -6057,13 +6178,17 @@ describe('useCanvasOperations', () => {
 				workflow: { nodes: [], connections: {} },
 			});
 
-			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
+			const getNewWorkflowData = vi.mocked(workflowsApi.getNewWorkflowData);
 
 			const { openWorkflowTemplate } = useCanvasOperations();
 			await openWorkflowTemplate('template-id');
 
 			expect(templatesStore.getFixedWorkflowTemplate).toHaveBeenCalledWith('template-id');
-			expect(getNewWorkflowData).toHaveBeenCalledWith('Template Name', 'test-project-id');
+			expect(getNewWorkflowData).toHaveBeenCalledWith(
+				expect.anything(),
+				'Template Name',
+				'test-project-id',
+			);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User inserted workflow template', {
 				source: 'workflow',
@@ -6119,12 +6244,16 @@ describe('useCanvasOperations', () => {
 				meta: { templateId: 'template-id' },
 			};
 
-			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
+			const getNewWorkflowData = vi.mocked(workflowsApi.getNewWorkflowData);
 
 			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
 			await openWorkflowTemplateFromJSON(template);
 
-			expect(getNewWorkflowData).toHaveBeenCalledWith('Template Name', 'test-project-id');
+			expect(getNewWorkflowData).toHaveBeenCalledWith(
+				expect.anything(),
+				'Template Name',
+				'test-project-id',
+			);
 
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.NEW_WORKFLOW,

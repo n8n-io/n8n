@@ -50,6 +50,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
 			toolName: 'setup-credentials',
+			suspendPayload: { requestId: 'req-1' },
 		});
 	});
 
@@ -67,6 +68,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
 			toolName: 'setup-credentials',
+			suspendPayload: { requestId: 'req-1' },
 		});
 	});
 
@@ -83,6 +85,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'tc-1',
 			toolName: undefined,
+			suspendPayload: {},
 		});
 	});
 
@@ -116,13 +119,14 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'tc-1',
 			toolName: undefined,
+			suspendPayload: {},
 		});
 	});
 });
 
 describe('asResumable', () => {
 	it('casts agent to Resumable interface', () => {
-		const agent = { resume: jest.fn() };
+		const agent = { resume: vi.fn() };
 		const resumable = asResumable(agent);
 		expect(resumable.resume).toBe(agent.resume);
 	});
@@ -131,7 +135,7 @@ describe('asResumable', () => {
 describe('resumeAgentStream', () => {
 	it('uses native agent resume in stream mode', async () => {
 		const resumed = { runId: 'run-2' };
-		const agent = { resume: jest.fn().mockResolvedValue(resumed) };
+		const agent = { resume: vi.fn().mockResolvedValue(resumed) };
 
 		await expect(resumeAgentStream(agent, { approved: true }, { runId: 'run-1' })).resolves.toBe(
 			resumed,

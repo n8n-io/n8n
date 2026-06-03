@@ -116,7 +116,12 @@ export function extractStructureIssues(error: unknown): WorkflowStructureIssue[]
  * counting entries in its own SDK-builder code.
  */
 export function buildNodeIndex(json: WorkflowJSON): Array<{ index: number; name: string }> {
-	return (json.nodes ?? []).map((node, index) => ({ index, name: node.name ?? '' }));
+	// Defensively coerce: a malformed workflow may carry a non-string node name,
+	// which would otherwise violate the `z.string()` output schema downstream.
+	return (json.nodes ?? []).map((node, index) => ({
+		index,
+		name: typeof node.name === 'string' ? node.name : '',
+	}));
 }
 
 /**

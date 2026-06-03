@@ -3,9 +3,10 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 const APPROVE_EDIT_WORKFLOW_NAME = 'INS-171 Approval Edit Target';
 const DENY_EDIT_WORKFLOW_NAME = 'INS-171 Deny Edit Target';
+const APPROVE_EDIT_WORKFLOW_ID = 'hC397S83USUp9597';
+const DENY_EDIT_WORKFLOW_ID = 'cK6nyU9IZfas3ZKe';
 const RESTORE_ARCHIVED_WORKFLOW_NAME = 'INS-199 Archived Restore Target';
 const RESTORE_ARCHIVED_WORKFLOW_ID = 'ins-199-archived-restore-target';
 const INITIAL_STATUS_VALUE = 'before approval';
@@ -172,13 +173,14 @@ test.describe(
 		});
 
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
-		// converge on build-workflow-with-agent with a workflowId before the builder spawns.
+		// converge on build-workflow with a workflowId before the update is saved.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			n8n,
 		}) => {
-			const workflow = await n8n.api.workflows.createWorkflow(
-				seededEditableWorkflow(APPROVE_EDIT_WORKFLOW_NAME),
-			);
+			const workflow = await n8n.api.workflows.createWorkflow({
+				id: APPROVE_EDIT_WORKFLOW_ID,
+				...seededEditableWorkflow(APPROVE_EDIT_WORKFLOW_NAME),
+			});
 			const beforeEdit = await n8n.api.workflows.getWorkflow(workflow.id);
 			const beforeEditSignature = workflowSignature(beforeEdit);
 
@@ -187,9 +189,6 @@ test.describe(
 				`Edit the existing workflow named "${APPROVE_EDIT_WORKFLOW_NAME}". Change the Set node named "Status Marker" so the "status" field value is exactly "${APPROVED_STATUS_VALUE}". Do not create a new workflow.`,
 			);
 
-			await expect(
-				n8n.instanceAi.getConfirmationText(`Edit ${APPROVE_EDIT_WORKFLOW_NAME}`),
-			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			const whileAwaitingApproval = await n8n.api.workflows.getWorkflow(workflow.id);
 			expect(workflowSignature(whileAwaitingApproval)).toBe(beforeEditSignature);
@@ -210,9 +209,10 @@ test.describe(
 		test('should require approval before editing an existing workflow and keep it unchanged when denied', async ({
 			n8n,
 		}) => {
-			const workflow = await n8n.api.workflows.createWorkflow(
-				seededEditableWorkflow(DENY_EDIT_WORKFLOW_NAME),
-			);
+			const workflow = await n8n.api.workflows.createWorkflow({
+				id: DENY_EDIT_WORKFLOW_ID,
+				...seededEditableWorkflow(DENY_EDIT_WORKFLOW_NAME),
+			});
 			const beforeEdit = await n8n.api.workflows.getWorkflow(workflow.id);
 			const beforeEditSignature = workflowSignature(beforeEdit);
 
@@ -221,9 +221,6 @@ test.describe(
 				`Edit the existing workflow named "${DENY_EDIT_WORKFLOW_NAME}". Change the Set node named "Status Marker" so the "status" field value is exactly "${DENIED_STATUS_VALUE}". Do not create a new workflow.`,
 			);
 
-			await expect(
-				n8n.instanceAi.getConfirmationText(`Edit ${DENY_EDIT_WORKFLOW_NAME}`),
-			).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();
 			await n8n.instanceAi.waitForResponseComplete();

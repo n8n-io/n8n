@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "2.23.0",
+  "version": "2.25.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -8,11 +8,12 @@
     "debug": "./scripts/debug.sh",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:watch": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
@@ -51,6 +52,10 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/lodash": "catalog:"
+    "@n8n/vitest-config": "workspace:*",
+    "@types/lodash": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   }
 }

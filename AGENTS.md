@@ -228,6 +228,7 @@ titles, test descriptions, and Linear URLs.
   `.github/pull_request_template.md` and
   `.github/pull_request_title_conventions.md`.
 - Use `gh pr create --draft` to create draft PRs.
-- Always reference the Linear ticket in the PR description,
-  use `https://linear.app/n8n/issue/[TICKET-ID]`
+- If there is a corresponding Linear ticket, reference it in the PR
+  description using `https://linear.app/n8n/issue/[TICKET-ID]`. Do not
+  create a Linear ticket on your own — ask first.
 - always link to the github issue if mentioned in the linear ticket.

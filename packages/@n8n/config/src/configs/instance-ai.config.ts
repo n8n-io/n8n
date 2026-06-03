@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import { Config, Env } from '../decorators';
 
 @Config
@@ -17,10 +19,6 @@ export class InstanceAiConfig {
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
-
-	/** Number of recent messages to include in context. */
-	@Env('N8N_INSTANCE_AI_LAST_MESSAGES')
-	lastMessages: number = 20;
 
 	/** Token threshold for Observer to trigger compression of message history. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
@@ -68,7 +66,7 @@ export class InstanceAiConfig {
 
 	/** Default command timeout in the sandbox (milliseconds). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_TIMEOUT')
-	sandboxTimeout: number = 300_000;
+	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
 	/** Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`); also surfaced as a `name_prefix` label. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX')
@@ -80,11 +78,11 @@ export class InstanceAiConfig {
 	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.
 	 */
 	@Env('N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS')
-	daytonaTokenRefreshSkewMs: number = 5 * 60 * 1000;
+	daytonaTokenRefreshSkewMs: number = 5 * Time.minutes.toMilliseconds;
 
 	/** How long to keep completed workflow-builder sandboxes warm for follow-up fixes. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS')
-	builderSandboxTtlMs: number = 15 * 60 * 1000;
+	builderSandboxTtlMs: number = 15 * Time.minutes.toMilliseconds;
 
 	/** Brave Search API key for web search. No key = search + research agent disabled. */
 	@Env('INSTANCE_AI_BRAVE_SEARCH_API_KEY')
@@ -104,13 +102,13 @@ export class InstanceAiConfig {
 
 	/** Interval in milliseconds between native persistence pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
-	snapshotPruneInterval: number = 60 * 60 * 1000; // 1 hour
+	snapshotPruneInterval: number = 1 * Time.hours.toMilliseconds;
 
 	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
-	snapshotRetention: number = 24 * 60 * 60 * 1000; // 24 hours
+	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
 
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
-	confirmationTimeout: number = 24 * 60 * 60 * 1000; // 24 hours
+	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 }
