@@ -225,6 +225,50 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
+	it('upgrades the knowledge base when sandbox was initialized before templates existed', async () => {
+		const runInSandbox: RunInSandboxMock =
+			vi.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock =
+			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		readFileViaSandbox.mockImplementation(async (_workspace, path) => {
+			await Promise.resolve();
+			if (path === '/sandbox/.sandbox-initialized') {
+				return '2024-01-01T00:00:00.000Z';
+			}
+			return null;
+		});
+		const setupSandboxWorkspace = await loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => {});
+
+		const bundle: BuilderTemplatesBundle = {
+			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
+			version: 'test-sha',
+		};
+		const initialized = await setupSandboxWorkspace(
+			createLocalWorkspace(writeFile),
+			createSetupContext(bundle),
+		);
+
+		expect(initialized).toBe(false);
+		expect(runInSandbox).not.toHaveBeenCalledWith(
+			expect.anything(),
+			'npm install --ignore-scripts',
+			'/sandbox',
+		);
+		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
+		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+	});
+
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
@@ -601,6 +645,6 @@ describe('getPromptWorkspaceRoot', () => {
 	it('returns the provider-specific workspace root used in agent prompts', () => {
 		expect(getPromptWorkspaceRoot('daytona')).toBe('/home/daytona/workspace');
 		expect(getPromptWorkspaceRoot('n8n-sandbox')).toBe('/home/user/workspace');
-		expect(getPromptWorkspaceRoot('local')).toBe('./workspace');
+		expect(getPromptWorkspaceRoot('local')).toBe('.');
 	});
 });

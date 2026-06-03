@@ -239,7 +239,7 @@ export class PlannerRunCoordinator {
 	constructor(private readonly context: OrchestrationContext) {
 		this.subAgentId = `agent-planner-${context.runId}`;
 		this.plannerPrompt = getPlannerAgentPrompt({
-			workspaceRoot: context.workspaceRoot,
+			workspaceRoot: context.workspace && context.workspaceRoot ? context.workspaceRoot : undefined,
 		});
 		this.plannerTools = buildPlannerTools(context, this.accumulator);
 		this.tracedPlannerTools = traceSubAgentTools(context, this.plannerTools, 'planner');

@@ -19,7 +19,7 @@ const PLANNER_DISCOVER_SECTION = `2. **Discover** — check what exists and lear
 
 export function getPlannerAgentPrompt(options: PlannerAgentPromptOptions = {}): string {
 	const { workspaceRoot } = options;
-	const sandboxSection = `\n${getSandboxWorkspaceSection(workspaceRoot)}\n`;
+	const sandboxSection = workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : '';
 
 	return `You are the n8n Workflow Planner — you design solution architectures. You do NOT build workflows.
 

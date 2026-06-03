@@ -101,9 +101,6 @@ export const N8N_SANDBOX_HOME = '/home/user';
 /** Absolute workspace root inside the n8n sandbox service container. */
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
 
-/** Host-relative workspace root for the local sandbox provider (development only). */
-export const LOCAL_WORKSPACE_ROOT = './workspace';
-
 /** Resolve the `<workspace_root>` path shown in agent system prompts for a sandbox provider. */
 export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 	switch (provider) {
@@ -112,7 +109,9 @@ export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 		case 'n8n-sandbox':
 			return N8N_SANDBOX_WORKSPACE_ROOT;
 		case 'local':
-			return LOCAL_WORKSPACE_ROOT;
+			// Local workspaces are already scoped to the resolved root; use `.` so
+			// paths like `./knowledge-base/...` resolve under `<root>/`, not `<root>/workspace/`.
+			return '.';
 	}
 }
 
@@ -488,6 +487,22 @@ async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<vo
 	await filesystem.init?.();
 }
 
+async function materializeKnowledgeBaseStep(
+	workspace: SandboxWorkspace,
+	root: string,
+	context: InstanceAiContext,
+): Promise<void> {
+	await setupStep('materialize-knowledge-base', async () => {
+		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
+		await materializeKnowledgeBaseIntoWorkspace({
+			workspace,
+			root,
+			logger: context.logger,
+			templatesArchive: templatesBundle?.archive ?? null,
+		});
+	});
+}
+
 export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
@@ -535,7 +550,10 @@ export async function setupSandboxWorkspace(
 		'read-initialization-marker',
 		async () => await readFileViaSandbox(workspace, markerFile),
 	);
-	if (marker !== null) return false;
+	if (marker !== null) {
+		await materializeKnowledgeBaseStep(workspace, root, context);
+		return false;
+	}
 
 	// ── Collect all files ──────────────────────────────────────────────────
 
@@ -581,15 +599,7 @@ export async function setupSandboxWorkspace(
 		'write-workspace-files',
 		async () => await writeWorkspaceFiles(workspace, root, files),
 	);
-	await setupStep('materialize-knowledge-base', async () => {
-		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
-		await materializeKnowledgeBaseIntoWorkspace({
-			workspace,
-			root,
-			logger: context.logger,
-			templatesArchive: templatesBundle?.archive ?? null,
-		});
-	});
+	await materializeKnowledgeBaseStep(workspace, root, context);
 
 	// npm install (must run after package.json is in place)
 	await setupStep('install-dependencies', async () => {

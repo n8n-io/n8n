@@ -135,7 +135,10 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
-		workspaceRoot: orchestrationContext?.workspaceRoot,
+		workspaceRoot:
+			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
+				? orchestrationContext.workspaceRoot
+				: undefined,
 	});
 
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({

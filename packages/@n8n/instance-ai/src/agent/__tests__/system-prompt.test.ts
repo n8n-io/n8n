@@ -281,8 +281,18 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('sandbox workspace', () => {
-		it('always includes sandbox workspace and knowledge-base guidance', () => {
+		it('omits sandbox workspace guidance when no runtime workspace is attached', () => {
 			const prompt = getSystemPrompt({});
+
+			expect(prompt).not.toContain('## Sandbox workspace');
+			expect(prompt).not.toContain('workspace_read_file');
+			expect(prompt).not.toContain('Consult the knowledge base before planning or building');
+		});
+
+		it('includes sandbox workspace and knowledge-base guidance when workspaceRoot is provided', () => {
+			const prompt = getSystemPrompt({
+				workspaceRoot: '/home/daytona/workspace',
+			});
 
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');

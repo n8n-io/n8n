@@ -89,8 +89,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
-
-${getSandboxWorkspaceSection(workspaceRoot)}
+${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow-builder skill. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 
