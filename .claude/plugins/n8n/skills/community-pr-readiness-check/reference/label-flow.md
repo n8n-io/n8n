@@ -33,18 +33,20 @@ gh pr edit <number> --repo n8n-io/n8n \
 ```bash
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:in-progress" \
+  --remove-label "status:pending-assignment" \
   --add-label "team:<slug>" \
   --add-label "status:team-assigned" \
   --add-label "triage:complete"
 ```
 
-The `team:<slug>` is taken from `reference/teams.md`. Apply only after the Linear `save_issue` call succeeds — if Linear fails, leave the PR on `triage:in-progress` for the next loop run.
+The `team:<slug>` is taken from `reference/teams.md`. Apply only after the Linear `save_issue` call succeeds — if Linear fails, leave the PR on `triage:in-progress` for the next loop run. `status:pending-assignment` may not be present (e.g. older PRs that predate the convention) — if `--remove-label` errors, drop the flag and retry, or run it as a separate call.
 
 #### Closed (action path 7D)
 
 ```bash
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:in-progress" \
+  --remove-label "status:pending-assignment" \
   --add-label "status:internal-closed" \
   --add-label "triage:complete"
 ```
@@ -82,4 +84,4 @@ These are independent of the triage state and signal where the PR sits in the n8
 | `status:internal-closed`    | PR closed via path 7D.                             |
 | `status:pending-assignment` | Default before the skill runs (set elsewhere).     |
 
-The skill only writes `status:team-assigned` and `status:internal-closed`. It does not remove existing `status:*` labels — GitHub's label model accepts multiple statuses; reconciliation happens elsewhere if needed.
+The skill writes `status:team-assigned` (path 7B) or `status:internal-closed` (path 7D) and clears `status:pending-assignment` at the same time, so a triaged or closed PR drops out of any `status:pending-assignment` queue. It does not touch other `status:*` labels — reconciliation between team-assigned/internal-closed happens elsewhere if needed.

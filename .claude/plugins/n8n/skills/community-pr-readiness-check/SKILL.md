@@ -57,13 +57,18 @@ If the user explicitly asks to re-process a PR that's stuck on `triage:in-progre
 
 ### Otherwise — mark in-progress
 
+Strip any existing `triage:*` state label before adding `triage:in-progress`, so the single-state invariant holds even when re-reviewing a PR that was previously sent back with `triage:needs-info` or `triage:tests-needed`:
+
 ```bash
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:pending" \
+  --remove-label "triage:needs-info" \
+  --remove-label "triage:tests-needed" \
+  --remove-label "triage:complete" \
   --add-label "triage:in-progress"
 ```
 
-`triage:pending` may not be present — if `--remove-label` errors, do the add as a separate call. A PR carries exactly one `triage:<state>` label at a time; the skill replaces `triage:in-progress` with a terminal state before exit (see `reference/label-flow.md`).
+Only one of those `triage:*` labels will actually be present; `--remove-label` errors when a label is missing, so run each removal as its own call (or batch and ignore errors) and then do the add. A PR carries exactly one `triage:<state>` label at a time; the skill replaces `triage:in-progress` with a terminal state before exit (see `reference/label-flow.md`).
 
 ### Also fetch (in parallel)
 
@@ -79,7 +84,7 @@ gh api --paginate "repos/n8n-io/n8n/issues/<number>/comments" \
 
 ## Step 2.5 — Auto-rejection screen
 
-Per [`CONTRIBUTING.md`](../../../../CONTRIBUTING.md), two PR patterns should be closed outright rather than reviewed:
+Per [`CONTRIBUTING.md`](../../../../../CONTRIBUTING.md), two PR patterns should be closed outright rather than reviewed:
 
 - **Typo-only PR** — diff is entirely spelling/grammar fixes with no logic or tests.
 - **New-node PR** — adds a brand-new node, unless the n8n team has explicitly agreed to take it.
@@ -91,8 +96,8 @@ If either matches, set `checks.AutoReject` and skip directly to action **D**. Fu
 Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 
 - **A. CLA** — `cla-signed` label present.
-- **B. Title** — matches the conventional-commit regex. Authoritative rules in [`.github/pull_request_title_conventions.md`](../../../../.github/pull_request_title_conventions.md).
-- **C. Description** — every section heading and checklist item from [`.github/pull_request_template.md`](../../../../.github/pull_request_template.md) is present in the PR body. The template is read at check time, so changes to it propagate automatically.
+- **B. Title** — matches the conventional-commit regex. Authoritative rules in [`.github/pull_request_title_conventions.md`](../../../../../.github/pull_request_title_conventions.md).
+- **C. Description** — every section heading and checklist item from [`.github/pull_request_template.md`](../../../../../.github/pull_request_template.md) is present in the PR body. The template is read at check time, so changes to it propagate automatically.
 - **D. Tests** — source logic changes have matching test files. Skip for `docs/ci/chore/build` PRs.
 - **E. cubic-dev-ai** — no unresolved comments (resolved = "Addressed in commit" marker).
 
@@ -170,6 +175,7 @@ mcp__linear-server__save_issue(
 # 2. GitHub (only if Linear succeeded) — see reference/label-flow.md
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:in-progress" \
+  --remove-label "status:pending-assignment" \
   --add-label "team:<slug>" \
   --add-label "status:team-assigned" \
   --add-label "triage:complete"
@@ -218,6 +224,7 @@ gh pr comment <number> --repo n8n-io/n8n --body "<final message>"
 gh pr close <number> --repo n8n-io/n8n
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:in-progress" \
+  --remove-label "status:pending-assignment" \
   --add-label "status:internal-closed" \
   --add-label "triage:complete"
 ```

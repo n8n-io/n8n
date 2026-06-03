@@ -18,7 +18,7 @@ The full ruleset for the auto-rejection screen and the five readiness checks. Lo
 
 ## Step 2.5 — Auto-rejection screening
 
-Before running the five checks, screen for PRs that the project policy in [`CONTRIBUTING.md`](../../../../../CONTRIBUTING.md) (section "Community PR Guidelines") says should be rejected outright. If a PR matches one of these patterns, skip the five checks and recommend a polite close instead.
+Before running the five checks, screen for PRs that the project policy in [`CONTRIBUTING.md`](../../../../../../CONTRIBUTING.md) (section "Community PR Guidelines") says should be rejected outright. If a PR matches one of these patterns, skip the five checks and recommend a polite close instead.
 
 ### Typo-only PR
 
@@ -54,7 +54,7 @@ Check the PR `labels` returned from `gh pr view`:
 
 ### B. PR title format
 
-The authoritative title rules live in [`.github/pull_request_title_conventions.md`](../../../../../.github/pull_request_title_conventions.md). Read that file at the start of the check — the allowed `type` list and scope rules come from there, not from this skill.
+The authoritative title rules live in [`.github/pull_request_title_conventions.md`](../../../../../../.github/pull_request_title_conventions.md). Read that file at the start of the check — the allowed `type` list and scope rules come from there, not from this skill.
 
 The matching regex below is a cached extraction of those rules. If the conventions file disagrees with the regex (a new type, a different scope syntax), trust the file and flag the divergence in your output.
 
@@ -80,7 +80,7 @@ Quick recap of what the regex enforces (full detail in the conventions file):
 
 ### C. PR description completeness
 
-The PR template at [`.github/pull_request_template.md`](../../../../../.github/pull_request_template.md) is the **source of truth** for what a complete PR description looks like. Read it at the start of the check — sections and checklist items shouldn't be hardcoded here.
+The PR template at [`.github/pull_request_template.md`](../../../../../../.github/pull_request_template.md) is the **source of truth** for what a complete PR description looks like. Read it at the start of the check — sections and checklist items shouldn't be hardcoded here.
 
 Procedure:
 
