@@ -152,8 +152,8 @@ export interface CreateDelegateSubAgentToolOptions {
 	policy?: DelegateSubAgentPolicy;
 	/**
 	 * Additional local/deferred tool names the host removes from inline children.
-	 * These cannot be re-added through `allowedTools`. Provider tools are not
-	 * inherited by inline children and are out of scope for this list.
+	 * These cannot be re-added through `allowedTools`. Provider tools inherit
+	 * separately and can be narrowed via `allowedTools` by provider tool name.
 	 */
 	inlineSubAgentBlockedTools?: string[];
 	/** Run the child for this delegation and return its result. */

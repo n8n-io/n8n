@@ -820,6 +820,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
+			providerTools: this.providerTools,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -857,6 +858,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
+			providerTools: BuiltProviderTool[];
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -898,6 +900,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
+		providerTools: BuiltProviderTool[];
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
@@ -915,6 +918,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				request.allowedTools,
 				options.inlineSubAgentBlockedTools,
 			);
+			const providerTools = filterInlineSubAgentTools(
+				options.providerTools,
+				request.allowedTools,
+				options.inlineSubAgentBlockedTools,
+			);
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: options.modelConfig,
@@ -923,6 +931,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				tools: tools.length > 0 ? tools : undefined,
 				deferredTools: deferredTools.length > 0 ? deferredTools : undefined,
 				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
+				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				checkpointStorage: this.checkpointStore,
 				thinking: this.thinkingConfig,
@@ -964,11 +973,11 @@ export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[])
 	return new Set([...SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES, ...(hostBlockedTools ?? [])]);
 }
 
-export function filterInlineSubAgentTools(
-	tools: BuiltTool[],
+export function filterInlineSubAgentTools<T extends { readonly name: string }>(
+	tools: T[],
 	allowedTools: string[] | undefined,
 	hostBlockedTools?: string[],
-): BuiltTool[] {
+): T[] {
 	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
 	const allowed = allowedTools ? new Set(allowedTools) : undefined;
 	return tools.filter((tool) => {

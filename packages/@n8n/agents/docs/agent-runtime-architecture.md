@@ -98,7 +98,7 @@ Inline children:
 - always drop SDK-blocked tools such as `delegate_subagent`, `write_todos`, and memory recall
 - may drop additional host-blocked local/deferred tool names configured on the delegate tool
 - optionally narrow inherited tools with `allowedTools`
-- do not inherit provider tools yet
+- inherit parent provider tools and may narrow them with `allowedTools` by provider tool name
 - run in a fresh context using the shared delegated-task prompt
 
 ---
