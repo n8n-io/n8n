@@ -37,7 +37,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "rimraf dist && tsc -p tsconfig.build.json --noCheck",
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
     "format": "biome format --write src examples",
     "format:check": "biome ci src examples",
     "lint": "eslint . --quiet",
@@ -46,7 +46,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "test:integration": "vitest run --config vitest.integration.config.mjs"
+    "test:integration": "vitest run --config vitest.integration.config.mjs",
+    "build:unchecked": "rimraf dist && tsc -p tsconfig.build.json --noCheck"
   },
   "dependencies": {
     "@ai-sdk/amazon-bedrock": "catalog:",

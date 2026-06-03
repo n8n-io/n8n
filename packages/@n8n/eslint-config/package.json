@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --noCheck",
+    "build": "tsc",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "format": "biome format --write .",
@@ -27,7 +27,8 @@
     "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "build:unchecked": "tsc --noCheck"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

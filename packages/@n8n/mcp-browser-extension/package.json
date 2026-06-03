@@ -14,7 +14,8 @@
 		"test:unit": "vitest run",
 		"test:dev": "vitest",
 		"format": "biome format --write src",
-		"format:check": "biome ci src"
+		"format:check": "biome ci src",
+		"build:unchecked": "pnpm run build"
 	},
 	"dependencies": {
 		"@n8n/design-system": "workspace:*",

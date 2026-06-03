@@ -42,10 +42,11 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "watch": "tsc -p tsconfig.build.json --watch"
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "license": "See LICENSE.md file in the root of the repository"
 }

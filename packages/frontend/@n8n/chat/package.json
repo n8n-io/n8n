@@ -16,7 +16,8 @@
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "format": "biome format --write src && prettier --write src/ --ignore-path ../../../../.prettierignore",
-    "format:check": "biome ci src && prettier --check src/ --ignore-path ../../../../.prettierignore"
+    "format:check": "biome ci src && prettier --check src/ --ignore-path ../../../../.prettierignore",
+    "build:unchecked": "pnpm run build"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/chat.umd.js",

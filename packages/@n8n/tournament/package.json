@@ -16,7 +16,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
-    "build": "tsc -p ./tsconfig.build.json --noCheck",
+    "build": "tsc -p ./tsconfig.build.json",
     "prepack": "pnpm build",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -24,7 +24,8 @@
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "format": "biome format --write .",
-    "format:check": "biome ci ."
+    "format:check": "biome ci .",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck"
   },
   "engines": {
     "node": ">=20.15",

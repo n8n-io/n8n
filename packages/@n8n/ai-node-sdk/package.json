@@ -17,7 +17,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck",
+    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -25,7 +25,8 @@
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run --passWithNoTests",
     "test:unit": "vitest run --passWithNoTests",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck"
   },
   "files": [
     "dist"

@@ -4,7 +4,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
+    "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "vitest run",
@@ -20,7 +20,8 @@
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
-    "prompts:print": "tsx scripts/print-prompts.ts"
+    "prompts:print": "tsx scripts/print-prompts.ts",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

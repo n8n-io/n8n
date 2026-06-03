@@ -5,7 +5,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
@@ -13,7 +13,8 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

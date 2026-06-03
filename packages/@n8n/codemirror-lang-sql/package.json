@@ -7,13 +7,14 @@
     "test": "vitest run",
     "generate:sql:grammar": "lezer-generator --typeScript --output src/grammar.sql.ts src/sql.grammar",
     "generate": "pnpm generate:sql:grammar && pnpm format",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "test:unit": "vitest run",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "keywords": [
     "editor",

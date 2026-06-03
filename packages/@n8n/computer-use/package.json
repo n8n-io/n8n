@@ -12,7 +12,7 @@
     "start": "node dist/cli.js http://localhost:5678 --log-level debug --allowed-origins http://localhost:5678",
     "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
@@ -20,7 +20,8 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "main": "dist/cli.js",
   "exports": {

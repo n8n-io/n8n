@@ -5,7 +5,7 @@
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.renderer.json --noCheck && tsc -p tsconfig.build.json --noCheck && pnpm copy:renderer && pnpm copy:assets",
+    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
     "lint": "eslint . --quiet",
     "typecheck": "tsc --noEmit",
     "copy:assets": "node scripts/copy-assets.js",
@@ -19,7 +19,8 @@
     "clean": "rimraf dist out .turbo",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "build:unchecked": "tsc -p tsconfig.renderer.json --noCheck && tsc -p tsconfig.build.json --noCheck && pnpm copy:renderer && pnpm copy:assets"
   },
   "dependencies": {
     "@n8n/computer-use": "workspace:*",

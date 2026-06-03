@@ -38,7 +38,8 @@
     "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsdown && pnpm create-json-schema",
     "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest",
+    "build:unchecked": "pnpm run build"
   },
   "peerDependencies": {
     "vue": "catalog:frontend",

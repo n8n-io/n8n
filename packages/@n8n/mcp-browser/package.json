@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
@@ -20,7 +20,8 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "dependencies": {
     "@joplin/turndown-plugin-gfm": "1.0.64",

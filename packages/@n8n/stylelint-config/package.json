@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --noCheck",
+    "build": "tsc",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "format": "biome format --write .",
@@ -23,7 +23,8 @@
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
     "typecheck": "tsc --noEmit",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "build:unchecked": "tsc --noCheck"
   },
   "dependencies": {
     "stylelint": "^16.23.0",

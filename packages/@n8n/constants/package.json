@@ -5,13 +5,14 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest"
+    "test": "jest",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

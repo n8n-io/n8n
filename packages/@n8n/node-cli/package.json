@@ -24,12 +24,13 @@
     "format:check": "biome ci src",
     "lint": "eslint src --quiet",
     "lintfix": "eslint src --fix",
-    "build": "tsc -p tsconfig.build.json --noCheck && pnpm copy-templates",
+    "build": "tsc -p tsconfig.build.json && pnpm copy-templates",
     "publish:dry": "pnpm run build && pnpm pub --dry-run",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "start": "./bin/n8n-node.mjs"
+    "start": "./bin/n8n-node.mjs",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && pnpm copy-templates"
   },
   "repository": {
     "type": "git",

@@ -20,7 +20,8 @@
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
     "test": "vitest run",
     "test:changed": "janitor test-scoped --runner=vitest",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "build:unchecked": "pnpm run build"
   },
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",

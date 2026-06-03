@@ -5,7 +5,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -14,7 +14,8 @@
     "test": "jest",
     "test:unit": "jest",
     "test:dev": "jest --watch",
-    "migration:new": "node scripts/new-migration.mjs"
+    "migration:new": "node scripts/new-migration.mjs",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

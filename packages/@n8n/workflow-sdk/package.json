@@ -43,7 +43,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -57,7 +57,8 @@
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
     "json-to-code": "npx tsx src/cli/index.ts json-to-code",
-    "code-to-json": "npx tsx src/cli/index.ts code-to-json"
+    "code-to-json": "npx tsx src/cli/index.ts code-to-json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
