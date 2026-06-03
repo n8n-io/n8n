@@ -66,17 +66,17 @@ describe('buildWorkflowDemoUrl', () => {
 		[
 			'hosted at root',
 			'https://n8n.example.com/workflow/abc123',
-			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false',
+			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
 		],
 		[
 			'hosted under a path',
 			'https://n8n.example.com/n8n/workflow/abc123',
-			'https://n8n.example.com/n8n/workflows/demo?hideControls=true&canOpenNDV=false',
+			'https://n8n.example.com/n8n/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
 		],
 		[
 			'clears query and hash',
 			'https://n8n.example.com/workflow/abc123?foo=bar#section',
-			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false',
+			'https://n8n.example.com/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
 		],
 	])('builds the demo URL for %s', (_label, input, expected) => {
 		expect(buildWorkflowDemoUrl(input)).toBe(expected);
@@ -123,7 +123,7 @@ describe('resolveWorkflowDemoUrl', () => {
 				previewUrl: 'https://preview.example.com/workflow/abc123',
 			}),
 		).toBe(
-			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false',
+			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
 		);
 	});
 
@@ -134,7 +134,7 @@ describe('resolveWorkflowDemoUrl', () => {
 		['unexpected valid path', 'https://self-hosted.example.com/rest/workflows/abc123'],
 	])('uses the shared preview service for %s', (_label, workflowUrl) => {
 		expect(resolveWorkflowDemoUrl({ workflowUrl })).toBe(
-			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false',
+			'https://n8n-preview-service.internal.n8n.cloud/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
 		);
 	});
 
@@ -151,7 +151,7 @@ describe('applyWorkflowDemoTheme', () => {
 				theme: 'dark',
 			}),
 		).toBe(
-			'https://preview.example.com/workflows/demo?hideControls=true&canOpenNDV=false&theme=dark',
+			'https://preview.example.com/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots&theme=dark',
 		);
 	});
 
@@ -162,7 +162,7 @@ describe('applyWorkflowDemoTheme', () => {
 				theme: 'dark',
 			}),
 		).toBe(
-			'https://preview.example.com/workflows/demo?hideControls=true&theme=dark&canOpenNDV=false',
+			'https://preview.example.com/workflows/demo?hideControls=true&theme=dark&canOpenNDV=false&canvasBackground=dots',
 		);
 	});
 
@@ -172,7 +172,9 @@ describe('applyWorkflowDemoTheme', () => {
 				previewUrl: 'https://preview.example.com/workflows/demo?hideControls=true&theme=dark',
 				theme: undefined,
 			}),
-		).toBe('https://preview.example.com/workflows/demo?hideControls=true&canOpenNDV=false');
+		).toBe(
+			'https://preview.example.com/workflows/demo?hideControls=true&canOpenNDV=false&canvasBackground=dots',
+		);
 	});
 
 	it('returns undefined when no preview URL is available', () => {
