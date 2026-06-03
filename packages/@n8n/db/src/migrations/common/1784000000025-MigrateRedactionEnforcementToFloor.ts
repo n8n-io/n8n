@@ -62,7 +62,13 @@ export class MigrateRedactionEnforcementToFloor1784000000025 implements Irrevers
 	}
 
 	private toFloor(raw: string): RedactionFloor {
-		const parsed = jsonParse<unknown>(raw, { fallbackValue: undefined });
+		let parsed: unknown;
+		try {
+			parsed = jsonParse<unknown>(raw);
+		} catch {
+			// Unparseable value — fall back to the strictest floor.
+			return 'all';
+		}
 
 		// Already migrated (e.g. a re-run): leave the existing floor untouched.
 		if (typeof parsed === 'string' && FLOORS.includes(parsed as RedactionFloor)) {
