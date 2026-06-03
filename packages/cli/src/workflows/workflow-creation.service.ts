@@ -258,7 +258,7 @@ export class WorkflowCreationService {
 
 	private async readActiveRedactionFloor(): Promise<RedactionFloor> {
 		if (!this.licenseState.isDataRedactionLicensed()) return 'off';
-		return await this.instanceRedactionEnforcementService.getFloor();
+		return await this.instanceRedactionEnforcementService.get();
 	}
 
 	private async resolveRedactionPolicyOnCreate(
