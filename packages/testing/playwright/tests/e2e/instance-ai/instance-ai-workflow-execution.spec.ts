@@ -31,6 +31,13 @@ test.describe(
 				timeout: 120_000,
 			});
 
+			// The preview canvas treats the workflow as read-only while a
+			// workflow-builder sub-agent is active or a workflow-editing tool
+			// call is in flight (see InstanceAiWorkflowPreview's externalReadOnly
+			// signal). That hides the run button. Wait for the agent to finish
+			// streaming before asserting visibility.
+			await n8n.instanceAi.waitForResponseComplete();
+
 			// The run workflow button should be visible inside the preview iframe
 			await expect(n8n.instanceAi.getPreviewRunWorkflowButton()).toBeVisible({
 				timeout: 10_000,
@@ -50,6 +57,11 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
+
+			// Wait for the agent to release the canvas read-only lock before
+			// trying to click the run button (the button is hidden while the
+			// workflow-builder sub-agent is active).
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Click the run workflow button
 			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
@@ -73,6 +85,10 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
+
+			// Wait for the agent to release the canvas read-only lock before
+			// hovering/clicking node toolbar actions.
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Hover over the Set node to show its toolbar
 			const setNode = n8n.instanceAi.getPreviewNodeByName('node execution test');
@@ -104,6 +120,10 @@ test.describe(
 				timeout: 120_000,
 			});
 
+			// Wait for the agent to release the canvas read-only lock before
+			// trying to click the run button.
+			await n8n.instanceAi.waitForResponseComplete();
+
 			// Execute the workflow
 			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
 
@@ -134,6 +154,10 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
+
+			// Wait for the agent to release the canvas read-only lock before
+			// the first run-button click.
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// First execution
 			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
