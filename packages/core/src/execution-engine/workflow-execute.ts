@@ -1902,12 +1902,17 @@ export class WorkflowExecute {
 								// so always report and let beforeSend decide
 								toReport = error;
 							} else if (error instanceof Error) {
-								// Non-BaseError errors only reports their class and stacktrace
+								// Non-BaseError errors only report their class and call frames
 								// The full error is still stored in the execution resultData
+								// Stack frames are in the format `<name>: <message>\n<call frames>`
+								// they can span multiple lines, so we drop everything except call frame lines
 								const errorClass = error.name || 'Error';
 								const sanitized = new Error(errorClass);
 								sanitized.name = errorClass;
-sanitized.stack = error.stack?.replace(/^[^\n]*/, errorClass);
+								const frames = (error.stack ?? '')
+									.split('\n')
+									.filter((line) => /^\s+at\s/.test(line));
+								sanitized.stack = [errorClass, ...frames].join('\n');
 								toReport = sanitized;
 							}
 							if (toReport) {

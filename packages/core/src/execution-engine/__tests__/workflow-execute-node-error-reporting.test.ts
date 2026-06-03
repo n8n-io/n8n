@@ -162,4 +162,27 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(reported.message).not.toContain('Failed to parse');
 		expect(reported.message).not.toContain('"value"');
 	});
+
+	it('should strip the message from the reported stack', async () => {
+		const payloadError = new Error('Failed to parse: {"key1":"single-line-value"}');
+
+		await runWorkflowThatThrows(payloadError);
+
+		const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+		expect(reported.stack).toBeDefined();
+		expect(reported.stack).not.toContain('Failed to parse');
+		expect(reported.stack).not.toContain('single-line-value');
+	});
+
+	it('should strip a multi-line message from the reported stack', async () => {
+		const payloadError = new Error('Failed to parse. Text: first-value\nMore text: second-value');
+
+		await runWorkflowThatThrows(payloadError);
+
+		const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+		expect(reported.stack).toBeDefined();
+		expect(reported.stack).not.toContain('first-value');
+		expect(reported.stack).not.toContain('second-value');
+		expect(reported.stack).toContain('at '); // call frame
+	});
 });
