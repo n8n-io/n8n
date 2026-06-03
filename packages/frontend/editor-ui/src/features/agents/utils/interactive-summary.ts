@@ -8,7 +8,7 @@ import {
 	type AskQuestionResume,
 } from '@n8n/api-types';
 
-import { summariseWriteTodosOutput } from './write-todos-tool';
+import { isWriteTodosTool, summariseWriteTodosOutput } from './write-todos-tool';
 
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
@@ -65,6 +65,8 @@ export function summariseToolCall(
 ): string | undefined {
 	const interactiveSummary = summariseInteractiveOutput(toolName, output, input);
 	if (interactiveSummary !== undefined) return interactiveSummary;
+
+	if (!isWriteTodosTool(toolName)) return undefined;
 
 	return summariseWriteTodosOutput(output);
 }
