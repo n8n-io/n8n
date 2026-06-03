@@ -20,7 +20,7 @@ vi.mock('@n8n/typeorm', async () => ({
 	DataSource: vi.fn(),
 }));
 
-jest.mock('../db-connection-monitor');
+vi.mock('../db-connection-monitor');
 
 describe('DbConnection', () => {
 	let dbConnection: DbConnection;
@@ -145,84 +145,6 @@ describe('DbConnection', () => {
 			await dbConnection.close();
 
 			expect(dataSource.destroy).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('ping', () => {
-		it('should update connection state on successful ping', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			dataSource.query.mockResolvedValue([{ '1': 1 }]);
-			dbConnection.connectionState.connected = false;
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(dataSource.query).toHaveBeenCalledWith('SELECT 1');
-			expect(dbConnection.connectionState.connected).toBe(true);
-		});
-
-		it('should report errors on failed ping', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			const error = new Error('Connection error');
-			dataSource.query.mockRejectedValue(error);
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(errorReporter.error).toHaveBeenCalledWith(error);
-		});
-
-		it('should schedule next ping after execution', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			dataSource.query.mockResolvedValue([{ '1': 1 }]);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const scheduleNextPingSpy = vi.spyOn(dbConnection as any, 'scheduleNextPing');
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(scheduleNextPingSpy).toHaveBeenCalled();
-		});
-
-		it('should not query if data source is not initialized', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = false;
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(dataSource.query).not.toHaveBeenCalled();
-		});
-
-		it('should execute ping on schedule', () => {
-			vi.useFakeTimers();
-			try {
-				// ARRANGE
-				dbConnection = new DbConnection(
-					errorReporter,
-					connectionOptions,
-					mock<DatabaseConfig>({
-						pingIntervalSeconds: 1,
-					}),
-					logger,
-				);
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const pingSpy = vi.spyOn(dbConnection as any, 'ping');
-
-				// @ts-expect-error private property
-				dbConnection.scheduleNextPing();
-				vi.advanceTimersByTime(1000);
-
-				expect(pingSpy).toHaveBeenCalled();
-			} finally {
-				vi.useRealTimers();
-			}
 		});
 	});
 });
