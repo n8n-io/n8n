@@ -1,5 +1,6 @@
+import { isRecord } from '@mcp-apps/utils/guards';
+
 import type { WorkflowPreviewData, WorkflowResult } from './types';
-import { isRecord } from '../../utils/guards';
 
 export function isWorkflowResult(value: unknown): value is WorkflowResult {
 	return isRecord(value);

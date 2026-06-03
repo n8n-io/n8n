@@ -2,7 +2,7 @@
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from 'vue-i18n';
 
-import type { MessageSchema } from '../i18n';
+import type { MessageSchema } from '@mcp-apps/i18n';
 
 withDefaults(
 	defineProps<{

@@ -7,7 +7,7 @@ import {
 import type { Ref } from 'vue';
 import { watchEffect } from 'vue';
 
-import { setLocaleFromHost } from '../i18n';
+import { setLocaleFromHost } from '@mcp-apps/i18n';
 
 export function useMcpHostContextStyles(hostContext: Ref<McpUiHostContext | undefined>) {
 	watchEffect(() => {

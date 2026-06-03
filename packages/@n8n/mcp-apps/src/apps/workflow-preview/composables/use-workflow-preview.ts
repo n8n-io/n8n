@@ -2,8 +2,9 @@ import type { App } from '@modelcontextprotocol/ext-apps';
 import { computed, ref, shallowRef, type ShallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { MessageSchema } from '../../../i18n';
-import { isRecord } from '../../../utils/guards';
+import type { MessageSchema } from '@mcp-apps/i18n';
+import { isRecord } from '@mcp-apps/utils/guards';
+
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
 import { isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
