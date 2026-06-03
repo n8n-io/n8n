@@ -86,6 +86,14 @@ export function useTimelineGrouping(
 			};
 		}
 
+		function appendArtifacts(group: ResponseGroupSegment, artifacts: ArtifactInfo[]) {
+			for (const artifact of artifacts) {
+				if (!group.artifacts.some((existing) => existing.resourceId === artifact.resourceId)) {
+					group.artifacts.push(artifact);
+				}
+			}
+		}
+
 		for (const entry of timeline) {
 			if (entry.type === 'text') {
 				// Text from the same API response as the current group stays inside
@@ -109,6 +117,18 @@ export function useTimelineGrouping(
 				} else if (tc?.confirmation?.inputType === 'questions' && !tc.isLoading) {
 					currentGroup.questionCount++;
 				}
+				if (tc) {
+					appendArtifacts(
+						currentGroup,
+						extractArtifacts({
+							...agentNode.value,
+							targetResource: undefined,
+							toolCalls: [tc],
+							children: [],
+							timeline: [],
+						}),
+					);
+				}
 			} else if (entry.type === 'child') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
 					currentGroup = newGroup(entry.responseId);
@@ -118,7 +138,7 @@ export function useTimelineGrouping(
 				currentGroup.childCount++;
 				const child = agentNode.value.children.find((c) => c.agentId === entry.agentId);
 				if (child) {
-					currentGroup.artifacts.push(...extractArtifacts(child));
+					appendArtifacts(currentGroup, extractArtifacts(child));
 				}
 			}
 		}
@@ -139,7 +159,7 @@ export function useTimelineGrouping(
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
-			return seg.toolCallCount > 0 || seg.childCount > 0;
+			return seg.toolCallCount > 0 || seg.childCount > 0 || seg.artifacts.length > 0;
 		});
 
 		// If there are no collapsible response groups, skip grouping entirely.

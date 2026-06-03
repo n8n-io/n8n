@@ -32,8 +32,6 @@ jobs:
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
 
       - name: Install .github/scripts dependencies
         run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace

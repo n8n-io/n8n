@@ -461,13 +461,13 @@ describe('WorkflowService', () => {
 			);
 		});
 
-		test('should reject update with 422 when enforcement is on and redactionPolicy is changing', async () => {
+		test('should reject update with 422 when redactionPolicy change violates the instance floor', async () => {
 			setupExistingWorkflow({ redactionPolicy: 'none' });
-			redactionEnforcementServiceMock.assertPolicyChangeAllowed.mockImplementationOnce(() => {
-				throw new UnprocessableRequestError(
-					'Workflow redaction policy is enforced at the instance level and cannot be modified.',
-				);
-			});
+			redactionEnforcementServiceMock.assertPolicyChangeAllowed.mockRejectedValueOnce(
+				new UnprocessableRequestError(
+					'Workflow redaction policy cannot be weaker than the instance floor.',
+				),
+			);
 
 			const user = mock<User>();
 			await expect(

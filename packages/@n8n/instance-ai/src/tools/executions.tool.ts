@@ -181,6 +181,7 @@ async function handleRun(
 	// matching the legacy behavior.
 	const allowList = context.allowedRunWorkflowIds;
 	const allowedByScope =
+		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
 		(allowList === undefined || allowList.has(input.workflowId));
 	const needsApproval = !allowedByScope;

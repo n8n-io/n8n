@@ -51,11 +51,11 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
-			? // This will only be set when we are a "sub-workflow"
+			? // Set for sub-workflows and error workflows to link their spans to the parent
 				await this.traceContextService.get(parentExecutionId)
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
@@ -96,7 +96,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 
@@ -132,7 +132,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onWorkflowEnd(ctx: WorkflowExecuteAfterContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 
 		this.tracer.endWorkflow({
 			executionId: ctx.executionId,
@@ -146,7 +146,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteBefore')
 	onNodeStart(ctx: NodeExecuteBeforeContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 		if (!this.config.includeNodeSpans) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
@@ -160,7 +160,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteAfter')
 	onNodeEnd(ctx: NodeExecuteAfterContext): void {
-		if (this.config.publishedOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
+		if (this.config.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return;
 		if (!this.config.includeNodeSpans) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
