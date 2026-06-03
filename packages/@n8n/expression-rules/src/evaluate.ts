@@ -42,8 +42,11 @@ export function evaluateRules(rules: ClaimRule[], context: EvaluationContext): E
 }
 
 function matches(expression: string, context: EvaluationContext): boolean {
+	// n8n marks a value as an expression with a leading "=" (e.g. "={{ ... }}").
+	// resolveWithoutWorkflow expects the unprefixed "{{ ... }}" form, so strip it.
+	const normalized = expression.startsWith('=') ? expression.slice(1) : expression;
 	try {
-		const result = Expression.resolveWithoutWorkflow(expression, context as unknown as IDataObject);
+		const result = Expression.resolveWithoutWorkflow(normalized, context as unknown as IDataObject);
 		return String(result) === 'true';
 	} catch {
 		return false;

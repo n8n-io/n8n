@@ -42,6 +42,13 @@ describe('evaluateRules (deny-wins claim ACL)', () => {
 		expect(result.matchedDeny?.expression).toBe('{{ $claims.groups.includes("admin") }}');
 	});
 
+	it('accepts the n8n "=" expression prefix', () => {
+		const rules: ClaimRule[] = [
+			{ effect: 'allow', expression: '={{ $claims.groups.includes("admin") }}' },
+		];
+		expect(evaluateRules(rules, ctx).allowed).toBe(true);
+	});
+
 	it('matches on a scope substring check', () => {
 		const rules: ClaimRule[] = [
 			{ effect: 'allow', expression: '{{ $claims.scope.includes("wf-execute") }}' },
