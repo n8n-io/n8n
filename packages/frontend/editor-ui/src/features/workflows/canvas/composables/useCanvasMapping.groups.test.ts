@@ -7,15 +7,28 @@ import {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
-function makeNode(id: string, x: number, y: number, w = 100, h = 100): INodeUi {
+function makeNode(id: string, x: number, y: number): INodeUi {
 	return {
 		id,
 		name: id,
 		type: 'n8n-nodes-base.noop',
 		typeVersion: 1,
 		position: [x, y] as [number, number],
-		parameters: w !== 100 || h !== 100 ? { width: w, height: h } : {},
+		parameters: {},
+		disabled: false,
+	} as INodeUi;
+}
+
+function makeStickyNode(id: string, x: number, y: number, w: number, h: number): INodeUi {
+	return {
+		id,
+		name: id,
+		type: STICKY_NODE_TYPE,
+		typeVersion: 1,
+		position: [x, y] as [number, number],
+		parameters: { width: w, height: h },
 		disabled: false,
 	} as INodeUi;
 }
@@ -40,10 +53,29 @@ describe('computeMemberRectFromStore', () => {
 	});
 
 	it('uses sticky-note width/height from parameters when present', () => {
-		const getById = nodeStore(makeNode('sticky', 0, 0, 500, 300));
+		const getById = nodeStore(makeStickyNode('sticky', 0, 0, 500, 300));
 		const rect = computeMemberRectFromStore(['sticky'], getById);
 		expect(rect.width).toBe(500);
 		expect(rect.height).toBe(300);
+	});
+
+	it('ignores parameters.width/height on non-sticky nodes', () => {
+		// Sticky is the only node type whose dimensions live in parameters.
+		// A future node that happens to set parameters.width must not bend the
+		// group's bounding rect — it should fall back to DEFAULT_NODE_SIZE.
+		const bogus = {
+			id: 'bogus',
+			name: 'bogus',
+			type: 'n8n-nodes-base.noop',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: { width: 9999, height: 9999 },
+			disabled: false,
+		} as INodeUi;
+		const getById = nodeStore(bogus);
+		const rect = computeMemberRectFromStore(['bogus'], getById);
+		expect(rect.width).toBe(NODE_W);
+		expect(rect.height).toBe(NODE_H);
 	});
 
 	it('returns default-sized rect when no members exist', () => {

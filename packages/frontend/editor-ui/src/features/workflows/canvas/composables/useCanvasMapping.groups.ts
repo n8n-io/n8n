@@ -8,6 +8,7 @@ import {
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 export interface MemberRect {
 	x: number;
@@ -21,6 +22,15 @@ export interface MemberRect {
  * (configurable inputs, config nodes, sticky notes).
  */
 export type GetNodeDimensions = (id: string) => { width: number; height: number } | undefined;
+
+// Sticky is the only node type whose dimensions live in parameters today.
+// typeof-narrow keeps the read type-safe
+function readStickyDimensions(node: INodeUi): { width: number; height: number } | undefined {
+	if (node.type !== STICKY_NODE_TYPE) return undefined;
+	const { width, height } = node.parameters ?? {};
+	if (typeof width !== 'number' || typeof height !== 'number') return undefined;
+	return { width, height };
+}
 
 /**
  * Bounding rect of a group's members — used to size and position
@@ -45,15 +55,14 @@ export function computeMemberRectFromStore(
 	let maxX = -Infinity;
 	let maxY = -Infinity;
 
-	// Precedence: caller-supplied → node parameters (sticky notes) → DEFAULT_NODE_SIZE.
+	// Precedence: caller-supplied → sticky parameters → DEFAULT_NODE_SIZE.
 	for (const node of members) {
 		const x = node.position[0];
 		const y = node.position[1];
 		const supplied = getNodeDimensions?.(node.id);
-		const width =
-			supplied?.width ?? (node.parameters?.width as number | undefined) ?? DEFAULT_NODE_SIZE[0];
-		const height =
-			supplied?.height ?? (node.parameters?.height as number | undefined) ?? DEFAULT_NODE_SIZE[1];
+		const sticky = readStickyDimensions(node);
+		const width = supplied?.width ?? sticky?.width ?? DEFAULT_NODE_SIZE[0];
+		const height = supplied?.height ?? sticky?.height ?? DEFAULT_NODE_SIZE[1];
 		if (x < minX) minX = x;
 		if (y < minY) minY = y;
 		if (x + width > maxX) maxX = x + width;
