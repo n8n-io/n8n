@@ -61,6 +61,7 @@ const connections = computed(() => workflowDocumentStore.value.connectionsBySour
 
 const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
 const readOnlyRef = computed(() => props.readOnly ?? false);
+const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
 
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
@@ -76,6 +77,7 @@ const {
 	renderData,
 	nodeGroupIdToAutofocusTitle,
 	readOnly: readOnlyRef,
+	suppressInteraction: suppressInteractionRef,
 	isExperimentalNdvActive,
 });
 

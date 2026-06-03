@@ -68,6 +68,7 @@ export function useCanvasMapping({
 	renderData,
 	nodeGroupIdToAutofocusTitle,
 	readOnly = ref(false),
+	suppressInteraction = ref(false),
 	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
@@ -76,6 +77,7 @@ export function useCanvasMapping({
 	renderData: Ref<CanvasRenderData>;
 	nodeGroupIdToAutofocusTitle?: Ref<string | null>;
 	readOnly?: Ref<boolean>;
+	suppressInteraction?: Ref<boolean>;
 	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
@@ -604,7 +606,7 @@ export function useCanvasMapping({
 			getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 			getNodeDimensions: (id) => memberDimensionsByNodeId.value[id],
 			autofocusGroupId: nodeGroupIdToAutofocusTitle?.value ?? null,
-			readOnly: readOnly.value,
+			readOnly: readOnly.value || suppressInteraction.value,
 		});
 	});
 
