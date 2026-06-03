@@ -162,8 +162,8 @@ describe('getPriorToolObservations', () => {
 				{ questionId: 'purpose', question: 'What should this do?', customText: 'Email me' },
 			],
 		};
-		const getEventsForRun = jest.fn().mockReturnValue([]);
-		const getEventsForRuns = jest.fn().mockReturnValue([
+		const getEventsForRun = vi.fn().mockReturnValue([]);
+		const getEventsForRuns = vi.fn().mockReturnValue([
 			{
 				type: 'tool-call',
 				runId: 'run-prior',
@@ -189,7 +189,7 @@ describe('getPriorToolObservations', () => {
 			runId: 'run-current',
 			messageGroupId: 'message-group-1',
 			eventBus: {
-				getEventsAfter: jest.fn().mockReturnValue([
+				getEventsAfter: vi.fn().mockReturnValue([
 					{
 						id: 1,
 						event: {
@@ -234,7 +234,7 @@ describe('getPriorToolObservations', () => {
 			threadId: 'thread-1',
 			runId: 'run-current',
 			eventBus: {
-				getEventsForRun: jest.fn().mockReturnValue([
+				getEventsForRun: vi.fn().mockReturnValue([
 					{
 						type: 'tool-result',
 						runId: 'run-current',
@@ -259,7 +259,7 @@ describe('getPriorToolObservations', () => {
 			threadId: 'thread-1',
 			runId: 'run-current',
 			eventBus: {
-				getEventsForRun: jest.fn(() => {
+				getEventsForRun: vi.fn(() => {
 					throw new Error('storage unavailable');
 				}),
 			},
@@ -275,7 +275,7 @@ describe('getRecentMessages', () => {
 			threadId: 't-1',
 			currentUserMessage: 'Build a Slack to-do agent',
 			memory: {
-				recall: jest.fn().mockResolvedValue({
+				recall: vi.fn().mockResolvedValue({
 					messages: [{ role: 'user', content: 'Build a Slack to-do agent' }],
 				}),
 			},

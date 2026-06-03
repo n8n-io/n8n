@@ -1,10 +1,10 @@
-jest.mock('../harness/runner', () => ({
-	buildWorkflow: jest.fn(),
-	cleanupBuild: jest.fn(),
+vi.mock('../harness/runner', () => ({
+	buildWorkflow: vi.fn(),
+	cleanupBuild: vi.fn(),
 }));
 
-jest.mock('../binaryChecks/index', () => ({
-	runBinaryChecks: jest.fn(),
+vi.mock('../binaryChecks/index', () => ({
+	runBinaryChecks: vi.fn(),
 }));
 
 import { runBinaryChecks } from '../binaryChecks/index';
@@ -12,9 +12,9 @@ import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflow, cleanupBuild, type BuildResult } from '../harness/runner';
 import { runWorkflowBuildEval } from '../subagent/runner';
 
-const mockedBuildWorkflow = jest.mocked(buildWorkflow);
-const mockedCleanupBuild = jest.mocked(cleanupBuild);
-const mockedRunBinaryChecks = jest.mocked(runBinaryChecks);
+const mockedBuildWorkflow = vi.mocked(buildWorkflow);
+const mockedCleanupBuild = vi.mocked(cleanupBuild);
+const mockedRunBinaryChecks = vi.mocked(runBinaryChecks);
 
 function makeWorkflow(): WorkflowResponse {
 	return {
@@ -33,7 +33,7 @@ function makeClient(): N8nClient {
 
 describe('runWorkflowBuildEval', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedCleanupBuild.mockResolvedValue(undefined);
 		mockedRunBinaryChecks.mockResolvedValue({
 			feedback: [
