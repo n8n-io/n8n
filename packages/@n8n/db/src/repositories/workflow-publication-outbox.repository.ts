@@ -17,62 +17,51 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * Enqueue a publication for `workflowId`. If a pending record is already in
 	 * place for the same workflow, its `publishedVersionId` is updated in place,
 	 * superseding the previous requested version.
+	 *
+	 * A single atomic UPSERT on the partial unique index
+	 * (`workflowId` where `status = 'pending'`) guarantees at most one pending
+	 * record per workflow without an explicit transaction. Callers only need to
+	 * know the enqueue succeeded, so no row is returned.
 	 */
-	async enqueue(
-		workflowId: string,
-		publishedVersionId: string,
-	): Promise<WorkflowPublicationOutbox> {
+	async enqueue(workflowId: string, publishedVersionId: string): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			return await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId);
+			await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId);
+			return;
 		}
 
-		return await this.enqueueWithSqliteTransaction(workflowId, publishedVersionId);
+		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId);
 	}
 
 	private async enqueueWithPostgresUpsert(
 		workflowId: string,
 		publishedVersionId: string,
-	): Promise<WorkflowPublicationOutbox> {
+	): Promise<void> {
 		const tableName = this.metadata.tableName;
 
-		const result: WorkflowPublicationOutbox[] = await this.query(
-			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status", "createdAt", "updatedAt")
-			 VALUES ($1, $2, 'pending', NOW(), NOW())
+		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits
+		// them; the conflict path bumps `updatedAt` explicitly.
+		await this.query(
+			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status")
+			 VALUES ($1, $2, 'pending')
 			 ON CONFLICT ("workflowId") WHERE "status" = 'pending'
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = NOW()
-			 RETURNING *`,
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
 			[workflowId, publishedVersionId],
 		);
-
-		return result[0];
 	}
 
-	// n8n's sqlite-pooled driver starts transactions with `BEGIN IMMEDIATE`,
-	// which acquires SQLite's RESERVED lock up front. That serializes concurrent
-	// callers and removes the find-then-update race.
-	private async enqueueWithSqliteTransaction(
+	private async enqueueWithSqliteUpsert(
 		workflowId: string,
 		publishedVersionId: string,
-	): Promise<WorkflowPublicationOutbox> {
-		return await this.manager.transaction(async (tx) => {
-			const existing = await tx.findOne(WorkflowPublicationOutbox, {
-				where: { workflowId, status: 'pending' },
-			});
+	): Promise<void> {
+		const tableName = this.metadata.tableName;
 
-			if (existing) {
-				await tx.update(WorkflowPublicationOutbox, existing.id, { publishedVersionId });
-				existing.publishedVersionId = publishedVersionId;
-				return existing;
-			}
-
-			return await tx.save(
-				tx.create(WorkflowPublicationOutbox, {
-					workflowId,
-					publishedVersionId,
-					status: 'pending',
-				}),
-			);
-		});
+		await this.query(
+			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status")
+			 VALUES (?, ?, 'pending')
+			 ON CONFLICT ("workflowId") WHERE "status" = 'pending'
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			[workflowId, publishedVersionId],
+		);
 	}
 
 	/**
