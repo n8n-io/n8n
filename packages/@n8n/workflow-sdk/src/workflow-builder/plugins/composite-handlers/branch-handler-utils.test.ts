@@ -58,20 +58,20 @@ describe('branch-handler-utils', () => {
 
 	describe('collectFromTarget', () => {
 		it('should not call collector for null', () => {
-			const collector = jest.fn();
+			const collector = vi.fn();
 			collectFromTarget(null, collector);
 			expect(collector).not.toHaveBeenCalled();
 		});
 
 		it('should not call collector for undefined', () => {
-			const collector = jest.fn();
+			const collector = vi.fn();
 			collectFromTarget(undefined, collector);
 			expect(collector).not.toHaveBeenCalled();
 		});
 
 		it('should call collector for single node', () => {
 			const node = createMockNode('TestNode');
-			const collector = jest.fn();
+			const collector = vi.fn();
 			collectFromTarget(node, collector);
 			expect(collector).toHaveBeenCalledWith(node);
 		});
@@ -79,7 +79,7 @@ describe('branch-handler-utils', () => {
 		it('should call collector for each node in array', () => {
 			const node1 = createMockNode('Node1');
 			const node2 = createMockNode('Node2');
-			const collector = jest.fn();
+			const collector = vi.fn();
 			collectFromTarget([node1, node2], collector);
 			expect(collector).toHaveBeenCalledTimes(2);
 			expect(collector).toHaveBeenCalledWith(node1);
@@ -88,7 +88,7 @@ describe('branch-handler-utils', () => {
 
 		it('should skip null elements in array', () => {
 			const node1 = createMockNode('Node1');
-			const collector = jest.fn();
+			const collector = vi.fn();
 			collectFromTarget([node1, null, null], collector);
 			expect(collector).toHaveBeenCalledTimes(1);
 			expect(collector).toHaveBeenCalledWith(node1);
@@ -98,7 +98,7 @@ describe('branch-handler-utils', () => {
 	describe('addBranchTargetNodes', () => {
 		it('should do nothing for null', () => {
 			const ctx = {
-				addBranchToGraph: jest.fn(),
+				addBranchToGraph: vi.fn(),
 			} as unknown as MutablePluginContext;
 			addBranchTargetNodes(null, ctx);
 			expect(ctx.addBranchToGraph).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe('branch-handler-utils', () => {
 		it('should call addBranchToGraph for single target', () => {
 			const node = createMockNode('TestNode');
 			const ctx = {
-				addBranchToGraph: jest.fn(),
+				addBranchToGraph: vi.fn(),
 			} as unknown as MutablePluginContext;
 			addBranchTargetNodes(node, ctx);
 			expect(ctx.addBranchToGraph).toHaveBeenCalledWith(node);
@@ -117,7 +117,7 @@ describe('branch-handler-utils', () => {
 			const node1 = createMockNode('Node1');
 			const node2 = createMockNode('Node2');
 			const ctx = {
-				addBranchToGraph: jest.fn(),
+				addBranchToGraph: vi.fn(),
 			} as unknown as MutablePluginContext;
 			addBranchTargetNodes([node1, node2], ctx);
 			expect(ctx.addBranchToGraph).toHaveBeenCalledTimes(2);
@@ -128,7 +128,7 @@ describe('branch-handler-utils', () => {
 		it('should skip null branch', () => {
 			const mainConns = new Map<number, ConnectionTarget[]>();
 			const ctx = {
-				addBranchToGraph: jest.fn(),
+				addBranchToGraph: vi.fn(),
 			} as unknown as MutablePluginContext;
 			processBranchForComposite(null, 0, ctx, mainConns);
 			expect(mainConns.size).toBe(0);
@@ -138,7 +138,7 @@ describe('branch-handler-utils', () => {
 			const node = createMockNode('TestNode');
 			const mainConns = new Map<number, ConnectionTarget[]>();
 			const ctx = {
-				addBranchToGraph: jest.fn().mockReturnValue('TestNode'),
+				addBranchToGraph: vi.fn().mockReturnValue('TestNode'),
 			} as unknown as MutablePluginContext;
 			processBranchForComposite(node, 0, ctx, mainConns);
 			expect(mainConns.get(0)).toEqual([{ node: 'TestNode', type: 'main', index: 0 }]);
@@ -149,7 +149,7 @@ describe('branch-handler-utils', () => {
 			const node2 = createMockNode('Node2');
 			const mainConns = new Map<number, ConnectionTarget[]>();
 			const ctx = {
-				addBranchToGraph: jest.fn().mockImplementation((n: { name: string }) => n.name),
+				addBranchToGraph: vi.fn().mockImplementation((n: { name: string }) => n.name),
 			} as unknown as MutablePluginContext;
 			processBranchForComposite([node1, node2], 0, ctx, mainConns);
 			expect(mainConns.get(0)).toEqual([
