@@ -13,7 +13,7 @@ export interface UseCanvasNodeGroupDragDeps {
 	canvasId?: string;
 	getNodeById: (id: string) => INodeUi | undefined;
 	getGroupById: (groupId: string) => { nodeIds: string[] } | undefined;
-	getAllGroups: () => Array<{ id: string; nodeIds: string[] }>;
+	getGroupForNode: (nodeId: string) => { id: string; nodeIds: string[] } | undefined;
 }
 
 interface GroupDragSnapshot {
@@ -107,12 +107,18 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	// update on drag-stop. Without this live push the rect would lag the drag.
 	function syncGroupBoundsFromMembers(draggedMemberIds: string[]) {
 		if (draggedMemberIds.length === 0) return;
-		const dragged = new Set(draggedMemberIds);
 
-		for (const group of deps.getAllGroups()) {
-			// Skip groups that don't contain any of the dragged nodes.
-			if (!group.nodeIds.some((id) => dragged.has(id))) continue;
+		// O(1) per-node lookup so a non-member drag tick does no work
+		const groupsToSync = new Map<string, { id: string; nodeIds: string[] }>();
+		for (const id of draggedMemberIds) {
+			const group = deps.getGroupForNode(id);
+			if (group && !groupsToSync.has(group.id)) {
+				groupsToSync.set(group.id, group);
+			}
+		}
+		if (groupsToSync.size === 0) return;
 
+		for (const group of groupsToSync.values()) {
 			const members = group.nodeIds
 				.map((id) => findNode(id))
 				.filter((n): n is GraphNode => n !== undefined);

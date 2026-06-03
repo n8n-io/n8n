@@ -67,7 +67,7 @@ describe('useCanvasNodeGroupDrag', () => {
 		const drag = useCanvasNodeGroupDrag({
 			getNodeById: (id) => store.get(id),
 			getGroupById: (id) => groups.find((g) => g.id === id),
-			getAllGroups: () => groups,
+			getGroupForNode: (id) => groups.find((g) => g.nodeIds.includes(id)),
 		});
 		return { drag };
 	}
