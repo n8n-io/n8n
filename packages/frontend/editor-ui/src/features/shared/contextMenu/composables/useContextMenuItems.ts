@@ -18,6 +18,7 @@ import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { groupIdFromCollapsedNodeId } from '@/features/workflows/canvas/groups/collapsedGroupView';
 
 export type ContextMenuAction =
 	| 'open'
@@ -39,7 +40,8 @@ export type ContextMenuAction =
 	| 'open_sub_workflow'
 	| 'tidy_up'
 	| 'extract_sub_workflow'
-	| 'focus_ai_on_selected';
+	| 'focus_ai_on_selected'
+	| 'ungroup';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
@@ -125,7 +127,37 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 		return true;
 	};
 
+	const UNGROUP_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
+
+	// True when the selection belongs to one or more groups, so an "Ungroup"
+	// item should be offered on a regular node menu (expanded groups).
+	const targetsBelongToGroup = computed(() =>
+		targetNodes.value.some((node) => !!workflowDocumentStore?.value?.getGroupForNode(node.id)),
+	);
+
 	return computed(() => {
+		// A collapsed group box is a synthetic node (not in the document store),
+		// so it gets its own focused menu rather than the regular node actions.
+		const collapsedGroupId =
+			targetNodeIds.value.length === 1 ? groupIdFromCollapsedNodeId(targetNodeIds.value[0]) : null;
+		if (collapsedGroupId && workflowDocumentStore?.value?.getGroupById(collapsedGroupId)) {
+			return [
+				{
+					id: 'ungroup',
+					label: i18n.baseText('contextMenu.ungroup'),
+					shortcut: UNGROUP_SHORTCUT,
+					disabled: isReadOnly.value,
+				},
+				{
+					id: 'delete',
+					divided: true,
+					label: i18n.baseText('contextMenu.deleteGroup'),
+					shortcut: { keys: ['Del'] },
+					disabled: isReadOnly.value,
+				},
+			];
+		}
+
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
 
@@ -240,6 +272,13 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				...extractionActions,
 				...aiActions,
 				...selectionActions,
+				targetsBelongToGroup.value && {
+					id: 'ungroup',
+					divided: true,
+					label: i18n.baseText('contextMenu.ungroup'),
+					shortcut: UNGROUP_SHORTCUT,
+					disabled: isReadOnly.value,
+				},
 				{
 					id: 'delete',
 					divided: true,

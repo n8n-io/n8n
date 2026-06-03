@@ -74,6 +74,11 @@ interface GroupAccumulator {
 	descriptor: CollapsedGroupNodeDescriptor;
 	incomingCount: number;
 	outgoingCount: number;
+	// Deduplicate connectors: one per boundary member node + connection type,
+	// keyed by `${memberNodeId}::${type}`. Several external lines from the same
+	// node port share a single connector rather than stacking one per line.
+	incomingHandleByKey: Map<string, string>;
+	outgoingHandleByKey: Map<string, string>;
 }
 
 export function buildCollapsedGroupView(input: {
@@ -118,30 +123,48 @@ export function buildCollapsedGroupView(input: {
 			},
 			incomingCount: 0,
 			outgoingCount: 0,
+			incomingHandleByKey: new Map(),
+			outgoingHandleByKey: new Map(),
 		});
 	}
 
 	const connectionRewrites = new Map<string, ConnectionRewrite>();
 	const droppedConnectionIds = new Set<string>();
 
-	function addOutgoingHandle(acc: GroupAccumulator, type: NodeConnectionType): string {
+	function outgoingHandle(
+		acc: GroupAccumulator,
+		memberNodeId: string,
+		type: NodeConnectionType,
+	): string {
+		const key = `${memberNodeId}::${type}`;
+		const existing = acc.outgoingHandleByKey.get(key);
+		if (existing) return existing;
 		const handleId = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Output,
 			type,
 			index: acc.outgoingCount,
 		});
 		acc.outgoingCount += 1;
+		acc.outgoingHandleByKey.set(key, handleId);
 		acc.descriptor.outgoing.push({ handleId, type });
 		return handleId;
 	}
 
-	function addIncomingHandle(acc: GroupAccumulator, type: NodeConnectionType): string {
+	function incomingHandle(
+		acc: GroupAccumulator,
+		memberNodeId: string,
+		type: NodeConnectionType,
+	): string {
+		const key = `${memberNodeId}::${type}`;
+		const existing = acc.incomingHandleByKey.get(key);
+		if (existing) return existing;
 		const handleId = createCanvasConnectionHandleString({
 			mode: CanvasConnectionMode.Input,
 			type,
 			index: acc.incomingCount,
 		});
 		acc.incomingCount += 1;
+		acc.incomingHandleByKey.set(key, handleId);
 		acc.descriptor.incoming.push({ handleId, type });
 		return handleId;
 	}
@@ -165,15 +188,25 @@ export function buildCollapsedGroupView(input: {
 		if (sourceGroupId) {
 			const acc = accumulators.get(sourceGroupId);
 			if (acc) {
+				// Group by the boundary member node (the connection's source) so all
+				// of its external lines share one output connector.
+				sourceHandle = outgoingHandle(
+					acc,
+					connection.source,
+					connection.data?.source.type ?? 'main',
+				);
 				source = acc.descriptor.nodeId;
-				sourceHandle = addOutgoingHandle(acc, connection.data?.source.type ?? 'main');
 			}
 		}
 		if (targetGroupId) {
 			const acc = accumulators.get(targetGroupId);
 			if (acc) {
+				targetHandle = incomingHandle(
+					acc,
+					connection.target,
+					connection.data?.target.type ?? 'main',
+				);
 				target = acc.descriptor.nodeId;
-				targetHandle = addIncomingHandle(acc, connection.data?.target.type ?? 'main');
 			}
 		}
 

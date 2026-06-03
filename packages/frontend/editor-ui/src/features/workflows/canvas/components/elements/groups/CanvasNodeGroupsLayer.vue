@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, watch } from 'vue';
 import { useVueFlow, type GraphNode } from '@vue-flow/core';
 import { useEventListener } from '@vueuse/core';
 import type { IWorkflowGroup } from 'n8n-workflow';
@@ -9,6 +9,7 @@ import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlow
 import { snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { getGroupFrameRects } from '../../../groups/groupFrame';
 import {
+	collapsedGroupNodeId,
 	groupIdFromCollapsedNodeId,
 	isCollapsedGroupNodeId,
 } from '../../../groups/collapsedGroupView';
@@ -63,13 +64,14 @@ const visibleGroups = computed(() =>
 // simply won't pull nodes back, which is a safe degradation.
 const expandDeltasByGroup = new Map<string, GroupExpandDeltas>();
 
-// Snapshot of every visible canvas node for the layout algorithm. Hidden nodes
-// (members of other collapsed groups) and synthetic collapsed-group nodes are
-// excluded — they aren't free-standing obstacles to push.
-function getLayoutNodes(): LayoutNode[] {
+// Snapshot of canvas nodes for the layout algorithm. Hidden nodes (members of
+// OTHER collapsed groups) are excluded — they're represented by their box,
+// which is itself an obstacle. `excludeId` drops the group currently toggling
+// (its own box is appearing/disappearing).
+function getLayoutNodes(excludeId?: string): LayoutNode[] {
 	const out: LayoutNode[] = [];
 	for (const node of getNodes.value) {
-		if (node.hidden || isCollapsedGroupNodeId(node.id)) continue;
+		if (node.hidden || node.id === excludeId) continue;
 		out.push({
 			id: node.id,
 			position: { x: node.position.x, y: node.position.y },
@@ -81,11 +83,56 @@ function getLayoutNodes(): LayoutNode[] {
 
 function applyMoves(moves: Array<{ id: string; position: { x: number; y: number } }>) {
 	if (moves.length === 0) return;
+	// A move targeting a collapsed-group box is translated into moving all of
+	// its (hidden) member nodes by the same delta, so the box follows.
+	const resolved: Array<{ id: string; position: { x: number; y: number } }> = [];
 	for (const move of moves) {
-		updateNode(move.id, { position: move.position });
+		const groupId = groupIdFromCollapsedNodeId(move.id);
+		if (!groupId) {
+			resolved.push(move);
+			continue;
+		}
+		const box = findNode(move.id);
+		const group = workflowDocumentStore.value.getGroupById(groupId);
+		if (!box || !group) continue;
+		const dx = move.position.x - box.position.x;
+		const dy = move.position.y - box.position.y;
+		for (const memberId of group.nodeIds) {
+			const member = findNode(memberId);
+			if (member) {
+				resolved.push({
+					id: memberId,
+					position: { x: member.position.x + dx, y: member.position.y + dy },
+				});
+			}
+		}
 	}
-	// Reuse the existing persistence path (update:nodes:position).
-	emit('move-members', moves);
+	if (resolved.length === 0) return;
+	// Persist via the existing path (update:nodes:position). This flows back
+	// through the canvas mapping and repositions the nodes reactively, so we do
+	// NOT also call Vue Flow's updateNode per move — doing that in a loop
+	// triggers an expensive synchronous internals pass for each call (it made
+	// expand take seconds for a handful of moved nodes).
+	emit('move-members', resolved);
+}
+
+// The expanded frame must be identical on expand and collapse so the push and
+// pull-back cancel exactly. Vue Flow resets a node's dimensions to 0 in the
+// tick after it is un-hidden (on expand), which would otherwise yield a
+// smaller frame than the collapse pass. Cache the frame from any pass where
+// every member is measured and reuse it when members are momentarily unmeasured.
+const cachedFrameByGroup = new Map<string, NonNullable<ReturnType<typeof getGroupFrameRects>>>();
+
+function frameRectsForGroup(groupId: string, members: GraphNode[]) {
+	const computed = getGroupFrameRects(members);
+	const allMeasured =
+		members.length > 0 &&
+		members.every((m) => (m.dimensions?.width ?? 0) > 0 && (m.dimensions?.height ?? 0) > 0);
+	if (computed && allMeasured) {
+		cachedFrameByGroup.set(groupId, computed);
+		return computed;
+	}
+	return cachedFrameByGroup.get(groupId) ?? computed;
 }
 
 // Run the push (expand) / pull-back (collapse) layout for a group whose
@@ -96,7 +143,7 @@ function runLayoutForToggle(groupId: string, collapsing: boolean) {
 	if (!group) return;
 	const members = getMembers(group);
 	if (members.length === 0) return;
-	const rects = getGroupFrameRects(members);
+	const rects = frameRectsForGroup(groupId, members);
 	if (!rects) return;
 
 	const expandedRect = {
@@ -112,9 +159,10 @@ function runLayoutForToggle(groupId: string, collapsing: boolean) {
 		height: rects.collapsed.height,
 	};
 
+	const layoutNodes = getLayoutNodes(collapsedGroupNodeId(groupId));
 	if (collapsing) {
 		const { moves } = computeCollapseLayout({
-			nodes: getLayoutNodes(),
+			nodes: layoutNodes,
 			memberIds: group.nodeIds,
 			collapsedRect,
 			expandedRect,
@@ -124,7 +172,7 @@ function runLayoutForToggle(groupId: string, collapsing: boolean) {
 		expandDeltasByGroup.delete(groupId);
 	} else {
 		const { moves, expandDeltas } = computeExpandLayout({
-			nodes: getLayoutNodes(),
+			nodes: layoutNodes,
 			memberIds: group.nodeIds,
 			collapsedRect,
 			expandedRect,
@@ -162,7 +210,11 @@ watch(
 			const previous = lastCollapsedState.get(id);
 			lastCollapsedState.set(id, collapsed);
 			if (previous === undefined || previous === collapsed) continue;
-			runLayoutForToggle(id, collapsed);
+			// Defer to after this flush so the collapse/expand mapping (member
+			// hide/show, box add/remove) is fully applied to Vue Flow before we
+			// persist the surrounding-node moves — otherwise the move-persist
+			// gets folded into the in-progress flush and is dropped this cycle.
+			void nextTick(() => runLayoutForToggle(id, collapsed));
 		}
 		for (const id of [...lastCollapsedState.keys()]) {
 			if (!seen.has(id)) lastCollapsedState.delete(id);

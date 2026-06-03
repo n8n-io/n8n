@@ -56,6 +56,14 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'update nodeGroups with collapsed state',
+				request: {
+					nodeGroups: [
+						{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'], collapsed: true },
+					],
+				},
+			},
+			{
 				name: 'set nodeGroups to empty array',
 				request: { nodeGroups: [] },
 			},
@@ -71,6 +79,17 @@ describe('UpdateWorkflowDto', () => {
 		])('should validate $name', ({ request }) => {
 			const result = UpdateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should preserve the collapsed state on node groups', () => {
+			const nodeGroups = [
+				{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'], collapsed: true },
+			];
+
+			const result = UpdateWorkflowDto.safeParse({ nodeGroups });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.nodeGroups).toEqual(nodeGroups);
 		});
 
 		test('should transform tags from objects to string array', () => {

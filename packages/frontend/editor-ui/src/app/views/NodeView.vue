@@ -138,6 +138,10 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	groupIdFromCollapsedNodeId,
+	isCollapsedGroupNodeId,
+} from '@/features/workflows/canvas/groups/collapsedGroupView';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -462,7 +466,27 @@ function onRevertNodePosition({ nodeName, position }: { nodeName: string; positi
 	revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
 }
 
+// Deleting a collapsed-group box deletes the whole group: expand its id to its
+// member node ids (which cascades to removing the now-empty group).
+function expandCollapsedGroupIds(ids: string[]): string[] {
+	const out = new Set<string>();
+	for (const id of ids) {
+		const groupId = groupIdFromCollapsedNodeId(id);
+		if (groupId) {
+			const group = workflowDocumentStore.value?.getGroupById(groupId);
+			group?.nodeIds.forEach((nodeId) => out.add(nodeId));
+		} else {
+			out.add(id);
+		}
+	}
+	return Array.from(out);
+}
+
 function onDeleteNode(id: string) {
+	if (isCollapsedGroupNodeId(id)) {
+		deleteNodes(expandCollapsedGroupIds([id]));
+		return;
+	}
 	const matchedFallbackNode = fallbackNodes.value.findIndex((node) => node.id === id);
 	if (matchedFallbackNode >= 0) {
 		fallbackNodes.value.splice(matchedFallbackNode, 1);
@@ -472,7 +496,7 @@ function onDeleteNode(id: string) {
 }
 
 function onDeleteNodes(ids: string[]) {
-	deleteNodes(ids);
+	deleteNodes(expandCollapsedGroupIds(ids));
 }
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {

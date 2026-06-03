@@ -100,7 +100,8 @@ export type CanvasNodeCollapsedGroupRender = {
 		groupId: string;
 		title: string;
 		// External connections, rerouted onto this box: inputs render on the
-		// left edge, outputs on the right. One handle per external connection.
+		// left edge, outputs on the right. One handle per boundary member node
+		// port (deduped by node + connection type), shared by all its lines.
 		incoming: CanvasCollapsedGroupHandle[];
 		outgoing: CanvasCollapsedGroupHandle[];
 	};

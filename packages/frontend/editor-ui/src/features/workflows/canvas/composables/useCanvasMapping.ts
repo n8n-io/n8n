@@ -627,12 +627,14 @@ export function useCanvasMapping({
 			type: 'canvas-node',
 			position: descriptor.position,
 			data,
-			// Draggable so the whole group can be moved while collapsed; the
-			// layer translates the members on drag-stop. Not selectable/deletable
-			// since it is a synthetic, non-persisted node.
+			// Draggable so the whole group can be moved while collapsed (the layer
+			// translates the members on drag-stop). Selectable + deletable so the
+			// box can be targeted by the ungroup (Cmd+Shift+G) / delete
+			// (Backspace) shortcuts and the context menu; the delete is
+			// translated to its member nodes downstream.
 			draggable: true,
-			selectable: false,
-			deletable: false,
+			selectable: true,
+			deletable: true,
 		};
 	}
 

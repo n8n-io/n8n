@@ -6,6 +6,7 @@ import { computed, toValue } from 'vue';
 
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { groupIdFromCollapsedNodeId } from '../groups/collapsedGroupView';
 
 export function useCanvasNodeGroupActions(
 	selectedNodes: MaybeRefOrGetter<GraphNode[]>,
@@ -32,6 +33,12 @@ export function useCanvasNodeGroupActions(
 		if (isReadOnly.value) return [];
 		const ids = new Set<string>();
 		for (const node of toValue(selectedNodes)) {
+			// A selected collapsed-group box maps directly to its group.
+			const collapsedGroupId = groupIdFromCollapsedNodeId(node.id);
+			if (collapsedGroupId) {
+				if (workflowDocumentStore.value.getGroupById(collapsedGroupId)) ids.add(collapsedGroupId);
+				continue;
+			}
 			const group = workflowDocumentStore.value.getGroupForNode(node.id);
 			if (group) ids.add(group.id);
 		}

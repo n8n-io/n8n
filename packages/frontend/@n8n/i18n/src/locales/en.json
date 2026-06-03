@@ -2365,6 +2365,8 @@
 	"contextMenu.pin": "Pin | Pin {count} nodes",
 	"contextMenu.unpin": "Unpin | Unpin {count} nodes",
 	"contextMenu.delete": "Delete | Delete {count} {subject}",
+	"contextMenu.ungroup": "Ungroup",
+	"contextMenu.deleteGroup": "Delete group",
 	"contextMenu.addNode": "Add node",
 	"contextMenu.addSticky": "Add sticky note",
 	"contextMenu.editSticky": "Edit sticky note",

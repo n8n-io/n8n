@@ -876,6 +876,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('copy:nodes', nodeIds);
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
+		case 'ungroup':
+			// Right-clicking selects the target(s) first, so the selection-based
+			// ungroup resolves the relevant group(s) — including a collapsed box.
+			return ungroupSelection();
 		case 'select_all':
 			return addSelectedNodes(graphNodes.value);
 		case 'deselect_all':

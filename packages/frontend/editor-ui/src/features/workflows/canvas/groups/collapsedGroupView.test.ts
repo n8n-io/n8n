@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 
 import { buildCollapsedGroupView, collapsedGroupNodeId } from './collapsedGroupView';
 import type { CanvasConnection } from '../canvas.types';
+import {
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+	GROUP_HEADER_HEIGHT,
+} from '../stores/canvasNodeGroups.constants';
 
 function conn(id: string, source: string, target: string): CanvasConnection {
 	return {
@@ -80,7 +85,7 @@ describe('buildCollapsedGroupView', () => {
 		expect(node?.outgoing).toEqual([{ handleId: 'outputs/main/0', type: 'main' }]);
 	});
 
-	it('assigns one distinct handle per external connection', () => {
+	it('assigns one connector per boundary member node (distinct members → distinct connectors)', () => {
 		const view = buildCollapsedGroupView({
 			collapsedGroups: [group],
 			canvasConnections: [conn('c1', 'outA', 'm1'), conn('c2', 'outA', 'm2')],
@@ -88,6 +93,32 @@ describe('buildCollapsedGroupView', () => {
 		});
 		const node = view.nodes.find((n) => n.groupId === 'g1');
 		expect(node?.incoming.map((h) => h.handleId)).toEqual(['inputs/main/0', 'inputs/main/1']);
+	});
+
+	it('shares one connector for multiple external lines from the same member node', () => {
+		const view = buildCollapsedGroupView({
+			collapsedGroups: [group],
+			// Both lines leave the same member (m1) to different outside nodes.
+			canvasConnections: [conn('x1', 'm1', 'outA'), conn('x2', 'm1', 'outB')],
+			nodePositionsById: positions,
+		});
+		const node = view.nodes.find((n) => n.groupId === 'g1');
+		expect(node?.outgoing).toEqual([{ handleId: 'outputs/main/0', type: 'main' }]);
+		// Both rerouted edges point at the same shared connector.
+		expect(view.connectionRewrites.get('x1')?.sourceHandle).toBe('outputs/main/0');
+		expect(view.connectionRewrites.get('x2')?.sourceHandle).toBe('outputs/main/0');
+	});
+
+	it('shares one incoming connector for multiple external lines into the same member node', () => {
+		const view = buildCollapsedGroupView({
+			collapsedGroups: [group],
+			canvasConnections: [conn('i1', 'outA', 'm1'), conn('i2', 'outB', 'm1')],
+			nodePositionsById: positions,
+		});
+		const node = view.nodes.find((n) => n.groupId === 'g1');
+		expect(node?.incoming).toEqual([{ handleId: 'inputs/main/0', type: 'main' }]);
+		expect(view.connectionRewrites.get('i1')?.targetHandle).toBe('inputs/main/0');
+		expect(view.connectionRewrites.get('i2')?.targetHandle).toBe('inputs/main/0');
 	});
 
 	it('reroutes both ends when an edge runs between two collapsed groups', () => {
@@ -110,8 +141,11 @@ describe('buildCollapsedGroupView', () => {
 			nodePositionsById: positions,
 		});
 		const node = view.nodes.find((n) => n.groupId === 'g1');
-		// min member x=400, y=300; minus GROUP_PADDING_X(56) / (PADDING_Y_TOP 40 + HEADER 40).
-		expect(node?.position).toEqual({ x: 400 - 56, y: 300 - 40 - 40 });
+		// min member x=400, y=300; minus GROUP_PADDING_X / (PADDING_Y_TOP + HEADER).
+		expect(node?.position).toEqual({
+			x: 400 - GROUP_PADDING_X,
+			y: 300 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT,
+		});
 	});
 
 	it('skips groups whose members are not on the canvas', () => {
