@@ -64,7 +64,6 @@ interface AgentExecutor {
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
-const APPROVAL_INPUT_MAX_LENGTH = 1500;
 
 interface ApprovalSuspendPayload {
 	type: 'approval';
@@ -95,26 +94,6 @@ function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPaylo
 	);
 }
 
-function truncateApprovalInput(value: string): string {
-	if (value.length <= APPROVAL_INPUT_MAX_LENGTH) return value;
-	return `${value.slice(0, APPROVAL_INPUT_MAX_LENGTH)}...`;
-}
-
-function stringifyApprovalInput(value: unknown): string | undefined {
-	if (value === undefined) return undefined;
-
-	if (typeof value === 'string') {
-		return truncateApprovalInput(value);
-	}
-
-	try {
-		const serialized = JSON.stringify(value, null, 2);
-		return truncateApprovalInput(serialized ?? String(value));
-	} catch {
-		return truncateApprovalInput(String(value));
-	}
-}
-
 function getApprovalToolLabel(payload: ApprovalSuspendPayload): string {
 	return typeof payload.displayName === 'string' && payload.displayName.length > 0
 		? payload.displayName
@@ -127,11 +106,6 @@ function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
 } {
 	const toolLabel = getApprovalToolLabel(payload);
 	const fields: Array<{ label: string; value: string }> = [{ label: 'Tool', value: toolLabel }];
-	const input = stringifyApprovalInput(payload.args);
-
-	if (input) {
-		fields.push({ label: 'Input', value: input });
-	}
 
 	return {
 		title: 'Approval required',
