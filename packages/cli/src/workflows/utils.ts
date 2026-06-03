@@ -1,4 +1,3 @@
-import type { RedactionEnforcementSettings } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { NodeApiError, NodeError, WorkflowActivationError } from 'n8n-workflow';
