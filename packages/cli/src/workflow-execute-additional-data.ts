@@ -323,7 +323,6 @@ async function listAgents(userId: string): Promise<Array<{ id: string; name: str
 	return agents.map((agent) => ({
 		id: agent.id,
 		name: agent.name,
-		published: agent.activeVersionId !== null,
 	}));
 }
 

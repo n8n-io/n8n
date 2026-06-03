@@ -111,7 +111,6 @@ export class MessageAnAgent implements INodeType {
 					let results = agents.map((agent) => ({
 						name: agent.name,
 						value: agent.id,
-						active: agent.published,
 					}));
 
 					if (filter) {
