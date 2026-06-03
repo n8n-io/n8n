@@ -3,6 +3,7 @@ import {
 	WRITE_TODOS_TOOL_NAME,
 	formatWriteTodosMarkdown,
 	isWriteTodosTool,
+	parseWriteTodosFailedOutput,
 	parseWriteTodosOutput,
 	writeTodosLabel,
 	writeTodosSummaryLabel,
@@ -59,6 +60,28 @@ describe('write-todos-tool', () => {
 		it('returns undefined for malformed output', () => {
 			expect(parseWriteTodosOutput({ status: 'failed' })).toBeUndefined();
 			expect(parseWriteTodosOutput('nope')).toBeUndefined();
+		});
+	});
+
+	describe('parseWriteTodosFailedOutput', () => {
+		it('parses failed output with an error message', () => {
+			expect(parseWriteTodosFailedOutput({ status: 'failed', error: 'Duplicate todo id' })).toEqual(
+				{
+					status: 'failed',
+					error: 'Duplicate todo id',
+				},
+			);
+		});
+
+		it('returns undefined for ok output or malformed failed payloads', () => {
+			expect(
+				parseWriteTodosFailedOutput({
+					status: 'ok',
+					todoCount: 1,
+					todos: [{ id: 'a', content: 'Task', status: 'pending' }],
+				}),
+			).toBeUndefined();
+			expect(parseWriteTodosFailedOutput({ status: 'failed' })).toBeUndefined();
 		});
 	});
 
@@ -151,6 +174,22 @@ describe('write-todos-tool', () => {
 					i18n,
 				),
 			).toBeUndefined();
+		});
+
+		it('returns trimmed error text for failed write_todos output', () => {
+			expect(
+				formatWriteTodosMarkdown({ status: 'failed', error: '  Duplicate todo id "a"  ' }),
+			).toBe('Duplicate todo id "a"');
+		});
+
+		it('returns trimmed string output for rejected tool calls', () => {
+			expect(formatWriteTodosMarkdown('  Validation failed  ')).toBe('Validation failed');
+		});
+
+		it('returns undefined for empty failed or malformed error payloads', () => {
+			expect(formatWriteTodosMarkdown({ status: 'failed', error: '   ' })).toBeUndefined();
+			expect(formatWriteTodosMarkdown({ status: 'failed' })).toBeUndefined();
+			expect(formatWriteTodosMarkdown({})).toBeUndefined();
 		});
 	});
 

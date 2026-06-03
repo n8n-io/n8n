@@ -58,7 +58,6 @@ function formatSpecializedDetails(
 	}
 
 	if (isWriteTodosTool(toolName)) {
-		if (!i18n) return undefined;
 		return formatWriteTodosMarkdown(output, i18n, subAgentNameById);
 	}
 

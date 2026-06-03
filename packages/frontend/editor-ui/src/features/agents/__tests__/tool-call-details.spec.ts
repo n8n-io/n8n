@@ -129,6 +129,26 @@ describe('tool-call-details', () => {
 				}),
 			).toBeUndefined();
 		});
+
+		it('shows write_todos failed output errors without i18n', () => {
+			expect(
+				getToolCallDetails({
+					tool: WRITE_TODOS_TOOL_NAME,
+					output: { status: 'failed', error: 'Duplicate todo id "a"' },
+					state: TOOL_CALL_STATE.ERROR,
+				}),
+			).toBe('Duplicate todo id "a"');
+		});
+
+		it('shows rejected write_todos tool error strings', () => {
+			expect(
+				getToolCallDetails({
+					tool: WRITE_TODOS_TOOL_NAME,
+					output: 'Each task must have a unique id',
+					state: TOOL_CALL_STATE.ERROR,
+				}),
+			).toBe('Each task must have a unique id');
+		});
 	});
 
 	describe('isToolCallExpandable', () => {

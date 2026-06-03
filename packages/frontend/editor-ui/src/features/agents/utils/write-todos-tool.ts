@@ -29,7 +29,13 @@ const writeTodosOutputSchema = z.object({
 	todos: z.array(todoItemSchema),
 });
 
+const writeTodosFailedOutputSchema = z.object({
+	status: z.literal('failed'),
+	error: z.string(),
+});
+
 export type WriteTodosOutput = z.infer<typeof writeTodosOutputSchema>;
+export type WriteTodosFailedOutput = z.infer<typeof writeTodosFailedOutputSchema>;
 export type TodoItem = z.infer<typeof todoItemSchema>;
 export type TodoStatus = z.infer<typeof todoStatusSchema>;
 
@@ -52,6 +58,26 @@ export function isWriteTodosTool(toolName: string | undefined): boolean {
 export function parseWriteTodosOutput(output: unknown): WriteTodosOutput | undefined {
 	const result = writeTodosOutputSchema.safeParse(output);
 	return result.success ? result.data : undefined;
+}
+
+export function parseWriteTodosFailedOutput(output: unknown): WriteTodosFailedOutput | undefined {
+	const result = writeTodosFailedOutputSchema.safeParse(output);
+	return result.success ? result.data : undefined;
+}
+
+function formatWriteTodosErrorText(output: unknown): string | undefined {
+	const failed = parseWriteTodosFailedOutput(output);
+	if (failed) {
+		const error = failed.error.trim();
+		return error.length > 0 ? error : undefined;
+	}
+
+	if (typeof output === 'string') {
+		const trimmed = output.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	}
+
+	return undefined;
 }
 
 export function writeTodosLabel(i18n: WriteTodosI18n): string {
@@ -96,11 +122,14 @@ function formatTodoItem(
 /** Format parsed write_todos output as Markdown for the expandable details panel. */
 export function formatWriteTodosMarkdown(
 	output: unknown,
-	i18n: WriteTodosI18n,
+	i18n?: WriteTodosI18n,
 	subAgentNameById?: Map<string, string>,
 ): string | undefined {
+	const errorText = formatWriteTodosErrorText(output);
+	if (errorText) return errorText;
+
 	const parsed = parseWriteTodosOutput(output);
-	if (!parsed || parsed.todos.length === 0) return undefined;
+	if (!parsed || !i18n || parsed.todos.length === 0) return undefined;
 
 	const sections: string[] = [];
 	for (const status of STATUS_ORDER) {
