@@ -14,6 +14,7 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
@@ -23,8 +24,7 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:changed": "janitor test-scoped --runner=vitest",
-    "test:dev": "vitest --silent=false",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json"
+    "test:dev": "vitest --silent=false"
   },
   "files": [
     "dist",

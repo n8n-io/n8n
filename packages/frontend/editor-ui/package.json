@@ -7,6 +7,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo .build",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
+    "build:unchecked": "pnpm run build",
     "build:coverage": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=14000\" BUILD_WITH_COVERAGE=true vite build",
     "typecheck": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
@@ -20,8 +21,7 @@
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
     "test": "vitest run",
     "test:changed": "janitor test-scoped --runner=vitest",
-    "test:dev": "vitest --silent=false",
-    "build:unchecked": "pnpm run build"
+    "test:dev": "vitest --silent=false"
   },
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",

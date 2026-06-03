@@ -15,12 +15,12 @@
   },
   "scripts": {
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
+    "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && pnpm build:runtime",
     "build:runtime": "node esbuild.config.js",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --watch --silent false",
-    "typecheck": "tsc --noEmit",
-    "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && pnpm build:runtime"
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "n8n",

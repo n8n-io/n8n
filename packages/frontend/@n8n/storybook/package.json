@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
-    "build:unchecked": "pnpm run build"
+    "build:unchecked": "pnpm run build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
     "@n8n/chat": "workspace:*",

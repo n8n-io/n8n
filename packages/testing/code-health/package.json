@@ -14,6 +14,7 @@
 	"scripts": {
 		"check": "tsx src/cli.ts",
 		"build": "tsc -p tsconfig.build.json",
+		"build:unchecked": "tsc -p tsconfig.build.json --noCheck",
 		"dev": "tsc --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -22,8 +23,7 @@
 		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
-		"typecheck": "tsc --noEmit",
-		"build:unchecked": "tsc -p tsconfig.build.json --noCheck"
+		"typecheck": "tsc --noEmit"
 	},
 	"license": "MIT",
 	"devDependencies": {

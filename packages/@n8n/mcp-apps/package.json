@@ -24,6 +24,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "pnpm build:ui && pnpm build:server",
+    "build:unchecked": "pnpm build:ui && tsc -p tsconfig.build.json --noCheck",
     "build:ui": "vite build --mode workflow-preview",
     "build:server": "tsc -p tsconfig.build.json",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.build.json",
@@ -33,8 +34,7 @@
     "test:unit": "vitest run",
     "test:dev": "vitest",
     "format": "biome format --write src",
-    "format:check": "biome ci src",
-    "build:unchecked": "pnpm build:ui && tsc -p tsconfig.build.json --noCheck"
+    "format:check": "biome ci src"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "catalog:",

@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
+    "build:unchecked": "tsc --project tsconfig.build.json --noCheck",
     "build:docs": "pnpm build && eslint-doc-generator",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -24,8 +25,7 @@
     "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch": "tsc --watch --project tsconfig.build.json",
-    "build:unchecked": "tsc --project tsconfig.build.json --noCheck"
+    "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
     "@typescript-eslint/typescript-estree": "^8.35.0",

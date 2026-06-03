@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev --initial-path=/docs/chat-chat--docs",
     "build": "pnpm build:vite && pnpm build:bundle",
+    "build:unchecked": "pnpm run build",
     "build:vite": "cross-env vite build",
     "build:bundle": "cross-env INCLUDE_VUE=true vite build",
     "preview": "vite preview",
@@ -16,8 +17,7 @@
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "format": "biome format --write src && prettier --write src/ --ignore-path ../../../../.prettierignore",
-    "format:check": "biome ci src && prettier --check src/ --ignore-path ../../../../.prettierignore",
-    "build:unchecked": "pnpm run build"
+    "format:check": "biome ci src && prettier --check src/ --ignore-path ../../../../.prettierignore"
   },
   "types": "./dist/index.d.ts",
   "main": "./dist/chat.umd.js",

@@ -8,6 +8,7 @@
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
     "build": "vite build",
+    "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
@@ -19,8 +20,7 @@
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
-    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
-    "build:unchecked": "pnpm run build"
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

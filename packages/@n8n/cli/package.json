@@ -18,14 +18,14 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
-    "test:unit": "vitest run",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
+    "test:unit": "vitest run"
   },
   "oclif": {
     "bin": "n8n-cli",

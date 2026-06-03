@@ -6,6 +6,7 @@
 	"scripts": {
 		"clean": "rimraf dist .turbo",
 		"build": "vite build --config vite.sw.config.mts && vite build --config vite.ui.config.mts",
+		"build:unchecked": "pnpm run build",
 		"bundle": "pnpm build && node scripts/bundle.mjs",
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint . --quiet",
@@ -14,8 +15,7 @@
 		"test:unit": "vitest run",
 		"test:dev": "vitest",
 		"format": "biome format --write src",
-		"format:check": "biome ci src",
-		"build:unchecked": "pnpm run build"
+		"format:check": "biome ci src"
 	},
 	"dependencies": {
 		"@n8n/design-system": "workspace:*",

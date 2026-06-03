@@ -5,6 +5,7 @@
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -17,8 +18,7 @@
     "benchmark-locally": "pnpm benchmark --env local",
     "provision-cloud-env": "zx scripts/provision-cloud-env.mjs",
     "destroy-cloud-env": "zx scripts/destroy-cloud-env.mjs",
-    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json"
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "engines": {
     "node": ">=22.22"

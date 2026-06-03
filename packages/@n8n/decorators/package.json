@@ -6,6 +6,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -13,8 +14,7 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
+    "test:dev": "vitest"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

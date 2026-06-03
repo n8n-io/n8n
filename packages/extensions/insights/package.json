@@ -38,8 +38,8 @@
     "build:backend": "tsdown",
     "build:frontend": "vite build",
     "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
-    "preview": "vite preview",
-    "build:unchecked": "pnpm cleanup && pnpm run build:backend && pnpm run build:frontend"
+    "build:unchecked": "pnpm cleanup && pnpm run build:backend && pnpm run build:frontend",
+    "preview": "vite preview"
   },
   "peerDependencies": {
     "vue": "catalog:frontend",

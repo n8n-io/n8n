@@ -27,11 +27,11 @@
     "build:cjs": "tsc -p tsconfig.cjs.json && node postcjs.cjs",
     "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",
     "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
+    "build:unchecked": "rimraf ./dist && tsc -p tsconfig.types.json --noCheck && tsc -p tsconfig.cjs.json --noCheck && node postcjs.cjs && tsc -p tsconfig.esm.json --noCheck && node postesm.cjs",
     "dry": "pnpm run build && pnpm pub --dry-run",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --silent=false",
-    "build:unchecked": "rimraf ./dist && tsc -p tsconfig.types.json --noCheck && tsc -p tsconfig.cjs.json --noCheck && node postcjs.cjs && tsc -p tsconfig.esm.json --noCheck && node postesm.cjs"
+    "test:dev": "vitest --silent=false"
   },
   "keywords": [
     "zod",

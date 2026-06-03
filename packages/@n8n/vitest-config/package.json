@@ -43,10 +43,10 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "watch": "tsc -p tsconfig.build.json --watch",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck"
+    "watch": "tsc -p tsconfig.build.json --watch"
   },
   "license": "See LICENSE.md file in the root of the repository"
 }
