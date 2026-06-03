@@ -10,11 +10,10 @@ import {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentExecutionService } from '../agent-execution.service';
 import { ExecutionRecorder } from '../execution-recorder';
 import type { MessageRecord } from '../execution-recorder';
@@ -44,7 +43,6 @@ export interface SubAgentForegroundResult {
 export class SubAgentForegroundRunner {
 	constructor(
 		private readonly sourceResolver: SubAgentSourceResolver,
-		private readonly reconstructionService: AgentRuntimeReconstructionService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly logger: Logger,
 	) {}
@@ -82,7 +80,8 @@ export class SubAgentForegroundRunner {
 		// isolate this run to its own thread rather than widening to the project.
 		const resourceId = request.parentResourceId ?? threadId;
 
-		const { agent } = await this.reconstructionService.reconstructFromResolvedSource({
+		const reconstructionService = await getReconstructionService();
+		const { agent } = await reconstructionService.reconstructFromResolvedSource({
 			config: runtimeSource.source.config,
 			memoryOwnerAgentId: runtimeSource.source.sourceId,
 			projectId: context.projectId,
@@ -229,6 +228,19 @@ export class SubAgentForegroundRunner {
 			});
 		}
 	}
+}
+
+/**
+ * Lazy resolution avoids a circular DI dependency: AgentRuntimeReconstructionService
+ * injects SubAgentForegroundRunner into the delegate tool, while this runner needs
+ * reconstruction only when a configured sub-agent run starts.
+ */
+async function getReconstructionService() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { AgentRuntimeReconstructionService } = await import(
+		'../agent-runtime-reconstruction.service'
+	);
+	return Container.get(AgentRuntimeReconstructionService);
 }
 
 function buildGenerateResultFromRecord(

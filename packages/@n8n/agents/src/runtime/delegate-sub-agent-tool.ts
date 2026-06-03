@@ -42,12 +42,6 @@ const delegateSubAgentInputSchema = z.object({
 			'All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out.',
 		),
 	expectedOutput: z.string().optional().describe('The expected shape or contents of the answer.'),
-	allowedTools: z
-		.array(z.string().min(1))
-		.optional()
-		.describe(
-			'Optional list of parent tool names the inline child may use. This can only narrow the inherited tool set, never add tools.',
-		),
 });
 
 // Documents the tool result shape for typing/introspection. Note: the handler's
@@ -181,11 +175,7 @@ export interface CreateDelegateSubAgentToolOptions {
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	/** Fan-out limits and spawn switch enforced before each delegation. */
 	policy?: DelegateSubAgentPolicy;
-	/**
-	 * Additional local/deferred tool names the host removes from inline children.
-	 * These cannot be re-added through `allowedTools`. Provider tools inherit
-	 * separately and can be narrowed via `allowedTools` by provider tool name.
-	 */
+	/** Additional local/deferred tool names the host removes from inline children. */
 	inlineSubAgentBlockedTools?: string[];
 	/**
 	 * Run the child for this delegation and return its result. When provided, the
@@ -231,7 +221,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...formatAvailableSubAgents(options.availableSubAgents),
 				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
 				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
-				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- If multiple independent workstreams exist, delegate them separately.\n- Use allowedTools only to narrow the inline child to relevant tools; it cannot grant tools you do not already have.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
+				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your available tools after safety filtering; you cannot change their tool set per delegation.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
 			].join('\n'),
 		)
 		.input(delegateSubAgentInputSchema)

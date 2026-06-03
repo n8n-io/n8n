@@ -103,54 +103,33 @@ describe('inline sub-agent tool filtering', () => {
 				makeTool('host_tool'),
 				makeTool('lookup'),
 			],
-			allowedTools: undefined,
 			blockedTools: undefined,
 			expected: ['host_tool', 'lookup'],
 		},
 		{
 			name: 'blocks host-supplied tool names when configured',
 			tools: [makeTool('host_tool'), makeTool('lookup')],
-			allowedTools: undefined,
 			blockedTools: ['host_tool'],
 			expected: ['lookup'],
 		},
-		{
-			name: 'does not re-add blocked tools through allowedTools',
-			tools: [makeTool(WRITE_TODOS_TOOL_NAME), makeTool('host_tool'), makeTool('lookup')],
-			allowedTools: [WRITE_TODOS_TOOL_NAME, 'host_tool', 'lookup'],
-			blockedTools: ['host_tool'],
-			expected: ['lookup'],
-		},
-	])('$name', ({ tools, allowedTools, blockedTools, expected }) => {
-		expect(
-			filterInlineSubAgentTools(tools, allowedTools, blockedTools).map((tool) => tool.name),
-		).toEqual(expected);
+	])('$name', ({ tools, blockedTools, expected }) => {
+		expect(filterInlineSubAgentTools(tools, blockedTools).map((tool) => tool.name)).toEqual(
+			expected,
+		);
 	});
 
-	it('filters provider tools by allowedTools name', () => {
+	it('inherits all provider tools when not blocked', () => {
 		expect(
-			filterInlineSubAgentTools(
-				[openaiWebSearchProviderTool, anthropicWebSearchProviderTool],
-				['openai.web_search_preview'],
-			).map((tool) => tool.name),
-		).toEqual(['openai.web_search_preview']);
+			filterInlineSubAgentTools([openaiWebSearchProviderTool, anthropicWebSearchProviderTool]).map(
+				(tool) => tool.name,
+			),
+		).toEqual(['openai.web_search_preview', 'anthropic.web_search_20250305']);
 	});
 
-	it.each([
-		{
-			name: 'passes provider tools to inline child runtimes by default',
-			providerTools: [openaiWebSearchProviderTool],
-			allowedTools: undefined,
-			expectedProviderTools: ['openai.web_search_preview'],
-		},
-		{
-			name: 'narrows provider tools when allowedTools is set on the delegation request',
+	it('passes all provider tools to inline child runtimes by default', async () => {
+		const runner = createInlineRunner({
 			providerTools: [openaiWebSearchProviderTool, anthropicWebSearchProviderTool],
-			allowedTools: ['lookup', 'openai.web_search_preview'],
-			expectedProviderTools: ['openai.web_search_preview'],
-		},
-	])('$name', async ({ providerTools, allowedTools, expectedProviderTools }) => {
-		const runner = createInlineRunner({ providerTools });
+		});
 
 		await runner({
 			subAgentId: INLINE_SUB_AGENT_ID,
@@ -158,7 +137,6 @@ describe('inline sub-agent tool filtering', () => {
 			goal: 'Find the answer',
 			taskPath: '/root/research',
 			childCount: 0,
-			...(allowedTools ? { allowedTools } : {}),
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
@@ -166,7 +144,7 @@ describe('inline sub-agent tool filtering', () => {
 			(runtimeConfigs[0]?.providerTools as BuiltProviderTool[] | undefined)?.map(
 				(tool) => tool.name,
 			),
-		).toEqual(expectedProviderTools);
+		).toEqual(['openai.web_search_preview', 'anthropic.web_search_20250305']);
 		expect((runtimeConfigs[0]?.tools as BuiltTool[] | undefined)?.map((tool) => tool.name)).toEqual(
 			['lookup'],
 		);

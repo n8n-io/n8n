@@ -11,9 +11,10 @@ import type {
 	RunnableAgentJsonConfig,
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import type { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
@@ -102,17 +103,14 @@ describe('SubAgentForegroundRunner', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		Container.reset();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
+		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
 		logger = mock<Logger>();
-		runner = new SubAgentForegroundRunner(
-			sourceResolver,
-			reconstructionService,
-			agentExecutionService,
-			logger,
-		);
+		runner = new SubAgentForegroundRunner(sourceResolver, agentExecutionService, logger);
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
@@ -123,6 +121,16 @@ describe('SubAgentForegroundRunner', () => {
 		});
 
 		credentialProvider = mock<CredentialProvider>();
+	});
+
+	it('resolves reconstruction from the container at run time', async () => {
+		await runner.runForeground(spawnRequest, {
+			projectId,
+			userId,
+			credentialProvider,
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {

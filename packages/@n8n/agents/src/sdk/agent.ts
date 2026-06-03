@@ -919,19 +919,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		inlineSubAgentBlockedTools?: string[];
 	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
 		return async (request) => {
-			const tools = filterInlineSubAgentTools(
-				options.tools,
-				request.allowedTools,
-				options.inlineSubAgentBlockedTools,
-			);
+			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
 			const deferredTools = filterInlineSubAgentTools(
 				options.deferredTools,
-				request.allowedTools,
 				options.inlineSubAgentBlockedTools,
 			);
 			const providerTools = filterInlineSubAgentTools(
 				options.providerTools,
-				request.allowedTools,
 				options.inlineSubAgentBlockedTools,
 			);
 			const childRuntime = new AgentRuntime({
@@ -1001,15 +995,10 @@ export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[])
 
 export function filterInlineSubAgentTools<T extends { readonly name: string }>(
 	tools: T[],
-	allowedTools: string[] | undefined,
 	hostBlockedTools?: string[],
 ): T[] {
 	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
-	const allowed = allowedTools ? new Set(allowedTools) : undefined;
-	return tools.filter((tool) => {
-		if (blocked.has(tool.name)) return false;
-		return allowed ? allowed.has(tool.name) : true;
-	});
+	return tools.filter((tool) => !blocked.has(tool.name));
 }
 
 function findDuplicateToolNames(tools: BuiltTool[]): string[] {
