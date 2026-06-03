@@ -1193,7 +1193,7 @@ export class WorkflowExecute {
 	): Promise<IRunNodeResponse> {
 		if (mode === 'manual') {
 			// In manual mode start the trigger
-			const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
+			const triggerResponse = await Container.get(TriggersAndPollers).runTriggerFunction(
 				workflow,
 				node,
 				NodeExecuteFunctions.getExecuteTriggerFunctions,
@@ -1916,12 +1916,18 @@ export class WorkflowExecute {
 								toReport = sanitized;
 							}
 							if (toReport) {
+								const { executionId, instanceBaseUrl } = this.additionalData;
 								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,
 										nodeVersion: executionNode.typeVersion,
 										workflowId: workflow.id,
+										executionId,
+										executionUrl:
+											instanceBaseUrl && executionId
+												? `${instanceBaseUrl}workflow/${workflow.id}/executions/${executionId}`
+												: undefined,
 									},
 								});
 							}

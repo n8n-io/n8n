@@ -1,9 +1,13 @@
-name: 'Test: E2E Coverage Weekly'
+name: 'Test: E2E Coverage Nightly'
 
 on:
   schedule:
-    - cron: '0 2 * * 1' # Every Monday at 2 AM
-  workflow_dispatch: # Allow manual triggering
+    - cron: '0 2 * * *' # Nightly at 02:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   prepare-docker:
@@ -14,17 +18,43 @@ jobs:
       runner: blacksmith-8vcpu-ubuntu-2204
     secrets: inherit
 
+  # Distribute the full e2e suite across shards by historical duration
+  # (janitor orchestrator) instead of Playwright's count-based --shard=N/total.
+  # Count-based sharding stacked the heavy + flaky specs onto one shard, which
+  # then blew past the timeout; duration-weighting keeps every shard even.
+  generate-matrix:
+    name: Generate shard matrix
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and Build janitor
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
+
+      - name: Generate matrix (8 shards, duration-weighted)
+        id: gen
+        run: |
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 8 --orchestrate)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   e2e:
     name: E2E (coverage)
-    needs: prepare-docker
+    needs: [prepare-docker, generate-matrix]
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:container:coverage
+      # Runs the coverage project + resolves this shard's V8 to lcov/per-spec
+      # (keeps test-e2e-reusable coverage-agnostic). See run-coverage-shard.mjs.
+      test-command: pnpm --filter=n8n-playwright coverage:shard
       workers: '1'
       runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 55
-      pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""},{"shard":3,"images":""},{"shard":4,"images":""},{"shard":5,"images":""},{"shard":6,"images":""}]'
+      pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
       artifact-prefix: coverage
       build-variant: coverage
     secrets: inherit
@@ -47,18 +77,15 @@ jobs:
           pattern: coverage-shard-*
           path: /tmp/shards/
 
-      - name: Collect coverage JSON
-        shell: bash
-        run: |
-          mkdir -p packages/testing/playwright/.nyc_output/coverage
-          found=$(find /tmp/shards -path '*/.nyc_output/coverage/*.json' 2>/dev/null | wc -l)
-          echo "Found $found coverage JSON files across shards"
-          find /tmp/shards -path '*/.nyc_output/coverage/*.json' \
-            -exec cp {} packages/testing/playwright/.nyc_output/coverage/ \;
-          ls -la packages/testing/playwright/.nyc_output/coverage/ || true
+      - name: Build janitor (tested merge-coverage)
+        run: pnpm turbo run build --filter=@n8n/playwright-janitor
 
-      - name: Generate Coverage Report
-        run: pnpm --filter n8n-playwright coverage:report
+      # Report (shard lcovs → unified lcov) + impact map (per-spec lcovs →
+      # spec-keyed map), both via the property-tested janitor merge-coverage.
+      # Logic lives in the tested aggregate-coverage.mjs, not inline bash.
+      - name: Aggregate coverage + build impact map
+        working-directory: packages/testing/playwright
+        run: node scripts/aggregate-coverage.mjs --shards=/tmp/shards --out=coverage
 
       - name: Upload Coverage Report Artifact
         if: always()

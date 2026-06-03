@@ -18,7 +18,9 @@ export type Command =
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
-	| 'filter-shard';
+	| 'filter-shard'
+	| 'merge-coverage'
+	| 'select-e2e';
 
 export interface CliOptions {
 	command: Command;
@@ -63,6 +65,12 @@ export interface CliOptions {
 	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
+	// coverage map options (merge-coverage / select-e2e)
+	inputsDir?: string;
+	outLcov?: string;
+	outMap?: string;
+	mapFile?: string;
+	allSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -78,6 +86,8 @@ const SUBCOMMANDS: Record<string, Command> = {
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
+	'merge-coverage': 'merge-coverage',
+	'select-e2e': 'select-e2e',
 };
 
 interface FlagHandler {
@@ -206,6 +216,21 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	},
 	'--url=': (opts, value) => {
 		opts.url = value;
+	},
+	'--inputs-dir=': (opts, value) => {
+		opts.inputsDir = value;
+	},
+	'--out-lcov=': (opts, value) => {
+		opts.outLcov = value;
+	},
+	'--out-map=': (opts, value) => {
+		opts.outMap = value;
+	},
+	'--map=': (opts, value) => {
+		opts.mapFile = value;
+	},
+	'--all-specs=': (opts, value) => {
+		opts.allSpecsFile = value;
 	},
 };
 
