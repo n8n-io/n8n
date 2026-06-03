@@ -18,6 +18,7 @@ import {
 	type ActionDropdownItem,
 	N8nActionDropdown,
 	N8nButton,
+	N8nIcon,
 	N8nIconButton,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -48,6 +49,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	usePublishStatePrototype,
+	type PublishUiState,
+} from '@/app/composables/usePublishStatePrototype';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -334,6 +339,126 @@ const latestPublishDate = computed(() => {
 	return latestPublish?.createdAt;
 });
 
+// --- PROTOTYPE (branch prototype/improve-publish-state) ---------------------
+// Redesigned publish control: a status chip (noun) split from a publish action
+// (verb), driven by an 8-state model. Active only when ?prototype=publish is in
+// the URL; otherwise the original control renders unchanged (see template v-else).
+const { isPrototypeMode, mockState, mockDisplayData } = usePublishStatePrototype();
+
+const effectiveState = computed<PublishUiState>(() => {
+	if (mockState.value) {
+		return mockState.value;
+	}
+	// No mock selected: reflect the real 6-state model (broken states are mock-only).
+	switch (workflowPublishState.value) {
+		case 'not-published-eligible':
+			return 'not-published-eligible';
+		case 'published-no-changes':
+			return 'published-no-changes';
+		case 'published-with-changes':
+			return 'published-with-valid-changes';
+		case 'published-node-issues':
+		case 'published-invalid-trigger':
+			return 'published-with-invalid-changes';
+		case 'not-published-not-eligible':
+		default:
+			return 'not-published-not-eligible';
+	}
+});
+
+const isPublishedState = computed(() => effectiveState.value.startsWith('published'));
+
+const statusConfig = computed<{
+	copy: string;
+	dotClass: 'grey' | 'green' | 'red';
+	tooltip: string;
+	showVersionInfo: boolean;
+}>(() => {
+	const state = effectiveState.value;
+	if (state === 'not-published-eligible' || state === 'not-published-not-eligible') {
+		return {
+			copy: i18n.baseText('generic.notPublished'),
+			dotClass: 'grey',
+			tooltip: '',
+			showVersionInfo: false,
+		};
+	}
+	if (state.startsWith('published-live-broken')) {
+		return {
+			copy: i18n.baseText('generic.published'),
+			dotClass: 'red',
+			tooltip: i18n.baseText('publishStatus.liveBroken', {
+				interpolate: {
+					version: mockDisplayData.value.versionName,
+					reason: mockDisplayData.value.statusReason,
+				},
+			}),
+			showVersionInfo: false,
+		};
+	}
+	return {
+		copy: i18n.baseText('generic.published'),
+		dotClass: 'green',
+		tooltip: '',
+		showVersionInfo: true,
+	};
+});
+
+const actionConfig = computed<{
+	label: string;
+	enabled: boolean;
+	showGlyph: boolean;
+	tooltip: string;
+}>(() => {
+	const reason = mockDisplayData.value.actionReason;
+	const publish = i18n.baseText('workflows.publish');
+	const publishChanges = i18n.baseText('publishAction.publishChanges');
+	switch (effectiveState.value) {
+		case 'not-published-eligible':
+			return {
+				label: publish,
+				enabled: true,
+				showGlyph: false,
+				tooltip: i18n.baseText('publishAction.publishThis'),
+			};
+		case 'not-published-not-eligible':
+			return {
+				label: publish,
+				enabled: false,
+				showGlyph: true,
+				tooltip: i18n.baseText('publishAction.unableToPublishWorkflow', {
+					interpolate: { reason },
+				}),
+			};
+		case 'published-with-valid-changes':
+		case 'published-live-broken-with-valid-changes':
+			return {
+				label: publishChanges,
+				enabled: true,
+				showGlyph: false,
+				tooltip: i18n.baseText('publishAction.publishLatest'),
+			};
+		case 'published-with-invalid-changes':
+		case 'published-live-broken-with-invalid-changes':
+			return {
+				label: publishChanges,
+				enabled: false,
+				showGlyph: true,
+				tooltip: i18n.baseText('publishAction.unableToPublish', { interpolate: { reason } }),
+			};
+		case 'published-no-changes':
+		case 'published-live-broken':
+		default:
+			return {
+				label: publishChanges,
+				enabled: false,
+				showGlyph: false,
+				tooltip: i18n.baseText('publishAction.noChanges'),
+			};
+	}
+});
+// --- END PROTOTYPE ----------------------------------------------------------
+
 const enum VERSION_ACTIONS {
 	PUBLISH = 'publish',
 	NAME_VERSION = 'name-version',
@@ -347,7 +472,9 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 			id: VERSION_ACTIONS.PUBLISH,
 			label: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
-			disabled: shouldDisablePublishButton.value,
+			disabled: isPrototypeMode.value
+				? !actionConfig.value.enabled
+				: shouldDisablePublishButton.value,
 		},
 	];
 
@@ -368,7 +495,9 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,
 		label: i18n.baseText('workflows.unpublish'),
-		disabled: !activeVersion.value || collaborationReadOnly.value || !hasUnpublishPermission.value,
+		disabled: isPrototypeMode.value
+			? !isPublishedState.value
+			: !activeVersion.value || collaborationReadOnly.value || !hasUnpublishPermission.value,
 		divided: true,
 		shortcut: { metaKey: true, keys: ['U'] },
 	});
@@ -550,7 +679,86 @@ defineExpose({
 				uiStore.stateIsDirty ? i18n.baseText('saveButton.save') : i18n.baseText('saveButton.saved')
 			}}
 		</N8nButton>
-		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
+		<!-- PROTOTYPE: redesigned status chip + publish action (?prototype=publish) -->
+		<template v-if="isPrototypeMode">
+			<div :class="$style.publishButtonWrapper">
+				<N8nTooltip
+					:disabled="!statusConfig.showVersionInfo && !statusConfig.tooltip"
+					:show-after="300"
+					:offset="15"
+					content-class="publishStateTooltip"
+				>
+					<template #content>
+						<template v-if="statusConfig.showVersionInfo">
+							{{
+								i18n.baseText('publishStatus.publishedAsPrefix', {
+									interpolate: { version: mockDisplayData.versionName },
+								})
+							}}
+							· <TimeAgo :date="mockDisplayData.publishDate" />
+						</template>
+						<template v-else>{{ statusConfig.tooltip }}</template>
+					</template>
+					<span :class="$style.statusChip" data-test-id="workflow-publish-status-chip">
+						<span
+							:class="[
+								$style.statusDot,
+								{
+									[$style.dotGrey]: statusConfig.dotClass === 'grey',
+									[$style.dotGreen]: statusConfig.dotClass === 'green',
+									[$style.dotRed]: statusConfig.dotClass === 'red',
+								},
+							]"
+						/>
+						{{ statusConfig.copy }}
+					</span>
+				</N8nTooltip>
+				<div :class="$style.buttonGroup">
+					<N8nTooltip
+						:disabled="!actionConfig.tooltip"
+						:show-after="300"
+						:offset="15"
+						content-class="publishStateTooltip"
+					>
+						<template #content>{{ actionConfig.tooltip }}</template>
+						<N8nButton
+							:class="$style.groupButtonLeft"
+							:variant="actionConfig.enabled ? 'solid' : 'subtle'"
+							:disabled="!actionConfig.enabled"
+							data-test-id="workflow-publish-action-button"
+						>
+							<span :class="$style.flex">
+								<N8nIcon
+									v-if="actionConfig.showGlyph"
+									icon="triangle-alert"
+									size="small"
+									:class="$style.actionGlyph"
+								/>
+								{{ actionConfig.label }}
+							</span>
+						</N8nButton>
+					</N8nTooltip>
+					<N8nActionDropdown
+						:items="versionMenuActions"
+						placement="bottom-end"
+						data-test-id="version-menu"
+						@select="onDropdownMenuSelect"
+					>
+						<template #activator>
+							<N8nIconButton
+								:class="$style.groupButtonRight"
+								variant="ghost"
+								icon="chevron-down"
+								:disabled="shouldDisableActionDropdown"
+								:aria-label="i18n.baseText('node.moreActions')"
+								data-test-id="version-menu-button"
+							/>
+						</template>
+					</N8nActionDropdown>
+				</div>
+			</div>
+		</template>
+		<div v-else-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
 				<N8nTooltip
 					:disabled="
@@ -703,6 +911,60 @@ defineExpose({
 
 .indicatorIssues {
 	background-color: var(--color--red-600);
+}
+
+/* PROTOTYPE: status chip + dot + action glyph (branch prototype/improve-publish-state) */
+/* Passive status label, styled as a flat filled "tag" — present but clearly not a
+   control: soft grey fill, no border, no hover. Keeps the exact footprint of the
+   button group beside it (content-box + 1px transparent border => same outer
+   height, stays aligned). Solid-fill-vs-outlined distinguishes it from the
+   bordered Publish button. The coloured dot remains the status signal. */
+.statusChip {
+	box-sizing: content-box;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	height: var(--height--md);
+	padding: 0 var(--spacing--xs);
+	margin-right: var(--spacing--2xs);
+	border: 1px solid transparent;
+	border-radius: var(--radius--3xs);
+	background-color: var(--color--foreground--tint-1);
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: 1;
+	white-space: nowrap;
+	cursor: default;
+}
+
+.statusDot {
+	flex-shrink: 0;
+	height: var(--spacing--2xs);
+	width: var(--spacing--2xs);
+	border-radius: 50%;
+}
+
+.dotGrey {
+	background-color: var(--color--text--tint-1);
+}
+
+.dotGreen {
+	background-color: var(--color--mint-600);
+}
+
+.dotRed {
+	background-color: var(--color--red-600);
+}
+
+.actionGlyph {
+	margin-right: var(--spacing--4xs);
+}
+
+/* N8nTooltip caps content at 180px, which wraps short hints awkwardly. Widen
+   just these prototype tooltips so the one-line hints fit; longer ones still wrap. */
+:global(.n8n-tooltip.publishStateTooltip) {
+	max-width: 280px;
 }
 
 .flex {
