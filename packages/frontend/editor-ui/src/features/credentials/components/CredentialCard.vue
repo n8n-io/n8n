@@ -79,13 +79,6 @@ const isPrivateUnconnected = computed(
 		credentialPermissions.value.update === true,
 );
 
-const isPrivateConnected = computed(
-	() =>
-		isDynamicCredentialsEnabled.value &&
-		props.data.isResolvable === true &&
-		props.data.connectedByMe === true,
-);
-
 const actions = computed(() => {
 	const items = [
 		{
@@ -308,16 +301,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect') }}
 					</N8nButton>
 				</N8nTooltip>
-				<span
-					v-else-if="isPrivateConnected"
-					:class="$style.connectedLabel"
-					data-test-id="credential-card-connected"
-				>
-					<N8nIcon icon="circle-check" size="small" color="success" />
-					<N8nText size="small" color="success">
-						{{ locale.baseText('credentials.item.connected') }}
-					</N8nText>
-				</span>
 				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
@@ -365,12 +348,6 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
-}
-
-.connectedLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 
 .dynamicBadgeText {
