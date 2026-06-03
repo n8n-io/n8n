@@ -12,7 +12,7 @@ export default function () {
 	const data = {
 		filename,
 		file: http.file(file, filename, 'application/octet-stream'),
-		filePath: `${n8nDataDirPath}`,
+		filePath: n8nDataDirPath,
 	};
 
 	const res = http.post(`${apiBaseUrl}/webhook/binary-files-benchmark`, data);

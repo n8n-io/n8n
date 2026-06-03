@@ -41,7 +41,7 @@
 		},
 		{
 			"parameters": {
-				"fileSelector": "={{ $('Webhook').item.json.body.filePath }}/{{ $json.fileName }}",
+				"fileSelector": "={{ $json.fileName }}",
 				"options": {}
 			},
 			"type": "n8n-nodes-base.readWriteFile",
