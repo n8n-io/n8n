@@ -108,7 +108,7 @@ export function getToolIcon(toolName: string): IconName {
 	)
 		return 'workflow';
 	if (toolName === 'research') return 'search';
-	if (toolName === 'credentials' || toolName === 'browser-credential-setup') return 'key-round';
+	if (toolName === 'credentials') return 'key-round';
 	if (toolName === 'task-control' || toolName === 'updateWorkingMemory' || toolName === 'plan')
 		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';

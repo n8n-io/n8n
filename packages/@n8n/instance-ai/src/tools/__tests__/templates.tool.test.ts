@@ -3,7 +3,7 @@ import { createTemplatesTool } from '../templates.tool';
 
 describe('templates tool', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('best-practices action', () => {

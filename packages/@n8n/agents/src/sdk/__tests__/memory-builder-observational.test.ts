@@ -106,7 +106,6 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveMemoryConfigDefaults(
 			{
 				memory: new InMemoryMemory(),
-				lastMessages: 10,
 				observationLog: { renderTokenBudget: 123 },
 				observationalMemory: {},
 			} as MemoryConfig,
@@ -121,7 +120,6 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveMemoryConfigDefaults(
 			{
 				memory: new InMemoryMemory(),
-				lastMessages: 10,
 				observationLog: { renderTokenBudget: 123 },
 				observationalMemory: { renderTokenBudget: 456 },
 			} as MemoryConfig,
@@ -162,12 +160,12 @@ describe('Memory builder — observation log memory', () => {
 
 	it('rejects backends that do not implement the observation-log store', () => {
 		const minimalBackend = {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn().mockResolvedValue({}),
-			deleteThread: jest.fn().mockResolvedValue(undefined),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn().mockResolvedValue(undefined),
-			deleteMessages: jest.fn().mockResolvedValue(undefined),
+			getThread: vi.fn().mockResolvedValue(null),
+			saveThread: vi.fn().mockResolvedValue({}),
+			deleteThread: vi.fn().mockResolvedValue(undefined),
+			getMessages: vi.fn().mockResolvedValue([]),
+			saveMessages: vi.fn().mockResolvedValue(undefined),
+			deleteMessages: vi.fn().mockResolvedValue(undefined),
 			describe: () => ({
 				name: 'minimal',
 				constructorName: 'MinimalMemory',

@@ -2,7 +2,11 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
-	globalIgnores(['coverage/**', 'jest.config*.js', 'evaluations/programmatic/python/.venv/**']),
+	globalIgnores([
+		'coverage/**',
+		'vitest.config.*.ts',
+		'evaluations/programmatic/python/.venv/**',
+	]),
 	nodeConfig,
 	{
 	rules: {
