@@ -248,8 +248,8 @@ function moveResource() {
 				<N8nTooltip v-if="isDynamicCredentialsEnabled && data.isResolvable" placement="top">
 					<template #content>
 						<div :class="$style.tooltipContent">
-							<strong>{{ locale.baseText('credentials.dynamic.tooltipTitle') }}</strong>
-							<span>{{ locale.baseText('credentials.dynamic.tooltip') }}</span>
+							<strong>{{ locale.baseText('credentials.private.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('credentials.private.tooltip') }}</span>
 						</div>
 					</template>
 					<N8nBadge
@@ -259,7 +259,7 @@ function moveResource() {
 					>
 						<span :class="$style.dynamicBadgeText">
 							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.dynamic.badge') }}
+							{{ locale.baseText('credentials.private.badge') }}
 						</span>
 					</N8nBadge>
 				</N8nTooltip>
