@@ -572,7 +572,7 @@ function onCanvasGroupUngroup(groupId: string) {
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	// Group title bars participate in selection only — skip node-click logic.
+	// Title bars have their own click handlers
 	if (isCanvasNodeGroup(node)) return;
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
