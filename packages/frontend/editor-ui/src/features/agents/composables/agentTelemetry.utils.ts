@@ -77,6 +77,6 @@ export async function buildAgentConfigFingerprint(
 }
 
 export function deriveAgentStatus(agent: AgentResource | null): AgentTelemetryStatus {
-	if (!agent?.publishedVersion) return 'draft';
-	return agent.versionId === agent.publishedVersion.publishedFromVersionId ? 'production' : 'draft';
+	if (!agent?.activeVersionId) return 'draft';
+	return agent.versionId === agent.activeVersionId ? 'production' : 'draft';
 }

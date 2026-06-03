@@ -27,20 +27,14 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 
-export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
-	'Automated message: you were triggered on schedule.';
-
 export interface ChatIntegrationDescriptor {
 	type: string;
 	label: string;
 	icon: string;
 	credentialTypes: string[];
-}
-
-export interface AgentScheduleConfig {
-	active: boolean;
-	cronExpression: string;
-	wakeUpPrompt: string;
+	capabilities?: string[];
+	useIntegrationWhen?: string[];
+	useNodeToolWhen?: string[];
 }
 
 export interface AgentIntegrationStatusEntry {
@@ -111,14 +105,29 @@ export interface AgentSkillMutationResponse {
 	versionId: string | null;
 }
 
-export interface AgentPublishedVersionDto {
+export interface AgentVersionDto {
+	versionId: string;
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
-	publishedFromVersionId: string;
-	model: string | null;
-	provider: string | null;
-	credentialId: string | null;
-	publishedById: string | null;
+	author: string;
+}
+
+export interface AgentFileDto {
+	id: string;
+	agentId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	createdAt: string;
+}
+
+export interface AgentVersionListItemDto {
+	versionId: string;
+	agentId: string;
+	createdAt: string;
+	updatedAt: string;
+	author: string;
+	isActive: boolean;
 }
 
 export interface AgentPersistedMessageContentPart {
@@ -130,6 +139,10 @@ export interface AgentPersistedMessageContentPart {
 	state?: string;
 	output?: unknown;
 	error?: string;
+	/** Epoch ms when the tool handler started executing. */
+	startTime?: number;
+	/** Epoch ms when the tool handler settled. */
+	endTime?: number;
 }
 
 export interface AgentPersistedMessageDto {
@@ -138,7 +151,7 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 }
 
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-5' as const;
+export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
 
 export const agentBuilderModeSchema = z.enum(['default', 'custom']);
 export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;

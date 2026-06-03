@@ -7,6 +7,7 @@ import {
 } from '../stores/workflowDocument.store';
 import { createPinia, setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '../stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '../stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { renderComponent } from '@/__tests__/render';
 import NodeView from './NodeView.vue';
@@ -37,6 +38,7 @@ describe('NodeView', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let ensureNodesAreVisible: ReturnType<typeof vi.fn>;
+	let workflowExecutionState: ReturnType<typeof useWorkflowExecutionStateStore>;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
@@ -48,7 +50,9 @@ describe('NodeView', () => {
 		routeMock.query = {};
 		ensureNodesAreVisible = vi.fn();
 		workflowsStore = useWorkflowsStore();
+		workflowsStore.setWorkflowId('w0');
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
+		workflowExecutionState = useWorkflowExecutionStateStore(createWorkflowDocumentId('w0'));
 	});
 
 	function renderNodeView() {
@@ -93,18 +97,18 @@ describe('NodeView', () => {
 
 		it('should select newly added trigger node automatically', async () => {
 			renderNodeView();
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
+			await waitFor(() => expect(workflowExecutionState.selectedTriggerNodeName).toBe('n0'));
 			workflowDocumentStore.addNode(n2);
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
+			await waitFor(() => expect(workflowExecutionState.selectedTriggerNodeName).toBe('n2'));
 		});
 
 		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
 			renderNodeView();
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
+			await waitFor(() => expect(workflowExecutionState.selectedTriggerNodeName).toBe('n0'));
 			useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowDocumentStore.workflowId),
 			).removeNode(n0);
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
+			await waitFor(() => expect(workflowExecutionState.selectedTriggerNodeName).toBe('n1'));
 			useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowDocumentStore.workflowId),
 			).setNodeValue({
@@ -112,7 +116,7 @@ describe('NodeView', () => {
 				key: 'disabled',
 				value: true,
 			});
-			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
+			await waitFor(() => expect(workflowExecutionState.selectedTriggerNodeName).toBe(undefined));
 		});
 	});
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
@@ -40,7 +40,7 @@
     "@anthropic-ai/sandbox-runtime": "^0.0.42",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
-    "@modelcontextprotocol/sdk": "1.26.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/mcp-browser": "workspace:*",
     "@napi-rs/image": "^1.12.0",
     "@vscode/ripgrep": "^1.17.1",
