@@ -14,7 +14,10 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { McpRegistryRemote } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import type {
+	McpRegistryRemote,
+	McpRegistryServer,
+} from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { createAuthFetch } from '@/utils/auth-fetch';
@@ -120,7 +123,11 @@ export class InstanceAiMcpRegistryService {
 	async createConnection(
 		user: User,
 		input: { serverSlug: string; credentialId: string },
-	): Promise<InstanceAiMcpRegistryConnection> {
+	): Promise<{
+		connection: InstanceAiMcpRegistryConnection;
+		credential: CredentialsEntity;
+		server: McpRegistryServer;
+	}> {
 		const server = await this.mcpRegistryService.get(input.serverSlug);
 		if (!server) {
 			throw new NotFoundError(`Unknown MCP registry server: ${input.serverSlug}`);
@@ -157,12 +164,12 @@ export class InstanceAiMcpRegistryService {
 		});
 
 		try {
-			const saved = await this.connectionRepository.save(entity);
+			const connection = await this.connectionRepository.save(entity);
 			this.eventService.emit('instance-ai-mcp-registry-connection-created', {
 				userId: user.id,
 				serverSlug: input.serverSlug,
 			});
-			return saved;
+			return { connection, credential, server };
 		} catch (error) {
 			if (isUniqueConstraintViolation(error)) {
 				throw new ConflictError(

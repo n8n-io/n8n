@@ -70,15 +70,17 @@ describe('InstanceAiMcpConnectionController', () => {
 				baseRow,
 				{ ...baseRow, id: 'conn-2', credentialId: 'cred-2' } as InstanceAiMcpRegistryConnection,
 			]);
-			credentialsFinderService.findCredentialForUser.mockImplementation(async (id) => {
-				if (id === 'cred-1') return credential;
-				if (id === 'cred-2') return otherCredential;
-				return null;
-			});
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+				credential,
+				otherCredential,
+			]);
 			mcpRegistryService.getBySlugs.mockResolvedValue([linearServer]);
 
 			const result = await controller.list(authedRequest());
 
+			expect(credentialsFinderService.findCredentialsForUser).toHaveBeenCalledWith(user, [
+				'credential:read',
+			]);
 			expect(mcpRegistryService.getBySlugs).toHaveBeenCalledWith(['linear']);
 			expect(result).toHaveLength(2);
 			expect(result[0]).toMatchObject({
@@ -102,7 +104,7 @@ describe('InstanceAiMcpConnectionController', () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =
 				createController();
 			service.listConnectionsForUser.mockResolvedValue([baseRow]);
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
 			mcpRegistryService.getBySlugs.mockResolvedValue([]);
 
 			const result = await controller.list(authedRequest());
@@ -114,22 +116,36 @@ describe('InstanceAiMcpConnectionController', () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =
 				createController();
 			service.listConnectionsForUser.mockResolvedValue([baseRow]);
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 			mcpRegistryService.getBySlugs.mockResolvedValue([linearServer]);
 
 			const result = await controller.list(authedRequest());
 
 			expect(result).toEqual([]);
 		});
+
+		it('skips downstream calls when the user has no connections', async () => {
+			const { controller, service, credentialsFinderService, mcpRegistryService } =
+				createController();
+			service.listConnectionsForUser.mockResolvedValue([]);
+
+			const result = await controller.list(authedRequest());
+
+			expect(result).toEqual([]);
+			expect(credentialsFinderService.findCredentialsForUser).not.toHaveBeenCalled();
+			expect(mcpRegistryService.getBySlugs).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('create', () => {
-		it('creates a connection and returns the enriched response', async () => {
+		it('creates a connection and returns the enriched response from the service bundle', async () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =
 				createController();
-			service.createConnection.mockResolvedValue(baseRow);
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			mcpRegistryService.get.mockResolvedValue(linearServer);
+			service.createConnection.mockResolvedValue({
+				connection: baseRow,
+				credential,
+				server: linearServer,
+			});
 
 			const result = await controller.create(authedRequest(), {} as never, {
 				serverSlug: 'linear',
@@ -140,6 +156,9 @@ describe('InstanceAiMcpConnectionController', () => {
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
 			});
+			// The controller should rely on the service bundle, not refetch.
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(mcpRegistryService.get).not.toHaveBeenCalled();
 			expect(result).toMatchObject({
 				id: 'conn-1',
 				credentialName: 'Linear OAuth2',

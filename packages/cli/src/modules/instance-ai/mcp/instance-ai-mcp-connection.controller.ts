@@ -49,27 +49,32 @@ export class InstanceAiMcpConnectionController {
 	@GlobalScope('instanceAi:message')
 	async list(req: AuthenticatedRequest): Promise<InstanceAiMcpConnectionResponse[]> {
 		const connections = await this.service.listConnectionsForUser(req.user);
-		const uniqueSlugs = [...new Set(connections.map((c) => c.serverSlug))];
-		const servers = await this.mcpRegistryService.getBySlugs(uniqueSlugs);
+		if (connections.length === 0) return [];
+
+		const [accessibleCredentials, servers] = await Promise.all([
+			this.credentialsFinderService.findCredentialsForUser(req.user, ['credential:read']),
+			this.mcpRegistryService.getBySlugs([...new Set(connections.map((c) => c.serverSlug))]),
+		]);
+		const credentialById = new Map(accessibleCredentials.map((c) => [c.id, c]));
 		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
 
-		const enriched = await Promise.all(
-			connections.map(async (connection) => {
-				const credential = await this.credentialsFinderService.findCredentialForUser(
-					connection.credentialId,
-					req.user,
-					['credential:read'],
-				);
-				if (!credential) return null;
-				return toResponse(
+		const enriched: InstanceAiMcpConnectionResponse[] = [];
+		for (const connection of connections) {
+			const credential = credentialById.get(connection.credentialId);
+			// Drop rows whose credential the user can no longer read — FK CASCADE
+			// removes the connection when the credential is deleted, but access
+			// can be revoked independently (project membership change).
+			if (!credential) continue;
+			enriched.push(
+				toResponse(
 					connection,
 					credential.name,
 					credential.type,
 					serverMetadata(serverBySlug.get(connection.serverSlug), connection.serverSlug),
-				);
-			}),
-		);
-		return enriched.filter((row): row is InstanceAiMcpConnectionResponse => row !== null);
+				),
+			);
+		}
+		return enriched;
 	}
 
 	@Post('/')
@@ -79,16 +84,10 @@ export class InstanceAiMcpConnectionController {
 		_res: Response,
 		@Body payload: InstanceAiMcpCreateConnectionRequestDto,
 	): Promise<InstanceAiMcpConnectionResponse> {
-		const connection = await this.service.createConnection(req.user, payload);
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			connection.credentialId,
+		const { connection, credential, server } = await this.service.createConnection(
 			req.user,
-			['credential:read'],
+			payload,
 		);
-		if (!credential) {
-			throw new NotFoundError('Credential not found after creating connection');
-		}
-		const server = await this.mcpRegistryService.get(connection.serverSlug);
 		return toResponse(
 			connection,
 			credential.name,
