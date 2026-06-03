@@ -25,6 +25,9 @@ describe('createDelegateSubAgentTool', () => {
 					taskPath: '/root/research_api',
 					runId: 'child-run-1',
 					answer: 'done',
+					getState: () => {
+						throw new Error('not implemented');
+					},
 				}),
 		});
 
