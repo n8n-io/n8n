@@ -35,10 +35,10 @@ export function errorMapper(
 }
 
 export function escapeSpecialCharacters(str: string) {
-	// Escape parentheses
-	str = str.replace(/[()]/g, '\\$&');
-
-	return str;
+	// fast-glob treats parens and square brackets as glob metacharacters,
+	// but both show up routinely in real file names (especially on Windows)
+	// where users mean them literally, not as patterns.
+	return str.replace(/[()[\]]/g, '\\$&');
 }
 
 export function normalizeFileSelector(fileSelectorRaw: string) {
