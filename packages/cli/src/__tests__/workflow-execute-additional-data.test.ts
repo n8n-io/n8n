@@ -419,32 +419,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(120));
 				});
 
-				it('should cap sub-workflow timeout at global max timeout', async () => {
+				it('should not cap sub-workflow timeout at global max timeout', async () => {
 					await executeWorkflowWithTimeout({
 						subTimeout: 7200,
 						parentDeadline: getDeadlineFromNow(7200),
 						doNotWaitToFinish: false,
 						globalMaxTimeout: 3600,
 					});
-					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(3600));
-				});
-
-				it('should not cap sub-workflow timeout when global max timeout is disabled (<=0)', async () => {
-					await executeWorkflowWithTimeout({
-						subTimeout: 7200,
-						doNotWaitToFinish: false,
-						globalMaxTimeout: -1,
-					});
 					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(7200));
-				});
-
-				it('should not cap global default timeout when global max timeout is disabled (<=0)', async () => {
-					await executeWorkflowWithTimeout({
-						doNotWaitToFinish: false,
-						globalTimeout: 600,
-						globalMaxTimeout: -1,
-					});
-					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(600));
 				});
 
 				it('should fall back to global default when sub-workflow has no timeout', async () => {

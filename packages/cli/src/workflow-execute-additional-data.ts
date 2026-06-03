@@ -212,20 +212,11 @@ function determineWorkflowDeadline(
 	workflowSettings: IWorkflowSettings | undefined,
 	executionsConfig: ExecutionsConfig,
 ): number | undefined {
-	const effectiveMaxTimeout =
-		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
-
 	if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-		return (
-			startTime +
-			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
-		);
+		return startTime + workflowSettings.executionTimeout * Time.seconds.toMilliseconds;
 	}
 	if (executionsConfig.timeout > 0) {
-		return (
-			startTime +
-			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
-		);
+		return startTime + executionsConfig.timeout * Time.seconds.toMilliseconds;
 	}
 	return undefined;
 }
