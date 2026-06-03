@@ -12,7 +12,7 @@
     "start": "node dist/cli.js http://localhost:5678 --log-level debug --allowed-origins http://localhost:5678",
     "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",

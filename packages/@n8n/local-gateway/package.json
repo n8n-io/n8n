@@ -5,7 +5,7 @@
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
+    "build": "tsc -p tsconfig.renderer.json --noCheck && tsc -p tsconfig.build.json --noCheck && pnpm copy:renderer && pnpm copy:assets",
     "lint": "eslint . --quiet",
     "typecheck": "tsc --noEmit",
     "copy:assets": "node scripts/copy-assets.js",

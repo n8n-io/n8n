@@ -3,8 +3,7 @@
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist/esm",
-		"tsBuildInfoFile": "dist/esm/build.tsbuildinfo",
-		"noCheck": true
+		"tsBuildInfoFile": "dist/esm/build.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules", "dist", "src/**/__tests__/**"]

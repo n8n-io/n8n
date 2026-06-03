@@ -7,7 +7,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data && pnpm run build:agent-library",
+    "build": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json && pnpm run build:data && pnpm run build:agent-library",
     "build:data": "node scripts/build.mjs",
     "build:agent-library": "node scripts/bundle-agent-library.mjs",
     "buildAndDev": "pnpm run build && pnpm run dev",

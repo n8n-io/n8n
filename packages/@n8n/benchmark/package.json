@@ -4,7 +4,7 @@
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",

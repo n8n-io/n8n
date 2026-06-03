@@ -3,8 +3,7 @@
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist/esm",
-		"tsBuildInfoFile": "dist/esm/typecheck.tsbuildinfo",
-		"noCheck": true
+		"tsBuildInfoFile": "dist/esm/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["node_modules"]

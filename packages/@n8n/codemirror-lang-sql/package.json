@@ -7,7 +7,7 @@
     "test": "vitest run",
     "generate:sql:grammar": "lezer-generator --typeScript --output src/grammar.sql.ts src/sql.grammar",
     "generate": "pnpm generate:sql:grammar && pnpm format",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json --noCheck",
     "test:unit": "vitest run",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",

@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit",
     "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
     "generate": "pnpm generate:expressions:grammar && pnpm format",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json --noCheck",
     "test": "vitest run",
     "test:unit": "vitest run",
     "lint": "eslint . --quiet",

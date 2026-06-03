@@ -15,7 +15,8 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc -p ./tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "build": "tsc -p ./tsconfig.build.json --noCheck",
     "prepack": "pnpm build",
     "test": "vitest run",
     "test:unit": "vitest run",

@@ -25,7 +25,7 @@
     "clean": "rimraf dist .turbo",
     "build": "pnpm build:ui && pnpm build:server",
     "build:ui": "vite build --mode workflow-preview",
-    "build:server": "tsc -p tsconfig.build.json",
+    "build:server": "tsc -p tsconfig.build.json --noCheck",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.build.json",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",

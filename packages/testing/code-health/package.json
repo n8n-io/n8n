@@ -13,7 +13,7 @@
 	],
 	"scripts": {
 		"check": "tsx src/cli.ts",
-		"build": "tsc -p tsconfig.build.json",
+		"build": "tsc -p tsconfig.build.json --noCheck",
 		"dev": "tsc --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
