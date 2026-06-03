@@ -20,12 +20,18 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
-## Claude Code Plugin
+## Agent Skills and Claude Code Plugin
 
-n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
-are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
-(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
-See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+n8n shared skills live in `.agents/skills/`. Claude Code consumes them through
+symlinks in `.claude/plugins/n8n/skills/`; OpenCode reads `.agents/skills/`
+directly. Harness-specific overrides remain real directories in the harness
+path, such as `.opencode/skills/setup-mcps/`. See
+[skills README](.agents/skills/AGENTS.md) for editing and sync guidance.
+
+n8n-specific Claude Code commands and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
+`/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent). See
+[plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 

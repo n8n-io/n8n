@@ -53,9 +53,9 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    git log origin/master..HEAD --oneline
    ```
 
-2. **Check for implementation plan**: Look for a plan file in `.claude/plans/`
-   that matches the current branch's ticket ID (e.g. if branch is
-   `scdekov/PAY-1234-some-feature`, check for `.claude/plans/PAY-1234.md`).
+2. **Check for implementation plan**: Look for a plan file in the repository plan directories (`.claude/plans/` or `.agents/plans/` when present)
+    that matches the current branch's ticket ID (e.g. if branch is
+   `scdekov/PAY-1234-some-feature`, check for `PAY-1234.md`).
    If a plan file exists, ask the user whether they want to include it in the
    PR description as a collapsible `<details>` section (see Plan Section below).
    Only include the plan if the user explicitly approves.
@@ -159,7 +159,7 @@ Key validation rules:
 
 ## Plan Section
 
-If a matching plan file was found in `.claude/plans/` and the user has approved
+If a matching plan file was found in a repository plan directory and the user has approved
 including it, add a collapsible section at the end of the PR body (after the
 checklist, before `EOF`):
 
