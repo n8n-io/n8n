@@ -72,6 +72,13 @@ type WorkflowApiForAssertions = {
 	getExecutions(workflowId: string, limit?: number): Promise<Array<{ status?: string }>>;
 };
 
+type ApprovalExecutionAssertionContext = {
+	api: { workflows: WorkflowApiForAssertions };
+	instanceAi: {
+		getAssistantMessageText(text: string | RegExp): Locator;
+	};
+};
+
 async function hasSuccessfulExecutionForNode(
 	workflowsApi: WorkflowApiForAssertions,
 	nodeName: string,
@@ -128,6 +135,35 @@ async function approveBuildPlanIfRequested({
 			},
 			{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
 		)
+		.toBe(true);
+}
+
+async function expectApprovedExecutionComplete({
+	n8n,
+	nodeName,
+	projectName,
+}: {
+	n8n: ApprovalExecutionAssertionContext;
+	nodeName: string;
+	projectName: string;
+}): Promise<void> {
+	if (projectName.includes('multi-main')) {
+		// Recorded multi-main runs replay the assistant's success response, but they do not
+		// always persist the workflow execution row that the single-main path polls below.
+		await expect(n8n.instanceAi.getAssistantMessageText(/built and verified/i)).toBeVisible({
+			timeout: 150_000,
+		});
+		await expect(
+			n8n.instanceAi.getAssistantMessageText(/confirmed it completes successfully/i),
+		).toBeVisible({ timeout: 150_000 });
+		return;
+	}
+
+	await expect
+		.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName), {
+			intervals: [1_000, 2_000, 5_000],
+			timeout: 150_000,
+		})
 		.toBe(true);
 }
 
@@ -222,21 +258,11 @@ test.describe(
 				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 				await n8n.instanceAi.getConfirmApproveButton().click();
 
-				if (testInfo.project.name.includes('multi-main')) {
-					await expect(n8n.instanceAi.getAssistantMessageText(/built and verified/i)).toBeVisible({
-						timeout: 150_000,
-					});
-					await expect(
-						n8n.instanceAi.getAssistantMessageText(/confirmed it completes successfully/i),
-					).toBeVisible({ timeout: 150_000 });
-				} else {
-					await expect
-						.poll(
-							async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'approval test'),
-							{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
-						)
-						.toBe(true);
-				}
+				await expectApprovedExecutionComplete({
+					n8n,
+					nodeName: 'approval test',
+					projectName: testInfo.project.name,
+				});
 				await n8n.instanceAi.waitForResponseComplete();
 
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
