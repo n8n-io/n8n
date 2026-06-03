@@ -56,7 +56,7 @@ describe('sendErrorResponse', () => {
 describe('isUniqueConstraintError', () => {
 	const makeQueryFailedError = (
 		message: string,
-		driverError: { code?: string; errno?: number } = {},
+		driverError: { code?: string } = {},
 	): QueryFailedError => {
 		return new QueryFailedError('Query', [], Object.assign(new Error(message), driverError));
 	};
@@ -82,20 +82,6 @@ describe('isUniqueConstraintError', () => {
 				'duplicate key value violates unique constraint "users_email_key"',
 				{ code: '23505' },
 			);
-			expect(isUniqueConstraintError(error)).toBe(true);
-		});
-
-		it('MySQL ER_DUP_ENTRY', () => {
-			const error = makeQueryFailedError("Duplicate entry 'value' for key 'PRIMARY'", {
-				code: 'ER_DUP_ENTRY',
-			});
-			expect(isUniqueConstraintError(error)).toBe(true);
-		});
-
-		it('MySQL errno 1062 (no string code)', () => {
-			const error = makeQueryFailedError("Duplicate entry 'value' for key 'PRIMARY'", {
-				errno: 1062,
-			});
 			expect(isUniqueConstraintError(error)).toBe(true);
 		});
 	});

@@ -102,14 +102,9 @@ export const isUniqueConstraintError = (error: Error): boolean => {
 
 	const code =
 		'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
-	const errno =
-		'errno' in driverError && typeof driverError.errno === 'number' ? driverError.errno : undefined;
 
 	// PostgreSQL: 23505 = unique_violation
 	if (code === '23505') return true;
-
-	// MySQL / MariaDB: ER_DUP_ENTRY (errno 1062)
-	if (code === 'ER_DUP_ENTRY' || errno === 1062) return true;
 
 	// SQLite: extended code is unambiguous; the base code covers all constraint
 	// kinds (NOT NULL, FK, CHECK, UNIQUE), so disambiguate via the message.
