@@ -14,8 +14,6 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
-import { floorToSettings, settingsToFloor } from './redaction-enforcement-mapper';
-
 @RestController('/settings/security')
 export class SecuritySettingsController {
 	constructor(
@@ -47,11 +45,7 @@ export class SecuritySettingsController {
 				: Promise.resolve(undefined),
 		]);
 
-		// API surface uses a single `floor` enum, while the service stores the
-		// three booleans the cache layer was built around. Translate at the boundary.
-		const redactionEnforcement = redactionSettings
-			? { floor: settingsToFloor(redactionSettings) }
-			: undefined;
+		const redactionEnforcement = redactionSettings ? { floor: redactionSettings } : undefined;
 
 		return {
 			...settings,
@@ -95,14 +89,24 @@ export class SecuritySettingsController {
 			this.emitInstancePolicyUpdated(req, 'workflow_sharing', dto.personalSpaceSharing);
 		}
 
-		// TODO(IAM-622): emit a dedicated audit event with before/after state for
-		// redaction enforcement changes. The existing `instance-policies-updated`
-		// event carries a single boolean and can't represent the `floor` enum.
 		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
-			await this.instanceRedactionEnforcementService.set(
-				floorToSettings(dto.redactionEnforcement.floor),
-			);
-			updatedSettings.redactionEnforcement = { floor: dto.redactionEnforcement.floor };
+			const before = await this.instanceRedactionEnforcementService.get();
+			const after = dto.redactionEnforcement.floor;
+			updatedSettings.redactionEnforcement = { floor: after };
+			if (before !== after) {
+				await this.instanceRedactionEnforcementService.set(after);
+				this.eventService.emit('redaction-enforcement-updated', {
+					user: {
+						id: req.user.id,
+						email: req.user.email,
+						firstName: req.user.firstName,
+						lastName: req.user.lastName,
+						role: req.user.role,
+					},
+					before,
+					after,
+				});
+			}
 		}
 
 		return updatedSettings;

@@ -136,7 +136,12 @@ describe('validateAuth', () => {
 			mockContext.getHeaderData.mockReturnValue({
 				cookie: 'n8n-auth=valid.jwt.token',
 			});
-			mockContext.validateCookieAuth.mockResolvedValue(undefined);
+			mockContext.validateCookieAuth.mockResolvedValue({
+				id: 'user-1',
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+			});
 
 			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
 			expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
@@ -147,7 +152,12 @@ describe('validateAuth', () => {
 			mockContext.getHeaderData.mockReturnValue({
 				cookie: 'other=value; n8n-auth=valid.jwt.token; another=thing',
 			});
-			mockContext.validateCookieAuth.mockResolvedValue(undefined);
+			mockContext.validateCookieAuth.mockResolvedValue({
+				id: 'user-1',
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+			});
 
 			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
 			expect(mockContext.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');

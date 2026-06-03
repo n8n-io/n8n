@@ -140,7 +140,7 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 
-export { PaginationDto } from './pagination/pagination.dto';
+export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -202,6 +202,10 @@ export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-c
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
 export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
+export {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from './packages/import-package-request.dto';
 
 export * from './evaluations';
 

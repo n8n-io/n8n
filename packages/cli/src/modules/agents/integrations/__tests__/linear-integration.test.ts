@@ -45,17 +45,41 @@ describe('LinearIntegration', () => {
 		webhookUrlFor: () => 'https://example.test/webhook',
 	});
 
-	it('builds the adapter with an apiKey from a linearApi credential', async () => {
-		await integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' }));
+	it('only advertises the Linear OAuth credential type to agents', () => {
+		expect(integration.credentialTypes).toEqual(['linearOAuth2Api']);
+	});
 
-		expect(createLinearAdapter).toHaveBeenCalledWith({
-			apiKey: 'lin_api_xyz',
-			webhookSecret: 'sec',
-			userName: 'AgentName',
-		});
-		expect(fetchSpy.mock.calls[0][1]).toMatchObject({
-			headers: { Authorization: 'lin_api_xyz' },
-		});
+	it('advertises Linear issue, user, and workspace context queries', () => {
+		expect(integration.contextQueries).toEqual([
+			'get_current_message_context',
+			'get_current_subject',
+			'get_current_user',
+			'get_user',
+			'search_users',
+			'get_team',
+			'search_teams',
+			'get_project',
+			'search_projects',
+			'search_labels',
+			'search_issue_states',
+			'get_issue',
+			'search_issues',
+		]);
+	});
+
+	it('advertises Linear issue and comment actions', () => {
+		expect(integration.actions).toEqual([
+			'respond',
+			'create_issue',
+			'update_issue',
+			'create_comment',
+		]);
+	});
+
+	it('rejects Linear API token credentials', async () => {
+		await expect(
+			integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' })),
+		).rejects.toThrow(/OAuth access token/);
 	});
 
 	it('builds the adapter with an accessToken from a linearOAuth2Api credential', async () => {
@@ -76,26 +100,48 @@ describe('LinearIntegration', () => {
 		});
 	});
 
+	it('uses agent sessions mode for Linear app actor credentials', async () => {
+		await integration.createAdapter(
+			ctx({
+				actor: 'app',
+				oauthTokenData: { access_token: 'oauth_token' },
+				signingSecret: 'sec',
+			}),
+		);
+
+		expect(createLinearAdapter).toHaveBeenCalledWith({
+			accessToken: 'oauth_token',
+			webhookSecret: 'sec',
+			userName: 'AgentName',
+			mode: 'agent-sessions',
+		});
+	});
+
 	it('omits userName when the viewer lookup fails', async () => {
 		fetchSpy.mockResolvedValue({ ok: false } as Response);
 
-		await integration.createAdapter(ctx({ apiKey: 'lin_api_xyz', signingSecret: 'sec' }));
+		await integration.createAdapter(
+			ctx({
+				oauthTokenData: { access_token: 'oauth_token' },
+				signingSecret: 'sec',
+			}),
+		);
 
 		expect(createLinearAdapter).toHaveBeenCalledWith({
-			apiKey: 'lin_api_xyz',
+			accessToken: 'oauth_token',
 			webhookSecret: 'sec',
 		});
 	});
 
 	it('throws when the credential has no token', async () => {
 		await expect(integration.createAdapter(ctx({ signingSecret: 'sec' }))).rejects.toThrow(
-			/Could not extract an API token/,
+			/Could not extract an OAuth access token/,
 		);
 	});
 
 	it('throws when the credential has no signing secret', async () => {
-		await expect(integration.createAdapter(ctx({ apiKey: 'lin_api_xyz' }))).rejects.toThrow(
-			/missing a signing secret/,
-		);
+		await expect(
+			integration.createAdapter(ctx({ oauthTokenData: { access_token: 'oauth_token' } })),
+		).rejects.toThrow(/missing a signing secret/);
 	});
 });

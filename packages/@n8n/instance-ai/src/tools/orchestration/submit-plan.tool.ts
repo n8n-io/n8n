@@ -16,6 +16,11 @@ import { publishPlanUpdate } from './add-plan-item.tool';
 import type { BlueprintAccumulator } from './blueprint-accumulator';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
+function textRequestsPostBuildRun(text: string | undefined): boolean {
+	const normalized = text?.toLowerCase().replace(/\s+/g, ' ') ?? '';
+	return /\b(build|create|make)\b.{0,120}\b(then|and)\s+(run|execute|test)\b/.test(normalized);
+}
+
 export function createSubmitPlanTool(
 	accumulator: BlueprintAccumulator,
 	context: OrchestrationContext,
@@ -31,6 +36,7 @@ export function createSubmitPlanTool(
 			z.object({
 				approved: z.boolean(),
 				feedback: z.string().optional(),
+				denied: z.boolean().optional(),
 			}),
 		)
 		.suspend(
@@ -47,6 +53,7 @@ export function createSubmitPlanTool(
 			z.object({
 				approved: z.boolean(),
 				userInput: z.string().optional(),
+				denied: z.boolean().optional(),
 			}),
 		)
 		.handler(async (_input, ctx) => {
@@ -58,9 +65,34 @@ export function createSubmitPlanTool(
 					accumulator.markApproved();
 					return { approved: true };
 				}
+				if (resumeData.denied) {
+					// Persist cancellation first, then mark the accumulator. Reverse
+					// order would leave the accumulator denied if denyPlan throws —
+					// the isDenied() short-circuit below would then block a retry
+					// while the persisted graph is still awaiting_approval.
+					if (context.plannedTaskService) {
+						await context.plannedTaskService.denyPlan(context.threadId);
+					}
+					accumulator.markDenied();
+					return {
+						approved: false,
+						denied: true,
+						feedback: 'User denied the plan. Do not revise — stop and acknowledge.',
+					};
+				}
 				return {
 					approved: false,
 					feedback: resumeData.userInput ?? 'No specific feedback provided.',
+				};
+			}
+
+			// Already denied — short-circuit any subsequent call so the planner
+			// cannot re-suspend the user with the same plan after a denial.
+			if (accumulator.isDenied()) {
+				return {
+					approved: false,
+					denied: true,
+					feedback: 'Plan already denied by user. Stop and acknowledge.',
 				};
 			}
 
@@ -79,6 +111,7 @@ export function createSubmitPlanTool(
 				{
 					planRunId: context.runId,
 					messageGroupId: context.messageGroupId,
+					postBuildRunApprovalRequired: textRequestsPostBuildRun(context.currentUserMessage),
 				},
 			);
 
