@@ -106,9 +106,9 @@ export class InstanceAiConfig {
 
 	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
-	snapshotRetention: number = 1 * Time.days.toMilliseconds;
+	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
 
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
-	confirmationTimeout: number = 1 * Time.days.toMilliseconds;
+	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 }

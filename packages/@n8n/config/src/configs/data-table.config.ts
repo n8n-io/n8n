@@ -32,7 +32,7 @@ export class DataTableConfig {
 	@Env('N8N_DATA_TABLES_UPLOAD_MAX_FILE_SIZE_BYTES')
 	uploadMaxFileSize?: number;
 
-	/** Interval in milliseconds between cleanup runs for orphaned upload files. Default: 60000 milliseconds. */
+	/** Interval in milliseconds between cleanup runs for orphaned upload files. Default: 1 minute. */
 	@Env('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS')
 	cleanupIntervalMs: number = 1 * Time.minutes.toMilliseconds;
 

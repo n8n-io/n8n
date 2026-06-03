@@ -30,7 +30,7 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 export class AgentsConfig {
 	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
-	checkpointTtlSeconds: number = 4 * Time.days.toSeconds;
+	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
 	/** Maximum number of sub-agents a single parent run may spawn. Bounds fan-out width. */
 	@Env('N8N_AGENTS_SUBAGENT_MAX_CHILDREN')
