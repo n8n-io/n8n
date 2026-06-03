@@ -146,6 +146,8 @@ type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
 interface Lane {
 	client: N8nClient;
+	/** Base URL the client was constructed with, forwarded for the HTML report. */
+	baseUrl: string;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	seedResult: { seededTypes: string[]; credentialIds: string[] };
@@ -212,7 +214,7 @@ async function main(): Promise<void> {
 
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
-			return { client, preRunWorkflowIds, claimedWorkflowIds, seedResult };
+			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, seedResult };
 		}),
 	);
 
@@ -280,7 +282,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 	const lsClient = new Client();
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -360,6 +362,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						args.pinAiRoots,
 					),
 				{
 					name: 'scenario_execution',
@@ -585,6 +588,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		datasetName,
 		args.filter,
 		args.exclude,
+		args.tier,
 		logger,
 	);
 	const evaluateData =
@@ -621,6 +625,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			testCasesWithFiles,
 			args.iterations,
 			transcriptByThreadId,
+			lanes[0]?.baseUrl,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -699,12 +704,14 @@ function filteredExamplesIterable(
 	datasetName: string,
 	filter: string | undefined,
 	exclude: string | undefined,
+	tier: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude).map((tc) => tc.fileSlug);
+	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude, tier).map((tc) => tc.fileSlug);
 	const labelParts: string[] = [];
 	if (filter) labelParts.push(`filter "${filter}"`);
 	if (exclude) labelParts.push(`exclude "${exclude}"`);
+	if (tier) labelParts.push(`tier "${tier}"`);
 	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
 		logger.info(`${label} matched no local test case files`);
@@ -821,6 +828,7 @@ function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
+	n8nBaseUrl: string | undefined,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -881,6 +889,7 @@ function reshapeLangSmithRuns(
 				threadId,
 				transcript,
 				workflowChecks,
+				n8nBaseUrl,
 			});
 		}
 		allRunResults.push(runResults);
@@ -895,7 +904,7 @@ function reshapeLangSmithRuns(
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	const { args, lanes, logger, prebuiltManifest } = config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
 		return { totalRuns: 0, testCases: [] };
@@ -931,6 +940,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 						async ({ tc }) =>
 							await runWorkflowTestCase({
 								client: lane.client,
+								baseUrl: lane.baseUrl,
 								testCase: tc.testCase,
 								timeoutMs: args.timeoutMs,
 								seededCredentialTypes: lane.seedResult.seededTypes,
@@ -940,6 +950,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
 								prebuiltWorkflowId: pickPrebuiltWorkflowId(prebuiltManifest, tc.fileSlug, iter),
+								pinAiRoots: args.pinAiRoots,
 							}),
 						MAX_CONCURRENT_BUILDS,
 					);

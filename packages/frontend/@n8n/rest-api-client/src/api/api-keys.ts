@@ -1,7 +1,7 @@
 import type {
 	CreateApiKeyRequestDto,
 	UpdateApiKeyRequestDto,
-	ApiKey,
+	ApiKeyList,
 	ApiKeyWithRawValue,
 } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
@@ -9,8 +9,11 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
-export async function getApiKeys(context: IRestApiContext): Promise<ApiKey[]> {
-	return await makeRestApiRequest(context, 'GET', '/api-keys');
+export async function getApiKeys(
+	context: IRestApiContext,
+	options: { take?: number; skip?: number } = {},
+): Promise<ApiKeyList> {
+	return await makeRestApiRequest(context, 'GET', '/api-keys', options);
 }
 
 export async function getApiKeyScopes(context: IRestApiContext): Promise<ApiKeyScope[]> {

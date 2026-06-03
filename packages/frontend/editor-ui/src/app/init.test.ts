@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import type { Cloud, CurrentUserResponse } from '@n8n/rest-api-client';
@@ -189,6 +190,21 @@ describe('Init', () => {
 					oidc: false,
 				},
 			});
+		});
+
+		it('should still call getModuleSettings if postHogStore.init throws', async () => {
+			const postHogStore = mockedStore(usePostHog);
+			vi.spyOn(postHogStore, 'init').mockImplementation(() => {
+				throw new Error('PostHog init failed');
+			});
+
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId', role: 'global:member' }));
+			});
+
+			await initializeCore();
+
+			expect(settingsStore.getModuleSettings).toHaveBeenCalled();
 		});
 	});
 

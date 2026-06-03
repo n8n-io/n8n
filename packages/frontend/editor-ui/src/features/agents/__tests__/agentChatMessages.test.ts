@@ -194,6 +194,53 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.state).toBe('done');
 		expect(tc?.output).toEqual([{ name: 'Slack' }]);
 	});
+
+	it('renders a resolved-but-failed delegate_subagent call as an error', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d',
+						input: { taskName: 'research' },
+						state: 'resolved',
+						output: { status: 'failed', answer: '', error: 'child failed' },
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('error');
+		expect(tc?.output).toEqual({ status: 'failed', answer: '', error: 'child failed' });
+	});
+
+	it('renders a resolved-and-completed delegate_subagent call as done', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d2',
+						input: {},
+						state: 'resolved',
+						output: { status: 'completed', answer: 'all good' },
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('done');
+	});
 });
 
 describe('isGroupable', () => {

@@ -1,13 +1,41 @@
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
-import { GenericContainer, Wait } from 'testcontainers';
+import { GenericContainer } from 'testcontainers';
 
 import { DockerImageNotFoundError } from '../docker-image-not-found-error';
-import { createElapsedLogger, createSilentLogConsumer } from '../helpers/utils';
+import {
+	createElapsedLogger,
+	createReadinessProbe,
+	createSilentLogConsumer,
+} from '../helpers/utils';
 import { N8nImagePullPolicy } from '../n8n-image-pull-policy';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
+// Must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
+const N8N_READINESS_PORT = 5678;
+const N8N_STARTUP_TIMEOUT_MS = 60_000;
+// withReadTimeout doubles as the poll interval (testcontainers IntervalRetry); the
+// default 1000ms leaves up to a second of stale-poll latency after the process is ready.
+const N8N_READ_TIMEOUT_MS = 250;
+
+export interface N8NStartupDiagnostics {
+	logs: Record<string, string>;
+	readinessPayloads: Record<string, string | null>;
+}
+
+export class N8NStartupError extends Error {
+	readonly diagnostics: N8NStartupDiagnostics;
+
+	constructor(message: string, diagnostics: N8NStartupDiagnostics, cause?: unknown) {
+		super(message);
+		this.name = 'N8NStartupError';
+		this.diagnostics = diagnostics;
+		if (cause !== undefined) {
+			(this as Error & { cause?: unknown }).cause = cause;
+		}
+	}
+}
 
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
@@ -28,17 +56,6 @@ const BASE_ENV: Record<string, string> = {
 	NODE_OPTIONS: '--expose-gc',
 };
 
-// Port 5678 must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
-// If those defaults change, update the port here too.
-// /healthz/readiness implies the port is listening, so a separate forListeningPorts is redundant.
-// withReadTimeout doubles as the poll interval (testcontainers IntervalRetry); the default of 1000ms
-// means we sit on a stale poll for up to a second after the process is actually ready. 250ms is
-// tight enough to reclaim that latency without firing too many requests.
-const N8N_WAIT_STRATEGY = Wait.forHttp('/healthz/readiness', 5678)
-	.forStatusCode(200)
-	.withStartupTimeout(60_000)
-	.withReadTimeout(250);
-
 export interface N8NInstancesOptions {
 	mains: number;
 	workers: number;
@@ -57,6 +74,7 @@ export interface N8NInstancesOptions {
 export interface N8NInstancesResult {
 	containers: StartedTestContainer[];
 	environment: Record<string, string>;
+	diagnostics: N8NStartupDiagnostics;
 }
 
 function computeEnvironment(options: N8NInstancesOptions): Record<string, string> {
@@ -119,13 +137,25 @@ interface SharedConfig {
 	filesToMount?: FileToMount[];
 }
 
+interface ContainerStartResult {
+	container: StartedTestContainer;
+	getLogs: () => string;
+	getLastReadinessBody: () => string | null;
+}
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
-): Promise<StartedTestContainer> {
+	diagnostics: N8NStartupDiagnostics,
+): Promise<ContainerStartResult> {
 	const { name, isWorker, instanceNumber, networkAlias, hostPort } = instance;
 	const { projectName, environment, network, resourceQuota, filesToMount } = shared;
-	const { consumer, throwWithLogs } = createSilentLogConsumer();
+	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
+	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
+		'/healthz/readiness',
+		N8N_READINESS_PORT,
+		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
+	);
 
 	let container = new GenericContainer(N8N_IMAGE)
 		.withEnvironment(environment)
@@ -153,21 +183,25 @@ async function createContainer(
 	}
 
 	const ports: PortWithOptionalBinding[] = hostPort
-		? [{ container: 5678, host: hostPort }]
-		: [5678];
+		? [{ container: N8N_READINESS_PORT, host: hostPort }]
+		: [N8N_READINESS_PORT];
 	if (isWorker) {
 		ports.push(5679);
 	}
 
-	container = container.withExposedPorts(...ports).withWaitStrategy(N8N_WAIT_STRATEGY);
+	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
 
 	if (isWorker) {
 		container = container.withCommand(['worker']);
 	}
 
 	try {
-		return await container.start();
+		const started = await container.start();
+		return { container: started, getLogs, getLastReadinessBody };
 	} catch (error: unknown) {
+		diagnostics.logs[name] = getLogs();
+		diagnostics.readinessPayloads[name] = getLastReadinessBody();
+
 		if (error instanceof Error && 'statusCode' in error) {
 			const statusCode = (error as Error & { statusCode: number }).statusCode;
 			if (statusCode === 404) {
@@ -196,6 +230,7 @@ export async function createN8NInstances(
 	const log = createElapsedLogger('n8n-instances');
 	const environment = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
+	const diagnostics: N8NStartupDiagnostics = { logs: {}, readinessPayloads: {} };
 
 	const mainShared: SharedConfig = {
 		projectName,
@@ -235,32 +270,58 @@ export async function createN8NInstances(
 	// Service-only mode: no n8n containers needed
 	if (instances.length === 0) {
 		log('No n8n instances requested (service-only mode)');
-		return { containers, environment };
+		return { containers, environment, diagnostics };
 	}
+
+	const recordSuccess = (instance: InstanceConfig, result: ContainerStartResult) => {
+		diagnostics.logs[instance.name] = result.getLogs();
+		diagnostics.readinessPayloads[instance.name] = result.getLastReadinessBody();
+	};
+
+	const rethrowWithDiagnostics = (error: unknown): never => {
+		const message =
+			error instanceof Error ? error.message : `n8n instances failed to start: ${String(error)}`;
+		throw new N8NStartupError(message, diagnostics, error);
+	};
 
 	// Start main 1 first (handles DB migrations/setup)
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
-	containers.push(await createContainer(main1, mainShared));
+	let main1Result: ContainerStartResult;
+	try {
+		main1Result = await createContainer(main1, mainShared, diagnostics);
+	} catch (error) {
+		return rethrowWithDiagnostics(error);
+	}
+	recordSuccess(main1, main1Result);
+	containers.push(main1Result.container);
 	log('main 1 ready');
 
 	// Start remaining instances in parallel
 	if (remaining.length > 0) {
 		log(`Starting ${remaining.length} remaining instances in parallel...`);
-		const parallelContainers = await Promise.all(
-			remaining.map(async (instance) => {
-				const type = instance.isWorker ? 'worker' : 'main';
-				log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
-				const container = await createContainer(
-					instance,
-					instance.isWorker ? workerShared : mainShared,
-				);
-				log(`${type} ${instance.instanceNumber} ready`);
-				return container;
-			}),
-		);
-		containers.push(...parallelContainers);
+		try {
+			const parallelResults = await Promise.all(
+				remaining.map(async (instance) => {
+					const type = instance.isWorker ? 'worker' : 'main';
+					log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
+					const result = await createContainer(
+						instance,
+						instance.isWorker ? workerShared : mainShared,
+						diagnostics,
+					);
+					log(`${type} ${instance.instanceNumber} ready`);
+					return { instance, result };
+				}),
+			);
+			for (const { instance, result } of parallelResults) {
+				recordSuccess(instance, result);
+				containers.push(result.container);
+			}
+		} catch (error) {
+			return rethrowWithDiagnostics(error);
+		}
 	}
 
-	return { containers, environment };
+	return { containers, environment, diagnostics };
 }

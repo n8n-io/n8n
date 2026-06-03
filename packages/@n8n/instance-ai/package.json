@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.7.0",
+  "version": "1.10.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -8,6 +8,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
@@ -68,7 +69,7 @@
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "p-limit": "^3.1.0",
-    "pdf-parse": "2.4.5",
+    "pdf-parse": "catalog:",
     "psl": "1.9.0",
     "turndown": "^7.2.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",

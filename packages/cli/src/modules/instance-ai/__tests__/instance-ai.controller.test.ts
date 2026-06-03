@@ -24,10 +24,6 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
-jest.mock('../eval/sub-agent-eval.service', () => ({
-	SubAgentEvalService: jest.fn(),
-}));
-
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
@@ -42,8 +38,6 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -62,7 +56,6 @@ import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
-import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -98,7 +91,6 @@ describe('InstanceAiController', () => {
 		port: 5678,
 	});
 
-	const subAgentEvalService = mock<SubAgentEvalService>();
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
 
@@ -107,7 +99,6 @@ describe('InstanceAiController', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
-		subAgentEvalService,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -834,55 +825,6 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
-		});
-	});
-
-	describe('runSubAgentEval', () => {
-		const originalNodeEnv = process.env.NODE_ENV;
-		const originalE2ETests = process.env.E2E_TESTS;
-
-		afterEach(() => {
-			process.env.NODE_ENV = originalNodeEnv;
-			if (originalE2ETests === undefined) {
-				delete process.env.E2E_TESTS;
-			} else {
-				process.env.E2E_TESTS = originalE2ETests;
-			}
-		});
-
-		it('should delegate to SubAgentEvalService.run and return the response', async () => {
-			process.env.NODE_ENV = 'test';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-			const expectedResponse = mock<InstanceAiEvalSubAgentResponse>({
-				text: 'done',
-				toolCalls: [],
-				toolResults: [],
-				capturedWorkflowIds: [],
-				durationMs: 100,
-			});
-			subAgentEvalService.run.mockResolvedValue(expectedResponse);
-
-			const result = await controller.runSubAgentEval(req, res, payload);
-
-			expect(subAgentEvalService.run).toHaveBeenCalledWith(req.user, payload);
-			expect(result).toBe(expectedResponse);
-		});
-
-		it('should throw ForbiddenError when E2E_TESTS is not set', async () => {
-			process.env.NODE_ENV = 'test';
-			delete process.env.E2E_TESTS;
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should throw ForbiddenError when NODE_ENV is production', async () => {
-			process.env.NODE_ENV = 'production';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
 		});
 	});
 

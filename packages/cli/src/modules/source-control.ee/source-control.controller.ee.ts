@@ -7,11 +7,13 @@ import {
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
@@ -31,14 +33,34 @@ export class SourceControlController {
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly sourceControlContextFactory: SourceControlContextFactory,
 		private readonly eventService: EventService,
 	) {}
 
 	@Get('/preferences')
-	async getPreferences(): Promise<SourceControlPreferences> {
-		// returns the settings with the privateKey property redacted
-		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
-		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
+	async getPreferences(req: AuthenticatedRequest): Promise<Partial<SourceControlPreferences>> {
+		const preferences = this.sourceControlPreferencesService.getPreferences();
+
+		if (hasGlobalScope(req.user, 'sourceControl:manage')) {
+			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+			return { ...preferences, publicKey };
+		}
+
+		const publicSubset = {
+			branchReadOnly: preferences.branchReadOnly,
+		};
+
+		const ctx = await this.sourceControlContextFactory.createContext(req.user);
+		if (ctx.authorizedProjects.length > 0) {
+			return {
+				...publicSubset,
+				connected: preferences.connected,
+				branchName: preferences.branchName,
+				branchColor: preferences.branchColor,
+			};
+		}
+
+		return publicSubset;
 	}
 
 	@Post('/preferences')
@@ -162,6 +184,7 @@ export class SourceControlController {
 	}
 
 	@Get('/get-branches')
+	@GlobalScope('sourceControl:manage')
 	async getBranches() {
 		try {
 			return await this.sourceControlService.getBranches();
@@ -240,6 +263,9 @@ export class SourceControlController {
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
@@ -252,6 +278,9 @@ export class SourceControlController {
 				new SourceControlGetStatus(req.query),
 			);
 		} catch (error) {
+			if (error instanceof ForbiddenError) {
+				throw error;
+			}
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

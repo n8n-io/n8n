@@ -142,9 +142,9 @@ describe('AuthController', () => {
 
 			// Act
 
-			await expect(controller.login(req, res, body)).rejects.toThrowError(
-				new AuthError('SSO is enabled, please log in with SSO'),
-			);
+			const execution = controller.login(req, res, body);
+			await expect(execution).rejects.toThrow(AuthError);
+			await expect(execution).rejects.toThrow('SSO is enabled, please log in with SSO');
 
 			// Assert
 
@@ -174,9 +174,9 @@ describe('AuthController', () => {
 			emailAuthHandler.handleLogin.mockResolvedValue(undefined);
 			config.set('userManagement.authenticationMethod', 'oidc');
 
-			await expect(controller.login(req, res, body)).rejects.toThrowError(
-				new AuthError('SSO is enabled, please log in with SSO'),
-			);
+			const execution = controller.login(req, res, body);
+			await expect(execution).rejects.toThrow(AuthError);
+			await expect(execution).rejects.toThrow('SSO is enabled, please log in with SSO');
 
 			expect(eventsService.emit).toHaveBeenCalledWith('user-login-failed', {
 				authenticationMethod: 'email',

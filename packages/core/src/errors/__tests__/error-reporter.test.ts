@@ -2,27 +2,95 @@ import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
 import { AxiosError } from 'axios';
-import { mock } from 'jest-mock-extended';
 import { ApplicationError, BaseError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { ErrorReporter } from '../error-reporter';
+import { ErrorReporter, normalizeFrameFilename } from '../error-reporter';
 
-jest.mock('@sentry/node', () => ({
-	init: jest.fn(),
-	setTag: jest.fn(),
-	captureException: jest.fn(),
+vi.mock('@sentry/node', () => ({
+	init: vi.fn(),
+	setTag: vi.fn(),
+	captureException: vi.fn(),
 	Integrations: {},
 }));
 
-const eventLoopBlockIntegrationMock = jest.fn((opts: unknown) => ({
+const eventLoopBlockIntegrationMock = vi.fn((opts: unknown) => ({
 	name: 'EventLoopBlock',
 	opts,
 }));
-jest.mock('@sentry/node-native', () => ({
+vi.mock('@sentry/node-native', () => ({
 	eventLoopBlockIntegration: (opts: unknown) => eventLoopBlockIntegrationMock(opts),
 }));
 
-jest.spyOn(process, 'on');
+vi.spyOn(process, 'on');
+
+describe('normalizeFrameFilename', () => {
+	it('rewrites pnpm-nested n8n-core frames to a stable app:/// root', () => {
+		const input =
+			'/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_abc123/node_modules/n8n-core/src/execution-engine/workflow-execute.ts';
+
+		expect(normalizeFrameFilename(input)).toBe(
+			'app:///n8n-core/src/execution-engine/workflow-execute.ts',
+		);
+	});
+
+	it('rewrites pnpm-nested n8n-nodes-base frames to a stable app:/// root', () => {
+		const input =
+			'/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-nodes-base@1.2.3_xyz789/node_modules/n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts';
+
+		expect(normalizeFrameFilename(input)).toBe(
+			'app:///n8n-nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts',
+		);
+	});
+
+	it('rewrites pnpm-nested @n8n scoped frames to a stable app:/// root', () => {
+		const input =
+			'/usr/local/lib/node_modules/n8n/node_modules/.pnpm/@n8n+n8n-nodes-langchain@1.0.0_peer+hash/node_modules/@n8n/n8n-nodes-langchain/nodes/agents/Agent.node.ts';
+
+		expect(normalizeFrameFilename(input)).toBe(
+			'app:///@n8n/n8n-nodes-langchain/nodes/agents/Agent.node.ts',
+		);
+	});
+
+	it('rewrites cli install-prefix frames (src) to a stable app:/// root', () => {
+		const input = '/usr/local/lib/node_modules/n8n/src/commands/start.ts';
+
+		expect(normalizeFrameFilename(input)).toBe('app:///src/commands/start.ts');
+	});
+
+	it('rewrites cli install-prefix frames (bin) to a stable app:/// root', () => {
+		const input = '/usr/local/lib/node_modules/n8n/bin/n8n';
+
+		expect(normalizeFrameFilename(input)).toBe('app:///bin/n8n');
+	});
+
+	it('prefers the pnpm replacement when both segments are present', () => {
+		const input =
+			'/usr/local/lib/node_modules/n8n/node_modules/.pnpm/n8n-core@file+packages+core_abc123/node_modules/n8n-core/src/foo.ts';
+
+		expect(normalizeFrameFilename(input)).toBe('app:///n8n-core/src/foo.ts');
+	});
+
+	it('leaves unrelated frames unchanged', () => {
+		const input = '/some/other/path/file.ts';
+
+		expect(normalizeFrameFilename(input)).toBe('/some/other/path/file.ts');
+	});
+
+	it('leaves node-internal frames unchanged', () => {
+		const input = 'node:internal/process/task_queues';
+
+		expect(normalizeFrameFilename(input)).toBe('node:internal/process/task_queues');
+	});
+
+	it('handles pnpm frames not under the cli install prefix (e.g. dev installs)', () => {
+		const input =
+			'/home/dev/n8n/node_modules/.pnpm/n8n-core@file+packages+core_abc/node_modules/n8n-core/src/x.ts';
+
+		expect(normalizeFrameFilename(input)).toBe('app:///n8n-core/src/x.ts');
+	});
+});
 
 describe('ErrorReporter', () => {
 	const errorReporter = new ErrorReporter(mock(), mock());
@@ -81,17 +149,21 @@ describe('ErrorReporter', () => {
 
 		it('should handle Promise rejections', async () => {
 			const originalException = Promise.reject(new Error());
+			originalException.catch(() => {});
 
 			const result = await errorReporter.beforeSend(event, { originalException });
 
 			expect(result).toEqual(event);
 		});
 
+		const rejectedAxiosPromise = Promise.reject(new AxiosError());
+		rejectedAxiosPromise.catch(() => {});
+
 		test.each([
 			['undefined', undefined],
 			['null', null],
 			['an AxiosError', new AxiosError()],
-			['a rejected Promise with AxiosError', Promise.reject(new AxiosError())],
+			['a rejected Promise with AxiosError', rejectedAxiosPromise],
 			[
 				'a QueryFailedError with SQLITE_FULL',
 				new QueryFailedError('', [], new Error('SQLITE_FULL')),
@@ -111,7 +183,7 @@ describe('ErrorReporter', () => {
 		});
 
 		describe('beforeSendFilter', () => {
-			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: jest.Mock) => {
+			const newErrorReportedWithBeforeSendFilter = (beforeSendFilter: Mock) => {
 				const errorReporter = new ErrorReporter(mock(), mock());
 				// @ts-expect-error - beforeSendFilter is private
 				errorReporter.beforeSendFilter = beforeSendFilter;
@@ -119,7 +191,7 @@ describe('ErrorReporter', () => {
 			};
 
 			it('should filter out based on the beforeSendFilter', async () => {
-				const beforeSendFilter = jest.fn().mockReturnValue(true);
+				const beforeSendFilter = vi.fn().mockReturnValue(true);
 				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
 				const hint = { originalException: new Error() };
 
@@ -130,7 +202,7 @@ describe('ErrorReporter', () => {
 			});
 
 			it('should not filter out when beforeSendFilter returns false', async () => {
-				const beforeSendFilter = jest.fn().mockReturnValue(false);
+				const beforeSendFilter = vi.fn().mockReturnValue(false);
 				const errorReporter = newErrorReportedWithBeforeSendFilter(beforeSendFilter);
 				const hint = { originalException: new Error() };
 
