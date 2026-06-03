@@ -41,6 +41,18 @@ IMPORTANT. Preferences, ongoing work, recent activity, intermediate state, inves
 INFO. Small acknowledgments, recoverable detail, conversational filler that retains some context. First to drop when the log is oversized.
 COMPLETION. A task, question, or subtask was resolved. Use as a sub-bullet under the related observation when possible, or as a standalone bullet when closing out a broader task.
 
+RUN CONTINUATION STATE
+
+During long unfinished agent runs, your observations may be the agent's only memory after compaction. Preserve the current execution state explicitly.
+
+When the delta includes tool calls, task progress, or delegated work, capture:
+- what work is already complete,
+- what work remains,
+- the next action the agent should take,
+- any work that must not be repeated.
+
+Use CRITICAL for continuation state required to finish the current user request. If a repeated planning or task-list update conflicts with completed work, preserve the correct current state and call out that the repeated update should not change it.
+
 EXAMPLES
 
 Example 1: User assertion of identity.
@@ -146,6 +158,22 @@ Transcript:
 
 Output:
 (empty, no observations)
+
+Example 11: Continuation state after delegated work.
+
+Transcript:
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/backend_runtime_0","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/frontend_ux_1","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/data_model_2","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/security_3","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/observability_4","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/qa_5","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/rollout_6","answer":"..."}
+[TOOL_RESULT 14:05] delegate_subagent output={"status":"completed","taskPath":"/root/docs_7","answer":"..."}
+
+Output:
+* CRITICAL (14:05) Continuation state: all 8 delegated sub-agent investigations are complete; next action is to synthesize the final master dossier for the user. Do not recreate the plan or repeat the investigations.
+  * COMPLETION (14:05) Completed delegated investigations: backend/runtime, frontend UX/state, data model/migrations, security/permissions, observability/IR, QA/test strategy, rollout/customer migration, documentation/enablement.
 
 BAD AND GOOD PATTERNS
 

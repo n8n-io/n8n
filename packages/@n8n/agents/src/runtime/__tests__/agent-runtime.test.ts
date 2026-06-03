@@ -8,7 +8,7 @@ import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { ContentToolCall, Message } from '../../types/sdk/message';
+import type { ContentToolCall, Message, AgentMessage } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
@@ -3406,7 +3406,157 @@ describe('AgentRuntime — observation log jobs', () => {
 			}),
 		]);
 	});
+
+	it('observes and compacts mid-run before the next LLM call', async () => {
+		generateText.mockReset();
+		const tool: BuiltTool = {
+			name: 'echo',
+			description: 'Echo input',
+			inputSchema: z.object({ text: z.string() }),
+			handler: async (input: unknown) => {
+				const { text } = input as { text: string };
+				return await Promise.resolve({ echoed: text });
+			},
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'echo', args: { text: 'step-one' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Final answer after compaction'));
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+		const saveMessagesSpy = vi.spyOn(memory, 'saveMessages');
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) User asked for a multi-step task.'),
+		);
+
+		const runtime = new AgentRuntime({
+			name: 'midrun-observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			tools: [tool],
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				reflectorThresholdTokens: 10_000,
+				observationLogTailLimit: 20,
+				observe,
+				reflect: async () => await Promise.resolve('{"drop":[],"merge":[]}'),
+			},
+		});
+
+		const result = await runtime.generate('ORIGINAL_USER_TASK_DO_NOT_REPEAT', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await runtime.dispose();
+
+		expect(result.finishReason).toBe('stop');
+		expect(generateText).toHaveBeenCalledTimes(2);
+		const secondCallMessages = (
+			generateText.mock.calls[1][0] as { messages: Array<{ role: string; content: unknown }> }
+		).messages;
+		const secondCallSerialized = JSON.stringify(secondCallMessages);
+		expect(secondCallSerialized).not.toContain('ORIGINAL_USER_TASK_DO_NOT_REPEAT');
+		expect(secondCallSerialized).toContain('User asked for a multi-step task');
+		expect(observe).toHaveBeenCalled();
+
+		expect(result.messages.length).toBeGreaterThanOrEqual(2);
+		expect(
+			result.messages.some((m) => isLlmMessage(m) && JSON.stringify(m).includes('step-one')),
+		).toBe(true);
+		expect(
+			result.messages.some((m) => isLlmMessage(m) && JSON.stringify(m).includes('Final answer')),
+		).toBe(true);
+
+		const persistedMessageIds = saveMessagesSpy.mock.calls.flatMap(([args]) =>
+			args.messages.map((message) => message.id),
+		);
+		expect(saveMessagesSpy).toHaveBeenCalledTimes(2);
+		expect(persistedMessageIds).toHaveLength(new Set(persistedMessageIds).size);
+	});
+
+	it('returns accumulated stream responses after mid-run compaction', async () => {
+		streamText.mockReset();
+		const tool: BuiltTool = {
+			name: 'echo',
+			description: 'Echo input',
+			inputSchema: z.object({ text: z.string() }),
+			handler: async (input: unknown) => {
+				const { text } = input as { text: string };
+				return await Promise.resolve({ echoed: text });
+			},
+		};
+
+		streamText
+			.mockReturnValueOnce(makeStreamWithToolCall('tc-stream-1', 'echo', { text: 'stream-step' }))
+			.mockReturnValueOnce(makeStreamSuccess('Stream final answer'));
+
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+		const bus = new AgentEventBus();
+
+		const runtime = new AgentRuntime({
+			name: 'midrun-stream-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			memory,
+			tools: [tool],
+			observationalMemory: {
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () =>
+					await Promise.resolve('* CRITICAL (14:30) Streamed multi-step task observed.'),
+			},
+		});
+
+		const agentEndMessages: AgentMessage[] = [];
+		bus.on(AgentEvent.AgentEnd, (event) => {
+			if (event.type === AgentEvent.AgentEnd) {
+				agentEndMessages.push(...event.messages);
+			}
+		});
+
+		const { stream } = await runtime.stream('STREAM_ORIGINAL_TASK', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await collectChunks(stream);
+		await runtime.dispose();
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(agentEndMessages.length).toBeGreaterThanOrEqual(2);
+		expect(JSON.stringify(agentEndMessages)).toContain('stream-step');
+		expect(JSON.stringify(agentEndMessages)).toContain('Stream final answer');
+	});
 });
+
+function makeStreamWithToolCall(toolCallId: string, toolName: string, input: unknown) {
+	return {
+		fullStream: makeChunkStream([
+			{
+				type: 'tool-call',
+				toolCallId,
+				toolName,
+				input,
+			},
+		]),
+		finishReason: Promise.resolve('tool-calls'),
+		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+		response: Promise.resolve({
+			messages: [
+				{
+					role: 'assistant',
+					content: [{ type: 'tool-call', toolCallId, toolName, args: input }],
+				},
+			],
+		}),
+		toolCalls: Promise.resolve([{ toolCallId, toolName, input }]),
+	};
+}
 
 // ---------------------------------------------------------------------------
 // Runtime telemetry — generate / stream / tool execution

@@ -363,3 +363,100 @@ describe('AgentMessageList — setToolCallError', () => {
 		expect((block as unknown as { output?: unknown }).output).toBeUndefined();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Observation compaction
+// ---------------------------------------------------------------------------
+
+function makeAssistantMsg(text: string, createdAt: Date, id?: string): AgentDbMessage {
+	return {
+		id: id ?? crypto.randomUUID(),
+		createdAt,
+		role: 'assistant',
+		content: [{ type: 'text', text }],
+	};
+}
+
+describe('AgentMessageList — observation compaction', () => {
+	it('preserves only post-cursor input and response messages', () => {
+		const list = new AgentMessageList();
+		const observedAt = new Date('2026-01-01T00:01:00.000Z');
+		const tailAt = new Date('2026-01-01T00:02:00.000Z');
+
+		list.addInput([makeDbMsg('original user task', new Date('2026-01-01T00:00:00.000Z'))]);
+		list.addResponse([makeAssistantMsg('first assistant', observedAt, 'm-assist-1')]);
+		list.addResponse([makeAssistantMsg('tail assistant', tailAt, 'm-assist-2')]);
+
+		const cursor = {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm-assist-1',
+			lastObservedAt: observedAt,
+			updatedAt: observedAt,
+		};
+
+		list.rebuildAfterObservationCompaction(
+			[makeDbMsg('compact history', new Date('2026-01-01T00:00:30.000Z'))],
+			cursor,
+		);
+
+		const serialized = JSON.stringify(list.forLlm('Base'));
+		expect(serialized).toContain('compact history');
+		expect(serialized).not.toContain('original user task');
+		expect(serialized).toContain('tail assistant');
+	});
+
+	it('adds a continuation reminder when observed input is fully dropped', () => {
+		const list = new AgentMessageList();
+		const observedAt = new Date('2026-01-01T00:01:00.000Z');
+		list.addInput([makeDbMsg('original user task', new Date('2026-01-01T00:00:00.000Z'))]);
+		list.addResponse([makeAssistantMsg('done', observedAt, 'm-assist-1')]);
+
+		list.rebuildAfterObservationCompaction([], {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm-assist-1',
+			lastObservedAt: observedAt,
+			updatedAt: observedAt,
+		});
+
+		const serialized = JSON.stringify(list.forLlm('Base'));
+		expect(serialized).not.toContain('original user task');
+		expect(serialized).toContain('<system-reminder>');
+		expect(serialized).toContain('Continue naturally from the observation memory');
+	});
+
+	it('uses id tie-break when createdAt matches the cursor timestamp', () => {
+		const list = new AgentMessageList();
+		const ts = new Date('2026-01-01T00:01:00.000Z');
+		list.addInput([{ ...makeDbMsg('before cursor id', ts), id: 'm-a' }]);
+		list.addInput([{ ...makeDbMsg('after cursor id', ts), id: 'm-c' }]);
+
+		list.rebuildAfterObservationCompaction([], {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm-b',
+			lastObservedAt: ts,
+			updatedAt: ts,
+		});
+
+		const inputTexts = list
+			.getInputMessages()
+			.map((m) => (isLlmMessage(m) ? (m.content[0] as { text: string }).text : ''));
+		expect(inputTexts).toEqual(['after cursor id']);
+	});
+
+	it('preserves observationLogMemory across compaction', () => {
+		const list = new AgentMessageList();
+		list.observationLogMemory = '<observations>\n* CRITICAL remembered\n</observations>';
+		const observedAt = new Date('2026-01-01T00:01:00.000Z');
+		list.addInput([makeDbMsg('task', new Date('2026-01-01T00:00:00.000Z'))]);
+		list.addResponse([makeAssistantMsg('done', observedAt, 'm-assist-1')]);
+
+		list.rebuildAfterObservationCompaction([], {
+			observationScopeId: 'thread-1',
+			lastObservedMessageId: 'm-assist-1',
+			lastObservedAt: observedAt,
+			updatedAt: observedAt,
+		});
+
+		expect(systemContent(list)).toContain('* CRITICAL remembered');
+	});
+});

@@ -57,6 +57,7 @@ import { createModel } from './model-factory';
 import {
 	runObservationLogObserver,
 	type ObservationLogObserverMemory,
+	renderObserverTranscript,
 } from './observation-log-observer';
 import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
@@ -91,7 +92,9 @@ import type {
 	ToolResultEntry,
 } from '../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
+import type { ObservationCursor } from '../types/sdk/observation';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
+import { estimateObservationTokens } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
@@ -337,6 +340,32 @@ interface RawTokenUsage {
 	outputTokens?: number | undefined;
 	totalTokens?: number | undefined;
 }
+
+interface ObservationBudgetEntry {
+	fingerprint: string;
+	tokenCount: number;
+}
+
+interface ObservationBudgetState {
+	unobservedTokenCount: number;
+	messageEntries: Map<string, ObservationBudgetEntry>;
+}
+
+interface ObservationRunAccumulator {
+	responseMessagesById: Map<string, AgentDbMessage>;
+	turnMessagesById: Map<string, AgentDbMessage>;
+}
+
+interface ObservationLoopState {
+	budget: ObservationBudgetState;
+	accumulator: ObservationRunAccumulator;
+	persistedMessageFingerprints: Map<string, string>;
+}
+
+type ObservationBoundaryAction =
+	| { status: 'none' }
+	| { status: 'observed'; cursor: ObservationCursor }
+	| { status: 'activated'; cursor: ObservationCursor };
 
 /**
  * Core agent execution engine using the Vercel AI SDK directly.
@@ -896,6 +925,9 @@ export class AgentRuntime {
 		let lastFinishReason: FinishReason = 'stop';
 		let structuredOutput: unknown;
 		const toolCallSummary: ToolResultEntry[] = [];
+		const observationState = this.createObservationLoopState();
+		this.mergeObservationRunAccumulator(observationState, list);
+		const hadPendingResume = !!pendingResume;
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
@@ -942,7 +974,7 @@ export class AgentRuntime {
 				);
 				return {
 					runId: suspendRunId,
-					messages: list.responseDelta(),
+					messages: this.getAccumulatedResponses(observationState),
 					finishReason: 'tool-calls',
 					usage: totalUsage,
 					pendingSuspend: batch.suspensions.map((s) => ({
@@ -963,6 +995,9 @@ export class AgentRuntime {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
+
+			const prepareStepNumber = iterationCount === 0 && hadPendingResume ? 1 : iterationCount;
+			await this.prepareObservationStep(list, options, observationState, prepareStepNumber);
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
@@ -993,6 +1028,7 @@ export class AgentRuntime {
 			const responseMessages = result.response.messages;
 			const newMessages = fromAiMessages(responseMessages);
 			list.addResponse(newMessages);
+			this.mergeObservationRunAccumulator(observationState, list);
 
 			if (aiFinishReason !== 'tool-calls') {
 				if (staticLoopContext.outputSpec) {
@@ -1029,7 +1065,7 @@ export class AgentRuntime {
 				);
 				return {
 					runId: suspendRunId,
-					messages: list.responseDelta(),
+					messages: this.getAccumulatedResponses(observationState),
 					finishReason: 'tool-calls',
 					usage: totalUsage,
 					pendingSuspend: batch.suspensions.map((s) => ({
@@ -1051,11 +1087,14 @@ export class AgentRuntime {
 			lastFinishReason = 'max-iterations';
 		}
 
-		await this.saveToMemory(list, options);
+		await this.saveToMemory(list, options, observationState);
 		await this.flushTelemetry(options);
 
 		if (this.config.titleGeneration && options?.persistence?.threadId && this.config.memory) {
-			const titlePromise = this.trackThreadTitleGeneration(options, list.turnDelta());
+			const titlePromise = this.trackThreadTitleGeneration(
+				options,
+				this.getAccumulatedTurnDelta(observationState),
+			);
 			if (titlePromise && this.config.titleGeneration.sync) {
 				await titlePromise;
 			}
@@ -1063,7 +1102,7 @@ export class AgentRuntime {
 
 		return {
 			runId: runId ?? '',
-			messages: list.responseDelta(),
+			messages: this.getAccumulatedResponses(observationState),
 			finishReason: lastFinishReason,
 			usage: totalUsage,
 			...(structuredOutput !== undefined && { structuredOutput }),
@@ -1168,6 +1207,9 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
+		const observationState = this.createObservationLoopState();
+		this.mergeObservationRunAccumulator(observationState, list);
+		const hadPendingResume = !!pendingResume;
 		const { streamText } = loadAi();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
@@ -1268,6 +1310,9 @@ export class AgentRuntime {
 		for (; iterationCount < maxIterations; iterationCount++) {
 			if (await handleAbort()) return;
 
+			const prepareStepNumber = iterationCount === 0 && hadPendingResume ? 1 : iterationCount;
+			await this.prepareObservationStep(list, options, observationState, prepareStepNumber);
+
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 			const { toolMap, aiTools, hasTools, effectiveInstructions } = this.buildToolLoopContext(
 				staticLoopContext.aiProviderTools,
@@ -1354,6 +1399,7 @@ export class AgentRuntime {
 			const responseMessages = response.messages;
 			const newMessages = fromAiMessages(responseMessages);
 			list.addResponse(newMessages);
+			this.mergeObservationRunAccumulator(observationState, list);
 
 			if (aiFinishReason !== 'tool-calls') {
 				if (staticLoopContext.outputSpec) {
@@ -1450,10 +1496,13 @@ export class AgentRuntime {
 		});
 
 		try {
-			await this.saveToMemory(list, options);
+			await this.saveToMemory(list, options, observationState);
 
 			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				const titlePromise = this.trackThreadTitleGeneration(options, list.turnDelta());
+				const titlePromise = this.trackThreadTitleGeneration(
+					options,
+					this.getAccumulatedTurnDelta(observationState),
+				);
 				if (titlePromise && this.config.titleGeneration.sync) {
 					await titlePromise;
 				}
@@ -1463,26 +1512,43 @@ export class AgentRuntime {
 			await this.flushTelemetry(options);
 
 			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+			this.eventBus.emit({
+				type: AgentEvent.AgentEnd,
+				messages: this.getAccumulatedResponses(observationState),
+			});
 		} finally {
 			await writer.close();
 		}
 	}
 
 	/** Persist the current-turn delta to memory. */
-	private async saveToMemory(
+	private async persistTurnDelta(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
+		state?: ObservationLoopState,
 	): Promise<void> {
 		if (!this.config.memory || !options?.persistence) return;
 		const delta = list.turnDelta();
-		if (delta.length === 0) return;
+		const messagesToPersist = state ? this.filterUnpersistedMessages(delta, state) : delta;
+		if (messagesToPersist.length === 0) return;
 		await saveMessagesToThread(
 			this.config.memory,
 			options.persistence.threadId,
 			options.persistence.resourceId,
-			delta,
+			messagesToPersist,
 		);
+		this.markMessagesPersisted(messagesToPersist, state);
+	}
+
+	/** Persist the current-turn delta and schedule post-turn memory jobs. */
+	private async saveToMemory(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+		state?: ObservationLoopState,
+	): Promise<void> {
+		if (!this.config.memory || !options?.persistence) return;
+
+		await this.persistTurnDelta(list, options, state);
 
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
@@ -2496,6 +2562,206 @@ export class AgentRuntime {
 		if (observations.length > 0) {
 			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
 		}
+	}
+
+	private createObservationLoopState(): ObservationLoopState {
+		return {
+			budget: {
+				unobservedTokenCount: 0,
+				messageEntries: new Map(),
+			},
+			accumulator: {
+				responseMessagesById: new Map(),
+				turnMessagesById: new Map(),
+			},
+			persistedMessageFingerprints: new Map(),
+		};
+	}
+
+	private mergeObservationRunAccumulator(
+		state: ObservationLoopState,
+		list: AgentMessageList,
+	): void {
+		for (const message of list.responseDelta()) {
+			state.accumulator.responseMessagesById.set(message.id, message);
+		}
+		for (const message of list.turnDelta()) {
+			state.accumulator.turnMessagesById.set(message.id, message);
+		}
+	}
+
+	private getAccumulatedResponses(state: ObservationLoopState): AgentDbMessage[] {
+		return this.sortMessagesByCreatedAt(
+			Array.from(state.accumulator.responseMessagesById.values()),
+		);
+	}
+
+	private getAccumulatedTurnDelta(state: ObservationLoopState): AgentDbMessage[] {
+		return this.sortMessagesByCreatedAt(Array.from(state.accumulator.turnMessagesById.values()));
+	}
+
+	private sortMessagesByCreatedAt(messages: AgentDbMessage[]): AgentDbMessage[] {
+		return [...messages].sort((a, b) => {
+			const ta =
+				a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+			const tb =
+				b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+			if (ta !== tb) return ta < tb ? -1 : 1;
+			return a.id.localeCompare(b.id);
+		});
+	}
+
+	private filterUnpersistedMessages(
+		messages: AgentDbMessage[],
+		state: ObservationLoopState,
+	): AgentDbMessage[] {
+		return messages.filter((message) => !state.persistedMessageFingerprints.has(message.id));
+	}
+
+	private markMessagesPersisted(
+		messages: AgentDbMessage[],
+		state: ObservationLoopState | undefined,
+	): void {
+		if (!state) return;
+		for (const message of messages) {
+			state.persistedMessageFingerprints.set(
+				message.id,
+				this.fingerprintObservationMessage(message),
+			);
+		}
+	}
+
+	private isMidRunObservationEnabled(
+		options: RuntimeExecutionOptions | undefined,
+	): options is RuntimeExecutionOptions & { persistence: AgentPersistenceOptions } {
+		const { memory, observationalMemory } = this.config;
+		return (
+			!!memory &&
+			!!observationalMemory &&
+			!!observationalMemory.observe &&
+			observationalMemory.observerThresholdTokens !== undefined &&
+			hasObservationLogStore(memory) &&
+			hasObservationLogObserverMemory(memory) &&
+			!!options?.persistence
+		);
+	}
+
+	private fingerprintObservationMessage(message: AgentDbMessage): string {
+		const createdAt =
+			message.createdAt instanceof Date
+				? message.createdAt.toISOString()
+				: new Date(message.createdAt).toISOString();
+		const role = 'role' in message ? String(message.role) : 'unknown';
+		let content = '';
+		if ('content' in message) {
+			try {
+				content = JSON.stringify(message.content);
+			} catch {
+				content = '[unserializable]';
+			}
+		}
+		return `${message.id}|${createdAt}|${role}|${content}`;
+	}
+
+	private countObservationMessageTokens(message: AgentDbMessage): number {
+		return estimateObservationTokens(renderObserverTranscript([message]));
+	}
+
+	private updateObservationBudget(state: ObservationLoopState, list: AgentMessageList): void {
+		for (const message of list.turnDelta()) {
+			const fingerprint = this.fingerprintObservationMessage(message);
+			const existing = state.budget.messageEntries.get(message.id);
+			if (existing?.fingerprint === fingerprint) continue;
+
+			if (existing) {
+				state.budget.unobservedTokenCount -= existing.tokenCount;
+			}
+
+			const tokenCount = this.countObservationMessageTokens(message);
+			state.budget.messageEntries.set(message.id, { fingerprint, tokenCount });
+			state.budget.unobservedTokenCount += tokenCount;
+		}
+	}
+
+	private resetObservationBudget(state: ObservationLoopState, list: AgentMessageList): void {
+		state.budget.messageEntries.clear();
+		state.budget.unobservedTokenCount = 0;
+		this.updateObservationBudget(state, list);
+	}
+
+	private async prepareObservationStep(
+		list: AgentMessageList,
+		options: RuntimeExecutionOptions | undefined,
+		state: ObservationLoopState,
+		stepNumber: number,
+	): Promise<void> {
+		if (!this.isMidRunObservationEnabled(options)) return;
+
+		this.mergeObservationRunAccumulator(state, list);
+		if (stepNumber === 0) return;
+
+		await this.persistTurnDelta(list, options, state);
+		this.updateObservationBudget(state, list);
+
+		const observerThresholdTokens = this.config.observationalMemory?.observerThresholdTokens;
+		if (
+			observerThresholdTokens === undefined ||
+			state.budget.unobservedTokenCount < observerThresholdTokens
+		) {
+			return;
+		}
+
+		const action = await this.observeOrActivateObservationLog(
+			options.persistence,
+			options.executionCounter,
+		);
+		if (action.status === 'none') return;
+
+		const history = await this.loadHistoryMessages(options.persistence);
+		list.rebuildAfterObservationCompaction(history, action.cursor);
+		await this.setListObservationLogMemory(list, options.persistence);
+		this.resetObservationBudget(state, list);
+	}
+
+	private async observeOrActivateObservationLog(
+		persistence: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+	): Promise<ObservationBoundaryAction> {
+		const { memory, observationalMemory } = this.config;
+		if (
+			!memory ||
+			!observationalMemory?.observe ||
+			observationalMemory.observerThresholdTokens === undefined ||
+			!hasObservationLogStore(memory) ||
+			!hasObservationLogObserverMemory(memory)
+		) {
+			return { status: 'none' };
+		}
+
+		const observe = observationalMemory.observe;
+		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
+		const scope = this.getObservationLogScope(persistence);
+		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
+		const handle = runner.schedule(
+			{ ...scope, taskKind: 'observer' },
+			async () =>
+				await runObservationLogObserver({
+					memory,
+					...scope,
+					observerThresholdTokens,
+					observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
+					observe,
+					executionCounter,
+				}),
+		);
+		const result = await handle.done;
+		if (result.status !== 'completed' || result.value.status !== 'ran') {
+			return { status: 'none' };
+		}
+
+		const cursor = await memory.getCursor(scope.observationScopeId);
+		if (!cursor) return { status: 'none' };
+		return { status: 'observed', cursor };
 	}
 
 	/**

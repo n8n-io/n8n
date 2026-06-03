@@ -327,8 +327,9 @@ function truncateString(value: string, maxChars: number, label: string): string 
 }
 
 function safeJsonStringify(value: unknown): string {
+	if (value === undefined) return '[undefined]';
 	try {
-		return JSON.stringify(value);
+		return JSON.stringify(value) ?? '[undefined]';
 	} catch {
 		return JSON.stringify('[unserializable]');
 	}

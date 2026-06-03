@@ -564,7 +564,7 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
-			subAgentMaxChildren: 5,
+			subAgentMaxChildren: 100,
 			subAgentTimeoutMs: 300000,
 			modules: [],
 		},

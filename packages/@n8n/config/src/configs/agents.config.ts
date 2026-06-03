@@ -32,7 +32,7 @@ export class AgentsConfig {
 
 	/** Maximum number of sub-agents a single parent run may spawn. Bounds fan-out width. */
 	@Env('N8N_AGENTS_SUBAGENT_MAX_CHILDREN')
-	subAgentMaxChildren: number = 5;
+	subAgentMaxChildren: number = 100;
 
 	/** Abort an individual sub-agent run after this many milliseconds. */
 	@Env('N8N_AGENTS_SUBAGENT_TIMEOUT_MS')

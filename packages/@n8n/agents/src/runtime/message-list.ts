@@ -7,7 +7,11 @@ import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { filterLlmMessages, getCreatedAt } from '../sdk/message';
 import type { SerializedMessageList } from '../types/runtime/message-list';
 import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../types/sdk/message';
+import type { ObservationCursor } from '../types/sdk/observation';
 import type { JSONValue } from '../types/utils/json';
+
+const OBSERVATION_CONTINUATION_REMINDER =
+	'<system-reminder>Continue naturally from the observation memory. Do not repeat work that the observations say is complete. Do not mention memory, summarization, compaction, or missing messages. Newer messages after this reminder take priority.</system-reminder>';
 
 export type { SerializedMessageList };
 
@@ -251,6 +255,82 @@ export class AgentMessageList {
 	 */
 	responseDelta(): AgentDbMessage[] {
 		return this.all.filter((m) => this.responseSet.has(m));
+	}
+
+	getInputMessages(): AgentDbMessage[] {
+		return this.all.filter((m) => this.inputSet.has(m));
+	}
+
+	getResponseMessages(): AgentDbMessage[] {
+		return this.all.filter((m) => this.responseSet.has(m));
+	}
+
+	private isAfterObservationCursor(message: AgentDbMessage, cursor: ObservationCursor): boolean {
+		const createdAt =
+			message.createdAt instanceof Date
+				? message.createdAt
+				: new Date(message.createdAt as string | number);
+		if (!Number.isFinite(createdAt.getTime())) return false;
+
+		const cursorAt =
+			cursor.lastObservedAt instanceof Date
+				? cursor.lastObservedAt
+				: new Date(cursor.lastObservedAt as string | number);
+		if (!Number.isFinite(cursorAt.getTime())) return false;
+
+		const messageTime = createdAt.getTime();
+		const cursorTime = cursorAt.getTime();
+		if (messageTime > cursorTime) return true;
+		if (messageTime < cursorTime) return false;
+		return message.id > cursor.lastObservedMessageId;
+	}
+
+	/**
+	 * Rebuild the live LLM window after mid-run observation compaction.
+	 * Keeps only post-cursor input/response tail and reloads compacted history.
+	 */
+	rebuildAfterObservationCompaction(
+		history: AgentDbMessage[],
+		cursor: ObservationCursor,
+		continuationMessage?: AgentDbMessage,
+	): void {
+		const preservedObservationLogMemory = this.observationLogMemory;
+		const currentInput = this.getInputMessages();
+		const currentResponse = this.getResponseMessages();
+		const preservedInput = currentInput.filter((m) => this.isAfterObservationCursor(m, cursor));
+		const preservedResponse = currentResponse.filter((m) =>
+			this.isAfterObservationCursor(m, cursor),
+		);
+		const droppedAllInput = currentInput.length > 0 && preservedInput.length === 0;
+
+		this.all = [];
+		this.historySet = new Set();
+		this.inputSet = new Set();
+		this.responseSet = new Set();
+		this.lastCreatedAt = 0;
+		this.observationLogMemory = preservedObservationLogMemory;
+
+		if (history.length > 0) {
+			this.addHistory(stripOrphanedToolMessages(history));
+		}
+
+		if (preservedInput.length > 0) {
+			this.addInput(preservedInput);
+		}
+
+		if (preservedResponse.length > 0) {
+			this.addResponse(preservedResponse);
+		}
+
+		if (droppedAllInput && preservedInput.length === 0) {
+			const reminder =
+				continuationMessage ??
+				({
+					role: 'user',
+					content: [{ type: 'text', text: OBSERVATION_CONTINUATION_REMINDER }],
+				} satisfies AgentMessage);
+			this.addHistory([reminder]);
+		}
 	}
 
 	serialize(): SerializedMessageList {
