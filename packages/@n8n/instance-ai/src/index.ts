@@ -421,9 +421,7 @@ export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace
 );
 export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
 export { createScopedWorkspace } from './workspace/scoped-workspace';
-export {
-	getPromptWorkspaceRoot,
-} from './workspace/sandbox-setup';
+export { getPromptWorkspaceRoot } from './workspace/sandbox-setup';
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
 export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
