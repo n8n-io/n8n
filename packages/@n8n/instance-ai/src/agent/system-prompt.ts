@@ -19,8 +19,6 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
-	/** The n8n project this conversation/thread is scoped to. When present, the
-	 *  agent is told its writes and credential use are limited to this project. */
 	projectId?: string;
 	/** When true, a lazy thread-scoped sandbox workspace is attached for file/command tools. */
 	sandboxWorkspaceAvailable?: boolean;

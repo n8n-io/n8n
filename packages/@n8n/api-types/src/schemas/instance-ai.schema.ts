@@ -678,13 +678,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
-	projectId: z
-		.string()
-		.min(1)
-		.describe(
-			'The n8n project this thread is bound to. Required and immutable: scopes the ' +
-				"agent's writes and reads for the lifetime of the thread.",
-		),
+	projectId: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -841,7 +835,6 @@ export interface InstanceAiThreadInfo {
 	id: string;
 	title?: string;
 	resourceId: string;
-	/** The n8n project a user thread is bound to. Set at creation, immutable. */
 	projectId?: string;
 	createdAt: string;
 	updatedAt: string;
@@ -879,8 +872,6 @@ export interface InstanceAiThreadMessagesResponse {
 
 export interface InstanceAiRichMessagesResponse {
 	threadId: string;
-	/** The n8n project this thread is bound to (immutable). The frontend reads it
-	 *  here so each thread runtime knows its project on load. */
 	projectId?: string;
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */

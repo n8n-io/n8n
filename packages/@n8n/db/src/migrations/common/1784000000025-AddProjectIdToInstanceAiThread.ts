@@ -1,13 +1,9 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
 /**
- * Binds every Instance AI thread to an n8n project via a NOT NULL `projectId`
- * foreign key. Existing threads predate project scoping and have no project to
- * backfill from, so all Instance AI conversation data is cleared rather than
- * migrated — hence irreversible. New threads receive their project at creation.
- *
- * Child tables are emptied before `instance_ai_threads` so the wipe doesn't
- * depend on FK cascade behaviour being present (or matching) across engines.
+ * Adds a project foreign key to Instance AI threads. Existing threads have no
+ * project to backfill from, so all Instance AI data is cleared first — hence
+ * irreversible.
  */
 const INSTANCE_AI_TABLES = [
 	'instance_ai_messages',

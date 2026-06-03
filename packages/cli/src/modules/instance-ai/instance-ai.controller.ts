@@ -524,11 +524,6 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
 		this.requireInstanceAiEnabled();
-		// Binding a thread to a project requires membership of that project. This is
-		// the one place the client-supplied projectId is trusted — it is validated
-		// here, persisted immutably, and every run thereafter reads it from the
-		// thread row rather than the request. Reads default to this project; writes
-		// are additionally gated by their own scopes at the tool/save layer.
 		const project = await this.projectService.getProjectWithScope(req.user, payload.projectId, [
 			'project:read',
 		]);

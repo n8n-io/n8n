@@ -2876,11 +2876,6 @@ export class InstanceAiService {
 		pushRef?: string,
 	) {
 		const memory = this.agentMemory;
-		// Every thread is created with a project (mandatory at thread creation), so
-		// a run must have one. Fail fast rather than silently defaulting — the
-		// project scopes the whole run: it's passed into the adapter context
-		// (clamping writes, scoping the credential list) and inherited by sub-agents
-		// via the orchestration context below.
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(

@@ -231,13 +231,6 @@ export class TypeORMAgentMemory
 		await this.threadRepo.delete({ id: threadId });
 	}
 
-	/**
-	 * Read/write the n8n project a thread is scoped to. Deliberately kept off the
-	 * generic {@link Thread} / `BuiltMemory` contract — project scoping is an
-	 * Instance AI concern, not an agent-SDK one — so these operate on the
-	 * `instance_ai_threads.projectId` column directly. Null for internal
-	 * sub-agent threads, which take their scope from the runtime context instead.
-	 */
 	async getThreadProjectId(threadId: string): Promise<string | null> {
 		const thread = await this.threadRepo.findOneBy({ id: threadId });
 		return thread?.projectId ?? null;
