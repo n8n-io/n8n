@@ -87,9 +87,12 @@ const agent = new Agent('parent')
 ```
 
 The model selects the default inline path by passing `subAgentId: "inline"`.
-If a host supplies `availableSubAgents` and a `runSubAgent` callback, passing a
-configured `subAgentId` routes to that host runner instead. Both paths return the same
-`DelegateSubAgentToolOutput` shape and emit the same sub-agent lifecycle events.
+When a host supplies a `runSubAgent` callback, `Agent.build()` routes every
+delegation (including `"inline"`) through that callback and passes
+`helpers.runInlineSubAgent` so the host can reuse the SDK inline runner. Without a
+host callback, `"inline"` is handled by the SDK inline runner directly. Both paths
+return the same `DelegateSubAgentToolOutput` shape and emit the same sub-agent
+lifecycle events.
 
 Inline children:
 

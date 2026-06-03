@@ -1,4 +1,10 @@
-import { INLINE_SUB_AGENT_ID, type CredentialProvider, type GenerateResult } from '@n8n/agents';
+import {
+	getInlineDelegateSubAgentToolOptions,
+	INLINE_SUB_AGENT_ID,
+	type CredentialProvider,
+	type DelegateSubAgentRunnerHelpers,
+	type GenerateResult,
+} from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
@@ -193,7 +199,53 @@ describe('createN8nDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('does not select a saved agent for the inline subAgentId', async () => {
+	it('routes inline subAgentId through runInlineSubAgent helpers instead of the foreground runner', async () => {
+		const runInlineSubAgent = jest
+			.fn<DelegateSubAgentRunnerHelpers['runInlineSubAgent']>()
+			.mockResolvedValue({
+				status: 'completed',
+				taskPath: '/root/research_api_0',
+				runId: 'inline-run-1',
+				answer: 'Inline answer',
+			});
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+		});
+		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
+		expect(runSubAgent).toBeDefined();
+
+		await expect(
+			runSubAgent?.(
+				{
+					subAgentId: INLINE_SUB_AGENT_ID,
+					taskName: 'Research API',
+					goal: 'Find behavior.',
+					taskPath: '/root/research_api_0',
+					childCount: 0,
+				},
+				{ runInlineSubAgent },
+			),
+		).resolves.toMatchObject({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			answer: 'Inline answer',
+		});
+
+		expect(runInlineSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				subAgentId: INLINE_SUB_AGENT_ID,
+				goal: 'Find behavior.',
+			}),
+		);
+		expect(runner.runForeground).not.toHaveBeenCalled();
+	});
+
+	it('requires Agent inline helpers when inline is invoked through the tool handler directly', async () => {
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
@@ -213,7 +265,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			taskPath: '/root/research_api_0',
 			answer: '',
 			error:
-				'Inline sub-agent execution is available only after the delegate tool is registered on an Agent.',
+				'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
 		});
 		expect(runner.runForeground).not.toHaveBeenCalled();
 	});

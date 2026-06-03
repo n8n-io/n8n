@@ -210,6 +210,7 @@ export {
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
 	renderDelegateSubAgentPrompt,
 } from './runtime/delegate-sub-agent-tool';
 export type {
@@ -217,6 +218,8 @@ export type {
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,
+	DelegateSubAgentRunner,
+	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,
 } from './runtime/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';

@@ -142,6 +142,20 @@ export interface DelegateSubAgentToolOutput {
  * `subagent-started` / `-completed` lifecycle events) is owned by
  * the tool.
  */
+/**
+ * Helpers passed to a host `runSubAgent` callback so the host can route
+ * `subAgentId: "inline"` while reusing the SDK inline child runner implementation.
+ */
+export interface DelegateSubAgentRunnerHelpers {
+	/** Run a one-off inline child using the parent agent's inherited tool set. */
+	runInlineSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
+}
+
+export type DelegateSubAgentRunner = (
+	request: DelegateSubAgentRequest,
+	helpers: DelegateSubAgentRunnerHelpers,
+) => Promise<DelegateSubAgentToolOutput>;
+
 export interface CreateDelegateSubAgentToolOptions {
 	/**
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
@@ -156,8 +170,12 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * separately and can be narrowed via `allowedTools` by provider tool name.
 	 */
 	inlineSubAgentBlockedTools?: string[];
-	/** Run the child for this delegation and return its result. */
-	runSubAgent?: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
+	/**
+	 * Run the child for this delegation and return its result. When provided, the
+	 * host receives every `subAgentId` (including `"inline"`) and may call
+	 * `helpers.runInlineSubAgent` for inline work.
+	 */
+	runSubAgent?: DelegateSubAgentRunner;
 }
 
 export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
@@ -290,10 +308,16 @@ async function handleDelegateSubAgent(
 		emitSubAgentStarted(ctx, request, startedAt);
 		if (!options.runSubAgent) {
 			throw new Error(
-				'delegate_subagent was registered without a runSubAgent callback, but no Agent inline runner was attached. Register it on an Agent or provide runSubAgent.',
+				'delegate_subagent was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.',
 			);
 		}
-		const output = await options.runSubAgent(request);
+		const output = await options.runSubAgent(request, {
+			runInlineSubAgent: async () => {
+				throw new Error(
+					'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
+				);
+			},
+		});
 		emitSubAgentCompleted(ctx, request, output, startedAt);
 		return output;
 	} catch (error) {

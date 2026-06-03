@@ -876,11 +876,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
 				...delegateOptions,
-				runSubAgent: async (request) => {
+				runSubAgent: async (request, _helpersFromHandler) => {
+					const helpers = { runInlineSubAgent };
+					if (hostRunner) {
+						return await hostRunner(request, helpers);
+					}
 					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
 						return await runInlineSubAgent(request);
 					}
-					if (hostRunner) return await hostRunner(request);
 					return {
 						status: 'failed',
 						taskPath: request.taskPath,

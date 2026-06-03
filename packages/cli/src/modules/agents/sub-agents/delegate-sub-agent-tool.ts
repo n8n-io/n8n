@@ -25,21 +25,21 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 	return createDelegateSubAgentTool({
 		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
 		...(policy !== undefined ? { policy } : {}),
-		runSubAgent: async (request) => {
+		runSubAgent: async (request, helpers) => {
+			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+				return await helpers.runInlineSubAgent(request);
+			}
+
 			const selectedSource = selectSubAgentSource({
 				sourcesById,
 				subAgentId: request.subAgentId,
 			});
 			if (!selectedSource) {
-				const error =
-					request.subAgentId === INLINE_SUB_AGENT_ID
-						? 'Inline sub-agent execution is available only after the delegate tool is registered on an Agent.'
-						: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`;
 				return {
 					status: 'failed',
 					taskPath: request.taskPath,
 					answer: '',
-					error,
+					error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
 				};
 			}
 
