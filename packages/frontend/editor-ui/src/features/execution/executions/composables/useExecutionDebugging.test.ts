@@ -2,11 +2,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '../executions.types';
@@ -21,14 +16,6 @@ vi.mock('@/app/composables/useToast', () => {
 		useToast: () => ({
 			showToast,
 		}),
-	};
-});
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
 	};
 });
 
@@ -53,7 +40,6 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
-let workflowState: WorkflowState;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
 let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
@@ -70,9 +56,6 @@ describe('useExecutionDebugging()', () => {
 		workflowStore.setWorkflowId('test-workflow');
 
 		toast = useToast();
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		// Production resolves the execution-state store by the injected document
 		// store's `documentId` ('test-id@latest' on the mock above).

@@ -23,7 +23,7 @@ import {
 	nodeTypes,
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -38,7 +38,6 @@ import { userEvent } from '@testing-library/user-event';
 import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@/app/composables/useToast', () => {
@@ -83,7 +82,6 @@ describe('LogsPanel', () => {
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
-	let workflowState: WorkflowState;
 
 	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
 
@@ -110,7 +108,6 @@ describe('LogsPanel', () => {
 				provide: {
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
-					[WorkflowStateKey as symbol]: workflowState,
 					[WorkflowIdKey as unknown as string]: computed(() => wfId),
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(
 						useWorkflowDocumentStore(createWorkflowDocumentId(wfId)),
@@ -139,7 +136,6 @@ describe('LogsPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowState = useWorkflowState();
 		setExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);

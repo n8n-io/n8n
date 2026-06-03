@@ -57,7 +57,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import {
+	disposeWorkflowExecutionStateStore,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -119,7 +122,7 @@ import {
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -178,7 +181,6 @@ type AddNodeOptions = AddNodesBaseOptions & {
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -2327,20 +2329,30 @@ export function useCanvasOperations() {
 			createNodeActive: false,
 		});
 
-		// Make sure that if there is a waiting test-webhook, it gets removed
+		const workflowId = workflowsStore.workflowId;
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId),
 		);
+
+		// Make sure that if there is a waiting test-webhook, it gets removed
 		if (executionStateStore.executionWaitingForWebhook) {
 			try {
-				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+				void workflowsStore.removeTestWebhook(workflowId);
 			} catch (error) {}
 		}
 
-		// Reset editable workflow state. resetState() must run BEFORE resetWorkflow()
-		// — it reads ws.workflowId to target the per-workflow execution-state store, and
+		// Reset editable workflow execution state. This must run BEFORE resetWorkflow()
+		// — it targets the per-workflow execution-state store keyed on workflowId, and
 		// resetWorkflow() empties that id.
-		workflowState.resetState();
+		if (workflowId) {
+			// Disposes every tracked executionData store + IN_PROGRESS placeholder and clears
+			// all session-level fields, then disposes the per-workflow store so pinia state
+			// doesn't accumulate one entry per workflow opened in this session.
+			executionStateStore.resetExecutionState();
+			disposeWorkflowExecutionStateStore(executionStateStore);
+		}
+		useBuilderStore().resetManualExecutionStats();
+
 		workflowsStore.resetWorkflow();
 		workflowsStore.clearCurrentWorkflowExecutions();
 		workflowsStore.setLastSuccessfulExecution(null);

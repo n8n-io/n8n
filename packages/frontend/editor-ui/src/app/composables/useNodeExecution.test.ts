@@ -10,11 +10,6 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { useNodeExecution } from '@/app/composables/useNodeExecution';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -164,14 +159,6 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 	needsAgentInput: vi.fn().mockReturnValue(false),
 }));
@@ -192,16 +179,12 @@ function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	} as INodeUi;
 }
 
-let workflowState: WorkflowState;
 let uiStore: ReturnType<typeof useUIStore>;
 
 describe('useNodeExecution', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-
-		workflowState = vi.mocked(useWorkflowState());
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		uiStore = useUIStore();
 

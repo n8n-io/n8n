@@ -18,21 +18,12 @@ import {
 } from 'n8n-workflow';
 import { defineComponent, provide, shallowRef } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
@@ -41,7 +32,6 @@ describe(useNodeDirtiness, () => {
 	let historyHelper: ReturnType<typeof useHistoryHelper>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let workflowState: WorkflowState;
 
 	const NODE_RUN_AT = new Date('2025-01-01T00:00:01');
 	const WORKFLOW_UPDATED_AT = new Date('2025-01-01T00:00:10');
@@ -57,8 +47,6 @@ describe(useNodeDirtiness, () => {
 				workflowsStore = useWorkflowsStore();
 				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
-				workflowState = useWorkflowState();
-				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 				workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(TEST_WORKFLOW_ID),

@@ -1,10 +1,8 @@
 <script lang="ts" setup>
-import { computed, provide, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { WorkflowStateKey } from '@/app/constants/injectionKeys';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
@@ -27,9 +25,7 @@ if (window !== window.parent) {
 	useRootStore().setPushRef(randomString(10).toLowerCase());
 }
 
-const workflowState = useWorkflowState();
 const workflowId = useWorkflowId();
-provide(WorkflowStateKey, workflowState);
 
 const {
 	initializeData,

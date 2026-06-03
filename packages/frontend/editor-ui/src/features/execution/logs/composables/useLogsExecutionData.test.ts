@@ -15,26 +15,11 @@ import {
 } from '@/__tests__/mocks';
 import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
 vi.mock('@/app/composables/useToast');
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
-let workflowState: WorkflowState;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -47,9 +32,6 @@ describe(useLogsExecutionData, () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		// The composable resolves the execution-state store via the injected
 		// document store (falls back to `workflowsStore.workflowId`, '' here).

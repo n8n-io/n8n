@@ -34,11 +34,6 @@ import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import * as buttonParameterUtils from '@/features/ndv/parameters/utils/buttonParameter.utils';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -105,14 +100,6 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
@@ -128,7 +115,6 @@ let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
-let workflowState: WorkflowState;
 let workflowExecutionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 let nodeViewEventBusEmitSpy: ReturnType<typeof vi.spyOn>;
 
@@ -152,8 +138,6 @@ describe('NodeExecuteButton', () => {
 		workflowExecutionStateStore = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId('abc123'),
 		);
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('abc123'));

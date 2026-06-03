@@ -61,11 +61,7 @@ import { useTelemetry } from './useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowsApi from '@/app/api/workflows';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -156,14 +152,6 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
@@ -216,7 +204,6 @@ describe('useCanvasOperations', () => {
 	type Writable<T> = { -readonly [K in keyof T]: T[K] };
 	type WritableDocumentStore = Writable<ReturnType<typeof useWorkflowDocumentStore>>;
 
-	let workflowState: WorkflowState;
 	let workflowDocumentStoreInstance: WritableDocumentStore;
 
 	beforeEach(() => {
@@ -225,9 +212,6 @@ describe('useCanvasOperations', () => {
 
 		const pinia = createTestingPinia({ initialState: createInitialState() });
 		setActivePinia(pinia);
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		const workflowsStore = useWorkflowsStore();
 		workflowDocumentStoreInstance = useWorkflowDocumentStore(
@@ -4105,6 +4089,7 @@ describe('useCanvasOperations', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const uiStore = mockedStore(useUIStore);
 			const executionsStore = mockedStore(useExecutionsStore);
+			const builderStore = mockedStore(useBuilderStore);
 
 			const credentialsUpdatedRef = ref(true);
 			const credentialsSpy = vi.spyOn(credentialsUpdatedRef, 'value', 'set');
@@ -4115,7 +4100,6 @@ describe('useCanvasOperations', () => {
 					credentialsUpdated: credentialsUpdatedRef,
 				};
 			});
-			const resetStateSpy = vi.spyOn(workflowState, 'resetState');
 
 			nodeCreatorStore.setNodeCreatorState = vi.fn();
 			workflowsStore.removeTestWebhook = vi.fn();
@@ -4167,11 +4151,16 @@ describe('useCanvasOperations', () => {
 				createNodeActive: false,
 			});
 			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
-			expect(resetStateSpy).toHaveBeenCalled();
+			expect(executionStateStore.resetExecutionState).toHaveBeenCalled();
+			expect(builderStore.resetManualExecutionStats).toHaveBeenCalled();
 			expect(resetWorkflowSpy).toHaveBeenCalled();
-			// resetState() must run BEFORE resetWorkflow() — resetState reads workflowId
-			// to target the per-workflow execution-state store, and resetWorkflow empties it.
-			expect(resetStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
+			// The execution-state reset must run BEFORE resetWorkflow() — it targets the
+			// per-workflow execution-state store keyed on workflowId, and resetWorkflow()
+			// empties that id.
+			const resetExecutionStateSpy = executionStateStore.resetExecutionState as ReturnType<
+				typeof vi.fn
+			>;
+			expect(resetExecutionStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
 				resetWorkflowSpy.mock.invocationCallOrder[0],
 			);
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
@@ -6269,8 +6258,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6335,8 +6322,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6399,8 +6384,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6467,8 +6450,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6531,8 +6512,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6611,8 +6590,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6687,8 +6664,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
@@ -6765,8 +6740,6 @@ describe('useCanvasOperations', () => {
 			});
 			setActivePinia(pinia);
 
-			workflowState = useWorkflowState();
-			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			) as WritableDocumentStore;
