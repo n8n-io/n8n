@@ -130,7 +130,10 @@ export class TraceReplayState {
 	): unknown[] {
 		const fromWriters: unknown[] = [];
 		for (const entry of activeWriterEntries) {
-			if (entry.traceSlug === slug && entry.tracing.traceWriter) {
+			if (
+				(entry.traceSlug === slug || entry.traceSlug === undefined) &&
+				entry.tracing.traceWriter
+			) {
 				fromWriters.push(...entry.tracing.traceWriter.getEvents());
 			}
 		}

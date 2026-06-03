@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -76,6 +77,8 @@ const emptyStateTitleKey = computed<BaseTextKey>(() =>
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
+
+useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
 
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());

@@ -2,6 +2,7 @@ import * as aiModule from 'ai';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
+import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
@@ -1176,6 +1177,140 @@ describe('AgentRuntime — concurrent tool execution', () => {
 
 		expect(third.pendingSuspend).toBeUndefined();
 		expect(third.finishReason).toBe('stop');
+	});
+
+	it('cancels a suspended tool before resume validation and adds the user message', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const receivedMessages: unknown[] = [];
+
+		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		generateText.mockImplementationOnce(async ({ messages }: { messages: unknown[] }) => {
+			receivedMessages.push(...messages);
+			return await Promise.resolve(makeGenerateSuccess('Cancelled'));
+		});
+
+		const result = await runtime.resume('generate', createCancellation('Do not run this tool'), {
+			runId,
+			toolCallId,
+		});
+
+		expect(result.finishReason).toBe('stop');
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(result.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tool: 'suspend_tool',
+					output: '[Tool call cancelled. User said: "Do not run this tool"]',
+					canceled: true,
+				}),
+			]),
+		);
+		expect(receivedMessages).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'user',
+					content: expect.arrayContaining([
+						expect.objectContaining({ type: 'text', text: 'Do not run this tool' }),
+					]),
+				}),
+			]),
+		);
+	});
+
+	it('streams cancellation as a normal tool result on resume', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+
+		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Cancelled'));
+
+		const resumed = await runtime.resume('stream', createCancellation('Stop this action'), {
+			runId,
+			toolCallId,
+		});
+		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'tool-result',
+					toolCallId,
+					toolName: 'suspend_tool',
+					output: '[Tool call cancelled. User said: "Stop this action"]',
+					canceled: true,
+				}),
+			]),
+		);
+	});
+
+	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+
+		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Cancelled'));
+
+		const resumed = await runtime.resume('stream', createCancellation('Stop this action'), {
+			runId,
+			toolCallId: 'tc-1',
+		});
+		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(handler).toHaveBeenCalledTimes(2);
+		expect(chunks).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'tool-result',
+					toolCallId: 'tc-1',
+					toolName: 'suspend_tool',
+					output: '[Tool call cancelled. User said: "Stop this action"]',
+					canceled: true,
+				}),
+				expect.objectContaining({
+					type: 'tool-result',
+					toolCallId: 'tc-2',
+					toolName: 'suspend_tool',
+					output: '[Skipped: a sibling tool call was cancelled]',
+					canceled: true,
+				}),
+			]),
+		);
 	});
 
 	it('bounded concurrency (2) batches respects the limit', async () => {
@@ -3739,5 +3874,232 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Cancellation (Feature 1: cancel suspended tool via user message)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	/** A tool that suspends on first call and returns on resume. */
+	function makeSuspendToolForCancel(): BuiltTool {
+		return {
+			name: 'interactive_tool',
+			description: 'A tool that suspends',
+			inputSchema: z.object({ prompt: z.string() }),
+			suspendSchema: z.object({ prompt: z.string() }),
+			resumeSchema: z.object({ answer: z.string() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) {
+					return await suspend({ prompt: 'What should I do?' });
+				}
+				return { result: (resumeData as { answer: string }).answer };
+			},
+		};
+	}
+
+	it('auto-bypass: does NOT call the tool handler on cancellation', async () => {
+		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
+			const { suspend, resumeData } = ctx as InterruptibleToolContext;
+			if (!resumeData) {
+				return await suspend({ prompt: 'What should I do?' });
+			}
+			return { result: (resumeData as { answer: string }).answer };
+		});
+		const tool: BuiltTool = {
+			name: 'interactive_tool',
+			description: 'A tool that suspends',
+			inputSchema: z.object({ prompt: z.string() }),
+			suspendSchema: z.object({ prompt: z.string() }),
+			resumeSchema: z.object({ answer: z.string() }),
+			handler: handlerSpy,
+		};
+
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'interactive_tool', args: { prompt: 'continue?' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done after cancel'));
+
+		const first = await runtime.generate('start', {});
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// Reset call count to check the handler is NOT called on resume
+		handlerSpy.mockClear();
+
+		const resumed = await runtime.resume(
+			'generate',
+			createCancellation('do something else instead'),
+			{ runId, toolCallId },
+		);
+
+		// Handler should NOT have been called for the resume
+		expect(handlerSpy).not.toHaveBeenCalled();
+		// The generation should have continued after cancellation
+		expect(resumed.finishReason).toBe('stop');
+	});
+
+	it('auto-bypass: injects the steering message and the LLM sees it', async () => {
+		const tool = makeSuspendToolForCancel();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'interactive_tool', args: { prompt: 'continue?' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Understood, doing something else'));
+
+		const first = await runtime.generate('start');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		await runtime.resume('generate', createCancellation('pivot to plan B'), { runId, toolCallId });
+
+		// The second generateText call should include the user steering message
+		const secondCallMessages = (
+			generateText.mock.calls[1][0] as { messages: Array<{ role: string; content: unknown }> }
+		).messages;
+		const userMessages = secondCallMessages.filter((m) => m.role === 'user');
+		const steeringMsg = userMessages.find((m) =>
+			JSON.stringify(m.content).includes('pivot to plan B'),
+		);
+		expect(steeringMsg).toBeDefined();
+	});
+
+	it('stream: emits a cancellation tool result then continues', async () => {
+		const tool = makeSuspendToolForCancel();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'interactive_tool',
+									args: { prompt: 'continue?' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'interactive_tool', input: { prompt: 'continue?' } },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Redirected'));
+
+		const firstResult = await runtime.stream('start');
+		const firstChunks = await collectChunks(firstResult.stream);
+
+		const suspendChunk = firstChunks.find((c) => c.type === 'tool-call-suspended');
+		expect(suspendChunk).toBeDefined();
+		const { runId, toolCallId } = suspendChunk as Extract<
+			StreamChunk,
+			{ type: 'tool-call-suspended' }
+		>;
+
+		const resumed = await runtime.resume('stream', createCancellation('go another direction'), {
+			runId,
+			toolCallId,
+		});
+		const resumedChunks = await collectChunks(resumed.stream);
+
+		const cancellationResult = resumedChunks.find(
+			(c) => c.type === 'tool-result' && c.toolCallId === 'tc-1',
+		);
+		expect(cancellationResult).toEqual(
+			expect.objectContaining({
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'interactive_tool',
+				output: '[Tool call cancelled. User said: "go another direction"]',
+				canceled: true,
+			}),
+		);
+
+		// Generation should continue after the cancellation result
+		const textChunks = resumedChunks.filter((c) => c.type === 'text-delta');
+		expect(textChunks.length).toBeGreaterThan(0);
+	});
+
+	it('rejects with an error if the checkpoint is not found', async () => {
+		const { runtime } = createRuntimeWithTools([makeSuspendToolForCancel()], 1);
+		await expect(
+			runtime.resume('generate', createCancellation('no checkpoint'), {
+				runId: 'nonexistent',
+				toolCallId: 'tc-1',
+			}),
+		).rejects.toThrow('No suspended run found for runId: nonexistent');
+	});
+});
+
+describe('AgentRuntime.resume() with createCancellation() — manual handling (handleCancellation)', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('calls the tool handler with ctx.cancellation set', async () => {
+		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
+			const { suspend, resumeData, cancellation } = ctx as InterruptibleToolContext;
+			if (cancellation) {
+				// Manual cleanup path — return a note for the LLM
+				return `Cancelled: ${cancellation.message}`;
+			}
+			if (!resumeData) {
+				return await suspend({ prompt: 'Confirm?' });
+			}
+			return 'done';
+		});
+		const tool: BuiltTool = {
+			name: 'manual_cancel_tool',
+			description: 'A tool with manual cancellation',
+			inputSchema: z.object({ value: z.string() }),
+			suspendSchema: z.object({ prompt: z.string() }),
+			resumeSchema: z.object({ confirmed: z.boolean() }),
+			handleCancellation: true,
+			handler: handlerSpy,
+		};
+
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'manual_cancel_tool', args: { value: 'x' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done after manual cancel'));
+
+		const first = await runtime.generate('test');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		handlerSpy.mockClear();
+
+		await runtime.resume('generate', createCancellation('user said stop'), { runId, toolCallId });
+
+		// Handler SHOULD have been called for the resume
+		expect(handlerSpy).toHaveBeenCalledTimes(1);
+		const callCtx = handlerSpy.mock.calls[0][1] as InterruptibleToolContext;
+		expect(callCtx.cancellation).toEqual({ message: 'user said stop' });
+		expect(callCtx.resumeData).toBeUndefined();
 	});
 });

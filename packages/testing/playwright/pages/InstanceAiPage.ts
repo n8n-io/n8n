@@ -204,10 +204,15 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async runPreviewWorkflow(): Promise<void> {
-		const button = this.getPreviewRunWorkflowButton();
-		await expect(button).toBeVisible({ timeout: 10_000 });
-		await expect(button).toBeEnabled({ timeout: 120_000 });
-		await button.click();
+		const runButton = this.getPreviewRunWorkflowButton();
+		const approvalButton = this.getConfirmApproveButton();
+		await runButton.or(approvalButton).first().waitFor({ state: 'visible', timeout: 30_000 });
+		if (await approvalButton.isVisible()) {
+			await approvalButton.click();
+		} else {
+			await expect(runButton).toBeEnabled({ timeout: 120_000 });
+			await runButton.click();
+		}
 	}
 
 	getPreviewNodeByName(nodeName: string): Locator {
@@ -249,11 +254,11 @@ export class InstanceAiPage extends BasePage {
 	 * is mounted in `App.vue` as a sibling of the router view — i.e. OUTSIDE both
 	 * `workflow-canvas-host` and `instance-ai-container`. So unlike the canvas
 	 * content above, this must be page-scoped, not scoped to the preview canvas.
-	 * On the `/instance-ai` route the main editor isn't mounted, so the preview's
-	 * NDV is the only `output-panel` on the page.
+	 * The rendered NDV uses a native dialog, so narrow the page-scoped lookup
+	 * through that dialog to avoid stale page-level matches.
 	 */
 	getPreviewNdvOutputPanel(): Locator {
-		return this.page.getByTestId('ndv').getByTestId('output-panel');
+		return this.page.getByRole('dialog').getByTestId('output-panel');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────

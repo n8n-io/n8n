@@ -12,6 +12,7 @@ import {
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
@@ -30,6 +31,7 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
+import { OtelConfig } from '@/modules/otel/otel.config';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -140,6 +142,9 @@ describe('TelemetryEventRelay', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		globalConfig.diagnostics.enabled = true;
+		const otelConfig = Container.get(OtelConfig);
+		otelConfig.enabled = false;
+		otelConfig.includeNodeSpans = true;
 	});
 
 	describe('init', () => {
@@ -218,6 +223,40 @@ describe('TelemetryEventRelay', () => {
 					{ user_id: 'user789', role: 'project:editor' },
 				],
 				project_id: 'project123',
+			});
+		});
+
+		it('should track on `team-project-updated` event without members', () => {
+			const event: RelayEventMap['team-project-updated'] = {
+				userId: 'user123',
+				role: 'global:owner',
+				projectId: 'project123',
+			};
+
+			eventService.emit('team-project-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Project settings updated', {
+				user_id: 'user123',
+				role: 'global:owner',
+				project_id: 'project123',
+			});
+		});
+
+		it('should track project custom telemetry tag count on `team-project-updated` event', () => {
+			const event: RelayEventMap['team-project-updated'] = {
+				userId: 'user123',
+				role: 'global:owner',
+				projectId: 'project123',
+				otelProjectCustomTagsCount: 2,
+			};
+
+			eventService.emit('team-project-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Project settings updated', {
+				user_id: 'user123',
+				role: 'global:owner',
+				project_id: 'project123',
+				otel_project_custom_tags_count: 2,
 			});
 		});
 
@@ -909,7 +948,7 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				project_id: 'project123',
 				project_type: 'personal',
-				is_dynamic: false,
+				is_private: false,
 				uses_external_secrets: false,
 				jwe_enabled: false,
 			});
@@ -965,7 +1004,7 @@ describe('TelemetryEventRelay', () => {
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
-				is_dynamic: true,
+				is_private: true,
 				uses_external_secrets: false,
 				jwe_enabled: false,
 			});
@@ -1239,8 +1278,73 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
+		});
+
+		it('should track OTEL custom telemetry tag counts on `workflow-created` event', async () => {
+			const event: RelayEventMap['workflow-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production' }],
+					},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Node 1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [
+									{ key: 'node-env', value: 'production' },
+									{ key: 'node-team', value: 'engineering' },
+								],
+							},
+						},
+						{
+							id: 'node-2',
+							name: 'Node 2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [{ key: 'node-region', value: 'eu' }],
+							},
+						},
+					],
+				}),
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+			};
+
+			eventService.emit('workflow-created', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User created workflow',
+				expect.objectContaining({
+					otel_workflow_custom_tags_count: 1,
+					otel_nodes_with_custom_tags_count: 2,
+					otel_node_custom_tags_count: 3,
+				}),
+			);
 		});
 
 		it('should truncate node_graph_string when it exceeds size limit', async () => {
@@ -1297,6 +1401,9 @@ describe('TelemetryEventRelay', () => {
 				public_api: false,
 				project_id: 'project123',
 				project_type: 'personal',
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
@@ -1491,7 +1598,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
-				used_dynamic_credentials: false,
+				used_private_credentials: false,
 			});
 		});
 
@@ -1528,8 +1635,82 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
+		});
+
+		it('should track OTEL custom telemetry tag counts on `workflow-saved` event', async () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'team', value: 'engineering' },
+						],
+					},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Node 1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [
+									{ key: 'node-env', value: 'production' },
+									{ key: 'node-team', value: 'engineering' },
+								],
+							},
+						},
+						{
+							id: 'node-2',
+							name: 'Node 2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							customTelemetryTags: {
+								tag: [{ key: 'node-region', value: 'eu' }],
+							},
+						},
+						{
+							id: 'node-3',
+							name: 'Node 3',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					otel_workflow_custom_tags_count: 2,
+					otel_nodes_with_custom_tags_count: 2,
+					otel_node_custom_tags_count: 3,
+				}),
+			);
 		});
 
 		it('should track resolver settings when credentialResolverId changes', async () => {
@@ -1577,6 +1758,9 @@ describe('TelemetryEventRelay', () => {
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				otel_workflow_custom_tags_count: 0,
+				otel_nodes_with_custom_tags_count: 0,
+				otel_node_custom_tags_count: 0,
 				source: 'ui',
 			});
 		});
@@ -1942,6 +2126,11 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					otel: expect.anything(),
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
@@ -1954,6 +2143,38 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 					},
+					otel: {
+						enabled: false,
+						include_node_spans: true,
+					},
+				}),
+			);
+		});
+
+		it('should track OTEL startup configuration on `server-started` event', async () => {
+			const otelConfig = Container.get(OtelConfig);
+			otelConfig.enabled = true;
+			otelConfig.includeNodeSpans = false;
+			workflowRepository.findOne.mockResolvedValue(null);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Instance started',
+				expect.objectContaining({
+					otel: {
+						enabled: true,
+						include_node_spans: false,
+					},
+				}),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.not.objectContaining({
+						otel: expect.anything(),
+					}),
 				}),
 			);
 		});

@@ -1,14 +1,14 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
-
 test.describe(
 	'Instance AI agent timeline @capability:proxy',
 	{
 		annotation: [{ type: 'owner', description: 'Instance AI' }],
 	},
 	() => {
+		test.describe.configure({ timeout: 180_000 });
+
 		test('should show artifact cards after workflow build completes', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 

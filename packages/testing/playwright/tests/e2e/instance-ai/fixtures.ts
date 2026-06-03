@@ -448,6 +448,14 @@ function isReplayableAnthropicMessagesExpectation(expectation: Expectation): boo
 	);
 }
 
+function prioritizeSequentialExpectation(expectation: Expectation, fileName: string): Expectation {
+	const sequence = Number.parseInt(fileName.slice(0, 4), 10);
+	if (Number.isFinite(sequence)) {
+		expectation.priority = 10_000 - sequence;
+	}
+	return expectation;
+}
+
 type InstanceAiFixtures = {
 	anthropicApiKey: string;
 	instanceAiProxySetup: undefined;
@@ -602,7 +610,11 @@ export const test = base.extend<InstanceAiFixtures>({
 					sequential: true,
 					repeatLastResponse: false,
 					filter: isReplayableAnthropicMessagesExpectation,
-					transform: loosenRecordedInstanceAiPromptMatcher,
+					transform: (expectation, fileName) =>
+						prioritizeSequentialExpectation(
+							loosenRecordedInstanceAiPromptMatcher(expectation),
+							fileName,
+						),
 				});
 
 				await fetchOrThrow(

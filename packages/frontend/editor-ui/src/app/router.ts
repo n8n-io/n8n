@@ -866,7 +866,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['apiKey:manage'],
+							scope: ['apiKey:list'],
 						},
 					},
 					telemetry: {

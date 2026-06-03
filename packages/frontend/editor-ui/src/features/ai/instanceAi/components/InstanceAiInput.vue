@@ -74,8 +74,17 @@ const previewPromptKey = ref<BaseTextKey | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
+function focus() {
+	chatInputRef.value?.focus();
+}
+
+function appendText(text: string) {
+	inputText.value += text;
+}
+
 defineExpose({
-	focus: () => chatInputRef.value?.focus(),
+	focus,
+	appendText,
 });
 
 const isBusy = computed(() =>
