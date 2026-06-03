@@ -73,8 +73,14 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			liveness: { clearThreadState: jest.Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			eventBus: { clearThread: jest.Mock };
-			finalizeRemainingMessageTraceRoots: jest.Mock;
-			deleteTraceContextsForThread: jest.Mock;
+			tracing: {
+				finalizeRunTracing: jest.Mock;
+				finalizeBackgroundTaskTracing: jest.Mock;
+				finalizeRemainingMessageTraceRoots: jest.Mock;
+				deleteTraceContextsForThread: jest.Mock;
+				getTrackedThreadIds: jest.Mock;
+				clear: jest.Mock;
+			};
 			destroySandbox: jest.Mock;
 			reapAiTemporaryForThreadCleanup: jest.Mock;
 			dropPendingConfirmationsForThread: jest.Mock;
@@ -92,8 +98,14 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.liveness = { clearThreadState: jest.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clearThread: jest.fn() };
-		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
-		service.deleteTraceContextsForThread = jest.fn();
+		service.tracing = {
+			finalizeRunTracing: jest.fn(async () => {}),
+			finalizeBackgroundTaskTracing: jest.fn(async () => {}),
+			finalizeRemainingMessageTraceRoots: jest.fn(async () => {}),
+			deleteTraceContextsForThread: jest.fn(),
+			getTrackedThreadIds: jest.fn(() => []),
+			clear: jest.fn(),
+		};
 		service.destroySandbox = jest.fn(async () => {});
 		service.reapAiTemporaryForThreadCleanup = jest.fn(async () => {});
 		service.dropPendingConfirmationsForThread = jest.fn(async () => {});
