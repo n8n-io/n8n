@@ -47,6 +47,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
+	BaseError,
 	sleep,
 	Node,
 	UnexpectedError,
@@ -1192,7 +1193,7 @@ export class WorkflowExecute {
 	): Promise<IRunNodeResponse> {
 		if (mode === 'manual') {
 			// In manual mode start the trigger
-			const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
+			const triggerResponse = await Container.get(TriggersAndPollers).runTriggerFunction(
 				workflow,
 				node,
 				NodeExecuteFunctions.getExecuteTriggerFunctions,
@@ -1896,9 +1897,23 @@ export class WorkflowExecute {
 							if (error instanceof ApplicationError) {
 								// Report any unhandled errors that were wrapped in by one of our error classes
 								if (error.cause instanceof Error) toReport = error.cause;
-							} else {
-								// Report any unhandled and non-wrapped errors to Sentry
+							} else if (error instanceof BaseError) {
+								// BaseError subclasses specify shouldReport and level
+								// so always report and let beforeSend decide
 								toReport = error;
+							} else if (error instanceof Error) {
+								// Non-BaseError errors only report their class and call frames
+								// The full error is still stored in the execution resultData
+								// Stack frames are in the format `<name>: <message>\n<call frames>`
+								// they can span multiple lines, so we drop everything except call frame lines
+								const errorClass = error.name || 'Error';
+								const sanitized = new Error(errorClass);
+								sanitized.name = errorClass;
+								const frames = (error.stack ?? '')
+									.split('\n')
+									.filter((line) => /^\s+at\s/.test(line));
+								sanitized.stack = [errorClass, ...frames].join('\n');
+								toReport = sanitized;
 							}
 							if (toReport) {
 								Container.get(ErrorReporter).error(toReport, {
@@ -1937,6 +1952,19 @@ export class WorkflowExecute {
 						usedDynamicCredentials:
 							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 					};
+
+					// Record the n8n user a dynamically-resolved private credential
+					// belongs to onto the execution context, so the redaction layer
+					// can grant that user access to their own data. The identity is
+					// execution-scoped, so this is the same value across nodes.
+					if (
+						this.additionalData.currentNodeUsedDynamicCredentials &&
+						this.additionalData.dynamicCredentialsResolvedUserId &&
+						this.runExecutionData.executionData?.runtimeData
+					) {
+						this.runExecutionData.executionData.runtimeData.executedByUserId =
+							this.additionalData.dynamicCredentialsResolvedUserId;
+					}
 
 					if (executionError !== undefined) {
 						taskData.error = executionError;

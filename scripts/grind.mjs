@@ -98,12 +98,22 @@ const runnerArgs =
 		: ['jest', fileRelToPkg, '--colors=false'];
 
 let passed = 0;
+let firstFailureLogged = false;
 for (let i = 0; i < n; i++) {
 	const res = spawnSync('pnpm', runnerArgs, {
 		cwd: pkgRoot,
-		stdio: values.json ? ['ignore', 'ignore', 'ignore'] : ['ignore', 'inherit', 'inherit'],
+		stdio: values.json ? ['ignore', 'ignore', 'pipe'] : ['ignore', 'inherit', 'inherit'],
+		encoding: 'utf8',
 	});
-	if (res.status === 0) passed++;
+	if (res.status === 0) {
+		passed++;
+	} else if (values.json && !firstFailureLogged) {
+		// Without this, JSON-mode invocations (used in CI) swallow every
+		// vitest error message and leave authors with no diagnostic trail.
+		firstFailureLogged = true;
+		process.stderr.write(`\n[grind] first failing iteration for ${fileRelToPkg}:\n`);
+		if (res.stderr) process.stderr.write(res.stderr);
+	}
 	if (!values.json) process.stdout.write(res.status === 0 ? '.' : 'F');
 }
 

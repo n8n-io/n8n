@@ -2,6 +2,7 @@ import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Command } from '@langchain/langgraph';
 import { createResultError, createResultOk } from 'n8n-workflow';
+import type { MockedFunction } from 'vitest';
 
 import type { SsrfGuard } from '@/tools/utils/ssrf-guard';
 import type { WebFetchSecurityManager } from '@/tools/utils/web-fetch-security';
@@ -9,33 +10,33 @@ import { normalizeHost, fetchUrl, extractReadableContent } from '@/tools/utils/w
 import { createWebFetchTool } from '@/tools/web-fetch.tool';
 
 // Mock the LangGraph interrupt
-const mockInterrupt = jest.fn();
+const mockInterrupt = vi.fn();
 
-jest.mock('@langchain/langgraph', () => ({
-	...jest.requireActual<object>('@langchain/langgraph'),
+vi.mock('@langchain/langgraph', async () => ({
+	...(await vi.importActual<object>('@langchain/langgraph')),
 	interrupt: (...args: unknown[]) => mockInterrupt(...args) as unknown,
 }));
 
 // Mock the web-fetch utilities
-jest.mock('@/tools/utils/web-fetch.utils', () => ({
-	normalizeHost: jest.fn((url: string) => new URL(url).hostname.toLowerCase()),
-	fetchUrl: jest.fn(),
-	extractReadableContent: jest.fn(),
-	isUrlInUserMessages: jest.fn(),
+vi.mock('@/tools/utils/web-fetch.utils', () => ({
+	normalizeHost: vi.fn((url: string) => new URL(url).hostname.toLowerCase()),
+	fetchUrl: vi.fn(),
+	extractReadableContent: vi.fn(),
+	isUrlInUserMessages: vi.fn(),
 }));
 
-const mockFetchUrl = fetchUrl as jest.MockedFunction<typeof fetchUrl>;
-const mockExtractReadableContent = extractReadableContent as jest.MockedFunction<
+const mockFetchUrl = fetchUrl as MockedFunction<typeof fetchUrl>;
+const mockExtractReadableContent = extractReadableContent as MockedFunction<
 	typeof extractReadableContent
 >;
-const mockNormalizeHost = normalizeHost as jest.MockedFunction<typeof normalizeHost>;
+const mockNormalizeHost = normalizeHost as MockedFunction<typeof normalizeHost>;
 
 /** Build a mock SSRF guard whose IP checks pass by default; override per test. */
 function makeSsrfGuard(overrides: Partial<SsrfGuard> = {}): SsrfGuard {
 	return {
-		validateUrl: jest.fn(async () => createResultOk(undefined)),
-		validateRedirectSync: jest.fn(),
-		createSecureLookup: jest.fn(() => (() => {}) as never),
+		validateUrl: vi.fn(async () => createResultOk(undefined)),
+		validateRedirectSync: vi.fn(),
+		createSecureLookup: vi.fn(() => (() => {}) as never),
 		...overrides,
 	};
 }
@@ -55,12 +56,12 @@ function createMockSecurityManager(
 	overrides: Partial<WebFetchSecurityManager> = {},
 ): WebFetchSecurityManager {
 	return {
-		isHostAllowed: jest.fn().mockReturnValue(true),
-		approveDomain: jest.fn(),
-		approveAllDomains: jest.fn(),
-		hasBudget: jest.fn().mockReturnValue(true),
-		recordFetch: jest.fn(),
-		getStateUpdates: jest.fn().mockReturnValue({ webFetchCount: 1 }),
+		isHostAllowed: vi.fn().mockReturnValue(true),
+		approveDomain: vi.fn(),
+		approveAllDomains: vi.fn(),
+		hasBudget: vi.fn().mockReturnValue(true),
+		recordFetch: vi.fn(),
+		getStateUpdates: vi.fn().mockReturnValue({ webFetchCount: 1 }),
 		...overrides,
 	};
 }
@@ -75,7 +76,7 @@ describe('web_fetch tool', () => {
 	let ssrf: SsrfGuard;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		mockNormalizeHost.mockImplementation((url: string) => new URL(url).hostname.toLowerCase());
 		security = createMockSecurityManager();
 		ssrf = makeSsrfGuard();
@@ -84,7 +85,7 @@ describe('web_fetch tool', () => {
 	describe('SSRF blocking', () => {
 		it('should block URLs that fail SSRF check', async () => {
 			ssrf = makeSsrfGuard({
-				validateUrl: jest.fn(async () => createResultError(new Error('blocked'))),
+				validateUrl: vi.fn(async () => createResultError(new Error('blocked'))),
 			});
 
 			const { tool } = createWebFetchTool(() => security, ssrf);
@@ -99,7 +100,7 @@ describe('web_fetch tool', () => {
 	describe('per-turn budget', () => {
 		it('should block when fetch budget is exceeded', async () => {
 			security = createMockSecurityManager({
-				hasBudget: jest.fn().mockReturnValue(false),
+				hasBudget: vi.fn().mockReturnValue(false),
 			});
 
 			const { tool } = createWebFetchTool(() => security, ssrf);
@@ -114,8 +115,8 @@ describe('web_fetch tool', () => {
 		beforeEach(() => {
 			// Host not allowed (so approval is required)
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				getStateUpdates: jest.fn().mockReturnValue({ webFetchCount: 1 }),
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				getStateUpdates: vi.fn().mockReturnValue({ webFetchCount: 1 }),
 			});
 		});
 
@@ -169,7 +170,7 @@ describe('web_fetch tool', () => {
 
 		it('should skip interrupt for pre-approved domain', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -212,8 +213,8 @@ describe('web_fetch tool', () => {
 
 		it('should add domain to approvedDomains on allow_domain', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				getStateUpdates: jest.fn().mockReturnValue({
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				getStateUpdates: vi.fn().mockReturnValue({
 					webFetchCount: 1,
 					approvedDomains: ['example.com'],
 				}),
@@ -296,7 +297,7 @@ describe('web_fetch tool', () => {
 	describe('content fetching', () => {
 		beforeEach(() => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 		});
 
@@ -406,13 +407,13 @@ describe('web_fetch tool', () => {
 	describe('redirect handling', () => {
 		beforeEach(() => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 		});
 
 		it('should block redirect to private address', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -422,7 +423,7 @@ describe('web_fetch tool', () => {
 
 			// SSRF validation passes for the original URL but blocks the redirect target.
 			ssrf = makeSsrfGuard({
-				validateUrl: jest.fn(async (url: string | URL) =>
+				validateUrl: vi.fn(async (url: string | URL) =>
 					String(url).includes('localhost')
 						? createResultError(new Error('blocked'))
 						: createResultOk(undefined),
@@ -438,7 +439,7 @@ describe('web_fetch tool', () => {
 
 		it('should trigger interrupt for redirect to unapproved domain and succeed on approval', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest
+				isHostAllowed: vi
 					.fn()
 					.mockReturnValueOnce(true) // original host
 					.mockReturnValueOnce(false), // redirect host
@@ -487,7 +488,7 @@ describe('web_fetch tool', () => {
 
 		it('should return deny message when user denies redirect domain', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest
+				isHostAllowed: vi
 					.fn()
 					.mockReturnValueOnce(true) // original host
 					.mockReturnValueOnce(false), // redirect host
@@ -514,11 +515,11 @@ describe('web_fetch tool', () => {
 
 		it('should add redirect host to approvedDomains on allow_domain', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest
+				isHostAllowed: vi
 					.fn()
 					.mockReturnValueOnce(true) // original host
 					.mockReturnValueOnce(false), // redirect host
-				getStateUpdates: jest.fn().mockReturnValue({
+				getStateUpdates: vi.fn().mockReturnValue({
 					webFetchCount: 1,
 					approvedDomains: ['other-domain.com'],
 				}),
@@ -559,7 +560,7 @@ describe('web_fetch tool', () => {
 
 		it('should skip interrupt when redirect domain is in allowlist', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl
@@ -599,7 +600,7 @@ describe('web_fetch tool', () => {
 
 		it('should propagate GraphInterrupt errors', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(false),
+				isHostAllowed: vi.fn().mockReturnValue(false),
 			});
 			const graphInterruptError = new Error('GraphInterrupt');
 			graphInterruptError.name = 'GraphInterrupt';
@@ -617,7 +618,7 @@ describe('web_fetch tool', () => {
 	describe('URL provenance and approval', () => {
 		it('should allow URLs found in user messages without approval', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -645,7 +646,7 @@ describe('web_fetch tool', () => {
 		it('should skip domain approval for user-sent URLs on non-allowlisted domains', async () => {
 			// isHostAllowed returns true because isUrlInUserMessages is checked inside the manager
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -673,7 +674,7 @@ describe('web_fetch tool', () => {
 
 		it('should require approval for URLs not sent by user', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(false),
+				isHostAllowed: vi.fn().mockReturnValue(false),
 			});
 
 			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
@@ -715,7 +716,7 @@ describe('web_fetch tool', () => {
 		beforeEach(() => {
 			// Host not allowed (so approval is required)
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(false),
+				isHostAllowed: vi.fn().mockReturnValue(false),
 			});
 		});
 
@@ -763,8 +764,8 @@ describe('web_fetch tool', () => {
 
 		it('should accept allow_all action and set allDomainsApproved', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				getStateUpdates: jest.fn().mockReturnValue({
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				getStateUpdates: vi.fn().mockReturnValue({
 					webFetchCount: 1,
 					approvedDomains: ['example.com'],
 					allDomainsApproved: true,
@@ -804,7 +805,7 @@ describe('web_fetch tool', () => {
 	describe('allDomainsApproved bypass', () => {
 		it('should skip domain approval interrupt when allDomainsApproved is true', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -831,7 +832,7 @@ describe('web_fetch tool', () => {
 
 		it('should skip redirect domain approval when allDomainsApproved is true', async () => {
 			security = createMockSecurityManager({
-				isHostAllowed: jest.fn().mockReturnValue(true),
+				isHostAllowed: vi.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl

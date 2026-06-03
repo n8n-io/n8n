@@ -1,14 +1,16 @@
+import type { Mocked } from 'vitest';
+
 import type { PlannedTaskStorage } from '../../storage/planned-task-storage';
 import type { PlannedTask, PlannedTaskGraph, PlannedTaskRecord } from '../../types';
 import { PlannedTaskCoordinator } from '../planned-task-service';
 
-function makeStorage(): jest.Mocked<PlannedTaskStorage> {
+function makeStorage(): Mocked<PlannedTaskStorage> {
 	return {
-		get: jest.fn(),
-		save: jest.fn(),
-		update: jest.fn(),
-		clear: jest.fn(),
-	} as unknown as jest.Mocked<PlannedTaskStorage>;
+		get: vi.fn(),
+		save: vi.fn(),
+		update: vi.fn(),
+		clear: vi.fn(),
+	} as unknown as Mocked<PlannedTaskStorage>;
 }
 
 function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
@@ -44,11 +46,11 @@ function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTask
 }
 
 describe('PlannedTaskCoordinator', () => {
-	let storage: jest.Mocked<PlannedTaskStorage>;
+	let storage: Mocked<PlannedTaskStorage>;
 	let coordinator: PlannedTaskCoordinator;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		storage = makeStorage();
 		coordinator = new PlannedTaskCoordinator(storage);
 	});
@@ -73,6 +75,15 @@ describe('PlannedTaskCoordinator', () => {
 			);
 			expect(result.status).toBe('awaiting_approval');
 			expect(result.tasks).toHaveLength(2);
+		});
+
+		it('persists post-build run approval metadata', async () => {
+			const result = await coordinator.createPlan('thread-1', [makeTask()], {
+				planRunId: 'run-1',
+				postBuildRunApprovalRequired: true,
+			});
+
+			expect(result.postBuildRunApprovalRequired).toBe(true);
 		});
 
 		it('throws on duplicate task IDs', async () => {
@@ -617,8 +628,20 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [
 						makeTaskRecord({ id: 'a', deps: [], status: 'succeeded' }),
-						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
-						makeTaskRecord({ id: 'c', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({
+							id: 'b',
+							kind: 'delegate',
+							tools: ['research'],
+							deps: ['a'],
+							status: 'planned',
+						}),
+						makeTaskRecord({
+							id: 'c',
+							kind: 'delegate',
+							tools: ['nodes'],
+							deps: ['a'],
+							status: 'planned',
+						}),
 					],
 				});
 				return await Promise.resolve(updater(graph));
@@ -630,6 +653,23 @@ describe('PlannedTaskCoordinator', () => {
 			if (action.type === 'dispatch') {
 				expect(action.tasks).toHaveLength(2);
 				expect(action.tasks.map((t) => t.id)).toEqual(['b', 'c']);
+			}
+		});
+
+		it('returns orchestrate-build-workflow when a workflow build is ready', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0].id).toBe('wf-1');
 			}
 		});
 
@@ -717,7 +757,8 @@ describe('PlannedTaskCoordinator', () => {
 						}),
 						makeTaskRecord({
 							id: 'wf-2',
-							kind: 'build-workflow',
+							kind: 'delegate',
+							tools: ['research'],
 							deps: [],
 							status: 'planned',
 						}),
@@ -774,9 +815,9 @@ describe('PlannedTaskCoordinator', () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
-						makeTaskRecord({ id: 'a', status: 'planned' }),
-						makeTaskRecord({ id: 'b', status: 'planned' }),
-						makeTaskRecord({ id: 'c', status: 'planned' }),
+						makeTaskRecord({ id: 'a', kind: 'delegate', tools: ['research'], status: 'planned' }),
+						makeTaskRecord({ id: 'b', kind: 'delegate', tools: ['research'], status: 'planned' }),
+						makeTaskRecord({ id: 'c', kind: 'delegate', tools: ['nodes'], status: 'planned' }),
 					],
 				});
 				return await Promise.resolve(updater(graph));

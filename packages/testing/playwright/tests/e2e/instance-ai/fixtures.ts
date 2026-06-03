@@ -99,7 +99,7 @@ function getStableTextAnchor(text: string): string | undefined {
 function getToolUseAnchor(block: AnthropicContentBlock): string | undefined {
 	if (block.type !== 'tool_use' || typeof block.name !== 'string') return undefined;
 
-	const toolNameMatcher = `"type"\\s*:\\s*"tool_use"[\\s\\S]{0,300}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
+	const toolNameMatcher = `"role"\\s*:\\s*"assistant"[\\s\\S]{0,1000}"type"\\s*:\\s*"tool_use"[\\s\\S]{0,300}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
 	const input = block.input;
 	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
 		return toolNameMatcher;
@@ -209,6 +209,14 @@ function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expect
 	return expectation;
 }
 
+function prioritizeSequentialExpectation(expectation: Expectation, fileName: string): Expectation {
+	const sequence = Number.parseInt(fileName.slice(0, 4), 10);
+	if (Number.isFinite(sequence)) {
+		expectation.priority = 10_000 - sequence;
+	}
+	return expectation;
+}
+
 type InstanceAiFixtures = {
 	anthropicApiKey: string;
 	instanceAiProxySetup: undefined;
@@ -306,7 +314,11 @@ export const test = base.extend<InstanceAiFixtures>({
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
 					repeatLastResponse: false,
-					transform: loosenRecordedInstanceAiPromptMatcher,
+					transform: (expectation, fileName) =>
+						prioritizeSequentialExpectation(
+							loosenRecordedInstanceAiPromptMatcher(expectation),
+							fileName,
+						),
 				});
 
 				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
