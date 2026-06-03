@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 import * as mssql from 'mssql';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import { MicrosoftSql } from '../MicrosoftSql.node';
 
@@ -214,6 +215,26 @@ describe('MicrosoftSql Node', () => {
 			}
 
 			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);
+		});
+	});
+
+	describe('query field expression support', () => {
+		// Regression: noDataExpression on the Query field used to strip the "="
+		// prefix, breaking $fromAI() when the node is used as an AI tool.
+		it('preserves a $fromAI expression in the query field', () => {
+			const node = new MicrosoftSql();
+			const query = "=$fromAI('sqlQuery', 'The SQL query to execute', 'string')";
+
+			const resolved = NodeHelpers.getNodeParameters(
+				node.description.properties,
+				{ operation: 'executeQuery', query },
+				true,
+				false,
+				{ typeVersion: 1.1 },
+				node.description,
+			);
+
+			expect(resolved?.query).toBe(query);
 		});
 	});
 });

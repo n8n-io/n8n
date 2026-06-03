@@ -88,7 +88,6 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
 					sqlDialect: 'MSSQL',
