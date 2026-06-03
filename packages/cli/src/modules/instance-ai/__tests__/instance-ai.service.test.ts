@@ -1083,7 +1083,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
 		service.ensureThreadExists = jest.fn(async () => {});
-		service.agentMemory = {};
+		service.agentMemory = { getThreadProjectId: jest.fn(async () => 'project-1') };
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};

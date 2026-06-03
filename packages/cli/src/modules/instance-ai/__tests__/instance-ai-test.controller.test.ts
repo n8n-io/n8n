@@ -140,6 +140,9 @@ describe('InstanceAiTestController', () => {
 				timeoutAt: 123,
 			};
 			userRepo.findOneByOrFail.mockResolvedValue(user);
+			projectRepo.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: 'personal-project-id',
+			} as never);
 			instanceAiService.startStuckBackgroundTaskForTest.mockResolvedValue(simulation);
 
 			const result = await controller.startBackgroundTimeoutSimulation({
@@ -147,7 +150,11 @@ describe('InstanceAiTestController', () => {
 				threadId: 'thread-1',
 			});
 
-			expect(memoryService.ensureThread).toHaveBeenCalledWith('user-1', 'thread-1');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				'user-1',
+				'thread-1',
+				'personal-project-id',
+			);
 			expect(instanceAiService.startStuckBackgroundTaskForTest).toHaveBeenCalledWith(
 				user,
 				'thread-1',
