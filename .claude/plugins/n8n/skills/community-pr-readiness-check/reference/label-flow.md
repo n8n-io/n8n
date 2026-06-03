@@ -18,13 +18,18 @@ A PR should carry **exactly one** `triage:<state>` label at any time. The skill 
 
 Before transitioning, **check for an existing `triage:in-progress` label**. If present, another reviewer is mid-triage — bail out without touching labels, Linear, or comments. This prevents two parallel runs from double-processing the same PR.
 
+Strip any existing `triage:*` state label before adding `triage:in-progress`, so the single-state invariant holds even when re-reviewing a PR that was previously sent back with `triage:needs-info` or `triage:tests-needed`:
+
 ```bash
 gh pr edit <number> --repo n8n-io/n8n \
   --remove-label "triage:pending" \
+  --remove-label "triage:needs-info" \
+  --remove-label "triage:tests-needed" \
+  --remove-label "triage:complete" \
   --add-label "triage:in-progress"
 ```
 
-`triage:pending` may not be present — if `--remove-label` errors, retry the add as a separate call.
+Only one of those `triage:*` labels will actually be present; `--remove-label` errors when a label is missing, so run each removal as its own call (or batch and ignore errors) and then do the add.
 
 ### Skill exit — branch by outcome
 
