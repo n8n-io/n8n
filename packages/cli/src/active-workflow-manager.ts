@@ -653,37 +653,36 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnLeaderTakeover()
-	async addAllTriggerAndPollerBasedWorkflows() {
+	async addAllNonWebhookTriggerWorkflows() {
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	@OnLeaderStepdown()
 	@OnShutdown()
-	async removeAllTriggerAndPollerBasedWorkflows() {
+	async removeAllNonWebhookTriggerWorkflows() {
 		this.removeAllQueuedWorkflowActivations();
-		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
+		await this.activeWorkflows.removeAllNonWebhookTriggerWorkflows();
 	}
 
 	/**
 	 * Register a workflow as active.
 	 *
-	 * An activatable workflow may be webhook-, trigger-, or poller-based:
+	 * An activatable workflow may start from:
 	 *
-	 * - A `webhook` is an HTTP-based node that can start a workflow when called
-	 * by a third-party service.
-	 * - A `poller` is an HTTP-based node that can start a workflow when detecting
-	 * a change while regularly checking a third-party service.
-	 * - A `trigger` is any non-HTTP-based node that can start a workflow, e.g. a
-	 * time-based node like Schedule Trigger or a message-queue-based node.
+	 * - A webhook trigger, invoked by an HTTP request.
+	 * - A poll trigger, which regularly checks an external service.
+	 * - An active trigger, which keeps a listener or persistent connection open.
+	 * - A schedule trigger, which registers its own crons.
 	 *
 	 * Note that despite the name, most "trigger" nodes are actually webhook-based
-	 * and so qualify as `webhook`, e.g. Stripe Trigger.
+	 * and so qualify as webhook triggers, e.g. Stripe Trigger.
 	 *
-	 * Triggers and pollers are registered as active in memory at `ActiveWorkflows`,
-	 * but webhooks are registered by being entered in the `webhook_entity` table,
-	 * since webhooks do not require continuous execution.
+	 * Active triggers, poll triggers, and schedule triggers are registered as
+	 * active in memory at `ActiveWorkflows`, but webhook triggers are registered
+	 * by being entered in the `webhook_entity` table, since webhooks do not
+	 * require continuous execution.
 	 *
-	 * Returns whether this operation added webhooks and/or triggers and pollers.
+	 * Returns whether this operation added webhooks and/or non-webhook triggers.
 	 */
 	async add(
 		workflowId: WorkflowId,
@@ -724,7 +723,7 @@ export class ActiveWorkflowManager {
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode);
-		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
+		const shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers();
 
 		try {
 			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
@@ -767,7 +766,7 @@ export class ActiveWorkflowManager {
 
 			if (!validation.isValid) {
 				throw new WorkflowActivationError(
-					`Workflow ${formatWorkflow(dbWorkflow)} has no node to start the workflow - at least one trigger, poller or webhook node is required`,
+					`Workflow ${formatWorkflow(dbWorkflow)} has no node to start the workflow - at least one active trigger, poll trigger, webhook trigger, or schedule trigger node is required`,
 					{ level: 'warning' },
 				);
 			}
@@ -789,8 +788,8 @@ export class ActiveWorkflowManager {
 					);
 				}
 
-				// When the flag is on, trigger/poller emit callbacks re-read the published
-				// version from the DB so they pick up updates without deactivate/reactivate.
+				// When the flag is on, non-webhook trigger emit callbacks re-read the
+				// published version from the DB so they pick up updates without deactivate/reactivate.
 				// When the flag is off, they use the in-memory workflowData (same as before).
 				//
 				// Note: we intentionally load the latest published version when the trigger
@@ -802,8 +801,8 @@ export class ActiveWorkflowManager {
 					? async () => await this.loadPublishedWorkflowData(dbWorkflow)
 					: async () => dbWorkflow as IWorkflowBase;
 
-				if (shouldAddTriggersAndPollers) {
-					added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
+				if (shouldAddNonWebhookTriggers) {
+					added.triggersAndPollers = await this.addNonWebhookTriggers(dbWorkflow, workflow, {
 						activationMode,
 						executionMode: 'trigger',
 						additionalData,
@@ -871,7 +870,7 @@ export class ActiveWorkflowManager {
 		instanceType: 'main',
 		instanceRole: 'leader',
 	})
-	async handleAddWebhooksTriggersAndPollers({
+	async handleAddWebhooksAndNonWebhookTriggers({
 		workflowId,
 		activeVersionId,
 		activationMode,
@@ -1082,17 +1081,16 @@ export class ActiveWorkflowManager {
 			this.removeQueuedWorkflowActivation(workflowId);
 		}
 
-		// if it's active in memory then it's a trigger
-		// so remove from list of actives workflows
-		await this.removeWorkflowTriggersAndPollers(workflowId);
+		// If it is active in memory, it is a non-webhook trigger workflow.
+		await this.removeNonWebhookTriggers(workflowId);
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
-	async handleRemoveTriggersAndPollers({
+	async handleRemoveNonWebhookTriggers({
 		workflowId,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
 		await this.removeActivationError(workflowId);
-		await this.removeWorkflowTriggersAndPollers(workflowId);
+		await this.removeNonWebhookTriggers(workflowId);
 
 		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
 
@@ -1104,24 +1102,24 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Stop running active triggers and pollers for a workflow.
+	 * Stop running active, poll, and schedule triggers for a workflow.
 	 */
-	async removeWorkflowTriggersAndPollers(workflowId: WorkflowId) {
+	async removeNonWebhookTriggers(workflowId: WorkflowId) {
 		if (!this.activeWorkflows.isActive(workflowId)) return;
 
 		const wasRemoved = await this.activeWorkflows.remove(workflowId);
 
 		if (wasRemoved) {
-			this.logger.debug(`Removed triggers and pollers for workflow "${workflowId}"`, {
+			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {
 				workflowId,
 			});
 		}
 	}
 
 	/**
-	 * Register as active in memory a trigger- or poller-based workflow.
+	 * Register a workflow's active, poll, and schedule triggers in memory.
 	 */
-	async addTriggersAndPollers(
+	async addNonWebhookTriggers(
 		dbWorkflow: WorkflowEntity,
 		workflow: Workflow,
 		{
@@ -1166,7 +1164,7 @@ export class ActiveWorkflowManager {
 			getPollFunctions,
 		);
 
-		this.logger.debug(`Added triggers and pollers for workflow ${formatWorkflow(dbWorkflow)}`);
+		this.logger.debug(`Added non-webhook triggers for workflow ${formatWorkflow(dbWorkflow)}`);
 
 		return true;
 	}
@@ -1189,12 +1187,12 @@ export class ActiveWorkflowManager {
 	}
 
 	/**
-	 * Whether this instance may add triggers and pollers to memory.
+	 * Whether this instance may add active, poll, and schedule triggers to memory.
 	 *
 	 * In both single- and multi-main setup, only the leader is allowed to manage
-	 * triggers and pollers in memory, to ensure they are not duplicated.
+	 * non-webhook triggers in memory, to ensure they are not duplicated.
 	 */
-	shouldAddTriggersAndPollers() {
+	shouldAddNonWebhookTriggers() {
 		return this.instanceSettings.isLeader;
 	}
 }

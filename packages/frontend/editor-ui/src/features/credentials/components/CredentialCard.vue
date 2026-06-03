@@ -79,13 +79,6 @@ const isPrivateUnconnected = computed(
 		credentialPermissions.value.update === true,
 );
 
-const isPrivateConnected = computed(
-	() =>
-		isDynamicCredentialsEnabled.value &&
-		props.data.isResolvable === true &&
-		props.data.connectedByMe === true,
-);
-
 const actions = computed(() => {
 	const items = [
 		{
@@ -258,7 +251,7 @@ function moveResource() {
 						data-test-id="credential-card-dynamic"
 					>
 						<span :class="$style.dynamicBadgeText">
-							<N8nIcon icon="key-round" size="medium" />
+							<N8nIcon icon="key-round" size="small" />
 							{{ locale.baseText('credentials.private.badge') }}
 						</span>
 					</N8nBadge>
@@ -308,16 +301,6 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect') }}
 					</N8nButton>
 				</N8nTooltip>
-				<span
-					v-else-if="isPrivateConnected"
-					:class="$style.connectedLabel"
-					data-test-id="credential-card-connected"
-				>
-					<N8nIcon icon="circle-check" size="small" color="success" />
-					<N8nText size="small" color="success">
-						{{ locale.baseText('credentials.item.connected') }}
-					</N8nText>
-				</span>
 				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
@@ -367,18 +350,13 @@ function moveResource() {
 	cursor: default;
 }
 
-.connectedLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
 .dynamicBadgeText {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	height: 18px;
+	font-size: var(--font-size--2xs);
+	line-height: 1;
+	vertical-align: middle;
 }
 
 .tooltipContent {

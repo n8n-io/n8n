@@ -82,7 +82,7 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 		floor: 'off' | 'production' | 'all',
 		workflowPolicy?: WorkflowSettings.RedactionPolicy,
 	) => {
-		enforcementService.getFloor.mockResolvedValue(floor);
+		enforcementService.get.mockResolvedValue(floor);
 
 		const workflow = buildWorkflow(workflowPolicy);
 		const runExecutionData = buildRunExecutionData();

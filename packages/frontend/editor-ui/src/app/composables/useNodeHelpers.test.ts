@@ -807,6 +807,7 @@ describe('useNodeHelpers()', () => {
 		const NOTION_API = 'notionApi';
 		const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+		const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
 		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
 
 		const notionNodeType: INodeTypeDescription = {
@@ -863,7 +864,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		describe('not connected', () => {
-			it('emits privateNotConnected when declared-credential node has private cred not connected', () => {
+			it('emits no issue when declared-credential node has private cred not connected', () => {
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
 				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
@@ -873,8 +874,9 @@ describe('useNodeHelpers()', () => {
 					'parameters',
 				]);
 
-				expect(result?.credentials?.[NOTION_API]).toBeDefined();
-				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
+				// An unconnected private credential is surfaced as a warning in the UI,
+				// not as a node issue.
+				expect(result?.credentials).toBeUndefined();
 			});
 
 			it('emits no issue when declared-credential node has private cred connected', () => {
@@ -890,7 +892,7 @@ describe('useNodeHelpers()', () => {
 				expect(result?.credentials).toBeUndefined();
 			});
 
-			it('emits privateNotConnected for predefined-OAuth credential (HTTP Request, not in node type credentials array)', () => {
+			it('emits no issue for predefined-OAuth private credential not connected (HTTP Request, not in node type credentials array)', () => {
 				mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(httpRequestNodeType);
 
 				const cred = makePrivateCred({ type: 'slackOAuth2Api', connectedByMe: false });
@@ -908,8 +910,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeIssues } = useNodeHelpers();
 				const result = getNodeIssues(httpRequestNodeType, node, mock<Workflow>(), ['parameters']);
 
-				expect(result?.credentials?.slackOAuth2Api).toBeDefined();
-				expect(result?.credentials?.slackOAuth2Api[0]).toContain('My Notion');
+				expect(result?.credentials?.slackOAuth2Api).toBeUndefined();
 			});
 
 			it('emits no issue for static (non-resolvable) credential regardless of connectedByMe', () => {
@@ -999,6 +1000,16 @@ describe('useNodeHelpers()', () => {
 			it('does not warn when a private credential is used under a manual chat trigger', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MANUAL_CHAT_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under a chat trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(CHAT_TRIGGER)];
 
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
@@ -1199,7 +1210,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		describe('precedence', () => {
-			it('emits only privateNotConnected when both rules would fire (not-connected wins)', () => {
+			it('emits no issue for a not-connected private credential even under an incompatible trigger', () => {
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
 				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
@@ -1208,9 +1219,9 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]).toHaveLength(1);
-				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
-				expect(result?.credentials?.[NOTION_API][0]).not.toContain('manually triggered workflows');
+				// The not-connected state is surfaced as a UI warning; the manual-trigger
+				// requirement only applies once the user has connected their account.
+				expect(result).toBeNull();
 			});
 		});
 	});
