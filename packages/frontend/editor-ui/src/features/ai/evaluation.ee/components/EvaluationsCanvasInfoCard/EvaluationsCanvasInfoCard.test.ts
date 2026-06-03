@@ -143,6 +143,22 @@ describe('EvaluationsCanvasInfoCard', () => {
 		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
 	});
 
+	it('re-checks configs when switching to another qualifying workflow', async () => {
+		// First workflow has a config → card stays hidden.
+		listEvaluationConfigs.mockResolvedValue([{ id: 'c1' }]);
+		const { queryByTestId, findByTestId } = renderComponent();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await nextTick();
+		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+
+		// Switch to a second qualifying workflow that has no configs. The card
+		// must re-fetch and surface, not reuse the first workflow's result.
+		listEvaluationConfigs.mockResolvedValue([]);
+		mockWorkflowId.value = 'wf-2';
+		await findByTestId('evaluations-canvas-info-card');
+		expect(listEvaluationConfigs).toHaveBeenCalledWith(expect.anything(), 'wf-2');
+	});
+
 	it('re-checks configs when the wizard closes after a successful run', async () => {
 		const { findByTestId, queryByTestId } = renderComponent();
 		await findByTestId('evaluations-canvas-info-card');

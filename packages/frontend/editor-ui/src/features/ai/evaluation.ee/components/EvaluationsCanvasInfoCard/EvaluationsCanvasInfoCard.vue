@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -49,7 +49,12 @@ const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 
 const hasConfigs = ref<boolean | null>(null);
-const isLoadingConfigs = ref(false);
+
+// Workflow id of the fetch currently in flight, used to (a) dedupe concurrent
+// fetches for the same workflow and (b) still allow a fresh fetch when the
+// user switches to a different workflow mid-request. Plain variable — it's a
+// control flag, nothing in the template reacts to it.
+let inFlightWorkflowId: string | null = null;
 
 // LOCAL_STORAGE_EVALUATIONS_CANVAS_INFO_CARD_DISMISSED is a comma-separated
 // list of workflow ids. We could use one key per workflow, but localStorage's
@@ -93,23 +98,29 @@ const isVisible = computed(
 async function checkConfigs() {
 	const wfId = workflowId.value;
 	if (!wfId) return;
-	if (isLoadingConfigs.value) return;
-	isLoadingConfigs.value = true;
+	// Already fetching for this exact workflow — let that call settle the state.
+	if (inFlightWorkflowId === wfId) return;
+	inFlightWorkflowId = wfId;
 	try {
 		const configs = await listEvaluationConfigs(rootStore.restApiContext, wfId);
+		// Drop the response if the user has since switched workflows, so a slow
+		// fetch for the previous workflow can't clobber the current one's state.
+		if (wfId !== workflowId.value) return;
 		hasConfigs.value = configs.length > 0;
 	} catch {
+		if (wfId !== workflowId.value) return;
 		// API failures shouldn't crash the canvas — treat as "configs exist"
 		// to hide the card defensively rather than nag the user with a stale
 		// prompt while the server is misbehaving.
 		hasConfigs.value = true;
 	} finally {
-		isLoadingConfigs.value = false;
+		if (inFlightWorkflowId === wfId) inFlightWorkflowId = null;
 	}
 }
 
 // Re-check whenever the local predicates flip from false → true. Avoids the
-// fetch on every workflow load if the card wouldn't render anyway.
+// fetch on every workflow load if the card wouldn't render anyway. Runs
+// immediately so the initial mount also triggers the fetch when it qualifies.
 watch(
 	shouldRenderModuleQualifies,
 	(qualifies) => {
@@ -121,6 +132,16 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Re-fetch when the workflow itself changes. The qualify-predicate watch above
+// only fires on transitions, so switching between two *qualifying* workflows
+// leaves it untouched — without this the card would compute visibility from the
+// previous workflow's configs and show/hide incorrectly. Reset to null first so
+// the card stays hidden until the new workflow's configs come back.
+watch(workflowId, () => {
+	hasConfigs.value = null;
+	if (shouldRenderModuleQualifies.value) void checkConfigs();
+});
 
 // Re-check configs when the wizard closes — the user may have just completed
 // it and created a config. Without this, the cached `hasConfigs === false`
@@ -134,10 +155,6 @@ watch(
 		}
 	},
 );
-
-onMounted(() => {
-	if (shouldRenderModuleQualifies.value && hasConfigs.value === null) void checkConfigs();
-});
 
 function dismiss() {
 	const wfId = workflowId.value;
