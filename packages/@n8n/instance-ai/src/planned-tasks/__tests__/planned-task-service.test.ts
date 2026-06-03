@@ -619,8 +619,20 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [
 						makeTaskRecord({ id: 'a', deps: [], status: 'succeeded' }),
-						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
-						makeTaskRecord({ id: 'c', deps: ['a'], status: 'planned' }),
+						makeTaskRecord({
+							id: 'b',
+							kind: 'delegate',
+							tools: ['research'],
+							deps: ['a'],
+							status: 'planned',
+						}),
+						makeTaskRecord({
+							id: 'c',
+							kind: 'delegate',
+							tools: ['nodes'],
+							deps: ['a'],
+							status: 'planned',
+						}),
 					],
 				});
 				return await Promise.resolve(updater(graph));
@@ -632,6 +644,23 @@ describe('PlannedTaskCoordinator', () => {
 			if (action.type === 'dispatch') {
 				expect(action.tasks).toHaveLength(2);
 				expect(action.tasks.map((t) => t.id)).toEqual(['b', 'c']);
+			}
+		});
+
+		it('returns orchestrate-build-workflow when a workflow build is ready', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'planned' })],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('orchestrate-build-workflow');
+			if (action.type === 'orchestrate-build-workflow') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0].id).toBe('wf-1');
 			}
 		});
 
@@ -719,7 +748,8 @@ describe('PlannedTaskCoordinator', () => {
 						}),
 						makeTaskRecord({
 							id: 'wf-2',
-							kind: 'build-workflow',
+							kind: 'delegate',
+							tools: ['research'],
 							deps: [],
 							status: 'planned',
 						}),
@@ -776,9 +806,9 @@ describe('PlannedTaskCoordinator', () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({
 					tasks: [
-						makeTaskRecord({ id: 'a', status: 'planned' }),
-						makeTaskRecord({ id: 'b', status: 'planned' }),
-						makeTaskRecord({ id: 'c', status: 'planned' }),
+						makeTaskRecord({ id: 'a', kind: 'delegate', tools: ['research'], status: 'planned' }),
+						makeTaskRecord({ id: 'b', kind: 'delegate', tools: ['research'], status: 'planned' }),
+						makeTaskRecord({ id: 'c', kind: 'delegate', tools: ['nodes'], status: 'planned' }),
 					],
 				});
 				return await Promise.resolve(updater(graph));

@@ -315,7 +315,8 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('workflow-builder');
+		expect((result as { guidance: string }).guidance).toContain('build-workflow');
 		expect((result as { guidance: string }).guidance).toContain('workflowId: "wf-123"');
 	});
 

@@ -20,6 +20,13 @@ export const WorkflowTestCaseSchema = z.object({
 	triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 	executionScenarios: z.array(ExecutionScenarioSchema).min(1),
 	messageBudget: z.number().int().positive().optional(),
+	/**
+	 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
+	 * the eval CLI's `--tier` flag and propagated to LangSmith as example
+	 * splits, so subsets can be evaluated and compared independently. Defaults
+	 * to `['full']` — cases without this field run in the full suite only.
+	 */
+	datasets: z.array(z.string()).min(1).default(['full']),
 });
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;

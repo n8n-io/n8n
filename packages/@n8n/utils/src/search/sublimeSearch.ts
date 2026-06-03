@@ -10,7 +10,7 @@ const FIRST_LETTER_BONUS = 15; // bonus if the first letter is matched
 
 const LEADING_LETTER_PENALTY = -20; // penalty applied for every letter in str before the first match
 const MAX_LEADING_LETTER_PENALTY = -200; // maximum penalty for leading letters
-const UNMATCHED_LETTER_PENALTY = -5;
+const UNMATCHED_LETTER_PENALTY = -2.5;
 
 export const DEFAULT_KEYS = [
 	{ key: 'properties.displayName', weight: 1.3 },

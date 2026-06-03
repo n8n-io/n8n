@@ -747,7 +747,7 @@ describe('TextEditorHandler', () => {
 					old_str: 'const x = 1;\nconst y = 2;\nconst z = WRONG;',
 					new_str: 'replacement',
 				});
-				fail('Expected NoMatchFoundError');
+				expect.fail('Expected NoMatchFoundError');
 			} catch (error) {
 				expect(error).toBeInstanceOf(NoMatchFoundError);
 				expect((error as NoMatchFoundError).message).toContain('No exact match found');

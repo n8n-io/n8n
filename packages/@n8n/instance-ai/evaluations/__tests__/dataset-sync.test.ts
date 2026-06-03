@@ -30,6 +30,7 @@ function scenarioFixture(testCaseFile: string, scenarioName: string) {
 					successCriteria: `criteria for ${scenarioName}`,
 				},
 			],
+			datasets: ['full'],
 		},
 		fileSlug: testCaseFile,
 	};
@@ -54,6 +55,7 @@ function existingExample(id: string, testCaseFile: string, scenarioName: string)
 			tags: ['test'],
 			triggerType: 'manual',
 		},
+		split: [testCaseFile, 'full'],
 		outputs: {},
 		runs: [],
 	} as unknown as Example;
@@ -166,6 +168,37 @@ describe('syncDataset', () => {
 		expect(createExamples).not.toHaveBeenCalled();
 		expect(updateExamples).not.toHaveBeenCalled();
 		expect(deleteExamples).not.toHaveBeenCalled();
+	});
+
+	it('writes datasets values into the example split alongside the file slug', async () => {
+		const fixture = scenarioFixture('foo', 'happy-path');
+		fixture.testCase.datasets = ['pr', 'full'];
+		mockedLoad.mockReturnValue([fixture]);
+		const { client, createExamples } = buildClient([]);
+
+		await syncDataset(client, 'ds', logger);
+
+		expect(createExamples).toHaveBeenCalledTimes(1);
+		const created = createExamples.mock.calls[0][0];
+		expect((created[0] as unknown as { split: string[] }).split).toEqual(['foo', 'pr', 'full']);
+	});
+
+	it('updates an existing example when only its split (tier membership) changed', async () => {
+		const existing = existingExample('split-uuid', 'foo', 'happy-path'); // split: ['foo', 'full']
+		const fixture = scenarioFixture('foo', 'happy-path');
+		fixture.testCase.datasets = ['pr', 'full']; // now also tagged 'pr'
+		mockedLoad.mockReturnValue([fixture]);
+		const { client, createExamples, updateExamples } = buildClient([existing]);
+
+		await syncDataset(client, 'ds', logger);
+
+		expect(createExamples).not.toHaveBeenCalled();
+		expect(updateExamples).toHaveBeenCalledTimes(1);
+		expect((updateExamples.mock.calls[0][0][0] as unknown as { split: string[] }).split).toEqual([
+			'foo',
+			'pr',
+			'full',
+		]);
 	});
 
 	it('creates a fresh example when a previously-deleted scenario is re-added (resurrection path)', async () => {

@@ -150,6 +150,8 @@ export interface RecordedToolCall {
 	output: unknown;
 }
 
+type PendingRecordedToolCall = RecordedToolCall & { toolCallId?: string };
+
 export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| {
@@ -220,7 +222,7 @@ export class ExecutionRecorder {
 
 	private totalCost: number | null = null;
 
-	private toolCalls: RecordedToolCall[] = [];
+	private toolCalls: PendingRecordedToolCall[] = [];
 
 	private timeline: TimelineEvent[] = [];
 
@@ -244,6 +246,12 @@ export class ExecutionRecorder {
 			case 'tool-call':
 				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
 				break;
+			case 'tool-execution-start':
+				this.recordToolExecutionStart(chunk.toolCallId, chunk.startTime);
+				break;
+			case 'tool-execution-end':
+				this.recordToolExecutionEnd(chunk.toolCallId, chunk.isError, chunk.endTime);
+				break;
 			case 'tool-result':
 				this.recordToolResult(
 					chunk.toolCallId,
@@ -263,7 +271,7 @@ export class ExecutionRecorder {
 					};
 				}
 				this.model = chunk.model ?? null;
-				this.totalCost = chunk.totalCost ?? chunk.usage?.cost ?? null;
+				this.totalCost = chunk.usage?.cost ?? null;
 				break;
 			case 'tool-call-suspended':
 				this.flushTextBuffer();
@@ -297,7 +305,7 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
-			toolCalls: this.toolCalls,
+			toolCalls: this.toolCalls.map(({ toolCallId: _toolCallId, ...toolCall }) => toolCall),
 			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
@@ -332,7 +340,7 @@ export class ExecutionRecorder {
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
 		this.flushTextBuffer();
 
-		this.toolCalls.push({ name, input, output: undefined });
+		this.toolCalls.push({ name, input, output: undefined, toolCallId });
 
 		const entry = this.registry.get(name);
 		// Resolve both `$fromAI(...)` placeholders and simple `={{ $json.x }}`
@@ -366,6 +374,59 @@ export class ExecutionRecorder {
 	}
 
 	/**
+	 * Real per-tool execution start, bridged from the runtime event bus. The
+	 * `tool-call` chunk only marks when the model emitted the call; this marks
+	 * when the handler actually started. Uses the server-stamped `startTime`
+	 * carried on the chunk so the persisted duration matches the live one
+	 * exactly (the FE reads the same value off the stream).
+	 */
+	private recordToolExecutionStart(toolCallId: string, startTime: number): void {
+		if (!toolCallId) return;
+		const entry = this.findOpenTimelineToolCall(toolCallId);
+		if (entry) entry.startTime = startTime;
+	}
+
+	/**
+	 * Real per-tool execution end, bridged from the runtime event bus. Closes
+	 * the timeline entry with the server-stamped finish time so concurrently-
+	 * executed tools keep distinct durations — the batched `tool-result` chunks
+	 * all arrive together and would otherwise share a single end timestamp.
+	 */
+	private recordToolExecutionEnd(toolCallId: string, isError: boolean, endTime: number): void {
+		if (!toolCallId) return;
+		const entry = this.findOpenTimelineToolCall(toolCallId);
+		if (entry) {
+			entry.endTime = endTime;
+			entry.success = !isError;
+		}
+	}
+
+	/** Most recent not-yet-closed timeline tool-call entry for a tool call id. */
+	private findOpenTimelineToolCall(
+		toolCallId: string,
+	): (TimelineEvent & { type: 'tool-call' }) | undefined {
+		return [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'tool-call' } =>
+					e.type === 'tool-call' && e.toolCallId === toolCallId && e.endTime === 0,
+			);
+	}
+
+	/**
+	 * Find the still-open flat tool-call entry to attach a result to. Prefers
+	 * an exact match on `toolCallId`; when the stream omits the id (empty
+	 * string), falls back to the most recent open entry (`output === undefined`)
+	 * with the same tool name.
+	 */
+	private findOpenToolCall(toolCallId: string, name: string): PendingRecordedToolCall | undefined {
+		if (toolCallId !== '') {
+			return this.toolCalls.find((tc) => tc.toolCallId === toolCallId && tc.output === undefined);
+		}
+		return [...this.toolCalls].reverse().find((tc) => tc.name === name && tc.output === undefined);
+	}
+
+	/**
 	 * Record a discrete `tool-result` chunk from the stream. Closes the
 	 * matching open timeline entry by `toolCallId` (preferred) or by name as
 	 * a fallback.
@@ -383,9 +444,7 @@ export class ExecutionRecorder {
 	): void {
 		const recordedOutput = isError ? normaliseToolErrorOutput(output) : output;
 
-		const pendingFlat = [...this.toolCalls]
-			.reverse()
-			.find((tc) => tc.name === name && tc.output === undefined);
+		const pendingFlat = this.findOpenToolCall(toolCallId, name);
 		if (pendingFlat) {
 			pendingFlat.output = recordedOutput;
 		} else {
@@ -397,13 +456,16 @@ export class ExecutionRecorder {
 			.find(
 				(e): e is TimelineEvent & { type: 'tool-call' } =>
 					e.type === 'tool-call' &&
-					(toolCallId ? e.toolCallId === toolCallId : e.name === name) &&
-					e.endTime === 0,
+					(toolCallId ? e.toolCallId === toolCallId : e.name === name && e.endTime === 0),
 			);
 		if (pendingTimeline) {
 			pendingTimeline.output = recordedOutput;
-			pendingTimeline.endTime = Date.now();
 			pendingTimeline.success = !isError;
+			// `tool-execution-end` (real per-tool finish) normally closed this entry
+			// already; only fall back to the batched result time if it never fired.
+			if (pendingTimeline.endTime === 0) {
+				pendingTimeline.endTime = Date.now();
+			}
 
 			if (pendingTimeline.kind === 'workflow' && isRecord(recordedOutput)) {
 				const execId = recordedOutput.executionId;
