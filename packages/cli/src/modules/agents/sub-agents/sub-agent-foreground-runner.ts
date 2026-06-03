@@ -13,25 +13,19 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentExecutionService } from '../agent-execution.service';
 import { ExecutionRecorder } from '../execution-recorder';
 import type { MessageRecord } from '../execution-recorder';
-import {
-	buildFromJson,
-	type MemoryFactory,
-	type ToolExecutor,
-	type ToolResolver,
-} from '../json-config/from-json-config';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
 	projectId: string;
+	/** n8n user ID — required for workflow/node tool resolution during reconstruction. */
+	userId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
-	createToolExecutor(toolCodeByName: Record<string, string>): ToolExecutor;
-	createMemoryFactory(memoryOwnerAgentId: string): MemoryFactory;
-	resolveTool?: ToolResolver;
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
@@ -49,6 +43,7 @@ export interface SubAgentForegroundResult {
 export class SubAgentForegroundRunner {
 	constructor(
 		private readonly sourceResolver: SubAgentSourceResolver,
+		private readonly reconstructionService: AgentRuntimeReconstructionService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly logger: Logger,
 	) {}
@@ -74,7 +69,6 @@ export class SubAgentForegroundRunner {
 			projectId: context.projectId,
 		});
 
-		const toolExecutor = context.createToolExecutor(runtimeSource.toolCodeByName);
 		// A delegated run is a fresh conversation, so it gets an ordinary thread id
 		// (a uuid) — exactly like any other agent run, with no special structure.
 		// The parent linkage is persisted as columns on the session record
@@ -86,12 +80,18 @@ export class SubAgentForegroundRunner {
 		// Inherit the parent's episodic-memory scope. When the parent has none,
 		// isolate this run to its own thread rather than widening to the project.
 		const resourceId = request.parentResourceId ?? threadId;
-		const agent = await buildFromJson(runtimeSource.source.config, runtimeSource.toolDescriptors, {
-			toolExecutor,
+
+		const { agent } = await this.reconstructionService.reconstructFromResolvedSource({
+			config: runtimeSource.source.config,
+			memoryOwnerAgentId: runtimeSource.source.sourceId,
+			projectId: context.projectId,
 			credentialProvider: context.credentialProvider,
-			resolveTool: context.resolveTool,
+			toolDescriptors: runtimeSource.toolDescriptors,
+			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
-			memoryFactory: createSubAgentMemoryFactory(runtimeSource.source, context),
+			userId: context.userId,
+			runtimeProfile: 'sub-agent',
+			parentAgentIdForDelegation: context.parentAgentId,
 		});
 
 		const timeoutController = request.policy?.timeoutMs ? new AbortController() : undefined;
@@ -264,15 +264,6 @@ function toKnownFinishReason(
 		return value;
 	}
 	return undefined;
-}
-
-function createSubAgentMemoryFactory(
-	source: ResolvedSubAgentSource,
-	context: SubAgentForegroundRunContext,
-): MemoryFactory {
-	return async (params) => {
-		return await context.createMemoryFactory(source.sourceId)(params);
-	};
 }
 
 /** Merge up to two abort signals: cancellation of either cancels the child run. */

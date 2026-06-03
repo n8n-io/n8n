@@ -1,10 +1,7 @@
 import {
-	createWriteTodosTool,
 	type Agent as RuntimeAgent,
-	AgentEvent,
 	AgentExecutionCounter,
 	BuiltAgent,
-	BuiltTool,
 	CredentialProvider,
 	StreamChunk,
 	ToolDescriptor,
@@ -18,29 +15,18 @@ import {
 	AgentModelSchema,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
-	type AgentJsonMcpServerConfig,
-	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
-	type SubAgentSource,
-	type SubAgentRunPolicy,
 } from '@n8n/api-types';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import {
-	ExecutionRepository,
-	In,
-	ProjectRelationRepository,
-	User,
-	UserRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -53,20 +39,14 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import { EphemeralNodeExecutor } from '@/node-execution';
-import { OauthService } from '@/oauth/oauth.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
@@ -75,64 +55,27 @@ import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
-import { AgentsToolsService } from './agents-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
-import {
-	createIntegrationActionTool,
-	createIntegrationContextTool,
-	getIntegrationToolConnectionDescriptors,
-} from './integrations/integration-tools';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import {
-	buildFromJson,
-	type MemoryFactory,
-	type ToolResolver,
-} from './json-config/from-json-config';
-import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
-import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
-import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 
 type AgentToolEntries = Agent['tools'];
-
-interface InjectRuntimeDependenciesParams {
-	agent: RuntimeAgent;
-	agentId: string;
-	projectId: string;
-	credentialProvider: CredentialProvider;
-	nodeToolsEnabled: boolean;
-	subAgentDelegation: SubAgentDelegationConfig;
-	credentialIntegrations: AgentIntegrationConfig[];
-	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
-	integrationType?: string;
-}
-
-interface SubAgentDelegationConfig {
-	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
-}
 
 /** Derive a stable thread ID for the test-chat of a given agent and user. */
 export function chatThreadId(agentId: string, userId?: string): string {
@@ -324,17 +267,7 @@ export class AgentsService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly workflowRunner: WorkflowRunner,
-		private readonly activeExecutions: ActiveExecutions,
-		private readonly executionRepository: ExecutionRepository,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly userRepository: UserRepository,
-		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
-		private readonly secureRuntime: AgentSecureRuntime,
-		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
@@ -347,8 +280,7 @@ export class AgentsService {
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
-		private readonly oauthService: OauthService,
+		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
@@ -406,10 +338,6 @@ export class AgentsService {
 					tool_call_count: 1,
 				}),
 		};
-	}
-
-	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
-		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
 	}
 
 	/**
@@ -876,10 +804,6 @@ export class AgentsService {
 		return executionsToMessagesDto(detail.executions);
 	}
 
-	private getMemoryFactory(agentId: string): MemoryFactory {
-		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
-	}
-
 	/** Create a credential provider scoped to a project. */
 	private createCredentialProvider(projectId: string): AgentsCredentialProvider {
 		return new AgentsCredentialProvider(Container.get(CredentialsService), projectId);
@@ -939,220 +863,6 @@ export class AgentsService {
 		const runtime = this.runtimes.get(cacheKey);
 		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		return runtime;
-	}
-
-	/**
-	 * Returns a `resolveTool` callback for `Agent.fromSchema()` that converts
-	 * non-editable tool schema entries into functional `BuiltTool` implementations.
-	 *
-	 * Detects the tool type via `metadata.workflowTool` / `metadata.nodeTool` and
-	 * delegates to the appropriate factory. Returns `null` for unknown types so that
-	 * `fromSchema` falls back to a passthrough marker.
-	 */
-	private makeToolResolver(projectId: string, userId?: string): ToolResolver {
-		return async (ref: AgentJsonToolConfig) => {
-			if (ref.type === 'workflow') {
-				if (!userId) {
-					throw new UserError('userId is required when agent uses workflow tools');
-				}
-				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
-				return await resolveWorkflowTool(ref, {
-					workflowRepository: this.workflowRepository,
-					workflowRunner: this.workflowRunner,
-					activeExecutions: this.activeExecutions,
-					executionRepository: this.executionRepository,
-					workflowFinderService: this.workflowFinderService,
-					userRepository: this.userRepository,
-					userId,
-					projectId,
-					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
-				});
-			}
-
-			if (ref.type === 'node') {
-				const { resolveNodeTool } = await import('./tools/node-tool-factory');
-				return await resolveNodeTool(ref, {
-					executor: this.ephemeralNodeExecutor,
-					projectId,
-				});
-			}
-
-			return null;
-		};
-	}
-
-	/**
-	 * Inject platform-level tools and storage into an agent instance.
-	 * Workflow and node tools are resolved earlier via `makeToolResolver()` inside
-	 * `fromSchema()`, so this method only handles host-side singletons.
-	 *
-	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
-	 * (opt-in, defaults to false) — see {@link shouldAttachNodeTools}.
-	 */
-	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
-		const {
-			agent,
-			agentId,
-			projectId,
-			credentialProvider,
-			nodeToolsEnabled,
-			subAgentDelegation,
-			credentialIntegrations,
-			integrationType,
-		} = params;
-
-		// Inject get_environment unconditionally. It surfaces info the model
-		// can't know on its own (current date, instance timezone, day of week)
-		// via a tool call rather than the system prompt — so values that change
-		// per request don't bust system-prompt prompt caching.
-		agent.tool(createGetEnvironmentTool());
-
-		// search_knowledge is gated behind the `knowledge-base` agents module.
-		// It's also an optional capability: if wiring it up fails (e.g. dynamic
-		// import or service construction error), degrade gracefully and keep the
-		// rest of the runtime usable rather than failing the whole agent. The
-		// failure is logged so it stays observable.
-		if (this.isKnowledgeBaseModuleEnabled()) {
-			try {
-				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-				agent.tool(
-					createSearchKnowledgeTool({
-						agentId,
-						projectId,
-						knowledgeService: this.agentKnowledgeService,
-						commandService: this.agentKnowledgeCommandService,
-					}),
-				);
-			} catch (toolError) {
-				this.logger.warn('Failed to inject search_knowledge tool', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
-		}
-
-		// Inject the rich_interaction tool only for platforms that can actually
-		// render its suspend/resume HITL cards. Two gates:
-		//   - A registered integration in ChatIntegrationRegistry. The in-app
-		//     test chat uses `integrationType = 'chat'`, which isn't registered,
-		//     and the compile/validate path passes no integrationType at all —
-		//     neither has a bridge to render the card or resume the suspended
-		//     turn, so letting the model call the tool there would hang the
-		//     agent.
-		//   - The integration must declare `supportedComponents`. Platforms
-		//     that omit it (e.g. Linear) have explicitly opted out of
-		//     rich_interaction.
-		const integrationRegistry = Container.get(ChatIntegrationRegistry);
-		const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
-		if (integration?.supportedComponents !== undefined) {
-			agent.tool(createRichInteractionTool(integrationType));
-		}
-
-		if (credentialIntegrations.length > 0) {
-			const messageContextStore = Container.get(IntegrationMessageContextService);
-			const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-			const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
-
-			for (const descriptor of getIntegrationToolConnectionDescriptors(
-				credentialIntegrations,
-				agentId,
-				(integrationConfig) => {
-					const integrationDef = integrationRegistry.get(integrationConfig.type);
-					return {
-						contextQueries: integrationDef?.contextQueries,
-						actions: integrationDef?.actions,
-					};
-				},
-			)) {
-				agent.tool(
-					createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
-				);
-				agent.tool(
-					createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }),
-				);
-			}
-		}
-
-		if (nodeToolsEnabled) {
-			this.attachNodeToolChain(agent, credentialProvider, projectId);
-		}
-
-		this.attachSubAgentDelegationTool({
-			agent,
-			agentId,
-			projectId,
-			credentialProvider,
-			delegation: subAgentDelegation,
-		});
-		this.attachWriteTodosTool(agent, agentId);
-
-		this.attachThreadTitleSyncListener(agent);
-
-		// Inject checkpoint storage
-		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage);
-		}
-	}
-
-	/**
-	 * Attaches the built-in node tool chain (search_nodes, get_node_types,
-	 * list_credentials, run_node_tool) so the agent can discover and execute
-	 * n8n nodes on demand. Sourced from {@link AgentsToolsService}, which in
-	 * turn delegates to `NodeCatalogService`.
-	 */
-	private attachNodeToolChain(
-		agent: RuntimeAgent,
-		credentialProvider: CredentialProvider,
-		projectId: string,
-	): void {
-		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
-	}
-
-	private attachSubAgentDelegationTool(params: {
-		agent: RuntimeAgent;
-		agentId: string;
-		projectId: string;
-		credentialProvider: CredentialProvider;
-		delegation: SubAgentDelegationConfig;
-	}): void {
-		const { agent, agentId, projectId, credentialProvider, delegation } = params;
-		agent.tool(
-			createN8nDelegateSubAgentTool({
-				runner: Container.get(SubAgentForegroundRunner),
-				...delegation,
-				projectId,
-				parentAgentId: agentId,
-				credentialProvider,
-				policy: this.buildSubAgentPolicy(),
-				createToolExecutor: (toolCodeByName) =>
-					this.secureRuntime.createToolExecutor(toolCodeByName),
-				createMemoryFactory: (memoryOwnerAgentId) => this.getMemoryFactory(memoryOwnerAgentId),
-			}),
-		);
-		this.logger.debug('Injected delegate_subagent tool', { agentId });
-	}
-
-	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
-		agent.tool(createWriteTodosTool());
-		this.logger.debug('Injected write_todos tool', { agentId });
-	}
-
-	private attachThreadTitleSyncListener(agent: RuntimeAgent): void {
-		agent.on(AgentEvent.ThreadTitleGenerated, (event) => {
-			if (event.type !== AgentEvent.ThreadTitleGenerated) return;
-			void this.agentExecutionService.syncThreadTitle(event.threadId, {
-				title: event.title,
-				...(event.emoji !== undefined && { emoji: event.emoji }),
-			});
-		});
-	}
-
-	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */
-	private buildSubAgentPolicy(): SubAgentRunPolicy {
-		return {
-			maxChildren: this.agentsConfig.subAgentMaxChildren,
-			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
-		};
 	}
 
 	/**
@@ -2393,90 +2103,12 @@ export class AgentsService {
 		userId: string,
 		integrationType?: string,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
-		const config = agentEntity.schema;
-		if (!config) {
-			throw new UserError('Agent has no JSON config.');
-		}
-
-		// Build toolsByName map: { toolName -> code }
-		const toolsByName: Record<string, string> = {};
-		for (const [_toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
-			toolsByName[toolEntry.descriptor.name] = toolEntry.code;
-		}
-
-		// Build toolDescriptors map: { toolId -> descriptor }
-		const toolDescriptors: Record<string, ToolDescriptor> = {};
-		for (const [toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
-			toolDescriptors[toolId] = toolEntry.descriptor;
-		}
-
-		const toolExecutor = this.secureRuntime.createToolExecutor(toolsByName);
-
-		const toolResolver = this.makeToolResolver(agentEntity.projectId, userId);
-
-		const resolvedTools: BuiltTool[] = [];
-
-		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
-			await buildMcpClientForServer(server, {
-				credentialProvider,
-				oauthService: this.oauthService,
-				projectId: agentEntity.projectId,
-			});
-
-		const reconstructed = await buildFromJson(config, toolDescriptors, {
-			toolExecutor,
+		return await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
+			agentEntity,
 			credentialProvider,
-			resolveTool: async (ref) => {
-				const resolved = await toolResolver(ref);
-				if (resolved) resolvedTools.push(resolved);
-				return resolved;
-			},
-			skills: agentEntity.skills ?? {},
-			memoryFactory: this.getMemoryFactory(agentEntity.id),
-			buildMcpClient,
-		});
-
-		const subAgentDelegation = await this.createSubAgentDelegationConfig(
-			config,
-			agentEntity.projectId,
-		);
-
-		await this.injectRuntimeDependencies({
-			agent: reconstructed,
-			agentId: agentEntity.id,
-			projectId: agentEntity.projectId,
-			credentialProvider,
-			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
-			subAgentDelegation,
-			credentialIntegrations: agentEntity.integrations ?? [],
+			userId,
 			integrationType,
-		});
-
-		const toolRegistry = buildToolRegistry(resolvedTools);
-		return { agent: reconstructed, toolRegistry };
-	}
-
-	private async createSubAgentDelegationConfig(
-		config: AgentJsonConfig,
-		projectId: string,
-	): Promise<SubAgentDelegationConfig> {
-		const configuredAgents = config.subAgents?.agents ?? [];
-
-		const sourcesById: Record<string, SubAgentSource> = {};
-		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
-
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
-			if (!agent?.activeVersionId) continue;
-
-			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
-			availableSubAgents.push({
-				id: agentId,
-				name: agent.name,
-				...(agent.description ? { description: agent.description } : {}),
-			});
-		}
-
-		return { sourcesById, availableSubAgents };
+		);
 	}
 }
 

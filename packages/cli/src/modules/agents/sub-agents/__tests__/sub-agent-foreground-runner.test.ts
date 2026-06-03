@@ -1,10 +1,4 @@
-import type {
-	BuiltAgent,
-	CredentialProvider,
-	StreamChunk,
-	StreamResult,
-	ToolDescriptor,
-} from '@n8n/agents';
+import type { BuiltAgent, CredentialProvider, StreamChunk, StreamResult } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
@@ -13,19 +7,16 @@ import type {
 } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
-import { buildFromJson, type ToolExecutor } from '../../json-config/from-json-config';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
 
-jest.mock('../../json-config/from-json-config', () => ({
-	buildFromJson: jest.fn(),
-}));
-
 const projectId = 'project-1';
+const userId = 'user-1';
 const parentThreadId = 'parent-thread-1';
 const parentAgentId = 'parent-agent-1';
 
@@ -41,26 +32,24 @@ const source: ResolvedSubAgentSource = {
 	config: runnableConfig,
 };
 
-const toolDescriptor: ToolDescriptor = {
-	name: 'lookup_customer',
-	description: 'Look up a customer',
-	systemInstruction: null,
-	inputSchema: {
-		type: 'object',
-		properties: {},
-	},
-	outputSchema: null,
-	hasSuspend: false,
-	hasResume: false,
-	hasToMessage: false,
-	requireApproval: false,
-	providerOptions: null,
-};
-
 const runtimeSource: ResolvedSubAgentRuntimeSource = {
 	source,
 	toolDescriptors: {
-		tool_1: toolDescriptor,
+		tool_1: {
+			name: 'lookup_customer',
+			description: 'Look up a customer',
+			systemInstruction: null,
+			inputSchema: {
+				type: 'object',
+				properties: {},
+			},
+			outputSchema: null,
+			hasSuspend: false,
+			hasResume: false,
+			hasToMessage: false,
+			requireApproval: false,
+			providerOptions: null,
+		},
 	},
 	toolCodeByName: {
 		lookup_customer: 'return input;',
@@ -98,40 +87,43 @@ const defaultStreamChunks: StreamChunk[] = [
 
 describe('SubAgentForegroundRunner', () => {
 	let sourceResolver: jest.Mocked<SubAgentSourceResolver>;
+	let reconstructionService: jest.Mocked<AgentRuntimeReconstructionService>;
 	let runner: SubAgentForegroundRunner;
 	let childAgent: jest.Mocked<BuiltAgent>;
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let logger: jest.Mocked<Logger>;
 	let credentialProvider: jest.Mocked<CredentialProvider>;
-	let toolExecutor: jest.Mocked<ToolExecutor>;
-	let createToolExecutor: jest.Mock;
-	let createMemoryFactory: jest.Mock;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);
+		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		agentExecutionService = mock<AgentExecutionService>();
 		logger = mock<Logger>();
-		runner = new SubAgentForegroundRunner(sourceResolver, agentExecutionService, logger);
+		runner = new SubAgentForegroundRunner(
+			sourceResolver,
+			reconstructionService,
+			agentExecutionService,
+			logger,
+		);
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 		childAgent.close.mockResolvedValue(undefined);
-		jest.mocked(buildFromJson).mockResolvedValue(childAgent as never);
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+		});
 
 		credentialProvider = mock<CredentialProvider>();
-		toolExecutor = mock<ToolExecutor>();
-		createToolExecutor = jest.fn().mockReturnValue(toolExecutor);
-		createMemoryFactory = jest.fn().mockReturnValue(jest.fn());
 	});
 
-	it('builds an isolated child agent and runs it with a fresh prompt', async () => {
+	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
+			userId,
 			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
 		});
 
 		expect(result).toMatchObject({
@@ -144,21 +136,19 @@ describe('SubAgentForegroundRunner', () => {
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
 			}),
 		});
-		expect(createToolExecutor).toHaveBeenCalledWith(runtimeSource.toolCodeByName);
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith({
+			config: runnableConfig,
+			memoryOwnerAgentId: 'agent-1',
+			projectId,
+			credentialProvider,
+			toolDescriptors: runtimeSource.toolDescriptors,
+			toolCodeByName: runtimeSource.toolCodeByName,
+			skills: runtimeSource.skills,
+			userId,
+			runtimeProfile: 'sub-agent',
+			parentAgentIdForDelegation: undefined,
+		});
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
-		expect(buildFromJson).toHaveBeenCalledWith(
-			runnableConfig,
-			runtimeSource.toolDescriptors,
-			expect.objectContaining({
-				toolExecutor,
-				credentialProvider,
-				skills: runtimeSource.skills,
-				memoryFactory: expect.any(Function),
-			}),
-		);
-		// A delegated run gets an ordinary uuid thread id (no special structure).
-		// With no parent resource scope, memory isolates to the run's own thread,
-		// so resourceId === threadId.
 		expect(childAgent.stream).toHaveBeenCalledWith(
 			expect.stringContaining('YOUR TASK:\nFind the relevant API behavior.'),
 			expect.objectContaining({
@@ -171,8 +161,6 @@ describe('SubAgentForegroundRunner', () => {
 		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
 		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
-		// Every sub-agent run is a saved n8n agent, so it records under its run
-		// thread id, owned by the sub-agent's own id.
 		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				threadId: result.threadId,
@@ -187,9 +175,8 @@ describe('SubAgentForegroundRunner', () => {
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },
 			{
 				projectId,
+				userId,
 				credentialProvider,
-				createToolExecutor,
-				createMemoryFactory,
 			},
 		);
 
@@ -205,7 +192,7 @@ describe('SubAgentForegroundRunner', () => {
 		expect(result.threadId).toEqual(expect.any(String));
 	});
 
-	it('uses the saved n8n agent id as memory owner and records the session under the run thread id', async () => {
+	it('uses the saved n8n agent id as memory owner and records parent linkage', async () => {
 		sourceResolver.resolveForRuntime.mockResolvedValue({
 			...runtimeSource,
 			source: {
@@ -217,10 +204,6 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			},
 		});
-		jest.mocked(buildFromJson).mockImplementation(async (_config, _toolDescriptors, options) => {
-			await options.memoryFactory({ enabled: true, storage: 'n8n' });
-			return childAgent as never;
-		});
 
 		const result = await runner.runForeground(
 			{
@@ -229,15 +212,20 @@ describe('SubAgentForegroundRunner', () => {
 			},
 			{
 				projectId,
+				userId,
 				parentAgentId,
 				credentialProvider,
-				createToolExecutor,
-				createMemoryFactory,
 			},
 		);
 
-		// Memory is owned by the sub-agent's own id, exactly like a normal agent.
-		expect(createMemoryFactory).toHaveBeenCalledWith('agent-2');
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				memoryOwnerAgentId: 'agent-2',
+				userId,
+				runtimeProfile: 'sub-agent',
+				parentAgentIdForDelegation: parentAgentId,
+			}),
+		);
 		expect(childAgent.stream).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
@@ -249,13 +237,11 @@ describe('SubAgentForegroundRunner', () => {
 		);
 		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				// Same id as the SDK memory thread above, so title sync + deletion line up.
 				threadId: result.threadId,
 				agentId: 'agent-2',
 				agentName: 'Helper Agent',
 				projectId,
 				source: 'subagent',
-				// Parent linkage lives in columns, not in the thread id.
 				threadMetadata: {
 					parentThreadId,
 					parentAgentId,
@@ -275,9 +261,8 @@ describe('SubAgentForegroundRunner', () => {
 		await expect(
 			runner.runForeground(spawnRequest, {
 				projectId,
+				userId,
 				credentialProvider,
-				createToolExecutor,
-				createMemoryFactory,
 			}),
 		).resolves.toMatchObject({
 			status: 'failed',
@@ -293,9 +278,8 @@ describe('SubAgentForegroundRunner', () => {
 			},
 			{
 				projectId,
+				userId,
 				credentialProvider,
-				createToolExecutor,
-				createMemoryFactory,
 			},
 		);
 
@@ -326,9 +310,8 @@ describe('SubAgentForegroundRunner', () => {
 
 		const run = runner.runForeground(spawnRequest, {
 			projectId,
+			userId,
 			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
 			abortSignal: parentAbort.signal,
 		});
 
@@ -365,9 +348,8 @@ describe('SubAgentForegroundRunner', () => {
 				},
 				{
 					projectId,
+					userId,
 					credentialProvider,
-					createToolExecutor,
-					createMemoryFactory,
 				},
 			);
 
