@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  s_c47f75e38882a1::t_9ebff6f671d49b 333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "706dc69b8719dd565bb9a7bf7ba6fcae61372fe7",
+  "prompts": {},
+  "sessions": {
+    "s_c47f75e38882a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f67135ca-f9f5-4f6e-842b-f4c5e2bd88d4",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}
