@@ -20,6 +20,7 @@ import type {
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
+	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
@@ -45,6 +46,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries } from '@n8n/db';
 
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	resolveNodeTypeDefinition,
@@ -83,6 +85,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type WorkflowExecutionMockDataSource,
 	type ExecutionError,
 	NodeHelpers,
 	Workflow,
@@ -108,6 +111,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -788,6 +793,7 @@ export class InstanceAiAdapterService {
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			nodeTypes,
 			allowSendingParameterValues,
 			license,
 			roleService,
@@ -927,6 +933,19 @@ export class InstanceAiAdapterService {
 					? (sdkPinDataToRuntime(options.pinData) ?? {})
 					: {};
 				const basePinData = { ...workflowPinData, ...overridePinData };
+				const mockDataSources: WorkflowExecutionMockDataSource[] = [];
+
+				if (inputData && triggerNode) {
+					mockDataSources.push('trigger_input');
+				}
+
+				if (Object.keys(overridePinData).length > 0) {
+					mockDataSources.push('verification_pin_data');
+				}
+
+				if (Object.keys(workflowPinData).length > 0) {
+					mockDataSources.push('workflow_pin_data');
+				}
 
 				if (inputData && triggerNode) {
 					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
@@ -962,6 +981,11 @@ export class InstanceAiAdapterService {
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
+
+				runData.telemetryMetadata = {
+					source: 'instance_ai',
+					mockDataSources,
+				};
 
 				const trackBuilderExecutedWorkflow = (status: ExecutionResult['status']) => {
 					if (!threadId) return;
@@ -1084,6 +1108,7 @@ export class InstanceAiAdapterService {
 					executionRepository,
 					executionId,
 					allowSendingParameterValues,
+					nodeTypes,
 				);
 			},
 
@@ -1100,6 +1125,35 @@ export class InstanceAiAdapterService {
 				}
 
 				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+			},
+
+			getResolvedNodeParameters: async (
+				executionId: string,
+				nodeName: string,
+				options?: { itemIndex?: number; runIndex?: number },
+			): Promise<ResolvedNodeParametersResult> => {
+				await assertExecutionAccess(executionId);
+
+				if (!allowSendingParameterValues) {
+					return {
+						nodeName,
+						runIndex: options?.runIndex ?? 0,
+						itemIndex: options?.itemIndex ?? 0,
+						parameters: null,
+						resolved: null,
+						failedExpressions: [],
+						emptyResolutions: [],
+						suppressed: 'parameter-values-disabled',
+					} satisfies ResolvedNodeParametersResult;
+				}
+
+				return await extractResolvedNodeParameters(
+					executionRepository,
+					nodeTypes,
+					executionId,
+					nodeName,
+					options,
+				);
 			},
 		};
 	}
@@ -1990,13 +2044,31 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeTypeDefinition: async (nodeType, options) => {
+				const nodes = await getNodes();
+
+				// Synthetic MCP registry nodes have no on-disk type-def, so the
+				// standard resolver would 404 on them. Match either the bare slug
+				// (e.g. `notion`) or the package-prefixed form, then synthesise
+				// the TypeScript content from the in-memory description.
+				const registryNode =
+					nodes.find((n) => n.name === `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`) ??
+					(nodeType.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)
+						? nodes.find((n) => n.name === nodeType)
+						: undefined);
+				if (registryNode) {
+					const builderHint = registryNode.builderHint?.searchHint;
+					return {
+						content: synthesizeMcpRegistryTypeDef(registryNode),
+						...(builderHint ? { builderHint } : {}),
+					};
+				}
+
 				const result = resolveNodeTypeDefinition(nodeType, this.getNodeDefinitionDirs(), options);
 
 				if (result.error) {
 					return { content: '', error: result.error };
 				}
 
-				const nodes = await getNodes();
 				const nodeDesc = findNodeByVersion(
 					nodes,
 					nodeType,
@@ -3065,6 +3137,7 @@ export async function extractExecutionDebugInfo(
 	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const execution = await executionRepository.findSingleExecution(executionId, {
 		includeData: true,
@@ -3088,6 +3161,8 @@ export async function extractExecutionDebugInfo(
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
 	let failedNode: ExecutionDebugInfo['failedNode'];
+	let failedItemIndex: number | undefined;
+	let failedRunIndex: number | undefined;
 
 	if (runData) {
 		const workflowNodes = execution.workflowData?.nodes ?? [];
@@ -3113,6 +3188,12 @@ export async function extractExecutionDebugInfo(
 
 			// Capture the first failed node with its error and input data
 			if (lastRun.error !== undefined && !failedNode) {
+				const errorContext = (lastRun.error as { context?: Record<string, unknown> }).context;
+				failedItemIndex =
+					typeof errorContext?.itemIndex === 'number' ? errorContext.itemIndex : undefined;
+				failedRunIndex =
+					typeof errorContext?.runIndex === 'number' ? errorContext.runIndex : nodeRuns.length - 1;
+
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
@@ -3138,6 +3219,27 @@ export async function extractExecutionDebugInfo(
 						: undefined,
 				};
 			}
+		}
+	}
+
+	// Attach resolved-parameter view for the failed node so the agent sees both the
+	// raw expression and what it resolved to (or which expression threw).
+	if (failedNode && includeOutputData && nodeTypes) {
+		try {
+			const {
+				nodeName: _omitName,
+				suppressed: _omitSuppressed,
+				...bundle
+			} = await extractResolvedNodeParameters(
+				executionRepository,
+				nodeTypes,
+				executionId,
+				failedNode.name,
+				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
+			);
+			failedNode.resolvedParameters = bundle;
+		} catch {
+			// debug must always succeed — silently skip the resolved-params view.
 		}
 	}
 

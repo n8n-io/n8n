@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { z } from 'zod';
 
 import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
@@ -19,8 +20,8 @@ function makeBuiltTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
 	};
 }
 
-function makeCtx(resumeData?: unknown): { ctx: InterruptibleToolContext; suspendMock: jest.Mock } {
-	const suspendMock = jest.fn().mockImplementation(async (payload: unknown) => {
+function makeCtx(resumeData?: unknown): { ctx: InterruptibleToolContext; suspendMock: Mock } {
+	const suspendMock = vi.fn().mockImplementation(async (payload: unknown) => {
 		return await Promise.resolve({ __suspended: true, payload });
 	});
 	const ctx: InterruptibleToolContext = {
@@ -279,7 +280,7 @@ describe('wrapToolForApproval — telemetry propagation', () => {
 		recordInputs: true,
 		recordOutputs: true,
 		integrations: [],
-		tracer: { startSpan: jest.fn() },
+		tracer: { startSpan: vi.fn() },
 	};
 
 	it('forwards parentTelemetry to the original handler when approval is not needed', async () => {

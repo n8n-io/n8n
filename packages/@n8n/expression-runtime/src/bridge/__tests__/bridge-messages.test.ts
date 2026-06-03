@@ -70,6 +70,44 @@ describe('bridgeMessageSchema', () => {
 			expect(parsed.type).toBe('fromAi');
 		});
 
+		it.each([['getNodePairedItem'], ['getNodeItemMatching']] as const)(
+			'parses a valid %s envelope with itemIndex',
+			(type) => {
+				const parsed = bridgeMessageSchema.parse({ type, nodeName: 'Foo', itemIndex: 2 });
+				expect(parsed.type).toBe(type);
+			},
+		);
+
+		it.each([['getNodePairedItem'], ['getNodeItemMatching']] as const)(
+			'parses a valid %s envelope without itemIndex',
+			(type) => {
+				const parsed = bridgeMessageSchema.parse({ type, nodeName: 'Foo' });
+				expect(parsed.type).toBe(type);
+			},
+		);
+
+		it('parses a valid getNodeItem envelope', () => {
+			const parsed = bridgeMessageSchema.parse({ type: 'getNodeItem', nodeName: 'Foo' });
+			expect(parsed.type).toBe('getNodeItem');
+		});
+
+		it('parses a valid evaluateExpression envelope (with itemIndex)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'evaluateExpression',
+				expression: '$json.value',
+				itemIndex: 2,
+			});
+			expect(parsed.type).toBe('evaluateExpression');
+		});
+
+		it('parses a valid evaluateExpression envelope (without itemIndex)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'evaluateExpression',
+				expression: '$json.value',
+			});
+			expect(parsed.type).toBe('evaluateExpression');
+		});
+
 		it('rejects an unknown discriminator value', () => {
 			expect(() => bridgeMessageSchema.parse({ type: 'evalArbitrary', nodeName: 'Foo' })).toThrow();
 		});
@@ -87,6 +125,166 @@ describe('bridgeMessageSchema', () => {
 				expect(() => bridgeMessageSchema.parse({ type, branchIndex: 0 })).toThrow();
 			},
 		);
+	});
+
+	describe('paired-item cluster', () => {
+		it.each([['getNodePairedItem'], ['getNodeItemMatching']] as const)(
+			'%s rejects negative itemIndex',
+			(type) => {
+				expect(() => bridgeMessageSchema.parse({ type, nodeName: 'Foo', itemIndex: -1 })).toThrow();
+			},
+		);
+
+		it.each([['getNodePairedItem'], ['getNodeItemMatching']] as const)(
+			'%s rejects non-integer itemIndex',
+			(type) => {
+				expect(() =>
+					bridgeMessageSchema.parse({ type, nodeName: 'Foo', itemIndex: 1.5 }),
+				).toThrow();
+			},
+		);
+
+		it.each([['getNodePairedItem'], ['getNodeItemMatching'], ['getNodeItem']] as const)(
+			'%s rejects missing nodeName',
+			(type) => {
+				expect(() => bridgeMessageSchema.parse({ type })).toThrow();
+			},
+		);
+
+		it.each([['getNodePairedItem'], ['getNodeItemMatching'], ['getNodeItem']] as const)(
+			'%s rejects extra fields (.strict)',
+			(type) => {
+				expect(() =>
+					bridgeMessageSchema.parse({ type, nodeName: 'Foo', branchIndex: 0 }),
+				).toThrow();
+			},
+		);
+
+		it('getNodeItem rejects itemIndex field', () => {
+			// getNodeItem covers the getter form (no args) — schema doesn't
+			// permit itemIndex since the host's getter takes none.
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'getNodeItem', nodeName: 'Foo', itemIndex: 0 }),
+			).toThrow();
+		});
+	});
+
+	describe('evaluateExpression', () => {
+		it('rejects missing expression', () => {
+			expect(() => bridgeMessageSchema.parse({ type: 'evaluateExpression' })).toThrow();
+		});
+
+		it('rejects non-string expression', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({ type: 'evaluateExpression', expression: 42 }),
+			).toThrow();
+		});
+
+		it('rejects negative itemIndex', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'evaluateExpression',
+					expression: 'x',
+					itemIndex: -1,
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'evaluateExpression',
+					expression: 'x',
+					branchIndex: 0,
+				}),
+			).toThrow();
+		});
+	});
+
+	describe('getPairedItem', () => {
+		it('parses a minimal valid envelope (null source)', () => {
+			const parsed = bridgeMessageSchema.parse({
+				type: 'getPairedItem',
+				destinationNodeName: 'Foo',
+				incomingSourceData: null,
+				initialPairedItem: { item: 0 },
+			});
+			expect(parsed.type).toBe('getPairedItem');
+		});
+
+		it('parses a fully populated envelope (nested sourceOverwrite)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: {
+						previousNode: 'Src',
+						previousNodeOutput: 0,
+						previousNodeRun: 1,
+					},
+					initialPairedItem: {
+						item: 2,
+						input: 0,
+						sourceOverwrite: { previousNode: 'Other' },
+					},
+				}),
+			).not.toThrow();
+		});
+
+		it('rejects missing destinationNodeName', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects negative item index', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: -1 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on the envelope (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0 },
+					usedMethodName: '$getPairedItem',
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on nested sourceData (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: { previousNode: 'Src', hijack: 'x' },
+					initialPairedItem: { item: 0 },
+				}),
+			).toThrow();
+		});
+
+		it('rejects extra fields on nested pairedItemData (.strict)', () => {
+			expect(() =>
+				bridgeMessageSchema.parse({
+					type: 'getPairedItem',
+					destinationNodeName: 'Foo',
+					incomingSourceData: null,
+					initialPairedItem: { item: 0, hijack: 'x' },
+				}),
+			).toThrow();
+		});
 	});
 
 	describe('fromAi', () => {

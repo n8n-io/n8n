@@ -11,30 +11,32 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage } from '@langchain/core/messages';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	parseWorkflowCodeToBuilder as sdkParseWorkflowCodeToBuilder,
+	validateWorkflow as sdkValidateWorkflow,
+} from '@n8n/workflow-sdk';
+import type { Mock } from 'vitest';
 
 import { CodeBuilderAgent } from '../code-builder-agent';
 import { MAX_VALIDATE_ATTEMPTS } from '../constants';
 
 // Mock workflow-sdk to control parse/validate behavior
-jest.mock('@n8n/workflow-sdk', () => ({
-	parseWorkflowCodeToBuilder: jest.fn(),
-	validateWorkflow: jest.fn(),
-	generateWorkflowCode: jest.fn().mockReturnValue('// generated code'),
-	setSchemaBaseDirs: jest.fn(),
+vi.mock('@n8n/workflow-sdk', () => ({
+	parseWorkflowCodeToBuilder: vi.fn(),
+	validateWorkflow: vi.fn(),
+	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
+	setSchemaBaseDirs: vi.fn(),
 }));
 
 // Mock the prompts module to avoid complex prompt building
-jest.mock('../prompts', () => ({
-	buildCodeBuilderPrompt: jest.fn().mockReturnValue({
-		formatMessages: jest.fn().mockResolvedValue([]),
+vi.mock('../prompts', () => ({
+	buildCodeBuilderPrompt: vi.fn().mockReturnValue({
+		formatMessages: vi.fn().mockResolvedValue([]),
 	}),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { parseWorkflowCodeToBuilder, validateWorkflow } = require('@n8n/workflow-sdk') as {
-	parseWorkflowCodeToBuilder: jest.Mock;
-	validateWorkflow: jest.Mock;
-};
+const parseWorkflowCodeToBuilder = sdkParseWorkflowCodeToBuilder as unknown as Mock;
+const validateWorkflow = sdkValidateWorkflow as unknown as Mock;
 
 const MOCK_WORKFLOW: WorkflowJSON = {
 	id: 'test-wf-1',
@@ -54,10 +56,10 @@ const MOCK_WORKFLOW: WorkflowJSON = {
 
 function createMockBuilder() {
 	return {
-		regenerateNodeIds: jest.fn(),
-		validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-		generatePinData: jest.fn(),
-		toJSON: jest.fn().mockReturnValue(MOCK_WORKFLOW),
+		regenerateNodeIds: vi.fn(),
+		validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+		generatePinData: vi.fn(),
+		toJSON: vi.fn().mockReturnValue(MOCK_WORKFLOW),
 	};
 }
 
@@ -67,8 +69,8 @@ function createMockLlm(respondFn: (callCount: number) => AIMessage): {
 } {
 	let callCount = 0;
 	const llm = {
-		bindTools: jest.fn().mockReturnValue({
-			invoke: jest.fn().mockImplementation(() => {
+		bindTools: vi.fn().mockReturnValue({
+			invoke: vi.fn().mockImplementation(() => {
 				callCount++;
 				return respondFn(callCount);
 			}),
@@ -116,7 +118,7 @@ async function collectChunks(
 
 describe('CodeBuilderAgent validate-loop circuit breakers', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		parseWorkflowCodeToBuilder.mockReturnValue(createMockBuilder());
 		validateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
 	});

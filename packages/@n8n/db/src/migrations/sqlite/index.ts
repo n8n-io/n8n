@@ -184,7 +184,16 @@ import { CreateInstanceAiObservationTables1784000000012 } from '../common/178400
 import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
 import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
+import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
+import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
+import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
+import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
+import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import type { Migration } from '../migration-types';
+import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -373,6 +382,15 @@ const sqliteMigrations: Migration[] = [
 	SplitRedactionScopeInCustomRoles1784000000013,
 	PersistInstanceAiPendingConfirmations1784000000014,
 	AddSourceWorkflowIdToWorkflow1784000000015,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddLastUsedAtToApiKey1784000000017,
+	CreateAgentFilesTable1784000000018,
+	AddCustomTelemetryTagsToProject1784000000019,
+	CreateWorkflowPublicationOutboxTable1784000000020,
+	CreateAgentTaskDefinitionTable1784000000021,
+	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
+	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	AddResourceToOAuthAuthorizationCodes1784000000024,
 ];
 
 export { sqliteMigrations };

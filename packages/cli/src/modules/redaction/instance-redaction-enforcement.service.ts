@@ -2,6 +2,7 @@ import {
 	REDACTION_ENFORCEMENT_DEFAULTS,
 	redactionEnforcementSettingsSchema,
 	type RedactionEnforcementSettings,
+	type RedactionFloor,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
@@ -10,6 +11,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
+import { settingsToFloor } from './redaction-enforcement-mapper';
 import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag';
 
 const KEY = 'redaction.enforcement';
@@ -24,7 +26,20 @@ export class InstanceRedactionEnforcementService {
 
 	async get(): Promise<RedactionEnforcementSettings> {
 		if (!isRedactionEnforcementEnabled()) return REDACTION_ENFORCEMENT_DEFAULTS;
+		return await this.load();
+	}
 
+	/**
+	 * Resolves the instance redaction floor as a `RedactionFloor` enum.
+	 * Returns `'off'` when enforcement is disabled. Normalizes any stored
+	 * setting upward via `settingsToFloor`, so the floor never reports a
+	 * weaker level than what is stored.
+	 */
+	async getFloor(): Promise<RedactionFloor> {
+		return settingsToFloor(await this.get());
+	}
+
+	private async load(): Promise<RedactionEnforcementSettings> {
 		const raw = await this.cacheService.get<string>(KEY, {
 			refreshFn: async () => await this.loadFromDatabase(),
 		});
