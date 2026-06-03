@@ -490,6 +490,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			this.agentHandlers.set(event, handlers);
 		}
 		handlers.add(handler);
+		for (const { bus } of this.activeRuntimes) {
+			bus.on(event, handler);
+		}
 	}
 
 	/**
@@ -503,6 +506,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		handlers.delete(handler);
 		if (handlers.size === 0) {
 			this.agentHandlers.delete(event);
+		}
+		for (const { bus } of this.activeRuntimes) {
+			bus.off(event, handler);
 		}
 	}
 
