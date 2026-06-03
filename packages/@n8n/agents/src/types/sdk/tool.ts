@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentMessage } from './message';
+import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject } from '../utils/json';
 
@@ -18,6 +19,14 @@ export interface ToolExecutionContext {
 		threadId: string;
 		resourceId: string;
 	};
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: (event: AgentEventData) => void;
+	/**
+	 * The current run's abort signal. Long-running tools (e.g. ones that spawn a
+	 * child agent) should forward it so cancelling the parent run also cancels
+	 * the work they started.
+	 */
+	abortSignal?: AbortSignal;
 }
 
 export interface ToolContext {
@@ -27,8 +36,12 @@ export interface ToolContext {
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
+	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: ToolExecutionContext['emitEvent'];
+	/** The current run's abort signal, for tools that start cancellable work. */
+	abortSignal?: ToolExecutionContext['abortSignal'];
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -48,8 +61,12 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
+	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: ToolExecutionContext['emitEvent'];
+	/** The current run's abort signal, for tools that start cancellable work. */
+	abortSignal?: ToolExecutionContext['abortSignal'];
 }
 
 export interface BuiltTool {

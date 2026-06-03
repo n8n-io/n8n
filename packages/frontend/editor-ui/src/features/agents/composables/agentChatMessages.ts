@@ -22,6 +22,7 @@ import {
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import type { ChatMessageStatus, ToolCallState } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 export { type ChatMessageStatus, type ToolCallState };
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,10 @@ export interface ToolCall {
 	output?: unknown;
 	canceled?: boolean;
 	state: ToolCallState;
+	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
+	startTime?: number;
+	/** Epoch ms when the tool settled. Absent while still running. */
+	endTime?: number;
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
@@ -291,7 +296,13 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 				const canceled = part.canceled === true;
 				if (part.state === 'resolved') {
 					output = part.output;
-					state = canceled ? TOOL_CALL_STATE.CANCELLED : TOOL_CALL_STATE.DONE;
+					if (canceled) {
+						state = TOOL_CALL_STATE.CANCELLED;
+					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
+						state = TOOL_CALL_STATE.ERROR;
+					} else {
+						state = TOOL_CALL_STATE.DONE;
+					}
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -307,6 +318,8 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					...(output !== undefined && { output }),
 					...(canceled && { canceled }),
 					state,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				});
 			}

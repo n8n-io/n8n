@@ -9,9 +9,9 @@ Conventions for the `@n8n/agents` package.
 - **Builder pattern with lazy build** — all public primitives use a fluent
   builder API. **User code never calls `.build()`**. Builders are passed
   directly to the consuming method (e.g. `agent.tool(myTool)`) which calls
-  `.build()` internally. Agent and Network have `run()`/`stream()` directly
-  on the class, which lazy-build via `ensureBuilt()` on first call. `build()`
-  is `protected` on Agent and Network to keep it out of the public API.
+  `.build()` internally. Agent has `generate()`/`stream()` directly on the
+  class, which lazy-build via `ensureBuilt()` on first call. `build()` is
+  `protected` on Agent to keep it out of the public API.
 - **Zod for schemas** — all input/output schemas use Zod.
 
 ## Package Structure
@@ -34,7 +34,6 @@ src/
     mcp-client.ts       # MCP client integration
     memory.ts           # Memory builder
     message.ts          # LLM/DB message helpers
-    network.ts          # Network builder
     provider-tools.ts   # Provider-defined tool factories
     telemetry.ts        # Telemetry builder (OTel, redaction)
     tool.ts             # Tool builder

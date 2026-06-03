@@ -5,6 +5,7 @@ import {
 	agentTaskSchema,
 	formatZodErrors,
 	RunnableAgentJsonConfigSchema,
+	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
 	type ConfigValidationError,
@@ -267,7 +268,9 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
 					}
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(parsed.data);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+						sanitizeAgentJsonConfig(parsed.data),
+					);
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -373,7 +376,9 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(patched);
+					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+						sanitizeAgentJsonConfig(patched),
+					);
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
@@ -423,6 +428,27 @@ export class AgentsBuilderToolsService {
 			.handler(async () => this.agentsService.listChatIntegrations())
 			.build();
 
+		const listSubAgentsTool = new Tool(BUILDER_TOOLS.LIST_SUB_AGENTS)
+			.description(
+				'List published agents in the same project that can be added to the target agent as subagents. ' +
+					'Excludes the target agent itself and unpublished agents. Use before asking the user which ' +
+					'subagents to add. Returned `agentId` values are the only valid values to write into `subAgents.agents[].agentId`.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				const agents = await this.agentsService.findByProjectId(projectId);
+				return {
+					agents: agents
+						.filter((agent) => agent.id !== agentId && agent.activeVersionId !== null)
+						.map((agent) => ({
+							agentId: agent.id,
+							name: agent.name,
+							...(agent.description ? { description: agent.description } : {}),
+						})),
+				};
+			})
+			.build();
+
 		const modelLookup: ModelLookup = {
 			list: async (credentialId, credentialType, lookup) =>
 				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
@@ -433,6 +459,7 @@ export class AgentsBuilderToolsService {
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
+			listSubAgentsTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
 			buildAskCredentialTool({
 				credentialProvider,

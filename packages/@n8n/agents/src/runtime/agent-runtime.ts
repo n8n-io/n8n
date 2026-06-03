@@ -30,7 +30,6 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
-	SubAgentUsage,
 	ThinkingConfig,
 	TitleGenerationConfig,
 	TokenUsage,
@@ -66,7 +65,6 @@ import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observ
 import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
-	applySubAgentUsage,
 	extractSettledToolCalls,
 	makeErrorStream,
 	normalizeInput,
@@ -78,7 +76,6 @@ import { generateThreadTitle } from './title-generation';
 import {
 	buildToolMap,
 	executeTool,
-	isAgentToolResult,
 	isSuspendedToolResult,
 	toAiSdkProviderTools,
 	toAiSdkTools,
@@ -263,7 +260,6 @@ type ToolCallOutcome =
 			 * LLM saw (rather than the larger raw output).
 			 */
 			modelOutput: unknown;
-			subAgentUsage?: SubAgentUsage[];
 			customMessage?: AgentMessage;
 	  }
 	| {
@@ -288,7 +284,6 @@ interface ToolCallSuccess {
 	input: JSONValue;
 	toolEntry: ToolResultEntry;
 	modelOutput: unknown;
-	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
 }
 
@@ -812,10 +807,9 @@ export class AgentRuntime {
 		result.runId = runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
-		const finalized = applySubAgentUsage(result);
 		this.updateState({ status: 'success', messageList: list.serialize() });
-		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: finalized.messages });
-		return finalized;
+		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
+		return result;
 	}
 
 	/** Resolve telemetry: own config wins, then inherited from options, then nothing. */
@@ -1020,7 +1014,6 @@ export class AgentRuntime {
 		let lastFinishReason: FinishReason = 'stop';
 		let structuredOutput: unknown;
 		const toolCallSummary: ToolResultEntry[] = [];
-		const collectedSubAgentUsage: SubAgentUsage[] = [];
 
 		// Resolve pending tool calls from a resumed run before the first LLM call.
 		const runTelemetry = this.resolveTelemetry(options);
@@ -1053,7 +1046,6 @@ export class AgentRuntime {
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
-				if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 			}
 
 			if (Object.keys(batch.pending).length > 0) {
@@ -1141,7 +1133,6 @@ export class AgentRuntime {
 
 			for (const r of batch.results) {
 				toolCallSummary.push(r.toolEntry);
-				if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 			}
 
 			if (Object.keys(batch.pending).length > 0) {
@@ -1204,7 +1195,6 @@ export class AgentRuntime {
 			usage: totalUsage,
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(toolCallSummary.length > 0 && { toolCalls: toolCallSummary }),
-			...(collectedSubAgentUsage.length > 0 && { subAgentUsage: collectedSubAgentUsage }),
 		};
 	}
 
@@ -1221,20 +1211,45 @@ export class AgentRuntime {
 		// can show a mid-flight indicator between the LLM's tool-call message
 		// and the eventual tool-result message. Writer queues writes in order
 		// so the fire-and-forget is safe.
-		const onToolExecutionStart = (data: AgentEventData): void => {
-			if (data.type !== AgentEvent.ToolExecutionStart) return;
+		const writeEventChunk = (chunk: StreamChunk): void => {
 			// Swallow rejections: if the writer is already closed/errored (e.g.
 			// an abort raced ahead of the subscription cleanup) there is nothing
 			// useful to do with the chunk.
-			writer
-				.write({
-					type: 'tool-execution-start',
-					toolCallId: data.toolCallId,
-					toolName: data.toolName,
-				})
-				.catch(() => {});
+			writer.write(chunk).catch(() => {});
+		};
+		const onToolExecutionStart = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			writeEventChunk({
+				type: 'tool-execution-start',
+				toolCallId: data.toolCallId,
+				toolName: data.toolName,
+				startTime: Date.now(),
+			});
+		};
+		const onToolExecutionEnd = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.ToolExecutionEnd) return;
+			writeEventChunk({
+				type: 'tool-execution-end',
+				toolCallId: data.toolCallId,
+				toolName: data.toolName,
+				isError: data.isError,
+				endTime: Date.now(),
+			});
+		};
+		const onSubAgentStarted = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.SubAgentStarted) return;
+			const { type: _type, ...payload } = data;
+			writeEventChunk({ type: 'subagent-started', ...payload });
+		};
+		const onSubAgentCompleted = (data: AgentEventData): void => {
+			if (data.type !== AgentEvent.SubAgentCompleted) return;
+			const { type: _type, ...payload } = data;
+			writeEventChunk({ type: 'subagent-completed', ...payload });
 		};
 		this.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+		this.eventBus.on(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
+		this.eventBus.on(AgentEvent.SubAgentStarted, onSubAgentStarted);
+		this.eventBus.on(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 
 		this.withTelemetryRootSpan(
 			'stream',
@@ -1255,6 +1270,9 @@ export class AgentRuntime {
 			})
 			.finally(() => {
 				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
+				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
+				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
+				this.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 			});
 
 		return readable;
@@ -1274,7 +1292,6 @@ export class AgentRuntime {
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
 		let structuredOutput: unknown;
-		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
@@ -1321,7 +1338,6 @@ export class AgentRuntime {
 				});
 
 				for (const r of batch.results) {
-					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: r.toolCallId,
@@ -1408,8 +1424,37 @@ export class AgentRuntime {
 					// `start-step` / `finish-step` are passed through so consumers
 					// can use them as LLM-iteration boundaries.
 					if (chunk.type === 'finish') continue;
+
+					// Provider-executed tools (e.g. native web search) skip the
+					// local execution loop that emits tool-execution lifecycle
+					// events via the event bus. Stamp them here at chunk-arrival
+					// time so live chat and the persisted timeline both show a
+					// duration. A failed call arrives as a `tool-error` part
+					// (never a `tool-result`), so close its timing there too.
+					if (
+						(chunk.type === 'tool-result' || chunk.type === 'tool-error') &&
+						chunk.providerExecuted
+					) {
+						await writeChunk({
+							type: 'tool-execution-end',
+							toolCallId: chunk.toolCallId,
+							toolName: chunk.toolName ?? '',
+							isError: chunk.type === 'tool-error',
+							endTime: Date.now(),
+						});
+					}
+
 					const converted = convertChunk(chunk);
 					if (converted) await writeChunk(converted);
+
+					if (chunk.type === 'tool-call' && chunk.providerExecuted) {
+						await writeChunk({
+							type: 'tool-execution-start',
+							toolCallId: chunk.toolCallId,
+							toolName: chunk.toolName ?? '',
+							startTime: Date.now(),
+						});
+					}
 				}
 			} catch (streamError) {
 				if (await handleAbort()) return;
@@ -1462,7 +1507,6 @@ export class AgentRuntime {
 				if (await handleAbort()) return;
 
 				for (const r of batch.results) {
-					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: r.toolCallId,
@@ -1524,18 +1568,12 @@ export class AgentRuntime {
 		}
 
 		const costUsage = this.applyCost(totalUsage);
-		const parentCost = costUsage?.cost ?? 0;
-		const subCost = collectedSubAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
 		await writer.write({
 			type: 'finish',
 			finishReason: lastFinishReason,
 			...(costUsage && { usage: costUsage }),
 			model: this.modelIdString,
 			...(structuredOutput !== undefined && { structuredOutput }),
-			...(collectedSubAgentUsage.length > 0 && {
-				subAgentUsage: collectedSubAgentUsage,
-				totalCost: parentCost + subCost,
-			}),
 		});
 
 		try {
@@ -2007,7 +2045,6 @@ export class AgentRuntime {
 						input: toolInput,
 						toolEntry: result.value.toolEntry,
 						modelOutput: result.value.modelOutput,
-						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
 					});
 				} else if (result.value.outcome === 'error') {
@@ -2110,7 +2147,6 @@ export class AgentRuntime {
 				input: resumedEntry.input,
 				toolEntry: processResult.toolEntry,
 				modelOutput: processResult.modelOutput,
-				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
 			});
 		} else if (processResult.outcome === 'cancelled') {
@@ -2333,6 +2369,8 @@ export class AgentRuntime {
 					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 						runId,
 						persistence,
+						emitEvent: (event) => this.eventBus.emit(event),
+						abortSignal: this.eventBus.signal,
 					}),
 			);
 		} catch (error) {
@@ -2364,30 +2402,21 @@ export class AgentRuntime {
 			};
 		}
 
-		let actualResult = toolResult;
-		let extractedSubAgentUsage: SubAgentUsage[] | undefined;
-		if (isAgentToolResult(toolResult)) {
-			actualResult = toolResult.output;
-			extractedSubAgentUsage = toolResult.subAgentUsage;
-		}
-
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
 			toolName,
-			result: actualResult,
+			result: toolResult,
 			isError: false,
 		});
 
 		// Apply toModelOutput transform: the raw result goes to history/events,
 		// but the transformed version is what the LLM sees as the tool result.
-		const modelResult = builtTool.toModelOutput
-			? builtTool.toModelOutput(actualResult)
-			: actualResult;
+		const modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
 
 		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
 
-		const customMessage = builtTool?.toMessage?.(actualResult);
+		const customMessage = builtTool?.toMessage?.(toolResult);
 		if (customMessage) {
 			list.addResponse([customMessage]);
 		}
@@ -2397,11 +2426,10 @@ export class AgentRuntime {
 			toolEntry: {
 				tool: toolName,
 				input: toolInput,
-				output: actualResult,
+				output: toolResult,
 				transformed: !!builtTool.toModelOutput,
 			},
 			modelOutput: modelResult,
-			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
 		};
 	}
@@ -2629,7 +2657,7 @@ export class AgentRuntime {
 
 	/**
 	 * Configured telemetry handle (build-time). Run-time inheritance via
-	 * `ExecutionOptions.parentTelemetry` only applies inside an active
+	 * `ExecutionOptions.telemetry` only applies inside an active
 	 * agentic loop; out-of-band callers like `agent.reflect()` see the
 	 * builder-time value.
 	 */

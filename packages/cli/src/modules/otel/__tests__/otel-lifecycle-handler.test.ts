@@ -75,7 +75,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false });
+			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -321,7 +321,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false });
+			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -437,7 +437,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false });
+			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -542,7 +542,7 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false, includeNodeSpans: true });
+			config = makeOtelConfig({ productionExecutionsOnly: false, includeNodeSpans: true });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -636,7 +636,7 @@ describe('OtelLifecycleHandler', () => {
 	});
 });
 
-describe('publishedOnly filter', () => {
+describe('productionExecutionsOnly filter', () => {
 	const tracer = mock<ExecutionLevelTracer>();
 	const traceContextService = mock<TraceContextService>();
 	let config = makeOtelConfig();
@@ -705,7 +705,7 @@ describe('publishedOnly filter', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		config = makeOtelConfig({ publishedOnly: true, includeNodeSpans: true });
+		config = makeOtelConfig({ productionExecutionsOnly: true, includeNodeSpans: true });
 		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);
 		handler = new OtelLifecycleHandler(
@@ -717,7 +717,7 @@ describe('publishedOnly filter', () => {
 		);
 	});
 
-	it('should skip all tracing for an inactive workflow when publishedOnly is true', async () => {
+	it('should skip all tracing for an inactive workflow when productionExecutionsOnly is true', async () => {
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
 		handler.onWorkflowEnd(makeWorkflowEndCtx(inactiveWorkflow));
 		handler.onNodeStart(makeNodeStartCtx(inactiveWorkflow));
@@ -730,7 +730,7 @@ describe('publishedOnly filter', () => {
 		expect(tracer.endNode).not.toHaveBeenCalled();
 	});
 
-	it('should trace an active workflow when publishedOnly is true', async () => {
+	it('should trace an active workflow when productionExecutionsOnly is true', async () => {
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
 		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
@@ -739,8 +739,8 @@ describe('publishedOnly filter', () => {
 		expect(traceContextService.persist).toHaveBeenCalled();
 	});
 
-	it('should trace an inactive workflow when publishedOnly is false', async () => {
-		config.publishedOnly = false;
+	it('should trace an inactive workflow when productionExecutionsOnly is false', async () => {
+		config.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
