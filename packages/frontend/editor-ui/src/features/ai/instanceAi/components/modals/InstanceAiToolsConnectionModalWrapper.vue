@@ -20,6 +20,7 @@ import {
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
 import type {
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpToolFilter,
 	McpRegistryServerResponse,
 	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
@@ -192,6 +193,7 @@ function buildItem(
 			},
 		],
 		availableTools,
+		settings: connection ? settingsFromToolFilter(connection.toolFilter) : undefined,
 		publisher:
 			server.isOfficial || server.websiteUrl
 				? { name: server.title, url: server.websiteUrl }
@@ -373,11 +375,23 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 	if (item.kind !== 'mcp-server') return;
 	if (!item.isConnected) return;
 	if (!settings) return;
-	await mcpStore.updateSettings(item.id, {
-		inclusionMode: settings.inclusionMode,
-		selectedTools: settings.selectedTools,
-		excludedTools: settings.excludedTools,
-	});
+	await mcpStore.updateSettings(item.id, { toolFilter: toolFilterFromSettings(settings) });
+}
+
+function toolFilterFromSettings(settings: McpToolSettings): InstanceAiMcpToolFilter | null {
+	if (settings.inclusionMode === 'all') return null;
+	if (settings.inclusionMode === 'selected') {
+		return { mode: 'allow', tools: settings.selectedTools };
+	}
+	return { mode: 'exclude', tools: settings.excludedTools };
+}
+
+function settingsFromToolFilter(filter: InstanceAiMcpToolFilter | null): McpToolSettings {
+	if (!filter) return { inclusionMode: 'all', selectedTools: [], excludedTools: [] };
+	if (filter.mode === 'allow') {
+		return { inclusionMode: 'selected', selectedTools: filter.tools, excludedTools: [] };
+	}
+	return { inclusionMode: 'except', selectedTools: [], excludedTools: filter.tools };
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
