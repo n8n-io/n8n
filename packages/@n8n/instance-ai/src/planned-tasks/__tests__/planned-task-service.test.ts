@@ -77,6 +77,15 @@ describe('PlannedTaskCoordinator', () => {
 			expect(result.tasks).toHaveLength(2);
 		});
 
+		it('persists post-build run approval metadata', async () => {
+			const result = await coordinator.createPlan('thread-1', [makeTask()], {
+				planRunId: 'run-1',
+				postBuildRunApprovalRequired: true,
+			});
+
+			expect(result.postBuildRunApprovalRequired).toBe(true);
+		});
+
 		it('throws on duplicate task IDs', async () => {
 			const tasks = [makeTask({ id: 'a' }), makeTask({ id: 'a' })];
 

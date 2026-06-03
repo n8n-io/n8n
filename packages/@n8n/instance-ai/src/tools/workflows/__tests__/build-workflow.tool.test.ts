@@ -154,6 +154,38 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-1');
 	});
 
+	it('suspends existing workflow edits before saving by default', async () => {
+		const context = {
+			workflowService: {
+				getAsWorkflowJSON: async () => await Promise.resolve({ name: 'Target workflow' }),
+				updateFromWorkflowJSON: () => {
+					throw new Error('should not update workflow');
+				},
+			},
+			permissions: { updateWorkflow: 'require_approval' },
+		} as unknown as InstanceAiContext;
+		let suspension: unknown;
+		const suspend = async (request: unknown) => {
+			suspension = request;
+			return await Promise.reject(new Error('suspended'));
+		};
+
+		await expect(
+			executeTool(
+				createBuildWorkflowTool(context),
+				{ workflowId: 'wf-1', code: 'workflow code' },
+				{ suspend },
+			),
+		).rejects.toThrow('suspended');
+
+		expect(suspension).toEqual(
+			expect.objectContaining({
+				message: 'Edit Target workflow (ID: wf-1)?',
+				severity: 'warning',
+			}),
+		);
+	});
+
 	it('allows new workflow builds during post-plan follow-up repairs', async () => {
 		const reportBuildOutcome = vi.fn(
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),

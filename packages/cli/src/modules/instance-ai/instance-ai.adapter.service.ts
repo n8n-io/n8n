@@ -550,9 +550,10 @@ export class InstanceAiAdapterService {
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
+				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
-					nodes: json.nodes as unknown as INode[],
+					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
@@ -637,9 +638,10 @@ export class InstanceAiAdapterService {
 					}
 				}
 
+				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
-					nodes: json.nodes as unknown as INode[],
+					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
@@ -3241,6 +3243,37 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
 	}
 	return result;
+}
+
+function hasCredentialId(value: unknown): boolean {
+	if (typeof value !== 'object' || value === null) return false;
+	const id = Reflect.get(value, 'id');
+	return typeof id === 'string' && id.trim() !== '';
+}
+
+function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
+	return nodes.map((node) => {
+		if (!node.credentials) return node;
+
+		const credentials = Object.entries(node.credentials).reduce<
+			NonNullable<typeof node.credentials>
+		>((acc, [type, value]) => {
+			if (hasCredentialId(value)) {
+				acc[type] = value;
+			}
+			return acc;
+		}, {});
+
+		if (Object.keys(credentials).length === Object.keys(node.credentials).length) return node;
+
+		const sanitized = { ...node };
+		if (Object.keys(credentials).length > 0) {
+			sanitized.credentials = credentials;
+		} else {
+			delete sanitized.credentials;
+		}
+		return sanitized;
+	});
 }
 
 function toWorkflowJSON(
