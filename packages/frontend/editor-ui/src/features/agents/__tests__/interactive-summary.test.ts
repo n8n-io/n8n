@@ -4,7 +4,8 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { summariseInteractiveOutput } from '../utils/interactive-summary';
+import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
+import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 describe('summariseInteractiveOutput', () => {
 	it('returns undefined for non-interactive tool names', () => {
@@ -64,5 +65,30 @@ describe('summariseInteractiveOutput', () => {
 				credentialName: 'My Anthropic',
 			}),
 		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
+	});
+});
+
+describe('summariseToolCall', () => {
+	it('returns write_todos task count summaries', () => {
+		expect(
+			summariseToolCall(WRITE_TODOS_TOOL_NAME, {
+				status: 'ok',
+				todoCount: 2,
+				todos: [],
+			}),
+		).toBe('2 tasks');
+	});
+
+	it('still returns interactive summaries first', () => {
+		expect(
+			summariseToolCall(
+				ASK_QUESTION_TOOL_NAME,
+				{ values: ['slack'] },
+				{
+					question: 'Where?',
+					options: [{ label: 'Slack', value: 'slack' }],
+				},
+			),
+		).toBe('Slack');
 	});
 });

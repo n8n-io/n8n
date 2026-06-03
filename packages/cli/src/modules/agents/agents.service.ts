@@ -1,5 +1,6 @@
-import type {
-	Agent as RuntimeAgent,
+import {
+	createWriteTodosTool,
+	type Agent as RuntimeAgent,
 	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
@@ -1088,6 +1089,7 @@ export class AgentsService {
 				credentialProvider,
 				delegation: subAgentDelegation,
 			});
+			this.attachWriteTodosTool(agent, agentId);
 		}
 
 		// Inject checkpoint storage
@@ -1132,6 +1134,11 @@ export class AgentsService {
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId });
+	}
+
+	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
+		agent.tool(createWriteTodosTool());
+		this.logger.debug('Injected write_todos tool', { agentId });
 	}
 
 	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */

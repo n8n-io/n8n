@@ -82,7 +82,8 @@ Use \`patch_config\` with:
   disable delegation. To explicitly enable delegation without saved agents, write
   \`subAgents: { "enabled": true }\`. Inline delegation uses
   \`subAgentId: "inline"\` at tool-call time and does not require saved-agent
-  refs.
+  refs. Runtime \`write_todos\` is injected automatically when delegation is
+  enabled; it is not configured in JSON.
 - If an \`ask_question\` resume value is not one of the listed agent IDs, do not
   write it into config.
 

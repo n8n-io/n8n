@@ -68,7 +68,9 @@ export function getConfigRulesSection(): string {
   To explicitly enable delegation, write \`subAgents: { "enabled": true }\`.
   \`subAgents.agents\` is only for optional saved/published n8n Agent specialists;
   inline delegation uses \`subAgentId: "inline"\` at tool-call time and does not
-  require saved-agent refs. Only use \`agentId\` values returned by
+  require saved-agent refs. When delegation is enabled, the runtime also exposes
+  \`write_todos\` for planning complex multi-step work before separate
+  \`delegate_subagent\` calls. Only use \`agentId\` values returned by
   \`list_sub_agents\`.
 - Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
   support native web search; for those providers, use

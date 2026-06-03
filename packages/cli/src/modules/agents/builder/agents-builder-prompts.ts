@@ -152,6 +152,12 @@ When delegation is enabled, the target agent can call \`delegate_subagent\` with
 \`subAgentId: "inline"\` without any saved-agent refs. Inline subagents are
 ad-hoc child agents for one-off focused tasks.
 
+When delegation is enabled, the target agent also has a runtime \`write_todos\`
+tool for planning complex work. Use it to decompose multi-step requests into a
+visible task list before calling \`delegate_subagent\` for independent
+workstreams. \`write_todos\` only updates the task list; it does not run
+sub-agents or answer the user.
+
 \`subAgents.agents\` is only for optional saved/published n8n Agent specialists
 that the target agent may select by id when they are a better fit than an inline
 subagent.

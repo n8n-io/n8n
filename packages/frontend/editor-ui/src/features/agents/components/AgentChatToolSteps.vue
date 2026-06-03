@@ -6,12 +6,14 @@ import type { ToolCall } from '../composables/agentChatMessages';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatDuration } from '../session-timeline.utils';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
+import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
+import { getToolCallDetails, isToolCallExpandable } from '../utils/tool-call-details';
 import {
-	delegateLabel,
-	isDelegateSubAgentTool,
-	parseDelegateOutput,
-	resolveSubAgentName,
-} from '../utils/delegate-tool';
+	isWriteTodosTool,
+	parseWriteTodosOutput,
+	writeTodosLabel,
+	writeTodosSummaryLabel,
+} from '../utils/write-todos-tool';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
@@ -27,7 +29,7 @@ const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 	props.toolCalls.some((tc) => isDelegateSubAgentTool(tc.tool)),
 );
 
-// Track which delegate steps are expanded (by tool-call id).
+// Track which tool steps are expanded (by tool-call id).
 const expandedIds = reactive(new Set<string>());
 
 function getToolDisplayName(toolName: string): string {
@@ -35,21 +37,29 @@ function getToolDisplayName(toolName: string): string {
 	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
 }
 
-// Delegate steps render as "Sub-agent · <name>" (resolved id, else humanized
-// task name) to flag that a sub-agent ran.
 function stepLabel(tc: ToolCall): string {
-	if (!isDelegateSubAgentTool(tc.tool)) return getToolDisplayName(tc.tool);
-	return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
+	}
+	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
+	return getToolDisplayName(tc.tool);
 }
 
-function delegateAnswer(tc: ToolCall): string {
-	if (!isDelegateSubAgentTool(tc.tool)) return '';
-	return parseDelegateOutput(tc.output)?.answer?.trim() ?? '';
+function rowSummary(tc: ToolCall): string | undefined {
+	if (tc.displaySummary) return tc.displaySummary;
+	if (isWriteTodosTool(tc.tool)) {
+		const parsed = parseWriteTodosOutput(tc.output);
+		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todoCount);
+	}
+	return undefined;
 }
 
-// A delegate step is expandable once it has an answer to reveal.
+function toolDetails(tc: ToolCall): string {
+	return getToolCallDetails(tc) ?? '';
+}
+
 function isExpandable(tc: ToolCall): boolean {
-	return delegateAnswer(tc).length > 0;
+	return isToolCallExpandable(tc);
 }
 
 function isExpanded(tc: ToolCall): boolean {
@@ -119,8 +129,8 @@ function toolDuration(tc: ToolCall): string {
 					<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
 						{{ stepLabel(tc) }}
 					</span>
-					<span v-if="tc.displaySummary" :class="$style.summary" data-testid="tool-step-summary">
-						· {{ tc.displaySummary }}
+					<span v-if="rowSummary(tc)" :class="$style.summary" data-testid="tool-step-summary">
+						· {{ rowSummary(tc) }}
 					</span>
 					<span v-if="toolDuration(tc)" :class="$style.duration">
 						{{ toolDuration(tc) }}
@@ -134,7 +144,7 @@ function toolDuration(tc: ToolCall): string {
 				</component>
 				<div v-if="isExpandable(tc) && isExpanded(tc)" :class="$style.answer">
 					<N8nMarkdownEditor
-						:model-value="delegateAnswer(tc)"
+						:model-value="toolDetails(tc)"
 						readonly
 						variant="ghost"
 						show-toolbar="never"
