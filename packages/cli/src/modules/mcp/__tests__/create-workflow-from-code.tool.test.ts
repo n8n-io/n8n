@@ -162,6 +162,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	const callHandler = async (
 		input: {
 			code: string;
+			skillsUsed?: string[];
 			name?: string;
 			description?: string;
 			projectId?: string;
@@ -172,6 +173,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		await tool.handler(
 			{
 				code: input.code,
+				skillsUsed: input.skillsUsed,
 				name: input.name as string,
 				description: input.description as string,
 				projectId: input.projectId as string,
@@ -404,13 +406,16 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 
 		test('tracks telemetry on success', async () => {
-			await callHandler({ code: 'const wf = ...' });
+			await callHandler({ code: 'const wf = ...', skillsUsed: ['workflow-builder'] });
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
 					tool_name: 'create_workflow_from_code',
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder'],
+					}),
 					results: expect.objectContaining({
 						success: true,
 						data: expect.objectContaining({

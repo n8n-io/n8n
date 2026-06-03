@@ -139,12 +139,13 @@ describe('update-workflow MCP tool', () => {
 		);
 
 	const callHandler = async (
-		input: { workflowId: string; operations: unknown[] },
+		input: { workflowId: string; skillsUsed?: string[]; operations: unknown[] },
 		tool = createTool(),
 	) =>
 		await tool.handler(
 			{
 				workflowId: input.workflowId,
+				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
 			},
 			{} as never,
@@ -400,6 +401,7 @@ describe('update-workflow MCP tool', () => {
 		test('tracks telemetry on success with op metadata', async () => {
 			await callHandler({
 				workflowId: 'wf-1',
+				skillsUsed: ['workflow-builder', 'node-selection'],
 				operations: [
 					{ type: 'setWorkflowMetadata', name: 'Renamed' },
 					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
@@ -413,6 +415,7 @@ describe('update-workflow MCP tool', () => {
 					tool_name: 'update_workflow',
 					parameters: expect.objectContaining({
 						workflowId: 'wf-1',
+						skillsUsed: ['workflow-builder', 'node-selection'],
 						opCount: 2,
 						opTypes: ['setWorkflowMetadata', 'updateNodeParameters'],
 					}),

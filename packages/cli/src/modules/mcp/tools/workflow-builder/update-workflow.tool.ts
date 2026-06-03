@@ -60,6 +60,13 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
+	skillsUsed: z
+		.array(z.string().min(1).max(128))
+		.max(50)
+		.optional()
+		.describe(
+			'Names of n8n skills used by the MCP client to produce this workflow update call. Include only skills used since the previous successful workflow create/update call in the current conversation/session.',
+		),
 	operations: z
 		.array(partialUpdateOperationSchema)
 		.min(1)
@@ -123,7 +130,7 @@ export const createUpdateWorkflowTool = (
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged.',
+			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged. If you used n8n skills while preparing this workflow change, pass their names in skillsUsed, including only skills used since the last successful create/update workflow-builder tool call in this session.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -136,9 +143,11 @@ export const createUpdateWorkflowTool = (
 	},
 	handler: async ({
 		workflowId,
+		skillsUsed,
 		operations,
 	}: {
 		workflowId: string;
+		skillsUsed?: string[];
 		operations: PartialUpdateOperation[];
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -146,6 +155,7 @@ export const createUpdateWorkflowTool = (
 			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 			parameters: {
 				workflowId,
+				...(skillsUsed !== undefined ? { skillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
 			},
