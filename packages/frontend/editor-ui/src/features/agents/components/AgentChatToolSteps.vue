@@ -4,7 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { reactive, toRef } from 'vue';
 import type { ToolCall } from '../composables/agentChatMessages';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { formatDuration } from '../session-timeline.utils';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
 import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
@@ -43,7 +42,6 @@ const expandedIds = reactive(new Set<string>());
 interface ToolStepDisplay {
 	label: string;
 	summary: string | undefined;
-	duration: string;
 	details: string;
 	expandable: boolean;
 	expanded: boolean;
@@ -71,17 +69,11 @@ function toolStepSummary(tc: ToolCall): string | undefined {
 	return undefined;
 }
 
-function toolStepDuration(tc: ToolCall): string {
-	if (tc.startTime === undefined || tc.endTime === undefined) return '';
-	return formatDuration(tc.endTime - tc.startTime);
-}
-
 function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
 	return {
 		label: toolStepLabel(tc),
 		summary: toolStepSummary(tc),
-		duration: toolStepDuration(tc),
 		details,
 		expandable: details.length > 0,
 		expanded: expandedIds.has(tc.toolCallId),
@@ -153,9 +145,6 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 						</span>
 						<span v-if="view.summary" :class="$style.summary" data-testid="tool-step-summary">
 							· {{ view.summary }}
-						</span>
-						<span v-if="view.duration" :class="$style.duration">
-							{{ view.duration }}
 						</span>
 						<N8nIcon
 							v-if="view.expandable"
@@ -294,13 +283,6 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
-}
-
-.duration {
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--sm);
-	font-variant-numeric: tabular-nums;
 }
 
 .chevron {
