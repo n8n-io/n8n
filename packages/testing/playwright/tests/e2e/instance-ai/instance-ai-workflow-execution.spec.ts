@@ -23,7 +23,7 @@ async function getSuccessfulExecutionCountForNode(
 			: await workflowsApi.getWorkflow(workflowSummary.id);
 
 		const matchesNode =
-			workflow.name?.toLowerCase().includes(nodeName) ||
+			workflow.name?.toLowerCase().includes(nodeName) ??
 			workflow.nodes?.some((node) => node.name.toLowerCase().includes(nodeName));
 		if (!matchesNode) continue;
 
