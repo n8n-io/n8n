@@ -28,6 +28,7 @@
     "./*": "./*"
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "cleanup": "rimraf dist",
     "dev": "tsdown --watch",
     "lint": "eslint src --quiet",

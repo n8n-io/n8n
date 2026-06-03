@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rimraf storybook-static .turbo",
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"

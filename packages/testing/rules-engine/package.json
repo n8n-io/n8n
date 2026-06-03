@@ -9,6 +9,7 @@
 		"dist"
 	],
 	"scripts": {
+		"clean": "rimraf dist .turbo",
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc --watch",
 		"test": "vitest run",
