@@ -26,7 +26,6 @@ import type {
 	OpenAIThinkingConfig,
 	PendingToolCall,
 	RunOptions,
-	SemanticRecallConfig,
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
@@ -54,7 +53,7 @@ import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
-import { createEmbeddingModel, createModel } from './model-factory';
+import { createModel } from './model-factory';
 import {
 	runObservationLogObserver,
 	type ObservationLogObserverMemory,
@@ -195,7 +194,6 @@ export interface AgentRuntimeConfig {
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
-	semanticRecall?: SemanticRecallConfig;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
@@ -624,11 +622,6 @@ export class AgentRuntime {
 			}
 		}
 
-		// Semantic recall — retrieve relevant past messages beyond the history window
-		if (this.config.semanticRecall && options?.persistence?.threadId) {
-			await this.performSemanticRecall(list, input, options.persistence, options.executionCounter);
-		}
-
 		await this.setListObservationLogMemory(list, options?.persistence);
 
 		list.addInput(input);
@@ -660,117 +653,6 @@ export class AgentRuntime {
 
 		return await memory.getMessages(threadId, {
 			resourceId,
-		});
-	}
-
-	/**
-	 * Perform semantic recall: embed the user's query, search for relevant past messages,
-	 * expand by messageRange, deduplicate against history, and inject into the list.
-	 */
-	private async performSemanticRecall(
-		list: AgentMessageList,
-		input: AgentMessage[],
-		persistence: AgentPersistenceOptions,
-		executionCounter?: AgentExecutionCounter,
-	): Promise<void> {
-		if (!this.config.semanticRecall || !this.config.memory) return;
-
-		const userText = input
-			.filter((m) => isLlmMessage(m) && m.role === 'user')
-			.flatMap((m) => (isLlmMessage(m) ? m.content : []))
-			.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-			.map((c) => c.text)
-			.join(' ');
-
-		if (!userText) return;
-
-		let recalled: AgentDbMessage[] = [];
-
-		if (this.config.memory.queryEmbeddings && this.config.semanticRecall.embedder) {
-			// Tier 3: runtime embeds the query, backend does vector search
-			const { embed } = getAiSdk();
-			const embeddingModel = createEmbeddingModel(
-				this.config.semanticRecall.embedder,
-				this.config.semanticRecall.apiKey,
-			);
-
-			const { embedding, usage } = await embed({ model: embeddingModel, value: userText });
-			incrementTokenCountFromUsage(executionCounter, usage);
-
-			const hits = await this.config.memory.queryEmbeddings({
-				scope: this.config.semanticRecall.scope ?? 'resource',
-				threadId: persistence.threadId,
-				resourceId: persistence.resourceId,
-				vector: embedding,
-				topK: this.config.semanticRecall.topK,
-			});
-
-			if (hits.length > 0) {
-				const hitIds = new Set(hits.map((h) => h.id));
-				// TODO: add getMessagesByIds() to BuiltMemory to avoid loading all messages.
-				const allMsgs = await this.config.memory.getMessages(persistence.threadId);
-
-				if (this.config.semanticRecall.messageRange) {
-					recalled = this.expandMessageRange(
-						allMsgs,
-						hitIds,
-						this.config.semanticRecall.messageRange,
-					);
-				} else {
-					recalled = allMsgs.filter((m) => {
-						const id = m.id;
-						return id !== undefined && hitIds.has(id);
-					});
-				}
-			}
-		} else if (this.config.memory.search) {
-			// Fallback: high-level search (backend handles everything)
-			recalled = await this.config.memory.search(userText, {
-				threadId: persistence.threadId,
-				resourceId: persistence.resourceId,
-				topK: this.config.semanticRecall.topK,
-				messageRange: this.config.semanticRecall.messageRange,
-			});
-		}
-
-		if (recalled.length === 0) return;
-
-		// Deduplicate against already-loaded history by message ID
-		const { historyIds } = list.serialize();
-		const historyIdSet = new Set(historyIds);
-
-		const newRecalled = recalled.filter((m) => {
-			const id = m.id;
-			return !id || !historyIdSet.has(id);
-		});
-
-		if (newRecalled.length > 0) {
-			list.addHistory(newRecalled);
-		}
-	}
-
-	/** Expand hit IDs by messageRange (before/after) within the ordered message list. */
-	private expandMessageRange(
-		allMsgs: AgentDbMessage[],
-		hitIds: Set<string>,
-		range: { before: number; after: number },
-	): AgentDbMessage[] {
-		const expandedIds = new Set<string>();
-		for (const msg of allMsgs) {
-			const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : undefined;
-			if (!id || !hitIds.has(id)) continue;
-			const idx = allMsgs.indexOf(msg);
-			const start = Math.max(0, idx - (range.before ?? 0));
-			const end = Math.min(allMsgs.length - 1, idx + (range.after ?? 0));
-			for (let i = start; i <= end; i++) {
-				const el = allMsgs[i];
-				const mid = 'id' in el && typeof el.id === 'string' ? el.id : undefined;
-				if (mid) expandedIds.add(mid);
-			}
-		}
-		return allMsgs.filter((m) => {
-			const mid = 'id' in m && typeof m.id === 'string' ? m.id : undefined;
-			return mid && expandedIds.has(mid);
 		});
 	}
 
@@ -1623,16 +1505,6 @@ export class AgentRuntime {
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
-		// Generate and save embeddings if semantic recall is configured
-		if (this.config.semanticRecall?.embedder && this.config.memory.saveEmbeddings) {
-			await this.saveEmbeddingsForMessages(
-				options.persistence.threadId,
-				options.persistence.resourceId,
-				delta,
-				options.executionCounter,
-			);
-		}
-
 		const observationTasks = this.scheduleObservationLogJobs(
 			options.persistence,
 			options.executionCounter,
@@ -1823,51 +1695,6 @@ export class AgentRuntime {
 		return {
 			observationScopeId: persistence.threadId,
 		};
-	}
-
-	private async saveEmbeddingsForMessages(
-		threadId: string,
-		resourceId: string | undefined,
-		messages: AgentDbMessage[],
-		executionCounter?: AgentExecutionCounter,
-	): Promise<void> {
-		// Extract text from user and assistant messages
-		const embeddable: Array<{ id: string; text: string }> = [];
-		for (const msg of messages) {
-			if (!isLlmMessage(msg) || (msg.role !== 'user' && msg.role !== 'assistant')) continue;
-			const text = msg.content
-				.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-				.map((c) => c.text)
-				.join('\n');
-			if (!text) continue;
-			embeddable.push({ id: msg.id, text });
-		}
-
-		if (embeddable.length === 0) return;
-
-		const embedder = this.config.semanticRecall?.embedder;
-		if (!embedder) return;
-
-		const { embedMany } = getAiSdk();
-		const embeddingModel = createEmbeddingModel(embedder, this.config.semanticRecall?.apiKey);
-
-		const { embeddings, usage } = await embedMany({
-			model: embeddingModel,
-			values: embeddable.map((e) => e.text),
-		});
-		incrementTokenCountFromUsage(executionCounter, usage);
-
-		await this.config.memory!.saveEmbeddings!({
-			scope: this.config.semanticRecall?.scope ?? 'resource',
-			threadId,
-			resourceId,
-			entries: embeddable.map((e, i) => ({
-				id: e.id,
-				vector: embeddings[i],
-				text: e.text,
-				model: embedder,
-			})),
-		});
 	}
 
 	/** Build the providerOptions object for thinking/reasoning config. */
