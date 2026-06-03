@@ -1046,17 +1046,8 @@ export class AgentRuntime {
 		await this.flushTelemetry(options);
 
 		if (this.config.titleGeneration && options?.persistence?.threadId && this.config.memory) {
-			const titlePromise = generateThreadTitle({
-				memory: this.config.memory,
-				threadId: options.persistence.threadId,
-				resourceId: options.persistence.resourceId,
-				titleConfig: this.config.titleGeneration,
-				agentModel: this.config.model,
-				turnDelta: list.turnDelta(),
-				executionCounter: options.executionCounter,
-			});
-			this.backgroundTasks.track(titlePromise);
-			if (this.config.titleGeneration.sync) {
+			const titlePromise = this.trackThreadTitleGeneration(options, list.turnDelta());
+			if (titlePromise && this.config.titleGeneration.sync) {
 				await titlePromise;
 			}
 		}
@@ -1451,17 +1442,8 @@ export class AgentRuntime {
 			await this.saveToMemory(list, options);
 
 			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				const titlePromise = generateThreadTitle({
-					memory: this.config.memory,
-					threadId: options.persistence.threadId,
-					resourceId: options.persistence.resourceId,
-					titleConfig: this.config.titleGeneration,
-					agentModel: this.config.model,
-					turnDelta: list.turnDelta(),
-					executionCounter: options.executionCounter,
-				});
-				this.backgroundTasks.track(titlePromise);
-				if (this.config.titleGeneration.sync) {
+				const titlePromise = this.trackThreadTitleGeneration(options, list.turnDelta());
+				if (titlePromise && this.config.titleGeneration.sync) {
 					await titlePromise;
 				}
 			}
@@ -1499,6 +1481,40 @@ export class AgentRuntime {
 			options.executionCounter,
 		);
 		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
+	}
+
+	private trackThreadTitleGeneration(
+		options: (RunOptions & ExecutionOptions) | undefined,
+		turnDelta: AgentDbMessage[],
+	): Promise<{ title: string; emoji?: string } | null> | undefined {
+		if (!this.config.titleGeneration || !options?.persistence?.threadId || !this.config.memory) {
+			return undefined;
+		}
+
+		const { threadId, resourceId } = options.persistence;
+		const titlePromise = generateThreadTitle({
+			memory: this.config.memory,
+			threadId,
+			resourceId,
+			titleConfig: this.config.titleGeneration,
+			agentModel: this.config.model,
+			turnDelta,
+			executionCounter: options.executionCounter,
+		}).then((generated) => {
+			if (generated) {
+				this.eventBus.emit({
+					type: AgentEvent.ThreadTitleGenerated,
+					threadId,
+					resourceId,
+					title: generated.title,
+					...(generated.emoji !== undefined && { emoji: generated.emoji }),
+				});
+			}
+			return generated;
+		});
+
+		this.backgroundTasks.track(titlePromise);
+		return titlePromise;
 	}
 
 	private scheduleObservationLogJobs(

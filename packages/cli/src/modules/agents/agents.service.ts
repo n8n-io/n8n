@@ -1,6 +1,7 @@
 import {
 	createWriteTodosTool,
 	type Agent as RuntimeAgent,
+	AgentEvent,
 	AgentExecutionCounter,
 	BuiltAgent,
 	BuiltTool,
@@ -1092,6 +1093,8 @@ export class AgentsService {
 			this.attachWriteTodosTool(agent, agentId);
 		}
 
+		this.attachThreadTitleSyncListener(agent);
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
@@ -1139,6 +1142,15 @@ export class AgentsService {
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
 		agent.tool(createWriteTodosTool());
 		this.logger.debug('Injected write_todos tool', { agentId });
+	}
+
+	private attachThreadTitleSyncListener(agent: RuntimeAgent): void {
+		agent.on(AgentEvent.ThreadTitleGenerated, (event) => {
+			void this.agentExecutionService.syncThreadTitle(event.threadId, {
+				title: event.title,
+				...(event.emoji !== undefined && { emoji: event.emoji }),
+			});
+		});
 	}
 
 	/** Delegation guardrails sourced from {@link AgentsConfig} (env-configurable). */

@@ -178,6 +178,41 @@ describe('AgentExecutionService', () => {
 				title: 'Workflow builder chat',
 			});
 		});
+
+		it('does not sync title from memory when the thread already has a title', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: 'Existing title' }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(memoryBackend.getThread).not.toHaveBeenCalled();
+			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('syncThreadTitle', () => {
+		it('updates the execution thread title and emoji', async () => {
+			await service.syncThreadTitle('thread-1', {
+				title: 'Workflow chat',
+				emoji: '🤖',
+			});
+
+			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
+				title: 'Workflow chat',
+				emoji: '🤖',
+			});
+		});
 	});
 
 	describe('getThreadDetail', () => {

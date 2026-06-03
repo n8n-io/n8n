@@ -2,7 +2,8 @@ import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
 import type { BuiltTelemetry } from '../../types';
-import { generateTitleFromMessage } from '../title-generation';
+import { InMemoryMemory } from '../memory-store';
+import { generateThreadTitle, generateTitleFromMessage } from '../title-generation';
 
 type GenerateTextCall = {
 	messages: Array<{ role: string; content: string }>;
@@ -205,5 +206,62 @@ describe('generateTitleFromMessage', () => {
 			'build a workflow that queries Scryfall for a random card',
 		);
 		expect(result).toBe('Scryfall random card workflow');
+	});
+});
+
+describe('generateThreadTitle', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
+	it('returns null when the thread already has a title', async () => {
+		const memory = new InMemoryMemory();
+		await memory.saveThread({
+			id: 'thread-1',
+			resourceId: 'resource-1',
+			title: 'Existing title',
+		});
+
+		const result = await generateThreadTitle({
+			memory,
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			titleConfig: {},
+			agentModel: 'openai/gpt-4o-mini',
+			turnDelta: [
+				{
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+				},
+			],
+		});
+
+		expect(result).toBeNull();
+		expect(mockGenerateText).not.toHaveBeenCalled();
+	});
+
+	it('returns the generated title after saving it to memory', async () => {
+		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+
+		const result = await generateThreadTitle({
+			memory,
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			titleConfig: {},
+			agentModel: 'openai/gpt-4o-mini',
+			turnDelta: [
+				{
+					role: 'user',
+					content: [{ type: 'text', text: 'Build a daily Berlin rain alert workflow' }],
+				},
+			],
+		});
+
+		expect(result).toEqual({ title: 'Berlin rain alert' });
+		expect(await memory.getThread('thread-1')).toMatchObject({
+			title: 'Berlin rain alert',
+		});
 	});
 });
