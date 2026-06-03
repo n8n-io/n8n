@@ -85,16 +85,6 @@ const WRITE_TODOS_SYSTEM_INSTRUCTION = [
 	'- After all work is done, send the final answer as normal assistant text after the last write_todos call.',
 ].join('\n');
 
-function assertUniqueTodoIds(todos: TodoItem[]): void {
-	const seen = new Set<string>();
-	for (const todo of todos) {
-		if (seen.has(todo.id)) {
-			throw new Error(`Duplicate todo id "${todo.id}". Each task must have a unique id.`);
-		}
-		seen.add(todo.id);
-	}
-}
-
 /**
  * Build the planner-only `write_todos` tool — lets a parent agent maintain a
  * structured task list for complex work without auto-dispatching sub-agents.
@@ -106,7 +96,6 @@ export function createWriteTodosTool(): BuiltTool {
 		.input(writeTodosInputSchema)
 		.output(writeTodosOutputSchema)
 		.handler(async (input) => {
-			assertUniqueTodoIds(input.todos);
 			const todos = [...input.todos];
 
 			return {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { isZodSchema } from '../../utils/zod';
 import { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from '../write-todos-tool';
 
 const sampleTodos = [
@@ -75,19 +76,25 @@ describe('createWriteTodosTool', () => {
 		});
 	});
 
-	it('rejects duplicate todo ids in a single update', async () => {
+	it('rejects duplicate todo ids in a single update', () => {
 		const tool = createWriteTodosTool();
+		expect(tool.inputSchema).toBeDefined();
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) {
+			throw new Error('Expected Zod input schema');
+		}
 
-		await expect(
-			tool.handler?.(
-				{
-					todos: [
-						{ id: 'dup', content: 'First', status: 'pending' },
-						{ id: 'dup', content: 'Second', status: 'pending' },
-					],
-				},
-				{ runId: 'parent-run-1' },
-			),
-		).rejects.toThrow(/Duplicate todo id "dup"/);
+		const result = tool.inputSchema.safeParse({
+			todos: [
+				{ id: 'dup', content: 'First', status: 'pending' },
+				{ id: 'dup', content: 'Second', status: 'pending' },
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(
+			result.error.issues.some((issue) => issue.message.includes('Duplicate todo id "dup"')),
+		).toBe(true);
 	});
 });
