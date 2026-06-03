@@ -160,7 +160,7 @@ describe('SubAgentForegroundRunner', () => {
 		// With no parent resource scope, memory isolates to the run's own thread,
 		// so resourceId === threadId.
 		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.stringContaining('Goal:\nFind the relevant API behavior.'),
+			expect.stringContaining('YOUR TASK:\nFind the relevant API behavior.'),
 			expect.objectContaining({
 				persistence: {
 					resourceId: result.threadId,
@@ -169,8 +169,8 @@ describe('SubAgentForegroundRunner', () => {
 			}),
 		);
 		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
-		expect(childPrompt).toContain('Context:\nFocus on auth endpoints.');
-		expect(childPrompt).toContain('Expected output:\nA concise summary.');
+		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
+		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
 		// Every sub-agent run is a saved n8n agent, so it records under its run
 		// thread id, owned by the sub-agent's own id.
 		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
@@ -178,6 +178,40 @@ describe('SubAgentForegroundRunner', () => {
 				threadId: result.threadId,
 				agentId: 'agent-1',
 				source: 'subagent',
+			}),
+		);
+	});
+
+	it('strips nested sub-agent delegation config before building the child runtime', async () => {
+		const configWithNestedSubAgents: RunnableAgentJsonConfig = {
+			...runnableConfig,
+			subAgents: {
+				agents: [{ agentId: 'nested-agent' }],
+			},
+		};
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			source: {
+				...source,
+				config: configWithNestedSubAgents,
+			},
+		});
+
+		await runner.runForeground(spawnRequest, {
+			projectId,
+			credentialProvider,
+			createToolExecutor,
+			createMemoryFactory,
+		});
+
+		expect(buildFromJson).toHaveBeenCalledWith(
+			runnableConfig,
+			runtimeSource.toolDescriptors,
+			expect.objectContaining({
+				toolExecutor,
+				credentialProvider,
+				skills: runtimeSource.skills,
+				memoryFactory: expect.any(Function),
 			}),
 		);
 	});
