@@ -81,16 +81,10 @@ export class InstanceAiMcpConnectionController {
 		_res: Response,
 		@Body payload: InstanceAiMcpCreateConnectionRequestDto,
 	): Promise<InstanceAiMcpConnectionResponse> {
-		const connection = await this.service.createConnection(req.user, payload);
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			connection.credentialId,
+		const { connection, credential, server } = await this.service.createConnection(
 			req.user,
-			['credential:read'],
+			payload,
 		);
-		if (!credential) {
-			throw new NotFoundError('Credential not found after creating connection');
-		}
-		const server = await this.mcpRegistryService.get(connection.serverSlug);
 		return toResponse(
 			connection,
 			credential.name,

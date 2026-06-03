@@ -138,12 +138,14 @@ describe('InstanceAiMcpConnectionController', () => {
 	});
 
 	describe('create', () => {
-		it('creates a connection and returns the enriched response', async () => {
+		it('creates a connection and returns the enriched response from the service bundle', async () => {
 			const { controller, service, credentialsFinderService, mcpRegistryService } =
 				createController();
-			service.createConnection.mockResolvedValue(baseRow);
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			mcpRegistryService.get.mockResolvedValue(linearServer);
+			service.createConnection.mockResolvedValue({
+				connection: baseRow,
+				credential,
+				server: linearServer,
+			});
 
 			const result = await controller.create(authedRequest(), {} as never, {
 				serverSlug: 'linear',
@@ -154,6 +156,9 @@ describe('InstanceAiMcpConnectionController', () => {
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
 			});
+			// The controller should rely on the service bundle, not refetch.
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+			expect(mcpRegistryService.get).not.toHaveBeenCalled();
 			expect(result).toMatchObject({
 				id: 'conn-1',
 				credentialName: 'Linear OAuth2',

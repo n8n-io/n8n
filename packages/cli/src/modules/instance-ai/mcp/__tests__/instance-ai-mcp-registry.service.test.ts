@@ -325,7 +325,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('createConnection', () => {
-		it('creates a connection and emits a telemetry event', async () => {
+		it('creates a connection and returns it with the resolved credential and server', async () => {
 			const {
 				service,
 				connectionRepository,
@@ -333,7 +333,8 @@ describe('InstanceAiMcpRegistryService', () => {
 				credentialsFinderService,
 				eventService,
 			} = createService();
-			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			const linearServer = makeRegistryServer('linear');
+			mcpRegistryService.get.mockResolvedValue(linearServer);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			connectionRepository.create.mockImplementation((entity) => entity as never);
 			connectionRepository.save.mockImplementation(async (entity) => entity as never);
@@ -343,12 +344,14 @@ describe('InstanceAiMcpRegistryService', () => {
 				credentialId: 'cred-1',
 			});
 
-			expect(result).toMatchObject({
+			expect(result.connection).toMatchObject({
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
 			});
-			expect(result.id).toBeDefined();
+			expect(result.connection.id).toBeDefined();
+			expect(result.credential).toBe(credential);
+			expect(result.server).toBe(linearServer);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-mcp-registry-connection-created',
 				{ userId: user.id, serverSlug: 'linear' },
