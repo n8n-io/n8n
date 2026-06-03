@@ -366,6 +366,7 @@ const resizable = computed(() => {
 			<component
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
+				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
@@ -389,6 +390,10 @@ const resizable = computed(() => {
 
 .inputWrapper {
 	z-index: 1;
+}
+
+.suggestions {
+	margin-top: var(--spacing--lg);
 }
 
 .attachments {

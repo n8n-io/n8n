@@ -173,11 +173,11 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 .inputFooter {
 	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
 	padding-bottom: var(--spacing--2xs);
-	padding-left: var(--spacing--sm);
-	padding-right: var(--spacing--sm);
+	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--2xs);
 
 	margin-top: calc(-1 * var(--radius--xl));
-	background-color: var(--color--neutral-150);
+	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	border-bottom-left-radius: var(--radius--xl);
 	border-bottom-right-radius: var(--radius--xl);
 	display: flex;
