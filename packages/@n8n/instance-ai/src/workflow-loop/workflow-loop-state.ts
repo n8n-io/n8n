@@ -165,7 +165,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	/**
 	 * Trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
-	 * to pick a `verify-built-workflow` `inputData` shape for bypassPlan builds.
+	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
 	 */
 	triggerNodes: z.array(triggerNodeDescriptorSchema).optional(),
 	needsUserInput: z.boolean(),
