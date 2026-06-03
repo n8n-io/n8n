@@ -3,10 +3,13 @@ import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
-import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
+import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { JwtService } from './jwt.service';
 
 export const API_KEY_AUDIENCE = 'public-api';
@@ -45,28 +48,40 @@ export class PublicApiKeyService {
 	}
 
 	/**
-	 * Retrieves a page of redacted API keys for a given user, ordered by
-	 * `createdAt` descending. `count` is the total across all pages.
+	 * Retrieves a page of redacted API keys with owner info attached, ordered
+	 * by `createdAt` descending. Returns every key on the instance for callers
+	 * with `apiKey:manage` (owners and admins); otherwise scopes to the
+	 * caller's own keys. `count` is the total across all pages.
 	 */
-	async getRedactedApiKeysForUser(user: User, options: { take?: number; skip?: number } = {}) {
+	async getRedactedApiKeys(caller: User, options: { take?: number; skip?: number } = {}) {
+		const canSeeAll = hasGlobalScope(caller, 'apiKey:manage');
 		const [apiKeys, count] = await this.apiKeyRepository.findAndCount({
-			where: { userId: user.id, audience: API_KEY_AUDIENCE },
+			where: { audience: API_KEY_AUDIENCE, ...(canSeeAll ? {} : { userId: caller.id }) },
+			relations: { user: true },
 			order: { createdAt: 'DESC' },
 			take: options.take,
 			skip: options.skip,
 		});
 		return {
-			items: apiKeys.map((apiKeyRecord) => ({
-				...apiKeyRecord,
-				apiKey: this.redactApiKey(apiKeyRecord.apiKey),
-				expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
-			})),
+			items: apiKeys.map((apiKeyRecord) => this.toRedactedApiKey(apiKeyRecord)),
 			count,
 		};
 	}
 
-	async deleteApiKeyForUser(user: User, apiKeyId: string) {
-		await this.apiKeyRepository.delete({ userId: user.id, id: apiKeyId });
+	/**
+	 * Deletes an API key. The caller must either own the key or hold the
+	 * `apiKey:manage` global scope (granted to owners and admins). When
+	 * neither condition matches we return 404 rather than 403 so the caller
+	 * cannot probe for the existence of another user's key.
+	 */
+	async deleteApiKey(caller: User, apiKeyId: string) {
+		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
+		const result = await this.apiKeyRepository.delete({
+			id: apiKeyId,
+			audience: API_KEY_AUDIENCE,
+			...(canDeleteAny ? {} : { userId: caller.id }),
+		});
+		if (!result.affected) throw new NotFoundError('API key not found');
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
@@ -87,6 +102,21 @@ export class PublicApiKeyService {
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
+	}
+
+	private toRedactedApiKey(apiKeyRecord: ApiKey) {
+		const { user, ...rest } = apiKeyRecord;
+		return {
+			...rest,
+			apiKey: this.redactApiKey(apiKeyRecord.apiKey),
+			expiresAt: this.getApiKeyExpiration(apiKeyRecord.apiKey),
+			owner: {
+				id: user.id,
+				firstName: user.firstName ?? null,
+				lastName: user.lastName ?? null,
+				email: user.email,
+			},
+		};
 	}
 
 	/**

@@ -12,7 +12,7 @@ import {
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
-	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
+	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
@@ -27,7 +27,7 @@ To build n8n workflows, follow these steps in order:
 
 1. Read the SDK reference: You MUST call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) before writing workflow code. Do not guess SDK syntax.
 
-2. Get suggested nodes: You MUST call ${CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName} with all relevant workflow technique categories before searching for nodes. Use the recommendations, pattern hints, and configuration guidance to decide which nodes and patterns to use.
+2. Get workflow best practices: You MUST call ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} for each workflow technique relevant to the user's request (e.g. "chatbot", "scheduling", "triage"). Call once per technique. Use the returned design guidance, recommended nodes, and common pitfalls to decide which nodes and patterns to use. If you are unsure which techniques apply, call this tool with technique="list" first to see all available techniques.
 
 3. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]), utility nodes (e.g., ["set", "if", "merge", "code"]), and suggested nodes you plan to use. Note the discriminators (resource/operation/mode) in the results.
 

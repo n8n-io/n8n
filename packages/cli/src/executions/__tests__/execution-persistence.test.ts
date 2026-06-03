@@ -3,6 +3,7 @@
 
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
+	ExecutionData,
 	ExecutionEntity,
 	type CreateExecutionPayload,
 	type EntityManager,
@@ -407,10 +408,9 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('data updates on db-mode executions', () => {
-			it('should update entity in a transaction and write a fresh bundle via dbStore', async () => {
-				const executionPersistence = createPersistenceService('fs'); // current mode is irrelevant for routing
+			it('should update data and workflowData directly without reading the existing bundle first', async () => {
+				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
-				dbStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -433,9 +433,10 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
-				expect(dbStore.write).toHaveBeenCalledWith(
-					{ workflowId, executionId },
-					expect.objectContaining({
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionData,
+					{ executionId },
+					{
 						data: expect.any(String) as string,
 						workflowData: {
 							id: workflowData.id,
@@ -444,11 +445,33 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'v-original',
-					}),
-					mockTx,
+					},
 				);
+				expect(dbStore.read).not.toHaveBeenCalled();
+				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should throw MissingExecutionDataError when the data row no longer exists during a full overwrite', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+
+				const mockTx = createMockTransaction();
+				mockTx.update
+					.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} })
+					.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.updateExistingExecution(executionId, {
+						data: runData,
+						workflowData,
+						status: 'success',
+					}),
+				).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+				expect(dbStore.read).not.toHaveBeenCalled();
+				expect(dbStore.write).not.toHaveBeenCalled();
 			});
 
 			it('should preserve fields not supplied in a partial payload', async () => {
@@ -645,7 +668,7 @@ describe('ExecutionPersistence', () => {
 				mockEntity('fs');
 
 				const mockTx = createMockTransaction();
-				mockTx.count.mockResolvedValue(0);
+				mockTx.findOne.mockResolvedValue(null);
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				const result = await executionPersistence.updateExistingExecution(
@@ -655,12 +678,52 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(result).toBe(false);
-				expect(mockTx.count).toHaveBeenCalledWith(ExecutionEntity, {
-					where: { id: executionId, finished: false },
-				});
 				expect(mockTx.update).not.toHaveBeenCalled();
 				expect(fsStore.read).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should take a pessimistic row lock to re-verify conditions on the data-only path (postgres)', async () => {
+				const executionPersistence = createPersistenceService('fs', 'postgresdb');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue({ id: executionId });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+					select: ['id'],
+					lock: { mode: 'pessimistic_write' },
+				});
+			});
+
+			it('should not take a lock on the data-only path under sqlite', async () => {
+				const executionPersistence = createPersistenceService('fs', 'sqlite');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue({ id: executionId });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+					select: ['id'],
+				});
 			});
 
 			it('should perform the fs write on a data-only update when conditions match', async () => {
@@ -669,7 +732,7 @@ describe('ExecutionPersistence', () => {
 				fsStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
-				mockTx.count.mockResolvedValue(1);
+				mockTx.findOne.mockResolvedValue({ id: executionId });
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				const result = await executionPersistence.updateExistingExecution(
@@ -679,7 +742,7 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(result).toBe(true);
-				expect(mockTx.count).toHaveBeenCalled();
+				expect(mockTx.findOne).toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
 			});
 

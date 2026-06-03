@@ -12,7 +12,7 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
+import { ExecutionData, ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -372,20 +372,28 @@ export class ExecutionPersistence {
 				if ((result.affected ?? 0) === 0) return false;
 			} else if (conditions) {
 				// No entity columns to update, but the caller still requested a guarded write.
-				// Re-verify the conditions inside the transaction so a data-only update can't slip
-				// past a `requireStatus` / `requireNotFinished` / `requireNotCanceled` check.
-				// TODO(CAT-3212): In Postgres this COUNT alone does not prevent a concurrent
-				// transaction from changing the row's status between the check and the data write —
-				// a row-level lock (e.g. `SELECT ... FOR UPDATE`) is required for true race-safety.
-				// SQLite is unaffected because `BEGIN` already takes an exclusive write lock.
-				const matchingRows = await tx.count(ExecutionEntity, { where: whereCondition });
-				if (matchingRows === 0) return false;
+				const lock =
+					this.databaseConfig.type === 'postgresdb'
+						? { mode: 'pessimistic_write' as const }
+						: undefined;
+				const matchingRow = await tx.findOne(ExecutionEntity, {
+					where: whereCondition,
+					select: ['id'],
+					lock,
+				});
+				if (!matchingRow) return false;
 			}
 
-			// TODO(CAT-3213): callers may supply only `data` or only `workflowData`, so we read
-			// the existing bundle to merge the unchanged half back in. Most callers in practice
-			// overwrite both fields, in which case the read is wasted work. Split the API into an
-			// overwrite path (no read) and an explicit partial-update path.
+			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
+				const result = await tx.update(
+					ExecutionData,
+					{ executionId: ref.executionId },
+					{ data: stringify(data), workflowData: this.toWorkflowSnapshot(workflowData) },
+				);
+				if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+				return true;
+			}
+
 			const existing = await store.read(ref, tx);
 			if (!existing) throw new MissingExecutionDataError(ref);
 
