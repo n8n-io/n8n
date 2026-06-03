@@ -236,7 +236,11 @@ export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
  * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
  * feedback and resource registries.
  */
-export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks) {
+export function createThreadRuntime(
+	threadId: string,
+	hooks: ThreadRuntimeHooks,
+	initialProjectId?: string,
+) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
@@ -244,6 +248,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
+	// The project this thread is bound to (immutable). Seeded for new threads;
+	// for reopened threads it's hydrated from the messages-load response.
+	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
@@ -687,6 +694,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				if (result.nextEventId !== null && result.nextEventId !== undefined) {
 					lastEventId.value = result.nextEventId - 1;
 				}
+				if (result.projectId) projectId.value = result.projectId;
 				return 'applied';
 			} catch {
 				// Silently ignore — messages will appear if SSE delivers them.
@@ -946,6 +954,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 		// state refs
 		messages,
+		projectId,
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,

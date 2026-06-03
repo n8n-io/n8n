@@ -87,13 +87,19 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async ensureThread(userId: string, threadId: string): Promise<InstanceAiEnsureThreadResponse> {
+	async ensureThread(
+		userId: string,
+		threadId: string,
+		projectId: string,
+	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
 			if (existing.resourceId !== userId) {
 				throw new Error(`Thread ${threadId} is not owned by user ${userId}`);
 			}
 
+			// A thread's project is immutable — the requested projectId is ignored for
+			// existing threads; the thread keeps whatever it was created with.
 			return {
 				thread: this.toThreadInfo(existing),
 				created: false,
@@ -105,6 +111,10 @@ export class InstanceAiMemoryService {
 			resourceId: userId,
 			title: '',
 		});
+		// projectId lives on the instance_ai_threads row (not the generic Thread
+		// shape) and is set once here, never on update — a thread's project is
+		// immutable.
+		await this.agentMemory.setThreadProjectId(threadId, projectId);
 
 		return {
 			thread: this.toThreadInfo(created),
@@ -167,7 +177,10 @@ export class InstanceAiMemoryService {
 		const messages = parseStoredMessages(storedMessages, snapshots);
 		await this.flagExpiredConfirmations(messages);
 
-		return { threadId, messages };
+		// Surface the bound project so each thread's frontend runtime knows its
+		// project on load (a thread is bound to one project for its lifetime).
+		const projectId = await this.agentMemory.getThreadProjectId(threadId);
+		return { threadId, projectId: projectId ?? undefined, messages };
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`

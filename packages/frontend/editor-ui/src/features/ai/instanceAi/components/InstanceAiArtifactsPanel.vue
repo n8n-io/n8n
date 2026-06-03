@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed, inject, ref } from 'vue';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import type { TaskItem } from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system';
 import {
 	N8nHeading,
 	N8nIcon,
@@ -8,11 +10,13 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed, inject, ref } from 'vue';
 import { useThread } from '../instanceAi.store';
-import type { TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
+const projectsStore = useProjectsStore();
 
 const props = withDefaults(defineProps<{ isPinned?: boolean; isPinningAvailable?: boolean }>(), {
 	isPinned: true,
@@ -23,6 +27,17 @@ const emit = defineEmits<{ togglePinned: [] }>();
 
 const i18n = useI18n();
 const thread = useThread();
+const project = computed(() => {
+	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
+	if (!match)
+		return { name: 'Unknown project', icon: { type: 'icon' as const, value: 'question' as const } };
+	const isPersonal = match.type === 'personal';
+	const icon = match.icon ?? { type: 'icon' as const, value: 'layer-group' as const };
+	return {
+		name: isPersonal ? 'Personal space' : match.name,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+	};
+});
 const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
@@ -100,12 +115,10 @@ const pinButtonLabel = computed(() =>
 <template>
 	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
-			<!-- Artifacts section -->
+			<!-- Project section -->
 			<div :class="$style.section">
 				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
-					</N8nHeading>
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle"> Project </N8nHeading>
 					<N8nTooltip
 						v-if="props.isPinningAvailable"
 						:content="pinButtonLabel"
@@ -124,6 +137,24 @@ const pinButtonLabel = computed(() =>
 							@click="emit('togglePinned')"
 						/>
 					</N8nTooltip>
+				</div>
+
+				<div :class="$style.artifactList">
+					<div :class="[$style.artifactRow]">
+						<span :class="$style.artifactIconWrap">
+							<ProjectIcon :icon="project.icon" size="small" border-less />
+						</span>
+						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Artifacts section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
+					</N8nHeading>
 				</div>
 
 				<div v-if="artifacts.length > 0" :class="$style.artifactList">
@@ -273,21 +304,23 @@ const pinButtonLabel = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
-	cursor: pointer;
 	border-radius: var(--radius);
 	color: var(--color--text);
 	text-decoration: none;
 	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
 
-	&:hover,
-	&:focus-visible {
-		background: var(--background--hover);
-		outline: none;
-		text-decoration: none;
-	}
+	&:is(a) {
+		cursor: pointer;
+		&:hover,
+		&:focus-visible {
+			background: var(--background--hover);
+			outline: none;
+			text-decoration: none;
+		}
 
-	&:visited {
-		color: var(--color--text);
+		&:visited {
+			color: var(--color--text);
+		}
 	}
 }
 

@@ -191,6 +191,7 @@ import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/17840000
 import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
+import { AddProjectIdToInstanceAiThread1784000000022 } from '../common/1784000000022-AddProjectIdToInstanceAiThread';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -385,6 +386,7 @@ const sqliteMigrations: Migration[] = [
 	AddCustomTelemetryTagsToProject1784000000019,
 	CreateWorkflowPublicationOutboxTable1784000000020,
 	CreateAgentTaskDefinitionTable1784000000021,
+	AddProjectIdToInstanceAiThread1784000000022,
 ];
 
 export { sqliteMigrations };

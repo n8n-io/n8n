@@ -246,16 +246,20 @@ export class InstanceAiAdapterService {
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
 			threadId?: string;
+			/** The project this thread is bound to. Clamps writes and scopes the
+			 *  default credential list. Absent only in package/test contexts. */
+			projectId?: string;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId, projectId } = options ?? {};
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user, threadId),
+			projectId,
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user),
+			credentialService: this.createCredentialAdapter(user, projectId),
 			nodeService: this.createNodeAdapter(user),
-			dataTableService: this.createDataTableAdapter(user),
+			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -300,7 +304,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	private createProjectScopeHelpers(user: User) {
+	private createProjectScopeHelpers(user: User, boundProjectId?: string) {
 		const { projectRepository } = this;
 		let personalProjectIdPromise: Promise<string> | null = null;
 
@@ -319,15 +323,34 @@ export class InstanceAiAdapterService {
 		};
 
 		const resolveProjectId = async (scopes: Scope[], providedProjectId?: string) => {
-			const projectId = providedProjectId ?? (await getPersonalProjectId());
+			const projectId = providedProjectId ?? boundProjectId ?? (await getPersonalProjectId());
 			await assertProjectScope(scopes, projectId);
 			return projectId;
 		};
 
-		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
+		// Write operations are clamped to the thread's bound project: any caller- or
+		// LLM-provided projectId is intentionally ignored so the agent cannot create
+		// resources outside its project. projectId is mandatory at thread creation,
+		// so a write with no bound project is an invalid state — fail rather than
+		// silently defaulting to the personal project.
+		const resolveBoundProjectId = async (scopes: Scope[]) => {
+			if (!boundProjectId) {
+				throw new UnexpectedError(
+					'Cannot create a resource: this Instance AI run has no bound project.',
+				);
+			}
+			await assertProjectScope(scopes, boundProjectId);
+			return boundProjectId;
+		};
+
+		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
 	}
 
-	private createWorkflowAdapter(user: User, threadId?: string): InstanceAiWorkflowService {
+	private createWorkflowAdapter(
+		user: User,
+		threadId?: string,
+		boundProjectId?: string,
+	): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
@@ -343,7 +366,7 @@ export class InstanceAiAdapterService {
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
 
 		return {
@@ -351,6 +374,10 @@ export class InstanceAiAdapterService {
 				const filter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(options?.query ? { query: options.query } : {}),
+					// Default to the thread's project; the agent opts into instance-wide
+					// with scope:'instance'. Reads carry no escalation (the agent runs as
+					// the user), so broadening is a relevance choice, not a permission one.
+					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
 
 				const { workflows } = await workflowService.getMany(user, {
@@ -500,7 +527,8 @@ export class InstanceAiAdapterService {
 				options?: { projectId?: string; markAsAiTemporary?: boolean },
 			) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
+				// Creation is clamped to the thread's project — options.projectId (if any) is ignored.
+				const projectId = await resolveBoundProjectId(['workflow:create']);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -1138,7 +1166,10 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createCredentialAdapter(user: User): InstanceAiCredentialService {
+	private createCredentialAdapter(
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 
 		return {
@@ -1167,6 +1198,20 @@ export class InstanceAiAdapterService {
 					);
 				}
 
+				// Default scope: the thread's bound project. The agent only sees
+				// credentials it can actually use here (project-shared + global) — the
+				// same intersection `preventTampering` enforces at save time — so it
+				// never picks a credential the save layer would later reject. Deliberately
+				// NOT broadenable: for credentials, what's visible must equal what's usable.
+				if (boundProjectId) {
+					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						projectId: boundProjectId,
+					});
+					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+				}
+
+				// Package/test contexts with no bound project: all credentials the user can access.
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
@@ -1412,11 +1457,14 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createDataTableAdapter(user: User): InstanceAiDataTableService {
+	private createDataTableAdapter(user: User, boundProjectId?: string): InstanceAiDataTableService {
 		const { dataTableService, dataTableRepository } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
 
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const { resolveProjectId, resolveBoundProjectId } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
 
 		const logger = this.logger;
 
@@ -1506,9 +1554,10 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async create(name, columns, options) {
+			async create(name, columns) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectId(['dataTable:create'], options?.projectId);
+				// Creation is clamped to the thread's project — any caller-provided projectId is ignored.
+				const projectId = await resolveBoundProjectId(['dataTable:create']);
 				const result = await dataTableService.createDataTable(projectId, { name, columns });
 
 				return {

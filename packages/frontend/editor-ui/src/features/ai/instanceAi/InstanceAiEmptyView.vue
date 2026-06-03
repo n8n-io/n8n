@@ -38,7 +38,7 @@ const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
 
 const store = useInstanceAiStore();
 const projectsStore = useProjectsStore();
-const selectedProject = ref(projectsStore.personalProject.id);
+const selectedProject = ref(projectsStore.personalProject?.id);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
@@ -83,6 +83,11 @@ onMounted(() => {
 });
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	if (!selectedProject.value) {
+		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
+		return;
+	}
+
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 
@@ -90,14 +95,14 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId);
+		await store.syncThread(threadId, selectedProject.value);
 	} catch {
 		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
-	const thread = store.getOrCreateRuntime(threadId);
+	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
@@ -175,6 +180,8 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	background-color: var(--color--neutral-150);
 	border-bottom-left-radius: var(--radius--xl);
 	border-bottom-right-radius: var(--radius--xl);
+	display: flex;
+	flex-direction: row;
 }
 
 .chatArea {

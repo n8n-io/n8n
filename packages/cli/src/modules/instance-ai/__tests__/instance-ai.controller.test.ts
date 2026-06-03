@@ -59,6 +59,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
@@ -101,6 +102,7 @@ describe('InstanceAiController', () => {
 	const subAgentEvalService = mock<SubAgentEvalService>();
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const projectService = mock<ProjectService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -114,6 +116,7 @@ describe('InstanceAiController', () => {
 		urlService,
 		userRepository,
 		credentialsService,
+		projectService,
 		globalConfig,
 	);
 

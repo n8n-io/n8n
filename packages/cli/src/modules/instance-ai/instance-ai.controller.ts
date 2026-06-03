@@ -51,6 +51,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
@@ -103,6 +104,7 @@ export class InstanceAiController {
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectService: ProjectService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -525,9 +527,20 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		// Binding a thread to a project requires membership of that project. This is
+		// the one place the client-supplied projectId is trusted — it is validated
+		// here, persisted immutably, and every run thereafter reads it from the
+		// thread row rather than the request. Reads default to this project; writes
+		// are additionally gated by their own scopes at the tool/save layer.
+		const project = await this.projectService.getProjectWithScope(req.user, payload.projectId, [
+			'project:read',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have access to the requested project');
+		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+		return await this.memoryService.ensureThread(req.user.id, requestedThreadId, payload.projectId);
 	}
 
 	@Delete('/threads/:threadId')

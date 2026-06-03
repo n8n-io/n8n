@@ -247,6 +247,9 @@ export interface InstanceAiWorkflowService {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
+		/** Defaults to the thread's project; 'instance' broadens to all projects
+		 *  the user can access. */
+		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
@@ -707,6 +710,14 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	/**
+	 * The n8n project this thread is bound to. Set by the CLI adapter from the
+	 * thread's `projectId` column and treated as the hard scope for the run: write
+	 * operations (create workflow / data table) are clamped to it, and
+	 * project-scoped reads default to it. Absent for package-local/test contexts
+	 * and internal sub-agent threads; user-facing runs always set it.
+	 */
+	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -1134,6 +1145,13 @@ export interface OrchestrationContext {
 	runId: string;
 	messageGroupId?: string;
 	userId: string;
+	/**
+	 * The n8n project this thread is bound to. Inherited by sub-agents and
+	 * background tasks so delegated work (plan / delegate / build-workflow) stays
+	 * within the same project scope as the orchestrator. Optional only for
+	 * package-local/test contexts; production always sets it from the thread.
+	 */
+	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;

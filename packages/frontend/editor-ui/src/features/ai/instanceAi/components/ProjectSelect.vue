@@ -1,17 +1,17 @@
 <script setup lang="ts">
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { N8nButton, N8nIcon, N8nScrollArea, N8nTooltip } from '@n8n/design-system';
 import {
+	ComboboxAnchor,
 	ComboboxContent,
 	ComboboxEmpty,
-	ComboboxAnchor,
-	ComboboxTrigger,
-	ComboboxPortal,
 	ComboboxInput,
 	ComboboxItem,
+	ComboboxPortal,
 	ComboboxRoot,
+	ComboboxTrigger,
 } from 'reka-ui';
 import { computed } from 'vue';
-import { N8nScrollArea, N8nIcon, N8nButton } from '@n8n/design-system';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -28,22 +28,27 @@ const model = defineModel<string | null>();
 	<ComboboxRoot v-model="model">
 		<ComboboxAnchor as-child>
 			<ComboboxTrigger as-child>
-				<N8nButton variant="ghost" size="xsmall">
-					<template v-if="selectedProject?.type === 'personal'">
-						<ProjectIcon :icon="{ type: 'icon', value: 'user-round' }" size="small" border-less />
-						Personal space
+				<N8nTooltip placement="bottom" as-child :content-class="$style.tooltip">
+					<N8nButton variant="ghost" size="xsmall">
+						<template v-if="selectedProject?.type === 'personal'">
+							<ProjectIcon :icon="{ type: 'icon', value: 'user-round' }" size="small" border-less />
+							Personal space
+						</template>
+						<template v-else-if="selectedProject">
+							<ProjectIcon
+								:icon="selectedProject.icon ?? { type: 'icon', value: 'layer-group' }"
+								size="small"
+								border-less
+							/>
+							{{ selectedProject.name }}
+						</template>
+						<template v-else> 'Select a project' </template>
+						<N8nIcon icon="chevron-down" />
+					</N8nButton>
+					<template #content>
+						<span style="white-space: nowrap">Where AI assistant creates automations</span>
 					</template>
-					<template v-else-if="selectedProject">
-						<ProjectIcon
-							:icon="selectedProject.icon ?? { type: 'icon', value: 'layer-group' }"
-							size="small"
-							border-less
-						/>
-						{{ selectedProject.name }}
-					</template>
-					<template v-else> 'Select a project' </template>
-					<N8nIcon icon="chevron-down" />
-				</N8nButton>
+				</N8nTooltip>
 			</ComboboxTrigger>
 		</ComboboxAnchor>
 
@@ -225,5 +230,9 @@ const model = defineModel<string | null>();
 .check {
 	flex-shrink: 0;
 	color: var(--color--text);
+}
+
+.tooltip {
+	max-width: none;
 }
 </style>

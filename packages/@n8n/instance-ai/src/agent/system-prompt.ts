@@ -17,6 +17,9 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** The n8n project this conversation/thread is scoped to. When present, the
+	 *  agent is told its writes and credential use are limited to this project. */
+	projectId?: string;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -47,6 +50,31 @@ Some trigger nodes expose HTTP endpoints. Always share the full production URL w
   The /chat suffix is unique to Chat Trigger — do NOT append it to Form Trigger or Webhook URLs. (Your own testing via \`executions(action="run")\` and \`verify-built-workflow\` works regardless of \`public\` or publish state.)
 
 **These URLs are for sharing with the user only.** Do NOT include them in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch these URLs.`;
+}
+
+function getProjectScopeSection(projectId?: string): string {
+	if (!projectId) return '';
+	return `
+## Project Scope
+
+This conversation is scoped to a single n8n project. Reads and writes differ:
+
+- **Writes are locked to this project.** Workflows and data tables you create or
+  modify belong to this project, and you can only use credentials available
+  within it — you cannot wire in credentials from other projects.
+- **Credentials are always this project's.** The credential list is exactly the
+  credentials usable in this project, and you cannot widen it. Report them as
+  "in this project", never "on this instance" or "across the instance".
+- **Looking things up defaults to this project, but you can search wider.**
+  Workflow and resource lookups return this project's items by default; widen a
+  search to the whole instance when the user needs something that may live in
+  another project. Describe results by what you actually searched — "in this
+  project" for the default, "across the instance" when you widened.
+
+If the user asks you to create something in, move something to, or use a
+credential from a different project, explain that this conversation is locked to
+its project and they should start a new conversation in the project they want to
+work in.`;
 }
 
 function getReadOnlySection(branchReadOnly?: boolean): string {
@@ -81,6 +109,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 		browserAvailable,
 		branchReadOnly,
+		projectId,
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
@@ -88,6 +117,7 @@ ${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow builder. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
+${getProjectScopeSection(projectId)}
 
 ## When to Plan
 

@@ -198,6 +198,7 @@ import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/17840000
 import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
 import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
 import type { Migration } from '../migration-types';
+import { AddProjectIdToInstanceAiThread1784000000022 } from '../common/1784000000022-AddProjectIdToInstanceAiThread';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -399,4 +400,5 @@ export const postgresMigrations: Migration[] = [
 	AddCustomTelemetryTagsToProject1784000000019,
 	CreateWorkflowPublicationOutboxTable1784000000020,
 	CreateAgentTaskDefinitionTable1784000000021,
+	AddProjectIdToInstanceAiThread1784000000022,
 ];

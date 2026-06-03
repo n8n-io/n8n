@@ -8,6 +8,8 @@ const mockSaveThread = jest.fn();
 const mockDeleteThread = jest.fn();
 const mockDeleteThreadsByResourceIdPrefix = jest.fn();
 const mockListThreads = jest.fn();
+const mockSetThreadProjectId = jest.fn();
+const mockGetThreadProjectId = jest.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
 	getThread: mockGetThread,
@@ -15,6 +17,8 @@ const mockAgentMemory = {
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
 	listThreads: mockListThreads,
+	setThreadProjectId: mockSetThreadProjectId,
+	getThreadProjectId: mockGetThreadProjectId,
 };
 
 // Mock GlobalConfig
@@ -305,13 +309,14 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		});
 
 		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-new');
+		const result = await service.ensureThread('user-1', 'thread-new', 'project-1');
 
 		expect(mockSaveThread).toHaveBeenCalledWith({
 			id: 'thread-new',
 			resourceId: 'user-1',
 			title: '',
 		});
+		expect(mockSetThreadProjectId).toHaveBeenCalledWith('thread-new', 'project-1');
 		expect(result.created).toBe(true);
 		expect(result.thread.id).toBe('thread-new');
 		expect(result.thread.resourceId).toBe('user-1');
@@ -328,7 +333,7 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 		});
 
 		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-existing');
+		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1');
 
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);
