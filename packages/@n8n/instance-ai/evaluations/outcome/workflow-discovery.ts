@@ -11,12 +11,7 @@ import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } fr
 // Tool names whose results contain workflow IDs
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_TOOLS = new Set([
-	'build-workflow',
-	'submit-workflow',
-	'patch-workflow',
-	'build-workflow-with-agent',
-]);
+const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
 // ---------------------------------------------------------------------------
 // snapshotWorkflowIds -- call before the run to know what existed prior

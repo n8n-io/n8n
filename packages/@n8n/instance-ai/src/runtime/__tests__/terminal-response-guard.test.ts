@@ -81,6 +81,17 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		});
 	});
 
+	it('does not emit completed fallback when silence is expected', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'completed', {
+			workSummary: { totalToolCalls: 3, totalToolErrors: 0, toolCalls: [] },
+			suppressCompletedFallback: true,
+		});
+
+		expect(decision.action).toBe('none');
+		expect(decision.reason).toBe('completed-silent-suppressed');
+		expect(decision.event).toBeUndefined();
+	});
+
 	it('emits sanitized error when partial root text is followed by failure', () => {
 		const decision = guard().evaluateTerminal([runStart(), rootText('partial')], 'errored', {
 			errorMessage: 'Safe error',
