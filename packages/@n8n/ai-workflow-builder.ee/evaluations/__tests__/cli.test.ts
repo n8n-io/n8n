@@ -77,6 +77,13 @@ vi.mock('../lifecycles/introspection-analysis', () => ({
 	createIntrospectionAnalysisLifecycle: () => ({}),
 }));
 
+// Stub the code-builder module so importing `../cli` doesn't drag in the heavy
+// langchain / workflow-builder graph. `runEvaluation` is mocked below, so the
+// generation path never actually invokes `CodeWorkflowBuilder`.
+vi.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: vi.fn(),
+}));
+
 vi.mock('../index', () => ({
 	runEvaluation: (...args: unknown[]): unknown => mockRunEvaluation(...args),
 	createConsoleLifecycle: (...args: unknown[]): unknown => mockCreateConsoleLifecycle(...args),

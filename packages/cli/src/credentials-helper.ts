@@ -429,6 +429,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {
 				additionalData.currentNodeUsedDynamicCredentials = true;
+				if (resolveResult.resolvedUserId) {
+					additionalData.dynamicCredentialsResolvedUserId = resolveResult.resolvedUserId;
+				}
 			}
 		}
 

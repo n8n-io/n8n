@@ -90,6 +90,15 @@ export class McpRegistryService {
 		return entity ? fromEntity(entity) : undefined;
 	}
 
+	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
+		if (slugs.length === 0) {
+			return [];
+		}
+
+		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
+		return entities.map(fromEntity);
+	}
+
 	private startPeriodicRefresh(): void {
 		if (this.isShuttingDown || this.refreshInterval) {
 			return;

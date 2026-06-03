@@ -25,6 +25,7 @@
 	"complexity": "medium",
 	"tags": ["build", "webhook", "switch", "microsoft-teams", "slack", "gmail", "routing"],
 	"triggerType": "webhook",
+	"datasets": ["pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "high-priority",
