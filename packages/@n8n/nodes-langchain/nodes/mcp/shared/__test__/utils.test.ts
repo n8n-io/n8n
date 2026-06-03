@@ -5,7 +5,7 @@ import { proxyFetch } from '@n8n/ai-utilities';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { expect } from 'vitest';
 
 import type { McpAuthenticationOption } from '../types';
 import {

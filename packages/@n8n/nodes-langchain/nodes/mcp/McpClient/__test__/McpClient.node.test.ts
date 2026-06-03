@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
