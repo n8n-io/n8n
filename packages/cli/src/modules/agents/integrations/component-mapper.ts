@@ -4,12 +4,14 @@ import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
 import type { CardElement } from 'chat';
 
+type ComponentText = string | { text?: string; [key: string]: unknown };
+
 /**
  * Component type from agent SDK suspend/toMessage payloads.
  */
 export interface SuspendComponent {
 	type: string;
-	text?: string;
+	text?: ComponentText;
 	label?: string;
 	value?: string;
 	style?: string;
@@ -17,13 +19,13 @@ export interface SuspendComponent {
 	altText?: string;
 	placeholder?: string;
 	/** Accessory button on a section */
-	button?: { label: string; value: string; style?: string };
+	button?: { label?: string; text?: ComponentText; value: string; style?: string };
 	/** Options for select / radio_select components */
 	options?: Array<{ label: string; value: string; description?: string }>;
 	/** Fields for fields component */
 	fields?: Array<{ label: string; value: string }>;
 	/** Elements array for context blocks */
-	elements?: Array<{ type: string; text?: string; url?: string; altText?: string }>;
+	elements?: Array<{ type: string; text?: ComponentText; url?: string; altText?: string }>;
 	/** Allow additional properties from the payload */
 	id?: string;
 	[key: string]: unknown;
@@ -149,7 +151,11 @@ export class ComponentMapper {
 		switch (component.type) {
 			case 'button':
 				buttons.push(
-					await makeButton(component.label ?? 'Action', component.value ?? '', component.style),
+					await makeButton(
+						component.label ?? componentTextToString(component.text) ?? 'Action',
+						component.value ?? '',
+						component.style,
+					),
 				);
 				return;
 			case 'section':
@@ -185,8 +191,9 @@ export class ComponentMapper {
 		children,
 		makeButton,
 	}: ComponentRenderContext): Promise<void> {
-		if (component.text) {
-			children.push(sdk.Section([sdk.CardText(component.text)] as never));
+		const text = componentTextToString(component.text);
+		if (text) {
+			children.push(sdk.Section([sdk.CardText(text)] as never));
 		}
 		// Section accessory buttons must be in a separate Actions block.
 		// Chat SDK's cardToBlockKit silently drops Button children
@@ -194,7 +201,11 @@ export class ComponentMapper {
 		if (component.button) {
 			children.push(
 				sdk.Actions([
-					await makeButton(component.button.label, component.button.value, component.button.style),
+					await makeButton(
+						component.button.label ?? componentTextToString(component.button.text) ?? 'Action',
+						component.button.value,
+						component.button.style,
+					),
 				] as never),
 			);
 		}
@@ -213,15 +224,18 @@ export class ComponentMapper {
 		// Context blocks contain an elements array with text/image items
 		if (component.elements && Array.isArray(component.elements)) {
 			for (const el of component.elements) {
-				if (el.type === 'text' && el.text) {
-					children.push(sdk.CardText(el.text));
+				const text = componentTextToString(el.text);
+				if (el.type === 'text' && text) {
+					children.push(sdk.CardText(text));
 				} else if (el.type === 'image' && el.url) {
 					children.push(sdk.Image({ url: el.url, alt: el.altText ?? '' }));
 				}
 			}
-		} else if (component.text) {
+		} else {
+			const text = componentTextToString(component.text);
+			if (!text) return;
 			// Fallback: plain text context
-			children.push(sdk.CardText(component.text));
+			children.push(sdk.CardText(text));
 		}
 	}
 
@@ -353,7 +367,10 @@ export class ComponentMapper {
 	private appendMarkdownChild(c: SuspendComponent, sdk: ChatSdk, children: unknown[]): void {
 		switch (c.type) {
 			case 'section':
-				if (c.text) children.push(sdk.Section([sdk.CardText(c.text)] as never));
+				{
+					const text = componentTextToString(c.text);
+					if (text) children.push(sdk.Section([sdk.CardText(text)] as never));
+				}
 				return;
 			case 'divider':
 				children.push(sdk.Divider());
@@ -365,7 +382,10 @@ export class ComponentMapper {
 				this.appendMarkdownContext(c, sdk, children);
 				return;
 			default:
-				if (c.text) children.push(sdk.CardText(c.text));
+				{
+					const text = componentTextToString(c.text);
+					if (text) children.push(sdk.CardText(text));
+				}
 				return;
 		}
 	}
@@ -373,14 +393,25 @@ export class ComponentMapper {
 	private appendMarkdownContext(c: SuspendComponent, sdk: ChatSdk, children: unknown[]): void {
 		if (c.elements) {
 			for (const el of c.elements) {
-				if (el.type === 'text' && el.text) {
-					children.push(sdk.CardText(el.text));
+				const text = componentTextToString(el.text);
+				if (el.type === 'text' && text) {
+					children.push(sdk.CardText(text));
 				} else if (el.type === 'image' && el.url) {
 					children.push(sdk.Image({ url: el.url, alt: el.altText ?? '' }));
 				}
 			}
-		} else if (c.text) {
-			children.push(sdk.CardText(c.text));
+		} else {
+			const text = componentTextToString(c.text);
+			if (text) children.push(sdk.CardText(text));
 		}
 	}
+}
+
+function componentTextToString(text: unknown): string | undefined {
+	if (typeof text === 'string') return text;
+	if (text && typeof text === 'object' && 'text' in text) {
+		const value = (text as { text?: unknown }).text;
+		if (typeof value === 'string') return value;
+	}
+	return undefined;
 }

@@ -441,6 +441,43 @@ describe('integration tools', () => {
 		expect(tool.description).toContain('Use message.card for cards');
 	});
 
+	it('action tool schema accepts button text objects in message cards', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						card: {
+							title: 'Approve / Reject Demo',
+							components: [
+								{ type: 'section', text: 'Choose an action.' },
+								{
+									type: 'button',
+									text: { type: 'plain_text', text: 'Approve' },
+									style: 'primary',
+									value: 'approve',
+								},
+								{
+									type: 'button',
+									text: { type: 'plain_text', text: 'Reject' },
+									style: 'danger',
+									value: 'reject',
+								},
+							],
+						},
+					},
+				},
+			}).success,
+		).toBe(true);
+	});
+
 	it('action tool schema accepts Slack emoji reaction actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({

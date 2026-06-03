@@ -99,6 +99,36 @@ describe('ComponentMapper', () => {
 			});
 		});
 
+		it('should use button text as the label when label is omitted', async () => {
+			const payload = {
+				title: 'Approve / Reject Demo',
+				components: [
+					{ type: 'button' as const, text: 'Approve', style: 'primary', value: 'approve' },
+					{
+						type: 'button' as const,
+						text: { type: 'plain_text', text: 'Reject' },
+						style: 'danger',
+						value: 'reject',
+					},
+				],
+			};
+
+			await mapper.toCard(payload, runId, toolCallId);
+
+			expect(mockButton).toHaveBeenNthCalledWith(1, {
+				id: `resume:${runId}:${toolCallId}:0`,
+				label: 'Approve',
+				style: 'primary',
+				value: JSON.stringify({ value: 'approve' }),
+			});
+			expect(mockButton).toHaveBeenNthCalledWith(2, {
+				id: `resume:${runId}:${toolCallId}:1`,
+				label: 'Reject',
+				style: 'danger',
+				value: JSON.stringify({ value: 'reject' }),
+			});
+		});
+
 		it('should map section components with text wrapped in CardText', async () => {
 			const payload = {
 				components: [{ type: 'section', text: 'Some section text' }],

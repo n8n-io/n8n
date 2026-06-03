@@ -159,9 +159,19 @@ const selectOptionSchema = z.object({
 	description: z.string().optional(),
 });
 
+const cardTextSchema = z.union([
+	z.string(),
+	z
+		.object({
+			type: z.string().optional(),
+			text: z.string(),
+		})
+		.passthrough(),
+]);
+
 const cardComponentSchema = z.object({
 	type: z.string(),
-	text: z.string().optional(),
+	text: cardTextSchema.optional(),
 	label: z.string().optional(),
 	value: z.string().optional(),
 	style: z.enum(['primary', 'danger']).optional(),
@@ -930,6 +940,7 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
 		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
+		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
 		'Platform-specific rendering is handled internally.',
 		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
 		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
