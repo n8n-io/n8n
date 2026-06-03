@@ -67,6 +67,7 @@ import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
+import { streamAgentChunks } from './utils/agent-stream';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
@@ -1093,16 +1094,9 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
+			yield value;
 		}
 
 		// Always record resumed executions — even if they suspend again (chained HITL).
@@ -1532,29 +1526,22 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
 
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
+			if (value.type === 'tool-call') {
+				toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+			} else if (value.type === 'tool-result') {
+				const pending = toolInputs.get(value.toolCallId);
+				toolCalls.push({
+					toolName: value.toolName,
+					input: pending?.input ?? null,
+					result: value.output,
+				});
+				toolInputs.delete(value.toolCallId);
+			} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+				structuredOutput = value.structuredOutput;
 			}
-		} finally {
-			reader.releaseLock();
 		}
 
 		const messageRecord = recorder.getMessageRecord();

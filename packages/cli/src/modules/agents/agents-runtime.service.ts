@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { AgentExecutionService } from './agent-execution.service';
 import { ExecutionRecorder } from './execution-recorder';
 import type { ToolRegistry } from './tool-registry';
+import { streamAgentChunks } from './utils/agent-stream';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -313,35 +314,25 @@ export class AgentsRuntimeService {
 					abortSignal: control?.signal,
 				});
 
-				const reader = resultStream.stream.getReader();
-				let aborted = false;
-				try {
-					while (true) {
-						const { done, value } = await reader.read();
-						if (done) break;
-						if (control?.wasAborted()) {
-							aborted = true;
-							break;
-						}
-
-						recorder.record(value);
-						if (value.type === 'tool-call-suspended') {
-							logger.info('Chat: tool-call-suspended chunk received', {
-								agentId,
-								toolCallId: value.toolCallId,
-								toolName: value.toolName,
-							});
-						}
-						if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-							for (const chunk of getMaxIterationsChunks()) {
-								yield chunk;
-							}
-						}
-						yield value;
+				for await (const value of streamAgentChunks(resultStream.stream)) {
+					if (control?.wasAborted()) {
+						return;
 					}
-				} finally {
-					if (aborted || control?.wasAborted()) await reader.cancel().catch(() => {});
-					reader.releaseLock();
+
+					recorder.record(value);
+					if (value.type === 'tool-call-suspended') {
+						logger.info('Chat: tool-call-suspended chunk received', {
+							agentId,
+							toolCallId: value.toolCallId,
+							toolName: value.toolName,
+						});
+					}
+					if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+						for (const chunk of getMaxIterationsChunks()) {
+							yield chunk;
+						}
+					}
+					yield value;
 				}
 
 				if (control?.wasAborted()) {

@@ -12,7 +12,7 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
+import { ExecutionData, ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -384,10 +384,16 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			// TODO(CAT-3213): callers may supply only `data` or only `workflowData`, so we read
-			// the existing bundle to merge the unchanged half back in. Most callers in practice
-			// overwrite both fields, in which case the read is wasted work. Split the API into an
-			// overwrite path (no read) and an explicit partial-update path.
+			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
+				const result = await tx.update(
+					ExecutionData,
+					{ executionId: ref.executionId },
+					{ data: stringify(data), workflowData: this.toWorkflowSnapshot(workflowData) },
+				);
+				if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+				return true;
+			}
+
 			const existing = await store.read(ref, tx);
 			if (!existing) throw new MissingExecutionDataError(ref);
 

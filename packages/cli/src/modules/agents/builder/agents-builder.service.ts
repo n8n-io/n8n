@@ -31,6 +31,7 @@ import { N8nMemory } from '../integrations/n8n-memory';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
+import { streamAgentChunks } from '../utils/agent-stream';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
@@ -311,19 +312,9 @@ export class AgentsBuilderService {
 		resultStream: StreamResult,
 		control?: AgentStreamControl,
 	): AsyncGenerator<StreamChunk> {
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				if (control?.wasAborted()) {
-					break;
-				}
-				yield value;
-			}
-		} finally {
-			if (control?.wasAborted()) await reader.cancel().catch(() => {});
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			if (control?.wasAborted()) break;
+			yield value;
 		}
 	}
 

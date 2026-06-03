@@ -22,6 +22,7 @@ import {
 	type ToolExecutor,
 	type ToolResolver,
 } from '../json-config/from-json-config';
+import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
@@ -115,18 +116,11 @@ export class SubAgentForegroundRunner {
 			const recorder = new ExecutionRecorder();
 			let structuredOutput: unknown;
 
-			const reader = resultStream.stream.getReader();
-			try {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					recorder.record(value);
-					if (value.type === 'finish' && value.structuredOutput !== undefined) {
-						structuredOutput = value.structuredOutput;
-					}
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
 				}
-			} finally {
-				reader.releaseLock();
 			}
 
 			const messageRecord = recorder.getMessageRecord();
@@ -235,6 +229,9 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
+		getState: () => {
+			throw new Error('getState is not implemented for sub-agent foreground runner');
+		},
 	};
 	return result;
 }
