@@ -1,7 +1,6 @@
+import { Time } from '@n8n/constants';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-
-import { Time } from '@n8n/constants';
 
 import { Config, Env } from '../decorators';
 
