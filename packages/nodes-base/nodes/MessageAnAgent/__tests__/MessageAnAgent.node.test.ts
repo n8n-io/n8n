@@ -236,4 +236,81 @@ describe('MessageAnAgent Node', () => {
 			{ toolName: 'search', input: { query: 'test' }, result: { found: true } },
 		]);
 	});
+
+	it('should forward the parsed output schema when structured output is enabled', async () => {
+		const schemaString = JSON.stringify({
+			type: 'object',
+			properties: { result: { type: 'string' } },
+			required: ['result'],
+		});
+
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return schemaString;
+				return undefined;
+			},
+		);
+		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+			{
+				agentId: 'agent-1',
+				sessionId: undefined,
+				outputSchema: {
+					type: 'object',
+					properties: { result: { type: 'string' } },
+					required: ['result'],
+				},
+			},
+			'Hello agent',
+			'exec-123',
+			0,
+		);
+	});
+
+	it('should throw NodeOperationError when the output schema is not valid JSON', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return '{ not valid json';
+				return undefined;
+			},
+		);
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+			'Output schema is not valid JSON',
+		);
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
+
+	it('should throw NodeOperationError when structured output is enabled with an empty schema', async () => {
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'message') return 'Hello agent';
+				if (param === 'advanced') return fallback ?? {};
+				if (param === 'useStructuredOutput') return true;
+				if (param === 'outputSchema') return '   ';
+				return undefined;
+			},
+		);
+		executeFunctions.continueOnFail.mockReturnValue(false);
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow('Output schema is empty');
+		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
+	});
 });

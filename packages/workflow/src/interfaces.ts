@@ -7,6 +7,7 @@ import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
+import type { JSONSchema7 } from 'json-schema';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -2004,6 +2005,13 @@ export interface ExecuteAgentInfo {
 	 * from the workflow execution id and item index.
 	 */
 	sessionId?: string;
+	/**
+	 * Optional JSON Schema describing the shape the agent should return. When
+	 * provided, it is applied to this call only (overriding the agent's own
+	 * config), and the conforming object is surfaced on
+	 * {@link ExecuteAgentData.structuredOutput}.
+	 */
+	outputSchema?: JSONSchema7;
 }
 
 export interface ExecuteAgentOptions {
@@ -3248,6 +3256,7 @@ export interface IWorkflowExecuteAdditionalData {
 		threadId: string,
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionMode: WorkflowExecuteMode,
+		outputSchema?: JSONSchema7,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;

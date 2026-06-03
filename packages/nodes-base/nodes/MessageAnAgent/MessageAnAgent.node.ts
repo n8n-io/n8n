@@ -1,3 +1,4 @@
+import type { JSONSchema7 } from 'json-schema';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,8 +7,53 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import crypto from 'node:crypto';
+
+/**
+ * Read and parse the per-item structured-output JSON Schema. Returns `undefined`
+ * when the toggle is off; throws a user-facing error when the toggle is on but
+ * the schema is empty or not valid JSON.
+ */
+function getStructuredOutputSchema(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): JSONSchema7 | undefined {
+	const useStructuredOutput = ctx.getNodeParameter(
+		'useStructuredOutput',
+		itemIndex,
+		false,
+	) as boolean;
+	if (!useStructuredOutput) return undefined;
+
+	const rawSchema = ctx.getNodeParameter('outputSchema', itemIndex, '') as string;
+	if (!rawSchema.trim()) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'Output schema is empty. Provide a JSON Schema or turn off "Output Structured Data".',
+			{ itemIndex },
+		);
+	}
+
+	let parsed: JSONSchema7;
+	try {
+		parsed = jsonParse<JSONSchema7>(rawSchema);
+	} catch (error) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Output schema is not valid JSON: ${(error as Error).message}`,
+			{ itemIndex },
+		);
+	}
+
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		throw new NodeOperationError(ctx.getNode(), 'Output schema must be a JSON Schema object', {
+			itemIndex,
+		});
+	}
+
+	return parsed;
+}
 
 export class MessageAnAgent implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,6 +120,39 @@ export class MessageAnAgent implements INodeType {
 				description: 'The message to send to the agent',
 				typeOptions: {
 					rows: 4,
+				},
+			},
+			{
+				displayName: 'Output Structured Data',
+				name: 'useStructuredOutput',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to constrain the agent response to a JSON Schema you provide. The conforming object is returned on the "structuredOutput" field.',
+			},
+			{
+				displayName: 'Output Schema',
+				name: 'outputSchema',
+				type: 'json',
+				default: `{
+  "type": "object",
+  "properties": {
+    "result": {
+      "type": "string",
+      "description": "The result of the task"
+    }
+  },
+  "required": ["result"]
+}`,
+				description: 'The JSON Schema that the agent response must conform to',
+				hint: 'Use <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format',
+				typeOptions: {
+					rows: 10,
+				},
+				displayOptions: {
+					show: {
+						useStructuredOutput: [true],
+					},
 				},
 			},
 			{
@@ -148,8 +227,10 @@ export class MessageAnAgent implements INodeType {
 					});
 				}
 
+				const outputSchema = getStructuredOutputSchema(this, i);
+
 				const result = await this.executeAgent(
-					{ agentId, sessionId: sessionIdOverride || undefined },
+					{ agentId, sessionId: sessionIdOverride || undefined, outputSchema },
 					message,
 					executionId,
 					i,
