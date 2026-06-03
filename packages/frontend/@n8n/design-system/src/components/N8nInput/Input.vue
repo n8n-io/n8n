@@ -1,19 +1,10 @@
 <script setup lang="ts">
-import { useResizeObserver } from '@vueuse/core';
-import {
-	ref,
-	computed,
-	useCssModule,
-	watch,
-	nextTick,
-	onMounted,
-	onBeforeUnmount,
-	useAttrs,
-} from 'vue';
+import { ref, computed, useCssModule, watch, nextTick, onMounted, useAttrs } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
+import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
@@ -156,116 +147,15 @@ const showClearButton = computed(() => {
 	return props.clearable && !props.disabled && props.modelValue !== '' && props.modelValue !== null;
 });
 
-// Autosize textarea functionality using hidden textarea measurement (Element+ approach)
-const textareaStyles = ref<{ height?: string; minHeight?: string }>({});
-let hiddenTextarea: HTMLTextAreaElement | undefined;
-
-const CONTEXT_STYLE_PROPS = [
-	'letter-spacing',
-	'line-height',
-	'padding-top',
-	'padding-bottom',
-	'font-family',
-	'font-weight',
-	'font-size',
-	'text-rendering',
-	'text-transform',
-	'width',
-	'text-indent',
-	'padding-left',
-	'padding-right',
-	'border-width',
-	'box-sizing',
-];
-
-function calcTextareaHeight(
-	targetElement: HTMLTextAreaElement,
-	minRows?: number,
-	maxRows?: number,
-): { height: string; minHeight?: string } {
-	if (!hiddenTextarea) {
-		hiddenTextarea = document.createElement('textarea');
-		document.body.appendChild(hiddenTextarea);
-	}
-
-	const style = window.getComputedStyle(targetElement);
-	const boxSizing = style.getPropertyValue('box-sizing');
-	const paddingSize =
-		parseFloat(style.getPropertyValue('padding-bottom')) +
-		parseFloat(style.getPropertyValue('padding-top'));
-	const borderSize =
-		parseFloat(style.getPropertyValue('border-bottom-width')) +
-		parseFloat(style.getPropertyValue('border-top-width'));
-	const contextStyle = CONTEXT_STYLE_PROPS.map(
-		(name) => `${name}:${style.getPropertyValue(name)}`,
-	).join(';');
-
-	hiddenTextarea.className = $style.hiddenTextarea;
-	hiddenTextarea.setAttribute('style', contextStyle);
-	hiddenTextarea.value = targetElement.value || targetElement.placeholder || '';
-
-	let height = hiddenTextarea.scrollHeight;
-	const result: { height: string; minHeight?: string } = { height: '' };
-
-	if (boxSizing === 'border-box') {
-		height = height + borderSize;
-	} else if (boxSizing === 'content-box') {
-		height = height - paddingSize;
-	}
-
-	// Calculate single row height
-	hiddenTextarea.value = '';
-	const singleRowHeight = hiddenTextarea.scrollHeight - paddingSize;
-
-	if (minRows !== undefined) {
-		let minHeight = singleRowHeight * minRows;
-		if (boxSizing === 'border-box') {
-			minHeight = minHeight + paddingSize + borderSize;
-		}
-		height = Math.max(minHeight, height);
-		result.minHeight = `${minHeight}px`;
-	}
-
-	if (maxRows !== undefined) {
-		let maxHeight = singleRowHeight * maxRows;
-		if (boxSizing === 'border-box') {
-			maxHeight = maxHeight + paddingSize + borderSize;
-		}
-		height = Math.min(maxHeight, height);
-	}
-
-	result.height = `${height}px`;
-	return result;
-}
-
-function cleanupHiddenTextarea() {
-	if (hiddenTextarea?.parentNode) {
-		hiddenTextarea.parentNode.removeChild(hiddenTextarea);
-		hiddenTextarea = undefined;
-	}
-}
-
-const calculateTextareaHeight = () => {
-	if (props.type !== 'textarea' || !props.autosize || !inputRef.value) return;
-
-	const textarea = inputRef.value as HTMLTextAreaElement;
-	const minRows = typeof props.autosize === 'object' ? props.autosize.minRows : undefined;
-	const maxRows = typeof props.autosize === 'object' ? props.autosize.maxRows : undefined;
-
-	textareaStyles.value = calcTextareaHeight(textarea, minRows, maxRows);
-	cleanupHiddenTextarea();
-};
-
-// Use ResizeObserver for responsive behavior
-useResizeObserver(
-	computed(() => (props.type === 'textarea' && props.autosize ? inputRef.value : null)),
-	() => {
-		calculateTextareaHeight();
-	},
+const autosizeRows = computed(() =>
+	typeof props.autosize === 'object'
+		? { minRows: props.autosize.minRows, maxRows: props.autosize.maxRows }
+		: undefined,
 );
-
-onBeforeUnmount(() => {
-	cleanupHiddenTextarea();
+const { textareaStyles, calculateTextareaHeight } = useAutosizeTextarea({
+	textarea: computed(() => (inputRef.value instanceof HTMLTextAreaElement ? inputRef.value : null)),
+	enabled: computed(() => props.type === 'textarea' && Boolean(props.autosize)),
+	rows: autosizeRows,
 });
 
 // Watch for value changes to recalculate height
@@ -607,15 +497,5 @@ defineExpose({ focus, blur, select });
 .append {
 	border-left: var(--border);
 	margin-right: calc(-1 * var(--spacing--xs));
-}
-
-.hiddenTextarea {
-	height: 0 !important;
-	visibility: hidden !important;
-	overflow: hidden !important;
-	position: absolute !important;
-	z-index: -1000 !important;
-	top: 0 !important;
-	right: 0 !important;
 }
 </style>
