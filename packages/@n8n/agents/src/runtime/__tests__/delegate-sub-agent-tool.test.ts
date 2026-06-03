@@ -258,6 +258,11 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			],
 			finishReason: 'stop',
 			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+			getState: () => ({
+				status: 'success',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		};
 
 		expect(
@@ -279,6 +284,11 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			messages: [],
 			finishReason: 'error',
 			error: new Error('boom'),
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
