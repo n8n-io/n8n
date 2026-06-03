@@ -1,0 +1,73 @@
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+
+// TODO(ENT-28): Revisit during M1 build whether these OIDC settings belong in a
+// credential (reusable, encrypted, current choice) or inline on the trigger
+// node. See tasks/plan.md "Resolved Decisions" #1.
+
+// This credential authenticates *incoming* requests to a trigger, so it has no
+// `authenticate` block (that is only for outgoing API calls). The trigger reads
+// these fields and validates the caller's bearer token via
+// @n8n/oauth2-token-validator.
+// eslint-disable-next-line n8n-nodes-base/cred-class-name-unsuffixed
+export class OAuth2OidcBearer implements ICredentialType {
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-unsuffixed
+	name = 'oAuth2OidcBearer';
+
+	displayName = 'OAuth2/OIDC Bearer Token';
+
+	documentationUrl = 'httprequest';
+
+	properties: INodeProperties[] = [
+		{
+			displayName: 'Validation Method',
+			name: 'validationMethod',
+			type: 'options',
+			options: [
+				{
+					name: 'JWT (Validate Signature via JWKS)',
+					value: 'jwks',
+					description:
+						'Verify the token signature locally using the IdP public keys. Fast, no per-request network call.',
+				},
+				{
+					name: 'Introspection (RFC 7662)',
+					value: 'introspection',
+					description:
+						'Ask the IdP to validate the token on each request. Supports opaque tokens and instant revocation.',
+				},
+			],
+			default: 'jwks',
+		},
+		{
+			displayName: 'Issuer URL',
+			name: 'issuer',
+			type: 'string',
+			default: '',
+			placeholder: 'https://your-tenant.okta.com',
+			required: true,
+			description:
+				'The token issuer. Used to discover the JWKS endpoint via /.well-known/openid-configuration and to validate the "iss" claim.',
+		},
+		{
+			displayName: 'Audience',
+			name: 'audience',
+			type: 'string',
+			default: '',
+			placeholder: 'n8n',
+			description: 'Expected "aud" claim. Leave empty to skip audience validation.',
+		},
+		{
+			displayName: 'JWKS URI (Optional Override)',
+			name: 'jwksUri',
+			type: 'string',
+			default: '',
+			placeholder: 'https://your-tenant.okta.com/oauth2/v1/keys',
+			description: 'Explicit JWKS endpoint. Leave empty to auto-discover from the issuer.',
+			displayOptions: {
+				show: {
+					validationMethod: ['jwks'],
+				},
+			},
+		},
+	];
+}
