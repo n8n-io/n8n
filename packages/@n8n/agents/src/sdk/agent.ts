@@ -20,6 +20,7 @@ import {
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -60,6 +61,7 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
 const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	RECALL_MEMORY_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
 ]);
 
 interface DeferredToolOptions {

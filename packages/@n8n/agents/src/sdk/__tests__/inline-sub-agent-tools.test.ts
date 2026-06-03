@@ -7,6 +7,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 } from '../../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/episodic-memory';
+import { WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
 import { Agent, buildInlineSubAgentBlockedToolNames, filterInlineSubAgentTools } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
@@ -56,45 +57,49 @@ describe('inline sub-agent tool filtering', () => {
 		runtimeConfigs.length = 0;
 	});
 
-	it('blocks SDK-owned tools by default but not host product names', () => {
+	it('blocks SDK-owned tools by default but not other tool names', () => {
 		const tools = [
 			makeTool(DELEGATE_SUB_AGENT_TOOL_NAME),
 			makeTool(RECALL_MEMORY_TOOL_NAME),
-			makeTool('execute_code'),
+			makeTool(WRITE_TODOS_TOOL_NAME),
+			makeTool('host_tool'),
 			makeTool('lookup'),
 		];
 
 		expect(filterInlineSubAgentTools(tools, undefined).map((tool) => tool.name)).toEqual([
-			'execute_code',
+			'host_tool',
 			'lookup',
 		]);
 	});
 
 	it('blocks host-supplied tool names when configured', () => {
-		const tools = [makeTool('execute_code'), makeTool('lookup')];
+		const tools = [makeTool('host_tool'), makeTool('lookup')];
 
 		expect(
-			filterInlineSubAgentTools(tools, undefined, ['execute_code']).map((tool) => tool.name),
+			filterInlineSubAgentTools(tools, undefined, ['host_tool']).map((tool) => tool.name),
 		).toEqual(['lookup']);
 	});
 
-	it('does not re-add host-blocked tools through allowedTools', () => {
-		const tools = [makeTool('execute_code'), makeTool('lookup')];
+	it('does not re-add blocked tools through allowedTools', () => {
+		const tools = [makeTool(WRITE_TODOS_TOOL_NAME), makeTool('host_tool'), makeTool('lookup')];
 
 		expect(
-			filterInlineSubAgentTools(tools, ['execute_code', 'lookup'], ['execute_code']).map(
-				(tool) => tool.name,
-			),
+			filterInlineSubAgentTools(
+				tools,
+				[WRITE_TODOS_TOOL_NAME, 'host_tool', 'lookup'],
+				['host_tool'],
+			).map((tool) => tool.name),
 		).toEqual(['lookup']);
 	});
 
 	it('merges SDK defaults with host blocked tool names', () => {
-		const blocked = buildInlineSubAgentBlockedToolNames(['execute_code']);
+		const blocked = buildInlineSubAgentBlockedToolNames(['host_tool']);
 
 		expect(blocked.has(DELEGATE_SUB_AGENT_TOOL_NAME)).toBe(true);
 		expect(blocked.has(RECALL_MEMORY_TOOL_NAME)).toBe(true);
-		expect(blocked.has('execute_code')).toBe(true);
-		expect(blocked.has('clarify')).toBe(false);
+		expect(blocked.has(WRITE_TODOS_TOOL_NAME)).toBe(true);
+		expect(blocked.has('host_tool')).toBe(true);
+		expect(blocked.has('lookup')).toBe(false);
 	});
 
 	it('does not pass provider tools to inline child runtimes', async () => {

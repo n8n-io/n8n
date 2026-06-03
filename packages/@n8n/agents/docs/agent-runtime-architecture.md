@@ -95,7 +95,7 @@ Inline children:
 
 - reuse the parent model config for this first implementation
 - start from the parent agent's effective local/deferred tool list
-- always drop SDK-blocked tools such as `delegate_subagent` and memory recall
+- always drop SDK-blocked tools such as `delegate_subagent`, `write_todos`, and memory recall
 - may drop additional host-blocked local/deferred tool names configured on the delegate tool
 - optionally narrow inherited tools with `allowedTools`
 - do not inherit provider tools yet
