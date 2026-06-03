@@ -32,6 +32,7 @@ export const providerCapabilities: Record<
 	cohere: {},
 	vercel: {},
 	openrouter: {},
+	nvidia: {},
 	'azure-openai': {},
 	'aws-bedrock': {},
 };

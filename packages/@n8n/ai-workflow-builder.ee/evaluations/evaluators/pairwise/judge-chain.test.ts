@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -7,9 +7,9 @@ import { evaluateWorkflowPairwise, type PairwiseEvaluationInput } from './judge-
 import * as baseEvaluator from '../llm-judge/evaluators/base';
 
 // Mock the base evaluator module
-jest.mock('../llm-judge/evaluators/base', () => ({
-	createEvaluatorChain: jest.fn(),
-	invokeEvaluatorChain: jest.fn(),
+vi.mock('../llm-judge/evaluators/base', () => ({
+	createEvaluatorChain: vi.fn(),
+	invokeEvaluatorChain: vi.fn(),
 }));
 
 describe('evaluateWorkflowPairwise', () => {
@@ -30,7 +30,7 @@ describe('evaluateWorkflowPairwise', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return structured result from invokeEvaluatorChain', async () => {
@@ -42,7 +42,7 @@ describe('evaluateWorkflowPairwise', () => {
 			],
 		};
 
-		jest.mocked(baseEvaluator.invokeEvaluatorChain).mockResolvedValue(mockResult);
+		vi.mocked(baseEvaluator.invokeEvaluatorChain).mockResolvedValue(mockResult);
 
 		const result = await evaluateWorkflowPairwise(mockLlm, input);
 
@@ -73,7 +73,7 @@ describe('evaluateWorkflowPairwise', () => {
 			passes: [{ rule: 'Do this', justification: 'Done' }],
 		};
 
-		jest.mocked(baseEvaluator.invokeEvaluatorChain).mockResolvedValue(mockResult);
+		vi.mocked(baseEvaluator.invokeEvaluatorChain).mockResolvedValue(mockResult);
 
 		const result = await evaluateWorkflowPairwise(mockLlm, input);
 
@@ -87,7 +87,7 @@ describe('evaluateWorkflowPairwise', () => {
 			passes: [],
 		};
 
-		jest.mocked(baseEvaluator.invokeEvaluatorChain).mockResolvedValue(mockResult);
+		vi.mocked(baseEvaluator.invokeEvaluatorChain).mockResolvedValue(mockResult);
 
 		const result = await evaluateWorkflowPairwise(mockLlm, input);
 

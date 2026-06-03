@@ -18,10 +18,12 @@ import {
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
 
-const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
 		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
@@ -69,7 +71,7 @@ describe('observation-log observer defaults', () => {
 			transcriptTokenCount: 42,
 			observationLogTail: [],
 			renderedObservationLogTail:
-				'## Memory\n\n* CRITICAL (14:28) User is rebuilding observational memory.',
+				'<observations>\n* CRITICAL (14:28) User is rebuilding observational memory.\n</observations>',
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');
@@ -84,9 +86,9 @@ describe('observation-log observer defaults', () => {
 			usage: { totalTokens: 17 },
 		});
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		const result = await createObservationLogObserveFn('openai/gpt-4o-mini')({
@@ -249,7 +251,7 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
 		});
 
-		const observe = jest.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
+		const observe = vi.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
 
 		const result = await runObservationLogObserver({
 			memory: store,

@@ -7,6 +7,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
 
 const nodeInputsByNodeId = shallowReactive(new Map<string, ComputedRef<CanvasConnectionPort[]>>());
@@ -31,13 +32,13 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn(() => ({
 		activeExecutionIssuesByNodeName: executionIssuesByNodeName,
 	})),
-	createWorkflowExecutionStateId: (id: string) => id,
 }));
 
 describe('useWorkflowDocumentRenderData', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.mocked(useWorkflowDocumentStore).mockClear();
+		vi.mocked(useWorkflowExecutionStateStore).mockClear();
 	});
 
 	it('passes through nodeInputsByNodeId and nodeOutputsByNodeId by reference', () => {
@@ -57,5 +58,13 @@ describe('useWorkflowDocumentRenderData', () => {
 		const renderData = useWorkflowDocumentRenderData(createWorkflowDocumentId('wf-1'));
 
 		expect(renderData.executionIssuesByNodeName).toBe(executionIssuesByNodeName);
+	});
+
+	it('uses the exact workflow document id when resolving execution state', () => {
+		const documentId = createWorkflowDocumentId('wf-1', 'ver-123');
+
+		useWorkflowDocumentRenderData(documentId);
+
+		expect(useWorkflowExecutionStateStore).toHaveBeenCalledWith(documentId);
 	});
 });

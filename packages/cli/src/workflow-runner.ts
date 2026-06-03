@@ -407,6 +407,10 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 			});
 
+			if (data.configureAdditionalData) {
+				await data.configureAdditionalData(additionalData);
+			}
+
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,

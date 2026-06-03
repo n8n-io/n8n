@@ -23,7 +23,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 				'screenshot-dashboard',
 				'http-node-config-no-browser',
 				'oauth-with-computer-use-disabled',
-				'planner-no-credential-ask',
+				'workflow-builder-no-credential-ask',
 			]),
 		);
 	});
@@ -34,7 +34,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 		'screenshot-dashboard',
 		'http-node-config-no-browser',
 		'oauth-with-computer-use-disabled',
-		'planner-no-credential-ask',
+		'workflow-builder-no-credential-ask',
 	])('%s parses with a valid expectedToolInvocations rule', (slug) => {
 		const entry = cases.find((c) => c.fileSlug === slug);
 		expect(entry).toBeDefined();
