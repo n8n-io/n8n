@@ -12,7 +12,7 @@ final response.
 for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
 `streamText`) and is responsible for:
 
-- Building the LLM message context (memory history, semantic recall, working
+- Building the LLM message context (memory history, working
   memory in the system prompt, user input)
 - Stripping orphaned tool-call/tool-result pairs before LLM calls
   (`stripOrphanedToolMessages`)
@@ -23,8 +23,7 @@ for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
   in parallel)
 - Suspending and resuming runs for Human-in-the-Loop (HITL) **and** for tools
   that return a branded suspend result (`suspendSchema` / `resumeSchema`)
-- Persisting new messages to a memory store at the end of each completed turn,
-  optionally saving **embeddings** for semantic recall
+- Persisting new messages to a memory store at the end of each completed turn
 - Extracting and persisting **working memory** from assistant output when
   configured
 - Optional **structured output** (`Output.object` + Zod), **thinking** /
