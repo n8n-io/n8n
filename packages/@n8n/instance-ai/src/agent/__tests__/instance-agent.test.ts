@@ -238,9 +238,9 @@ describe('createInstanceAgent', () => {
 		}
 	});
 
-	it('does not attach a workspace to the orchestrator Agent', async () => {
+	it('attaches the orchestration workspace when provided', async () => {
 		const memoryConfig = {} as never;
-		const fakeWorkspace = { id: 'should-be-ignored' } as never;
+		const fakeWorkspace = { id: 'thread-runtime-workspace' } as never;
 
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -256,10 +256,28 @@ describe('createInstanceAgent', () => {
 			},
 			memoryConfig,
 			mcpManager: createMcpManagerStub(),
-			workspace: fakeWorkspace,
 		} as never);
 
 		expect(Agent).toHaveBeenCalledWith('n8n-instance-agent');
+		expect(mockAgentInstances[0]?.workspace).toHaveBeenCalledWith(fakeWorkspace);
+	});
+
+	it('does not attach a workspace when orchestration context has none', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'ws-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'ws-test',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
 		expect(mockAgentInstances[0]?.workspace).not.toHaveBeenCalled();
 	});
 

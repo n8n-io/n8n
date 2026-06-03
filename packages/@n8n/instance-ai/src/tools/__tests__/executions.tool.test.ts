@@ -334,6 +334,26 @@ describe('executions tool', () => {
 				expect(context.executionService.run).not.toHaveBeenCalled();
 				expect(result).toBeUndefined();
 			});
+
+			it('requires HITL when a checkpoint run represents an explicit user-requested execution', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-1']),
+					requireRunWorkflowApproval: true,
+				});
+				const agentCtx = createAgentCtx();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					agentCtx as never,
+				);
+
+				expect(agentCtx.suspend).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
+			});
 		});
 	});
 

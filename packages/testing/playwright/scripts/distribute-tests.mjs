@@ -24,6 +24,13 @@ const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.
 const PLAYWRIGHT_PREFIX = path.relative(REPO_ROOT, PLAYWRIGHT_DIR) + path.sep;
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 
+// Specs excluded from orchestrated distribution. Under coverage instrumentation
+// (no container reuse + slower execution), high-flake specs balloon into
+// multi-minute retry tails that tip a single shard over its timeout. Quarantine
+// them here until the flakiness is fixed via the Flaky pipeline.
+//   tests/e2e/ai/hitl-for-tools.spec.ts — 34.2% flakyRate (2x next worst)
+const QUARANTINE = new Set(['tests/e2e/ai/hitl-for-tools.spec.ts']);
+
 const CAPABILITY_IMAGES = {
 	email: ['mailpit'],
 	kafka: ['kafka'],
@@ -135,7 +142,7 @@ if (matrixMode) {
 
 			const matrix = result.shards.map((shard) => ({
 				shard: shard.shard,
-				specs: shard.specs.join(' '),
+				specs: shard.specs.filter((s) => !QUARANTINE.has(s)).join(' '),
 				images: getRequiredImages(shard.capabilities).join(' '),
 			}));
 			console.log(JSON.stringify(matrix));
@@ -150,6 +157,6 @@ if (matrixMode) {
 	const result = getOrchestration(shards, { impact: impactMode, files: filesArg, base: baseArg });
 	const shard = result.shards[index];
 	if (shard) {
-		console.log(shard.specs.join('\n'));
+		console.log(shard.specs.filter((s) => !QUARANTINE.has(s)).join('\n'));
 	}
 }

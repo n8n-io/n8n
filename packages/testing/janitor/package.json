@@ -17,6 +17,7 @@
     "build:unchecked": "tsc --noCheck",
     "dev": "tsc --watch",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "format": "biome format --write .",
@@ -44,6 +45,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "fast-check": "catalog:",
     "ts-morph": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
