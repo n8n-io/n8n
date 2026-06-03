@@ -14,7 +14,7 @@ const emit = defineEmits<{
 	update: [id: string, text: string];
 }>();
 
-const expanded = ref(false);
+const expanded = ref(true);
 const editingId = ref<string | null>(null);
 const editText = ref('');
 const i18n = useI18n();
