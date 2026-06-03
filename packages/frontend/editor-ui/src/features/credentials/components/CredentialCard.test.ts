@@ -341,6 +341,7 @@ describe('CredentialCard', () => {
 				id: 'cred-1',
 				isResolvable: true,
 				connectedByMe: false,
+				scopes: ['credential:update'],
 				homeProject: { name: 'Test Project' },
 				...overrides,
 			});
@@ -354,6 +355,14 @@ describe('CredentialCard', () => {
 			expect(queryByTestId('credential-card-not-connected')).not.toBeInTheDocument();
 		});
 
+		it('should hide the Connect button when the user lacks update permission', () => {
+			const { queryByTestId } = renderComponent({
+				props: { data: privateUnconnectedData({ scopes: ['credential:read'] }) },
+			});
+
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+		});
+
 		it('should still show project badge alongside the Connect button', () => {
 			const { getByTestId } = renderComponent({
 				props: { data: privateUnconnectedData() },
@@ -363,7 +372,7 @@ describe('CredentialCard', () => {
 			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
 		});
 
-		it('should show Connected label when private and connected', () => {
+		it('should not show Connect button or Connected label when private and connected', () => {
 			const data = createCredential({
 				isResolvable: true,
 				connectedByMe: true,
@@ -372,10 +381,10 @@ describe('CredentialCard', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({ props: { data } });
 
+			// Once connected, a private credential is just a regular credential with a
+			// Private label — no connect prompt and no separate connected state.
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
-			const connectedLabel = getByTestId('credential-card-connected');
-			expect(connectedLabel).toBeInTheDocument();
-			expect(connectedLabel).toHaveTextContent('Connected');
+			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
 			expect(getByTestId('card-badge')).toBeInTheDocument();
 		});
 

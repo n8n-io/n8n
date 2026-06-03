@@ -1,6 +1,7 @@
+/* eslint-disable import-x/order */
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { mock } from 'jest-mock-extended';
 import type { INodeTypes, WorkflowStructureIssue } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
@@ -16,15 +17,13 @@ import {
 } from '../submit-workflow.tool';
 import { isTriggerNodeType } from '../workflow-json-utils';
 
-jest.mock('@n8n/workflow-sdk', () => ({
-	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
+vi.mock('@n8n/workflow-sdk', () => ({
+	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
-const { createSubmitWorkflowTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../submit-workflow.tool') as typeof import('../submit-workflow.tool');
+import { createSubmitWorkflowTool } from '../submit-workflow.tool';
 
-const mockedValidateWorkflow = jest.mocked(validateWorkflow);
+const mockedValidateWorkflow = vi.mocked(validateWorkflow);
 
 function makeContext(
 	permissions: InstanceAiContext['permissions'] = {} as InstanceAiContext['permissions'],
@@ -210,7 +209,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		const root = '/home/test/workspace/builders/builder-1';
 		const calls: Array<{ command: string; cwd?: string }> = [];
 		const workflowService = {
-			createFromWorkflowJSON: jest.fn(async () => {
+			createFromWorkflowJSON: vi.fn(async () => {
 				await Promise.resolve();
 				return { id: 'main-workflow-id' };
 			}),
@@ -258,7 +257,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 	it('returns and reports workflow pin-data verification and referenced workflow IDs', async () => {
 		const attempts: SubmitWorkflowAttempt[] = [];
 		const workflowService = {
-			createFromWorkflowJSON: jest.fn(async () => {
+			createFromWorkflowJSON: vi.fn(async () => {
 				await Promise.resolve();
 				return { id: 'main-workflow-id' };
 			}),
@@ -438,6 +437,23 @@ describe('buildNodeIndex', () => {
 	it('returns an empty array when nodes is missing', () => {
 		expect(buildNodeIndex({ connections: {} } as unknown as WorkflowJSON)).toEqual([]);
 	});
+
+	it('coerces non-string node names to an empty string', () => {
+		const json = {
+			nodes: [
+				{ name: 123, type: 'x', position: [0, 0], parameters: {} },
+				{ type: 'y', position: [0, 0], parameters: {} },
+				{ name: null, type: 'z', position: [0, 0], parameters: {} },
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		expect(buildNodeIndex(json)).toEqual([
+			{ index: 0, name: '' },
+			{ index: 1, name: '' },
+			{ index: 2, name: '' },
+		]);
+	});
 });
 
 describe('buildErrorDetails', () => {
@@ -582,7 +598,7 @@ describe('createSubmitWorkflowTool — structured save-failure payload', () => {
 		};
 
 		const workflowService = {
-			createFromWorkflowJSON: jest.fn(async () => {
+			createFromWorkflowJSON: vi.fn(async () => {
 				await Promise.resolve();
 				throw saveError;
 			}),
@@ -630,7 +646,7 @@ describe('createSubmitWorkflowTool — structured save-failure payload', () => {
 
 	it('still emits nodeIndex (but no errorDetails) when the save error is plain', async () => {
 		const workflowService = {
-			createFromWorkflowJSON: jest.fn(async () => {
+			createFromWorkflowJSON: vi.fn(async () => {
 				await Promise.resolve();
 				throw new Error('database unavailable');
 			}),

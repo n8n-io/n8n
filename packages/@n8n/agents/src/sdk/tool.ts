@@ -56,18 +56,14 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				if (needs) {
 					return await interruptCtx.suspend({ type: 'approval', toolName: tool.name, args: input });
 				}
-				return await originalHandler(input, {
-					parentTelemetry: interruptCtx.parentTelemetry,
-				} as ToolContext);
+				return await originalHandler(input, interruptCtx as ToolContext);
 			}
 
 			const { approved } = interruptCtx.resumeData as z.infer<typeof APPROVAL_RESUME_SCHEMA>;
 			if (!approved) {
 				return { declined: true, message: `Tool "${tool.name}" was not approved` };
 			}
-			return await originalHandler(input, {
-				parentTelemetry: interruptCtx.parentTelemetry,
-			} as ToolContext);
+			return await originalHandler(input, interruptCtx as ToolContext);
 		},
 	};
 }
@@ -124,6 +120,8 @@ export class Tool<
 	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
 	private providerOptionsValue?: Record<string, JSONObject>;
+
+	private handleCancellationValue?: boolean;
 
 	private requireApprovalValue?: boolean;
 
@@ -214,6 +212,15 @@ export class Tool<
 		return this;
 	}
 
+	/**
+	 * Opt in to handle cancellations in the tool handler (`ctx.cancellation`).
+	 * By default, the runtime bypasses the handler and injects the steering message directly.
+	 */
+	handleCancellation(): this {
+		this.handleCancellationValue = true;
+		return this;
+	}
+
 	/** Require human approval before this tool executes. Mutually exclusive with .suspend()/.resume(). */
 	requireApproval(): this {
 		this.requireApprovalValue = true;
@@ -281,6 +288,7 @@ export class Tool<
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
 			resumeSchema: this.resumeSchemaValue,
+			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			handler: this.handlerFn as (
