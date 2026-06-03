@@ -4,6 +4,7 @@
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",

@@ -13,6 +13,7 @@
 		"dist"
 	],
 	"scripts": {
+		"clean": "rimraf dist .turbo",
 		"build": "tsc",
 		"dev": "tsc --watch",
 		"test": "vitest run",

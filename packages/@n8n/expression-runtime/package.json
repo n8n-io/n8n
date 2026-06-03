@@ -14,6 +14,7 @@
     "./*": "./*"
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
     "build:runtime": "node esbuild.config.js",
     "test": "vitest run",
