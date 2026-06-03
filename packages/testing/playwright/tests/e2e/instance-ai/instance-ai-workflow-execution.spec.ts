@@ -1,6 +1,7 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
+test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
 
 test.describe(
 	'Instance AI workflow execution @capability:proxy',

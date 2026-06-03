@@ -4,6 +4,7 @@
 
 import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
+import type { Mock } from 'vitest';
 
 import type { StreamOutput, ToolProgressChunk } from '../../../types/streaming';
 import { WarningTracker } from '../../state/warning-tracker';
@@ -21,14 +22,14 @@ function isToolProgressChunk(chunk: unknown): chunk is ToolProgressChunk {
 
 describe('ValidateToolHandler', () => {
 	let handler: ValidateToolHandler;
-	let mockParseAndValidate: jest.Mock;
-	let mockGetErrorContext: jest.Mock;
+	let mockParseAndValidate: Mock;
+	let mockGetErrorContext: Mock;
 	let messages: BaseMessage[];
 	let warningTracker: WarningTracker;
 
 	beforeEach(() => {
-		mockParseAndValidate = jest.fn();
-		mockGetErrorContext = jest.fn().mockReturnValue('Code context:\n1: const x = 1;');
+		mockParseAndValidate = vi.fn();
+		mockGetErrorContext = vi.fn().mockReturnValue('Code context:\n1: const x = 1;');
 		messages = [];
 		warningTracker = new WarningTracker();
 

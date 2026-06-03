@@ -8,7 +8,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -23,7 +22,7 @@ import { useToast } from '@/app/composables/useToast';
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -161,10 +160,6 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
 
-const hasWorkflowResolver = computed(() => {
-	return !!workflowDocumentStore?.value?.settings?.credentialResolverId;
-});
-
 function isCredentialResolvable(credentialType: string): boolean {
 	if (!isDynamicCredentialsEnabled.value) return false;
 	const credentialId = selected.value[credentialType]?.id;
@@ -185,15 +180,9 @@ function isPrivateConnected(credentialType: string): boolean {
 	return getSelectedPrivateCredential(credentialType)?.connectedByMe === true;
 }
 
-function showResolvableWarning(credentialType: string): boolean {
-	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
-}
-
-// TODO: use actual docs link when available
-const dynamicCredentialsDocsUrl = '';
-
-function openWorkflowSettings() {
-	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+function canConnectPrivateCredential(credentialType: string): boolean {
+	const credential = getSelectedPrivateCredential(credentialType);
+	return getResourcePermissions(credential?.scopes).credential.update === true;
 }
 
 watch(
@@ -831,7 +820,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											placement="top"
 										>
 											<template #content>{{
-												i18n.baseText('credentials.dynamic.tooltip')
+												i18n.baseText('credentials.private.tooltip')
 											}}</template>
 											<N8nBadge
 												theme="tertiary"
@@ -864,7 +853,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</N8nSelect>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
-								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
+								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
 								<N8nBadge
 									theme="tertiary"
 									class="pl-3xs pr-3xs"
@@ -904,10 +893,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						/>
 					</div>
 				</div>
-				<div
-					v-if="getSelectedPrivateCredential(type.name) || showResolvableWarning(type.name)"
-					:class="$style.noticesContainer"
-				>
+				<div v-if="getSelectedPrivateCredential(type.name)" :class="$style.noticesContainer">
 					<N8nNotice
 						v-if="getSelectedPrivateCredential(type.name)"
 						:theme="isPrivateConnected(type.name) ? 'info' : 'warning'"
@@ -929,6 +915,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											i18n.baseText('credentials.private.callout.notConnected')
 										}}</N8nText>
 										<N8nLink
+											v-if="canConnectPrivateCredential(type.name)"
 											data-test-id="node-credential-private-connect"
 											@click="editCredential(type.name)"
 										>
@@ -938,24 +925,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								</div>
 							</div>
 						</div>
-					</N8nNotice>
-					<N8nNotice
-						v-if="showResolvableWarning(type.name)"
-						theme="warning"
-						data-test-id="node-credential-resolver-warning"
-					>
-						<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
-							<template #workflowSettings>
-								<N8nLink @click="openWorkflowSettings">
-									{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
-								</N8nLink>
-							</template>
-							<template v-if="dynamicCredentialsDocsUrl" #documentation>
-								<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
-									{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
-								</N8nLink>
-							</template>
-						</I18nT>
 					</N8nNotice>
 				</div>
 			</N8nInputLabel>

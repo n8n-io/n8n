@@ -25,20 +25,17 @@ import {
 	createWorkflowDocumentId,
 	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
-	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>;
 }
 
 export function usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
-	currentNDVStore,
 }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
@@ -55,7 +52,7 @@ export function usePostMessageHandler({
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
-	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore, currentNDVStore);
+	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
 
 	function emitPostMessageReady() {
 		if (window.parent) {
@@ -143,7 +140,6 @@ export function usePostMessageHandler({
 		if (wfId) {
 			const workflowDocumentId = createWorkflowDocumentId(wfId);
 			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(workflowDocumentId);
-			currentNDVStore.value = useNDVStore(workflowDocumentId);
 		}
 
 		void nextTick(() => {

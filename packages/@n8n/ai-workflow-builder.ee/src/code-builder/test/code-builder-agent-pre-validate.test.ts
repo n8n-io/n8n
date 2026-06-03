@@ -7,33 +7,35 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage } from '@langchain/core/messages';
+import {
+	parseWorkflowCodeToBuilder as sdkParseWorkflowCodeToBuilder,
+	validateWorkflow as sdkValidateWorkflow,
+} from '@n8n/workflow-sdk';
 import type { IWorkflowBase } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { CodeBuilderAgent } from '../code-builder-agent';
 
-const mockFromJSON = jest.fn();
+const mockFromJSON = vi.fn();
 
 // Mock workflow-sdk to control parse/validate behavior
-jest.mock('@n8n/workflow-sdk', () => ({
-	parseWorkflowCodeToBuilder: jest.fn(),
-	validateWorkflow: jest.fn(),
-	generateWorkflowCode: jest.fn().mockReturnValue('// generated code'),
+vi.mock('@n8n/workflow-sdk', () => ({
+	parseWorkflowCodeToBuilder: vi.fn(),
+	validateWorkflow: vi.fn(),
+	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	workflow: { fromJSON: (...args: unknown[]) => mockFromJSON(...args) },
 }));
 
 // Mock the prompts module to avoid complex prompt building
-jest.mock('../prompts', () => ({
-	buildCodeBuilderPrompt: jest.fn().mockReturnValue({
-		formatMessages: jest.fn().mockResolvedValue([]),
+vi.mock('../prompts', () => ({
+	buildCodeBuilderPrompt: vi.fn().mockReturnValue({
+		formatMessages: vi.fn().mockResolvedValue([]),
 	}),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { parseWorkflowCodeToBuilder, validateWorkflow } = require('@n8n/workflow-sdk') as {
-	parseWorkflowCodeToBuilder: jest.Mock;
-	validateWorkflow: jest.Mock;
-};
+const parseWorkflowCodeToBuilder = sdkParseWorkflowCodeToBuilder as unknown as Mock;
+const validateWorkflow = sdkValidateWorkflow as unknown as Mock;
 
 const MOCK_WORKFLOW: Partial<IWorkflowBase> = {
 	id: 'test-wf-1',
@@ -53,10 +55,10 @@ const MOCK_WORKFLOW: Partial<IWorkflowBase> = {
 
 function createMockBuilder(warnings: Array<{ code: string; message: string }> = []) {
 	return {
-		regenerateNodeIds: jest.fn(),
-		validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings }),
-		generatePinData: jest.fn(),
-		toJSON: jest.fn().mockReturnValue(MOCK_WORKFLOW),
+		regenerateNodeIds: vi.fn(),
+		validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings }),
+		generatePinData: vi.fn(),
+		toJSON: vi.fn().mockReturnValue(MOCK_WORKFLOW),
 	};
 }
 
@@ -68,15 +70,15 @@ function createMockLlm(): BaseChatModel {
 	});
 
 	return {
-		bindTools: jest.fn().mockReturnValue({
-			invoke: jest.fn().mockResolvedValue(response),
+		bindTools: vi.fn().mockReturnValue({
+			invoke: vi.fn().mockResolvedValue(response),
 		}),
 	} as unknown as BaseChatModel;
 }
 
 describe('CodeBuilderAgent pre-validation', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		parseWorkflowCodeToBuilder.mockReturnValue(createMockBuilder());
 		validateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });

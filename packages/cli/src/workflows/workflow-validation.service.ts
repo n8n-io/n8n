@@ -13,9 +13,18 @@ import {
 	toExecutionContextEstablishmentHookParameter,
 	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
-import type { INode, INodes, IConnections, INodeType, IWorkflowSettings } from 'n8n-workflow';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
+import type {
+	INode,
+	INodes,
+	IConnections,
+	INodeType,
+	IWorkflowSettings,
+	ICredentialType,
+} from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
 
@@ -44,6 +53,7 @@ export class WorkflowValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -161,6 +171,93 @@ export class WorkflowValidationService {
 		}
 
 		return issues;
+	}
+
+	/**
+	 * Rejects workflows that bind a credential whose type sets
+	 * `restrictToSupportedNodes: true` to a node not listed in its `supportedNodes`.
+	 * Runs on every save — illegal bindings should never be persisted.
+	 */
+	validateCredentialNodeRestrictions(nodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+
+		for (const node of nodes) {
+			// Validate disabled nodes too — illegal bindings must never be persisted.
+			// A disabled node can be re-enabled later (separate save, direct DB write,
+			// workflow import), and the DB state should remain consistent regardless.
+			if (!node.credentials) continue;
+
+			const activeCredentialTypes = this.getActiveCredentialTypes(node);
+
+			for (const credentialType of activeCredentialTypes) {
+				if (!node.credentials[credentialType]) continue;
+
+				let typeDef: ICredentialType | undefined;
+				try {
+					typeDef = this.credentialTypes.getByName(credentialType);
+				} catch {
+					continue; // unknown type — let other validators surface it
+				}
+
+				if (!typeDef?.restrictToSupportedNodes) continue;
+
+				// `typeDef.supportedNodes` from the loader holds short node names
+				// (e.g. "mattermost"), but `node.type` is fully qualified
+				// (e.g. "n8n-nodes-base.mattermost"). `getSupportedNodes` returns
+				// the post-processed FQ list so the comparison can match.
+				const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+				if (supportedNodes.includes(node.type)) continue;
+
+				violations.push(
+					`Node "${node.name}" (${node.type}) cannot use credential type "${credentialType}" — it is restricted to: ${
+						supportedNodes.length > 0 ? supportedNodes.join(', ') : '(no nodes)'
+					}.`,
+				);
+			}
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot save workflow: ${violations.join(' ')}`,
+		};
+	}
+
+	/**
+	 * Returns the credential types that are actively in use on a node — the
+	 * subset of `node.credentials` keys we should validate against.
+	 *
+	 * For "full-access" nodes (HTTP Request + its tool variants), the editor
+	 * spreads `node.credentials` instead of replacing it when the user switches
+	 * credential type, leaving inactive keys behind. Only the credential
+	 * pointed at by the active `authentication` parameter is in use, so we
+	 * limit the check to that one — otherwise the validator would reject a
+	 * save based on an entry the user can't even see in the UI.
+	 *
+	 * For all other nodes, every entry in `node.credentials` corresponds to a
+	 * declared credential the node may use (gated by `displayOptions` at
+	 * runtime), so all keys remain candidates.
+	 */
+	private getActiveCredentialTypes(node: INode): string[] {
+		if (!node.credentials) return [];
+
+		if (!FULL_ACCESS_NODE_TYPES.has(node.type)) {
+			return Object.keys(node.credentials);
+		}
+
+		const params = (node.parameters ?? {}) as Record<string, unknown>;
+		const auth = typeof params.authentication === 'string' ? params.authentication : null;
+
+		if (auth === 'predefinedCredentialType') {
+			const cred = params.nodeCredentialType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		if (auth === 'genericCredentialType') {
+			const cred = params.genericAuthType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		return [];
 	}
 
 	validateForActivation(

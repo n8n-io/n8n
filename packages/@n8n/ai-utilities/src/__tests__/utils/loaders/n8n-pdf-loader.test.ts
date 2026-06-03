@@ -2,15 +2,15 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import { N8nPdfLoader } from 'src/utils/loaders/n8n-pdf-loader';
 
-const mockGetText = jest.fn();
-const mockGetInfo = jest.fn();
-const mockDestroy = jest.fn();
-const mockConstructor = jest.fn();
-const mockLoggerDebug = jest.fn();
+const mockGetText = vi.fn();
+const mockGetInfo = vi.fn();
+const mockDestroy = vi.fn();
+const mockConstructor = vi.fn();
+const mockLoggerDebug = vi.fn();
 
-jest.mock('pdf-parse', () => ({
+vi.mock('pdf-parse', () => ({
 	__esModule: true,
-	PDFParse: jest.fn().mockImplementation((options: unknown) => {
+	PDFParse: vi.fn(function (options: unknown) {
 		mockConstructor(options);
 		return {
 			getText: mockGetText,
@@ -22,9 +22,9 @@ jest.mock('pdf-parse', () => ({
 
 LoggerProxy.init({
 	debug: mockLoggerDebug,
-	info: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
 });
 
 function makeBlob(content = 'fake-pdf-bytes'): Blob {

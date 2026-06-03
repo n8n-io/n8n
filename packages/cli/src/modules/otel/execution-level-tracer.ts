@@ -37,6 +37,7 @@ export class ExecutionLevelTracer {
 		try {
 			const parentCtx = this.parseTraceParentHeaders(params.tracingContext);
 			const links = this.buildContinuationLinks(params.linkTo);
+
 			const span = this.tracer.startSpan(
 				'workflow.execute',
 				{
@@ -47,13 +48,20 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
 						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+						...buildCustomAttributes(
+							ATTR.WORKFLOW_CUSTOM_PREFIX,
+							params.workflow?.customAttributes,
+						),
+						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					},
 					links,
 				},
 				parentCtx,
 			);
 
-			this.activeWorkflowSpans.set(params.executionId, { span });
+			this.activeWorkflowSpans.set(params.executionId, {
+				span,
+			});
 			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
@@ -102,7 +110,7 @@ export class ExecutionLevelTracer {
 
 	startNode(params: StartNodeParams): void {
 		try {
-			//	We should always have the node running in a workflow so parentCtx shuold never be null
+			//	We should always have the node running in a workflow so parentCtx should never be null
 			const parentCtx = this.findWorkflowSpanContext(params.executionId);
 
 			if (!parentCtx) {
@@ -241,18 +249,24 @@ export class ExecutionLevelTracer {
 	}
 }
 
+function buildCustomAttributes(
+	prefix: string,
+	attrs: Record<string, string> | undefined,
+): Record<string, string> {
+	if (!attrs) return {};
+	const result: Record<string, string> = {};
+	for (const [k, v] of Object.entries(attrs)) {
+		result[`${prefix}${k}`] = v;
+	}
+	return result;
+}
+
 function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
 	const attrs: Record<string, string | number> = {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
+		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
-
-	if (params.customAttributes) {
-		for (const [key, value] of Object.entries(params.customAttributes)) {
-			attrs[`${ATTR.NODE_CUSTOM_PREFIX}${key}`] = value;
-		}
-	}
-
 	return attrs;
 }
 

@@ -120,6 +120,32 @@ const RedactionSettingSchemaV1 = z.object({
 
 export type IRedactionSettingV1 = z.output<typeof RedactionSettingSchemaV1>;
 
+/**
+ * Per-channel redaction snapshot. Each channel records, independently, whether
+ * execution data is redacted for production and manual executions. This is the
+ * strictest-per-channel resolution of the workflow setting and the instance floor,
+ * captured at execution time.
+ */
+const RedactionSettingSchemaV2 = z.object({
+	version: z.literal(2),
+	production: z.boolean(),
+	manual: z.boolean(),
+});
+
+export type IRedactionSettingV2 = z.output<typeof RedactionSettingSchemaV2>;
+
+/**
+ * Redaction snapshot, versioned by shape. V1 stored a single policy enum; V2 stores
+ * independent production/manual channels. Both shapes must keep parsing so execution
+ * data persisted before the V2 migration remains readable.
+ */
+const RedactionSettingSchema = z.discriminatedUnion('version', [
+	RedactionSettingSchemaV1,
+	RedactionSettingSchemaV2,
+]);
+
+export type IRedactionSetting = z.output<typeof RedactionSettingSchema>;
+
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
@@ -175,7 +201,17 @@ const ExecutionContextSchemaV1 = z.object({
 	 * Persisted so the correct redaction policy is applied when reading execution data,
 	 * regardless of any subsequent changes to the workflow setting.
 	 */
-	redaction: RedactionSettingSchemaV1.optional(),
+	redaction: RedactionSettingSchema.optional(),
+
+	/**
+	 * The n8n user the execution ran as. Set during dynamic credential
+	 * resolution to the n8n user a private credential resolved to (covers manual
+	 * and chat-hub runs alike). Used by the redaction layer to grant that user
+	 * access to their own data. Absent when the resolved identity is not an n8n
+	 * user (external Slack/OAuth resolvers) or when no dynamic credential
+	 * resolved, so those executions stay redacted for everyone.
+	 */
+	executedByUserId: z.string().optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;

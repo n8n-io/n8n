@@ -65,7 +65,6 @@ graph TD
 | `on(event, handler)` | Register a lifecycle event handler |
 | `abort()` | Cancel the currently running agent |
 | `getState()` | Return the latest `SerializableAgentState` snapshot |
-| `asTool(description)` | Wrap the agent as a `BuiltTool` for multi-agent composition |
 
 `ExecutionOptions` includes `abortSignal?: AbortSignal`, forwarded into
 `AgentEventBus.resetAbort()` so callers can cancel via an external signal as
@@ -186,18 +185,6 @@ interface SerializableAgentState {
 `PendingToolCall` distinguishes tools already suspended (`suspended: true`,
 `suspendPayload`, `resumeSchema`) from calls not yet executed (`suspended:
 false`) when a batch stops at the first suspension.
-
----
-
-## asTool()
-
-`agent.asTool(description)` wraps the agent as a `BuiltTool`. The handler calls
-`agent.generate(input, { telemetry: ctx.parentTelemetry })`, collects assistant
-text, and returns `{ result: string }`. When the sub-run produces usage,
-results are wrapped so the parent runtime can merge **`SubAgentUsage`** and
-**`totalCost`** into the parent `GenerateResult` / stream `finish` chunk.
-
----
 
 ## Message types
 
@@ -395,7 +382,7 @@ readable side immediately; the loop writes chunks in the background.
 | `tool-call-delta` | Streaming tool name / arguments |
 | `message` | Full assistant or tool message |
 | `tool-call-suspended` | Suspension: `runId`, `toolCallId`, tool metadata, optional `resumeSchema`, `suspendPayload` |
-| `finish` | `finishReason`, `usage` (with optional **cost**), `model`, optional **`structuredOutput`**, **`subAgentUsage`**, **`totalCost`** |
+| `finish` | `finishReason`, `usage` (with optional **cost**), `model`, optional **`structuredOutput`** |
 | `error` | Failure or abort |
 
 ---
@@ -412,7 +399,7 @@ src/
     memory-store.ts               — saveMessagesToThread helper
     messages.ts                   — AI SDK message conversion
     model-factory.ts              — createModel / createEmbeddingModel
-    tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend / agent-result guards
+    tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend guards
     stream.ts                     — convertChunk, toTokenUsage
     runtime-helpers.ts            — normalizeInput, usage merge, stream error helpers, …
     working-memory.ts             — instruction text, update_working_memory tool builder
