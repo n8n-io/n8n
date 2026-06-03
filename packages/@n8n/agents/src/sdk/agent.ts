@@ -20,6 +20,7 @@ import {
 } from '../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
+import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
@@ -61,6 +62,11 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
 const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	RECALL_MEMORY_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
+]);
+
+const SDK_RESERVED_BUILTIN_TOOL_NAMES = new Set([
+	DELEGATE_SUB_AGENT_TOOL_NAME,
 	WRITE_TODOS_TOOL_NAME,
 ]);
 
@@ -215,7 +221,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const tools = Array.isArray(t) ? t : [t];
 		const builtTools = tools.map((tool) => ('build' in tool ? tool.build() : tool));
 		for (const built of builtTools) {
-			this.assertToolNameAvailable(built.name);
+			this.assertToolRegistrationAllowed(built);
 		}
 		this.tools.push(...builtTools);
 		return this;
@@ -226,6 +232,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const tools = Array.isArray(t) ? t : [t];
 		for (const tool of tools) {
 			const built = 'build' in tool ? tool.build() : tool;
+			this.assertReservedSdkBuiltInToolName(built);
 			this.deferredTools.push(built);
 		}
 		if (options?.search?.topK !== undefined) {
@@ -958,10 +965,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		};
 	}
 
+	private assertToolRegistrationAllowed(tool: BuiltTool): void {
+		this.assertToolNameAvailable(tool.name);
+		this.assertReservedSdkBuiltInToolName(tool);
+	}
+
 	private assertToolNameAvailable(toolName: string): void {
 		if (!this.hasRuntimeSkillTool || !RUNTIME_SKILL_TOOL_NAMES.has(toolName)) return;
 
 		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
+	}
+
+	private assertReservedSdkBuiltInToolName(tool: BuiltTool): void {
+		if (!SDK_RESERVED_BUILTIN_TOOL_NAMES.has(tool.name)) return;
+		if (isSdkOwnedBuiltInTool(tool)) return;
+
+		throw new Error(`Tool name "${tool.name}" is reserved for SDK built-in tools`);
 	}
 
 	private removeRuntimeSkillTools(): void {

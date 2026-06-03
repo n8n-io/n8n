@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Tool } from '../sdk/tool';
+import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import type { BuiltTool } from '../types/sdk/tool';
 
 export const WRITE_TODOS_TOOL_NAME = 'write_todos';
@@ -85,7 +86,7 @@ const WRITE_TODOS_SYSTEM_INSTRUCTION = [
  * structured task list for complex work without auto-dispatching sub-agents.
  */
 export function createWriteTodosTool(): BuiltTool {
-	return new Tool(WRITE_TODOS_TOOL_NAME)
+	const tool = new Tool(WRITE_TODOS_TOOL_NAME)
 		.description(WRITE_TODOS_DESCRIPTION)
 		.systemInstruction(WRITE_TODOS_SYSTEM_INSTRUCTION)
 		.input(writeTodosInputSchema)
@@ -100,4 +101,6 @@ export function createWriteTodosTool(): BuiltTool {
 			});
 		})
 		.build();
+
+	return withSdkOwnedBuiltInMetadata(tool);
 }

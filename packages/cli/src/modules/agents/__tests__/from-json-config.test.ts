@@ -360,6 +360,25 @@ describe('buildFromJson()', () => {
 		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
 	});
 
+	it('rejects custom tools that reuse SDK built-in tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'write_todos' });
+		const config = makeConfig({
+			tools: [{ type: 'custom', id: 'planner_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ planner_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Tool name "write_todos" is reserved for SDK built-in tools');
+	});
+
 	it('throws when custom tool id is not found in descriptors', async () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 

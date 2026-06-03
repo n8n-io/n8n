@@ -9,6 +9,7 @@ import {
 } from './sub-agent-task-path';
 import { filterLlmMessages } from '../sdk/message';
 import { Tool } from '../sdk/tool';
+import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { FinishReason, GenerateResult, TokenUsage } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
@@ -236,7 +237,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		.handler(async (input, ctx) => await handleDelegateSubAgent(input, ctx, options, childCounts))
 		.build();
 
-	return {
+	return withSdkOwnedBuiltInMetadata({
 		...tool,
 		metadata: {
 			...tool.metadata,
@@ -251,7 +252,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...(options.runSubAgent !== undefined ? { runSubAgent: options.runSubAgent } : {}),
 			} satisfies DelegateSubAgentToolMetadata,
 		},
-	};
+	});
 }
 
 export function getInlineDelegateSubAgentToolOptions(
@@ -453,10 +454,8 @@ export function renderDelegateSubAgentPrompt(request: {
 			'Complete this task using the tools available to you. When finished, provide a clear, concise summary of:',
 			'- What you did',
 			'- What you found or accomplished',
-			'- Any files you created or modified',
-			'- Any issues encountered',
-			'',
-			'Important workspace rule: Never assume a repository lives at /workspace/... or any other container-style path unless the task/context explicitly gives that path. If no exact local path is provided, discover it first before issuing git/workdir-specific commands.',
+			'- Important outputs, decisions, or evidence',
+			'- Any issues, assumptions, or limitations',
 			'',
 			'If the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.',
 			'',

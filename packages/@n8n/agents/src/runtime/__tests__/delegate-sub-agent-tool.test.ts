@@ -278,6 +278,21 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('CONTEXT:\nauth endpoints');
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
 	});
+
+	it('uses generic summary guidance for delegated work', () => {
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
+
+		expect(prompt).toContain('- What you did');
+		expect(prompt).toContain('- What you found or accomplished');
+		expect(prompt).toContain('- Important outputs, decisions, or evidence');
+		expect(prompt).toContain('- Any issues, assumptions, or limitations');
+		expect(prompt).toContain(
+			'If the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.',
+		);
+		expect(prompt).toContain(
+			'Be thorough but concise -- your response is returned to the parent agent as a summary.',
+		);
+	});
 });
 
 describe('generateResultToDelegateSubAgentOutput', () => {
