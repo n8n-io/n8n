@@ -26,6 +26,7 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
     "preview": "vite preview",

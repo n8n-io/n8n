@@ -3,6 +3,7 @@
   "version": "1.3.0",
   "description": "HTML + n8n expression language support for CodeMirror 6",
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "test": "vitest run",
     "test:unit": "vitest run",
     "build": "cm-buildhelper src/html.ts",
