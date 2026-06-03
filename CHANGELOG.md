@@ -1,3 +1,12 @@
+## [1.123.51](https://github.com/n8n-io/n8n/compare/n8n@1.123.50...n8n@1.123.51) (2026-06-03)
+
+
+### Bug Fixes
+
+* **core:** Quiet VM expression engine logs on the happy path ([#31566](https://github.com/n8n-io/n8n/issues/31566)) ([1c35031](https://github.com/n8n-io/n8n/commit/1c350312abbef4312507c9d0990f271f2da9f6a9))
+* **core:** Re-register expression metrics after Prometheus registry reset ([#31567](https://github.com/n8n-io/n8n/issues/31567)) ([497bf6b](https://github.com/n8n-io/n8n/commit/497bf6b6e130d504c42bdd7b1d35b25961b16db6))
+
+
 ## [1.123.50](https://github.com/n8n-io/n8n/compare/n8n@1.123.49...n8n@1.123.50) (2026-06-01)
 
 
