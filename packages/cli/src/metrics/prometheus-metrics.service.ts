@@ -62,6 +62,7 @@ export class PrometheusMetricsService {
 			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
 			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
 			workflowName: this.globalConfig.endpoints.metrics.includeWorkflowNameLabel,
+			projectName: this.globalConfig.endpoints.metrics.includeProjectNameLabel,
 		},
 	};
 
@@ -362,6 +363,8 @@ export class PrometheusMetricsService {
 
 		const labelNames = ['status', 'mode'];
 		if (this.includes.labels.workflowId) labelNames.push('workflow_id');
+		if (this.includes.labels.workflowName) labelNames.push('workflow_name');
+		if (this.includes.labels.projectName) labelNames.push('project_name');
 
 		this.histograms.workflowExecutionDuration = new promClient.Histogram({
 			name: this.prefix + 'workflow_execution_duration_seconds',
@@ -370,7 +373,7 @@ export class PrometheusMetricsService {
 			buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
 		});
 
-		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
+		this.eventService.on('workflow-post-execute', ({ runData, workflow, projectName }) => {
 			if (!runData?.stoppedAt) return;
 
 			const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
@@ -381,6 +384,12 @@ export class PrometheusMetricsService {
 
 			if (this.includes.labels.workflowId) {
 				labels.workflow_id = String(workflow.id ?? 'unknown');
+			}
+			if (this.includes.labels.workflowName) {
+				labels.workflow_name = String(workflow.name ?? 'unknown');
+			}
+			if (this.includes.labels.projectName) {
+				labels.project_name = String(projectName ?? '');
 			}
 
 			this.histograms.workflowExecutionDuration?.observe(labels, durationSeconds);
@@ -460,13 +469,16 @@ export class PrometheusMetricsService {
 		return {};
 	}
 
-	private buildWorkflowLabels(payload: any): Record<string, string> {
+	private buildWorkflowLabels(payload: Record<string, unknown>): Record<string, string> {
 		const labels: Record<string, string> = {};
 		if (this.includes.labels.workflowId) {
 			labels.workflow_id = String(payload.workflowId ?? 'unknown');
 		}
 		if (this.includes.labels.workflowName) {
 			labels.workflow_name = String(payload.workflowName ?? 'unknown');
+		}
+		if (this.includes.labels.projectName) {
+			labels.project_name = String(payload.projectName ?? '');
 		}
 		return labels;
 	}
