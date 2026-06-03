@@ -1,12 +1,14 @@
-const daytonaInstances: Array<{ config: unknown }> = [];
+const { daytonaInstances } = vi.hoisted(() => ({
+	daytonaInstances: [] as Array<{ config: unknown }>,
+}));
 
-jest.mock('@daytonaio/sdk', () => {
+vi.mock('../lazy-daytona', () => {
 	class Daytona {
 		constructor(public config: unknown) {
 			daytonaInstances.push({ config });
 		}
 	}
-	return { Daytona };
+	return { loadDaytona: () => ({ Daytona }) };
 });
 
 import { DaytonaAuthManager } from '../daytona-auth-manager';
@@ -67,7 +69,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 
 	it('fetches a token on first call and decodes its exp', async () => {
 		const token = makeJwt(now + HOUR_MS);
-		const getAuthToken = jest.fn().mockResolvedValue(token);
+		const getAuthToken = vi.fn().mockResolvedValue(token);
 		const manager = new DaytonaAuthManager({ getAuthToken, now: nowFn });
 
 		await manager.getClient();
@@ -79,7 +81,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 	});
 
 	it('reuses the cached client when well outside the skew window', async () => {
-		const getAuthToken = jest.fn().mockResolvedValue(makeJwt(now + HOUR_MS));
+		const getAuthToken = vi.fn().mockResolvedValue(makeJwt(now + HOUR_MS));
 		const manager = new DaytonaAuthManager({ getAuthToken, now: nowFn });
 
 		await manager.getClient();
@@ -92,7 +94,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 	});
 
 	it('refreshes when the next call is inside the skew window', async () => {
-		const getAuthToken = jest.fn<Promise<string>, []>().mockImplementation(async () => {
+		const getAuthToken = vi.fn<(...args: []) => Promise<string>>().mockImplementation(async () => {
 			await Promise.resolve();
 			return makeJwt(nowFn() + HOUR_MS);
 		});
@@ -110,7 +112,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 
 	it('serializes concurrent refreshes (single-flight)', async () => {
 		let resolveToken: (token: string) => void = () => {};
-		const getAuthToken = jest.fn(
+		const getAuthToken = vi.fn(
 			async () =>
 				await new Promise<string>((resolve) => {
 					resolveToken = resolve;
@@ -130,7 +132,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 	});
 
 	it('falls back to 30-minute TTL when the token is opaque', async () => {
-		const getAuthToken = jest.fn().mockResolvedValue('opaque-token');
+		const getAuthToken = vi.fn().mockResolvedValue('opaque-token');
 		const manager = new DaytonaAuthManager({ getAuthToken, now: nowFn });
 
 		await manager.getClient();
@@ -147,7 +149,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 
 	it('uses a configurable refresh skew', async () => {
 		const customSkewMs = 15 * MINUTE_MS;
-		const getAuthToken = jest.fn<Promise<string>, []>().mockImplementation(async () => {
+		const getAuthToken = vi.fn<(...args: []) => Promise<string>>().mockImplementation(async () => {
 			await Promise.resolve();
 			return makeJwt(nowFn() + HOUR_MS);
 		});
@@ -171,7 +173,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 	});
 
 	it('ignores non-positive refreshSkewMs and falls back to the default', async () => {
-		const getAuthToken = jest.fn().mockResolvedValue(makeJwt(now + HOUR_MS));
+		const getAuthToken = vi.fn().mockResolvedValue(makeJwt(now + HOUR_MS));
 		const manager = new DaytonaAuthManager({
 			getAuthToken,
 			refreshSkewMs: 0,
@@ -186,7 +188,7 @@ describe('DaytonaAuthManager (proxy mode)', () => {
 	});
 
 	it('passes apiUrl through to the Daytona client', async () => {
-		const getAuthToken = jest.fn().mockResolvedValue(makeJwt(Date.now() + HOUR_MS));
+		const getAuthToken = vi.fn().mockResolvedValue(makeJwt(Date.now() + HOUR_MS));
 		const manager = new DaytonaAuthManager({
 			getAuthToken,
 			apiUrl: 'https://proxy.example.com',
@@ -206,7 +208,7 @@ describe('DaytonaAuthManager (invariants)', () => {
 	});
 
 	it('rejects construction with both auth options', () => {
-		const getAuthToken = jest.fn().mockResolvedValue('jwt');
+		const getAuthToken = vi.fn().mockResolvedValue('jwt');
 		expect(
 			() =>
 				new DaytonaAuthManager({
