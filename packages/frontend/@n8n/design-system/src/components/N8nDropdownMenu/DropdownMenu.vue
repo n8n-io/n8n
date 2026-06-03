@@ -416,13 +416,12 @@ defineExpose({ open, close });
 	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
 	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
 	--n8n--dropdown-menu-width: 24rem;
-
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
 	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
 	max-width: var(--n8n--dropdown-menu-width);
-	max-height: var(--reka-dropdown-menu-content-available-height);
+	max-height: min(var(--reka-dropdown-menu-content-available-height), var(--spacing--5xl));
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);

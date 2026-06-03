@@ -126,7 +126,8 @@ defineExpose({ focus, inputRef });
 	font-family: inherit;
 	font-size: var(--font-size--sm);
 	color: var(--color--text--base);
-	padding: var(--spacing--4xs) 0;
+	padding: 0 var(--spacing--3xs);
+	height: var(--height--sm);
 
 	&::placeholder {
 		color: var(--color--text--tint-1);
