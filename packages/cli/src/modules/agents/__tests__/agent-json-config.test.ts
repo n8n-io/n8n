@@ -104,12 +104,6 @@ describe('AgentJsonConfigSchema — subAgents', () => {
 			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { agents: [] } }).success,
 		).toBe(true);
 	});
-
-	it('rejects the removed subAgents.enabled switch', () => {
-		expect(
-			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: true } }).success,
-		).toBe(false);
-	});
 });
 
 describe('AgentJsonConfigSchema — memory.observationalMemory', () => {

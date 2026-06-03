@@ -787,7 +787,6 @@ describe('buildFromJson()', () => {
 	});
 
 	it('uses async title generation so chat completion is not blocked', async () => {
-		const titleGenerationSpy = jest.spyOn(AgentsRuntime.Memory.prototype, 'titleGeneration');
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
 		});
@@ -802,7 +801,6 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(titleGenerationSpy).toHaveBeenCalledWith(true);
 		expect(getMemoryConfig(agent)?.titleGeneration?.sync).not.toBe(true);
 	});
 

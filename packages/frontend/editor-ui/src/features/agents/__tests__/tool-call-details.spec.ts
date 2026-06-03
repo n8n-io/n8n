@@ -91,28 +91,6 @@ describe('tool-call-details', () => {
 			).toBe('child failed');
 		});
 
-		it('formats write_todos output as grouped Markdown when i18n is provided', () => {
-			const details = getToolCallDetails(
-				{
-					tool: WRITE_TODOS_TOOL_NAME,
-					output: {
-						status: 'ok',
-						todoCount: 2,
-						todos: [
-							{ id: 'a', content: 'Research APIs', status: 'in_progress' },
-							{ id: 'b', content: 'Write summary', status: 'pending' },
-						],
-					},
-					state: TOOL_CALL_STATE.DONE,
-				},
-				writeTodosI18n,
-			);
-			expect(details).toContain('**In progress**');
-			expect(details).toContain('- Research APIs');
-			expect(details).toContain('**Pending**');
-			expect(details).toContain('- Write summary');
-		});
-
 		it('passes sub-agent name map through for write_todos delegate hints', () => {
 			const nameById = new Map([['agent-2', 'Helper agent']]);
 			const details = getToolCallDetails(

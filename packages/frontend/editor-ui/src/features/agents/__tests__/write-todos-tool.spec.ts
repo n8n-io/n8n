@@ -91,7 +91,6 @@ describe('write-todos-tool', () => {
 			);
 
 			expect(markdown).toContain('**In progress**');
-			expect(markdown).toContain('- Research auth options');
 			expect(markdown).toContain(
 				'- Research auth options _(Sub-agent: Inline; Expected output: Short comparison)_',
 			);

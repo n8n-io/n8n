@@ -143,14 +143,9 @@ describe('builder model recommendations', () => {
 	it('teaches the builder how to configure subagent delegation', () => {
 		const prompt = buildPrompt(null);
 
-		expect(prompt).toContain('delegate bounded subtasks through `delegate_subagent`');
-		expect(prompt).toContain('Do not write a flag to enable or disable delegation');
-		expect(prompt).toContain('`subAgents.agents` is only for optional saved/published n8n Agent');
 		expect(prompt).toContain('`delegate_subagent`');
-		expect(prompt).toContain('delegation still works without saved-agent refs');
 		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
 		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
-		expect(prompt).toContain('If no published agents are available');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {

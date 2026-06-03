@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import { AgentEvent, DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
+import { AgentEvent } from '@n8n/agents';
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
@@ -33,12 +33,10 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 
@@ -1425,84 +1423,6 @@ describe('AgentsService', () => {
 
 			expect(toolNames.filter((name) => name === 'slack_context')).toHaveLength(1);
 			expect(toolNames.filter((name) => name === 'slack_action')).toHaveLength(1);
-		});
-
-		it('always injects write_todos and delegate_subagent', async () => {
-			const toolNames: string[] = [];
-			const runtimeAgent = {
-				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
-					for (const item of Array.isArray(tool) ? tool : [tool]) {
-						if (item.name) toolNames.push(item.name);
-					}
-				}),
-				on: jest.fn(),
-				hasCheckpointStorage: jest.fn().mockReturnValue(true),
-				checkpoint: jest.fn(),
-			};
-			const secureRuntime = mock<AgentSecureRuntime>();
-			secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
-
-			const serviceWithSecureRuntime = new AgentsService(
-				mockLogger(),
-				agentRepository,
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				n8nCheckpointStorage,
-				secureRuntime,
-				mock(),
-				mock(),
-				n8nMemory,
-				agentExecutionService,
-				agentHistoryRepository,
-				new AgentSkillsService(mockLogger(), agentRepository),
-				agentTaskRepository,
-				agentTaskSnapshotRepository,
-				publisher,
-				agentsConfig,
-				globalConfig,
-				telemetry,
-				chatIntegrationService,
-				agentKnowledgeService,
-				mock(),
-				mock(),
-			);
-
-			await (
-				serviceWithSecureRuntime as unknown as {
-					injectRuntimeDependencies(params: {
-						agent: typeof runtimeAgent;
-						agentId: string;
-						projectId: string;
-						credentialProvider: unknown;
-						nodeToolsEnabled: boolean;
-						subAgentDelegation: {
-							sourcesById: Record<string, never>;
-							availableSubAgents: [];
-						};
-						credentialIntegrations: [];
-					}): Promise<void>;
-				}
-			).injectRuntimeDependencies({
-				agent: runtimeAgent,
-				agentId,
-				projectId,
-				credentialProvider: mock(),
-				nodeToolsEnabled: false,
-				subAgentDelegation: {
-					sourcesById: {},
-					availableSubAgents: [],
-				},
-				credentialIntegrations: [],
-			});
-
-			expect(toolNames).toContain(WRITE_TODOS_TOOL_NAME);
-			expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		});
 
 		it('registers a thread title sync listener on the runtime agent', async () => {

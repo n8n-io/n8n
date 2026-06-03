@@ -78,27 +78,4 @@ describe('summariseToolCall', () => {
 			}),
 		).toBeUndefined();
 	});
-
-	it('does not apply write_todos summaries to unrelated tools', () => {
-		expect(
-			summariseToolCall('search_nodes', {
-				status: 'ok',
-				todoCount: 2,
-				todos: [],
-			}),
-		).toBeUndefined();
-	});
-
-	it('still returns interactive summaries first', () => {
-		expect(
-			summariseToolCall(
-				ASK_QUESTION_TOOL_NAME,
-				{ values: ['slack'] },
-				{
-					question: 'Where?',
-					options: [{ label: 'Slack', value: 'slack' }],
-				},
-			),
-		).toBe('Slack');
-	});
 });

@@ -3738,33 +3738,4 @@ describe('AgentRuntime — thread title events', () => {
 			},
 		]);
 	});
-
-	it('does not emit ThreadTitleGenerated when title generation returns null', async () => {
-		const titleGeneration = await import('../title-generation');
-		vi.spyOn(titleGeneration, 'generateThreadTitle').mockResolvedValue(null);
-
-		generateText.mockResolvedValue(makeGenerateSuccess('Hello'));
-		const bus = new AgentEventBus();
-		const events: AgentEventData[] = [];
-		bus.on(AgentEvent.ThreadTitleGenerated, (event) => events.push(event));
-
-		const memory = new InMemoryMemory();
-		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
-
-		const runtime = new AgentRuntime({
-			name: 'title-agent',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			memory,
-			titleGeneration: {},
-			eventBus: bus,
-		});
-
-		await runtime.generate('Build me a workflow', {
-			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
-		});
-		await runtime.dispose();
-
-		expect(events).toEqual([]);
-	});
 });

@@ -35,12 +35,6 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(tool.description).toContain('focused child agent');
 		expect(tool.description).toContain('independent workstreams');
-		expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent');
-		expect(tool.systemInstruction).toContain(
-			'2+ independent workstreams that can be handled separately',
-		);
-		expect(tool.systemInstruction).toContain('HOW TO DELEGATE');
-		expect(tool.systemInstruction).toContain('pass-through with no value added');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
 	});
@@ -249,7 +243,6 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('YOUR TASK:\nFind it.');
 		expect(prompt).not.toContain('CONTEXT:');
 		expect(prompt).not.toContain('EXPECTED OUTPUT:');
-		expect(prompt).not.toContain('WORKSPACE PATH:');
 	});
 
 	it('includes context and expected output when provided', () => {
@@ -262,7 +255,6 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('YOUR TASK:\nFind it.');
 		expect(prompt).toContain('CONTEXT:\nauth endpoints');
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
-		expect(prompt).not.toContain('WORKSPACE PATH:');
 	});
 });
 

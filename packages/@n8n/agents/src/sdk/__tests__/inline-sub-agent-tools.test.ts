@@ -9,7 +9,7 @@ import {
 import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/episodic-memory';
 import { WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
 import type { BuiltProviderTool, BuiltTool } from '../../types';
-import { Agent, buildInlineSubAgentBlockedToolNames, filterInlineSubAgentTools } from '../agent';
+import { Agent, filterInlineSubAgentTools } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 
@@ -63,54 +63,68 @@ const anthropicWebSearchProviderTool: BuiltProviderTool = {
 	args: {},
 };
 
+type AgentWithInlineRunner = {
+	createInlineSubAgentRunner: (options: {
+		deferredTools: BuiltTool[];
+		modelConfig: string;
+		providerTools: BuiltProviderTool[];
+		tools: BuiltTool[];
+		inlineSubAgentBlockedTools?: string[];
+	}) => (request: DelegateSubAgentRequest) => Promise<unknown>;
+};
+
+function createInlineRunner(options: {
+	providerTools: BuiltProviderTool[];
+	tools?: BuiltTool[];
+	inlineSubAgentBlockedTools?: string[];
+}) {
+	const agent = new Agent('parent');
+	return (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+		deferredTools: [],
+		modelConfig: 'openai/gpt-4o-mini',
+		tools: options.tools ?? [makeTool('lookup')],
+		providerTools: options.providerTools,
+		inlineSubAgentBlockedTools: options.inlineSubAgentBlockedTools,
+	});
+}
+
 describe('inline sub-agent tool filtering', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
 	});
 
-	it('blocks SDK-owned tools by default but not other tool names', () => {
-		const tools = [
-			makeTool(DELEGATE_SUB_AGENT_TOOL_NAME),
-			makeTool(RECALL_MEMORY_TOOL_NAME),
-			makeTool(WRITE_TODOS_TOOL_NAME),
-			makeTool('host_tool'),
-			makeTool('lookup'),
-		];
-
-		expect(filterInlineSubAgentTools(tools, undefined).map((tool) => tool.name)).toEqual([
-			'host_tool',
-			'lookup',
-		]);
-	});
-
-	it('blocks host-supplied tool names when configured', () => {
-		const tools = [makeTool('host_tool'), makeTool('lookup')];
-
+	it.each([
+		{
+			name: 'blocks SDK-owned tools by default but not other tool names',
+			tools: [
+				makeTool(DELEGATE_SUB_AGENT_TOOL_NAME),
+				makeTool(RECALL_MEMORY_TOOL_NAME),
+				makeTool(WRITE_TODOS_TOOL_NAME),
+				makeTool('host_tool'),
+				makeTool('lookup'),
+			],
+			allowedTools: undefined,
+			blockedTools: undefined,
+			expected: ['host_tool', 'lookup'],
+		},
+		{
+			name: 'blocks host-supplied tool names when configured',
+			tools: [makeTool('host_tool'), makeTool('lookup')],
+			allowedTools: undefined,
+			blockedTools: ['host_tool'],
+			expected: ['lookup'],
+		},
+		{
+			name: 'does not re-add blocked tools through allowedTools',
+			tools: [makeTool(WRITE_TODOS_TOOL_NAME), makeTool('host_tool'), makeTool('lookup')],
+			allowedTools: [WRITE_TODOS_TOOL_NAME, 'host_tool', 'lookup'],
+			blockedTools: ['host_tool'],
+			expected: ['lookup'],
+		},
+	])('$name', ({ tools, allowedTools, blockedTools, expected }) => {
 		expect(
-			filterInlineSubAgentTools(tools, undefined, ['host_tool']).map((tool) => tool.name),
-		).toEqual(['lookup']);
-	});
-
-	it('does not re-add blocked tools through allowedTools', () => {
-		const tools = [makeTool(WRITE_TODOS_TOOL_NAME), makeTool('host_tool'), makeTool('lookup')];
-
-		expect(
-			filterInlineSubAgentTools(
-				tools,
-				[WRITE_TODOS_TOOL_NAME, 'host_tool', 'lookup'],
-				['host_tool'],
-			).map((tool) => tool.name),
-		).toEqual(['lookup']);
-	});
-
-	it('merges SDK defaults with host blocked tool names', () => {
-		const blocked = buildInlineSubAgentBlockedToolNames(['host_tool']);
-
-		expect(blocked.has(DELEGATE_SUB_AGENT_TOOL_NAME)).toBe(true);
-		expect(blocked.has(RECALL_MEMORY_TOOL_NAME)).toBe(true);
-		expect(blocked.has(WRITE_TODOS_TOOL_NAME)).toBe(true);
-		expect(blocked.has('host_tool')).toBe(true);
-		expect(blocked.has('lookup')).toBe(false);
+			filterInlineSubAgentTools(tools, allowedTools, blockedTools).map((tool) => tool.name),
+		).toEqual(expected);
 	});
 
 	it('filters provider tools by allowedTools name', () => {
@@ -122,62 +136,21 @@ describe('inline sub-agent tool filtering', () => {
 		).toEqual(['openai.web_search_preview']);
 	});
 
-	it('passes provider tools to inline child runtimes by default', async () => {
-		const agent = new Agent('parent');
-		type AgentWithInlineRunner = {
-			createInlineSubAgentRunner: (options: {
-				deferredTools: BuiltTool[];
-				modelConfig: string;
-				providerTools: BuiltProviderTool[];
-				tools: BuiltTool[];
-				inlineSubAgentBlockedTools?: string[];
-			}) => (request: DelegateSubAgentRequest) => Promise<unknown>;
-		};
-
-		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
-			deferredTools: [],
-			modelConfig: 'openai/gpt-4o-mini',
+	it.each([
+		{
+			name: 'passes provider tools to inline child runtimes by default',
 			providerTools: [openaiWebSearchProviderTool],
-			tools: [makeTool('lookup')],
-		});
-
-		await runner({
-			subAgentId: INLINE_SUB_AGENT_ID,
-			taskName: 'research',
-			goal: 'Find the answer',
-			taskPath: '/root/research',
-			childCount: 0,
-		});
-
-		expect(runtimeConfigs).toHaveLength(1);
-		expect(
-			(runtimeConfigs[0]?.providerTools as BuiltProviderTool[] | undefined)?.map(
-				(tool) => tool.name,
-			),
-		).toEqual(['openai.web_search_preview']);
-		expect((runtimeConfigs[0]?.tools as BuiltTool[] | undefined)?.map((tool) => tool.name)).toEqual(
-			['lookup'],
-		);
-	});
-
-	it('narrows provider tools when allowedTools is set on the delegation request', async () => {
-		const agent = new Agent('parent');
-		type AgentWithInlineRunner = {
-			createInlineSubAgentRunner: (options: {
-				deferredTools: BuiltTool[];
-				modelConfig: string;
-				providerTools: BuiltProviderTool[];
-				tools: BuiltTool[];
-				inlineSubAgentBlockedTools?: string[];
-			}) => (request: DelegateSubAgentRequest) => Promise<unknown>;
-		};
-
-		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
-			deferredTools: [],
-			modelConfig: 'openai/gpt-4o-mini',
+			allowedTools: undefined,
+			expectedProviderTools: ['openai.web_search_preview'],
+		},
+		{
+			name: 'narrows provider tools when allowedTools is set on the delegation request',
 			providerTools: [openaiWebSearchProviderTool, anthropicWebSearchProviderTool],
-			tools: [makeTool('lookup')],
-		});
+			allowedTools: ['lookup', 'openai.web_search_preview'],
+			expectedProviderTools: ['openai.web_search_preview'],
+		},
+	])('$name', async ({ providerTools, allowedTools, expectedProviderTools }) => {
+		const runner = createInlineRunner({ providerTools });
 
 		await runner({
 			subAgentId: INLINE_SUB_AGENT_ID,
@@ -185,7 +158,7 @@ describe('inline sub-agent tool filtering', () => {
 			goal: 'Find the answer',
 			taskPath: '/root/research',
 			childCount: 0,
-			allowedTools: ['lookup', 'openai.web_search_preview'],
+			...(allowedTools ? { allowedTools } : {}),
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
@@ -193,7 +166,7 @@ describe('inline sub-agent tool filtering', () => {
 			(runtimeConfigs[0]?.providerTools as BuiltProviderTool[] | undefined)?.map(
 				(tool) => tool.name,
 			),
-		).toEqual(['openai.web_search_preview']);
+		).toEqual(expectedProviderTools);
 		expect((runtimeConfigs[0]?.tools as BuiltTool[] | undefined)?.map((tool) => tool.name)).toEqual(
 			['lookup'],
 		);

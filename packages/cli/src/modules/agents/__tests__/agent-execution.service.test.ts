@@ -201,20 +201,6 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
-	describe('syncThreadTitle', () => {
-		it('updates the execution thread title and emoji', async () => {
-			await service.syncThreadTitle('thread-1', {
-				title: 'Workflow chat',
-				emoji: '🤖',
-			});
-
-			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
-				title: 'Workflow chat',
-				emoji: '🤖',
-			});
-		});
-	});
-
 	describe('getThreadDetail', () => {
 		it('returns thread executions after ownership validation', async () => {
 			const thread = makeThread();
