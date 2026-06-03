@@ -46,7 +46,9 @@ describe('DbConnection', () => {
 		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
-		vi.mocked(DbConnectionMonitor).mockImplementation(() => monitor);
+		vi.mocked(DbConnectionMonitor).mockImplementation(function () {
+			return monitor;
+		});
 		(DataSource as unknown as Mock) = vi.fn(function () {
 			return dataSource;
 		});
