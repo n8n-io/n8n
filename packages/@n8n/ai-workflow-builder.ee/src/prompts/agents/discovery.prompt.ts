@@ -39,10 +39,6 @@ export function formatExampleCategorizations(): string {
 		.join('\n');
 }
 
-export interface DiscoveryPromptOptions {
-	includeQuestions: boolean;
-}
-
 const ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
 Identify relevant n8n nodes and their connection-changing parameters for the user's request.
 When the request is underspecified, ask clarifying questions to ensure the right workflow gets built.`;
@@ -50,10 +46,6 @@ When the request is underspecified, ask clarifying questions to ensure the right
 const N8N_EXECUTION_MODEL = `n8n executes each node once per input item.
 
 When a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), every downstream node runs once for each item. Flow control nodes like Aggregate and Split Out change how items flow through the workflow by combining or expanding them.`;
-
-const PROCESS = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Call submit_discovery_results with your nodesFound array`;
 
 const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
@@ -352,9 +344,8 @@ Guidelines:
 - Baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) are automatically included—no need to search for them
 - Prioritize native nodes in your searches because they provide better UX and visual debugging than Code node alternatives`;
 
-function generateToolCallRequirement(options: DiscoveryPromptOptions): string {
-	const toolExamples = ['search_nodes'];
-	if (options.includeQuestions) toolExamples.push('submit_questions');
+function generateToolCallRequirement(): string {
+	const toolExamples = ['search_nodes', 'submit_questions'];
 
 	return `<output_requirement>
 Use tools when needed (e.g. ${toolExamples.join(', ')}).
@@ -364,32 +355,29 @@ Do not output the results as text or XML.
 </output_requirement>`;
 }
 
-function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
+function generateAvailableToolsList(): string {
 	const tools = [
 		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
+		'- submit_questions: Ask clarifying questions when critical details are missing',
 	];
-	if (options.includeQuestions) {
-		tools.push('- submit_questions: Ask clarifying questions when critical details are missing');
-	}
 	tools.push('- web_fetch: Fetch content from a URL the user provided (requires approval)');
 	tools.push('- submit_discovery_results: Submit final results');
 	return tools.join('\n');
 }
 
-function selectProcessSection(options: DiscoveryPromptOptions): string {
-	if (options.includeQuestions) return PROCESS_WITH_QUESTIONS;
-	return PROCESS;
+function selectProcessSection(): string {
+	return PROCESS_WITH_QUESTIONS;
 }
 
-export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
-	const availableTools = generateAvailableToolsList(options);
+export function buildDiscoveryPrompt(): string {
+	const availableTools = generateAvailableToolsList();
 
 	return prompt()
 		.section('role', ROLE)
 		.section('available_tools', availableTools)
-		.section('process', selectProcessSection(options))
-		.section('tool_call_requirement', generateToolCallRequirement(options))
-		.sectionIf(options.includeQuestions, 'clarifying_questions', CLARIFYING_QUESTIONS)
+		.section('process', selectProcessSection())
+		.section('tool_call_requirement', generateToolCallRequirement())
+		.section('clarifying_questions', CLARIFYING_QUESTIONS)
 		.section('n8n_execution_model', N8N_EXECUTION_MODEL)
 		.section('baseline_flow_control', BASELINE_FLOW_CONTROL)
 		.section('trigger_selection', TRIGGER_SELECTION)

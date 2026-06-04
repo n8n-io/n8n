@@ -63,10 +63,6 @@ export const CREDENTIALS_APP_SELECTION_EXPERIMENT = createExperiment(
 	'065_credentials_app_selection',
 );
 
-export const EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT = createExperiment(
-	'063_empty_state_builder_prompt',
-);
-
 export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
@@ -135,7 +131,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	EMPTY_STATE_EXPERIMENT.name,
 	SETUP_PANEL.name,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
-	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,

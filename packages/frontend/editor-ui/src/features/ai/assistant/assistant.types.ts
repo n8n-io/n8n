@@ -125,7 +125,6 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		pinData?: boolean;
-		planMode?: boolean;
 		mergeAskBuild?: boolean;
 	}
 

@@ -34,7 +34,6 @@ export async function createBuilderPayload(
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
 		mode?: 'build' | 'plan';
-		isPlanModeEnabled?: boolean;
 		allowSendingParameterValues?: boolean;
 	},
 ): Promise<ChatRequest.UserChatMessage> {
@@ -82,7 +81,6 @@ export async function createBuilderPayload(
 
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
 		pinData: isPinDataEnabled,
-		planMode: options.isPlanModeEnabled ?? false,
 		mergeAskBuild: posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name),
 	};
 
