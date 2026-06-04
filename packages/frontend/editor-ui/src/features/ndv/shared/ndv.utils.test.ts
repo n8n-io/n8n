@@ -597,7 +597,7 @@ describe('createCommonNodeSettings', () => {
 		}
 	});
 
-	it('should not include customTelemetryTags when isOtelEnabled is false', () => {
+	it('should not include customTelemetryTags when canUseOtelCustomSpanAttributes is false', () => {
 		const regularSettings = createCommonNodeSettings(false, mockT, false);
 		const toolSettings = createCommonNodeSettings(true, mockT, false);
 
@@ -605,12 +605,12 @@ describe('createCommonNodeSettings', () => {
 		expect(toolSettings.map((s) => s.name)).not.toContain('customTelemetryTags');
 	});
 
-	it('should not include customTelemetryTags when isOtelEnabled is omitted', () => {
+	it('should not include customTelemetryTags when canUseOtelCustomSpanAttributes is omitted', () => {
 		const settings = createCommonNodeSettings(false, mockT);
 		expect(settings.map((s) => s.name)).not.toContain('customTelemetryTags');
 	});
 
-	it('should include customTelemetryTags as the last setting when isOtelEnabled is true', () => {
+	it('should include customTelemetryTags as the last setting when canUseOtelCustomSpanAttributes is true', () => {
 		const regularSettings = createCommonNodeSettings(false, mockT, true);
 		const toolSettings = createCommonNodeSettings(true, mockT, true);
 
