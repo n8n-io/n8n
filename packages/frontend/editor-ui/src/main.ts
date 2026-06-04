@@ -31,6 +31,14 @@ import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer'
 
 import type { VueScanOptions } from 'z-vue-scan';
 
+const VITE_PRELOAD_RELOAD_FLAG = 'n8n:vite-preload-reloaded';
+window.addEventListener('vite:preloadError', (event) => {
+	if (sessionStorage.getItem(VITE_PRELOAD_RELOAD_FLAG)) return;
+	sessionStorage.setItem(VITE_PRELOAD_RELOAD_FLAG, '1');
+	event.preventDefault();
+	window.location.reload();
+});
+
 const pinia = createPinia();
 
 const app = createApp(App);
@@ -58,6 +66,7 @@ if (import.meta.env.VUE_SCAN) {
 }
 
 app.mount('#app');
+sessionStorage.removeItem(VITE_PRELOAD_RELOAD_FLAG);
 
 if (import.meta.env.DEV) {
 	void import('@/app/dev/dev-panel').then((m) => m.mountDevPanel());

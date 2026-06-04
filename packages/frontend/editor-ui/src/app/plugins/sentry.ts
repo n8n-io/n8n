@@ -14,6 +14,9 @@ const ignoredErrors = [
 	{ instanceof: RangeError, message: /Invalid change range \d+ to \d+/ },
 	{ instanceof: RangeError, message: /Selection points outside of document$/ },
 	{ instanceof: Error, message: /ResizeObserver/ },
+	{ instanceof: TypeError, message: /Failed to fetch dynamically imported module/ },
+	{ instanceof: TypeError, message: /error loading dynamically imported module/ },
+	{ instanceof: TypeError, message: /Importing a module script failed/ },
 ] as const;
 
 type SentryConfig = {
