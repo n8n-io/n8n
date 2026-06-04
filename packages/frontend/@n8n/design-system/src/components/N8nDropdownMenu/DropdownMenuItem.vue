@@ -35,7 +35,7 @@ const emit = defineEmits<{
 	select: [value: T];
 	search: [searchTerm: string, itemId: T];
 	'update:subMenuOpen': [open: boolean];
-	pointermove: [];
+	pointermove: [event: PointerEvent];
 }>();
 
 const $style = useCssModule();
@@ -85,10 +85,12 @@ const handleItemSelect = () => {
 };
 
 const handlePointerMove = (event: PointerEvent) => {
-	emit('pointermove');
+	emit('pointermove', event);
+};
 
-	if (props.disablePointerFocus && !hasSubMenu.value) {
-		event.stopImmediatePropagation();
+const handleSubContentFocusOutside = (event: Event) => {
+	if (props.disablePointerFocus) {
+		event.preventDefault();
 	}
 };
 
@@ -158,6 +160,7 @@ watch(
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
+					@focus-outside="handleSubContentFocusOutside"
 				>
 					<DropdownMenuSearchableContent
 						v-if="searchable"
@@ -342,8 +345,16 @@ watch(
 }
 
 .sub-trigger {
-	&[data-state='open'] {
-		background-color: var(--background--active);
+	& &:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			background-color: transparent;
+			cursor: pointer;
+		}
+		&[data-state='open'] {
+			background-color: var(--background--hover);
+		}
 	}
 }
 

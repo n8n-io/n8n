@@ -135,7 +135,10 @@ const renderSearchableContent = (items: Array<DropdownMenuItemProps>, open = tru
 							{
 								id: getItemDomId(index),
 								'aria-selected': highlightedIndex === index ? 'true' : undefined,
-								onPointermove: () => onItemHover(index),
+								onPointermove: (event: PointerEvent) => {
+									(event.currentTarget as HTMLButtonElement).focus();
+									onItemHover(index);
+								},
 							},
 							item.label,
 						),
@@ -202,33 +205,33 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		});
 	});
 
-	it('should open submenu items when hovering them', async () => {
+	it('should refocus the search input after hovering an item', async () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'item-0', label: 'Item 0' },
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
+		const input = wrapper.getByRole('textbox');
 
+		await userEvent.click(input);
 		await fireEvent.pointerMove(wrapper.getByText('Parent'));
 
-		expect(wrapper.container.querySelector('[data-open-submenu-index]')).toHaveAttribute(
-			'data-open-submenu-index',
-			'1',
-		);
 		expect(wrapper.getByText('Parent')).toHaveAttribute('aria-selected', 'true');
+		await waitFor(() => expect(document.activeElement).toBe(input));
 	});
 
-	it('should close an open submenu when hovering an item without a submenu', async () => {
+	it('should leave submenu open state unchanged when hovering another item', async () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 			{ id: 'item-1', label: 'Item 1' },
 		]);
 
-		await fireEvent.pointerMove(wrapper.getByText('Parent'));
+		await userEvent.click(wrapper.getByRole('textbox'));
+		await userEvent.keyboard('{ArrowDown}{Enter}');
 		await fireEvent.pointerMove(wrapper.getByText('Item 1'));
 
 		expect(wrapper.container.querySelector('[data-open-submenu-index]')).toHaveAttribute(
 			'data-open-submenu-index',
-			'-1',
+			'0',
 		);
 		expect(wrapper.getByText('Item 1')).toHaveAttribute('aria-selected', 'true');
 	});
