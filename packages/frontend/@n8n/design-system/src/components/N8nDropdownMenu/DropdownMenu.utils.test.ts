@@ -113,10 +113,15 @@ type SearchableSlotProps = {
 	highlightedIndex: number;
 	openSubMenuIndex: number;
 	onItemHover: (index: number) => void;
+	onSubMenuOpenChange: (index: number, open: boolean) => void;
 	getItemDomId: (index: number) => string;
 };
 
-const renderSearchableContent = (items: Array<DropdownMenuItemProps>, open = true) => {
+const renderSearchableContent = (
+	items: Array<DropdownMenuItemProps>,
+	open = true,
+	pointerOpensSubmenus = false,
+) => {
 	return render(DropdownMenuSearchableContent, {
 		props: { open, items, searchDebounce: 0 },
 		slots: {
@@ -124,6 +129,7 @@ const renderSearchableContent = (items: Array<DropdownMenuItemProps>, open = tru
 				highlightedIndex,
 				openSubMenuIndex,
 				onItemHover,
+				onSubMenuOpenChange,
 				getItemDomId,
 			}: SearchableSlotProps) =>
 				h(
@@ -138,6 +144,9 @@ const renderSearchableContent = (items: Array<DropdownMenuItemProps>, open = tru
 								onPointermove: (event: PointerEvent) => {
 									(event.currentTarget as HTMLButtonElement).focus();
 									onItemHover(index);
+									if (pointerOpensSubmenus && item.children) {
+										onSubMenuOpenChange(index, true);
+									}
 								},
 							},
 							item.label,
@@ -234,6 +243,33 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 			'0',
 		);
 		expect(wrapper.getByText('Item 1')).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('should close a pointer-opened submenu when navigating with ArrowDown', async () => {
+		const wrapper = renderSearchableContent(
+			[
+				{ id: 'parent', label: 'Parent', children: createItems(1) },
+				{ id: 'item-1', label: 'Item 1' },
+			],
+			true,
+			true,
+		);
+
+		await userEvent.click(wrapper.getByRole('textbox'));
+		await fireEvent.pointerMove(wrapper.getByText('Parent'));
+
+		expect(wrapper.container.querySelector('[data-open-submenu-index]')).toHaveAttribute(
+			'data-open-submenu-index',
+			'0',
+		);
+
+		await userEvent.keyboard('{ArrowDown}');
+
+		expect(wrapper.container.querySelector('[data-open-submenu-index]')).toHaveAttribute(
+			'data-open-submenu-index',
+			'-1',
+		);
+		expect(wrapper.getByText('Parent')).toHaveAttribute('aria-selected', 'true');
 	});
 
 	it('should close when pressing Escape or Tab', async () => {
