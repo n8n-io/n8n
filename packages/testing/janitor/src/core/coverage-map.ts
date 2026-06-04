@@ -268,9 +268,36 @@ export interface ChangedFile {
 export interface ResolveResult {
 	/** Specs that must run. In 'broad' mode this is `allSpecs` if supplied. */
 	specs: string[];
-	/** Changed files absent from the map (new/renamed/never-covered) → force broad. */
+	/** Changed files with no map entry AND no covered ancestor dir → force broad. */
 	unmapped: string[];
+	/** Unmapped files resolved to their nearest covered ancestor directory's specs
+	 *  (sibling fallback). Scoped, not broad. */
+	viaSibling?: string[];
 	mode: 'scoped' | 'broad';
+}
+
+const parentDir = (p: string): string => {
+	const i = p.lastIndexOf('/');
+	return i < 0 ? '' : p.slice(0, i);
+};
+
+/**
+ * Index every ancestor directory of every mapped file to the union of specs
+ * under it. Lets an unmapped (new/never-covered) file fall back to the specs
+ * that exercise its directory, instead of forcing the whole suite.
+ */
+function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
+	const dirSpecs = new Map<string, Set<string>>();
+	for (const file of Object.keys(map)) {
+		const fileSpecs = new Set<string>();
+		for (const line of Object.keys(map[file])) for (const s of map[file][line]) fileSpecs.add(s);
+		for (let dir = parentDir(file); dir !== ''; dir = parentDir(dir)) {
+			let set = dirSpecs.get(dir);
+			if (!set) dirSpecs.set(dir, (set = new Set()));
+			for (const s of fileSpecs) set.add(s);
+		}
+	}
+	return dirSpecs;
 }
 
 /**
@@ -292,18 +319,43 @@ export interface ResolveResult {
  * when the map is known function-complete for the file. The default-safe usage —
  * and what the CLI does — is FILE-LEVEL (omit `lines`): a changed file selects
  * every spec covering any part of it. Treat `lines` as an opt-in optimisation.
+ *
+ * SIBLING FALLBACK (`opts.siblingFallback`): an unmapped file (new / never-
+ * covered) otherwise forces 'broad' — counterintuitive for a new file in a
+ * well-covered area ("no spec touches this exact path, so run all of them").
+ * With it on, the file instead selects the specs covering its NEAREST covered
+ * ancestor directory (e.g. a new `@n8n/instance-ai/…` file → the instance-ai
+ * specs). Only a file with NO covered ancestor at all still forces broad.
+ * Deliberate trade: a new file is assumed exercised by the specs that exercise
+ * its directory — a sound superset in practice, far cheaper than the whole suite.
  */
 export function resolveImpact(
 	changed: ChangedFile[],
 	map: ImpactMap,
-	opts: { allSpecs?: string[] } = {},
+	opts: { allSpecs?: string[]; siblingFallback?: boolean } = {},
 ): ResolveResult {
 	const specs = new Set<string>();
 	const unmapped: string[] = [];
+	const viaSibling: string[] = [];
+	const dirIndex = opts.siblingFallback ? buildDirIndex(map) : undefined;
 
 	for (const { file, lines } of changed) {
 		const fileMap = map[file];
 		if (!fileMap) {
+			// Sibling fallback: an unmapped file selects the specs covering its
+			// nearest covered ancestor directory, instead of forcing the whole suite.
+			if (dirIndex) {
+				let resolved: Set<string> | undefined;
+				for (let dir = parentDir(file); dir !== '' && !resolved; dir = parentDir(dir)) {
+					const set = dirIndex.get(dir);
+					if (set?.size) resolved = set;
+				}
+				if (resolved) {
+					for (const s of resolved) specs.add(s);
+					viaSibling.push(file);
+					continue;
+				}
+			}
 			unmapped.push(file);
 			continue;
 		}
@@ -337,5 +389,10 @@ export function resolveImpact(
 	if (mode === 'broad' && opts.allSpecs) {
 		for (const s of opts.allSpecs) specs.add(s);
 	}
-	return { specs: [...specs].sort(), unmapped, mode };
+	return {
+		specs: [...specs].sort(),
+		unmapped,
+		...(viaSibling.length ? { viaSibling } : {}),
+		mode,
+	};
 }

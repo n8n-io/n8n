@@ -62,33 +62,57 @@ We use a **hybrid encoding** — pick the cheaper representation per entry:
 | **sparse** (a few specs) | a number list `[3, 17]` | tiny already |
 | **dense** (many specs) | a **bitmask** `"b:AB7…"` | one bit per spec — *constant* size no matter how many specs |
 
-A **bitmask** is just "one checkbox per spec": bit 5 on = spec #5 ran this code.
-148 specs = 148 bits = 19 bytes — whether 3 specs or all 148 ran it. For a hub
-file that's a huge saving; for a 2-spec file the plain list is smaller, so we keep
-the list. Best of both.
+A **bitmask** is just a **row of light switches, one per spec** — flip ON the
+switches for the specs that ran this line. With 8 specs, "specs 1, 3 and 6 ran it"
+becomes one byte:
+
+```
+spec:   7 6 5 4 3 2 1 0
+switch: 0 1 0 0 1 0 1 0   →  one byte (0x4A)
+```
+
+That one byte covers 8 specs whether 1 or all 8 are on; 148 specs → 148 switches
+→ 19 bytes, flat. (We base64 the bytes so they fit in JSON: `"b:Sg…"`.) For a hub
+line hit by 130 specs the list would be ~600 chars but the mask is still 19 bytes;
+for a 2-spec line the list `[3,17]` is smaller, so we keep the list. Best of both.
+Reading it back: check which switches are on → recover the spec numbers. Lossless.
 
 This is **lossless** — every spec→file relationship is preserved exactly. Measured
-on the real map it cuts the file ~3× with **zero accuracy lost**.
+on the real map it cuts the file ~3× with **zero accuracy lost** (and is why the
+map *shrank* even after adding dense backend data).
 
-> Analogy: instead of writing out "students 1, 4, 7, 9, 12, … 140 attended"
-> (a long list), you tick a class register (one box per student). For a packed
-> class the register is far shorter than the list.
+## 6. New files: sibling fallback (not "run everything")
 
-## 6. The golden safety rule: fail-open
+What about a file that isn't in the map — a brand-new file, or code no spec has
+exercised yet? The naive answer is "run all specs," but that's wasteful: a new
+file in a well-covered area is almost certainly exercised by the same specs as
+its neighbours. So instead we use a **sibling fallback**:
 
-The map is an **optimisation, never a gate**. If anything is uncertain, we run
-**more** tests, never fewer:
+> An unmapped file selects the specs covering its **nearest covered ancestor
+> directory**. A new `packages/@n8n/instance-ai/foo.ts` → the `instance-ai`
+> specs, not all 172.
 
-- File **not in the map** (new file, or we chose not to store it) → run **all** specs.
-- Map missing / stale / unreadable → run **all** specs.
-- Either analyzer (static import graph *or* coverage map) errors → run **all** specs.
+Only a file with **no covered ancestor at all** (a genuinely unknown area)
+falls all the way back to running everything. This is the single biggest lever
+for selection quality, because high-churn packages add new files constantly —
+without it, ~3/4 of backend PRs would run the whole suite.
+
+## 7. The golden safety rule: never skip, only narrow
+
+The map is an **optimisation, never a gate**. If anything is genuinely unknown we
+run **more** tests, never fewer:
+
+- File not in the map → **sibling fallback** (its directory's specs); only a file
+  with no covered ancestor → **all** specs.
+- Map missing / stale / unreadable → **all** specs.
+- Either analyzer (static import graph *or* coverage map) errors → **all** specs.
 
 So the worst case is "ran too many tests," never "skipped a test that should have
-run." A change can only ever be **narrowed** by the map — never silently dropped.
-This is why we can safely leave hub files out of the map if we ever need to: they'd
-just fall back to running everything, which is what they should do anyway.
+run." (The sibling fallback is a deliberate, sound trade: a new file is assumed
+exercised by the specs that exercise its directory — a superset in practice, far
+cheaper than the whole suite.)
 
-## 7. Where things live
+## 8. Where things live
 
 | Thing | File |
 |---|---|

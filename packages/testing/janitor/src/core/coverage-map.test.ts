@@ -159,6 +159,42 @@ describe('resolveImpact', () => {
 	});
 });
 
+describe('resolveImpact — sibling fallback', () => {
+	const m: ImpactMap = {
+		'packages/cli/src/a.ts': { '1': ['s1'] },
+		'packages/cli/src/sub/b.ts': { '1': ['s2'] },
+		'packages/core/src/c.ts': { '1': ['s3'] },
+	};
+	const sib = { siblingFallback: true, allSpecs: ['s1', 's2', 's3'] };
+
+	it('resolves a new file to its nearest covered directory (not broad)', () => {
+		const r = resolveImpact([{ file: 'packages/cli/src/e.ts' }], m, sib);
+		expect(r.mode).toBe('scoped');
+		expect(r.viaSibling).toEqual(['packages/cli/src/e.ts']);
+		expect(r.specs).toEqual(['s1', 's2']); // union of packages/cli/src
+		expect(r.unmapped).toEqual([]);
+	});
+
+	it('prefers the DEEPEST covered directory', () => {
+		const r = resolveImpact([{ file: 'packages/cli/src/sub/d.ts' }], m, sib);
+		expect(r.specs).toEqual(['s2']); // only sub/, not all of cli/src
+	});
+
+	it('still forces broad when NO ancestor directory is covered', () => {
+		const r = resolveImpact([{ file: 'scripts/tool.mjs' }], m, sib);
+		expect(r.mode).toBe('broad');
+		expect(r.unmapped).toEqual(['scripts/tool.mjs']);
+		expect(r.specs).toEqual(['s1', 's2', 's3']);
+	});
+
+	it('is off by default — unmapped still forces broad', () => {
+		const r = resolveImpact([{ file: 'packages/cli/src/e.ts' }], m, {
+			allSpecs: ['s1', 's2', 's3'],
+		});
+		expect(r.mode).toBe('broad');
+	});
+});
+
 // ===========================================================================
 // Property + metamorphic tests — the soundness guarantee
 // ===========================================================================
