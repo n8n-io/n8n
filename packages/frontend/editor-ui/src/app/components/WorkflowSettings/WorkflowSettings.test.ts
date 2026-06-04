@@ -988,6 +988,40 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
+		it('should save with empty credentialResolverId when switching back to the system resolver', async () => {
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			// Open the dropdown and pick the n8n system resolver
+			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
+			await userEvent.click(within(resolverContainer).getByRole('combobox'));
+
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const systemResolver = options.find((o) => o.textContent?.includes('N8n Resolver'));
+				expect(systemResolver).toBeTruthy();
+				await userEvent.click(systemResolver!);
+			});
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			// `undefined` would be stripped during serialization and the merge on the backend
+			// would keep the old id, so the clear must be sent as an explicit empty string.
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ credentialResolverId: '' }),
+				}),
+			);
+		});
+
 		it('should disable credential resolver dropdown when environment is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
