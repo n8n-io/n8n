@@ -99,8 +99,7 @@ export class AgentsBuilderService {
 
 		const resourceId = user.id;
 		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
-		const streamFromAgent = (resultStream: StreamResult, control?: AgentStreamControl) =>
-			this.streamFromAgent(resultStream, control);
+		const streamFromAgent = (resultStream: StreamResult) => this.streamFromAgent(resultStream);
 
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			message,
@@ -111,7 +110,7 @@ export class AgentsBuilderService {
 					abortSignal: control?.signal,
 				});
 
-				yield* streamFromAgent(resultStream, control);
+				yield* streamFromAgent(resultStream);
 			},
 		});
 	}
@@ -165,8 +164,7 @@ export class AgentsBuilderService {
 
 		const resourceId = user.id;
 		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
-		const streamFromAgent = (resultStream: StreamResult, control?: AgentStreamControl) =>
-			this.streamFromAgent(resultStream, control);
+		const streamFromAgent = (resultStream: StreamResult) => this.streamFromAgent(resultStream);
 
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			streamKey,
@@ -177,7 +175,7 @@ export class AgentsBuilderService {
 					abortSignal: control?.signal,
 				});
 
-				yield* streamFromAgent(resultStream, control);
+				yield* streamFromAgent(resultStream);
 			},
 			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
 				const resultStream = await builder.stream(turnMessage, {
@@ -185,7 +183,7 @@ export class AgentsBuilderService {
 					abortSignal: control?.signal,
 				});
 
-				yield* streamFromAgent(resultStream, control);
+				yield* streamFromAgent(resultStream);
 			},
 		});
 	}
@@ -308,12 +306,8 @@ export class AgentsBuilderService {
 	 * on each `tool-call-suspended` chunk by the SDK, so this is just a
 	 * plain reader→generator adapter.
 	 */
-	private async *streamFromAgent(
-		resultStream: StreamResult,
-		control?: AgentStreamControl,
-	): AsyncGenerator<StreamChunk> {
+	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
 		for await (const value of streamAgentChunks(resultStream.stream)) {
-			if (control?.wasAborted()) break;
 			yield value;
 		}
 	}
