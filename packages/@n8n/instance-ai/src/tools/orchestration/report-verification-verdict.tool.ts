@@ -150,6 +150,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				workflowId: input.workflowId,
 				executionId: input.executionId,
 				verdict: forcedTerminalVerdict ?? input.verdict,
+				workflowInspection: input.workflowInspection,
 				failureSignature: forcedTerminalVerdict
 					? (remediation?.reason ?? input.failureSignature)
 					: input.failureSignature,

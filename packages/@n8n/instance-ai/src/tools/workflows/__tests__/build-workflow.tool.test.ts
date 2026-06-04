@@ -2,7 +2,6 @@ import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
-import { parseAndValidate } from '../../../workflow-builder';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createBuildWorkflowTool } from '../build-workflow.tool';
 import { resolveCredentials } from '../resolve-credentials';
@@ -44,7 +43,6 @@ vi.mock('../submit-workflow.tool', () => ({
 }));
 
 describe('createBuildWorkflowTool', () => {
-	const mockedParseAndValidate = vi.mocked(parseAndValidate);
 	const originalBuildViaPlanGuard = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
 	const restoreBuildViaPlanGuard = () => {
 		if (originalBuildViaPlanGuard === undefined) {
