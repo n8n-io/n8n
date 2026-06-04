@@ -129,7 +129,6 @@ export async function createSandbox(
 			labels: config.labels,
 			...(image ? { image } : {}),
 			...(snapshot ? { snapshot } : {}),
-			ephemeral: true,
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
 			createTimeoutSeconds: config.createTimeoutSeconds ?? 300,
