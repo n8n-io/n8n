@@ -614,6 +614,26 @@ describe('workflow_published_version table population', () => {
 	});
 });
 
+describe('activateWorkflow trigger cleanup', () => {
+	test('should tear down triggers when activation fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow();
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+
+		// Check rollback happened
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+});
+
 describe('getMany()', () => {
 	describe('filtering by personal project', () => {
 		test('should return empty when regular user queries another users personal project', async () => {
