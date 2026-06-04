@@ -1262,11 +1262,13 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			const reconstructSpy = vi
-				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
-			vi.spyOn(service as never, 'streamChatResponse').mockImplementation(
+			(vi.spyOn(service as never, 'createCredentialProvider') as unknown as Mock).mockReturnValue(
+				mock(),
+			);
+			const reconstructSpy = (
+				vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock
+			).mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			(vi.spyOn(service as never, 'streamChatResponse') as unknown as Mock).mockImplementation(
 				async function* () {} as never,
 			);
 
@@ -1301,14 +1303,16 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'createCredentialProvider') as unknown as Mock).mockReturnValue(
+				mock(),
+			);
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: {},
 				toolRegistry: {},
 			} as never);
-			const streamSpy = vi
-				.spyOn(service as never, 'streamChatResponse')
-				.mockImplementation(async function* () {} as never);
+			const streamSpy = (
+				vi.spyOn(service as never, 'streamChatResponse') as unknown as Mock
+			).mockImplementation(async function* () {} as never);
 
 			await service
 				.executeForChatPublished({
@@ -1337,14 +1341,16 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'createCredentialProvider') as unknown as Mock).mockReturnValue(
+				mock(),
+			);
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: {},
 				toolRegistry: {},
 			} as never);
-			const streamSpy = vi
-				.spyOn(service as never, 'streamChatResponse')
-				.mockImplementation(async function* () {} as never);
+			const streamSpy = (
+				vi.spyOn(service as never, 'streamChatResponse') as unknown as Mock
+			).mockImplementation(async function* () {} as never);
 
 			await service
 				.executeForChatPublished({
@@ -1370,14 +1376,16 @@ describe('AgentsService', () => {
 			const agent = makeAgent({ schema });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'createCredentialProvider') as unknown as Mock).mockReturnValue(
+				mock(),
+			);
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: {},
 				toolRegistry: {},
 			} as never);
-			const streamSpy = vi
-				.spyOn(service as never, 'streamChatResponse')
-				.mockImplementation(async function* () {} as never);
+			const streamSpy = (
+				vi.spyOn(service as never, 'streamChatResponse') as unknown as Mock
+			).mockImplementation(async function* () {} as never);
 
 			await service
 				.executeForChat({
@@ -1570,7 +1578,7 @@ describe('AgentsService', () => {
 					}),
 				},
 			});
-			vi.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+			(vi.spyOn(service as never, 'compileIsolated') as unknown as Mock).mockResolvedValue({
 				ok: true,
 				agent: { name: 'Test Agent', stream, close: vi.fn().mockResolvedValue(undefined) },
 			} as never);
@@ -1615,7 +1623,7 @@ describe('AgentsService', () => {
 					}),
 				},
 			});
-			vi.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+			(vi.spyOn(service as never, 'compileIsolated') as unknown as Mock).mockResolvedValue({
 				ok: true,
 				agent: { name: 'Test Agent', stream },
 			} as never);
@@ -2589,8 +2597,10 @@ describe('AgentsService', () => {
 				}),
 			};
 
-			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'createCredentialProvider') as unknown as Mock).mockReturnValue(
+				mock(),
+			);
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: mockAgentInstance,
 				toolRegistry: {},
 			} as never);
@@ -2648,8 +2658,10 @@ describe('AgentsService', () => {
 				}),
 			};
 
-			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'createCredentialProvider') as unknown as Mock).mockReturnValue(
+				mock(),
+			);
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: mockAgentInstance,
 				toolRegistry: {},
 			} as never);
