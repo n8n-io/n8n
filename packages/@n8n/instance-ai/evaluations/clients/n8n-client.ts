@@ -48,6 +48,7 @@ export interface WorkflowNodeResponse {
 	type: string;
 	typeVersion?: number;
 	parameters?: Record<string, unknown>;
+	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -133,6 +134,17 @@ export class N8nClient {
 	}
 
 	// -- Instance-AI endpoints -----------------------------------------------
+
+	/**
+	 * Ensure a conversation thread exists before sending chat messages.
+	 * POST /rest/instance-ai/threads body: { threadId }
+	 */
+	async ensureThread(threadId: string): Promise<void> {
+		await this.fetch('/rest/instance-ai/threads', {
+			method: 'POST',
+			body: { threadId },
+		});
+	}
 
 	/**
 	 * Send a chat message to the instance-ai agent.

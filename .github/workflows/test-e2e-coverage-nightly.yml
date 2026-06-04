@@ -57,6 +57,7 @@ jobs:
       pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
       artifact-prefix: coverage
       build-variant: coverage
+      currents-project-id: 'LRxcNt'
     secrets: inherit
 
   aggregate:

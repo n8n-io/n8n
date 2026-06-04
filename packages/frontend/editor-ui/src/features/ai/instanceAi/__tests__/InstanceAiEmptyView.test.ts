@@ -8,19 +8,24 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import type { FrontendModuleSettings } from '@n8n/api-types';
 
 const {
 	experimentMocks,
 	promptSuggestionsV2,
 	promptSuggestionsV2Component,
+	workflowPreviewSuggestions,
+	workflowPreviewSuggestionsComponent,
 	replaceMock,
 	showErrorMock,
 } = vi.hoisted(() => ({
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
+		workflowPreviewEnabled: { value: false },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -30,6 +35,14 @@ const {
 		promptKey: 'instanceAi.emptyState.suggestions.buildAgent.prompt',
 	})),
 	promptSuggestionsV2Component: { name: 'InstanceAiPromptSuggestionsV2Stub' },
+	workflowPreviewSuggestions: Array.from({ length: 4 }, (_, index) => ({
+		type: 'prompt',
+		id: `wp-suggestion-${index + 1}`,
+		icon: 'workflow',
+		labelKey: 'instanceAi.emptyState.suggestions.buildWorkflow.label',
+		promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
+	})),
+	workflowPreviewSuggestionsComponent: { name: 'WorkflowPreviewSuggestionsStub' },
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
 }));
@@ -51,6 +64,17 @@ vi.mock('@/experiments/instanceAiPromptSuggestionsV2', () => ({
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2: promptSuggestionsV2,
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION: 'v2',
 	InstanceAiPromptSuggestionsV2: promptSuggestionsV2Component,
+}));
+
+vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
+	useInstanceAiWorkflowPreviewSuggestionsExperiment: () => ({
+		isFeatureEnabled: experimentMocks.workflowPreviewEnabled,
+	}),
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: workflowPreviewSuggestions,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION: 'v3-workflow-preview',
+	WorkflowPreviewSuggestions: workflowPreviewSuggestionsComponent,
+	WorkflowPreviewCanvas: { name: 'WorkflowPreviewCanvasStub', template: '<div />' },
+	getPreviewWorkflow: () => null,
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -83,6 +107,7 @@ const InstanceAiInputStub = defineComponent({
 		placeholderKey: { type: String, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
+		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose }) {
@@ -110,6 +135,11 @@ const InstanceAiInputStub = defineComponent({
 					props.placeholderKey ?? 'unset',
 				),
 				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-availability' },
+					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
+				),
+				h(
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
@@ -132,6 +162,18 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	},
 });
 
+type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
+
+const defaultModuleSettings: InstanceAiModuleSettings = {
+	enabled: true,
+	localGatewayDisabled: false,
+	proxyEnabled: false,
+	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+};
+
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let thread: ThreadRuntime;
@@ -147,6 +189,9 @@ describe('InstanceAiEmptyView', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings },
+		};
 		store = mockedStore(useInstanceAiStore);
 		thread = {
 			id: 'thread-placeholder',
@@ -160,6 +205,7 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
+		experimentMocks.workflowPreviewEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -189,6 +235,22 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('v2');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+		);
+	});
+
+	it('passes workflow preview suggestions, component, and catalog version when workflow preview experiment is enabled', () => {
+		experimentMocks.workflowPreviewEnabled.value = true;
+
+		const { getByTestId, getByText } = renderView();
+
+		expect(getByText('What do you want to automate?')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
 		);
 	});
 
@@ -236,6 +298,29 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(showErrorMock).toHaveBeenCalled();
+		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it('shows an upfront unavailable state and does not start a thread when the builder is unavailable', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				...defaultModuleSettings,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+			},
+		};
+		const { getByTestId, getByText } = renderView();
+
+		expect(getByTestId('instance-ai-workflow-builder-unavailable')).toBeVisible();
+		expect(getByText('Workflow builder unavailable')).toBeVisible();
+		expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();

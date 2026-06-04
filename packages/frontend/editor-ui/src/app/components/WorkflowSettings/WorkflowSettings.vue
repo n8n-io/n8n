@@ -1708,7 +1708,7 @@ onBeforeUnmount(() => {
 					</ElCol>
 				</ElRow>
 				<WorkflowCustomTelemetryTags
-					v-if="settingsStore.isOtelEnabled"
+					v-if="settingsStore.isOtelCustomSpanAttributesEnabled"
 					v-model="workflowSettings.customTelemetryTags"
 					:is-read-only="isWorkflowSettingsReadOnly"
 					:save-tags="saveCustomTelemetryTags"

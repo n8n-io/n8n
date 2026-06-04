@@ -358,7 +358,7 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
-			...(settingsStore.isOtelEnabled
+			...(settingsStore.isOtelCustomSpanAttributesEnabled
 				? { customTelemetryTags: formData.value.customTelemetryTags }
 				: {}),
 		});
@@ -729,7 +729,7 @@ onMounted(async () => {
 						/>
 					</div>
 				</fieldset>
-				<fieldset v-if="settingsStore.isOtelEnabled">
+				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
 					<h3>
 						<label>{{ i18n.baseText('projects.settings.telemetryTags.label') }}</label>
 					</h3>

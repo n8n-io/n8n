@@ -978,11 +978,16 @@ export type RelayEventMap = {
 
 	// #region Instance Policies
 
-	'instance-policies-updated': {
-		user: UserLike;
-		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
-		value: boolean;
-	};
+	'instance-policies-updated': { user: UserLike } & (
+		| {
+				settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+				value: boolean;
+		  }
+		| {
+				settingName: 'data_redaction_enforcement_floor';
+				value: RedactionFloor;
+		  }
+	);
 
 	'redaction-enforcement-updated': {
 		user: UserLike;
@@ -1017,6 +1022,16 @@ export type RelayEventMap = {
 
 	'instance-ai-settings-updated': {
 		mcpSettingsChanged: boolean;
+	};
+
+	'instance-ai-mcp-registry-connection-created': {
+		userId: string;
+		serverSlug: string;
+	};
+
+	'instance-ai-mcp-registry-connection-deleted': {
+		userId: string;
+		serverSlug: string;
 	};
 
 	// #endregion

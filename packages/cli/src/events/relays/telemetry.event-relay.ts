@@ -197,8 +197,36 @@ export class TelemetryEventRelay extends EventRelay {
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
+			'instance-ai-mcp-registry-connection-created': (event) =>
+				this.instanceAiMcpRegistryConnectionCreated(event),
+			'instance-ai-mcp-registry-connection-deleted': (event) =>
+				this.instanceAiMcpRegistryConnectionDeleted(event),
 		});
 	}
+
+	// #region Instance AI MCP
+
+	private instanceAiMcpRegistryConnectionCreated({
+		userId,
+		serverSlug,
+	}: RelayEventMap['instance-ai-mcp-registry-connection-created']) {
+		this.telemetry.track('Instance AI mcp connected', {
+			user_id: userId,
+			server_slug: serverSlug,
+		});
+	}
+
+	private instanceAiMcpRegistryConnectionDeleted({
+		userId,
+		serverSlug,
+	}: RelayEventMap['instance-ai-mcp-registry-connection-deleted']) {
+		this.telemetry.track('Instance AI mcp disconnected', {
+			user_id: userId,
+			server_slug: serverSlug,
+		});
+	}
+
+	// #endregion
 
 	// #endregion
 
@@ -1268,6 +1296,8 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+				metrics_category_execution_data:
+					this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
 			},
 		};
 

@@ -1503,13 +1503,74 @@ describe('createInstanceAiTraceContext', () => {
 		);
 
 		expect(result).toEqual({ denied: true, payload: suspendPayload });
-		const suspend = writer.getEvents()[1] as TraceToolSuspend;
+		const events = writer.getEvents();
+		expect(events).toHaveLength(2);
+		const suspend = events[1] as TraceToolSuspend;
 		expect(suspend).toEqual({
 			kind: 'tool-suspend',
 			stepId: 1,
 			agentRole: 'workflow-builder',
 			toolName: 'approval-tool',
 			input: { operation: 'write-file' },
+			output: {},
+			suspendPayload,
+		});
+	});
+
+	it('records suspend calls before the native suspend interrupts execution', async () => {
+		const writer = new TraceWriter('record-interrupted-suspend');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const suspendPayload = {
+			requestId: 'request-1',
+			inputType: 'plan-review',
+			message: 'Review the plan',
+		};
+		const interruptibleTool: BuiltTool = {
+			name: 'plan-tool',
+			description: 'Requests approval.',
+			suspendSchema: {},
+			handler: async (_input, context) => {
+				if (!('suspend' in context) || typeof context.suspend !== 'function') {
+					throw new Error('Expected interruptible tool context');
+				}
+				return await context.suspend(suspendPayload);
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(createToolRegistry([['plan-tool', interruptibleTool]]), {
+			agentRole: 'planner',
+		});
+		const wrappedTool = wrappedTools.get('plan-tool');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped plan-tool is not executable');
+		}
+
+		await expect(
+			executeTool(
+				wrappedTool,
+				{ action: 'submit-plan' },
+				{
+					resumeData: undefined,
+					suspend: async (): Promise<never> => {
+						await Promise.resolve();
+						throw new Error('native suspend interrupted');
+					},
+				},
+			),
+		).rejects.toThrow('native suspend interrupted');
+
+		const events = writer.getEvents();
+		expect(events).toHaveLength(2);
+		const suspend = events[1] as TraceToolSuspend;
+		expect(suspend).toEqual({
+			kind: 'tool-suspend',
+			stepId: 1,
+			agentRole: 'planner',
+			toolName: 'plan-tool',
+			input: { action: 'submit-plan' },
 			output: {},
 			suspendPayload,
 		});
