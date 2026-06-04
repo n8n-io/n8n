@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -728,6 +728,16 @@ export class AgentRuntime {
 		};
 	}
 
+	private buildSmoothStreamTransformOptions(options?: ExecutionOptions): {
+		experimental_transform?: StreamTextTransform<ToolSet>;
+	} {
+		if (options?.smoothStream === false) return {};
+
+		const { smoothStream } = loadAi();
+
+		return { experimental_transform: smoothStream(options?.smoothStream ?? {}) };
+	}
+
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
 	private buildTelemetryOptions(options?: ExecutionOptions): {
 		experimental_telemetry?: TelemetrySettings;
@@ -1178,7 +1188,7 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
-		const { streamText, smoothStream } = loadAi();
+		const { streamText } = loadAi();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -1295,9 +1305,7 @@ export class AgentRuntime {
 					: {}),
 				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildAiSdkOptions(toolMap, options),
-				...(options?.smoothStream
-					? { experimental_transform: smoothStream(options.smoothStream) }
-					: {}),
+				...this.buildSmoothStreamTransformOptions(options),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the

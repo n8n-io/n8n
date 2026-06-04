@@ -159,6 +159,7 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
+	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
 	smoothStream?: SmoothStreamOptions | false;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
