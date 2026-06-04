@@ -17,6 +17,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { awsNodeCredentials, awsNodeAuthOptions, resolveAwsCredentials } from '../../../utils/aws';
+
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Bedrock Chat Model',
@@ -48,18 +50,14 @@ export class LmChatAwsBedrock implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
+			awsNodeAuthOptions,
 			{
 				displayName: 'Model Source',
 				name: 'modelSource',
@@ -234,12 +232,10 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		const { credentials: resolvedCredentials, region: credentialRegion } =
+			await resolveAwsCredentials(this, itemIndex);
+		let region = credentialRegion;
+
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
@@ -248,7 +244,6 @@ export class LmChatAwsBedrock implements INodeType {
 
 		// If the model is specified as a full ARN, extract the region from it
 		// ARN format: arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>
-		let region = credentials.region;
 		const arnMatch = modelName.match(/^arn:aws:bedrock:([a-z0-9-]+):/);
 		if (arnMatch) {
 			region = arnMatch[1];
@@ -258,11 +253,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
-			},
+			credentials: resolvedCredentials,
 		};
 
 		if (proxyAgent) {
