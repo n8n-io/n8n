@@ -172,6 +172,15 @@ export async function terminate() {
 		testDbName = undefined;
 	}
 
+	// Clear all cached DI singletons (DbConnection, DataSource, GlobalConfig,
+	// AuthRolesService, …). With persistent Jest workers (no per-file process
+	// recycling), the next test file's testDb.init() would otherwise reuse the
+	// DbConnection instance whose DataSource we just destroyed — and try to
+	// .initialize() it again, which hangs. Resetting forces the next get() to
+	// rebuild the whole chain from the freshly-set env vars (e.g. the new
+	// SQLite path created by setup-test-folder for this file).
+	Container.reset();
+
 	isInitialized = false;
 }
 
