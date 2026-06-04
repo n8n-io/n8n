@@ -184,6 +184,8 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Optional NL assertions about the build conversation; LLM-judged, informational only. */
+	conversationExpectations?: string[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -204,6 +206,13 @@ export interface ExecutionScenarioResult {
 	rootCause?: string;
 }
 
+/** Verdict for one author-written conversation expectation. Informational only. */
+export interface ConversationExpectationResult {
+	expectation: string;
+	pass: boolean;
+	reason: string;
+}
+
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
 	workflowId?: string;
@@ -216,6 +225,8 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** Per-expectation verdicts from the conversation-expectations judge. Not consumed by pass@k. */
+	conversationExpectationResults?: ConversationExpectationResult[];
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
 	n8nBaseUrl?: string;
@@ -227,9 +238,12 @@ export interface WorkflowTestCaseResult {
 
 export interface TranscriptTurn {
 	userMessage?: string;
-	agentText: string;
-	toolInteractions: ToolInteraction[];
+	/** Agent narration and tool interactions, interleaved in the order they occurred. */
+	steps: TranscriptStep[];
 }
+
+/** One ordered step within a turn: a slice of agent narration or a tool interaction. */
+export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
 	| { kind: 'plan'; tasks: PlanTask[] }

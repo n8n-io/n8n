@@ -16,6 +16,7 @@ import type {
 	SetupWizardCompletedNode,
 	SetupWizardSkippedNode,
 	ToolInteraction,
+	TranscriptStep,
 	TranscriptTurn,
 } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
@@ -41,7 +42,7 @@ export function buildTranscriptFromEvents(opts: BuildTranscriptOptions): Transcr
 	const turns: TranscriptTurn[] = [];
 	for (const turnEvents of splitEventsIntoTurns(events)) {
 		const turn = buildTurn(turnEvents, userMessages.shift(), proxyResponses);
-		if (turn.userMessage || turn.agentText || turn.toolInteractions.length > 0) {
+		if (turn.userMessage || turn.steps.length > 0) {
 			turns.push(turn);
 		}
 	}
@@ -63,81 +64,82 @@ function buildTurn(
 	userMessage: string | undefined,
 	proxyResponses: ProxyResponses | undefined,
 ): TranscriptTurn {
-	const textChunks: string[] = [];
-	const toolInteractions: ToolInteraction[] = [];
+	const steps: TranscriptStep[] = [];
 	const seenPlainTools = new Set<string>();
+	let textBuffer = '';
+
+	const flushText = () => {
+		if (textBuffer.length > 0) {
+			steps.push({ kind: 'agent-text', text: textBuffer });
+			textBuffer = '';
+		}
+	};
 
 	for (const event of events) {
 		if (event.type === 'text-delta') {
 			const text =
 				getString(event.data, 'text') ?? getString(getRecord(event.data, 'payload') ?? {}, 'text');
-			if (text) textChunks.push(text);
+			if (text) textBuffer += text;
 			continue;
 		}
 
+		let interaction: ToolInteraction | null = null;
 		if (event.type === 'tool-call') {
-			handleToolCall(event, toolInteractions, seenPlainTools);
-			continue;
+			interaction = interpretToolCall(event, seenPlainTools);
+		} else if (event.type === 'tool-result') {
+			interaction = interpretToolResult(event);
+		} else if (event.type === 'confirmation-request') {
+			interaction = interpretConfirmationRequest(event, proxyResponses);
 		}
 
-		if (event.type === 'tool-result') {
-			handleToolResult(event, toolInteractions);
-			continue;
-		}
-
-		if (event.type === 'confirmation-request') {
-			handleConfirmationRequest(event, proxyResponses, toolInteractions);
-			continue;
+		// Flush the narration that preceded this action so step order is preserved.
+		if (interaction) {
+			flushText();
+			steps.push(interaction);
 		}
 	}
 
-	return {
-		userMessage,
-		agentText: textChunks.join(''),
-		toolInteractions,
-	};
+	flushText();
+	return { userMessage, steps };
 }
 
-function handleToolCall(
+function interpretToolCall(
 	event: CapturedEvent,
-	out: ToolInteraction[],
 	seenPlainTools: Set<string>,
-): void {
+): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = getString(payload, 'toolName') ?? '';
 	const args = getRecord(payload, 'args') ?? {};
 
 	// ask-user is rendered from the confirmation-request (which has the answers).
-	if (toolName === 'ask-user') return;
+	if (toolName === 'ask-user') return null;
 
 	if (toolName === 'plan' || toolName === 'add-plan-item') {
 		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
-		if (tasks.length > 0) out.push({ kind: 'plan', tasks });
-		return;
+		return tasks.length > 0 ? { kind: 'plan', tasks } : null;
 	}
 
 	// Plain tool-call — collapsed to one entry per tool name within the turn.
-	if (!toolName || seenPlainTools.has(toolName)) return;
+	if (!toolName || seenPlainTools.has(toolName)) return null;
 	seenPlainTools.add(toolName);
-	out.push({ kind: 'tool-call', toolName });
+	return { kind: 'tool-call', toolName };
 }
 
-function handleToolResult(event: CapturedEvent, out: ToolInteraction[]): void {
+function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = getString(payload, 'toolName') ?? '';
 	const result = payload.result;
 
 	if (toolName === 'workflows' && isRecord(result)) {
-		const interaction = extractSetupWizardOutcome(result);
-		if (interaction) out.push(interaction);
+		return extractSetupWizardOutcome(result);
 	}
+	return null;
 }
 
-function handleConfirmationRequest(
+function interpretConfirmationRequest(
 	event: CapturedEvent,
 	proxyResponses: ProxyResponses | undefined,
-	out: ToolInteraction[],
-): void {
+): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? {};
 	const requestId = getString(payload, 'requestId');
 	const response = requestId ? proxyResponses?.get(requestId) : undefined;
@@ -146,24 +148,23 @@ function handleConfirmationRequest(
 		const questions = Array.isArray(payload.questions)
 			? extractAskUserQuestions(payload.questions)
 			: [];
-		if (questions.length === 0) return;
+		if (questions.length === 0) return null;
 		const answers =
 			response?.kind === 'questions' ? extractAskUserAnswers(response.answers) : undefined;
-		out.push({ kind: 'ask-user', questions, answers });
-		return;
+		return { kind: 'ask-user', questions, answers };
 	}
 
 	// setup wizard suspend — its outcome is rendered from the tool-result instead.
-	if (Array.isArray(payload.setupRequests)) return;
+	if (Array.isArray(payload.setupRequests)) return null;
 
 	const toolName =
 		getString(payload, 'toolName') ?? getString(payload, 'agentId') ?? 'confirmation';
-	out.push({
+	return {
 		kind: 'confirmation',
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
-	});
+	};
 }
 
 // ---------------------------------------------------------------------------

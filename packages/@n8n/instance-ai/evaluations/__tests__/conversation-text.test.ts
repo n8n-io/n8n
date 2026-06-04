@@ -8,17 +8,17 @@ describe('userTurnsAsText', () => {
 
 	it('returns the lone user message as plain text on single-turn', () => {
 		const transcript: TranscriptTurn[] = [
-			{ userMessage: 'build a webhook', agentText: 'sure', toolInteractions: [] },
+			{ userMessage: 'build a webhook', steps: [{ kind: 'agent-text', text: 'sure' }] },
 		];
 		expect(userTurnsAsText(transcript)).toBe('build a webhook');
 	});
 
 	it('numbers user turns on multi-turn and drops empty/agent-only turns', () => {
 		const transcript: TranscriptTurn[] = [
-			{ userMessage: 'build it', agentText: 'what kind?', toolInteractions: [] },
-			{ userMessage: undefined, agentText: 'thinking…', toolInteractions: [] },
-			{ userMessage: '', agentText: 'plan emitted', toolInteractions: [] },
-			{ userMessage: 'a webhook', agentText: 'done', toolInteractions: [] },
+			{ userMessage: 'build it', steps: [{ kind: 'agent-text', text: 'what kind?' }] },
+			{ userMessage: undefined, steps: [{ kind: 'agent-text', text: 'thinking…' }] },
+			{ userMessage: '', steps: [{ kind: 'agent-text', text: 'plan emitted' }] },
+			{ userMessage: 'a webhook', steps: [{ kind: 'agent-text', text: 'done' }] },
 		];
 		expect(userTurnsAsText(transcript)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
 	});

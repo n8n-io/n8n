@@ -61,6 +61,33 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.triggerType).toBe('webhook');
 	});
 
+	it('accepts the optional conversationExpectations array', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			conversationExpectations: ['the agent asked which channel before building'],
+		});
+		expect(parsed.conversationExpectations).toEqual([
+			'the agent asked which channel before building',
+		]);
+	});
+
+	it('leaves conversationExpectations undefined when omitted', () => {
+		const parsed = WorkflowTestCaseSchema.parse(validFixture());
+		expect(parsed.conversationExpectations).toBeUndefined();
+	});
+
+	it('rejects a non-array conversationExpectations', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), conversationExpectations: 'nope' }),
+		).toThrow();
+	});
+
+	it('rejects an empty-string expectation', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), conversationExpectations: [''] }),
+		).toThrow();
+	});
+
 	it('accepts the optional requires hint on scenarios', () => {
 		const fixture = validFixture();
 		fixture.executionScenarios[0] = {

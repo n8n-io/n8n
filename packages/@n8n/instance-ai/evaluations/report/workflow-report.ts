@@ -13,9 +13,11 @@ import path from 'path';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import type {
+	ConversationExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
 	ToolInteraction,
+	TranscriptStep,
 	TranscriptTurn,
 	TurnCounter,
 	WorkflowTestCaseResult,
@@ -315,25 +317,19 @@ function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
 			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
 		);
 	}
-	if (turn.agentText) {
-		parts.push(
-			`<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(turn.agentText)}</span></div>`,
-		);
-	}
-
-	const toolNames: string[] = [];
-	for (const interaction of turn.toolInteractions) {
-		const block = renderInteraction(interaction);
+	for (const step of turn.steps) {
+		const block = renderStep(step);
 		if (block) parts.push(block);
-		if (interaction.kind === 'tool-call') toolNames.push(interaction.toolName);
-	}
-
-	if (toolNames.length > 0) {
-		parts.push(
-			`<div class="transcript-tools">🔧 ${toolNames.map((t) => escapeHtml(t)).join(', ')}</div>`,
-		);
 	}
 	return `<div class="transcript-turn">${parts.join('')}</div>`;
+}
+
+function renderStep(step: TranscriptStep): string | null {
+	if (step.kind === 'agent-text') {
+		if (!step.text) return null;
+		return `<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(step.text)}</span></div>`;
+	}
+	return renderInteraction(step);
 }
 
 function renderInteraction(interaction: ToolInteraction): string | null {
@@ -423,12 +419,12 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 		case 'confirmation': {
 			const decisionTag =
 				typeof interaction.approved === 'boolean'
-					? ` <em>(${interaction.approved ? 'approved' : 'rejected'})</em>`
+					? ` <span class="transcript-decision ${interaction.approved ? 'pass' : 'fail'}">👤 ${interaction.approved ? 'approved' : 'rejected'}</span>`
 					: '';
 			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
 		}
 		case 'tool-call':
-			return null; // surfaced in the aggregate tool-names line at the bottom
+			return `<div class="transcript-tools">🔧 <code>${escapeHtml(interaction.toolName)}</code></div>`;
 	}
 }
 
@@ -477,6 +473,31 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 		.join('');
 
 	return `<details class="section" ${openAttr}><summary>Workflow checks <span class="${summaryClass}">${summary}</span></summary>${groups}</details>`;
+}
+
+// ---------------------------------------------------------------------------
+// Conversation expectations
+// ---------------------------------------------------------------------------
+
+function renderConversationExpectations(
+	results: ConversationExpectationResult[] | undefined,
+): string {
+	if (!results || results.length === 0) return '';
+	const passCount = results.filter((r) => r.pass).length;
+	const total = results.length;
+	const statusClass = passCount < total ? 'fail' : 'pass';
+	const openAttr = passCount < total ? 'open' : '';
+	const items = results
+		.map((r) => {
+			const cls = r.pass ? 'pass' : 'fail';
+			const icon = r.pass ? '&#10003;' : '&#10007;';
+			const judgment = r.reason
+				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
+				: '';
+			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+		})
+		.join('');
+	return `<details class="section" ${openAttr}><summary>Conversation expectations <span class="${statusClass}">${String(passCount)}/${String(total)}</span></summary><ul class="check-list">${items}</ul></details>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -579,6 +600,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
 			${renderConversationMetrics(result.conversationMetrics)}
 			${renderConversationTranscript(result.transcript)}
+			${renderConversationExpectations(result.conversationExpectationResults)}
 			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}
@@ -705,6 +727,9 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check.n_a code { color: var(--text-muted); }
 	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 	.check-kind-llm { color: var(--color-purple); }
+	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }
+	.expectation-text { font-size: 12px; }
+	.expectation-judgment { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
 
 	/* Error and warning boxes */
 	.error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--color-fail); }
@@ -793,6 +818,9 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
 	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }
 	.transcript-resume { font-size: 11px; font-family: monospace; color: var(--text-muted); padding: 2px 0 2px 26px; }
+	.transcript-decision { font-weight: 600; }
+	.transcript-decision.pass { color: var(--color-pass); }
+	.transcript-decision.fail { color: var(--color-fail); }
 	.transcript-resume code { background: var(--bg-tertiary); padding: 0 4px; border-radius: 2px; }
 	.transcript-section-label { font-size: 11px; color: var(--text-muted); margin: 6px 0 2px 18px; text-transform: uppercase; letter-spacing: 0.04em; }
 	.transcript-empty { font-size: 12px; color: var(--text-muted); font-style: italic; margin: 4px 0 4px 18px; }

@@ -18,10 +18,27 @@ describe('buildTranscriptFromEvents', () => {
 			openingMessage: 'Build me a workflow',
 		});
 		expect(turns).toHaveLength(1);
-		expect(turns[0]).toMatchObject({
-			userMessage: 'Build me a workflow',
-			agentText: 'Hello there',
+		expect(turns[0].userMessage).toBe('Build me a workflow');
+		expect(turns[0].steps).toEqual([{ kind: 'agent-text', text: 'Hello there' }]);
+	});
+
+	it('interleaves agent narration with actions in event order', () => {
+		const turns = buildTranscriptFromEvents({
+			events: [
+				RUN_START,
+				evt('text-delta', { text: 'Let me search. ' }),
+				evt('tool-call', { payload: { toolName: 'search-nodes', args: {} } }),
+				evt('text-delta', { text: 'Found them.' }),
+				evt('tool-call', { payload: { toolName: 'add-nodes', args: {} } }),
+			],
+			openingMessage: 'build it',
 		});
+		expect(turns[0].steps).toEqual([
+			{ kind: 'agent-text', text: 'Let me search. ' },
+			{ kind: 'tool-call', toolName: 'search-nodes' },
+			{ kind: 'agent-text', text: 'Found them.' },
+			{ kind: 'tool-call', toolName: 'add-nodes' },
+		]);
 	});
 
 	describe('ask-user routing', () => {
@@ -46,7 +63,7 @@ describe('buildTranscriptFromEvents', () => {
 					],
 				]),
 			});
-			const interactions = turns[0].toolInteractions;
+			const interactions = turns[0].steps;
 			expect(interactions).toHaveLength(1);
 			expect(interactions[0]).toMatchObject({
 				kind: 'ask-user',
@@ -65,7 +82,7 @@ describe('buildTranscriptFromEvents', () => {
 					}),
 				],
 			});
-			const askUserInteractions = turns[0].toolInteractions.filter((i) => i.kind === 'ask-user');
+			const askUserInteractions = turns[0].steps.filter((i) => i.kind === 'ask-user');
 			expect(askUserInteractions).toHaveLength(1);
 		});
 	});
@@ -83,7 +100,7 @@ describe('buildTranscriptFromEvents', () => {
 					}),
 				],
 			});
-			expect(turns[0].toolInteractions[0]).toMatchObject({
+			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'plan',
 				tasks: [{ title: 'Fetch posts', description: 'GET /posts' }],
 			});
@@ -98,7 +115,7 @@ describe('buildTranscriptFromEvents', () => {
 					}),
 				],
 			});
-			expect(turns[0].toolInteractions[0]).toMatchObject({ kind: 'plan' });
+			expect(turns[0].steps[0]).toMatchObject({ kind: 'plan' });
 		});
 	});
 
@@ -121,7 +138,7 @@ describe('buildTranscriptFromEvents', () => {
 					}),
 				],
 			});
-			const interactions = turns[0].toolInteractions;
+			const interactions = turns[0].steps;
 			expect(interactions).toHaveLength(1);
 			expect(interactions[0]).toMatchObject({
 				kind: 'setup-wizard',
@@ -142,7 +159,7 @@ describe('buildTranscriptFromEvents', () => {
 				],
 				proxyResponses: new Map([['r1', { kind: 'approval' as const, approved: false }]]),
 			});
-			expect(turns[0].toolInteractions[0]).toMatchObject({
+			expect(turns[0].steps[0]).toMatchObject({
 				kind: 'confirmation',
 				toolName: 'submit-plan',
 				resumeReason: 'approval',
@@ -161,7 +178,7 @@ describe('buildTranscriptFromEvents', () => {
 					evt('tool-call', { payload: { toolName: 'credentials', args: {} } }),
 				],
 			});
-			const calls = turns[0].toolInteractions.filter((i) => i.kind === 'tool-call');
+			const calls = turns[0].steps.filter((i) => i.kind === 'tool-call');
 			expect(calls).toHaveLength(1);
 		});
 	});
@@ -172,6 +189,7 @@ describe('buildTranscriptFromEvents', () => {
 			openingMessage: 'go',
 		});
 		expect(turns).toHaveLength(1);
-		expect(turns[0]).toMatchObject({ userMessage: 'go', agentText: 'hi' });
+		expect(turns[0].userMessage).toBe('go');
+		expect(turns[0].steps).toEqual([{ kind: 'agent-text', text: 'hi' }]);
 	});
 });

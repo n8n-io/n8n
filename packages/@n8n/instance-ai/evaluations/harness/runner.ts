@@ -19,17 +19,20 @@ import {
 } from './chat-loop';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { verifyConversationExpectations } from '../expectations/verifier';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ChecklistItem,
 	CapturedEvent,
+	ConversationExpectationResult,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenarioResult,
@@ -131,8 +134,26 @@ export async function runWorkflowTestCase(
 		result.workflowChecks = build.workflowChecks;
 	}
 
+	// Optional author conversation expectations — informational, judged concurrently with scenarios.
+	const wantsExpectations =
+		(testCase.conversationExpectations?.length ?? 0) > 0 && (build.transcript?.length ?? 0) > 0;
+	const expectationsPromise: Promise<ConversationExpectationResult[]> = wantsExpectations
+		? verifyConversationExpectations(testCase.conversationExpectations!, {
+				transcript: build.transcript!,
+				workflowJson: build.workflowJsons[0],
+				metrics: build.conversationMetrics,
+			}).catch((error: unknown) => {
+				logger.warn(
+					`  Conversation expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return [];
+			})
+		: Promise.resolve<ConversationExpectationResult[]>([]);
+
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
+		const expectationResults = await expectationsPromise;
+		if (expectationResults.length > 0) result.conversationExpectationResults = expectationResults;
 		return result;
 	}
 
@@ -141,7 +162,7 @@ export async function runWorkflowTestCase(
 	result.workflowJson = build.workflowJsons[0];
 
 	const scenarioStart = Date.now();
-	result.executionScenarioResults = await runWithConcurrency(
+	const scenariosPromise = runWithConcurrency(
 		testCase.executionScenarios,
 		async (scenario) => {
 			try {
@@ -167,6 +188,12 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
+	const [scenarioResults, expectationResults] = await Promise.all([
+		scenariosPromise,
+		expectationsPromise,
+	]);
+	result.executionScenarioResults = scenarioResults;
+	if (expectationResults.length > 0) result.conversationExpectationResults = expectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -299,7 +326,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, conversation, logger } = config;
 	const openingMessage = conversation[0]?.text ?? '';
-	const threadId = `eval-${crypto.randomUUID()}`;
+	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -622,36 +649,6 @@ export interface VerificationArtifact {
 	workflowContext: string;
 	/** Scenario + execution trace + errors. Fresh per scenario. */
 	scenarioContext: string;
-}
-
-/** Render the per-build workflow structure: nodes, connections, all configs. */
-function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): string {
-	if (!wf) return '## Workflow structure\n\n(no workflow built)';
-	const lines: string[] = ['## Workflow structure', ''];
-	for (const node of wf.nodes) {
-		lines.push(`- **${node.name ?? '(unnamed)'}** (${node.type})`);
-	}
-	lines.push('');
-	lines.push('**All node configs:**');
-	lines.push(
-		'```json',
-		JSON.stringify(
-			wf.nodes.map((node) => ({
-				name: node.name ?? '(unnamed)',
-				type: node.type,
-				typeVersion: node.typeVersion,
-				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
-				parameters: node.parameters ?? {},
-			})),
-			null,
-			2,
-		),
-		'```',
-		'',
-	);
-	lines.push('**Connections:**');
-	lines.push('```json', JSON.stringify(wf.connections, null, 2), '```');
-	return lines.join('\n');
 }
 
 function isObjectRecord(v: unknown): v is Record<string, unknown> {
