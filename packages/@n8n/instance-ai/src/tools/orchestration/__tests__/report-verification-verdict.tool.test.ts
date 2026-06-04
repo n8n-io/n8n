@@ -51,6 +51,8 @@ const baseInput = {
 	workItemId: 'wi_test1234',
 	workflowId: 'wf-123',
 	verdict: 'verified' as const,
+	workflowInspection:
+		'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 	summary: 'Workflow ran successfully',
 };
 
