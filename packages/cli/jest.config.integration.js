@@ -22,12 +22,12 @@ module.exports = {
 	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
 	testTimeout: 10_000,
 	prettierPath: null,
-	// Run integration tests from test/integration, test/migration and src/ directories
+	// Run integration tests from test/integration and src/ directories.
+	// Migration tests have their own config (jest.config.migration.js) with
+	// maxWorkers: 1 because `initDbUpToMigration` rolls the schema back,
+	// which pollutes any DB shared by parallel suites. They're invoked via
+	// the dedicated `Run Migration Tests` CI step.
 	testRegex: undefined, // Override base config testRegex
-	testMatch: [
-		'<rootDir>/test/integration/**/*.test.ts',
-		'<rootDir>/test/migration/**/*.test.ts',
-		'<rootDir>/src/**/*.integration.test.ts',
-	],
+	testMatch: ['<rootDir>/test/integration/**/*.test.ts', '<rootDir>/src/**/*.integration.test.ts'],
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 };
