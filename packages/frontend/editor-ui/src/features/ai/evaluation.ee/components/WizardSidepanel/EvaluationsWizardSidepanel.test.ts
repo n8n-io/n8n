@@ -30,6 +30,8 @@ const { mocks } = vi.hoisted(() => ({
 		// matches the default test pinia behaviour — `isSubNodeType` then treats
 		// the node as non-sub and the slice picker shows it.
 		nodeTypeOutputs: {} as Record<string, string[]>,
+		// Controls what useNodeToolCapability returns for the end node.
+		endNodeCanHaveTools: false,
 	},
 }));
 
@@ -83,6 +85,12 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	}),
 }));
 
+vi.mock('../../composables/useNodeToolCapability', () => ({
+	useNodeToolCapability: () => ({
+		nodeCanHaveTools: (_name: string) => mocks.endNodeCanHaveTools,
+	}),
+}));
+
 const mockRouterPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
@@ -101,6 +109,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		createTestingPinia({ stubActions: false });
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
+		mocks.endNodeCanHaveTools = false;
 		mockRouterPush.mockReset();
 	});
 
@@ -215,14 +224,52 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(docHtml).not.toContain('OpenAI Chat Model');
 	});
 
-	it('renders every canned metric option on step 1 (Setup Checks)', () => {
+	it('renders every canned metric option on step 1 when end node can have tools', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
+		mocks.endNodeCanHaveTools = true;
 
 		const { getByTestId } = renderComponent();
 		for (const metric of CANNED_METRICS) {
 			expect(getByTestId(`evaluations-wizard-sidepanel-metric-${metric.key}`)).toBeInTheDocument();
 		}
+	});
+
+	it('hides the toolsUsed check card on step 1 when end node cannot have tools', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+		mocks.endNodeCanHaveTools = false;
+
+		const { queryByTestId, getByTestId } = renderComponent();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).not.toBeInTheDocument();
+		// All other checks remain visible.
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-correctness')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-helpfulness')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-stringSimilarity')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-categorization')).toBeInTheDocument();
+	});
+
+	it('prunes toolsUsed from selectedMetricKeys when the end node loses tool capability', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+		// Start with toolsUsed selected and node that can have tools.
+		mocks.endNodeCanHaveTools = true;
+		store.selectedMetricKeys = ['correctness', 'toolsUsed'];
+
+		renderComponent();
+		await nextTick();
+
+		// Now simulate end node losing tool capability.
+		mocks.endNodeCanHaveTools = false;
+		// The visibleChecks computed in the component is derived from the mock via
+		// useNodeToolCapability. Trigger re-evaluation by changing the aiNodeName
+		// (which triggers sliceEndNodeName and then visibleChecks).
+		store.setAiNodeName('BasicLLM');
+		await nextTick();
+
+		// toolsUsed should be removed from selectedMetricKeys.
+		expect(store.selectedMetricKeys).not.toContain('toolsUsed');
+		expect(store.selectedMetricKeys).toContain('correctness');
 	});
 
 	it('toggles selection when a check card is clicked on step 1', async () => {

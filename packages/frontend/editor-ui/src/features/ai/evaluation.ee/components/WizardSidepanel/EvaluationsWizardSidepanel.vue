@@ -34,6 +34,8 @@ import {
 import { useSliceInputs } from '../../composables/useSliceInputs';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
 import { useDefaultJudgeSelection } from '../../composables/useDefaultJudgeSelection';
+import { useNodeToolCapability } from '../../composables/useNodeToolCapability';
+import { getVisibleChecks } from '../../checkFilters';
 import { useWizardPersistence } from './useWizardPersistence';
 import { useWizardHydration } from './useWizardHydration';
 import CheckCard from './CheckCard.vue';
@@ -93,6 +95,11 @@ watch(
 const agentsResponse = computed(() => chatStore.agents);
 const cannedMetrics = computed(() => CANNED_METRICS);
 const aiRootNodes = useAiRootNodes();
+const { nodeCanHaveTools } = useNodeToolCapability();
+const sliceCanHaveTools = computed(() => nodeCanHaveTools(sliceEndNodeName.value));
+const visibleChecks = computed(() =>
+	getVisibleChecks(CANNED_METRICS, { sliceCanHaveTools: sliceCanHaveTools.value }),
+);
 const defaultJudgeSelection = useDefaultJudgeSelection();
 
 // Watching judgeSelectionByMetric so a hydrate that drops some keys still
@@ -388,6 +395,16 @@ function metricScorePercent(key: string): number {
 	return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 0;
 }
 
+// Prune any selectedMetricKey that is no longer in visibleChecks so a hidden
+// metric can't be persisted or dispatched.
+watch(visibleChecks, (visible) => {
+	const visibleKeys = new Set(visible.map((m) => m.key));
+	const pruned = selectedMetricKeys.value.filter((k) => visibleKeys.has(k));
+	if (pruned.length !== selectedMetricKeys.value.length) {
+		wizardStore.setSelectedMetricKeys(pruned);
+	}
+});
+
 async function handleNext() {
 	const current = activeStep.value;
 	if (current === 0) {
@@ -459,7 +476,7 @@ function handleViewResults() {
 
 			<section v-if="activeStep === 1" :class="$style.section">
 				<ul :class="$style.checkList">
-					<li v-for="metric in cannedMetrics" :key="metric.key">
+					<li v-for="metric in visibleChecks" :key="metric.key">
 						<CheckCard
 							:icon="metric.icon"
 							:icon-bg="metric.tileBg"

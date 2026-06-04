@@ -109,6 +109,10 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			}
 		}
 
+		function setSelectedMetricKeys(keys: CannedMetricKey[]) {
+			selectedMetricKeys.value = keys;
+		}
+
 		function setJudgeSelection(key: CannedMetricKey, selection: JudgeSelection | undefined) {
 			if (selection === undefined) {
 				const next = { ...judgeSelectionByMetric.value };
@@ -195,6 +199,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			goNext,
 			goBack,
 			toggleMetric,
+			setSelectedMetricKeys,
 			setJudgeSelection,
 			setAiNodeName,
 			enterSliceMode,
