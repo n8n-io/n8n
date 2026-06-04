@@ -20,6 +20,7 @@ import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
 import EvaluationsWizardSidepanel from '@/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
+import { useAiRootNodes } from '@/features/ai/evaluation.ee/composables/useAiRootNodes';
 
 defineOptions({ name: 'FocusSidebar' });
 
@@ -53,19 +54,25 @@ const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
+const aiRootNodes = useAiRootNodes();
+const hasAiRootNode = computed(() => aiRootNodes.value.length > 0);
 
 const showSetupPanel = computed(
 	() => setupPanelStore.isFeatureEnabled && selectedTab.value === 'setup',
 );
 const showEvaluationsPanel = computed(
-	() => isEvaluationsWizardSidepanelEnabled.value && selectedTab.value === 'evaluations',
+	() =>
+		isEvaluationsWizardSidepanelEnabled.value &&
+		hasAiRootNode.value &&
+		selectedTab.value === 'evaluations',
 );
 
 // Tab bar visibility used to track only the setup panel; now it also needs to
 // stay shown when the evaluations tab is available, otherwise the user has no
 // way to switch back.
 const showTabs = computed(
-	() => isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value,
+	() =>
+		isSetupPanelEnabled.value || (isEvaluationsWizardSidepanelEnabled.value && hasAiRootNode.value),
 );
 
 const node = computed<INodeUi | undefined>(() => {
