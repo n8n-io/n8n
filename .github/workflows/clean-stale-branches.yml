@@ -1,26 +1,41 @@
+name: 'Util: Clean Stale Branches'
+
 on:
   # schedule:
-  #   - cron: "0 0 * * *" # Everday at midnight
+  #   - cron: "0 0 * * *" # Everyday at midnight
   workflow_dispatch:
     inputs:
       dry-run:
-        description: 'Is this a dry run or an actual run?'
+        description: 'Dry run only lists branches; uncheck to actually delete.'
         type: boolean
         default: true
+      days:
+        description: 'Days of inactivity before a branch is considered stale.'
+        type: string
+        default: '100'
 
 permissions:
-  issues: write
-  contents: write
+  contents: write # delete branches; ruleset reads use the token's implicit metadata access
 
 jobs:
   remove-stale-branches:
+    name: Remove stale branches
     runs-on: ubuntu-latest
     steps:
-      - name: Stale Branches
-        uses: crs-k/stale-branches@e876b957ab08f0bad43c8cc271a22cdd7604bd09 # v9.0.1
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          dry-run: ${{ inputs.dry-run }}
-          days-before-stale: 90
-          days-before-delete: 100
-          include-protected-branches: false  # Disable legacy branch protection checks
-          include-ruleset-branches: true     # Enable repository ruleset checks
+          sparse-checkout: .github/scripts/stale
+
+      # No dependencies to install — the script uses only Node builtins + global
+      # fetch. We still pin the Node version (fetch is non-experimental from 21+)
+      # rather than relying on the runner's baked-in Node.
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24.15.0'
+
+      - name: Clean stale branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/stale/clean-stale-branches.mjs --days="${{ inputs.days }}" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}
