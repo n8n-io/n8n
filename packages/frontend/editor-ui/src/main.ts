@@ -27,17 +27,12 @@ import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
+import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 
 import type { VueScanOptions } from 'z-vue-scan';
 
-const VITE_PRELOAD_RELOAD_FLAG = 'n8n:vite-preload-reloaded';
-window.addEventListener('vite:preloadError', (event) => {
-	if (sessionStorage.getItem(VITE_PRELOAD_RELOAD_FLAG)) return;
-	sessionStorage.setItem(VITE_PRELOAD_RELOAD_FLAG, '1');
-	event.preventDefault();
-	window.location.reload();
-});
+registerVitePreloadErrorHandler();
 
 const pinia = createPinia();
 
@@ -66,7 +61,6 @@ if (import.meta.env.VUE_SCAN) {
 }
 
 app.mount('#app');
-sessionStorage.removeItem(VITE_PRELOAD_RELOAD_FLAG);
 
 if (import.meta.env.DEV) {
 	void import('@/app/dev/dev-panel').then((m) => m.mountDevPanel());
