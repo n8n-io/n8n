@@ -54,6 +54,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			autofocusGroupId: string | null;
 			dimensions: { width: number; height: number };
 			readOnly: boolean;
+			selected: boolean;
 		}> = {},
 	) {
 		return renderComponent(CanvasNodeGroupTitleBar, {
@@ -63,6 +64,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 				autofocusGroupId: props.autofocusGroupId ?? null,
 				dimensions: props.dimensions,
 				readOnly: props.readOnly ?? false,
+				selected: props.selected ?? false,
 			},
 		});
 	}
@@ -226,6 +228,31 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
 			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
+
+		it('preserves selection when this title bar is part of it (multi-select group drag)', () => {
+			// baseGroup.id === 'g1' → VueFlow id is 'group:g1'.
+			selectedNodesRef.value = [{ id: 'group:g1' }, { id: 'group:g2' }];
+			removeSelectedNodesMock.mockClear();
+			const wrapper = render();
+			void fireEvent.pointerDown(wrapper.getByTestId('canvas-node-group'));
+			expect(removeSelectedNodesMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('selection visual', () => {
+		it('does not apply the selected class when not selected', () => {
+			const wrapper = render({ selected: false });
+			const root = wrapper.getByTestId('canvas-node-group');
+			const hasSelectedClass = [...root.classList].some((c) => /selected/i.test(c));
+			expect(hasSelectedClass).toBe(false);
+		});
+
+		it('applies a hashed `selected` class when selected', () => {
+			const wrapper = render({ selected: true });
+			const root = wrapper.getByTestId('canvas-node-group');
+			const hasSelectedClass = [...root.classList].some((c) => /selected/i.test(c));
+			expect(hasSelectedClass).toBe(true);
 		});
 	});
 });
