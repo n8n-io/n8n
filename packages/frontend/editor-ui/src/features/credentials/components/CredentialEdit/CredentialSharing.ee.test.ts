@@ -416,5 +416,34 @@ describe('CredentialSharing.ee', () => {
 			// The reason sharing is unavailable is surfaced to the user
 			expect(getByText(/can't be shared/i)).toBeInTheDocument();
 		});
+
+		it('should still allow removing existing shares for a private credential', () => {
+			const credential = createCredential({
+				sharedWithProjects: [
+					{
+						id: 'shared-project-1',
+						name: 'Shared Project',
+						type: 'team',
+						icon: null,
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+					},
+				],
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					isResolvable: true,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// Adding new shares is blocked, but cleaning up existing ones stays possible
+			expect(getByTestId('project-sharing-remove')).toBeEnabled();
+		});
 	});
 });
