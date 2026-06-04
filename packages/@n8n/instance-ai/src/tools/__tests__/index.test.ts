@@ -85,10 +85,6 @@ vi.mock('../workflows/apply-workflow-credentials.tool', () => ({
 	createApplyWorkflowCredentialsTool: vi.fn(() => ({ id: 'apply-workflow-credentials' })),
 }));
 
-vi.mock('../workflows/build-workflow.tool', () => ({
-	createBuildWorkflowTool: vi.fn(() => ({ id: 'build-workflow' })),
-}));
-
 vi.mock('../workflows.tool', () => ({
 	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
 		id: options ? 'workflows-filtered' : 'workflows',
@@ -135,7 +131,6 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
 		});
 	});
 
@@ -154,7 +149,6 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
-			'build-workflow': { id: 'build-workflow' },
 		});
 
 		const { createWorkflowsTool } = await import('../workflows.tool');

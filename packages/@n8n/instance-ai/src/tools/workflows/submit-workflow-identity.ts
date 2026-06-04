@@ -14,7 +14,7 @@
  * cross-module coordinator, eviction hook, or TTL sweep is required.
  */
 
-import { Tool } from '@n8n/agents';
+import { Tool, type BuiltTool } from '@n8n/agents';
 
 import type { CredentialMap } from './resolve-credentials';
 import {
@@ -298,5 +298,24 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 			async (input) =>
 				await wrappedExecute(withDefaultWorkflowFilePath(input, args.defaultFilePath)),
 		)
+		.build();
+}
+
+export function createSubmitWorkflowAliasTool(
+	name: string,
+	submitWorkflowTool: BuiltTool,
+): BuiltTool {
+	const execute = submitWorkflowTool.handler as SubmitExecute | undefined;
+	if (!execute) {
+		throw new Error('submit-workflow tool is missing a handler');
+	}
+
+	return new Tool(name)
+		.description(
+			`${name} is a compatibility alias for submit-workflow. Submit TypeScript SDK code from a workspace file instead of sending inline code.`,
+		)
+		.input(submitWorkflowInputSchema)
+		.output(submitWorkflowOutputSchema)
+		.handler(async (input) => await execute(input))
 		.build();
 }

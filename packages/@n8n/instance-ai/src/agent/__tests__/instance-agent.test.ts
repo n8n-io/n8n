@@ -62,7 +62,6 @@ vi.mock('../../tools', () => ({
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
-				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
 			]),
 	),
 	createOrchestrationTools: vi.fn(
@@ -84,6 +83,7 @@ vi.mock('../../tools/workflows/submit-workflow-identity', () => ({
 	createIdentityEnforcedSubmitWorkflowTool: vi.fn(({ currentRunId }: { currentRunId?: string }) =>
 		mockBuiltTool(`submit-workflow-${currentRunId ?? 'unknown'}`),
 	),
+	createSubmitWorkflowAliasTool: vi.fn((name: string) => mockBuiltTool(name)),
 }));
 
 vi.mock('../../tracing/langsmith-tracing', () => ({
@@ -99,7 +99,10 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
-import { createIdentityEnforcedSubmitWorkflowTool as createIdentityEnforcedSubmitWorkflowToolImport } from '../../tools/workflows/submit-workflow-identity';
+import {
+	createIdentityEnforcedSubmitWorkflowTool as createIdentityEnforcedSubmitWorkflowToolImport,
+	createSubmitWorkflowAliasTool as createSubmitWorkflowAliasToolImport,
+} from '../../tools/workflows/submit-workflow-identity';
 import { createInstanceAgent } from '../instance-agent';
 
 const Agent = AgentImport as unknown as Mock;
@@ -108,6 +111,7 @@ const createToolsFromLocalMcpServer = createToolsFromLocalMcpServerImport as unk
 const createOrchestratorDomainTools = createOrchestratorDomainToolsImport as unknown as Mock;
 const createIdentityEnforcedSubmitWorkflowTool =
 	createIdentityEnforcedSubmitWorkflowToolImport as unknown as Mock;
+const createSubmitWorkflowAliasTool = createSubmitWorkflowAliasToolImport as unknown as Mock;
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
@@ -155,6 +159,7 @@ describe('createInstanceAgent', () => {
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
 		createIdentityEnforcedSubmitWorkflowTool.mockClear();
+		createSubmitWorkflowAliasTool.mockClear();
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
@@ -185,9 +190,6 @@ describe('createInstanceAgent', () => {
 		const secondRunAttachedTools = getAttachedTools(1);
 		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-workflow-run-1']).toMatchObject({
-			name: 'build-workflow-run-1',
-		});
 		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
@@ -241,7 +243,7 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
+		for (const toolName of ['nodes', 'executions']) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
 			expect(deferredTools[scopedName]).toBeUndefined();
@@ -295,6 +297,9 @@ describe('createInstanceAgent', () => {
 		expect(getAttachedTools()['submit-workflow-submit-run']).toMatchObject({
 			name: 'submit-workflow-submit-run',
 		});
+		expect(getAttachedTools()['build-workflow']).toMatchObject({
+			name: 'build-workflow',
+		});
 		expect(createIdentityEnforcedSubmitWorkflowTool).toHaveBeenCalledWith(
 			expect.objectContaining({
 				workspace: fakeWorkspace,
@@ -302,6 +307,10 @@ describe('createInstanceAgent', () => {
 				defaultFilePath: '/home/daytona/workspace/src/workflow.ts',
 				currentRunId: 'submit-run',
 			}),
+		);
+		expect(createSubmitWorkflowAliasTool).toHaveBeenCalledWith(
+			'build-workflow',
+			expect.objectContaining({ name: 'submit-workflow-submit-run' }),
 		);
 	});
 

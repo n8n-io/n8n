@@ -7,7 +7,6 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow } from '@n8n/workflow-sdk';
 import type { WorkflowStructureIssue } from 'n8n-workflow';
@@ -16,12 +15,23 @@ import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import {
+	createSuccessfulWorkflowBuildOutcome,
+	hasUnresolvedPlaceholders,
+	promoteMainWorkflow,
+	reportWorkflowBuildOutcome,
+} from './workflow-build-reporting';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { createRemediation } from '../../workflow-loop/remediation';
-import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
+import {
+	triggerNodeDescriptorSchema,
+	workflowSetupRequirementSchema,
+	workflowVerificationReadinessSchema,
+	type RemediationMetadata,
+} from '../../workflow-loop/workflow-loop-state';
 import {
 	escapeSingleQuotes,
 	readFileViaSandbox,
@@ -282,6 +292,19 @@ export const submitWorkflowInputSchema = z.object({
 		.optional()
 		.describe('Project ID to create the workflow in. Defaults to personal project.'),
 	name: z.string().optional().describe('Workflow name (required for new workflows)'),
+	workItemId: z
+		.string()
+		.optional()
+		.describe(
+			'Existing workflow-loop work item ID when repairing a workflow from verification guidance.',
+		),
+	isSupportingWorkflow: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
+				'Supporting workflows are saved and can be verified, but do not complete the planned build task.',
+		),
 });
 
 /**
@@ -307,6 +330,11 @@ export const submitWorkflowOutputSchema = z.object({
 	success: z.boolean(),
 	workflowId: z.string().optional(),
 	workflowName: z.string().optional(),
+	workItemId: z.string().optional(),
+	isSupportingWorkflow: z.boolean().optional(),
+	triggerNodes: z.array(triggerNodeDescriptorSchema).optional(),
+	verificationReadiness: workflowVerificationReadinessSchema.optional(),
+	setupRequirement: workflowSetupRequirementSchema.optional(),
 	/** Node names whose credentials were mocked via pinned data. */
 	mockedNodeNames: z.array(z.string()).optional(),
 	/** Credential types that were mocked (not resolved to real credentials). */
@@ -319,6 +347,8 @@ export const submitWorkflowOutputSchema = z.object({
 	usesWorkflowPinDataForVerification: z.boolean().optional(),
 	/** Sub-workflow IDs referenced by the submitted main workflow. */
 	referencedWorkflowIds: z.array(z.string()).optional(),
+	/** Whether any node parameters contain unresolved placeholder values. */
+	hasUnresolvedPlaceholders: z.boolean().optional(),
 	remediation: z
 		.object({
 			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
@@ -471,7 +501,14 @@ export function createSubmitWorkflowTool(
 		.input(submitWorkflowInputSchema)
 		.output(submitWorkflowOutputSchema)
 		.handler(
-			async ({ filePath: rawFilePath, workflowId, projectId, name }: SubmitWorkflowInput) => {
+			async ({
+				filePath: rawFilePath,
+				workflowId,
+				projectId,
+				name,
+				workItemId,
+				isSupportingWorkflow,
+			}: SubmitWorkflowInput) => {
 				const root = options.root ?? (await getWorkspaceRoot(workspace));
 				const filePath =
 					rawFilePath || !options.defaultFilePath
@@ -683,24 +720,50 @@ export function createSubmitWorkflowTool(
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
 
-				// Scan node parameters for unresolved placeholder values
-				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+				const hasPlaceholders = hasUnresolvedPlaceholders(json.nodes);
+				const mockedNodeNames = hasMockedCredentials ? mockResult.mockedNodeNames : undefined;
+				const mockedCredentialTypes = hasMockedCredentials
+					? mockResult.mockedCredentialTypes
+					: undefined;
+				const mockedCredentialsByNode = hasMockedCredentials
+					? mockResult.mockedCredentialsByNode
+					: undefined;
+				const verificationPinData =
+					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
+						? mockResult.verificationPinData
+						: undefined;
+				const outcome = createSuccessfulWorkflowBuildOutcome({
+					context,
+					workflowId,
+					savedId,
+					workflowName: json.name || 'workflow',
+					workItemId,
+					isSupportingWorkflow,
+					triggerNodes,
+					mockedNodeNames,
+					mockedCredentialTypes,
+					mockedCredentialsByNode,
+					verificationPinData,
+					usesWorkflowPinDataForVerification:
+						mockResult.usesWorkflowPinDataForVerification || undefined,
+					referencedWorkflowIds,
+					hasUnresolvedPlaceholders: hasPlaceholders || undefined,
+				});
+
+				await promoteMainWorkflow(context, savedId);
+				await reportWorkflowBuildOutcome(context, outcome, {
+					storeOnRunContext: isSupportingWorkflow !== true,
+					markPlannedTaskSucceeded: isSupportingWorkflow !== true,
+				});
 
 				await reportAttempt({
 					success: true,
 					workflowId: savedId,
 					triggerNodes,
-					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
-					mockedCredentialTypes: hasMockedCredentials
-						? mockResult.mockedCredentialTypes
-						: undefined,
-					mockedCredentialsByNode: hasMockedCredentials
-						? mockResult.mockedCredentialsByNode
-						: undefined,
-					verificationPinData:
-						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
-							? mockResult.verificationPinData
-							: undefined,
+					mockedNodeNames,
+					mockedCredentialTypes,
+					mockedCredentialsByNode,
+					verificationPinData,
 					usesWorkflowPinDataForVerification:
 						mockResult.usesWorkflowPinDataForVerification || undefined,
 					referencedWorkflowIds:
@@ -711,21 +774,20 @@ export function createSubmitWorkflowTool(
 					success: true,
 					workflowId: savedId,
 					workflowName: json.name || undefined,
-					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
-					mockedCredentialTypes: hasMockedCredentials
-						? mockResult.mockedCredentialTypes
-						: undefined,
-					mockedCredentialsByNode: hasMockedCredentials
-						? mockResult.mockedCredentialsByNode
-						: undefined,
-					verificationPinData:
-						hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
-							? mockResult.verificationPinData
-							: undefined,
+					workItemId: outcome.workItemId,
+					isSupportingWorkflow: isSupportingWorkflow ? true : undefined,
+					triggerNodes,
+					verificationReadiness: outcome.verificationReadiness,
+					setupRequirement: outcome.setupRequirement,
+					mockedNodeNames,
+					mockedCredentialTypes,
+					mockedCredentialsByNode,
+					verificationPinData,
 					usesWorkflowPinDataForVerification:
 						mockResult.usesWorkflowPinDataForVerification || undefined,
 					referencedWorkflowIds:
 						referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
+					hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 					warnings:
 						informational.length > 0
 							? informational.map((w) => `[${w.code}]: ${w.message}`)

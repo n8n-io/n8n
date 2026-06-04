@@ -38,24 +38,24 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
+				'Load the `workflow-builder` skill, edit the workspace file, then call `submit-workflow` ' +
 				`with \`workflowId: "${action.workflowId}"\` ` +
 				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
 				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				`Use SDK code or a targeted patch to apply this structural repair: ${action.failureDetails}`
+				`Use SDK code to apply this structural repair: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
+				'Load the `workflow-builder` skill, edit the workspace file, then call `submit-workflow` ' +
 				`with \`workflowId: "${action.workflowId}"\` ` +
 				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
 				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				'Use patch mode when the edit is small.'
+				'Keep the workspace-file edit as small as possible.'
 			);
 	}
 }

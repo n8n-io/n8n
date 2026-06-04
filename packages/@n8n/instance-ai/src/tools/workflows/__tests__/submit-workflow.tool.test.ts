@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
+import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
 	buildErrorDetails,
@@ -320,6 +321,163 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 			usesWorkflowPinDataForVerification: true,
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
+	});
+
+	it('reports workflow-loop metadata when saving succeeds', async () => {
+		const reportBuildOutcome = vi.fn(
+			async () =>
+				await Promise.resolve({ type: 'verify' as const, workflowId: 'main-workflow-id' }),
+		);
+		const markSucceeded = vi.fn<
+			(
+				threadId: string,
+				taskId: string,
+				update: { result?: string; outcome?: WorkflowBuildOutcome },
+			) => Promise<null>
+		>(async () => await Promise.resolve(null));
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				return { id: 'main-workflow-id' };
+			}),
+			clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+		};
+		const workflowJson = {
+			name: 'Main workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const tool = createSubmitWorkflowTool(
+			makeContext(
+				{ createWorkflow: 'always_allow' },
+				{
+					workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+					runId: 'run-1',
+					workflowBuildContext: {
+						threadId: 'thread-1',
+						runId: 'run-1',
+						taskId: 'task-1',
+						workItemId: 'wi-1',
+						workflowTaskService: {
+							reportBuildOutcome,
+						},
+						plannedTaskService: {
+							markSucceeded,
+						},
+					},
+				},
+			),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Main workflow',
+		});
+
+		expect(output).toMatchObject({
+			success: true,
+			workflowId: 'main-workflow-id',
+			workItemId: 'wi-1',
+			triggerNodes: [{ nodeName: 'Webhook', nodeType: 'n8n-nodes-base.webhook' }],
+			verificationReadiness: { status: 'ready' },
+			setupRequirement: { status: 'not_required' },
+		});
+		expect(workflowService.clearAiTemporary).toHaveBeenCalledWith('main-workflow-id');
+		expect(reportBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
+				workItemId: 'wi-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workflowId: 'main-workflow-id',
+				submitted: true,
+				verificationReadiness: { status: 'ready' },
+				setupRequirement: { status: 'not_required' },
+			}),
+		);
+		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
+		const succeededUpdate = markSucceeded.mock.calls[0]?.[2];
+		expect(succeededUpdate?.result).toBe('Created workflow "Main workflow" (main-workflow-id).');
+		expect(succeededUpdate?.outcome).toMatchObject({
+			workItemId: 'wi-1',
+			workflowId: 'main-workflow-id',
+		});
+	});
+
+	it('does not finalize the planned task when submitting a supporting workflow', async () => {
+		const reportBuildOutcome = vi.fn(
+			async () =>
+				await Promise.resolve({ type: 'verify' as const, workflowId: 'support-workflow-id' }),
+		);
+		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
+		const onBuildOutcome = vi.fn();
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				return { id: 'support-workflow-id' };
+			}),
+			clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+		};
+		const tool = createSubmitWorkflowTool(
+			makeContext(
+				{ createWorkflow: 'always_allow' },
+				{
+					workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+					runId: 'run-1',
+					workflowBuildContext: {
+						threadId: 'thread-1',
+						runId: 'run-1',
+						taskId: 'task-1',
+						workItemId: 'wi-main',
+						onBuildOutcome,
+						workflowTaskService: {
+							reportBuildOutcome,
+						},
+						plannedTaskService: {
+							markSucceeded,
+						},
+					},
+				},
+			),
+			makeBuildSuccessWorkspace({
+				name: 'Support workflow',
+				nodes: [],
+				connections: {},
+			}),
+			new Map(),
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/support.ts',
+			name: 'Support workflow',
+			isSupportingWorkflow: true,
+		});
+
+		expect(output).toMatchObject({
+			success: true,
+			workflowId: 'support-workflow-id',
+			isSupportingWorkflow: true,
+		});
+		expect(output.workItemId).not.toBe('wi-main');
+		expect(onBuildOutcome).not.toHaveBeenCalled();
+		expect(markSucceeded).not.toHaveBeenCalled();
+		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0];
+		expect(reportedOutcome).toMatchObject({
+			workItemId: output.workItemId,
+			workflowId: 'support-workflow-id',
+			submitted: true,
+		});
+		expect(reportedOutcome?.taskId).toEqual(expect.stringMatching(/^task-1:supporting-/));
 	});
 });
 

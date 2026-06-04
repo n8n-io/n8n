@@ -14,9 +14,13 @@ import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-
 import {
 	ALWAYS_LOADED_TOOL_NAMES,
 	CHECKPOINT_FOLLOW_UP_TOOL_NAMES,
+	DOMAIN_TOOL_IDS,
 	WORKSPACE_TOOL_IDS,
 } from '../tools/tool-ids';
-import { createIdentityEnforcedSubmitWorkflowTool } from '../tools/workflows/submit-workflow-identity';
+import {
+	createIdentityEnforcedSubmitWorkflowTool,
+	createSubmitWorkflowAliasTool,
+} from '../tools/workflows/submit-workflow-identity';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type {
 	CreateInstanceAgentOptions,
@@ -62,18 +66,21 @@ function createRuntimeWorkflowTools(
 			? async () => await workflowTaskService.getWorkflowLoopState(workItemId)
 			: undefined;
 
+	const submitWorkflowTool = createIdentityEnforcedSubmitWorkflowTool({
+		context,
+		workspace,
+		root,
+		defaultFilePath: `${root}/src/workflow.ts`,
+		currentRunId: context.runId ?? orchestrationContext.runId,
+		getWorkflowLoopState,
+		onAttempt: () => {},
+	});
+
 	return createToolRegistry([
+		[WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW, submitWorkflowTool],
 		[
-			WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW,
-			createIdentityEnforcedSubmitWorkflowTool({
-				context,
-				workspace,
-				root,
-				defaultFilePath: `${root}/src/workflow.ts`,
-				currentRunId: context.runId ?? orchestrationContext.runId,
-				getWorkflowLoopState,
-				onAttempt: () => {},
-			}),
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			createSubmitWorkflowAliasTool(DOMAIN_TOOL_IDS.BUILD_WORKFLOW, submitWorkflowTool),
 		],
 	]);
 }

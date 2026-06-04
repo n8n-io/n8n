@@ -69,9 +69,9 @@ Tool names are part of the compatibility contract. Keep using the same tool
 names the old builder used:
 
 - `submit-workflow` to save TypeScript SDK code from the workspace filesystem.
-- `build-workflow` only when no workspace filesystem or `submit-workflow` tool
-  is available.
-- `workflows(action="get-as-code")` before precise patches to an existing
+- `build-workflow` as a compatibility alias for the same workspace-file submit
+  behavior when that alias is present. Do not send inline code or patches.
+- `workflows(action="get-as-code")` before precise edits to an existing
   workflow when you need the current code.
 - `workflows(action="get")`, `workflows(action="list")`, and
   `workflows(action="setup")` when inspection or setup routing is needed.
@@ -98,17 +98,9 @@ pre-loaded code or the saved workflow code. Do not re-discover node types that
 are already present unless the repair touches their parameters, resources,
 credentials, versions, or wiring semantics.
 
-For small fixes, prefer patch mode:
-
-```json
-{
-  "workflowId": "existing-id",
-  "patches": [{ "old_str": "exact old code", "new_str": "replacement code" }]
-}
-```
-
-Patches apply to the last submitted code, or the tool fetches the saved workflow
-when `workflowId` is provided. Use full code for larger rewrites.
+For small fixes, edit only the relevant lines in the workspace file, then save
+the file again with the existing `workflowId`. Use full-code rewrites only for
+larger repairs.
 
 ## Escalation
 
@@ -157,19 +149,19 @@ Assistant panel so the user can fill placeholder values.
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Build complete TypeScript SDK code. Prefer editing it in the workspace
-   filesystem and call `submit-workflow`. Use `build-workflow` only when no
-   workspace filesystem or `submit-workflow` tool is available.
+   filesystem and call `submit-workflow` or its `build-workflow` alias when
+   present. Do not send inline code or patches.
 7. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
 8. Fix errors. If the save returns errors, repair the workspace file and call
-   `submit-workflow` again. If using the `build-workflow` fallback, make one
-   batched repair and save again before any verification step.
-9. Modify existing workflows with `workflowId` plus patches where possible. Use
-   `workflows(action="get-as-code")` first when you need to identify exact code
-   to replace.
+   `submit-workflow` again. If using the `build-workflow` alias, make one
+   batched workspace-file repair and save again before any verification step.
+9. Modify existing workflows by saving the edited workspace file with the
+   existing `workflowId`. Use `workflows(action="get-as-code")` first when you
+   need the current code.
 10. Finish with a concise completion message only when the build, required
     setup routing, or required verification path is complete.
 
@@ -267,13 +259,14 @@ a main workflow. This is part of an approved build task, not a reason to call
 Use this pattern when a workflow is large, has reusable chunks, or benefits from
 independent testing. Simple workflows should stay in one workflow.
 
-1. Build each supporting workflow first with `build-workflow` and
+1. Build each supporting workflow first in its own workspace file with
+   `submit-workflow` or its `build-workflow` alias, passing
    `isSupportingWorkflow: true`.
 2. Give each supporting workflow an `executeWorkflowTrigger` (version 1.1) with
    an explicit input schema.
 3. Use the returned supporting `workflowId` in the main workflow's
    `executeWorkflow` node with `source: 'database'`.
-4. Save the main workflow last with `build-workflow` and without
+4. Save the main workflow last with `submit-workflow` and without
    `isSupportingWorkflow`; this is the build task's final deliverable outcome.
 5. Do not publish the main workflow automatically. Supporting workflows may be
    published when the parent workflow needs them active for verification or
@@ -321,7 +314,7 @@ const getWeather = node({
 ```
 
 Replace `SUPPORTING_WORKFLOW_ID` with the real ID returned by the supporting
-`build-workflow` call. If a supporting workflow uses mocked credentials or
+save call. If a supporting workflow uses mocked credentials or
 placeholders, route setup before publishing or relying on it.
 
 ## Data Tables
