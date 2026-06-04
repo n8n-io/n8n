@@ -194,7 +194,8 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 		// Recover code_verifier from the state param (present for PKCE flows).
 		const rawState = (req.query as Record<string, string>)['_oauth_state'];
-		const codeVerifier = rawState ? verifyWebhookOAuth2State(rawState)?.codeVerifier : undefined;
+		const state = rawState ? verifyWebhookOAuth2State(rawState) : undefined;
+		const codeVerifier = state?.codeVerifier;
 
 		const oAuth = new ClientOAuth2({
 			clientId: credentials.clientId as string,

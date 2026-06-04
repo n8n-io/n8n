@@ -9,15 +9,42 @@ export class WebhookOAuth2Authentication implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Code',
+					value: 'authorizationCode',
+				},
+				{
+					name: 'PKCE',
+					value: 'pkce',
+				},
+			],
+			default: 'authorizationCode',
+		},
+		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			required: true,
 			displayOptions: {
-				hide: {
-					grantType: ['pkce'],
-				},
+				hide: { grantType: ['pkce'] },
+			},
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'Optional for public clients (native/mobile/SPA apps). Required by some providers even with PKCE — e.g. Google "Web application" clients.',
+			displayOptions: {
+				show: { grantType: ['pkce'] },
 			},
 		},
 		{
@@ -28,16 +55,12 @@ export class WebhookOAuth2Authentication implements ICredentialType {
 			description:
 				'Include <code>openid profile email</code> to display user information in the "Logged in As" banner. Without <code>openid</code> no user data can be retrieved.',
 		},
-		// Hidden fields: inherited from oAuth2Api but not applicable here.
-		// Token requests always use the Authorization header — there's no UI path that needs `body` mode.
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden',
 			default: 'header',
 		},
-		// Domain restrictions only apply to credentials reused in HTTP Request nodes.
-		// This credential authenticates form visitors; it doesn't make outbound HTTP requests on a user's behalf.
 		{
 			displayName: 'Allowed HTTP Request Domains',
 			name: 'allowedHttpRequestDomains',
