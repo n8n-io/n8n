@@ -15,6 +15,12 @@ import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 jest.mock('axios');
 jest.mock('@n8n/client-oauth2');
 jest.mock('pkce-challenge');
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	verifyWebhookOAuth2State: jest.fn(),
+	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+	getHtmlSandboxCSP: jest.fn(() => 'sandbox-csp-stub'),
+}));
 
 describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
@@ -944,6 +950,120 @@ describe('OAuth2CredentialController', () => {
 				'Token exchange failed',
 				undefined,
 			);
+		});
+	});
+
+	describe('handleWebhookOAuth2Callback', () => {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const n8nCore = require('n8n-core') as {
+			verifyWebhookOAuth2State: jest.Mock;
+			isFormHtmlSandboxingDisabled: jest.Mock;
+		};
+
+		beforeEach(() => {
+			n8nCore.verifyWebhookOAuth2State.mockReset();
+			n8nCore.isFormHtmlSandboxingDisabled.mockReset().mockReturnValue(false);
+		});
+
+		const buildReq = (query: Record<string, string>) => {
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>();
+			req.query = query as OAuthRequest.OAuth2Credential.Callback['query'];
+			return req;
+		};
+
+		it('redirects to the return URL with _oauth_code and _oauth_state appended on success', async () => {
+			n8nCore.verifyWebhookOAuth2State.mockReturnValue({ returnUrl: '/form/test?foo=bar' });
+			const res = mock<Response>();
+			const req = buildReq({ code: 'auth_code', state: 'enc.state' });
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(
+				'/form/test?foo=bar&_oauth_code=auth_code&_oauth_state=enc.state',
+			);
+			expect(res.render).not.toHaveBeenCalled();
+		});
+
+		it('sets the sandbox CSP header on the redirect response', async () => {
+			n8nCore.verifyWebhookOAuth2State.mockReturnValue({ returnUrl: '/form/test' });
+			const res = mock<Response>();
+			const req = buildReq({ code: 'auth_code', state: 'enc.state' });
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', 'sandbox-csp-stub');
+		});
+
+		it('omits the CSP header when form HTML sandboxing is disabled', async () => {
+			n8nCore.isFormHtmlSandboxingDisabled.mockReturnValue(true);
+			n8nCore.verifyWebhookOAuth2State.mockReturnValue({ returnUrl: '/form/test' });
+			const res = mock<Response>();
+			const req = buildReq({ code: 'auth_code', state: 'enc.state' });
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
+		});
+
+		it('renders the error template when the provider returns an error', async () => {
+			n8nCore.verifyWebhookOAuth2State.mockReturnValue({ returnUrl: '/form/test' });
+			const res = mock<Response>();
+			const req = buildReq({
+				state: 'enc.state',
+				error: 'access_denied',
+				error_description: 'User denied access',
+			});
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('webhook-oauth-error', {
+				errorCode: 'access_denied',
+				errorDescription: 'User denied access',
+				returnUrl: '/form/test',
+			});
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
+
+		it('renders the error template when code is missing', async () => {
+			const res = mock<Response>();
+			const req = buildReq({ state: 'enc.state' });
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('webhook-oauth-error', {
+				errorCode: 'invalid_request',
+				errorDescription: 'Missing required OAuth2 parameters.',
+				returnUrl: null,
+			});
+		});
+
+		it('renders the error template when state is missing', async () => {
+			const res = mock<Response>();
+			const req = buildReq({ code: 'auth_code' });
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('webhook-oauth-error', {
+				errorCode: 'invalid_request',
+				errorDescription: 'Missing required OAuth2 parameters.',
+				returnUrl: null,
+			});
+		});
+
+		it('renders the error template when state is invalid or expired', async () => {
+			n8nCore.verifyWebhookOAuth2State.mockReturnValue(null);
+			const res = mock<Response>();
+			const req = buildReq({ code: 'auth_code', state: 'bad.state' });
+
+			await controller.handleWebhookOAuth2Callback(req, res);
+
+			expect(res.render).toHaveBeenCalledWith('webhook-oauth-error', {
+				errorCode: 'invalid_state',
+				errorDescription:
+					'The login link has expired or is invalid. Please return to the form and try again.',
+				returnUrl: null,
+			});
+			expect(res.redirect).not.toHaveBeenCalled();
 		});
 	});
 });
