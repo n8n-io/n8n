@@ -66,9 +66,6 @@ catalogs:
     fastest-levenshtein:
       specifier: 1.0.16
       version: 1.0.16
-    flatted:
-      specifier: 3.2.7
-      version: 3.2.7
     http-proxy-agent:
       specifier: 7.0.2
       version: 7.0.2
@@ -218,6 +215,7 @@ overrides:
   ws: '>=8.17.1'
   date-fns: 2.30.0
   date-fns-tz: 2.0.0
+  flatted: 3.4.2
   form-data: 4.0.4
   tmp: 0.2.4
   nodemailer: 7.0.11
@@ -732,8 +730,8 @@ importers:
         specifier: 0.14.0
         version: 0.14.0
       flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
+        specifier: 3.4.2
+        version: 3.4.2
       lodash:
         specifier: 4.18.0
         version: 4.18.0
@@ -1711,8 +1709,8 @@ importers:
         specifier: 5.0.2
         version: 5.0.2
       flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
+        specifier: 3.4.2
+        version: 3.4.2
       formidable:
         specifier: 3.5.4
         version: 3.5.4
@@ -2479,8 +2477,8 @@ importers:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.1)
       flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
+        specifier: 3.4.2
+        version: 3.4.2
       js-base64:
         specifier: 'catalog:'
         version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
@@ -2775,8 +2773,8 @@ importers:
         specifier: ^2.0.2
         version: 2.0.5
       flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
+        specifier: 3.4.2
+        version: 3.4.2
       highlight.js:
         specifier: catalog:frontend
         version: 11.8.0
@@ -3351,8 +3349,8 @@ importers:
         specifier: 2.2.2
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1))
       flatted:
-        specifier: 'catalog:'
-        version: 3.2.7
+        specifier: 3.4.2
+        version: 3.4.2
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
@@ -5846,6 +5844,7 @@ packages:
   '@langchain/community@1.1.18':
     resolution: {integrity: sha512-F+grFLi2DtnFRQvdkRNiR8Ew6VAZ6ZP9VPmEHMTf5tOPPOR5IPPGA1USXxJMfVq6RbeOXEgNSElwDGgyg32FAQ==}
     engines: {node: '>=20'}
+    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.1.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -11872,11 +11871,8 @@ packages:
     resolution: {integrity: sha512-b6suED+5/3rTpUBdG1gupIl8MPFCAMA0QXwmljLhvCUKcUvdE4gWky9zpuGCcXHOsz4J9wPGNWq6OKpmIzz3hQ==}
     hasBin: true
 
-  flatted@3.2.7:
-    resolution: {integrity: sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==}
-
-  flatted@3.3.3:
-    resolution: {integrity: sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==}
+  flatted@3.4.2:
+    resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
   fn.name@1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
@@ -17830,8 +17826,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.3.2:
-    resolution: {integrity: sha512-l4Z2Y34m7nFMlx8vrslJaVtXxUpzgDMSESC7TakG/c5kwjYT/do+E0NcT2/vWDzaoIhsShg/2OKwX7Q4nbzC0g==}
+  vue-component-type-helpers@3.3.3:
+    resolution: {integrity: sha512-x4nsFpy5Pe8fqPzp/5vkTPeTTDBpAx4WVtV47Ejt0+2FQrq4pRRsJs7JmYRqMFzTu/LW+pCWEjQ3YVCkPV7f9g==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -24761,7 +24757,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.3.2
+      vue-component-type-helpers: 3.3.3
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -26516,16 +26512,6 @@ snapshots:
   axios@1.16.1(debug@4.4.1):
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.1)
-      form-data: 4.0.4
-      https-proxy-agent: 5.0.1
-      proxy-from-env: 2.1.0
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  axios@1.16.1(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.4
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -29279,30 +29265,24 @@ snapshots:
 
   flat-cache@4.0.1:
     dependencies:
-      flatted: 3.3.3
+      flatted: 3.4.2
       keyv: 4.5.4
 
   flat-cache@6.1.12:
     dependencies:
       cacheable: 1.10.3
-      flatted: 3.3.3
+      flatted: 3.4.2
       hookified: 1.11.0
 
   flat@5.0.2: {}
 
-  flatted@3.2.7: {}
-
-  flatted@3.3.3: {}
+  flatted@3.4.2: {}
 
   fn.name@1.1.0: {}
 
   follow-redirects@1.16.0(debug@4.4.1):
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
-
-  follow-redirects@1.16.0(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3
 
   for-each@0.3.5:
     dependencies:
@@ -30004,7 +29984,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.16.1(debug@4.4.3)
+      axios: 1.16.1(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -30014,7 +29994,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.16.1)
+      retry-axios: 2.6.0(axios@1.16.1(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -34380,7 +34360,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.16.1):
+  retry-axios@2.6.0(axios@1.16.1(debug@4.4.3)):
     dependencies:
       axios: 1.16.1(debug@4.4.1)
 
@@ -36660,7 +36640,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.3.2: {}
+  vue-component-type-helpers@3.3.3: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:
