@@ -296,8 +296,8 @@ export const handleFormRedirectionCase = (
 	return data;
 };
 
-const { formDataFileSizeMax } = Container.get(GlobalConfig).endpoints;
-const parseFormData = createMultiFormDataParser(formDataFileSizeMax);
+const { formDataFileSizeMax, formDataFileCountMax } = Container.get(GlobalConfig).endpoints;
+const parseFormData = createMultiFormDataParser(formDataFileSizeMax, formDataFileCountMax);
 
 export function setupResponseNodePromise(
 	responsePromise: IDeferredPromise<IN8nHttpFullResponse>,

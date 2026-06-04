@@ -91,6 +91,10 @@ export class EndpointsConfig {
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
 	formDataFileSizeMax: number = 200;
 
+	/** Maximum number of files accepted in a single multipart/form-data webhook payload. */
+	@Env('N8N_FORMDATA_FILE_COUNT_MAX')
+	formDataFileCountMax: number = 1000;
+
 	@Nested
 	metrics: PrometheusMetricsConfig;
 
