@@ -1,19 +1,8 @@
 import { z, type ZodDiscriminatedUnionOption } from 'zod';
 
-import { AgentIntegrationConfigSchema } from './agent-integration.schema';
-import {
-	AgentJsonConfigSchema,
-	AgentJsonSkillConfigSchema,
-	AgentJsonTaskConfigSchema,
-	AgentJsonToolConfigSchema,
-} from './agent-json-config.schema';
+import { AgentJsonConfigSchema } from './agent-json-config.schema';
 
-const TYPED_ARRAY_CONFIG_SCHEMAS = {
-	integrations: AgentIntegrationConfigSchema,
-	tools: AgentJsonToolConfigSchema,
-	skills: AgentJsonSkillConfigSchema,
-	tasks: AgentJsonTaskConfigSchema,
-};
+const TYPED_ARRAY_CONFIG_KEYS = ['integrations', 'tools', 'skills', 'tasks'] as const;
 
 type DiscriminatedUnionSchema = z.ZodDiscriminatedUnion<
 	string,
@@ -145,6 +134,15 @@ function getWrappedSchema(schema: z.ZodTypeAny): z.ZodTypeAny | undefined {
 	return undefined;
 }
 
+function getArrayElementSchema(schema: z.ZodTypeAny): z.ZodTypeAny | undefined {
+	const wrappedSchema = getWrappedSchema(schema);
+	if (wrappedSchema !== undefined) {
+		return getArrayElementSchema(wrappedSchema);
+	}
+
+	return isZodArraySchema(schema) ? schema.element : undefined;
+}
+
 function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown {
 	const wrappedSchema = getWrappedSchema(schema);
 	if (wrappedSchema !== undefined) {
@@ -192,6 +190,8 @@ function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown
 /**
  * Strip legacy or unsupported typed entries from agent JSON config before strict
  * Zod validation. Unknown top-level keys are dropped from `AgentJsonConfigSchema`.
+ * This intentionally cleans unknown fields gracefully, so older persisted configs
+ * and generated drafts can move forward as the schema evolves.
  *
  * Entries with a supported `type` but invalid required fields are kept so validation
  * can surface the error instead of silently discarding user mistakes.
@@ -204,8 +204,11 @@ export function sanitizeAgentJsonConfig(raw: unknown): unknown {
 	const sanitized = stripUnknownSchemaFields(raw, AgentJsonConfigSchema);
 	if (!isRecord(sanitized)) return sanitized;
 
-	for (const [key, schema] of Object.entries(TYPED_ARRAY_CONFIG_SCHEMAS)) {
+	for (const key of TYPED_ARRAY_CONFIG_KEYS) {
 		if (key in sanitized) {
+			const schema = getArrayElementSchema(AgentJsonConfigSchema.shape[key]);
+			if (schema === undefined) continue;
+
 			sanitized[key] = filterUnsupportedTypedEntries(
 				sanitized[key],
 				getDiscriminatorLiteralValues(schema, 'type'),

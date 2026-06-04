@@ -887,6 +887,9 @@ describe('AgentsService', () => {
 			expect(savedEntity.schema?.subAgents).toEqual({
 				agents: [{ agentId: 'agent-2' }],
 			});
+			expect(
+				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
+			).toHaveLength(1);
 		});
 
 		it('strips missing subagent refs before validating and saving config', async () => {
@@ -919,6 +922,12 @@ describe('AgentsService', () => {
 				maxChildren: 10,
 				agents: [{ agentId: 'agent-3' }],
 			});
+			expect(
+				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent_123'),
+			).toHaveLength(1);
+			expect(
+				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-3'),
+			).toHaveLength(1);
 		});
 
 		it('persists subAgents.maxChildren without materializing an agents list', async () => {
@@ -967,6 +976,30 @@ describe('AgentsService', () => {
 			await expect(service.updateConfig(agentId, projectId, configWithSubAgents)).rejects.toThrow(
 				'Invalid agent config: Subagent "agent-2" must be published',
 			);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects self-referencing subagent refs', async () => {
+			const agent = makeAgent({ id: agentId });
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) => {
+				if (id === agentId) return agent;
+				return null;
+			});
+
+			const configWithSelfReference = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				subAgents: { agents: [{ agentId }] },
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithSelfReference,
+			});
+
+			await expect(
+				service.updateConfig(agentId, projectId, configWithSelfReference),
+			).rejects.toThrow('Invalid agent config: An agent cannot use itself as a subagent');
 			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
 	});
