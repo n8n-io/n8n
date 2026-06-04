@@ -41,9 +41,8 @@ per step plus the tail of the failing log. A machine-readable
 readable in a single shot — no polling, no scrolling logs.
 
 ```bash
-pnpm agent:setup                 # install → build → test:affected
+pnpm agent:setup                 # install → build → test (full suite)
 pnpm agent:setup install         # one step at a time
-pnpm agent:setup --full-test     # full test suite instead of --affected
 pnpm agent:setup --json          # JSON summary on stdout (for scripts/agents)
 ```
 

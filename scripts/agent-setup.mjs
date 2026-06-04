@@ -32,13 +32,12 @@ Steps:
   all       install → build → test (default; stops at first failure)
   install   pnpm install --frozen-lockfile
   build     turbo run build
-  test      turbo run test (affected by default; pass --full-test for full suite)
+  test      turbo run test (full suite)
 
 Flags:
   --mem <MB>          per-process old-space cap (default 6144, matches CI)
   --concurrency <n>   turbo concurrency for build/test (default 4)
   --tail <n>          lines of the failing log to print on failure (default 60)
-  --full-test         run the full test suite instead of --affected
   --json              emit only the JSON summary to stdout
   --log-dir <path>    write logs and summary.json here (default .agent-setup/)
   -h, --help          show this help
@@ -60,7 +59,6 @@ try {
 			mem: { type: 'string', default: '6144' },
 			concurrency: { type: 'string', default: '4' },
 			tail: { type: 'string', default: '60' },
-			'full-test': { type: 'boolean', default: false },
 			json: { type: 'boolean', default: false },
 			'log-dir': { type: 'string' },
 			help: { type: 'boolean', default: false, short: 'h' },
@@ -101,9 +99,9 @@ const logDir = values['log-dir']
 	: resolve(REPO_ROOT, '.agent-setup');
 mkdirSync(logDir, { recursive: true });
 
-// Call turbo directly via `pnpm exec` rather than the wrapper scripts. The
-// repo's `test:affected` script pins `--concurrency=1`, which would silently
-// fight a user-supplied `--concurrency` if we layered another flag on top.
+// Call turbo directly via `pnpm exec` rather than the wrapper scripts so a
+// user-supplied `--concurrency` isn't silently fought by a flag baked into a
+// wrapper.
 const PLAN = {
 	install: { cmd: 'pnpm', args: ['install', '--frozen-lockfile'] },
 	build: {
@@ -112,9 +110,7 @@ const PLAN = {
 	},
 	test: {
 		cmd: 'pnpm',
-		args: values['full-test']
-			? ['exec', 'turbo', 'run', 'test', `--concurrency=${concurrency}`]
-			: ['exec', 'turbo', 'run', 'test', '--affected', `--concurrency=${concurrency}`],
+		args: ['exec', 'turbo', 'run', 'test', `--concurrency=${concurrency}`],
 	},
 };
 
