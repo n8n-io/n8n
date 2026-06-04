@@ -52,6 +52,20 @@ const open = require('open');
 
 const flagsSchema = z.object({
 	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
+	hammerInit: z
+		.boolean()
+		.describe(
+			'DEBUG: after startup, hammer IsolatedVmBridge.initialize() in a loop to repro init-time hangs',
+		)
+		.optional(),
+	hammerConcurrency: z
+		.number()
+		.describe('DEBUG: how many bridges to init in parallel per round (default 8)')
+		.optional(),
+	hammerTimeoutMs: z
+		.number()
+		.describe('DEBUG: per-bridge init timeout in ms before flagging a hang (default 30000)')
+		.optional(),
 });
 
 @Command({
@@ -402,6 +416,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.server.start();
 
+		if (flags.hammerInit) {
+			void this.hammerInitLoop({
+				concurrency: flags.hammerConcurrency ?? 8,
+				timeoutMs: flags.hammerTimeoutMs ?? 30_000,
+			});
+		}
+
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(N8NCheckpointStorage).init();
@@ -461,6 +482,86 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * If so, start running any such executions concurrently up to the concurrency limit, and
 	 * enqueue any remaining ones until we have spare concurrency capacity again.
 	 */
+	/**
+	 * DEBUG: hammer IsolatedVmBridge.initialize() in a loop until one of them
+	 * stalls beyond `timeoutMs`. Exercises createContext → jail.set →
+	 * loadVendorLibraries → verifyProxySystem → injectErrorHandler. On hang,
+	 * logs diagnostics and leaves the process alive for inspector attach.
+	 */
+	private async hammerInitLoop({
+		concurrency,
+		timeoutMs,
+	}: { concurrency: number; timeoutMs: number }): Promise<void> {
+		const { IsolatedVmBridge } = await import('@n8n/expression-runtime');
+		const ts = () => new Date().toISOString();
+		this.logger.info(
+			`[hammerInit] starting (concurrency=${concurrency}, timeoutMs=${timeoutMs})`,
+		);
+
+		let completed = 0;
+		let round = 0;
+		const startedAt = Date.now();
+
+		setInterval(() => {
+			const elapsedSec = (Date.now() - startedAt) / 1000;
+			const rate = completed / elapsedSec;
+			this.logger.info(
+				`[hammerInit] round=${round} completed=${completed} rate=${rate.toFixed(1)}/s`,
+			);
+		}, 5_000).unref();
+
+		while (true) {
+			round++;
+			const tasks = Array.from({ length: concurrency }, async (_, slot) => {
+				const bridge = new IsolatedVmBridge();
+				const started = Date.now();
+				let timer: NodeJS.Timeout | undefined;
+				try {
+					await Promise.race([
+						bridge.initialize(),
+						new Promise<never>((_, reject) => {
+							timer = setTimeout(() => reject(new Error('HAMMER_TIMEOUT')), timeoutMs);
+						}),
+					]);
+					if (timer) clearTimeout(timer);
+					const elapsed = Date.now() - started;
+					await bridge.dispose();
+					completed++;
+					if (elapsed > 1_000) {
+						this.logger.warn(
+							`[hammerInit] slow bridge round=${round} slot=${slot} elapsed=${elapsed}ms`,
+						);
+					}
+				} catch (err) {
+					if (timer) clearTimeout(timer);
+					if ((err as Error).message === 'HAMMER_TIMEOUT') {
+						const elapsed = Date.now() - started;
+						this.logger.error(
+							`[hammerInit] HANG round=${round} slot=${slot} elapsed=${elapsed}ms — bridge.initialize() did not complete within ${timeoutMs}ms`,
+						);
+						this.logger.error(`[hammerInit] PID=${process.pid}`);
+						this.logger.error(
+							`[hammerInit] active resources: ${JSON.stringify(process.getActiveResourcesInfo?.() ?? [])}`,
+						);
+						// Stash the wedged bridge globally for debugger access.
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(globalThis as any).__hammeredBridge = bridge;
+						this.logger.error(
+							`[hammerInit] wedged bridge attached at globalThis.__hammeredBridge — attach an inspector to inspect`,
+						);
+						// Block the loop here so the user has time to inspect.
+						await new Promise(() => {});
+					}
+					this.logger.warn(`[hammerInit] bridge error round=${round} slot=${slot}: ${(err as Error).message}`);
+					try {
+						await bridge.dispose();
+					} catch {}
+				}
+			});
+			await Promise.all(tasks);
+		}
+	}
+
 	private async runEnqueuedExecutions() {
 		const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
 

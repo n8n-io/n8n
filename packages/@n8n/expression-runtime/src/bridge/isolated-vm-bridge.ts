@@ -206,6 +206,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			throw new Error('Context not initialized');
 		}
 
+		// DEBUG: simulate production hang between "Vendor libraries verified" and "Proxy system verified"
+		if (process.env.N8N_DEBUG_HANG_VERIFY_PROXY === '1') {
+			this.logger.info('[IsolatedVmBridge] DEBUG: hanging in verifyProxySystem');
+			await new Promise<never>(() => {});
+		}
+
 		try {
 			// Verify proxy system components loaded correctly
 			const hasProxyCreator = await this.context.eval('typeof createDeepLazyProxy !== "undefined"');
