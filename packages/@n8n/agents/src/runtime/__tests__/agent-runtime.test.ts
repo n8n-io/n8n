@@ -8,7 +8,6 @@ import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
-import type { BuiltMemory } from '../../types/sdk/memory';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
@@ -2867,8 +2866,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 	it('schedules observation after a persisted stream turn', async () => {
 		streamText.mockReturnValue(makeStreamSuccess('Remembered response'));
-		const memory = new InMemoryMemory() as InMemoryMemory &
-			Required<Pick<BuiltMemory, 'saveEmbeddings' | 'queryEmbeddings'>>;
+		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
 
 		const runtime = new AgentRuntime({
@@ -2908,8 +2906,7 @@ describe('AgentRuntime — observation log jobs', () => {
 
 	it('schedules observation after a persisted generate turn', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
-		const memory = new InMemoryMemory() as InMemoryMemory &
-			Required<Pick<BuiltMemory, 'saveEmbeddings' | 'queryEmbeddings'>>;
+		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
 
 		const runtime = new AgentRuntime({
@@ -2947,8 +2944,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
 		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } });
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
-		const memory = new InMemoryMemory() as InMemoryMemory &
-			Required<Pick<BuiltMemory, 'saveEmbeddings' | 'queryEmbeddings'>>;
+		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
 		const observationLockSpy = vi.spyOn(memory, 'acquireObservationLogTaskLock');
 		const episodicLockSpy = vi.spyOn(memory.episodic.taskLock!, 'acquire');
@@ -3112,55 +3108,6 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(systemPrompt).not.toContain('SQLite');
 		expect(callArgs.tools).toHaveProperty('recall_memory');
 		expect(embed).not.toHaveBeenCalled();
-	});
-
-	it('counts semantic recall query and saved message embedding tokens', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
-		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 5 } });
-		embedMany.mockResolvedValue({
-			embeddings: [
-				[1, 0],
-				[0, 1],
-			],
-			usage: { tokens: 13 },
-		});
-		const counter = makeExecutionCounter();
-		const memory = new InMemoryMemory() as InMemoryMemory &
-			Required<Pick<BuiltMemory, 'saveEmbeddings' | 'queryEmbeddings'>>;
-		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
-		await memory.saveMessages({
-			threadId: 'thread-1',
-			resourceId: 'resource-1',
-			messages: [
-				{
-					id: 'old-1',
-					createdAt: new Date('2026-05-12T10:00:00.000Z'),
-					role: 'user',
-					content: [{ type: 'text', text: 'Earlier Postgres decision.' }],
-				},
-			],
-		});
-		memory.queryEmbeddings = async () => await Promise.resolve([{ id: 'old-1', score: 1 }]);
-		memory.saveEmbeddings = async () => await Promise.resolve();
-
-		const runtime = new AgentRuntime({
-			name: 'semantic-agent',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'You are a test assistant.',
-			memory,
-			semanticRecall: {
-				embedder: 'openai/text-embedding-3-small',
-				topK: 1,
-			},
-		});
-
-		await runtime.generate('What did we decide?', {
-			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
-			executionCounter: counter,
-		});
-
-		expect(counter.incrementTokenCount).toHaveBeenCalledWith(5);
-		expect(counter.incrementTokenCount).toHaveBeenCalledWith(13);
 	});
 
 	it('counts recall_memory query embedding tokens', async () => {
@@ -3875,7 +3822,6 @@ describe('AgentRuntime — telemetry propagation', () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
 // Cancellation (Feature 1: cancel suspended tool via user message)
 // ---------------------------------------------------------------------------
 
