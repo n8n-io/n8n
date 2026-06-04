@@ -619,10 +619,12 @@ export class ProjectService {
 			throw new UnlicensedProjectRoleError(role);
 		}
 
-		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
-
 		const proxy = await this.connectionStatusProxy;
-		await proxy.cleanupOrphanedEntriesForUsers([userId]);
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {
