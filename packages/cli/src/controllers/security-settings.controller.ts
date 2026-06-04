@@ -6,6 +6,7 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import type { DistributiveOmit } from '@n8n/utils';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -14,9 +15,6 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
-
-/** Distributes `Omit` over a union so each member is narrowed independently. */
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 /**
  * The `instance-policies-updated` payload without the `user` envelope. Kept as a
