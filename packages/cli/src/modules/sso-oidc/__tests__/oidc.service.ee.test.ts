@@ -189,6 +189,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
+				additionalScopes: '',
 			});
 		});
 
@@ -208,6 +209,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: [],
+				additionalScopes: '',
 			});
 		});
 
@@ -302,6 +304,7 @@ describe('OidcService', () => {
 				prompt: 'select_account',
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
+				additionalScopes: '',
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
