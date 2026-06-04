@@ -1602,7 +1602,7 @@ type PlannedTaskSchedulerServiceInternals = {
 	cancelRun: jest.Mock;
 	createPlannedTaskState: jest.Mock;
 	syncPlannedTasksToUi: jest.Mock;
-	findUnsettledPlannedWorkflowVerification: jest.Mock;
+	taskProjector: { findPendingPlannedWorkflowVerification: jest.Mock };
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	startInternalFollowUpRun: jest.Mock;
 	buildPlannedTaskFollowUpMessage: jest.Mock;
@@ -1643,7 +1643,9 @@ function createPlannedTaskSchedulerService(): {
 	service.cancelRun = jest.fn();
 	service.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
 	service.syncPlannedTasksToUi = jest.fn(async () => {});
-	service.findUnsettledPlannedWorkflowVerification = jest.fn(async () => undefined);
+	service.taskProjector = {
+		findPendingPlannedWorkflowVerification: jest.fn(async () => undefined),
+	};
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
 	service.buildPlannedTaskFollowUpMessage = jest.fn(() => 'follow-up message');
@@ -1941,12 +1943,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			outcome: { workItemId: 'wi-1', workflowId: 'wf-1' },
 		};
 		const graphWithTask = { ...graph, tasks: [workflowTask] };
-		plannedTaskService.getGraph.mockResolvedValue(graphWithTask);
-		plannedTaskService.tick.mockResolvedValue({
-			type: 'synthesize',
-			graph: graphWithTask,
-		});
-		service.findUnsettledPlannedWorkflowVerification.mockResolvedValue({
+		const pendingVerification = {
 			obligation: {
 				workItemId: 'wi-1',
 				threadId: 'thread-a',
@@ -1958,11 +1955,24 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			},
 			outcome: undefined,
 			task: workflowTask,
+		};
+		plannedTaskService.getGraph.mockResolvedValue(graphWithTask);
+		service.taskProjector.findPendingPlannedWorkflowVerification.mockResolvedValue(
+			pendingVerification,
+		);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'orchestrate-workflow-verification',
+			graph: graphWithTask,
+			verification: pendingVerification,
 		});
 
 		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
 
-		expect(plannedTaskService.revertToActive).toHaveBeenCalledWith('thread-a');
+		expect(plannedTaskService.tick).toHaveBeenCalledWith('thread-a', {
+			availableSlots: expect.any(Number),
+			pendingWorkflowVerification: pendingVerification,
+		});
+		expect(plannedTaskService.revertToActive).not.toHaveBeenCalled();
 		expect(service.buildWorkflowVerificationFollowUpMessage).toHaveBeenCalled();
 		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
 			freshUser,
@@ -2611,8 +2621,9 @@ describe('InstanceAiService — workflow verification follow-up gate', () => {
 describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 	type SetupFollowUpService = {
 		listWorkflowLoopRecords: jest.Mock;
+		claimWorkItemSetupRouting: jest.Mock;
 		markWorkItemSetupRouted: jest.Mock;
-		getPlannedWorkItemIds: jest.Mock;
+		releaseWorkItemSetupRoutingClaim: jest.Mock;
 		buildWorkflowSetupFollowUpMessage: jest.Mock;
 		taskProjector: { obligationFromRecord: jest.Mock };
 		runState: { getMessageGroupId: jest.Mock };
@@ -2635,7 +2646,27 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		verification: { attempted: true, success: true, executionId: 'exec-1', status: 'success' },
 	};
 
-	function makeRecord(overrides: { state?: object; outcome?: object } = {}) {
+	type SetupFollowUpRecord = {
+		state: {
+			workItemId: string;
+			threadId: string;
+			workflowId?: string;
+			plannedTaskId?: string;
+			setupRoutedAt?: string;
+			setupRoutingClaimId?: string;
+			setupRoutingClaimedAt?: string;
+			setupRoutingClaimExpiresAt?: string;
+		};
+		attempts: [];
+		lastBuildOutcome: typeof verifiedNeedsSetupOutcome;
+	};
+
+	function makeRecord(
+		overrides: {
+			state?: Partial<SetupFollowUpRecord['state']>;
+			outcome?: Partial<typeof verifiedNeedsSetupOutcome>;
+		} = {},
+	): SetupFollowUpRecord {
 		return {
 			state: {
 				workItemId: 'wi-1',
@@ -2668,16 +2699,53 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 	// `setupRoutedAt` marker (loop-safety) behaves like the real storage.
 	function createSetupFollowUpService(
 		records: Record<string, ReturnType<typeof makeRecord>>,
-		plannedIds: string[] = [],
 	): SetupFollowUpService {
 		const service = Object.create(InstanceAiService.prototype) as unknown as SetupFollowUpService;
 		service.listWorkflowLoopRecords = jest.fn(async () => Object.values(records));
-		service.markWorkItemSetupRouted = jest.fn(
+		service.claimWorkItemSetupRouting = jest.fn(
 			async (_threadId: string, record: ReturnType<typeof makeRecord>) => {
-				records[record.state.workItemId].state.setupRoutedAt = '2026-01-01T00:00:00.000Z';
+				const storedRecord = records[record.state.workItemId];
+				if (
+					!storedRecord ||
+					storedRecord.state.setupRoutedAt ||
+					storedRecord.state.plannedTaskId ||
+					storedRecord.state.setupRoutingClaimId
+				) {
+					return null;
+				}
+
+				storedRecord.state.setupRoutingClaimId = 'setup-claim-1';
+				storedRecord.state.setupRoutingClaimedAt = '2026-01-01T00:00:00.000Z';
+				storedRecord.state.setupRoutingClaimExpiresAt = '2026-01-01T00:15:00.000Z';
+				return {
+					claimId: 'setup-claim-1',
+					claimedAt: '2026-01-01T00:00:00.000Z',
+					expiresAt: '2026-01-01T00:15:00.000Z',
+				};
 			},
 		);
-		service.getPlannedWorkItemIds = jest.fn(async () => new Set(plannedIds));
+		service.markWorkItemSetupRouted = jest.fn(
+			async (_threadId: string, workItemId: string, claimId: string) => {
+				const storedRecord = records[workItemId];
+				if (!storedRecord || storedRecord.state.setupRoutingClaimId !== claimId) return false;
+
+				storedRecord.state.setupRoutedAt = '2026-01-01T00:00:00.000Z';
+				delete storedRecord.state.setupRoutingClaimId;
+				delete storedRecord.state.setupRoutingClaimedAt;
+				delete storedRecord.state.setupRoutingClaimExpiresAt;
+				return true;
+			},
+		);
+		service.releaseWorkItemSetupRoutingClaim = jest.fn(
+			async (_threadId: string, workItemId: string, claimId: string) => {
+				const storedRecord = records[workItemId];
+				if (!storedRecord || storedRecord.state.setupRoutingClaimId !== claimId) return;
+
+				delete storedRecord.state.setupRoutingClaimId;
+				delete storedRecord.state.setupRoutingClaimedAt;
+				delete storedRecord.state.setupRoutingClaimExpiresAt;
+			},
+		);
 		service.buildWorkflowSetupFollowUpMessage = jest.fn(
 			() => '<workflow-setup-required>\n{}\n</workflow-setup-required>',
 		);
@@ -2722,7 +2790,11 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 
 	it('does not route when setup is not required', async () => {
 		const service = createSetupFollowUpService({
-			'wi-1': makeRecord({ outcome: { setupRequirement: { status: 'not_required' } } }),
+			'wi-1': makeRecord({
+				outcome: {
+					setupRequirement: { status: 'not_required', reason: 'none', guidance: 'No setup.' },
+				},
+			}),
 		});
 
 		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
@@ -2732,11 +2804,29 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 	});
 
 	it('does not route planned work items (handled by the plan flow)', async () => {
-		const service = createSetupFollowUpService({ 'wi-1': makeRecord() }, ['wi-1']);
+		const service = createSetupFollowUpService({
+			'wi-1': makeRecord({ state: { plannedTaskId: 'planned-1' } }),
+		});
 
 		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
 
 		expect(started).toBe(false);
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+	});
+
+	it('releases the setup routing claim when the follow-up run cannot start', async () => {
+		const records = { 'wi-1': makeRecord() };
+		const service = createSetupFollowUpService(records);
+		service.startInternalFollowUpRun.mockResolvedValueOnce('');
+
+		const started = await service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a');
+
+		expect(started).toBe(false);
+		expect(service.releaseWorkItemSetupRoutingClaim).toHaveBeenCalledWith(
+			'thread-a',
+			'wi-1',
+			'setup-claim-1',
+		);
+		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
 	});
 });

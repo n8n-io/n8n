@@ -3,12 +3,14 @@ import type { Logger } from '@n8n/backend-common';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
+	isWorkflowVerificationObligationUnsettled,
 	ThreadTaskStorage,
 	WorkflowLoopStorage,
 	workflowBuildOutcomeSchema,
 	type ManagedBackgroundTask,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
+	type PlannedWorkflowVerification,
 	type WorkflowBuildOutcome,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowVerificationObligation,
@@ -267,6 +269,33 @@ export class WorkflowVerificationTaskProjector {
 		return { tasks };
 	}
 
+	/**
+	 * Return the first planned build task whose workflow verification obligation
+	 * still needs an orchestrator follow-up. This is the scheduler-facing view of
+	 * the same obligation model used by the checklist projection.
+	 */
+	async findPendingPlannedWorkflowVerification(
+		threadId: string,
+		graph: PlannedTaskGraph,
+	): Promise<PlannedWorkflowVerification | undefined> {
+		for (const task of graph.tasks) {
+			if (task.kind !== 'build-workflow' || task.status !== 'succeeded') continue;
+
+			const outcome = parseWorkflowBuildOutcome(task.outcome);
+			if (!outcome) continue;
+
+			const options = { source: 'planned', plannedTaskId: task.id } as const;
+			const obligation =
+				(await this.getObligation(threadId, outcome.workItemId, options)) ??
+				deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
+			if (!isWorkflowVerificationObligationUnsettled(obligation)) continue;
+
+			return { task, obligation, outcome };
+		}
+
+		return undefined;
+	}
+
 	private async projectPlannedVerifyRow(
 		threadId: string,
 		task: PlannedTaskRecord,
@@ -373,6 +402,8 @@ export class WorkflowVerificationTaskProjector {
 				{ outcome: WorkflowBuildOutcome | undefined; obligation: WorkflowVerificationObligation }
 			>();
 			for (const record of records) {
+				if (record.state.plannedTaskId || record.lastBuildOutcome?.plannedTaskId) continue;
+
 				const obligation = deriveWorkflowVerificationObligation(threadId, record, {
 					source: 'direct',
 				});

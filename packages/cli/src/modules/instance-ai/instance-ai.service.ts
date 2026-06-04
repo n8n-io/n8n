@@ -51,7 +51,6 @@ import {
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	TerminalOutcomeStorage,
-	isWorkflowVerificationObligationUnsettled,
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
@@ -85,6 +84,7 @@ import {
 	type TerminalResponseStatus,
 	type WorkflowBuildOutcome,
 	type WorkflowLoopWorkItemRecord,
+	type WorkflowSetupRoutingClaim,
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
@@ -144,6 +144,7 @@ function isTelemetryConfigurableAgent(
 }
 
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
+const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
@@ -173,13 +174,6 @@ type PlannedBuildFollowUp = {
 	isSupportingWorkflowTask?: boolean;
 	savedOutcome?: WorkflowBuildOutcome;
 };
-
-function isSupportingWorkflowBuildTask(task: PlannedTaskRecord): boolean {
-	if (task.isSupportingWorkflow === true) return true;
-
-	const text = `${task.title}\n${task.spec}`;
-	return /\b(?:supporting\s+(?:sub-)?workflow|sub-workflow\s+named)\b/i.test(text);
-}
 
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
@@ -2553,36 +2547,6 @@ export class InstanceAiService {
 		return `<workflow-verification-follow-up>\n${JSON.stringify(payload, null, 2)}\n</workflow-verification-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	private async findUnsettledPlannedWorkflowVerification(
-		threadId: string,
-		graph: PlannedTaskGraph,
-	): Promise<
-		| {
-				obligation: WorkflowVerificationObligation;
-				outcome?: WorkflowBuildOutcome;
-				task: PlannedTaskRecord;
-		  }
-		| undefined
-	> {
-		for (const task of graph.tasks) {
-			if (task.kind !== 'build-workflow' || task.status !== 'succeeded') continue;
-
-			const outcome = parseWorkflowBuildOutcome(task.outcome);
-			const workItemId = outcome?.workItemId;
-			if (!workItemId) continue;
-
-			const obligation = await this.taskProjector.getObligation(threadId, workItemId, {
-				source: 'planned',
-				plannedTaskId: task.id,
-			});
-			if (!obligation || !isWorkflowVerificationObligationUnsettled(obligation)) continue;
-
-			return { obligation, outcome, task };
-		}
-
-		return undefined;
-	}
-
 	private async createPlannedTaskState() {
 		const memory = this.agentMemory;
 		const taskStorage = new ThreadTaskStorage(memory);
@@ -3472,42 +3436,20 @@ export class InstanceAiService {
 		return `<workflow-setup-required>\n${JSON.stringify(payload, null, 2)}\n</workflow-setup-required>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	/** Work item ids owned by a planned-task graph; their setup is routed by the plan flow. */
-	private async getPlannedWorkItemIds(threadId: string): Promise<Set<string>> {
-		const ids = new Set<string>();
-		try {
-			const { plannedTaskService } = await this.createPlannedTaskState();
-			const graph = await plannedTaskService.getGraph(threadId);
-			for (const task of graph?.tasks ?? []) {
-				if (task.kind !== 'build-workflow') continue;
-				const workItemId = parseWorkflowBuildOutcome(task.outcome)?.workItemId;
-				if (workItemId) ids.add(workItemId);
-			}
-		} catch (error) {
-			this.logger.warn('Failed to resolve planned work item ids for setup routing', {
-				threadId,
-				error: getErrorMessage(error),
-			});
-		}
-		return ids;
-	}
-
 	/**
 	 * Deterministically route a settled direct build to setup when its saved
 	 * workflow still needs real credentials or values. Runs after verification so
 	 * setup does not depend on the orchestrator choosing to call it. The persisted
-	 * `setupRoutedAt` marker makes this fire at most once per build, so the
-	 * finalization re-entry that drives it cannot loop.
+	 * claim and `setupRoutedAt` marker make this fire at most once per build, so
+	 * concurrent finalization re-entries cannot start duplicate setup runs.
 	 */
 	private async maybeStartWorkflowSetupFollowUp(user: User, threadId: string): Promise<boolean> {
 		const records = await this.listWorkflowLoopRecords(threadId);
 		if (records.length === 0) return false;
 
-		const plannedWorkItemIds = await this.getPlannedWorkItemIds(threadId);
-
 		for (const record of records) {
 			if (record.state.setupRoutedAt) continue;
-			if (plannedWorkItemIds.has(record.state.workItemId)) continue;
+			if (record.state.plannedTaskId || record.lastBuildOutcome?.plannedTaskId) continue;
 
 			const obligation = this.taskProjector.obligationFromRecord(threadId, record, {
 				source: 'direct',
@@ -3516,6 +3458,9 @@ export class InstanceAiService {
 				obligation.status === 'verified' || obligation.status === 'needs_setup';
 			if (!verificationConcluded) continue;
 			if (obligation.setupRequirement?.status !== 'required' || !obligation.workflowId) continue;
+
+			const claim = await this.claimWorkItemSetupRouting(threadId, record);
+			if (!claim) continue;
 
 			const startedRunId = await this.startInternalFollowUpRun(
 				user,
@@ -3526,10 +3471,26 @@ export class InstanceAiService {
 				undefined,
 				'workflow_setup',
 			);
-			if (startedRunId.length === 0) return false;
+			if (startedRunId.length === 0) {
+				await this.releaseWorkItemSetupRoutingClaim(
+					threadId,
+					record.state.workItemId,
+					claim.claimId,
+				);
+				return false;
+			}
 
-			// Mark routed only after a successful start so a failed start retries later.
-			await this.markWorkItemSetupRouted(threadId, record);
+			const marked = await this.markWorkItemSetupRouted(
+				threadId,
+				record.state.workItemId,
+				claim.claimId,
+			);
+			if (!marked) {
+				this.logger.warn('Workflow setup follow-up started but routing marker was not saved', {
+					threadId,
+					workItemId: record.state.workItemId,
+				});
+			}
 			this.trackWorkflowVerificationObligation(obligation, 'setup_follow_up_started');
 			return true;
 		}
@@ -3541,15 +3502,51 @@ export class InstanceAiService {
 		return await new WorkflowLoopStorage(this.agentMemory).listWorkItems(threadId);
 	}
 
-	private async markWorkItemSetupRouted(
+	private createWorkflowSetupRoutingClaim(): WorkflowSetupRoutingClaim {
+		const claimedAt = new Date();
+		const expiresAt = new Date(claimedAt.getTime() + WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS);
+		return {
+			claimId: `setup:${nanoid()}`,
+			claimedAt: claimedAt.toISOString(),
+			expiresAt: expiresAt.toISOString(),
+		};
+	}
+
+	private async claimWorkItemSetupRouting(
 		threadId: string,
 		record: WorkflowLoopWorkItemRecord,
-	): Promise<void> {
-		await new WorkflowLoopStorage(this.agentMemory).saveWorkItem(
+	): Promise<WorkflowSetupRoutingClaim | null> {
+		const claim = this.createWorkflowSetupRoutingClaim();
+		const claimed = await new WorkflowLoopStorage(this.agentMemory).claimSetupRouting(
 			threadId,
-			{ ...record.state, setupRoutedAt: new Date().toISOString() },
-			record.attempts,
-			record.lastBuildOutcome,
+			record.state.workItemId,
+			claim,
+		);
+		return claimed ? claim : null;
+	}
+
+	private async markWorkItemSetupRouted(
+		threadId: string,
+		workItemId: string,
+		claimId: string,
+	): Promise<boolean> {
+		return await new WorkflowLoopStorage(this.agentMemory).markSetupRouted(
+			threadId,
+			workItemId,
+			claimId,
+			new Date().toISOString(),
+		);
+	}
+
+	private async releaseWorkItemSetupRoutingClaim(
+		threadId: string,
+		workItemId: string,
+		claimId: string,
+	): Promise<void> {
+		await new WorkflowLoopStorage(this.agentMemory).releaseSetupRoutingClaim(
+			threadId,
+			workItemId,
+			claimId,
 		);
 	}
 
@@ -3637,7 +3634,12 @@ export class InstanceAiService {
 			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD -
 				this.backgroundTasks.getRunningTasks(threadId).length,
 		);
-		const action = await plannedTaskService.tick(threadId, { availableSlots });
+		const pendingWorkflowVerification =
+			await this.taskProjector.findPendingPlannedWorkflowVerification(threadId, graph);
+		const action = await plannedTaskService.tick(threadId, {
+			availableSlots,
+			pendingWorkflowVerification,
+		});
 		if (action.type === 'none') return;
 
 		if (action.type === 'replan') {
@@ -3662,53 +3664,46 @@ export class InstanceAiService {
 			return;
 		}
 
-		if (action.type === 'synthesize') {
-			const pendingVerification = await this.findUnsettledPlannedWorkflowVerification(
-				threadId,
-				action.graph,
+		if (action.type === 'orchestrate-workflow-verification') {
+			const { verification } = action;
+			this.trackWorkflowVerificationObligation(
+				verification.obligation,
+				'planned_verification_scheduled',
 			);
-			if (pendingVerification) {
-				this.trackWorkflowVerificationObligation(
-					pendingVerification.obligation,
-					'planned_synthesize_blocked',
-				);
-				await plannedTaskService.revertToActive(threadId);
-				const graphAfterRevert = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
-				await this.syncPlannedTasksToUi(threadId, graphAfterRevert);
+			await this.syncPlannedTasksToUi(threadId, action.graph);
 
-				const startedRunId = await this.startInternalFollowUpRun(
-					activeUser,
-					threadId,
-					this.buildWorkflowVerificationFollowUpMessage({
-						obligation: pendingVerification.obligation,
-						outcome: pendingVerification.outcome,
-						sourceTask: {
-							taskId: pendingVerification.task.backgroundTaskId ?? pendingVerification.task.id,
-							role: 'workflow-builder',
-							status: 'completed',
-							result: pendingVerification.task.result,
-							error: pendingVerification.task.error,
-							plannedTaskId: pendingVerification.task.id,
-							workItemId: pendingVerification.obligation.workItemId,
-						},
-					}),
-					action.graph.messageGroupId,
-					false,
-					undefined,
-					'workflow_verification',
-				);
-				this.trackWorkflowVerificationObligation(
-					pendingVerification.obligation,
-					'follow_up_start_attempted',
-					{
-						follow_up_started: startedRunId.length > 0,
+			const startedRunId = await this.startInternalFollowUpRun(
+				activeUser,
+				threadId,
+				this.buildWorkflowVerificationFollowUpMessage({
+					obligation: verification.obligation,
+					outcome: verification.outcome,
+					sourceTask: {
+						taskId: verification.task.backgroundTaskId ?? verification.task.id,
+						role: 'workflow-builder',
+						status: 'completed',
+						result: verification.task.result,
+						error: verification.task.error,
+						plannedTaskId: verification.task.id,
+						workItemId: verification.obligation.workItemId,
 					},
-				);
-				// The graph was already reverted to `active` above so the verification
-				// follow-up can run; nothing more to roll back here.
-				return;
-			}
+				}),
+				action.graph.messageGroupId,
+				false,
+				undefined,
+				'workflow_verification',
+			);
+			this.trackWorkflowVerificationObligation(
+				verification.obligation,
+				'follow_up_start_attempted',
+				{
+					follow_up_started: startedRunId.length > 0,
+				},
+			);
+			return;
+		}
 
+		if (action.type === 'synthesize') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
 			const startedRunId = await this.startInternalFollowUpRun(
 				activeUser,
@@ -3748,7 +3743,7 @@ export class InstanceAiService {
 				isPlannedBuildFollowUp: true,
 				buildTaskId: buildTask.id,
 				workItemId,
-				isSupportingWorkflowTask: isSupportingWorkflowBuildTask(buildTaskRecord),
+				isSupportingWorkflowTask: buildTaskRecord.isSupportingWorkflow === true,
 			};
 			const startedRunId = await this.startInternalFollowUpRun(
 				activeUser,

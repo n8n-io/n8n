@@ -149,6 +149,21 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.status).toBe('blocked');
 		expect(obligation.blockingReason).toBe('submit failed');
 	});
+
+	it('derives planned ownership from the workflow-loop state', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState({ plannedTaskId: 'planned-1' }),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({ verificationReadiness: { status: 'ready' } }),
+		});
+
+		expect(obligation).toEqual(
+			expect.objectContaining({
+				source: 'planned',
+				plannedTaskId: 'planned-1',
+			}),
+		);
+	});
 });
 
 describe('deriveWorkflowVerificationObligationFromOutcome', () => {

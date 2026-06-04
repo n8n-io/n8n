@@ -40,6 +40,7 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
@@ -857,11 +858,22 @@ export interface PlannedTaskGraph {
 	tasks: PlannedTaskRecord[];
 }
 
+export interface PlannedWorkflowVerification {
+	task: PlannedTaskRecord;
+	obligation: WorkflowVerificationObligation;
+	outcome?: WorkflowBuildOutcome;
+}
+
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| {
+			type: 'orchestrate-workflow-verification';
+			graph: PlannedTaskGraph;
+			verification: PlannedWorkflowVerification;
+	  }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
 
@@ -921,7 +933,10 @@ export interface PlannedTaskService {
 	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
-		options?: { availableSlots?: number },
+		options?: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		},
 	): Promise<PlannedTaskSchedulerAction>;
 	clear(threadId: string): Promise<void>;
 	/** Transition an `awaiting_approval` graph → `active` after the user

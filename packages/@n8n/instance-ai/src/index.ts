@@ -329,6 +329,7 @@ export type {
 	PatchableThreadMemory,
 	ThreadPatch,
 	TerminalOutcome,
+	WorkflowSetupRoutingClaim,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = lazyFunction(
@@ -593,6 +594,7 @@ export type {
 	PlannedTaskRecord,
 	PlannedTaskGraph,
 	PlannedTaskGraphStatus,
+	PlannedWorkflowVerification,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,

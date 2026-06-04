@@ -38,6 +38,8 @@ export const workflowLoopStateSchema = z.object({
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
 	source: workflowLoopSourceSchema,
+	/** Planned task that owns this workflow build, when the build came from an approved plan. */
+	plannedTaskId: z.string().optional(),
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
@@ -55,6 +57,13 @@ export const workflowLoopStateSchema = z.object({
 	 * Guards the deterministic setup follow-up so it fires at most once per build.
 	 */
 	setupRoutedAt: z.string().optional(),
+	/**
+	 * Short-lived service claim while a setup follow-up run is being started.
+	 * Prevents concurrent scheduler re-entries from opening duplicate setup runs.
+	 */
+	setupRoutingClaimId: z.string().optional(),
+	setupRoutingClaimedAt: z.string().optional(),
+	setupRoutingClaimExpiresAt: z.string().optional(),
 });
 
 export type WorkflowLoopPhase = z.infer<typeof workflowLoopPhaseSchema>;
@@ -164,6 +173,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
 	taskId: z.string(),
+	/** Planned task that owns this build outcome, when the build came from an approved plan. */
+	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,

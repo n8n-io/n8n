@@ -6,6 +6,7 @@ import type {
 	PlannedTaskRecord,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
+	PlannedWorkflowVerification,
 } from '../types';
 
 /**
@@ -438,7 +439,10 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	async tick(
 		threadId: string,
-		options: { availableSlots?: number } = {},
+		options: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		} = {},
 	): Promise<PlannedTaskSchedulerAction> {
 		// Use atomic update so the graph status transition (active → awaiting_replan
 		// or active → completed) cannot race with concurrent markSucceeded/markFailed.
@@ -458,6 +462,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			}
 
 			if (graph.tasks.length > 0 && graph.tasks.every(isSuccess)) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;
@@ -467,6 +480,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			// treat as completed so the orchestrator can synthesize partial results.
 			const hasWorkLeft = graph.tasks.some((t) => t.status === 'planned' || t.status === 'running');
 			if (graph.tasks.length > 0 && !hasWorkLeft) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;

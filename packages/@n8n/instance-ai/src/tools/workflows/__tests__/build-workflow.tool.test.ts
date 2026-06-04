@@ -305,6 +305,7 @@ describe('createBuildWorkflowTool', () => {
 			submitted: true,
 		});
 		expect(reportedOutcome?.taskId).toEqual(expect.stringMatching(/^task-1:supporting-/));
+		expect(reportedOutcome?.plannedTaskId).toBeUndefined();
 	});
 
 	it('finalizes the planned task when the task deliverable is a supporting workflow', async () => {
@@ -365,6 +366,7 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
 				workItemId: 'wi-main',
 				taskId: 'task-1',
+				plannedTaskId: 'task-1',
 				workflowId: 'wf-support',
 				submitted: true,
 			}),
@@ -373,6 +375,7 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
 				workItemId: 'wi-main',
 				taskId: 'task-1',
+				plannedTaskId: 'task-1',
 				workflowId: 'wf-support',
 				submitted: true,
 			}),
@@ -385,6 +388,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(succeededUpdate?.outcome).toMatchObject({
 			workItemId: 'wi-main',
 			taskId: 'task-1',
+			plannedTaskId: 'task-1',
 			workflowId: 'wf-support',
 		});
 	});
@@ -451,6 +455,7 @@ describe('createBuildWorkflowTool', () => {
 				workItemId: 'wi-1',
 				runId: 'run-1',
 				taskId: 'task-1',
+				plannedTaskId: 'task-1',
 				workflowId: 'wf-1',
 				submitted: true,
 				verificationReadiness: { status: 'ready' },
@@ -460,7 +465,11 @@ describe('createBuildWorkflowTool', () => {
 		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 		const succeededUpdate = markSucceeded.mock.calls[0]?.[2];
 		expect(succeededUpdate?.result).toBe('Created workflow "Generated workflow" (wf-1).');
-		expect(succeededUpdate?.outcome).toMatchObject({ workItemId: 'wi-1', workflowId: 'wf-1' });
+		expect(succeededUpdate?.outcome).toMatchObject({
+			workItemId: 'wi-1',
+			plannedTaskId: 'task-1',
+			workflowId: 'wf-1',
+		});
 	});
 
 	it('keeps the build successful when main workflow promotion fails', async () => {

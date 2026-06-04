@@ -103,15 +103,18 @@ export function deriveWorkflowVerificationObligation(
 	const status = deriveStatus(record.state, outcome);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
+	const plannedTaskId =
+		options.plannedTaskId ?? record.state.plannedTaskId ?? outcome?.plannedTaskId;
+	const source = options.source ?? (plannedTaskId ? 'planned' : 'direct');
 
 	return {
 		workItemId: record.state.workItemId,
 		threadId,
 		runId: outcome?.runId ?? record.state.runId,
 		taskId: outcome?.taskId ?? record.state.lastTaskId,
-		plannedTaskId: options.plannedTaskId,
+		plannedTaskId,
 		workflowId: outcome?.workflowId ?? record.state.workflowId,
-		source: options.source ?? 'direct',
+		source,
 		policy: derivePolicy(status, outcome),
 		status,
 		readiness: outcome?.verificationReadiness,
@@ -145,6 +148,7 @@ export function deriveWorkflowVerificationObligationFromOutcome(
 		runId: outcome.runId,
 		workflowId: outcome.workflowId,
 		lastTaskId: outcome.taskId,
+		plannedTaskId: outcome.plannedTaskId,
 		phase: 'verifying',
 		status: 'active',
 		source: 'create',

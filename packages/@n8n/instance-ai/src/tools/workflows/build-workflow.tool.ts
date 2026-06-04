@@ -526,6 +526,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const buildContext = context.workflowBuildContext;
 				const isAuxiliarySupportingWorkflow =
 					isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+				const plannedTaskId =
+					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
+						? buildContext.taskId
+						: undefined;
 				const resolvedWorkItemId =
 					workItemId ??
 					(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
@@ -552,6 +556,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
+						plannedTaskId,
 						workflowId: savedId,
 						submitted: true,
 						triggerType: 'manual_or_testable',
