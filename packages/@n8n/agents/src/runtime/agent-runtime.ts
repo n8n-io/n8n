@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -748,6 +748,17 @@ export class AgentRuntime {
 			},
 		};
 	}
+
+	private buildSmoothStreamTransformOptions(options?: ExecutionOptions): {
+		experimental_transform?: StreamTextTransform<ToolSet>;
+	} {
+		if (options?.smoothStream === false) return {};
+
+		const { smoothStream } = loadAi();
+
+		return { experimental_transform: smoothStream(options?.smoothStream ?? {}) };
+	}
+
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
 	private buildTelemetryOptions(options?: ExecutionOptions): {
 		experimental_telemetry?: TelemetrySettings;
@@ -1315,6 +1326,7 @@ export class AgentRuntime {
 					: {}),
 				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildAiSdkOptions(toolMap, options),
+				...this.buildSmoothStreamTransformOptions(options),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
