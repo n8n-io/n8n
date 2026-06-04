@@ -7,6 +7,7 @@ import {
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
 	type SharedCredentials,
+	ProjectRelation as ProjectRelationEntity,
 	PROJECT_ADMIN_ROLE,
 	PROJECT_VIEWER_ROLE,
 } from '@n8n/db';
@@ -440,7 +441,14 @@ describe('ProjectService', () => {
 			{ userId: 'user2', role: { slug: 'project:viewer' } },
 		];
 
+		let mockProxy: jest.Mocked<ICredentialConnectionStatusProvider>;
+
 		beforeEach(() => {
+			mockProxy = mock<ICredentialConnectionStatusProvider>();
+			Object.defineProperty(projectService, 'connectionStatusProxy', {
+				configurable: true,
+				get: async () => mockProxy,
+			});
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -466,10 +474,12 @@ describe('ProjectService', () => {
 				relations: { projectRelations: { role: true } },
 			});
 
-			expect(projectRelationRepository.update).toHaveBeenCalledWith(
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelationEntity,
 				{ projectId, userId: 'user2' },
 				{ role: { slug: 'project:admin' } },
 			);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
 		});
 
 		it('should throw if the user is not part of the project', async () => {
