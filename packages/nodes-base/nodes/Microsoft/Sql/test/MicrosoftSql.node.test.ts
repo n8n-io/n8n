@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import mssqlDefault from 'mssql';
-import * as mssql from 'mssql';
+import type * as mssql from 'mssql';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
