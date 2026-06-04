@@ -362,9 +362,22 @@ describe('PrometheusMetricsService', () => {
 		/**
 		 * Act
 		 */
+		const workflow = {
+			id: 'wf_1',
+			name: 'Test',
+			active: true,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01T00:00:00Z'),
+			updatedAt: new Date('2026-01-01T00:00:00Z'),
+			nodes: [],
+			connections: {},
+			tags: [],
+		} satisfies IWorkflowBase & { tags: [] };
+
 		eventService.emit('workflow-post-execute', {
 			executionId: 'exec_123',
-			workflow: { id: 'wf_1', name: 'Test' } as IWorkflowBase,
+			workflow,
 			runData: {
 				startedAt: new Date('2026-01-01T00:00:00Z'),
 				stoppedAt: new Date('2026-01-01T00:00:02Z'),

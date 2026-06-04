@@ -4,12 +4,12 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
+import { EventMessageTypeNames, jsonParse, type IWorkflowBase } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
@@ -18,8 +18,19 @@ import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 import type { Includes, MetricCategory, MetricLabel } from './types';
+
+type WorkflowWithMaybeTags = IWorkflowBase & {
+	tags: Array<{ name?: unknown }>;
+};
+
+function hasWorkflowTags(workflow: IWorkflowBase): workflow is WorkflowWithMaybeTags {
+	return 'tags' in workflow && Array.isArray(workflow.tags);
+}
+
+const WORKFLOW_TAGS_CACHE_TTL_MS = 30 * Time.seconds.toMilliseconds;
 
 @Service()
 export class PrometheusMetricsService {
@@ -40,6 +51,8 @@ export class PrometheusMetricsService {
 	private readonly gauges: Record<string, Gauge<string>> = {};
 
 	private readonly histograms: Record<string, Histogram<string>> = {};
+
+	private readonly workflowTagsCache = new Map<string, { label: string; expiresAt: number }>();
 
 	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
@@ -355,13 +368,14 @@ export class PrometheusMetricsService {
 	 *
 	 * Observes duration from `startedAt` to `stoppedAt` on each completed workflow execution.
 	 * Labels: `status` (success/failed), `mode` (manual/trigger/webhook/etc.),
-	 * and optionally `workflow_id` (gated by existing config flag).
+	 * `workflow_tags`, and optionally `workflow_id` (gated by existing config flag).
 	 */
 	private initWorkflowExecutionDurationMetric() {
 		if (!this.includes.metrics.workflowExecutionDuration) return;
 
 		const labelNames = ['status', 'mode'];
 		if (this.includes.labels.workflowId) labelNames.push('workflow_id');
+		labelNames.push('workflow_tags');
 
 		this.histograms.workflowExecutionDuration = new promClient.Histogram({
 			name: this.prefix + 'workflow_execution_duration_seconds',
@@ -370,7 +384,7 @@ export class PrometheusMetricsService {
 			buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
 		});
 
-		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
+		this.eventService.on('workflow-post-execute', async ({ runData, workflow }) => {
 			if (!runData?.stoppedAt) return;
 
 			const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
@@ -383,8 +397,48 @@ export class PrometheusMetricsService {
 				labels.workflow_id = String(workflow.id ?? 'unknown');
 			}
 
+			labels.workflow_tags = await this.getWorkflowTagsLabel(workflow);
+
 			this.histograms.workflowExecutionDuration?.observe(labels, durationSeconds);
 		});
+	}
+
+	private async getWorkflowTagsLabel(workflow: IWorkflowBase): Promise<string> {
+		if (hasWorkflowTags(workflow)) {
+			return this.toWorkflowTagsLabel(workflow.tags.map(({ name }) => name));
+		}
+
+		const cached = this.workflowTagsCache.get(workflow.id);
+		const now = Date.now();
+		if (cached && cached.expiresAt > now) return cached.label;
+
+		try {
+			const workflowTags = await Container.get(WorkflowHookContextService).getWorkflowTags(
+				workflow.id,
+			);
+			const label = this.toWorkflowTagsLabel(workflowTags);
+
+			this.workflowTagsCache.set(workflow.id, {
+				label,
+				expiresAt: now + WORKFLOW_TAGS_CACHE_TTL_MS,
+			});
+
+			return label;
+		} catch {
+			return '';
+		}
+	}
+
+	private toWorkflowTagsLabel(tagNames: unknown[]): string {
+		return [
+			...new Set(
+				tagNames.filter(
+					(tagName): tagName is string => typeof tagName === 'string' && tagName !== '',
+				),
+			),
+		]
+			.sort()
+			.join(',');
 	}
 
 	/**
