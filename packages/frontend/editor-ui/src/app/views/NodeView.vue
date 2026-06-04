@@ -129,6 +129,8 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -201,6 +203,9 @@ const tagsStore = useTagsStore();
 
 const ndvStore = injectNDVStore();
 const focusPanelStore = useFocusPanelStore();
+const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
@@ -350,6 +355,11 @@ function initializeRoute() {
 		if (evaluationTriggerNode.value) {
 			void runEntireWorkflow('node', evaluationTriggerNode.value.name);
 		}
+	} else if (
+		route.query.action === 'openEvaluationsWizard' &&
+		isEvaluationsWizardSidepanelEnabled.value
+	) {
+		evaluationsWizardSidepanelStore.open(0);
 	}
 
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)

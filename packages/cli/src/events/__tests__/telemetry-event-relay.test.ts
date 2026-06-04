@@ -2399,8 +2399,8 @@ describe('TelemetryEventRelay', () => {
 				executionId: 'execution123',
 				userId: 'user123',
 				runData,
+				source: 'instance_ai',
 				telemetryMetadata: {
-					source: 'instance_ai',
 					mockDataSources: ['trigger_input', 'verification_pin_data'],
 				},
 			};

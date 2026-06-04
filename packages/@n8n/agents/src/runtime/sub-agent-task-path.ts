@@ -29,10 +29,10 @@ export type SubAgentTaskPath = '/root' | `/root/${string}`;
 
 /**
  * Policy fields related to sub-agent task paths and delegation parallelism.
- * Every limit is optional; an undefined field means "no limit for that dimension".
+ * Every limit is optional at the call site; undefined fields use runtime defaults.
  */
 export interface SubAgentTaskPathPolicy {
-	/** Maximum number of child sub-agent runs that may execute in parallel. */
+	/** Maximum number of child sub-agent runs that may execute in parallel. Defaults to {@link DEFAULT_SUB_AGENT_MAX_CHILDREN}. */
 	maxChildren?: number;
 }
 

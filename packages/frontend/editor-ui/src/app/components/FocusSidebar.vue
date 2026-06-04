@@ -18,6 +18,8 @@ import { N8nResizeWrapper } from '@n8n/design-system';
 import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.vue';
 import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
+import EvaluationsWizardSidepanel from '@/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 
 defineOptions({ name: 'FocusSidebar' });
 
@@ -49,9 +51,21 @@ const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
 
 const showSetupPanel = computed(
 	() => setupPanelStore.isFeatureEnabled && selectedTab.value === 'setup',
+);
+const showEvaluationsPanel = computed(
+	() => isEvaluationsWizardSidepanelEnabled.value && selectedTab.value === 'evaluations',
+);
+
+// Tab bar visibility used to track only the setup panel; now it also needs to
+// stay shown when the evaluations tab is available, otherwise the user has no
+// way to switch back.
+const showTabs = computed(
+	() => isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value,
 );
 
 const node = computed<INodeUi | undefined>(() => {
@@ -153,11 +167,14 @@ onBeforeUnmount(() => {
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<div v-if="isSetupPanelEnabled">
+				<div v-if="showTabs">
 					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
 				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
 					<SetupPanel />
+				</div>
+				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">
+					<EvaluationsWizardSidepanel />
 				</div>
 				<FocusPanel
 					v-else

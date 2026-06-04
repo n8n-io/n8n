@@ -37,6 +37,10 @@ import type {
 import { BackgroundTaskTracker } from './background-task-tracker';
 import { DeferredToolManager } from './deferred-tool-manager';
 import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	getInlineDelegateSubAgentToolOptions,
+} from './delegate-sub-agent-tool';
+import {
 	createRecallMemoryTool,
 	getEpisodicMemoryScope,
 	hasEpisodicMemoryStore,
@@ -71,12 +75,8 @@ import {
 import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
 import { convertChunk } from './stream';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
-import {
-	DELEGATE_SUB_AGENT_TOOL_NAME,
-	getInlineDelegateSubAgentToolOptions,
-} from './delegate-sub-agent-tool';
-import { generateThreadTitle } from './title-generation';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
+import { generateThreadTitle } from './title-generation';
 import {
 	buildToolMap,
 	executeTool,

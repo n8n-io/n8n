@@ -1563,9 +1563,12 @@ export class AgentsService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
-		await this.removeMissingConfigRefs(result.config, entity, new Set(existingTaskIds));
-		await this.validateSubAgentRefs(result.config, entity);
-		this.validateConfigRefs(result.config, entity);
+		const resolvedSubAgents = await this.removeMissingConfigRefs(
+			result.config,
+			entity,
+			new Set(existingTaskIds),
+		);
+		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
@@ -1902,27 +1905,11 @@ export class AgentsService {
 		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
-	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
-		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
-		if (missingSkillIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
-			);
-		}
-
-		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
-		if (missingToolIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
-			);
-		}
-	}
-
 	private async removeMissingConfigRefs(
 		config: AgentJsonConfig,
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
-	): Promise<void> {
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
 			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
@@ -1938,15 +1925,20 @@ export class AgentsService {
 		}
 
 		if (config.subAgents?.agents !== undefined) {
+			const resolvedSubAgents = await this.fetchUniqueSubAgents(
+				config.subAgents.agents,
+				entity.projectId,
+			);
 			const existingSubAgentIds = new Set(
-				(await this.fetchUniqueSubAgents(config.subAgents.agents, entity.projectId))
-					.filter(({ agent }) => agent !== null)
-					.map(({ agentId }) => agentId),
+				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
 			);
 			config.subAgents.agents = config.subAgents.agents.filter(({ agentId }) =>
 				existingSubAgentIds.has(agentId),
 			);
+			return resolvedSubAgents;
 		}
+
+		return [];
 	}
 
 	/**
@@ -1972,16 +1964,14 @@ export class AgentsService {
 		return resolved;
 	}
 
-	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
-		const refs = config.subAgents?.agents ?? [];
-		if (refs.length === 0) return;
-
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
+	private validateSubAgentRefs(
+		resolvedSubAgents: Array<{ agentId: string; agent: Agent | null }>,
+		entity: Agent,
+	) {
+		for (const { agentId, agent } of resolvedSubAgents) {
+			if (!agent) continue;
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-			if (!agent) {
-				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
 			}
 			if (!agent.activeVersionId) {
 				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);

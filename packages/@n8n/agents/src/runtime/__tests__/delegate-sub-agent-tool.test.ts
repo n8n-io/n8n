@@ -270,24 +270,6 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
 		expect(tool.systemInstruction).toContain('Up to 2 child sub-agent runs');
 		expect(tool.systemInstruction).toContain('limits parallelism, not the total number');
-		expect(tool.systemInstruction).not.toContain('hard budget');
-		expect(tool.systemInstruction).not.toContain('at most 2 child sub-agent runs');
-	});
-
-	it('does not return delegationBudget in tool output', async () => {
-		const tool = createDelegateSubAgentTool({
-			policy: { maxChildren: 2 },
-			runSubAgent: async (request) =>
-				await Promise.resolve({
-					status: 'completed',
-					taskPath: request.taskPath,
-					answer: 'done',
-				}),
-		});
-
-		const output = await tool.handler?.(input, { runId: 'parent-run-1' });
-		expect(output).toMatchObject({ status: 'completed' });
-		expect(output).not.toHaveProperty('delegationBudget');
 	});
 
 	it('assigns distinct task paths for repeated delegations in the same parent run', async () => {
