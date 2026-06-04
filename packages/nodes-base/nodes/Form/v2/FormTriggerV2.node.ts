@@ -93,7 +93,7 @@ const descriptionV2: INodeTypeDescription = {
 			},
 		},
 		{
-			name: 'webhookOAuth2Authentication',
+			name: 'webhookOAuth2Api',
 			required: true,
 			displayOptions: {
 				show: {

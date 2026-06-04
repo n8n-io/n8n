@@ -179,7 +179,7 @@ const isGoogleOAuthType = computed(
 const oAuthCallbackUrl = computed(() => {
 	// Webhook OAuth2 credentials use a dedicated callback that bridges the provider
 	// back to the form/webhook URL — not the regular credential-token callback.
-	if (credentialTypeName.value === 'webhookOAuth2Authentication') {
+	if (credentialTypeName.value === 'webhookOAuth2Api') {
 		const oauth2Url = rootStore.OAuthCallbackUrls['oauth2' as keyof {}] as string | undefined;
 		return oauth2Url?.replace(/\/callback$/, '/webhook-callback') ?? '';
 	}

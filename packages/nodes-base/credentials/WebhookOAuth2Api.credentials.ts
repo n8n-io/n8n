@@ -1,9 +1,11 @@
 import type { ICredentialType, Icon, INodeProperties } from 'n8n-workflow';
 
-export class WebhookOAuth2Authentication implements ICredentialType {
-	name = 'webhookOAuth2Authentication';
+export class WebhookOAuth2Api implements ICredentialType {
+	name = 'webhookOAuth2Api';
 
-	displayName = 'Webhook OAuth2 Authentication';
+	displayName = 'Webhook OAuth2 API';
+
+	documentationUrl = 'https://docs.n8n.io/api/authentication/';
 
 	icon: Icon = 'node:n8n-nodes-base.formTrigger';
 

@@ -152,7 +152,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	async buildWebhookOAuth2RedirectUrl(): Promise<string> {
 		const req = this.assertHttpRequest();
-		const credentials = await this.getCredentials('webhookOAuth2Authentication');
+		const credentials = await this.getCredentials('webhookOAuth2Api');
 		const returnUrl = req.originalUrl;
 		const callbackUrl = `${this.additionalData.restApiUrl}/oauth2-credential/webhook-callback`;
 
@@ -189,7 +189,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	async exchangeOAuth2Code(code: string): Promise<IFormUser> {
 		const req = this.assertHttpRequest();
-		const credentials = await this.getCredentials('webhookOAuth2Authentication');
+		const credentials = await this.getCredentials('webhookOAuth2Api');
 		const callbackUrl = `${this.additionalData.restApiUrl}/oauth2-credential/webhook-callback`;
 
 		// Recover code_verifier from the state param (present for PKCE flows).
