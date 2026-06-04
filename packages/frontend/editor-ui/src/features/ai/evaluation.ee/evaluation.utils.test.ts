@@ -4,6 +4,7 @@ import {
 	applyCachedVisibility,
 	computeDelta,
 	computeDurationMs,
+	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
 	formatMetricLabel,
@@ -1428,6 +1429,42 @@ describe('utils', () => {
 			expect(getMetricCategory('customMetrics')).toBe('custom');
 			expect(getMetricCategory(undefined)).toBe('custom');
 			expect(getMetricCategory('madeUpType')).toBe('custom');
+		});
+	});
+
+	describe('extractAnswerText', () => {
+		it('returns null as empty string', () => {
+			expect(extractAnswerText(null)).toBe('');
+		});
+		it('returns undefined as empty string', () => {
+			expect(extractAnswerText(undefined)).toBe('');
+		});
+		it('converts a number primitive to a string', () => {
+			expect(extractAnswerText(42)).toBe('42');
+		});
+		it('passes a string primitive through unchanged', () => {
+			expect(extractAnswerText('hi')).toBe('hi');
+		});
+		it('extracts the output field when present', () => {
+			expect(extractAnswerText({ output: 'Paris' })).toBe('Paris');
+		});
+		it('falls back to text when output is absent', () => {
+			expect(extractAnswerText({ text: 'x' })).toBe('x');
+		});
+		it('falls back to response when output and text are absent', () => {
+			expect(extractAnswerText({ response: 'y' })).toBe('y');
+		});
+		it('JSON.stringifies a preferred field that is itself an object', () => {
+			expect(extractAnswerText({ output: { a: 1 } })).toBe('{"a":1}');
+		});
+		it('uses the single key value when no preferred field exists', () => {
+			expect(extractAnswerText({ answer: 'z' })).toBe('z');
+		});
+		it('JSON.stringifies the whole object for multi-key non-preferred objects', () => {
+			expect(extractAnswerText({ a: 1, b: 2 })).toBe(JSON.stringify({ a: 1, b: 2 }));
+		});
+		it('JSON.stringifies a single-key value that is itself an object', () => {
+			expect(extractAnswerText({ nested: { x: 1 } })).toBe('{"x":1}');
 		});
 	});
 });
