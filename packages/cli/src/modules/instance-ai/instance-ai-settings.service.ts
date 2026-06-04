@@ -194,6 +194,7 @@ export class InstanceAiSettingsService {
 		}
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
+		const previousMcpAccessEnabled = this.mcpAccessEnabled;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.permissions) {
@@ -216,7 +217,8 @@ export class InstanceAiSettingsService {
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged: c.mcpServers !== previousMcpServers,
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
 		});
 
 		return this.getAdminSettings();

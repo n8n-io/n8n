@@ -199,6 +199,22 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
+		it('flags mcpSettingsChanged when mcpAccessEnabled changes', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
+				mcpSettingsChanged: true,
+			});
+		});
+
+		it('does not flag mcpSettingsChanged when mcpAccessEnabled is set to the same value', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: true });
+
+			expect(eventService.emit).toHaveBeenCalledWith('instance-ai-settings-updated', {
+				mcpSettingsChanged: false,
+			});
+		});
+
 		it('does not flag mcpSettingsChanged when mcpServers is set to the same value', async () => {
 			globalConfig.instanceAi.mcpServers = '[{"name":"a","url":"https://a/"}]';
 
