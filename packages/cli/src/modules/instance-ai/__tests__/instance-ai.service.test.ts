@@ -142,6 +142,7 @@ jest.mock('@n8n/instance-ai', () => {
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import {
+	buildAgentTreeFromEvents,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -429,8 +430,9 @@ function createCheckpointService(): ServiceInternals {
 type CheckpointPruneServiceInternals = {
 	startCheckpointPruning: () => void;
 	stopCheckpointPruning: () => void;
-	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	runScheduledPrune: (now?: number) => Promise<void>;
 	pruneStalePendingConfirmations: jest.MockedFunction<(now: number) => Promise<void>>;
+	pruneExpiredThreads: jest.MockedFunction<() => Promise<void>>;
 	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
 	checkpointStore: {
 		markExpiredOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
@@ -438,7 +440,7 @@ type CheckpointPruneServiceInternals = {
 	checkpointPruneTimer?: NodeJS.Timeout;
 	checkpointPruningStopped: boolean;
 	instanceAiConfig: {
-		snapshotPruneInterval: number;
+		pruneInterval: number;
 		snapshotRetention: number;
 	};
 	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
@@ -450,12 +452,13 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	) as unknown as CheckpointPruneServiceInternals;
 	service.scheduleCheckpointPrune = jest.fn();
 	service.pruneStalePendingConfirmations = jest.fn(async (_now: number) => undefined);
+	service.pruneExpiredThreads = jest.fn(async () => undefined);
 	service.checkpointStore = {
 		markExpiredOlderThan: jest.fn(async (_olderThan: Date) => 0),
 	};
 	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
-		snapshotPruneInterval: 60 * 60 * 1000,
+		pruneInterval: 60 * 60 * 1000,
 		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
 	};
 	service.logger = {
@@ -827,6 +830,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}),
 		);
 		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockImplementation(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		}));
 	});
 
 	it('serializes workspace creation for concurrent calls on the same thread', async () => {
@@ -1034,6 +1044,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}>;
 			settingsService: {
 				getAdminSettings: jest.Mock;
+				getSandboxStatus: jest.Mock;
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
@@ -1071,6 +1082,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getSandboxStatus: jest.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: true,
+				unavailableReason: null,
+			})),
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
@@ -1170,6 +1187,34 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+
+		(createLazyRuntimeWorkspace as jest.Mock).mockClear();
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockClear();
+		(createSandbox as jest.Mock).mockClear();
+		(setupSandboxWorkspace as jest.Mock).mockClear();
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockClear();
+		service.settingsService.getSandboxStatus.mockReturnValue({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			workflowBuilderAvailable: false,
+			unavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+		});
+
+		const unavailableEnvironment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-2',
+			'run-2',
+			new AbortController().signal,
+		);
+
+		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
+		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
+		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
+		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
+		expect(createSandbox).not.toHaveBeenCalled();
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 });
 
@@ -1382,17 +1427,18 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 	});
 });
 
-describe('InstanceAiService — checkpoint pruning', () => {
+describe('InstanceAiService — scheduled pruning', () => {
 	it('marks checkpoints expired older than the retention window', async () => {
 		const service = createCheckpointPruneService();
 		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
 
-		await service.pruneStaleCheckpoints(now);
+		await service.runScheduledPrune(now);
 
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
 			new Date('2026-05-06T12:00:00.000Z'),
 		);
 		expect(service.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
+		expect(service.pruneExpiredThreads).toHaveBeenCalled();
 		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 	});
 
@@ -1407,11 +1453,57 @@ describe('InstanceAiService — checkpoint pruning', () => {
 
 	it('does not start checkpoint pruning when disabled', () => {
 		const service = createCheckpointPruneService();
-		service.instanceAiConfig.snapshotPruneInterval = 0;
+		service.instanceAiConfig.pruneInterval = 0;
 
 		service.startCheckpointPruning();
 
 		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
+	});
+});
+
+type ExpiredThreadPruneServiceInternals = {
+	pruneExpiredThreads: () => Promise<void>;
+	clearThreadState: jest.MockedFunction<(threadId: string) => Promise<void>>;
+	memoryService: {
+		cleanupExpiredThreads: jest.MockedFunction<
+			(onThreadDeleted?: (threadId: string) => Promise<void>) => Promise<number>
+		>;
+	};
+	logger: { warn: jest.Mock };
+};
+
+function createExpiredThreadPruneService(): ExpiredThreadPruneServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ExpiredThreadPruneServiceInternals;
+	service.clearThreadState = jest.fn(async (_threadId: string) => undefined);
+	service.memoryService = {
+		cleanupExpiredThreads: jest.fn(async (_onThreadDeleted) => 0),
+	};
+	service.logger = { warn: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — expired thread pruning', () => {
+	it('delegates to the memory service and clears state for deleted threads', async () => {
+		const service = createExpiredThreadPruneService();
+		service.memoryService.cleanupExpiredThreads.mockImplementation(async (onThreadDeleted) => {
+			await onThreadDeleted?.('thread-1');
+			return 1;
+		});
+
+		await service.pruneExpiredThreads();
+
+		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledTimes(1);
+		expect(service.clearThreadState).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('swallows errors so the recurring prune is not disrupted', async () => {
+		const service = createExpiredThreadPruneService();
+		service.memoryService.cleanupExpiredThreads.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(service.pruneExpiredThreads()).resolves.toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalled();
 	});
 });
 
@@ -2075,6 +2167,23 @@ describe('InstanceAiService — terminal outcome replay', () => {
 });
 
 describe('InstanceAiService — agent tree snapshots', () => {
+	beforeEach(() => {
+		(buildAgentTreeFromEvents as jest.Mock).mockImplementation(
+			(events: Array<{ type: string; payload?: { text?: string } }>) => ({
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: events
+					.map((event) => (event.type === 'text-delta' ? (event.payload?.text ?? '') : ''))
+					.join(''),
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			}),
+		);
+	});
+
 	it('falls back to persisted run ids when an old background group mapping was pruned', async () => {
 		const service = createSnapshotService();
 		const terminalEvent: InstanceAiEvent = {

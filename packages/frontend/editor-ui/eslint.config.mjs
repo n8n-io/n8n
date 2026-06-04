@@ -180,5 +180,10 @@ export default defineConfig(
 			'no-restricted-syntax': 'off',
 		},
 	},
+	{
+		// Mirrors the `*.stories.ts` exclusion in tsconfig.json — typescript-eslint
+		// can't parse files outside the TS project.
+		ignores: ['src/**/*.stories.ts'],
+	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

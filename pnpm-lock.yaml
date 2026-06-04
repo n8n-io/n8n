@@ -839,6 +839,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
@@ -1948,6 +1951,9 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
@@ -5024,6 +5030,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -5228,6 +5237,10 @@ importers:
         version: 3.25.67
 
   packages/testing/rules-engine:
+    dependencies:
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*
