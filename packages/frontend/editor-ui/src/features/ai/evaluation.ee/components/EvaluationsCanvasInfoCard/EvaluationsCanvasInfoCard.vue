@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -13,6 +13,7 @@ import { useStorage } from '@/app/composables/useStorage';
 import { LOCAL_STORAGE_EVALUATIONS_CANVAS_INFO_CARD_DISMISSED } from '@/app/constants';
 import { CANNED_METRICS, LLM_JUDGE_METRIC_KEYS } from '../../evaluation.constants';
 import CheckCard from '../WizardSidepanel/CheckCard.vue';
+import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
 
 // Preview cards that scroll in the marquee at the top of the info card. We
 // duplicate the list once so the CSS `translateY(-50%)` loop reads as a
@@ -47,6 +48,7 @@ const rootStore = useRootStore();
 const aiRootNodes = useAiRootNodes();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
+const { isLicensed, ensureLicenseLoaded } = useEvaluationsLicense();
 
 const hasConfigs = ref<boolean | null>(null);
 
@@ -81,6 +83,7 @@ const isDismissed = computed(() => {
 const shouldRenderModuleQualifies = computed(
 	() =>
 		isEvaluationsWizardSidepanelEnabled.value &&
+		isLicensed.value &&
 		isWorkflowActive.value &&
 		hasAiNodes.value &&
 		!isDismissed.value,
@@ -94,6 +97,10 @@ const shouldRenderModuleQualifies = computed(
 const isVisible = computed(
 	() => shouldRenderModuleQualifies.value && hasConfigs.value === false && !wizardStore.isOpen,
 );
+
+onMounted(() => {
+	void ensureLicenseLoaded();
+});
 
 async function checkConfigs() {
 	const wfId = workflowId.value;
