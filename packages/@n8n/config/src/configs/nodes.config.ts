@@ -47,8 +47,9 @@ export class NodesConfig {
 	 * When enabled, the backend refuses to create or modify workflows that
 	 * introduce new instances of deprecated nodes (or edit existing ones).
 	 * Existing workflows that already contain deprecated nodes continue to run
-	 * unchanged. Set to `false` to disable enforcement (e.g. for rollback).
+	 * unchanged. Defaults to `false` to avoid breaking imports of older
+	 * backups; set to `true` to opt into enforcement.
 	 */
 	@Env('N8N_DEPRECATED_NODES_BLOCK')
-	blockDeprecated: boolean = true;
+	blockDeprecated: boolean = false;
 }
