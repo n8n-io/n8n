@@ -31,6 +31,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
+import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
@@ -881,6 +882,14 @@ describe('POST /workflows', () => {
 	});
 
 	describe('deprecated nodes', () => {
+		const nodesConfig = Container.get(NodesConfig);
+		beforeAll(() => {
+			nodesConfig.blockDeprecated = true;
+		});
+		afterAll(() => {
+			nodesConfig.blockDeprecated = false;
+		});
+
 		const deprecatedNode: INode = {
 			id: uuid(),
 			name: 'Function',
@@ -4037,6 +4046,14 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	describe('deprecated nodes', () => {
+		const nodesConfig = Container.get(NodesConfig);
+		beforeAll(() => {
+			nodesConfig.blockDeprecated = true;
+		});
+		afterAll(() => {
+			nodesConfig.blockDeprecated = false;
+		});
+
 		const buildDeprecatedNode = (overrides: Partial<INode> = {}): INode => ({
 			id: 'deprecated-node-id',
 			name: 'Function',
