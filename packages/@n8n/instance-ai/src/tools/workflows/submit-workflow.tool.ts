@@ -16,6 +16,11 @@ import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import {
+	getCurrentBuildTaskSpec,
+	getPersistedWorkflowJson,
+	validateWorkflowCompleteness,
+} from './workflow-completeness';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
@@ -685,6 +690,58 @@ export function createSubmitWorkflowTool(
 
 				// Scan node parameters for unresolved placeholder values
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+
+				let persistedJson;
+				try {
+					persistedJson = await getPersistedWorkflowJson(context, savedId, json);
+				} catch (error) {
+					const errors = [
+						`Saved workflow (${savedId}) could not be inspected after save: ${error instanceof Error ? error.message : String(error)}`,
+					];
+					const remediation = createRemediation({
+						category: 'blocked',
+						shouldEdit: false,
+						reason: 'persisted_workflow_inspection_failed',
+						guidance:
+							'Workflow saved as a draft, but the persisted graph could not be inspected. Do not report it as complete; ask the user to retry or check instance health.',
+					});
+					await reportAttempt({
+						success: false,
+						workflowId: savedId,
+						triggerNodes,
+						errors,
+						remediation,
+					});
+					return {
+						success: false,
+						workflowId: savedId,
+						workflowName: json.name || undefined,
+						errors,
+						remediation,
+					};
+				}
+
+				const completeness = validateWorkflowCompleteness(persistedJson, {
+					spec: await getCurrentBuildTaskSpec(context),
+				});
+				if (!completeness.valid) {
+					const errors = completeness.issues.map((issue) => `[${issue.code}]: ${issue.message}`);
+					const remediation = classifySubmitFailure(errors, 'workflow_incomplete');
+					await reportAttempt({
+						success: false,
+						workflowId: savedId,
+						triggerNodes,
+						errors,
+						remediation,
+					});
+					return {
+						success: false,
+						workflowId: savedId,
+						workflowName: json.name || undefined,
+						errors,
+						remediation,
+					};
+				}
 
 				await reportAttempt({
 					success: true,

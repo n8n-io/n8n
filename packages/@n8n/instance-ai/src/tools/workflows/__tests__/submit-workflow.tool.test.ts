@@ -286,7 +286,9 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 					},
 				},
 			],
-			connections: {},
+			connections: {
+				Slack: { main: [[{ node: 'Call Sub', type: 'main', index: 0 }]] },
+			},
 			pinData: {
 				Slack: [{ ok: true }],
 			},
@@ -320,6 +322,119 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 			usesWorkflowPinDataForVerification: true,
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
+	});
+
+	it('rejects saved workflows whose persisted graph is incomplete', async () => {
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				return { id: 'main-workflow-id' };
+			}),
+			getAsWorkflowJSON: vi.fn(),
+		};
+		const workflowJson = {
+			name: 'Daily Gmail Action-Item Digest',
+			nodes: [
+				{
+					name: 'Every Morning 07:00',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					name: 'Get Last 24h Emails',
+					type: 'n8n-nodes-base.gmail',
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					name: 'Aggregate Emails',
+					type: 'n8n-nodes-base.aggregate',
+					position: [400, 0],
+					parameters: {},
+				},
+				{
+					name: 'Any Emails?',
+					type: 'n8n-nodes-base.if',
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				'Every Morning 07:00': {
+					main: [[{ node: 'Get Last 24h Emails', type: 'main', index: 0 }]],
+				},
+				'Get Last 24h Emails': {
+					main: [[{ node: 'Aggregate Emails', type: 'main', index: 0 }]],
+				},
+				'Aggregate Emails': {
+					main: [[{ node: 'Any Emails?', type: 'main', index: 0 }]],
+				},
+			},
+		};
+		workflowService.getAsWorkflowJSON.mockResolvedValue(workflowJson);
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					plannedTaskService: {
+						getGraph: vi.fn(
+							async () =>
+								await Promise.resolve({
+									planRunId: 'run-plan',
+									status: 'active' as const,
+									tasks: [
+										{
+											id: 'task-1',
+											title: 'Build daily digest',
+											kind: 'build-workflow' as const,
+											spec: 'Read Gmail from the last 24 hours, use OpenAI to extract and prioritize action items, then send a daily digest email.',
+											deps: [],
+											status: 'running' as const,
+										},
+									],
+								}),
+						),
+					},
+				},
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Daily Gmail Action-Item Digest',
+		});
+
+		expect(output).toMatchObject({
+			success: false,
+			workflowId: 'main-workflow-id',
+		});
+		expect(output.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'workflow_incomplete',
+		});
+		const errorText = (output.errors ?? []).join('\n');
+		expect(errorText).toContain('Any Emails?');
+		expect(errorText).toContain('MISSING_SPEC_STAGE');
+		expect(workflowService.createFromWorkflowJSON).toHaveBeenCalled();
+		expect(workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('main-workflow-id');
+		expect(attempts).toHaveLength(1);
+		expect(attempts[0]).toMatchObject({
+			success: false,
+			workflowId: 'main-workflow-id',
+		});
+		expect(attempts[0].errors?.join('\n')).toContain('Any Emails?');
 	});
 });
 

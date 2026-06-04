@@ -20,6 +20,7 @@ import type {
 	RemediationMetadata,
 	WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
+import { validateWorkflowCompleteness } from '../workflows/workflow-completeness';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -566,6 +567,30 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 
 			const workflowId = buildOutcome.workflowId;
+			const persistedWorkflow = await context.domainContext.workflowService
+				.getAsWorkflowJSON(workflowId)
+				.catch(() => undefined);
+			if (persistedWorkflow) {
+				const completeness = validateWorkflowCompleteness(persistedWorkflow);
+				if (!completeness.valid) {
+					const error = completeness.issues
+						.map((issue) => `[${issue.code}]: ${issue.message}`)
+						.join('\n');
+					const remediation = createRemediation({
+						category: 'code_fixable',
+						shouldEdit: true,
+						reason: 'workflow_incomplete',
+						guidance:
+							'Verification found the persisted workflow graph is incomplete. Patch the saved workflow topology before running verification again.',
+					});
+					return {
+						success: false,
+						error,
+						remediation,
+						guidance: remediation.guidance,
+					};
+				}
+			}
 
 			// Pre-verify: enumerate the dataTable write nodes in the workflow and
 			// snapshot current row IDs for each insert-touched table. The delete

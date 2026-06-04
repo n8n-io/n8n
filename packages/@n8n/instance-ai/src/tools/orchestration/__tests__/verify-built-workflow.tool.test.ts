@@ -673,6 +673,29 @@ describe('verify-built-workflow tool', () => {
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
 
+	it('rejects verification when the persisted workflow graph is incomplete', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-incomplete',
+			status: 'success',
+		});
+		ctx.domainContext.workflowService.getAsWorkflowJSON = vi.fn().mockResolvedValue({
+			nodes: [
+				{ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger', parameters: {} },
+				{ name: 'Any Emails?', type: 'n8n-nodes-base.if', parameters: {} },
+			],
+			connections: {
+				Schedule: { main: [[{ node: 'Any Emails?', type: 'main', index: 0 }]] },
+			},
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('TERMINAL_BRANCH');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
+	});
+
 	it('swallows storage errors when persisting verification', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-3',

@@ -2,6 +2,7 @@ import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
+import { parseAndValidate } from '../../../workflow-builder';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createBuildWorkflowTool } from '../build-workflow.tool';
 import { resolveCredentials } from '../resolve-credentials';
@@ -43,6 +44,7 @@ vi.mock('../submit-workflow.tool', () => ({
 }));
 
 describe('createBuildWorkflowTool', () => {
+	const mockedParseAndValidate = vi.mocked(parseAndValidate);
 	const originalBuildViaPlanGuard = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
 	const restoreBuildViaPlanGuard = () => {
 		if (originalBuildViaPlanGuard === undefined) {
@@ -426,6 +428,139 @@ describe('createBuildWorkflowTool', () => {
 		const succeededUpdate = markSucceeded.mock.calls[0]?.[2];
 		expect(succeededUpdate?.result).toBe('Created workflow "Generated workflow" (wf-1).');
 		expect(succeededUpdate?.outcome).toMatchObject({ workItemId: 'wi-1', workflowId: 'wf-1' });
+	});
+
+	it('rejects saved workflows whose persisted graph is incomplete', async () => {
+		mockedParseAndValidate.mockReturnValueOnce({
+			workflow: {
+				name: 'Daily Gmail Action-Item Digest',
+				nodes: [
+					{ name: 'Every Morning 07:00', type: 'n8n-nodes-base.scheduleTrigger', parameters: {} },
+					{ name: 'Get Last 24h Emails', type: 'n8n-nodes-base.gmail', parameters: {} },
+					{ name: 'Any Emails?', type: 'n8n-nodes-base.if', parameters: {} },
+					{ name: 'Extract & Prioritize', type: 'n8n-nodes-base.openAi', parameters: {} },
+					{
+						name: 'Send Digest Email',
+						type: 'n8n-nodes-base.gmail',
+						parameters: { operation: 'send' },
+					},
+					{ name: 'No Emails Today', type: 'n8n-nodes-base.noOp', parameters: {} },
+				],
+				connections: {
+					'Every Morning 07:00': {
+						main: [[{ node: 'Get Last 24h Emails', type: 'main', index: 0 }]],
+					},
+					'Get Last 24h Emails': {
+						main: [[{ node: 'Any Emails?', type: 'main', index: 0 }]],
+					},
+					'Any Emails?': {
+						main: [
+							[{ node: 'Extract & Prioritize', type: 'main', index: 0 }],
+							[{ node: 'No Emails Today', type: 'main', index: 0 }],
+						],
+					},
+					'Extract & Prioritize': {
+						main: [[{ node: 'Send Digest Email', type: 'main', index: 0 }]],
+					},
+				},
+			},
+			warnings: [],
+		});
+		const persistedWorkflow = {
+			name: 'Daily Gmail Action-Item Digest',
+			nodes: [
+				{ name: 'Every Morning 07:00', type: 'n8n-nodes-base.scheduleTrigger', parameters: {} },
+				{ name: 'Get Last 24h Emails', type: 'n8n-nodes-base.gmail', parameters: {} },
+				{ name: 'Aggregate Emails', type: 'n8n-nodes-base.aggregate', parameters: {} },
+				{ name: 'Any Emails?', type: 'n8n-nodes-base.if', parameters: {} },
+			],
+			connections: {
+				'Every Morning 07:00': {
+					main: [[{ node: 'Get Last 24h Emails', type: 'main', index: 0 }]],
+				},
+				'Get Last 24h Emails': {
+					main: [[{ node: 'Aggregate Emails', type: 'main', index: 0 }]],
+				},
+				'Aggregate Emails': {
+					main: [[{ node: 'Any Emails?', type: 'main', index: 0 }]],
+				},
+			},
+		};
+		const reportBuildOutcome = vi.fn(
+			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
+		);
+		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
+		const getGraph = vi.fn(
+			async () =>
+				await Promise.resolve({
+					planRunId: 'run-plan',
+					status: 'active' as const,
+					tasks: [
+						{
+							id: 'task-1',
+							title: 'Build daily digest',
+							kind: 'build-workflow' as const,
+							spec: 'Read Gmail from the last 24 hours, use OpenAI to extract and prioritize action items, then send a daily digest email.',
+							deps: [],
+							status: 'running' as const,
+						},
+					],
+				}),
+		);
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(persistedWorkflow)),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				workflowTaskService: {
+					reportBuildOutcome,
+				},
+				plannedTaskService: {
+					getGraph,
+					markSucceeded,
+				},
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const result = await executeTool<{
+			success: boolean;
+			workflowId?: string;
+			errors?: string[];
+		}>(createBuildWorkflowTool(context), { code: 'workflow code' });
+
+		expect(result).toMatchObject({
+			success: false,
+			workflowId: 'wf-1',
+		});
+		const errorText = (result.errors ?? []).join('\n');
+		expect(errorText).toContain('Any Emails?');
+		expect(errorText).toContain('MISSING_SPEC_STAGE');
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalled();
+		expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf-1');
+		expect(context.workflowService.clearAiTemporary).not.toHaveBeenCalled();
+		expect(reportBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
+				workItemId: 'wi-1',
+				workflowId: 'wf-1',
+				submitted: false,
+				failureSignature: 'workflow_incomplete',
+			}),
+		);
+		expect(markSucceeded).not.toHaveBeenCalled();
 	});
 
 	it('keeps the build successful when main workflow promotion fails', async () => {

@@ -10,6 +10,11 @@ import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import {
+	getCurrentBuildTaskSpec,
+	getPersistedWorkflowJson,
+	validateWorkflowCompleteness,
+} from './workflow-completeness';
+import {
 	getReferencedWorkflowIds,
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
@@ -578,6 +583,76 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${workflowId ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${savedId}).`;
+					const returnIncompleteBuild = async (
+						errors: string[],
+						remediation = createRemediation({
+							category: 'code_fixable',
+							shouldEdit: true,
+							reason: 'workflow_incomplete',
+							guidance:
+								'Workflow saved as a draft, but the persisted graph is incomplete. Patch the saved workflow using the returned workflowId, then build again.',
+						}),
+					) => {
+						const incompleteOutcome = withDeterministicRouting({
+							workItemId: resolvedWorkItemId,
+							...(runId ? { runId } : {}),
+							taskId: resolvedTaskId,
+							workflowId: savedId,
+							submitted: false,
+							triggerType: 'manual_or_testable',
+							triggerNodes,
+							needsUserInput: false,
+							blockingReason: errors.join('\n'),
+							failureSignature: 'workflow_incomplete',
+							remediation,
+							summary: `${summary} Saved draft is incomplete and needs repair: ${errors.join(' ')}`,
+						});
+
+						await reportWorkflowBuildOutcome(context, incompleteOutcome, {
+							storeOnRunContext: !isSupportingWorkflow,
+							markPlannedTaskSucceeded: false,
+						});
+
+						return {
+							success: false,
+							workflowId: savedId,
+							workflowName: json.name || undefined,
+							workItemId: resolvedWorkItemId,
+							isSupportingWorkflow: isSupportingWorkflow || undefined,
+							triggerNodes,
+							verificationReadiness: incompleteOutcome.verificationReadiness,
+							setupRequirement: incompleteOutcome.setupRequirement,
+							errors,
+						};
+					};
+
+					let persistedJson;
+					try {
+						persistedJson = await getPersistedWorkflowJson(context, savedId, json);
+					} catch (error) {
+						return await returnIncompleteBuild(
+							[
+								`Saved workflow (${savedId}) could not be inspected after save: ${error instanceof Error ? error.message : String(error)}`,
+							],
+							createRemediation({
+								category: 'blocked',
+								shouldEdit: false,
+								reason: 'persisted_workflow_inspection_failed',
+								guidance:
+									'Workflow saved as a draft, but the persisted graph could not be inspected. Do not report it as complete; ask the user to retry or check instance health.',
+							}),
+						);
+					}
+
+					const completeness = validateWorkflowCompleteness(persistedJson, {
+						spec: await getCurrentBuildTaskSpec(context),
+					});
+					if (!completeness.valid) {
+						return await returnIncompleteBuild(
+							completeness.issues.map((issue) => `[${issue.code}]: ${issue.message}`),
+						);
+					}
+
 					const placeholderRemediation = hasPlaceholders
 						? createRemediation({
 								category: 'needs_setup',
