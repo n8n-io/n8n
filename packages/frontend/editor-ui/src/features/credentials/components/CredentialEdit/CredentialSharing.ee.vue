@@ -184,8 +184,8 @@ function goToUpgrade() {
 				:filter-fn="filterFn"
 				:roles="credentialRoles"
 				:home-project="homeProject"
-				:readonly="isResolvable || !credentialPermissions.share"
-				:static="isResolvable || !credentialPermissions.share"
+				:readonly="!credentialPermissions.share"
+				:static="!credentialPermissions.share"
 				:disabled-tooltip="
 					isResolvable
 						? i18n.baseText('credentialEdit.credentialSharing.info.dynamicCredential')
