@@ -185,4 +185,53 @@ describe('classifyBranches', () => {
 		assert.equal(keep.length, 0);
 		assert.equal(remove.length, 1);
 	});
+
+	it('keeps a stale branch that is the head or base of an open PR', () => {
+		const { keep, remove } = classifyBranches({
+			branches: [{ name: 'old-but-has-pr', committedDate: daysAgo(500) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+			openPrRefs: new Map([['old-but-has-pr', [24878]]]),
+		});
+		assert.equal(remove.length, 0);
+		assert.equal(keep[0].reason, 'open PR #24878 (head or base)');
+	});
+
+	it('lists multiple referencing PRs sorted ascending', () => {
+		const { keep } = classifyBranches({
+			branches: [{ name: 'shared-base', committedDate: daysAgo(500) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+			openPrRefs: new Map([['shared-base', [300, 42, 100]]]),
+		});
+		assert.equal(keep[0].reason, 'open PR #42, #100, #300 (head or base)');
+	});
+
+	it('still deletes stale branches with no open PR reference', () => {
+		const { remove } = classifyBranches({
+			branches: [{ name: 'no-pr', committedDate: daysAgo(500) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+			openPrRefs: new Map([['some-other-branch', [1]]]),
+		});
+		assert.equal(remove.length, 1);
+		assert.equal(remove[0].name, 'no-pr');
+	});
+
+	it('defaults openPrRefs to empty when omitted', () => {
+		const { remove } = classifyBranches({
+			branches: [{ name: 'lonely', committedDate: daysAgo(500) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+		});
+		assert.equal(remove.length, 1);
+	});
 });

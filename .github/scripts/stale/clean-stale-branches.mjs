@@ -93,10 +93,11 @@ export function protectingRuleset(ref, rulesets, defaultBranch) {
  *   defaultBranch: string,
  *   staleDays: number,
  *   now: number,
+ *   openPrRefs?: Map<string, number[]>,
  * }} input
  * @returns {{ keep: Array<{name:string,ageDays:number|null,reason:string}>, remove: Array<{name:string,ageDays:number|null,reason:string}> }}
  */
-export function classifyBranches({ branches, rulesets, defaultBranch, staleDays, now }) {
+export function classifyBranches({ branches, rulesets, defaultBranch, staleDays, now, openPrRefs = new Map() }) {
 	const keep = [];
 	const remove = [];
 
@@ -114,6 +115,16 @@ export function classifyBranches({ branches, rulesets, defaultBranch, staleDays,
 		}
 		if (branch.name === defaultBranch) {
 			keep.push({ name: branch.name, ageDays, reason: 'protected: default branch' });
+			continue;
+		}
+		const prNumbers = openPrRefs.get(branch.name);
+		if (prNumbers && prNumbers.length > 0) {
+			const refs = prNumbers
+				.slice()
+				.sort((a, b) => a - b)
+				.map((n) => `#${n}`)
+				.join(', ');
+			keep.push({ name: branch.name, ageDays, reason: `open PR ${refs} (head or base)` });
 			continue;
 		}
 		if (ageDays === null) {
@@ -268,6 +279,46 @@ async function fetchBranches(ctx) {
 	return { branches, defaultBranch };
 }
 
+// Map of branch name -> open PR numbers that reference it as head or base.
+// A branch in this map must never be deleted: deleting a PR's head closes the
+// PR, and deleting a base orphans/closes PRs targeting it. Fork PR head refs
+// live in the fork, so only count head refs from same-repo PRs; base refs are
+// always in this repo.
+async function fetchOpenPrRefs(ctx) {
+	console.log('Fetching open pull requests...');
+
+	const refs = new Map();
+	const sameRepo = `${ctx.owner}/${ctx.repo}`.toLowerCase();
+	const addRef = (ref, prNumber) => {
+		if (!ref) {
+			return;
+		}
+		if (!refs.has(ref)) {
+			refs.set(ref, []);
+		}
+		const arr = refs.get(ref);
+		if (!arr.includes(prNumber)) {
+			arr.push(prNumber);
+		}
+	};
+
+	let page = 1;
+	for (;;) {
+		const prs = await rest(ctx, `/repos/${ctx.owner}/${ctx.repo}/pulls?state=open&per_page=100&page=${page}`);
+		for (const pr of prs) {
+			if (pr.head?.repo?.full_name?.toLowerCase() === sameRepo) {
+				addRef(pr.head?.ref, pr.number);
+			}
+			addRef(pr.base?.ref, pr.number);
+		}
+		if (prs.length < 100) {
+			break;
+		}
+		page++;
+	}
+	return refs;
+}
+
 async function deleteBranch(ctx, name) {
 	const res = await fetch(`${API}/repos/${ctx.owner}/${ctx.repo}/git/refs/heads/${encodeURIComponent(name)}`, {
 		method: 'DELETE',
@@ -278,12 +329,13 @@ async function deleteBranch(ctx, name) {
 
 // --- reporting --------------------------------------------------------------
 
-function printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, keep, remove }) {
+function printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, openPrCount, keep, remove }) {
 	console.log(`Repository:        ${owner}/${repo}`);
 	console.log(`Default branch:    ${defaultBranch}`);
 	console.log(`Stale threshold:   ${staleDays} days`);
 	console.log(`Mode:              ${dryRun ? 'DRY RUN (no deletions)' : 'EXECUTE (will delete)'}`);
 	console.log(`Deletion rulesets: ${rulesets.length ? rulesets.map((r) => `"${r.name}"`).join(', ') : '(none)'}`);
+	console.log(`Open-PR refs kept: ${openPrCount ?? 0}`);
 	console.log('');
 
 	console.log(`Branches to keep (${keep.length}):`);
@@ -339,10 +391,18 @@ async function main() {
 
 	const rulesets = await fetchDeletionRulesets(ctx);
 	const { branches, defaultBranch } = await fetchBranches(ctx);
+	const openPrRefs = await fetchOpenPrRefs(ctx);
 
-	const { keep, remove } = classifyBranches({ branches, rulesets, defaultBranch, staleDays, now: Date.now() });
+	const { keep, remove } = classifyBranches({
+		branches,
+		rulesets,
+		defaultBranch,
+		staleDays,
+		now: Date.now(),
+		openPrRefs,
+	});
 
-	printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, keep, remove });
+	printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, openPrCount: openPrRefs.size, keep, remove });
 
 	if (dryRun) {
 		console.log(`Dry run complete. ${remove.length} branch(es) would be deleted. Re-run with --execute to delete.`);

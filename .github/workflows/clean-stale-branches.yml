@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write # delete branches; ruleset reads use the token's implicit metadata access
+  pull-requests: read # list open PRs so their head/base branches are never deleted
 
 jobs:
   remove-stale-branches:
