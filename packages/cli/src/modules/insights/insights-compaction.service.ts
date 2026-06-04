@@ -1,7 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
+import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { sleep } from 'n8n-workflow';
+import { OperationalError, sleep } from 'n8n-workflow';
 
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
@@ -23,13 +24,12 @@ type CompactionStopReason = 'max-batches' | 'max-runtime';
 export class InsightsCompactionService {
 	private compactInsightsTimer: NodeJS.Timeout | undefined;
 
-	private isCompactionRunning = false;
-
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 		private readonly insightsConfig: InsightsConfig,
 		private readonly logger: Logger,
+		private readonly dbLockService: DbLockService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -40,6 +40,11 @@ export class InsightsCompactionService {
 			async () => await this.compactInsights(),
 			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toMilliseconds,
 		);
+		// Run once immediately so a leader compacts promptly. `setInterval` only
+		// fires after a full interval, and the timer is cleared and recreated on
+		// every leadership change; without a leading-edge run, an instance whose
+		// leadership turns over faster than the interval would never compact.
+		void this.compactInsights();
 		this.logger.debug('Started compaction timer');
 	}
 
@@ -52,51 +57,63 @@ export class InsightsCompactionService {
 	}
 
 	async compactInsights() {
-		if (this.isCompactionRunning) {
-			this.logger.debug('Skipping insights compaction because another compaction run is active');
-			return;
-		}
-
-		this.isCompactionRunning = true;
-
 		try {
-			const runState: CompactionRunState = {
-				startedAt: Date.now(),
-				batchesProcessed: 0,
-				rowsCompacted: 0,
-			};
-
-			const stoppedAfterRawToHour = await this.compactStage({
-				stageName: 'raw-to-hour',
-				beforeBatchMessage: 'Compacting raw data to hourly aggregates',
-				afterBatchMessage: (rowsCompacted) =>
-					`Compacted ${rowsCompacted} raw data to hourly aggregates`,
-				compactBatch: this.compactRawToHour.bind(this),
-				runState,
-			});
-			if (stoppedAfterRawToHour) return;
-
-			const stoppedAfterHourToDay = await this.compactStage({
-				stageName: 'hour-to-day',
-				beforeBatchMessage: 'Compacting hourly data to daily aggregates',
-				afterBatchMessage: (rowsCompacted) =>
-					`Compacted ${rowsCompacted} hourly data to daily aggregates`,
-				compactBatch: this.compactHourToDay.bind(this),
-				runState,
-			});
-			if (stoppedAfterHourToDay) return;
-
-			await this.compactStage({
-				stageName: 'day-to-week',
-				beforeBatchMessage: 'Compacting daily data to weekly aggregates',
-				afterBatchMessage: (rowsCompacted) =>
-					`Compacted ${rowsCompacted} daily data to weekly aggregates`,
-				compactBatch: this.compactDayToWeek.bind(this),
-				runState,
-			});
-		} finally {
-			this.isCompactionRunning = false;
+			// Serialize compaction runs. In multi-main setups a re-election can
+			// briefly overlap an outgoing leader's in-flight run with the incoming
+			// leader's run; both would select the same raw rows and the dedup upsert
+			// (`value = value + excluded.value`) would double-count. The lock is held
+			// for as long as this run, so any other run — on this instance or another
+			// — fails fast and skips rather than running concurrently.
+			await this.dbLockService.tryWithLock(
+				DbLock.INSIGHTS_COMPACTION,
+				async () => await this.runCompaction(),
+			);
+		} catch (error) {
+			if (error instanceof OperationalError) {
+				this.logger.debug(
+					'Skipping insights compaction because another run already holds the lock',
+				);
+				return;
+			}
+			throw error;
 		}
+	}
+
+	private async runCompaction() {
+		const runState: CompactionRunState = {
+			startedAt: Date.now(),
+			batchesProcessed: 0,
+			rowsCompacted: 0,
+		};
+
+		const stoppedAfterRawToHour = await this.compactStage({
+			stageName: 'raw-to-hour',
+			beforeBatchMessage: 'Compacting raw data to hourly aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} raw data to hourly aggregates`,
+			compactBatch: this.compactRawToHour.bind(this),
+			runState,
+		});
+		if (stoppedAfterRawToHour) return;
+
+		const stoppedAfterHourToDay = await this.compactStage({
+			stageName: 'hour-to-day',
+			beforeBatchMessage: 'Compacting hourly data to daily aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} hourly data to daily aggregates`,
+			compactBatch: this.compactHourToDay.bind(this),
+			runState,
+		});
+		if (stoppedAfterHourToDay) return;
+
+		await this.compactStage({
+			stageName: 'day-to-week',
+			beforeBatchMessage: 'Compacting daily data to weekly aggregates',
+			afterBatchMessage: (rowsCompacted) =>
+				`Compacted ${rowsCompacted} daily data to weekly aggregates`,
+			compactBatch: this.compactDayToWeek.bind(this),
+			runState,
+		});
 	}
 
 	private async compactStage({

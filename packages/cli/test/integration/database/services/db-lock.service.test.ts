@@ -39,10 +39,16 @@ afterAll(async () => {
 
 describe('DbLockService', () => {
 	describe('withLock', () => {
-		it('should execute the callback inside a transaction', async () => {
+		it('should execute the callback with an entity manager', async () => {
 			const result = await dbLockService.withLock(DbLock.TEST, async (tx) => {
 				expect(tx).toBeDefined();
-				expect(tx.queryRunner).toBeDefined();
+				if (isPostgres) {
+					// Postgres: fn runs inside the lock-holding transaction.
+					expect(tx.queryRunner).toBeDefined();
+				} else {
+					// SQLite: fn receives the default manager; callers open their own transactions.
+					expect(tx.queryRunner).toBeUndefined();
+				}
 				return 'done';
 			});
 

@@ -12,6 +12,7 @@ import { OperationalError } from 'n8n-workflow';
 export const enum DbLock {
 	AUTH_ROLES_SYNC = 1001,
 	TRUSTED_KEY_REFRESH = 1002,
+	INSIGHTS_COMPACTION = 1003,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -104,7 +105,10 @@ export class DbLockService {
 		if (this.databaseConfig.type !== 'postgresdb') {
 			const release = await this.acquireLock(lockId, options?.timeoutMs);
 			try {
-				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
+				// SQLite has no advisory locks; the in-process mutex serializes callers.
+				// Do not wrap fn in a transaction here — long-running callbacks that open
+				// their own transactions would deadlock on nested SQLite transactions.
+				return await fn(this.dataSource.manager);
 			} finally {
 				release();
 			}
@@ -141,7 +145,8 @@ export class DbLockService {
 		if (this.databaseConfig.type !== 'postgresdb') {
 			const release = this.tryAcquireLock(lockId);
 			try {
-				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
+				// See withLock: mutex-only on SQLite, no outer transaction.
+				return await fn(this.dataSource.manager);
 			} finally {
 				release();
 			}
