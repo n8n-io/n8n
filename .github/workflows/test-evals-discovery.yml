@@ -36,7 +36,7 @@ on:
 jobs:
   run-discovery-evals:
     name: 'Run Discovery Evals'
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 15
     permissions:
       contents: read
@@ -51,8 +51,6 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: 'pnpm build'
 
       - name: Export Node Types
         run: |
