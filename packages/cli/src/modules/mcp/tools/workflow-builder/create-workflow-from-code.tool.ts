@@ -5,6 +5,7 @@ import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-ch
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -26,11 +27,10 @@ const inputSchema = {
 			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
 		),
 	skillsUsed: z
-		.array(z.string().min(1).max(128))
-		.max(50)
+		.array(z.string())
 		.optional()
 		.describe(
-			'Names of n8n skills used by the MCP client to produce this workflow create call. Include only skills used since the previous successful workflow create/update call in the current conversation/session.',
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
 		),
 	name: z
 		.string()
@@ -112,7 +112,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow change, pass their names in skillsUsed, including only skills used since the last successful create/update workflow-builder tool call in this session. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -138,12 +138,13 @@ export const createCreateWorkflowFromCodeTool = (
 		projectId?: string;
 		folderId?: string;
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 			parameters: {
 				codeLength: code.length,
-				...(skillsUsed !== undefined ? { skillsUsed } : {}),
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
