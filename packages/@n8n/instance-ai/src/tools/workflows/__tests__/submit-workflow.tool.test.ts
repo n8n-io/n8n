@@ -4,7 +4,7 @@ import type { INodeTypes, WorkflowStructureIssue } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import type { InstanceAiContext, PlannedTaskService } from '../../../types';
+import type { InstanceAiContext } from '../../../types';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
 	buildErrorDetails,
@@ -374,21 +374,6 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 			},
 		};
 		workflowService.getAsWorkflowJSON.mockResolvedValue(workflowJson);
-		const plannedTaskService = mock<PlannedTaskService>();
-		plannedTaskService.getGraph.mockResolvedValue({
-			planRunId: 'run-plan',
-			status: 'active',
-			tasks: [
-				{
-					id: 'task-1',
-					title: 'Build daily digest',
-					kind: 'build-workflow',
-					spec: 'Read Gmail from the last 24 hours, use OpenAI to extract and prioritize action items, then send a daily digest email.',
-					deps: [],
-					status: 'running',
-				},
-			],
-		});
 		const tool = createSubmitWorkflowTool(
 			makeContext({} as InstanceAiContext['permissions'], {
 				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
@@ -397,7 +382,6 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 					runId: 'run-1',
 					taskId: 'task-1',
 					workItemId: 'wi-1',
-					plannedTaskService,
 				},
 			}),
 			makeBuildSuccessWorkspace(workflowJson),
@@ -423,7 +407,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		});
 		const errorText = (output.errors ?? []).join('\n');
 		expect(errorText).toContain('Any Emails?');
-		expect(errorText).toContain('MISSING_SPEC_STAGE');
+		expect(errorText).toContain('TERMINAL_BRANCH');
 		expect(workflowService.createFromWorkflowJSON).toHaveBeenCalled();
 		expect(workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('main-workflow-id');
 		expect(attempts).toHaveLength(1);

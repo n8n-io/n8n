@@ -16,11 +16,7 @@ import { z } from 'zod';
 
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
-import {
-	getCurrentBuildTaskSpec,
-	getPersistedWorkflowJson,
-	validateWorkflowCompleteness,
-} from './workflow-completeness';
+import { getPersistedWorkflowJson, validateWorkflowCompleteness } from './workflow-completeness';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
@@ -721,9 +717,7 @@ export function createSubmitWorkflowTool(
 					};
 				}
 
-				const completeness = validateWorkflowCompleteness(persistedJson, {
-					spec: await getCurrentBuildTaskSpec(context),
-				});
+				const completeness = validateWorkflowCompleteness(persistedJson);
 				if (!completeness.valid) {
 					const errors = completeness.issues.map((issue) => `[${issue.code}]: ${issue.message}`);
 					const remediation = classifySubmitFailure(errors, 'workflow_incomplete');

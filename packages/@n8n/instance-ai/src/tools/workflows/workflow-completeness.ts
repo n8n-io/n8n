@@ -16,7 +16,7 @@ interface ConnectionLink {
 }
 
 export interface WorkflowCompletenessIssue {
-	code: 'TERMINAL_BRANCH' | 'DISCONNECTED_NODES' | 'UNREACHABLE_NODES' | 'MISSING_SPEC_STAGE';
+	code: 'TERMINAL_BRANCH' | 'DISCONNECTED_NODES' | 'UNREACHABLE_NODES';
 	message: string;
 }
 
@@ -168,103 +168,12 @@ function findBranchNodesWithoutOutgoingConnections(json: WorkflowJSON): string[]
 	return nodeNames;
 }
 
-function normalizedSpec(spec: string | undefined): string {
-	return spec?.toLowerCase() ?? '';
-}
-
-function nodeSearchText(node: ActiveNode, rawNode: WorkflowJSON['nodes'][number]): string {
-	return `${node.name} ${node.type} ${JSON.stringify(rawNode.parameters ?? {})}`.toLowerCase();
-}
-
-function nodeMatches(
-	json: WorkflowJSON,
-	predicate: (node: ActiveNode, rawNode: WorkflowJSON['nodes'][number], text: string) => boolean,
-): boolean {
-	const activeNodes = getActiveNodes(json);
-	for (const node of activeNodes) {
-		const rawNode = (json.nodes ?? []).find((candidate) => candidate.name === node.name);
-		if (!rawNode) continue;
-		if (predicate(node, rawNode, nodeSearchText(node, rawNode))) return true;
-	}
-	return false;
-}
-
-function findMissingSpecStages(json: WorkflowJSON, spec: string | undefined): string[] {
-	const text = normalizedSpec(spec);
-	if (!text) return [];
-
-	const missing: string[] = [];
-	const mentionsGmail = /\bgmail\b/.test(text);
-	const mentionsEmailRead =
-		mentionsGmail && /\b(read|fetch|get|received|inbox|emails?|messages?)\b/.test(text);
-	const mentionsEmailSend = /\bsend\b/.test(text) && /\b(email|digest|gmail)\b/.test(text);
-	const mentionsAi =
-		/\b(openai|ai|llm|extract|summari[sz]e|prioriti[sz]e|classif(?:y|ication))\b/.test(text);
-
-	if (
-		mentionsGmail &&
-		!nodeMatches(json, (node) => node.type.toLowerCase() === 'n8n-nodes-base.gmail')
-	) {
-		missing.push('Gmail node required by the build spec');
-	}
-
-	if (
-		mentionsEmailRead &&
-		!nodeMatches(json, (node, _rawNode, nodeText) => {
-			return (
-				node.type.toLowerCase() === 'n8n-nodes-base.gmail' &&
-				/\b(get|getall|list|read|search|message|email)\b/.test(nodeText)
-			);
-		})
-	) {
-		missing.push('Gmail read/fetch stage required by the build spec');
-	}
-
-	if (
-		mentionsEmailSend &&
-		!nodeMatches(json, (node, _rawNode, nodeText) => {
-			const nodeType = node.type.toLowerCase();
-			return (
-				nodeType === 'n8n-nodes-base.emailsend' ||
-				nodeType.includes('smtp') ||
-				nodeType.includes('sendgrid') ||
-				nodeType.includes('mailgun') ||
-				(nodeType === 'n8n-nodes-base.gmail' && /\b(send|reply|message|email)\b/.test(nodeText))
-			);
-		})
-	) {
-		missing.push('email/digest send stage required by the build spec');
-	}
-
-	if (
-		mentionsAi &&
-		!nodeMatches(json, (node) => {
-			const nodeType = node.type.toLowerCase();
-			return (
-				nodeType.includes('openai') ||
-				nodeType.includes('lmchat') ||
-				nodeType.includes('n8n-nodes-langchain.agent') ||
-				nodeType.includes('informationextractor') ||
-				nodeType.includes('summarization')
-			);
-		})
-	) {
-		missing.push('AI/OpenAI extraction or summarization stage required by the build spec');
-	}
-
-	return missing;
-}
-
-export function validateWorkflowCompleteness(
-	json: WorkflowJSON,
-	options: { spec?: string } = {},
-): WorkflowCompletenessResult {
+export function validateWorkflowCompleteness(json: WorkflowJSON): WorkflowCompletenessResult {
 	const issues: WorkflowCompletenessIssue[] = [];
 	const activeNodes = getActiveNodes(json);
 	const terminalBranchNodes = findBranchNodesWithoutOutgoingConnections(json);
 	const disconnectedNodes = findDisconnectedNodes(json, activeNodes);
 	const unreachableNodes = findUnreachableNodes(json, activeNodes);
-	const missingSpecStages = findMissingSpecStages(json, options.spec);
 
 	if (terminalBranchNodes.length > 0) {
 		issues.push({
@@ -287,30 +196,7 @@ export function validateWorkflowCompleteness(
 		});
 	}
 
-	if (missingSpecStages.length > 0) {
-		issues.push({
-			code: 'MISSING_SPEC_STAGE',
-			message: `Workflow is missing stages required by the build spec: ${missingSpecStages.join('; ')}.`,
-		});
-	}
-
 	return { valid: issues.length === 0, issues };
-}
-
-export async function getCurrentBuildTaskSpec(
-	context: InstanceAiContext,
-): Promise<string | undefined> {
-	const buildContext = context.workflowBuildContext;
-	if (!buildContext?.plannedTaskService) return undefined;
-
-	try {
-		const graph = await buildContext.plannedTaskService.getGraph(buildContext.threadId);
-		const task = graph?.tasks.find((candidate) => candidate.id === buildContext.taskId);
-		if (!task) return undefined;
-		return [task.title, task.spec].filter((part) => part.length > 0).join('\n');
-	} catch {
-		return undefined;
-	}
 }
 
 export async function getPersistedWorkflowJson(

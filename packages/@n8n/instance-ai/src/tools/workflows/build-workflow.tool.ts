@@ -9,11 +9,7 @@ import { z } from 'zod';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
-import {
-	getCurrentBuildTaskSpec,
-	getPersistedWorkflowJson,
-	validateWorkflowCompleteness,
-} from './workflow-completeness';
+import { getPersistedWorkflowJson, validateWorkflowCompleteness } from './workflow-completeness';
 import {
 	getReferencedWorkflowIds,
 	isMockableTriggerNodeType,
@@ -644,9 +640,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						);
 					}
 
-					const completeness = validateWorkflowCompleteness(persistedJson, {
-						spec: await getCurrentBuildTaskSpec(context),
-					});
+					const completeness = validateWorkflowCompleteness(persistedJson);
 					if (!completeness.valid) {
 						return await returnIncompleteBuild(
 							completeness.issues.map((issue) => `[${issue.code}]: ${issue.message}`),

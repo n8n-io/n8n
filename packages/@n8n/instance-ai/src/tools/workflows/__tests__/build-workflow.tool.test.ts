@@ -499,23 +499,6 @@ describe('createBuildWorkflowTool', () => {
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
 		);
 		const markSucceeded = vi.fn(async () => await Promise.resolve(null));
-		const getGraph = vi.fn(
-			async () =>
-				await Promise.resolve({
-					planRunId: 'run-plan',
-					status: 'active' as const,
-					tasks: [
-						{
-							id: 'task-1',
-							title: 'Build daily digest',
-							kind: 'build-workflow' as const,
-							spec: 'Read Gmail from the last 24 hours, use OpenAI to extract and prioritize action items, then send a daily digest email.',
-							deps: [],
-							status: 'running' as const,
-						},
-					],
-				}),
-		);
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
@@ -537,7 +520,6 @@ describe('createBuildWorkflowTool', () => {
 					reportBuildOutcome,
 				},
 				plannedTaskService: {
-					getGraph,
 					markSucceeded,
 				},
 			},
@@ -557,7 +539,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		const errorText = (result.errors ?? []).join('\n');
 		expect(errorText).toContain('Any Emails?');
-		expect(errorText).toContain('MISSING_SPEC_STAGE');
+		expect(errorText).toContain('TERMINAL_BRANCH');
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalled();
 		expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf-1');
 		expect(context.workflowService.clearAiTemporary).not.toHaveBeenCalled();
