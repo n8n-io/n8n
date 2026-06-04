@@ -4,9 +4,9 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createBuildWorkflowTool } from '../build-workflow.tool';
+import { ensureWebhookIds } from '../ensure-webhook-ids';
 import { resolveCredentials } from '../resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from '../setup-workflow.service';
-import { ensureWebhookIds } from '../submit-workflow.tool';
 
 vi.mock('../../../workflow-builder', () => ({
 	parseAndValidate: vi.fn(() => ({
@@ -38,7 +38,7 @@ vi.mock('../setup-workflow.service', () => ({
 	stripStaleCredentialsFromWorkflow: vi.fn(async () => await Promise.resolve()),
 }));
 
-vi.mock('../submit-workflow.tool', () => ({
+vi.mock('../ensure-webhook-ids', () => ({
 	ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
 }));
 

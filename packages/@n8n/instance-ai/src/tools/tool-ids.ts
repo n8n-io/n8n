@@ -30,7 +30,6 @@ export const ORCHESTRATION_TOOL_IDS = {
 
 export const WORKSPACE_TOOL_IDS = {
 	WRITE_FILE: 'write-file',
-	SUBMIT_WORKFLOW: 'submit-workflow',
 } as const;
 
 export const CREDENTIALS_TOOL_ID = DOMAIN_TOOL_IDS.CREDENTIALS;
