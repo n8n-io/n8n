@@ -12,7 +12,6 @@ import {
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	CANVAS_NODE_GROUP_ID_PREFIX,
 	type CanvasGroupViewState,
 } from '../../../canvas.types';
 
@@ -25,12 +24,10 @@ defineOptions({ inheritAttrs: false });
 const props = withDefaults(
 	defineProps<{
 		data: CanvasGroupViewState;
-		selected?: boolean;
 		readOnly?: boolean;
 	}>(),
 	{
 		readOnly: false,
-		selected: false,
 	},
 );
 
@@ -96,30 +93,21 @@ watch(
 
 const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
 
-// Clear unrelated pre-existing selection before VueFlow snapshots which
-// nodes to drag — otherwise those nodes ride along with the group drag.
-// Preserve the selection when this title bar is itself part of it
-// (intentional multi-select drag).
+// Clear any pre-existing selection before VueFlow snapshots which nodes to
+// drag — otherwise those nodes ride along with the group drag.
 function onWrapperPointerDown(event: PointerEvent) {
 	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
 
 	const selected = getSelectedNodes.value;
-	if (selected.length === 0) return;
-
-	// Multi-select drag that includes this title bar → preserve the selection.
-	const myVueFlowId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.value.id}`;
-	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
-	if (isPartOfSelection) return;
-
-	removeSelectedNodes(selected);
+	if (selected.length > 0) removeSelectedNodes(selected);
 }
 </script>
 
 <template>
 	<div
-		:class="[$style.wrapper, selected ? $style.selected : '']"
+		:class="$style.wrapper"
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
@@ -215,12 +203,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	box-sizing: border-box;
-
-	.wrapper.selected & {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
-			var(--canvas--color--selected-transparent);
-	}
 }
 
 .content {
