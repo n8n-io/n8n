@@ -1,20 +1,12 @@
-import type { Fixtures, TestInfo } from '@playwright/test';
+import type { Fixtures } from '@playwright/test';
 import { request } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
-import { BACKEND_BY_SPEC_DIR, COVERAGE_ENABLED } from '../coverage-options';
+import { BACKEND_BY_SPEC_DIR, COVERAGE_ENABLED, slugify, specId } from '../coverage-options';
 
 type BackendCoverageTestFixtures = { backendCoverage: undefined; mainUrls: string[] };
 type BackendCoverageWorkerFixtures = { n8nUrl: string };
-
-/** Spec id = project-relative path — same id the runner and the frontend
- *  fixture use, so the impact map keys match runnable specs. */
-function specId(testInfo: TestInfo): string {
-	return relative(process.cwd(), testInfo.file).split('\\').join('/');
-}
-
-const slugify = (spec: string) => spec.replace(/[^a-zA-Z0-9]+/g, '_');
 
 let warnedMultiMain = false;
 let warnedHookError = false;

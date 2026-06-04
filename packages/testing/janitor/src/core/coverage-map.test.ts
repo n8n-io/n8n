@@ -193,6 +193,36 @@ describe('resolveImpact — sibling fallback', () => {
 		});
 		expect(r.mode).toBe('broad');
 	});
+
+	it('PROPERTY: safe — never selects outside allSpecs, partitions files cleanly', () => {
+		const allSpecs = ['s0', 's1', 's2', 's3', 's4', 's5'];
+		const name = fc.constantFrom('a', 'b', 'c', 'd', 'e');
+		const mDir = fc.constantFrom('pkg/x/src', 'pkg/x/src/sub', 'pkg/y/src');
+		const cDir = fc.constantFrom('pkg/x/src', 'pkg/x/src/sub', 'pkg/y/src', 'pkg/z/src', 'scripts');
+		fc.assert(
+			fc.property(
+				fc.array(
+					fc.record({ dir: mDir, name, idx: fc.uniqueArray(fc.nat({ max: 5 }), { minLength: 1 }) }),
+					{ minLength: 1, maxLength: 6 },
+				),
+				fc.array(fc.record({ dir: cDir, name }), { minLength: 1, maxLength: 5 }),
+				(mapped, changed) => {
+					const map: ImpactMap = {};
+					for (const x of mapped)
+						map[`${x.dir}/${x.name}.ts`] = { '1': x.idx.map((i) => allSpecs[i]).sort() };
+					const cf = changed.map((c) => ({ file: `${c.dir}/${c.name}.new.ts` }));
+					const r = resolveImpact(cf, map, { allSpecs, siblingFallback: true });
+					// safety: only ever selects real specs
+					for (const s of r.specs) expect(allSpecs).toContain(s);
+					// a file is resolved (mapped/sibling) XOR unmapped — never both
+					const via = new Set(r.viaSibling ?? []);
+					for (const f of r.unmapped) expect(via.has(f)).toBe(false);
+					// scoped ⟺ nothing fell through to unmapped
+					expect(r.mode === 'scoped').toBe(r.unmapped.length === 0);
+				},
+			),
+		);
+	});
 });
 
 // ===========================================================================

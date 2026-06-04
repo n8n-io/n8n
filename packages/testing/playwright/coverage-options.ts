@@ -1,4 +1,6 @@
+import type { TestInfo } from '@playwright/test';
 import type { CoverageReportOptions } from 'monocart-coverage-reports';
+import { relative } from 'node:path';
 
 /**
  * Frontend E2E coverage via browser-native V8 (Playwright `page.coverage`),
@@ -70,3 +72,12 @@ export function backendBySpecDir(
 }
 
 export const BACKEND_BY_SPEC_DIR = backendBySpecDir();
+
+/** Spec id = project-relative path — the id the runner and impact map key on.
+ *  Shared by the frontend and backend per-spec coverage fixtures. */
+export function specId(testInfo: TestInfo): string {
+	return relative(process.cwd(), testInfo.file).split('\\').join('/');
+}
+
+/** Filesystem-safe slug for a spec id (per-spec coverage directory name). */
+export const slugify = (spec: string): string => spec.replace(/[^a-zA-Z0-9]+/g, '_');

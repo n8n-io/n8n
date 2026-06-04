@@ -342,8 +342,6 @@ export function resolveImpact(
 	for (const { file, lines } of changed) {
 		const fileMap = map[file];
 		if (!fileMap) {
-			// Sibling fallback: an unmapped file selects the specs covering its
-			// nearest covered ancestor directory, instead of forcing the whole suite.
 			if (dirIndex) {
 				let resolved: Set<string> | undefined;
 				for (let dir = parentDir(file); dir !== '' && !resolved; dir = parentDir(dir)) {
