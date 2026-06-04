@@ -716,16 +716,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		active: ActiveRuntime,
 	): ReadableStream<StreamChunk> {
 		const reader = stream.getReader();
-		let cleanedUp = false;
+		let cleanupPromise: Promise<void> | undefined;
 		const cleanup = async () => {
-			if (cleanedUp) return;
-			cleanedUp = true;
-			try {
-				reader.releaseLock();
-			} catch {
-				// The lock may already be released after cancellation/error cleanup.
-			}
-			await this.cleanupRuntime(active);
+			const doCleanup = async () => {
+				try {
+					reader.releaseLock();
+				} catch {
+					// The lock may already be released after cancellation/error cleanup.
+				}
+				await this.cleanupRuntime(active);
+			};
+			cleanupPromise ??= doCleanup();
+			return await cleanupPromise;
 		};
 
 		return new ReadableStream<StreamChunk>({
