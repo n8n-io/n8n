@@ -118,7 +118,7 @@ describe('TypeORMAgentMemory', () => {
 		expect(threadRepo.save).toHaveBeenCalledTimes(1);
 	});
 
-	it('saveThreadWithProject never rebinds an existing thread', async () => {
+	it('saveThreadWithProject rejects a conflicting project binding instead of rebinding', async () => {
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		threadRepo.findOneBy.mockResolvedValueOnce({
 			id: 'thread-1',
@@ -131,12 +131,61 @@ describe('TypeORMAgentMemory', () => {
 		} as InstanceAiThread);
 		const { memory } = createMemory({ threadRepo });
 
-		await memory.saveThreadWithProject(
+		await expect(
+			memory.saveThreadWithProject(
+				{ id: 'thread-1', resourceId: 'user-1', title: '' },
+				'project-other',
+			),
+		).rejects.toThrow('different project binding');
+
+		// The existing binding stands; nothing is written.
+		expect(threadRepo.create).not.toHaveBeenCalled();
+		expect(threadRepo.save).not.toHaveBeenCalled();
+	});
+
+	it('saveThreadWithProject rejects an existing thread owned by another resource', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValueOnce({
+			id: 'thread-1',
+			resourceId: 'user-2',
+			title: 'Existing',
+			metadata: null,
+			projectId: 'project-1',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		} as InstanceAiThread);
+		const { memory } = createMemory({ threadRepo });
+
+		await expect(
+			memory.saveThreadWithProject(
+				{ id: 'thread-1', resourceId: 'user-1', title: '' },
+				'project-1',
+			),
+		).rejects.toThrow('different owner');
+
+		expect(threadRepo.save).not.toHaveBeenCalled();
+	});
+
+	it('saveThreadWithProject returns the existing thread when owner and project match', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValueOnce({
+			id: 'thread-1',
+			resourceId: 'user-1',
+			title: 'Existing',
+			metadata: null,
+			projectId: 'project-1',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		} as InstanceAiThread);
+		const { memory } = createMemory({ threadRepo });
+
+		const result = await memory.saveThreadWithProject(
 			{ id: 'thread-1', resourceId: 'user-1', title: '' },
-			'project-attacker',
+			'project-1',
 		);
 
-		// The existing row (and its original project) is returned untouched.
+		// Idempotent retry (same owner + project) reuses the row without writing.
+		expect(result.id).toBe('thread-1');
 		expect(threadRepo.create).not.toHaveBeenCalled();
 		expect(threadRepo.save).not.toHaveBeenCalled();
 	});

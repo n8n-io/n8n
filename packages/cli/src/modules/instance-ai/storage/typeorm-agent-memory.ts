@@ -22,6 +22,7 @@ import type {
 	ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -211,14 +212,26 @@ export class TypeORMAgentMemory
 
 	// Binds the thread to a project as part of the insert (atomic, so a partial
 	// failure can't leave a project-less thread) and never rebinds an existing
-	// thread (the binding is immutable for the thread's lifetime).
+	// thread (the binding is immutable). On a concurrent create the existing row
+	// is reused only when its owner and project match the request; a mismatch is
+	// rejected rather than returned.
 	async saveThreadWithProject(
 		thread: Omit<Thread, 'createdAt' | 'updatedAt'>,
 		projectId: string,
 	): Promise<Thread> {
 		return await this.serializeThreadMutation(thread.id, async () => {
 			const existing = await this.threadRepo.findOneBy({ id: thread.id });
-			if (existing) return toThread(existing);
+			if (existing) {
+				if (existing.resourceId !== thread.resourceId) {
+					throw new UnexpectedError(`Thread ${thread.id} already exists for a different owner`);
+				}
+				if (existing.projectId !== projectId) {
+					throw new UnexpectedError(
+						`Thread ${thread.id} already exists with a different project binding`,
+					);
+				}
+				return toThread(existing);
+			}
 
 			const saved = await this.threadRepo.save(
 				this.threadRepo.create({
