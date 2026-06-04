@@ -165,7 +165,7 @@ type ServiceInternals = {
 	pendingCheckpointReentries: Map<string, Set<string>>;
 	queuePendingCheckpointReentry: (threadId: string, checkpointTaskId: string) => void;
 	drainPendingCheckpointReentries: (user: User, threadId: string) => Promise<void>;
-	reenterCheckpointById: Mock<Promise<boolean>, [User, string, string, string?]>;
+	reenterCheckpointById: Mock<(...args: [User, string, string, string?]) => Promise<boolean>>;
 	backgroundTasks: {
 		getRunningTasksByParentCheckpoint: Mock;
 	};
@@ -1500,8 +1500,8 @@ type ResolveConfirmationServiceInternals = {
 		requestId: string,
 		request: { kind: 'approval'; approved: boolean; userInput?: string },
 	) => Promise<boolean>;
-	revalidateActiveUser: Mock<Promise<User | null>, [string]>;
-	cancelRun: Mock<void, [string]>;
+	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
+	cancelRun: Mock<(...args: [string]) => void>;
 	runState: {
 		resolvePendingConfirmation: Mock;
 		findSuspendedByRequestId: Mock;
@@ -1548,7 +1548,7 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 
 type PlannedTaskSchedulerServiceInternals = {
 	doSchedulePlannedTasks: (user: User, threadId: string) => Promise<void>;
-	revalidateActiveUser: Mock<Promise<User | null>, [string]>;
+	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
 	createPlannedTaskState: Mock;
 	syncPlannedTasksToUi: Mock;
@@ -1609,7 +1609,7 @@ type SuspendedRunResumeServiceInternals = {
 		requestId: string,
 		data: { approved: boolean },
 	) => Promise<boolean>;
-	revalidateActiveUser: Mock<Promise<User | null>, [string]>;
+	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
 	runState: {
 		findSuspendedByRequestId: Mock;

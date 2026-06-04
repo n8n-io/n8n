@@ -16,7 +16,7 @@ describe('InstanceRedactionEnforcementService', () => {
 	const originalFlag = process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
 
 	let service: InstanceRedactionEnforcementService;
-	let findByKey: Mock<Promise<Settings | null>, [string]>;
+	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
 	let upsert: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();

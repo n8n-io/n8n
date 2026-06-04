@@ -55,7 +55,7 @@ describe('InvitationController', () => {
 	describe('inviteUser', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			ownershipService.hasInstanceOwner.mockReturnValue(Promise.resolve(true));
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -85,8 +85,8 @@ describe('InvitationController', () => {
 
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			license.isWithinUsersLimit.mockReturnValue(false);
-			ownershipService.hasInstanceOwner.mockReturnValue(Promise.resolve(true));
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(false);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -110,9 +110,9 @@ describe('InvitationController', () => {
 
 		it('throws a BadRequestError if the owner account is not set up', async () => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			license.isWithinUsersLimit.mockReturnValue(true);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.spyOn(config, 'getEnv').mockReturnValue(false);
-			ownershipService.hasInstanceOwner.mockReturnValue(Promise.resolve(false));
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(false));
 
 			const invitationController = defaultInvitationController();
 
@@ -138,10 +138,10 @@ describe('InvitationController', () => {
 
 		it('throws a ForbiddenError if the user is an admin but advanced permissions is not licensed', async () => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			license.isWithinUsersLimit.mockReturnValue(true);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.spyOn(config, 'getEnv').mockReturnValue(true);
-			license.isAdvancedPermissionsLicensed.mockReturnValue(false);
-			ownershipService.hasInstanceOwner.mockReturnValue(Promise.resolve(true));
+			vi.mocked(license.isAdvancedPermissionsLicensed).mockReturnValue(false);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -189,11 +189,11 @@ describe('InvitationController', () => {
 				usersCreated: ['123'],
 			};
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			license.isWithinUsersLimit.mockReturnValue(true);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.spyOn(config, 'getEnv').mockReturnValue(true);
-			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
-			userService.inviteUsers.mockResolvedValue(inviteUsersResult);
-			ownershipService.hasInstanceOwner.mockReturnValue(Promise.resolve(true));
+			vi.mocked(license.isAdvancedPermissionsLicensed).mockReturnValue(true);
+			vi.mocked(userService.inviteUsers).mockResolvedValue(inviteUsersResult);
+			vi.mocked(ownershipService.hasInstanceOwner).mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -292,17 +292,17 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			userRepository.find.mockResolvedValue([inviter, invitee]);
-			passwordUtility.hash.mockResolvedValue('Password123!');
-			userRepository.save.mockResolvedValue(invitee);
-			authService.issueCookie.mockResolvedValue(invitee as never);
-			eventService.emit.mockResolvedValue(invitee as never);
-			userService.toPublic.mockResolvedValue(invitee as unknown as PublicUser);
-			externalHooks.run.mockResolvedValue(invitee as never);
+			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
+			vi.mocked(passwordUtility.hash).mockResolvedValue('Password123!');
+			vi.mocked(userRepository.save).mockResolvedValue(invitee);
+			vi.mocked(authService.issueCookie).mockResolvedValue(invitee as never);
+			vi.mocked(eventService.emit).mockResolvedValue(invitee as never);
+			vi.mocked(userService.toPublic).mockResolvedValue(invitee as unknown as PublicUser);
+			vi.mocked(externalHooks.run).mockResolvedValue(invitee as never);
 
 			const invitationController = defaultInvitationController();
 
@@ -345,11 +345,11 @@ describe('InvitationController', () => {
 			const inviterId = uuidv4();
 			const inviteeId = uuidv4();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			userRepository.find.mockResolvedValue([]);
+			vi.mocked(userRepository.find).mockResolvedValue([]);
 
 			const invitationController = defaultInvitationController();
 
@@ -388,11 +388,11 @@ describe('InvitationController', () => {
 				role: GLOBAL_MEMBER_ROLE,
 			});
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			userRepository.find.mockResolvedValue([inviter, invitee]);
+			vi.mocked(userRepository.find).mockResolvedValue([inviter, invitee]);
 
 			const invitationController = defaultInvitationController();
 

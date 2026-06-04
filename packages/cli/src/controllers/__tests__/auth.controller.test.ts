@@ -41,7 +41,7 @@ describe('AuthController', () => {
 	const authHandlerRegistry = mockInstance(AuthHandlerRegistry);
 	const emailAuthHandler = mock<EmailAuthHandler>();
 	const controller = Container.get(AuthController);
-	const userService = Container.get(UserService);
+	const userService = vi.mocked(Container.get(UserService));
 	const authService = Container.get(AuthService);
 	const eventsService = Container.get(EventService);
 	const postHog = Container.get(PostHogClient);
@@ -289,11 +289,11 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId: id,
 				inviteeId: id,
 			});
-			license.isWithinUsersLimit.mockReturnValue(false);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(false);
 
 			const promise = authController.resolveSignupToken(req, res, payload);
 			await expect(promise).rejects.toThrow(ForbiddenError);
@@ -326,12 +326,12 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId: id,
 				inviteeId: id,
 			});
-			license.isWithinUsersLimit.mockReturnValue(true);
-			userRepository.findManyByIds.mockResolvedValue([]);
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(userRepository.findManyByIds).mockResolvedValue([]);
 
 			const promise = authController.resolveSignupToken(req, res, payload);
 			await expect(promise).rejects.toThrow(BadRequestError);
@@ -364,12 +364,12 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId: id,
 				inviteeId: id,
 			});
-			license.isWithinUsersLimit.mockReturnValue(true);
-			userRepository.findManyByIds.mockResolvedValue([
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(userRepository.findManyByIds).mockResolvedValue([
 				mock<User>({
 					id,
 					password: 'Password123!',
@@ -413,12 +413,12 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId: id,
 				inviteeId: id,
 			});
-			license.isWithinUsersLimit.mockReturnValue(true);
-			userRepository.findManyByIds.mockResolvedValue([
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(userRepository.findManyByIds).mockResolvedValue([
 				mock<User>({
 					id,
 					email: undefined,
@@ -462,12 +462,12 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId: id,
 				inviteeId: id,
 			});
-			license.isWithinUsersLimit.mockReturnValue(true);
-			userRepository.findManyByIds.mockResolvedValue([
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(userRepository.findManyByIds).mockResolvedValue([
 				mock<User>({
 					id,
 					email: 'inviter@example.com',
@@ -519,12 +519,12 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockResolvedValue({
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
 				inviterId,
 				inviteeId,
 			});
-			license.isWithinUsersLimit.mockReturnValue(true);
-			userRepository.findManyByIds.mockResolvedValue([
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(userRepository.findManyByIds).mockResolvedValue([
 				mock<User>({
 					id: inviterId,
 					email: 'inviter@example.com',
@@ -576,7 +576,7 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockRejectedValue(
+			vi.mocked(userService.getInvitationIdsFromPayload).mockRejectedValue(
 				new BadRequestError('Invalid invite URL'),
 			);
 
@@ -610,7 +610,7 @@ describe('AuthController', () => {
 			});
 			const res = mock<Response>();
 
-			userService.getInvitationIdsFromPayload.mockRejectedValue(
+			vi.mocked(userService.getInvitationIdsFromPayload).mockRejectedValue(
 				new BadRequestError('Invalid invite URL'),
 			);
 

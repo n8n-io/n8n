@@ -176,7 +176,7 @@ describe('CollaborationService', () => {
 			// Arrange
 			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWorkflowClosedMessage(workflow.id, owner.id);
@@ -190,7 +190,7 @@ describe('CollaborationService', () => {
 			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id, 'owner-client-id');
 			await sendWorkflowOpenedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWorkflowClosedMessage(workflow.id, owner.id, 'owner-client-id');
@@ -219,7 +219,7 @@ describe('CollaborationService', () => {
 			// Arrange
 			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWorkflowClosedMessage(workflow.id, memberWithoutAccess.id);
@@ -234,7 +234,7 @@ describe('CollaborationService', () => {
 			// Arrange
 			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id);
@@ -261,7 +261,7 @@ describe('CollaborationService', () => {
 
 			// Owner acquires the lock first
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id, 'owner-client-id');
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - Member tries to acquire the lock
 			await sendWriteAccessRequestedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
@@ -281,7 +281,7 @@ describe('CollaborationService', () => {
 
 			// Owner releases the lock
 			await sendWriteAccessReleaseRequestedMessage(workflow.id, owner.id, 'owner-client-id');
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - Member tries to acquire the lock
 			await sendWriteAccessRequestedMessage(workflow.id, memberWithAccess.id, 'member-client-id');
@@ -307,7 +307,7 @@ describe('CollaborationService', () => {
 
 			// Owner acquires the lock
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - Owner tries to acquire the lock again
 			await sendWriteAccessRequestedMessage(workflow.id, owner.id);
@@ -330,7 +330,7 @@ describe('CollaborationService', () => {
 			// Arrange
 			const sendToUsersSpy = pushService.sendToUsers;
 			await sendWorkflowOpenedMessage(workflow.id, memberWithoutAccess.id);
-			sendToUsersSpy.mockClear();
+			vi.mocked(sendToUsersSpy).mockClear();
 
 			// Act - User without access tries to acquire lock
 			await sendWriteAccessRequestedMessage(workflow.id, memberWithoutAccess.id);

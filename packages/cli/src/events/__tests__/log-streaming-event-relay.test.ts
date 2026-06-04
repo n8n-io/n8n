@@ -495,7 +495,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -545,7 +544,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',

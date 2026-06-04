@@ -230,8 +230,7 @@ describe('SourceControlService', () => {
 	let cipher: Cipher;
 
 	const globMock = fastGlob.default as unknown as Mock<
-		Promise<string[]>,
-		[fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]
+		(...args: [fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]) => Promise<string[]>
 	>;
 	const fsReadFile = vi.spyOn(fsp, 'readFile');
 	const fsWriteFile = vi.spyOn(fsp, 'writeFile');

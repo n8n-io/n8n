@@ -92,7 +92,6 @@ describe('TaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).toEqual(
 				expect.objectContaining({
@@ -107,7 +106,6 @@ describe('TaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).toEqual(
 				expect.objectContaining({
@@ -122,7 +120,6 @@ describe('TaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).not.toHaveProperty('NODE_OPTIONS');
 		});
@@ -132,7 +129,6 @@ describe('TaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(Object.getPrototypeOf(options.env)).toBeNull();
 		});
@@ -146,7 +142,6 @@ describe('TaskRunnerProcess', () => {
 			try {
 				await taskRunnerProcess.start();
 
-				// @ts-expect-error The type is not correct
 				const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 				expect(options.env?.NODE_OPTIONS).toBeUndefined();
 			} finally {
@@ -160,7 +155,6 @@ describe('TaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).toEqual(
 				expect.objectContaining({
@@ -175,7 +169,6 @@ describe('TaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).toEqual(
 				expect.objectContaining({

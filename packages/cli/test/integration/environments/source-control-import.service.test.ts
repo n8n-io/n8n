@@ -192,7 +192,7 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 		let globalAdmin: User;
@@ -469,7 +469,7 @@ describe('SourceControlImportService', () => {
 			},
 		};
 
-		const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 		let globalAdmin: User;
@@ -902,7 +902,7 @@ describe('SourceControlImportService', () => {
 			],
 		};
 
-		const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 		let globalAdmin: User;
@@ -1186,7 +1186,7 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importTagsFromWorkFolder()', () => {
-		const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.spyOn(fsp, 'readFile');
 		const mockTagsFile = '/mock/tags.json';
 
@@ -1695,7 +1695,7 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importWorkflowFromWorkFolder()', () => {
-		const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+		const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 		const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 		const putWorkflowFile = (workflowId: string, workflow: IWorkflowToImport) => {

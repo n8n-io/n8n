@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
 // Define mocks inline inside the factory to avoid vi.mock hoisting issues
-type MockFn = Mock<any, any[]>;
+type MockFn = Mock<(...args: any[]) => any>;
 const mockButton: MockFn = vi.fn((opts) => ({ type: 'button', ...opts }));
 const mockCard: MockFn = vi.fn((opts) => ({ type: 'card', ...opts }));
 const mockActions: MockFn = vi.fn((children) => ({ type: 'actions', children }));

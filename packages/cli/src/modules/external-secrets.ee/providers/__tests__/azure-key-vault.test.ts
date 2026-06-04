@@ -33,7 +33,6 @@ describe('AzureKeyVault', () => {
 
 		const listSpy = vi
 			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
-			// @ts-expect-error Partial mock
 			.mockImplementation(() => ({
 				async *[Symbol.asyncIterator]() {
 					yield { name: 'secret1' };
@@ -81,7 +80,6 @@ describe('AzureKeyVault', () => {
 
 		const listSpy = vi
 			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
-			// @ts-expect-error Partial mock
 			.mockImplementation(() => ({
 				async *[Symbol.asyncIterator]() {
 					yield { name: 'enabled-secret', enabled: true };
@@ -115,7 +113,6 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		// @ts-expect-error Partial mock
 		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(() => ({
 			async *[Symbol.asyncIterator]() {
 				yield { name: 'good', enabled: true };
@@ -149,7 +146,6 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		// @ts-expect-error Partial mock
 		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(() => ({
 			async *[Symbol.asyncIterator]() {
 				yield { name: 'only-secret', enabled: true };

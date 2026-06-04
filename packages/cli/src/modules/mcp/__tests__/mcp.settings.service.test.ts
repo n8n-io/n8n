@@ -17,7 +17,7 @@ import type { Mock } from 'vitest';
 
 describe('McpSettingsService', () => {
 	let service: McpSettingsService;
-	let findByKey: Mock<Promise<Settings | null>, [string]>;
+	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
 	let upsert: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();

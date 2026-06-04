@@ -477,7 +477,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should subscribe to file changes and reload on changes', async () => {
-			const postProcessSpy = instance.postProcessLoaders.mockResolvedValue(undefined);
+			const postProcessSpy = vi.mocked(instance.postProcessLoaders).mockResolvedValue(undefined);
 			const subscribe = vi.mocked(watcher.subscribe);
 
 			await instance.setupHotReload();

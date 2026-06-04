@@ -54,7 +54,6 @@ describe('PyTaskRunnerProcess', () => {
 
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(options.env).toEqual(
 				expect.objectContaining({
@@ -66,7 +65,6 @@ describe('PyTaskRunnerProcess', () => {
 		it('should build env with a null prototype', async () => {
 			await taskRunnerProcess.start();
 
-			// @ts-expect-error The type is not correct
 			const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 			expect(Object.getPrototypeOf(options.env)).toBeNull();
 		});
@@ -78,7 +76,6 @@ describe('PyTaskRunnerProcess', () => {
 			try {
 				await taskRunnerProcess.start();
 
-				// @ts-expect-error The type is not correct
 				const options = spawnMock.mock.calls[0][2] as SpawnOptions;
 				expect(options.env?.NODE_OPTIONS).toBeUndefined();
 			} finally {

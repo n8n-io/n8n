@@ -881,10 +881,7 @@ describe('chatHub', () => {
 			let sessionId: string;
 			let messageId: string;
 
-			let spyExecute: MockInstance<
-				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
-				Parameters<WorkflowExecutionService['executeChatWorkflow']>
-			>;
+			let spyExecute: MockInstance<WorkflowExecutionService['executeChatWorkflow']>;
 			let finishRun = (_: IRun) => {};
 
 			beforeEach(async () => {
@@ -1209,10 +1206,7 @@ describe('chatHub', () => {
 			let sessionId: string;
 			let messageId: string;
 
-			let spyExecute: MockInstance<
-				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
-				Parameters<WorkflowExecutionService['executeChatWorkflow']>
-			>;
+			let spyExecute: MockInstance<WorkflowExecutionService['executeChatWorkflow']>;
 			let finishRun = (_: IRun) => {};
 
 			beforeEach(async () => {
@@ -1378,10 +1372,7 @@ describe('chatHub', () => {
 			let messageId: string;
 			let watcherService: ChatHubExecutionWatcherService;
 
-			let spyExecute: MockInstance<
-				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
-				Parameters<WorkflowExecutionService['executeChatWorkflow']>
-			>;
+			let spyExecute: MockInstance<WorkflowExecutionService['executeChatWorkflow']>;
 
 			beforeEach(() => {
 				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);

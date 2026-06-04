@@ -32,7 +32,7 @@ describe('AuthHandlerRegistry', () => {
 				}
 			}
 
-			mockMetadata.getClasses.mockReturnValue([MockHandlerClass as any]);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
 			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
 
 			await registry.init();
@@ -50,7 +50,7 @@ describe('AuthHandlerRegistry', () => {
 
 			class MockHandlerClass {}
 
-			mockMetadata.getClasses.mockReturnValue([MockHandlerClass as any]);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
 			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
 
 			await registry.init();
@@ -61,7 +61,7 @@ describe('AuthHandlerRegistry', () => {
 		it('should skip handler on instantiation error', async () => {
 			class MockHandlerClass {}
 
-			mockMetadata.getClasses.mockReturnValue([MockHandlerClass as any]);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
 			vi.spyOn(Container, 'get').mockImplementation(() => {
 				throw new Error('Instantiation failed');
 			});
@@ -83,7 +83,7 @@ describe('AuthHandlerRegistry', () => {
 
 			class MockHandlerClass {}
 
-			mockMetadata.getClasses.mockReturnValue([MockHandlerClass as any]);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([MockHandlerClass as any]);
 			vi.spyOn(Container, 'get').mockReturnValue(mockHandler);
 
 			await registry.init();
@@ -108,7 +108,10 @@ describe('AuthHandlerRegistry', () => {
 			class MockHandlerClass1 {}
 			class MockHandlerClass2 {}
 
-			mockMetadata.getClasses.mockReturnValue([MockHandlerClass1 as any, MockHandlerClass2 as any]);
+			vi.mocked(mockMetadata.getClasses).mockReturnValue([
+				MockHandlerClass1 as any,
+				MockHandlerClass2 as any,
+			]);
 			vi.spyOn(Container, 'get').mockReturnValueOnce(handler1).mockReturnValueOnce(handler2);
 
 			await registry.init();

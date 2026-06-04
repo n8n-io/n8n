@@ -107,7 +107,7 @@ describe('SourceControlImportService', () => {
 		redactionEnforcementService,
 	);
 
-	const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
 	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 	beforeEach(() => {

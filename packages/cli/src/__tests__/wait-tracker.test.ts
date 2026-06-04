@@ -84,7 +84,7 @@ describe('WaitTracker', () => {
 		});
 
 		describe('if execution to start', () => {
-			let startExecutionSpy: MockInstance<Promise<void>, [executionId: string]>;
+			let startExecutionSpy: MockInstance<(...args: [executionId: string]) => Promise<void>>;
 
 			beforeEach(() => {
 				executionRepository.findSingleExecution
