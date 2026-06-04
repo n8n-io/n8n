@@ -2129,6 +2129,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/common/var';
+
 .wrapper {
 	display: flex;
 	width: 100%;
@@ -2166,7 +2168,7 @@ onBeforeUnmount(() => {
 	position: absolute;
 	left: var(--spacing--lg);
 	bottom: var(--spacing--lg);
-	z-index: 5;
+	z-index: var.$index-popper;
 }
 
 .readOnlyEnvironmentNotification {

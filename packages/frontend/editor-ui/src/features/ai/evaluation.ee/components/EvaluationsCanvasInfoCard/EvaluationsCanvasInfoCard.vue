@@ -256,7 +256,7 @@ function openWizard() {
 	background-color: var(--background--surface);
 	border: var(--border);
 	border-radius: var(--border-radius--base);
-	box-shadow: 0 8px 20px var(--color--black-alpha-100, rgba(0, 0, 0, 0.08));
+	box-shadow: var(--shadow--md);
 	overflow: hidden;
 }
 
