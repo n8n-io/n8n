@@ -76,6 +76,9 @@ import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
 import GroupVariantSwitcher from './elements/groups/GroupVariantSwitcher.vue';
+import WorkflowOverviewPanel from './elements/overview/WorkflowOverviewPanel.vue';
+import { useWorkflowOverview } from './elements/overview/useWorkflowOverview';
+import { useGroupCardVariant } from './elements/nodes/render-types/group-card-variants/useGroupCardVariant';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -197,6 +200,13 @@ const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(vie
 
 // Enabled by default on this prototype branch (no feature-flag override needed).
 const isCanvasNodeGroupingEnabled = computed(() => true);
+
+// PROTOTYPE: top-left workflow Overview panel visibility (toggled from the
+// three-dots menu via the shared useWorkflowOverview singleton). Only shown in
+// the V4 group-card variant.
+const { isVisible: isOverviewVisible } = useWorkflowOverview();
+const { activeVariantId } = useGroupCardVariant();
+const isOverviewVariant = computed(() => activeVariantId.value === 'v4');
 
 const vueFlow = useVueFlow(props.id);
 const {
@@ -1271,6 +1281,14 @@ defineExpose({
 			:position="PanelPosition.BottomRight"
 		>
 			<GroupVariantSwitcher />
+		</Panel>
+
+		<!-- PROTOTYPE: persistent workflow Overview card, pinned top-left (V4 only). -->
+		<Panel
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled && isOverviewVariant && isOverviewVisible"
+			:position="PanelPosition.TopLeft"
+		>
+			<WorkflowOverviewPanel :read-only="readOnly || suppressInteraction" />
 		</Panel>
 
 		<Transition name="minimap">

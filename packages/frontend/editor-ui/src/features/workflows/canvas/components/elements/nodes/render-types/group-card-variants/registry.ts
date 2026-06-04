@@ -3,6 +3,7 @@ import type { Component } from 'vue';
 import GroupCardV1 from './GroupCardV1.vue';
 import GroupCardV2 from './GroupCardV2.vue';
 import GroupCardV3 from './GroupCardV3.vue';
+import GroupCardV4 from './GroupCardV4.vue';
 
 export interface GroupCardVariant {
 	id: string;
@@ -27,4 +28,5 @@ export const GROUP_CARD_VARIANTS: GroupCardVariant[] = [
 	{ id: 'v1', label: 'V1', component: GroupCardV1 },
 	{ id: 'v2', label: 'V2', component: GroupCardV2, triggerCard: true },
 	{ id: 'v3', label: 'V3', component: GroupCardV3, triggerCard: true, triggerRules: true },
+	{ id: 'v4', label: 'V4', component: GroupCardV4, triggerCard: true },
 ];

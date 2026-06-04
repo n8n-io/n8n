@@ -13,7 +13,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
-	WORKFLOW_DESCRIPTION_MODAL_KEY,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -40,6 +39,8 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowOverview } from '@/features/workflows/canvas/components/elements/overview/useWorkflowOverview';
+import { useGroupCardVariant } from '@/features/workflows/canvas/components/elements/nodes/render-types/group-card-variants/useGroupCardVariant';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -70,6 +71,11 @@ const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+// PROTOTYPE: the three-dots "Edit description" item is repurposed to toggle the
+// on-canvas Overview panel (shared singleton state with the panel itself).
+const { isVisible: isOverviewVisible, toggleVisible: toggleOverview } = useWorkflowOverview();
+const { activeVariantId } = useGroupCardVariant();
+const isOverviewVariant = computed(() => activeVariantId.value === 'v4');
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -172,11 +178,16 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			label: locale.baseText('menuActions.duplicate'),
 			disabled: !onWorkflowPage.value || !props.id,
 		});
-		actions.unshift({
-			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
-			label: locale.baseText('menuActions.editDescription'),
-			disabled: !onWorkflowPage.value || !props.id,
-		});
+		// PROTOTYPE: the on-canvas Overview panel (and this toggle) only exist in
+		// the V4 group-card variant.
+		if (isOverviewVariant.value) {
+			actions.unshift({
+				id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+				// Plain string label — not run through i18n while prototype-only.
+				label: isOverviewVisible.value ? 'Hide overview' : 'Show overview',
+				disabled: !onWorkflowPage.value || !props.id,
+			});
+		}
 
 		actions.push(
 			{
@@ -246,19 +257,9 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.workflowId);
-			if (!workflowId) return;
-
-			const workflowDescription =
-				workflowDocumentStore?.value?.description ??
-				workflowsListStore.getWorkflowById(workflowId).description;
-			uiStore.openModalWithData({
-				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
-				data: {
-					workflowId,
-					workflowDescription,
-				},
-			});
+			// PROTOTYPE: show/hide the on-canvas Overview panel instead of opening
+			// the description modal.
+			toggleOverview();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
