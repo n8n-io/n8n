@@ -678,10 +678,26 @@ describe('verify-built-workflow tool', () => {
 			executionId: 'exec-incomplete',
 			status: 'success',
 		});
-		ctx.domainContext.workflowService.getAsWorkflowJSON = vi.fn().mockResolvedValue({
+		const workflowService = ctx.domainContext.workflowService;
+		if (!workflowService) throw new Error('workflowService missing');
+		workflowService.getAsWorkflowJSON = vi.fn().mockResolvedValue({
 			nodes: [
-				{ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger', parameters: {} },
-				{ name: 'Any Emails?', type: 'n8n-nodes-base.if', parameters: {} },
+				{
+					id: 'node-1',
+					name: 'Schedule',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'Any Emails?',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
 			],
 			connections: {
 				Schedule: { main: [[{ node: 'Any Emails?', type: 'main', index: 0 }]] },

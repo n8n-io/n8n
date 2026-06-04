@@ -1,3 +1,4 @@
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { UserError } from 'n8n-workflow';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
@@ -42,6 +43,16 @@ vi.mock('../setup-workflow.service', () => ({
 vi.mock('../submit-workflow.tool', () => ({
 	ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
 }));
+
+function workflowNode(
+	id: string,
+	name: string,
+	type: string,
+	position: [number, number],
+	parameters: WorkflowJSON['nodes'][number]['parameters'] = {},
+): WorkflowJSON['nodes'][number] {
+	return { id, name, type, typeVersion: 1, position, parameters };
+}
 
 describe('createBuildWorkflowTool', () => {
 	const mockedParseAndValidate = vi.mocked(parseAndValidate);
@@ -435,16 +446,14 @@ describe('createBuildWorkflowTool', () => {
 			workflow: {
 				name: 'Daily Gmail Action-Item Digest',
 				nodes: [
-					{ name: 'Every Morning 07:00', type: 'n8n-nodes-base.scheduleTrigger', parameters: {} },
-					{ name: 'Get Last 24h Emails', type: 'n8n-nodes-base.gmail', parameters: {} },
-					{ name: 'Any Emails?', type: 'n8n-nodes-base.if', parameters: {} },
-					{ name: 'Extract & Prioritize', type: 'n8n-nodes-base.openAi', parameters: {} },
-					{
-						name: 'Send Digest Email',
-						type: 'n8n-nodes-base.gmail',
-						parameters: { operation: 'send' },
-					},
-					{ name: 'No Emails Today', type: 'n8n-nodes-base.noOp', parameters: {} },
+					workflowNode('node-1', 'Every Morning 07:00', 'n8n-nodes-base.scheduleTrigger', [0, 0]),
+					workflowNode('node-2', 'Get Last 24h Emails', 'n8n-nodes-base.gmail', [200, 0]),
+					workflowNode('node-3', 'Any Emails?', 'n8n-nodes-base.if', [400, 0]),
+					workflowNode('node-4', 'Extract & Prioritize', 'n8n-nodes-base.openAi', [600, 0]),
+					workflowNode('node-5', 'Send Digest Email', 'n8n-nodes-base.gmail', [800, 0], {
+						operation: 'send',
+					}),
+					workflowNode('node-6', 'No Emails Today', 'n8n-nodes-base.noOp', [600, 200]),
 				],
 				connections: {
 					'Every Morning 07:00': {
