@@ -186,6 +186,43 @@ describe('createInstanceAgent', () => {
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
 	});
 
+	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
+		const baseOptions = (executeMcpTool?: string) =>
+			({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'mcp-approval-run',
+					localGatewayStatus: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+					permissions: executeMcpTool ? { executeMcpTool } : undefined,
+				},
+				orchestrationContext: { runId: 'mcp-approval-run' },
+				memoryConfig: {},
+			}) as never;
+
+		const requireApprovalManager = createMcpManagerStub();
+		await createInstanceAgent({
+			...(baseOptions('require_approval') as object),
+			mcpManager: requireApprovalManager,
+		} as never);
+		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], true, undefined);
+
+		const alwaysAllowManager = createMcpManagerStub();
+		await createInstanceAgent({
+			...(baseOptions('always_allow') as object),
+			mcpManager: alwaysAllowManager,
+		} as never);
+		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], false, undefined);
+
+		const noPermissionsManager = createMcpManagerStub();
+		await createInstanceAgent({
+			...(baseOptions() as object),
+			mcpManager: noPermissionsManager,
+		} as never);
+		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], true, undefined);
+	});
+
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',

@@ -101,6 +101,13 @@ describe('InstanceAiSettingsService', () => {
 
 		it('defaults to true', () => {
 			expect(service.getAdminSettings().mcpAccessEnabled).toBe(true);
+			expect(service.isMcpAccessEnabled()).toBe(true);
+		});
+
+		it('isMcpAccessEnabled reflects an update', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(service.isMcpAccessEnabled()).toBe(false);
 		});
 
 		it('round-trips an update through getAdminSettings and persists it', async () => {

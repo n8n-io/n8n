@@ -402,6 +402,11 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	isMcpAccessEnabled(): boolean {
+		return this.mcpAccessEnabled;
+	}
+
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
 	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
 		if (!this.enabled) return true;
