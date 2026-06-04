@@ -63,9 +63,10 @@ const {
 	customChecks,
 } = storeToRefs(wizardStore);
 
-// useChatCredentials binds to the user id at construction; re-running the
-// agents fetch when currentUserId transitions from null avoids permanently
-// reading the 'anonymous' localStorage bucket.
+// useChatCredentials binds to the user id at construction. The canvas route is
+// authenticated-only, so currentUserId is always resolved by the time this
+// panel mounts; the 'anonymous' fallback mirrors the chat-hub views and never
+// fires here.
 const currentUserId = computed(() => usersStore.currentUserId);
 const { credentialsByProvider, selectCredential } = useChatCredentials(
 	currentUserId.value ?? 'anonymous',
@@ -219,7 +220,9 @@ async function loadExecutionForCase(caseId: string, executionId: string) {
 			...executionsByCaseId.value,
 			[caseId]: execution ?? null,
 		};
-	} catch {}
+	} catch (error) {
+		console.warn('[evaluations wizard] failed to load case execution', error);
+	}
 }
 
 function formatOutputValue(value: unknown): string {
@@ -343,21 +346,23 @@ const step2Complete = computed(() => {
 	return inputsFilled && expectedFilled;
 });
 
-const titleKey = computed(() =>
-	activeStep.value === 0
-		? 'evaluations.wizardSidepanel.step1.title'
-		: activeStep.value === 1
-			? 'evaluations.wizardSidepanel.step2.title'
-			: 'evaluations.wizardSidepanel.step3.title',
-);
+const STEP_I18N = [
+	{
+		title: 'evaluations.wizardSidepanel.step1.title',
+		description: 'evaluations.wizardSidepanel.step1.description',
+	},
+	{
+		title: 'evaluations.wizardSidepanel.step2.title',
+		description: 'evaluations.wizardSidepanel.step2.description',
+	},
+	{
+		title: 'evaluations.wizardSidepanel.step3.title',
+		description: 'evaluations.wizardSidepanel.step3.description',
+	},
+] as const;
 
-const descriptionKey = computed(() =>
-	activeStep.value === 0
-		? 'evaluations.wizardSidepanel.step1.description'
-		: activeStep.value === 1
-			? 'evaluations.wizardSidepanel.step2.description'
-			: 'evaluations.wizardSidepanel.step3.description',
-);
+const titleKey = computed(() => STEP_I18N[activeStep.value].title);
+const descriptionKey = computed(() => STEP_I18N[activeStep.value].description);
 
 function metricScorePercent(key: string): number {
 	const metric = cannedMetrics.value.find((m) => m.key === key);

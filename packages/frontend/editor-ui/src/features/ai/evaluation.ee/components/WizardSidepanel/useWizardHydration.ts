@@ -16,6 +16,7 @@ import {
 	LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER,
 	type CannedMetricKey,
 } from '../../evaluation.constants';
+import { stringifyValue } from '../../evaluation.utils';
 
 const CANNED_METRIC_KEYS = new Set<CannedMetricKey>([
 	'correctness',
@@ -62,7 +63,6 @@ export function useWizardHydration() {
 					const row = rows.data[0];
 					if (row) applyDatasetRowToStore(row);
 				} catch (error) {
-					// eslint-disable-next-line no-console
 					console.warn('[evaluations wizard] failed to hydrate dataset row', error);
 				}
 			}
@@ -169,15 +169,4 @@ function decodeCustomCheck(metric: EvaluationMetric): Omit<CustomCheck, 'id'> | 
 
 function isCannedMetricKey(name: string): name is CannedMetricKey {
 	return CANNED_METRIC_KEYS.has(name as CannedMetricKey);
-}
-
-function stringifyValue(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	if (typeof value === 'string') return value;
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return '';
-	}
 }

@@ -10,6 +10,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
+import { stringifyValue } from '../evaluation.utils';
 
 export type SliceInputs = {
 	fieldNames: string[];
@@ -138,15 +139,4 @@ function readFirstInputItemViaGraph(runData: RunData, connections: Connections, 
 	const parent = parents[0];
 	if (!parent) return undefined;
 	return readFirstOutputItem(runData, parent);
-}
-
-function stringifyValue(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	if (typeof value === 'string') return value;
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return '';
-	}
 }

@@ -13,12 +13,8 @@ import {
 } from '../evaluation.constants';
 import type { CustomCheck, JudgeSelection } from '../wizardSidepanel.store';
 
-// Derive the provider→node-type map by inverting the node-type→provider map
-// used during hydration. Defining it by hand let the two drift: the keys here
-// were kebab-cased ('azure-openai') while `JudgeSelection.provider` is a
-// `ChatHubLLMProvider` ('azureOpenAi'), so the lookup below missed every
-// multi-word provider and rejected it as unsupported. Inverting guarantees any
-// provider we can hydrate is also one we can map back when re-saving.
+// Invert the hydration map so any provider we can hydrate also maps back when
+// re-saving; a hand-maintained copy previously drifted on multi-word keys.
 const CHATHUB_PROVIDER_TO_NODE_TYPE: Partial<Record<ChatHubLLMProvider, string>> = {};
 for (const [nodeType, provider] of Object.entries(LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER)) {
 	CHATHUB_PROVIDER_TO_NODE_TYPE[provider] = nodeType;

@@ -48,7 +48,7 @@ defineProps<{
 	justify-content: center;
 	width: 28px;
 	height: 28px;
-	border-radius: 6px;
+	border-radius: var(--radius--2xs);
 }
 
 .iconNeutral {
@@ -74,9 +74,9 @@ defineProps<{
 	background-color: var(--background--subtle);
 	color: var(--color--text--tint-1);
 	border: none;
-	font-size: 10px;
-	padding: 2px 6px;
-	border-radius: 999px;
+	font-size: var(--font-size--3xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--full);
 	line-height: 1.2;
 	font-weight: var(--font-weight--medium);
 }
