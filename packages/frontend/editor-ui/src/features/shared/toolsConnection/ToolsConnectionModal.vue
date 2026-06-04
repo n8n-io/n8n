@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nDialog, N8nIcon, N8nInput, N8nRecycleScroller, N8nText } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
@@ -58,8 +58,8 @@ watch(searchQuery, (value) => {
 
 const activeTab = ref<TabId>('services');
 
-const searchInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
-const scrollerRef = ref<{ scrollToKey: (key: string) => void } | null>(null);
+const searchInputRef = useTemplateRef('searchInputRef');
+const scrollerRef = useTemplateRef('scrollerRef');
 
 function focusSearchInput() {
 	void nextTick(() => {
