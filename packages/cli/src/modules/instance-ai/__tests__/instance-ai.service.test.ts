@@ -525,7 +525,6 @@ type WorkspaceServiceInternals = {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
-		runId?: string,
 	) => Promise<unknown>;
 };
 
@@ -947,21 +946,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createWorkspace as jest.Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
 
-		await service.getOrCreateWorkspace(
-			'thread-1',
-			fakeUser,
-			{} as InstanceAiContext,
-			'run_123456789',
-		);
+		await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
-				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				id: 'acme-eval-instance-ai-thread-thread-1',
+				name: 'acme-eval-instance-ai-thread-thread-1',
 				labels: expect.objectContaining({
 					'n8n-builder': 'instance-ai-thread-thread-1',
 					name_prefix: 'Acme-Eval',
-					run_id: 'run_123456789',
 					thread_id: 'thread-1',
 				}),
 			}),
@@ -1173,11 +1166,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createSandbox).toHaveBeenCalledTimes(1);
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'run-1-instance-ai-thread-thread-1',
-				name: 'run-1-instance-ai-thread-thread-1',
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
 				labels: expect.objectContaining({
 					'n8n-builder': 'instance-ai-thread-thread-1',
-					run_id: 'run-1',
 					thread_id: 'thread-1',
 				}),
 			}),
