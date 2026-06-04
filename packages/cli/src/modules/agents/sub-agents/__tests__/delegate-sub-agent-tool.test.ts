@@ -1,8 +1,12 @@
-import type { CredentialProvider, GenerateResult } from '@n8n/agents';
+import {
+	getInlineDelegateSubAgentToolOptions,
+	INLINE_SUB_AGENT_ID,
+	type CredentialProvider,
+	type GenerateResult,
+} from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
-import type { ToolExecutor } from '../../json-config/from-json-config';
 import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
@@ -13,6 +17,7 @@ import type {
 } from '../sub-agent-foreground-runner';
 
 const projectId = 'project-1';
+const userId = 'user-1';
 
 const source: SubAgentSource = {
 	agentId: 'agent-2',
@@ -37,6 +42,9 @@ const generateResult: GenerateResult = {
 			],
 		},
 	],
+	getState: () => {
+		throw new Error('not implemented');
+	},
 };
 
 const foregroundResult: SubAgentForegroundResult = {
@@ -49,18 +57,12 @@ const foregroundResult: SubAgentForegroundResult = {
 describe('createN8nDelegateSubAgentTool', () => {
 	let runner: jest.Mocked<SubAgentForegroundRunner>;
 	let credentialProvider: jest.Mocked<CredentialProvider>;
-	let toolExecutor: jest.Mocked<ToolExecutor>;
-	let createToolExecutor: jest.Mock;
-	let createMemoryFactory: jest.Mock;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		runner = mock<SubAgentForegroundRunner>();
 		runner.runForeground.mockResolvedValue(foregroundResult);
 		credentialProvider = mock<CredentialProvider>();
-		toolExecutor = mock<ToolExecutor>();
-		createToolExecutor = jest.fn().mockReturnValue(toolExecutor);
-		createMemoryFactory = jest.fn().mockReturnValue(jest.fn());
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {
@@ -68,15 +70,15 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
+			userId,
 			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
 			policy: { maxChildren: 2, timeoutMs: 1000 },
 		});
 
 		await expect(
 			tool.handler?.(
 				{
+					subAgentId: 'agent-2',
 					taskName: 'Research API',
 					goal: 'Find the API behavior.',
 					context: 'Focus on auth endpoints.',
@@ -107,9 +109,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 			expect.objectContaining({
 				projectId,
+				userId,
 				credentialProvider,
-				createToolExecutor,
-				createMemoryFactory,
 			}),
 		);
 	});
@@ -119,13 +120,12 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
+			userId,
 			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
 		});
 
 		await tool.handler?.(
-			{ taskName: 'Research API', goal: 'Find behavior.' },
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
 			{
 				runId: 'parent-run-1',
 				persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
@@ -150,9 +150,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 			availableSubAgents: [{ id: 'agent-2', name: 'Research Agent' }],
 			projectId,
+			userId,
 			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
 		});
 
 		await tool.handler?.(
@@ -174,14 +173,13 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
+			userId,
 			credentialProvider,
-			createToolExecutor,
-			createMemoryFactory,
 		});
 
 		await expect(
 			tool.handler?.(
-				{ taskName: 'Research API', goal: 'Find behavior.' },
+				{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
 				{ runId: 'parent-run-1' },
 			),
 		).resolves.toMatchObject({
@@ -190,6 +188,73 @@ describe('createN8nDelegateSubAgentTool', () => {
 			answer: '',
 			error: 'child failed',
 		});
+	});
+
+	it('routes inline subAgentId through runInlineSubAgent helpers instead of the foreground runner', async () => {
+		const runInlineSubAgent = jest.fn().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'inline-run-1',
+			answer: 'Inline answer',
+		});
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			userId,
+			credentialProvider,
+		});
+		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
+		expect(runSubAgent).toBeDefined();
+
+		await expect(
+			runSubAgent?.(
+				{
+					subAgentId: INLINE_SUB_AGENT_ID,
+					taskName: 'Research API',
+					goal: 'Find behavior.',
+					taskPath: '/root/research_api_0',
+					childCount: 0,
+				},
+				{ runInlineSubAgent },
+			),
+		).resolves.toMatchObject({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			answer: 'Inline answer',
+		});
+
+		expect(runInlineSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				subAgentId: INLINE_SUB_AGENT_ID,
+				goal: 'Find behavior.',
+			}),
+		);
+		expect(runner.runForeground).not.toHaveBeenCalled();
+	});
+
+	it('requires Agent inline helpers when inline is invoked through the tool handler directly', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			userId,
+			credentialProvider,
+		});
+
+		await expect(
+			tool.handler?.(
+				{ subAgentId: INLINE_SUB_AGENT_ID, taskName: 'Research API', goal: 'Find behavior.' },
+				{ runId: 'parent-run-1' },
+			),
+		).resolves.toMatchObject({
+			status: 'failed',
+			taskPath: '/root/research_api_0',
+			answer: '',
+			error:
+				'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
+		});
+		expect(runner.runForeground).not.toHaveBeenCalled();
 	});
 });
 

@@ -7,8 +7,17 @@
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
+		"build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"]
+		},
 		"n8n-editor-ui#build": {
 			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"n8n-editor-ui#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
 			"outputs": ["dist/**"],
 			"env": ["RELEASE"]
 		},

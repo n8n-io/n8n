@@ -1416,6 +1416,28 @@ describe('POST /workflows', () => {
 	test('should create workflow', async () => {
 		const payload = {
 			...mockPostWorkflowPayload(),
+			nodes: [
+				triggerNode,
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Tagged NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [460, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Tagged NoOp', type: 'main', index: 0 }]],
+				},
+			},
 			staticData: null,
 			settings: {
 				saveExecutionProgress: true,
@@ -1473,6 +1495,8 @@ describe('POST /workflows', () => {
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
@@ -1754,6 +1778,12 @@ describe('PUT /workflows/:id', () => {
 					type: 'n8n-nodes-base.cron',
 					typeVersion: 1,
 					position: [400, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
 				},
 			],
 			connections: {},
@@ -1812,6 +1842,8 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(payload.name);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);

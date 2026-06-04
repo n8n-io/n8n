@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
@@ -993,13 +994,20 @@ export function applyBranchReadOnlyOverrides(
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
 
+export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
+export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
+
+export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {
+	return instanceAiSandboxProviderSchema.safeParse(value).success;
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
-	sandboxProvider: string;
+	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
@@ -1014,7 +1022,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
-	sandboxProvider: z.string().optional(),
+	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
@@ -1046,6 +1054,28 @@ export interface InstanceAiModelCredential {
 	name: string;
 	type: string;
 	provider: string;
+}
+
+// ---------------------------------------------------------------------------
+// MCP registry connections — per-user
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiMcpConnectionResponse {
+	id: string;
+	serverSlug: string;
+	/** Display title from the registry server (e.g. "Notion"). Falls back to `serverSlug` if the server is no longer in the registry. */
+	serverTitle: string;
+	/**
+	 * Icons for the registry server, with optional `theme` tagging so the FE
+	 * can pick a light- or dark-mode variant. Empty if the server is no longer
+	 * in the registry.
+	 */
+	serverIcons: McpRegistryServerIconResponse[];
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {

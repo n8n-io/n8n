@@ -10,7 +10,7 @@
  */
 import { z } from 'zod';
 
-import { Agent, Guardrail, Memory, Tool } from '../src';
+import { Agent, Guardrail, Memory, Tool, createDelegateSubAgentTool } from '../src';
 
 // ---------------------------------------------------------------------------
 // Tools
@@ -64,10 +64,7 @@ const writeFileTool = new Tool('write-file')
 // Memory
 // ---------------------------------------------------------------------------
 
-const memory = new Memory().semanticRecall({
-	topK: 4,
-	messageRange: { before: 1, after: 1 },
-});
+const memory = new Memory();
 
 // ---------------------------------------------------------------------------
 // Agents
@@ -79,6 +76,10 @@ const researcher = new Agent('researcher')
 		'You are a research assistant. Search for information and return structured findings.',
 	)
 	.tool(searchTool)
+	// No runSubAgent callback: the SDK creates an inline child that reuses this
+	// agent's model and filtered tools whenever the model calls delegate_subagent
+	// with subAgentId: "inline".
+	.tool(createDelegateSubAgentTool({ policy: { maxChildren: 2 } }))
 	.memory(memory)
 	.inputGuardrail(
 		new Guardrail('injection-detector').type('prompt-injection').strategy('block').threshold(0.8),

@@ -180,6 +180,7 @@ export class ProxyServer {
 			partialBodyMatching?: boolean;
 			sequential?: boolean;
 			repeatLastResponse?: boolean;
+			filter?: (expectation: Expectation, fileName: string) => boolean;
 			transform?: (expectation: Expectation, fileName: string) => Expectation;
 		} = {},
 	): Promise<void> {
@@ -219,6 +220,10 @@ export class ProxyServer {
 					) {
 						(expectation.httpRequest as { body: { matchType: string } }).body.matchType =
 							'ONLY_MATCHING_FIELDS';
+					}
+
+					if (options.filter && !options.filter(expectation, file)) {
+						continue;
 					}
 
 					if (options.sequential) {
@@ -286,6 +291,14 @@ export class ProxyServer {
 		}
 	}
 
+	async reset(): Promise<void> {
+		try {
+			await this.withRetry(async () => await this.client.reset());
+		} catch (error) {
+			throw new Error(`Failed to reset ProxyServer: ${JSON.stringify(error)}`);
+		}
+	}
+
 	async createGetExpectation(
 		path: string,
 		responseBody: unknown,
@@ -332,6 +345,7 @@ export class ProxyServer {
 			dedupe?: boolean;
 			raw?: boolean;
 			clearDir?: boolean;
+			filter?: (expectation: Expectation) => boolean;
 			transform?: (expectation: Expectation) => Expectation;
 		},
 	): Promise<void> {
@@ -414,6 +428,10 @@ export class ProxyServer {
 						unlimited: true,
 					},
 				};
+
+				if (options?.filter && !options.filter(processedExpectation)) {
+					continue;
+				}
 
 				if (options?.transform) {
 					processedExpectation = options.transform(processedExpectation);

@@ -191,9 +191,10 @@ import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/17840000
 import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
-import { CreateWorkflowPublicationOutboxTable1784000000025 } from '../common/1784000000025-CreateWorkflowPublicationOutboxTable';
+import { CreateWorkflowPublicationOutboxTable1784000000026 } from '../common/1784000000026-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -390,7 +391,8 @@ const sqliteMigrations: Migration[] = [
 	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
 	AddResourceToOAuthAuthorizationCodes1784000000024,
-	CreateWorkflowPublicationOutboxTable1784000000025,
+	MigrateRedactionEnforcementToFloor1784000000025,
+	CreateWorkflowPublicationOutboxTable1784000000026,
 ];
 
 export { sqliteMigrations };

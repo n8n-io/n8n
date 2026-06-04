@@ -23,11 +23,6 @@ import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
@@ -68,15 +63,6 @@ vi.mock('@/app/composables/useToast', () => ({
 		showMessage: vi.fn(),
 	}),
 }));
-
-// Mock to inject workflowState
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
 
 // Mock useWorkflowSaving
 const saveCurrentWorkflowMock = vi.fn().mockResolvedValue(true);
@@ -148,8 +134,6 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-let workflowState: WorkflowState;
-
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		mockDocumentState = undefined;
@@ -181,9 +165,6 @@ describe('AI Builder store', () => {
 		workflowDocumentStore.setNodes([]);
 		workflowDocumentStore.setConnections({});
 		workflowsStore.setWorkflowExecutionData(null);
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);

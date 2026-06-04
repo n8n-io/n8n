@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
-import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -17,6 +17,8 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -81,11 +83,13 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 		browserAvailable,
 		branchReadOnly,
+		workspaceRoot,
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
+${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow-builder skill. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 
@@ -93,7 +97,7 @@ You have access to workflow, execution, and credential tools plus a specialized 
 
 Route by **what you are touching**, not by how risky the change feels:
 
-1. **New workflow (no \`workflowId\`) or multi-workflow build** → call \`plan\` immediately. Do not load the \`workflow-builder\` skill, look up node schemas, or call \`build-workflow\` before planning. If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the \`data-table-manager\` skill before \`plan\` and carry the relevant table guidance into \`guidance\` or \`conversationContext\`. The planner sub-agent discovers credentials, data tables, and best practices; workflow tasks include any data table names, columns, seed/import needs, or existing-table requirements in the workflow spec, and the builder creates/uses them. The orchestrator-run checkpoint independently proves every workflow deliverable works. Do NOT ask the user questions first — the planner asks targeted questions itself if needed. Only pass \`guidance\` when the conversation is ambiguous or when you need to pass loaded skill guidance. When \`plan\` returns, tasks are already dispatched.
+1. **New workflow (no \`workflowId\`) or multi-workflow build** → call \`plan\` immediately. Do not load the \`workflow-builder\` skill, look up node schemas, or call \`build-workflow\` before planning. If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the \`data-table-manager\` skill before \`plan\` and carry the relevant table guidance into \`guidance\` or \`conversationContext\`. The planner sub-agent discovers credentials and data tables; workflow tasks include any data table names, columns, seed/import needs, or existing-table requirements in the workflow spec, and the builder creates/uses them. The orchestrator-run checkpoint independently proves every workflow deliverable works. Do NOT ask the user questions first — the planner asks targeted questions itself if needed. Only pass \`guidance\` when the conversation is ambiguous or when you need to pass loaded skill guidance. When \`plan\` returns, tasks are already dispatched.
 
 2. **Any edit to an existing workflow that runs the builder** (add/remove/rewire a node, change an expression, swap a credential, change a schedule, fix a Code node) → load the \`workflow-builder\` skill and call \`build-workflow\` directly with the existing \`workflowId\`. The tool asks for approval before saving when required. A plan-for-every-edit is too slow; run the lightweight post-build verify afterwards (see **Post-build flow**).
 
