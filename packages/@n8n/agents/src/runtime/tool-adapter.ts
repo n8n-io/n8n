@@ -133,6 +133,7 @@ export async function executeTool(
 			persistence: executionContext.persistence,
 			emitEvent: executionContext.emitEvent,
 			abortSignal: executionContext.abortSignal,
+			executionCounter: executionContext.executionCounter,
 		};
 		return await builtTool.handler(args, ctx);
 	}
@@ -144,6 +145,7 @@ export async function executeTool(
 		persistence: executionContext.persistence,
 		emitEvent: executionContext.emitEvent,
 		abortSignal: executionContext.abortSignal,
+		executionCounter: executionContext.executionCounter,
 	};
 	return await builtTool.handler(args, ctx);
 }

@@ -2280,6 +2280,7 @@ export class AgentRuntime {
 						persistence,
 						emitEvent: (event) => this.eventBus.emit(event),
 						abortSignal: this.eventBus.signal,
+						executionCounter,
 					}),
 			);
 		} catch (error) {

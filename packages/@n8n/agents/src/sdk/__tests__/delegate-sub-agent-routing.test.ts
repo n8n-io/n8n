@@ -14,6 +14,7 @@ import type { BuiltTool, GenerateResult, SerializableAgentState } from '../../ty
 import { Agent } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
+const runtimeGenerateOptions: Array<Record<string, unknown> | undefined> = [];
 let inlineChildGenerateResult: GenerateResult | undefined;
 
 const mockState = (): SerializableAgentState => ({
@@ -31,7 +32,8 @@ vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate() {
+			async generate(_input: unknown, options?: Record<string, unknown>) {
+				runtimeGenerateOptions.push(options);
 				if (inlineChildGenerateResult !== undefined) {
 					return await Promise.resolve(inlineChildGenerateResult);
 				}
@@ -81,6 +83,7 @@ async function buildAgentConfig(agent: Agent): Promise<AgentRuntimeModule.AgentR
 describe('delegate sub-agent routing', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
+		runtimeGenerateOptions.length = 0;
 		inlineChildGenerateResult = undefined;
 	});
 
@@ -143,6 +146,32 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
+	});
+
+	it('passes the parent execution counter to inline child generate options', async () => {
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			executionCounter,
+		});
+
+		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
 	});
 
 	it('lets a host-style runner delegate inline through helpers from tool metadata', async () => {
