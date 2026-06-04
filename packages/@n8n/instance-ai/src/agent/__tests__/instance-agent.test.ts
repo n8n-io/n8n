@@ -80,6 +80,12 @@ vi.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
 	createToolsFromLocalMcpServer: vi.fn().mockReturnValue(new Map()),
 }));
 
+vi.mock('../../tools/workflows/submit-workflow-identity', () => ({
+	createIdentityEnforcedSubmitWorkflowTool: vi.fn(({ currentRunId }: { currentRunId?: string }) =>
+		mockBuiltTool(`submit-workflow-${currentRunId ?? 'unknown'}`),
+	),
+}));
+
 vi.mock('../../tracing/langsmith-tracing', () => ({
 	buildAgentTraceInputs: vi.fn().mockReturnValue({}),
 	mergeTraceRunInputs: vi.fn(),
@@ -93,12 +99,15 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { createIdentityEnforcedSubmitWorkflowTool as createIdentityEnforcedSubmitWorkflowToolImport } from '../../tools/workflows/submit-workflow-identity';
 import { createInstanceAgent } from '../instance-agent';
 
 const Agent = AgentImport as unknown as Mock;
 const Memory = MemoryImport as unknown as Mock;
 const createToolsFromLocalMcpServer = createToolsFromLocalMcpServerImport as unknown as Mock;
 const createOrchestratorDomainTools = createOrchestratorDomainToolsImport as unknown as Mock;
+const createIdentityEnforcedSubmitWorkflowTool =
+	createIdentityEnforcedSubmitWorkflowToolImport as unknown as Mock;
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
@@ -145,6 +154,7 @@ describe('createInstanceAgent', () => {
 		mockAgentInstances.length = 0;
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
+		createIdentityEnforcedSubmitWorkflowTool.mockClear();
 	});
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
@@ -260,6 +270,39 @@ describe('createInstanceAgent', () => {
 
 		expect(Agent).toHaveBeenCalledWith('n8n-instance-agent');
 		expect(mockAgentInstances[0]?.workspace).toHaveBeenCalledWith(fakeWorkspace);
+	});
+
+	it('attaches submit-workflow when a runtime workspace root is provided', async () => {
+		const fakeWorkspace = { id: 'thread-runtime-workspace' } as never;
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'submit-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'submit-run',
+				workspace: fakeWorkspace,
+				workspaceRoot: '/home/daytona/workspace',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(getAttachedTools()['submit-workflow-submit-run']).toMatchObject({
+			name: 'submit-workflow-submit-run',
+		});
+		expect(createIdentityEnforcedSubmitWorkflowTool).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workspace: fakeWorkspace,
+				root: '/home/daytona/workspace',
+				defaultFilePath: '/home/daytona/workspace/src/workflow.ts',
+				currentRunId: 'submit-run',
+			}),
+		);
 	});
 
 	it('does not attach a workspace when orchestration context has none', async () => {

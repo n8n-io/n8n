@@ -67,7 +67,8 @@ Good:
 Tool names are part of the compatibility contract. Keep using the same tool
 names the old builder used:
 
-- `build-workflow` to save TypeScript SDK code or apply targeted patches.
+- `submit-workflow` to save TypeScript SDK code from the workspace filesystem.
+- `build-workflow` to save inline TypeScript SDK code or apply targeted patches.
 - `workflows(action="get-as-code")` before precise patches to an existing
   workflow when you need the current code.
 - `workflows(action="get")`, `workflows(action="list")`, and
@@ -153,14 +154,16 @@ Assistant panel so the user can fill placeholder values.
    method name, method type, credential type, and credential ID. This is
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
-6. Build complete TypeScript SDK code and call `build-workflow`.
+6. Build complete TypeScript SDK code. Prefer editing it in the workspace
+   filesystem and call `submit-workflow`; use `build-workflow` for inline code
+   or targeted patches.
 7. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
-8. Fix errors. If `build-workflow` returns errors, repair with targeted patches
-   when possible, or resubmit full SDK code for larger changes. Save again before
+8. Fix errors. If `submit-workflow` or `build-workflow` returns errors, repair
+   the workspace file or use targeted patches when possible. Save again before
    any verification step.
 9. Modify existing workflows with `workflowId` plus patches where possible. Use
    `workflows(action="get-as-code")` first when you need to identify exact code

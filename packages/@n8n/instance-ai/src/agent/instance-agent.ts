@@ -11,9 +11,18 @@ import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	CHECKPOINT_FOLLOW_UP_TOOL_NAMES,
+	WORKSPACE_TOOL_IDS,
+} from '../tools/tool-ids';
+import { createIdentityEnforcedSubmitWorkflowTool } from '../tools/workflows/submit-workflow-identity';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../types';
+import type {
+	CreateInstanceAgentOptions,
+	InstanceAiToolRegistry,
+	OrchestrationContext,
+} from '../types';
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
@@ -36,6 +45,37 @@ function splitDeferredTools(
 	}
 
 	return { coreTools, deferredTools };
+}
+
+function createRuntimeWorkflowTools(
+	context: CreateInstanceAgentOptions['context'],
+	orchestrationContext: OrchestrationContext | undefined,
+) {
+	const workspace = orchestrationContext?.workspace;
+	const root = orchestrationContext?.workspaceRoot;
+	if (!workspace || !root) return createToolRegistry();
+
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	const workItemId = context.workflowBuildContext?.workItemId;
+	const getWorkflowLoopState =
+		workflowTaskService && workItemId
+			? async () => await workflowTaskService.getWorkflowLoopState(workItemId)
+			: undefined;
+
+	return createToolRegistry([
+		[
+			WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW,
+			createIdentityEnforcedSubmitWorkflowTool({
+				context,
+				workspace,
+				root,
+				defaultFilePath: `${root}/src/workflow.ts`,
+				currentRunId: context.runId ?? orchestrationContext.runId,
+				getWorkflowLoopState,
+				onAttempt: () => {},
+			}),
+		],
+	]);
 }
 
 export async function createInstanceAgent(options: CreateInstanceAgentOptions): Promise<Agent> {
@@ -75,9 +115,14 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
+	const runtimeWorkflowTools = createRuntimeWorkflowTools(context, orchestrationContext);
 
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
-	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
+	const reservedToolNames = new Set([
+		...domainTools.keys(),
+		...orchestrationTools.keys(),
+		...runtimeWorkflowTools.keys(),
+	]);
 
 	// Store all MCP tools on orchestrationContext for sub-agents.
 	const allMcpTools = createToolRegistry();
@@ -113,6 +158,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
+		runtimeWorkflowTools,
 		safeLocalMcpTools,
 		safeMcpTools,
 	);
