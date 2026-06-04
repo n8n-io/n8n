@@ -110,6 +110,7 @@
       "ws": ">=8.17.1",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
+      "flatted": "3.4.2",
       "form-data": "4.0.4",
       "tmp": "0.2.4",
       "nodemailer": "7.0.11",
