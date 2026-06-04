@@ -35,6 +35,8 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-otel-config': never;
+
 	// #region Community packages
 
 	'community-package-install': {

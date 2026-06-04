@@ -239,7 +239,20 @@ describe('WorkflowSettingsVue', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
 			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+					exporterEndpoint: '',
+					exporterTracingPath: '',
+					exporterServiceName: '',
+					exporterHeaders: '',
+					tracesSampleRate: 1,
+					startupConnectivityTimeoutMs: 2000,
+					includeNodeSpans: true,
+					injectOutbound: true,
+					productionExecutionsOnly: true,
+				},
+			};
 		});
 
 		it('should show custom span attribute settings when OTel custom span attributes are enabled', async () => {
@@ -250,8 +263,21 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
 		});
 
-		it('should hide custom span attribute settings when OTel is disabled', async () => {
-			settingsStore.moduleSettings = { otel: { enabled: false } };
+		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+					exporterEndpoint: '',
+					exporterTracingPath: '',
+					exporterServiceName: '',
+					exporterHeaders: '',
+					tracesSampleRate: 1,
+					startupConnectivityTimeoutMs: 2000,
+					includeNodeSpans: true,
+					injectOutbound: true,
+					productionExecutionsOnly: true,
+				},
+			};
 			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();

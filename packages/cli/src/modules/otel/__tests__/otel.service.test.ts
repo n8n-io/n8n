@@ -1,9 +1,9 @@
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { Logger } from '@n8n/backend-common';
-
-import { OtelConfig } from '../otel.config';
+import type { OtelSettingsService } from '../otel-settings.service';
+import type { OtelConfig } from '../otel.config';
 import { OtelService } from '../otel.service';
 
 const start = jest.fn();
@@ -17,10 +17,10 @@ jest.mock('@opentelemetry/sdk-node', () => ({
 }));
 
 describe('OtelService', () => {
-	const config = new OtelConfig();
+	const otelSettingsService = mock<OtelSettingsService>();
 	const instanceSettings = mock<InstanceSettings>();
 	const logger = mock<Logger>();
-	const service = new OtelService(config, instanceSettings, logger);
+	const service = new OtelService(otelSettingsService, instanceSettings, logger);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -29,24 +29,29 @@ describe('OtelService', () => {
 	});
 
 	it('should log startup connectivity failures and continue startup', async () => {
-		const config = mock<OtelConfig>({
+		const otelSettingsService = mock<OtelSettingsService>();
+		otelSettingsService.loadEffective.mockResolvedValue({
 			enabled: true,
 			exporterEndpoint: 'http://localhost:4318',
 			exporterTracingPath: '/v1/traces',
 			exporterHeaders: '',
+			exporterServiceName: 'n8n',
 			tracesSampleRate: 1,
 			startupConnectivityTimeoutMs: 2_000,
-		});
+			includeNodeSpans: true,
+			injectOutbound: true,
+			productionExecutionsOnly: true,
+		} satisfies OtelConfig);
 		const instanceSettings = mock<InstanceSettings>({
 			instanceId: 'instance-1',
 			instanceType: 'main',
 		});
 		const logger = mock<Logger>();
-		const service = new OtelService(config, instanceSettings, logger);
+		const service = new OtelService(otelSettingsService, instanceSettings, logger);
 		const fetchMock = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED'));
 		global.fetch = fetchMock as unknown as typeof fetch;
 
-		service.init();
+		await service.init();
 		await new Promise<void>((resolve) => {
 			setImmediate(() => resolve());
 		});

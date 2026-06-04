@@ -28,6 +28,7 @@ export type PubSubEventName =
 	| 'reload-sso-provisioning-configuration'
 	| 'reload-source-control-config'
 	| 'reload-mcp-registry'
+	| 'reload-otel-config'
 	| 'cancel-test-run'
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'

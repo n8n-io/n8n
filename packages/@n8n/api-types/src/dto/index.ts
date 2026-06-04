@@ -255,3 +255,5 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';

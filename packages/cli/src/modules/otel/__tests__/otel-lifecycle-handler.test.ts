@@ -13,7 +13,9 @@ import type { OwnershipService } from '@/services/ownership.service';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
-import { OtelConfig } from '../otel.config';
+import type { OtelSettingsService } from '../otel-settings.service';
+import type { OtelConfig } from '../otel.config';
+import type { OtelService } from '../otel.service';
 import type { TracingContext, TraceContextService } from '../tracing-context';
 
 const emptyExecutionData = {
@@ -34,15 +36,28 @@ function createWorkflowInstance() {
 	});
 }
 
-function makeOtelConfig(overrides: Partial<OtelConfig> = {}): OtelConfig {
-	return Object.assign(new OtelConfig(), overrides);
+function makeOtelSettingsService(overrides: Partial<OtelConfig> = {}): OtelSettingsService {
+	const currentSettings: OtelConfig = {
+		enabled: true,
+		productionExecutionsOnly: false,
+		includeNodeSpans: true,
+		exporterEndpoint: 'http://localhost:4318',
+		exporterTracingPath: '/v1/traces',
+		exporterServiceName: 'n8n',
+		exporterHeaders: '',
+		tracesSampleRate: 1,
+		startupConnectivityTimeoutMs: 2_000,
+		injectOutbound: true,
+		...overrides,
+	};
+	return { currentSettings } as unknown as OtelSettingsService;
 }
 
 describe('OtelLifecycleHandler', () => {
 	describe('onWorkflowStart', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		let config = makeOtelConfig();
+		let otelSettingsService = makeOtelSettingsService();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
@@ -76,11 +91,12 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ productionExecutionsOnly: false });
+			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
-				config,
+				mock<OtelService>(),
+				otelSettingsService,
 				ownershipService,
 				logger,
 				licenseState,
@@ -336,7 +352,7 @@ describe('OtelLifecycleHandler', () => {
 	describe('onWorkflowResume', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		let config = makeOtelConfig();
+		let otelSettingsService = makeOtelSettingsService();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
@@ -351,11 +367,12 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ productionExecutionsOnly: false });
+			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
-				config,
+				mock<OtelService>(),
+				otelSettingsService,
 				ownershipService,
 				logger,
 				licenseState,
@@ -496,7 +513,7 @@ describe('OtelLifecycleHandler', () => {
 	describe('onWorkflowEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		let config = makeOtelConfig();
+		let otelSettingsService = makeOtelSettingsService();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
@@ -504,11 +521,12 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ productionExecutionsOnly: false });
+			otelSettingsService = makeOtelSettingsService({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
-				config,
+				mock<OtelService>(),
+				otelSettingsService,
 				ownershipService,
 				logger,
 				licenseState,
@@ -573,7 +591,7 @@ describe('OtelLifecycleHandler', () => {
 	describe('onNodeStart / onNodeEnd', () => {
 		const tracer = mock<ExecutionLevelTracer>();
 		const traceContextService = mock<TraceContextService>();
-		let config = makeOtelConfig();
+		let otelSettingsService = makeOtelSettingsService();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
 		const licenseState = mock<LicenseState>();
@@ -611,11 +629,15 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ productionExecutionsOnly: false, includeNodeSpans: true });
+			otelSettingsService = makeOtelSettingsService({
+				productionExecutionsOnly: false,
+				includeNodeSpans: true,
+			});
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
-				config,
+				mock<OtelService>(),
+				otelSettingsService,
 				ownershipService,
 				logger,
 				licenseState,
@@ -624,11 +646,12 @@ describe('OtelLifecycleHandler', () => {
 		});
 
 		it('should skip node spans when includeNodeSpans is false', () => {
-			config.includeNodeSpans = false;
+			otelSettingsService.currentSettings!.includeNodeSpans = false;
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
-				config,
+				mock<OtelService>(),
+				otelSettingsService,
 				ownershipService,
 				logger,
 				licenseState,
@@ -725,7 +748,7 @@ describe('OtelLifecycleHandler', () => {
 describe('productionExecutionsOnly filter', () => {
 	const tracer = mock<ExecutionLevelTracer>();
 	const traceContextService = mock<TraceContextService>();
-	let config = makeOtelConfig();
+	let otelSettingsService = makeOtelSettingsService();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
 	const licenseState = mock<LicenseState>();
@@ -792,13 +815,17 @@ describe('productionExecutionsOnly filter', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		config = makeOtelConfig({ productionExecutionsOnly: true, includeNodeSpans: true });
+		otelSettingsService = makeOtelSettingsService({
+			productionExecutionsOnly: true,
+			includeNodeSpans: true,
+		});
 		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);
 		handler = new OtelLifecycleHandler(
 			tracer,
 			traceContextService,
-			config,
+			mock<OtelService>(),
+			otelSettingsService,
 			ownershipService,
 			logger,
 			licenseState,
@@ -829,7 +856,7 @@ describe('productionExecutionsOnly filter', () => {
 	});
 
 	it('should trace an inactive workflow when productionExecutionsOnly is false', async () => {
-		config.productionExecutionsOnly = false;
+		otelSettingsService.currentSettings!.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
