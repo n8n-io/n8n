@@ -192,12 +192,17 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 		});
 
 		it("falls back to the instance owner's personal project for an orphaned thread", async () => {
+			const ownerId = randomUUID();
+			const seededOwnerProjectId = randomUUID();
 			const orphanThreadId = randomUUID();
 
 			await withContext(async (context) => {
-				// The instance owner + personal project already exist (seeded by initDb).
-				// The orphan's resourceId points at a user that no longer exists, so the
-				// migration falls back to the owner's personal project.
+				// Seed an instance owner explicitly so the test does not rely on initDb's
+				// seeding. The orphan's resourceId points at a user that no longer exists,
+				// so the migration falls back to the instance owner's personal project.
+				await insertUser(context, ownerId, 'global:owner');
+				await insertProject(context, seededOwnerProjectId);
+				await insertPersonalOwnerRelation(context, ownerId, seededOwnerProjectId);
 				await insertThread(context, { id: orphanThreadId, resourceId: randomUUID() });
 			});
 
@@ -205,6 +210,9 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 			dataSource = Container.get(DataSource);
 
 			await withContext(async (context) => {
+				// The migration's catch-all picks an owner's personal project via the same
+				// owner lookup; assert against that so this holds even if initDb also seeds
+				// an owner.
 				const ownerProjectId = await getInstanceOwnerPersonalProjectId(context);
 				expect(ownerProjectId).toBeTruthy();
 				expect(await getThreadProjectId(context, orphanThreadId)).toBe(ownerProjectId);
