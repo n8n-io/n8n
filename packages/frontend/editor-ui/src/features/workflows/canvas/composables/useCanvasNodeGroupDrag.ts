@@ -160,21 +160,25 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		snapshotGroup(node);
 	}
 
+	// Per-tick handler shared by single-node and selection drag:
+	//   - Group title bar  → push the drag delta to its members.
+	//   - Regular member   → keep its owning group's title bar tracking
+	//                        the live rect (collected and synced in one shot).
+	function handleDragTick(nodes: readonly GraphNode[]) {
+		const membersToSync: Array<{ id: string; position: { x: number; y: number } }> = [];
+		for (const node of nodes) {
+			if (isCanvasNodeGroup(node)) {
+				applyDelta(node);
+			} else {
+				membersToSync.push({ id: node.id, position: { x: node.position.x, y: node.position.y } });
+			}
+		}
+		if (membersToSync.length > 0) syncGroupBoundsFromMembers(membersToSync);
+	}
+
 	function onNodeDrag(event: NodeDragEvent) {
 		if (isMultiSelectDrag(event)) return;
-		const node = event.node;
-
-		// Group title bar: push the drag delta to its members
-		if (isCanvasNodeGroup(node)) {
-			applyDelta(node);
-			return;
-		}
-
-		// Regular node: if it's a member of some group, keep that group's
-		// title bar tracking the live rect
-		syncGroupBoundsFromMembers([
-			{ id: node.id, position: { x: node.position.x, y: node.position.y } },
-		]);
+		handleDragTick([event.node]);
 	}
 
 	function processNodeDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
@@ -200,22 +204,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	function onSelectionDrag(event: NodeDragEvent) {
-		const membersToSync: Array<{ id: string; position: { x: number; y: number } }> = [];
-
-		for (const node of event.nodes ?? []) {
-			if (isCanvasNodeGroup(node)) {
-				// Group title bar: push the drag delta to its members
-				applyDelta(node);
-			} else {
-				// Regular node: collect for the post-loop sync below
-				membersToSync.push({ id: node.id, position: { x: node.position.x, y: node.position.y } });
-			}
-		}
-
-		// Keep any group whose members were dragged tracking the live rect
-		if (membersToSync.length > 0) {
-			syncGroupBoundsFromMembers(membersToSync);
-		}
+		handleDragTick(event.nodes ?? []);
 	}
 
 	function processSelectionDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
