@@ -2,7 +2,8 @@
 
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
@@ -199,6 +200,57 @@ export async function getPublishedWorkflowData(
 	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
 		extra: { workflowId: workflowInfo.id },
 	});
+}
+
+/**
+ * Determines a workflow's deadline given its start time, its settings
+ * and global execution config.
+ */
+function determineWorkflowDeadline(
+	startTime: number,
+	workflowSettings: IWorkflowSettings | undefined,
+	executionsConfig: ExecutionsConfig,
+): number | undefined {
+	const effectiveMaxTimeout =
+		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
+	if (workflowSettings?.executionTimeout !== undefined) {
+		// A defined timeout of <= 0 means the workflow's own timeout is explicitly
+		// disabled, so it runs unbounded rather than falling back to the global
+		// default. Otherwise it is clamped to the configurable maximum. This mirrors
+		// the main-workflow path in workflow-runner.ts and job-processor.ts.
+		if (workflowSettings.executionTimeout <= 0) {
+			return undefined;
+		}
+		return (
+			startTime +
+			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	if (executionsConfig.timeout > 0) {
+		return (
+			startTime +
+			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	return undefined;
+}
+
+/**
+ * Resolves a sub-workflow deadline depending on its parent.
+ */
+function resolveSubworkflowDeadline(
+	subWorkflowDeadline: number | undefined,
+	parentDeadline: number | undefined,
+	doNotWaitToFinish: boolean | undefined,
+): number | undefined {
+	if (doNotWaitToFinish) {
+		return subWorkflowDeadline;
+	}
+	if (parentDeadline !== undefined && subWorkflowDeadline !== undefined) {
+		return Math.min(parentDeadline, subWorkflowDeadline);
+	}
+	return parentDeadline ?? subWorkflowDeadline;
 }
 
 /**
@@ -443,18 +495,15 @@ async function startExecution(
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
-		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			// We might have received a max timeout timestamp from the parent workflow
-			// If we did, then we get the minimum time between the two timeouts
-			// If no timeout was given from the parent, then we use our timeout.
-			subworkflowTimeout = Math.min(
-				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				startTime + workflowSettings.executionTimeout * 1000,
-			);
-		}
+		const executionsConfig = Container.get(ExecutionsConfig);
 
-		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		const subworkflowDeadline = resolveSubworkflowDeadline(
+			determineWorkflowDeadline(startTime, workflowSettings, executionsConfig),
+			additionalData.executionTimeoutTimestamp,
+			options.doNotWaitToFinish,
+		);
+
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowDeadline;
 
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
