@@ -32,10 +32,6 @@ vi.mock('../nodes.tool', () => ({
 	})),
 }));
 
-vi.mock('../orchestration/build-workflow-agent.tool', () => ({
-	createBuildWorkflowAgentTool: vi.fn(() => ({ id: 'build-workflow-with-agent' })),
-}));
-
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
