@@ -118,7 +118,7 @@ describe('CheckService', () => {
 	it('runs reconcile immediately on takeover, again every 180s, and stops on stepdown', async () => {
 		const TickCheck = namedClass('TickCheck');
 		const runMock = vi
-			.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
+			.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
 			.mockResolvedValue({});
 		const tickInstance: IClusterCheck = {
 			checkDescription: { name: 'cluster.tick' },
@@ -146,7 +146,7 @@ describe('CheckService', () => {
 	it('does not reconcile when not leader, nor after shutdown', async () => {
 		const NoOp = namedClass('NoOp');
 		const runMock = vi
-			.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
+			.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
 			.mockResolvedValue({});
 		clusterCheckMetadata.getClasses.mockReturnValue([NoOp]);
 		containerGet.mockReturnValue({
@@ -169,7 +169,7 @@ describe('CheckService', () => {
 	it('reconcile forwards warnings/audit/push from runChecks and saves current state', async () => {
 		const WorkingCheck = namedClass('WorkingCheck');
 		const workingRun = vi
-			.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
+			.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
 			.mockResolvedValue({
 				warnings: [{ code: 'cluster.w', message: 'warn msg', severity: 'warning' }],
 				auditEvents: [{ eventName: 'n8n.audit.cluster.foo', payload: { a: 1 } }],
@@ -265,7 +265,7 @@ describe('CheckService', () => {
 		it('passes diff context to checks; short-circuits without I/O when no checks are registered', async () => {
 			const DiffCheck = namedClass('DiffCheck');
 			const runMock = vi
-				.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
+				.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
 				.mockResolvedValue({});
 			clusterCheckMetadata.getClasses.mockReturnValue([DiffCheck]);
 			containerGet.mockReturnValue({

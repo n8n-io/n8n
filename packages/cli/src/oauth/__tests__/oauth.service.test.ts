@@ -64,7 +64,7 @@ describe('OauthService', () => {
 	let service: OauthService;
 
 	const timestamp = 1706750625678;
-	vi.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ shouldAdvanceTime: true });
 
 	beforeEach(() => {
 		vi.setSystemTime(new Date(timestamp));
@@ -3397,7 +3397,7 @@ describe('OauthService', () => {
 				oauth_token_secret: 'access-secret',
 			});
 
-			const requestConfig = vi.mocked(axios.request).mock.calls.at(-1)?.[0];
+			const requestConfig = vi.mocked(axios.request).mock.calls.at(-1)![0];
 			expect(requestConfig.method).toBe('POST');
 			expect(requestConfig.url).toBe('https://trello.com/1/OAuthGetAccessToken');
 			// The request must carry an OAuth1 signature and the request token in the
