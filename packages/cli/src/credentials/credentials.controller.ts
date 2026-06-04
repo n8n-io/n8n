@@ -231,10 +231,13 @@ export class CredentialsController {
 
 		// Dynamic credentials and sharing are mutually exclusive: a credential that
 		// is already shared with other projects (or globally) can't become dynamic.
+		// Every credential has exactly one `credential:owner` sharing row, so any other
+		// row means it's shared — checking against the owner role keeps this robust if
+		// new sharing roles are introduced.
 		if (isTogglingToPrivate) {
 			const isShared =
 				credential.isGlobal ||
-				(credential.shared ?? []).some((sc) => sc.role === 'credential:user');
+				(credential.shared ?? []).some((sc) => sc.role !== 'credential:owner');
 			if (isShared) {
 				throw new BadRequestError(
 					'This credential is shared. Remove sharing before making it private.',
