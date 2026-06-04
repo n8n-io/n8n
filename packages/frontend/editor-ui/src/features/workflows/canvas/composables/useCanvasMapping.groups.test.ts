@@ -134,7 +134,9 @@ describe('mapGroupsToVueFlowNodes', () => {
 
 	it('top edge places title bar above nodesRect, snapped to the canvas grid', () => {
 		const collapsed = setup(true);
-		expect(collapsed[0].position.y).toBe(snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT));
+		expect(collapsed[0].position.y).toBe(
+			snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+		);
 	});
 
 	it('collapsed width is fixed 400px', () => {
