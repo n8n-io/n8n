@@ -205,8 +205,8 @@ export class OtelLifecycleHandler {
 	private buildProjectCustomAttributes(
 		tags: Array<{ key: string; value: string }> | undefined,
 	): Record<string, string> | undefined {
-		if (!tags?.length) return undefined;
 		if (!this.areCustomSpanAttributesLicensed()) return undefined;
+		if (!tags?.length) return undefined;
 
 		const attrs: Record<string, string> = {};
 		for (const { key, value } of tags) {
