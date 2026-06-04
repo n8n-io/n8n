@@ -27,7 +27,11 @@ import {
 	type KnowledgeBaseWorkspaceBundle,
 } from '../knowledge-base/materialize-knowledge-base';
 import type { ErrorReporter, Logger } from '../logger';
-import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
+import {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+} from './builder-templates-service';
+import { DAYTONA_WORKSPACE_ROOT, PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 import { disposeSnapshotImageContext, stageWorkspaceFilesForImage } from './snapshot-image-context';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
@@ -39,7 +43,6 @@ export interface CreateSnapshotOptions {
 	onLogs?: (chunk: string) => void;
 }
 
-const DAYTONA_WORKSPACE_ROOT = '/home/daytona/workspace';
 const DAYTONA_WORKSPACE_BAKE_ROOT = '/tmp/n8n-workspace-bake';
 const SNAPSHOT_WORKSPACE_LAYOUT_DIRS = ['src', 'chunks', 'node-types'] as const;
 const EMPTY_RUNTIME_SKILLS_HASH = '000000000000';
@@ -62,7 +65,7 @@ export class SnapshotManager {
 	private runtimeSkillBundlePromise: ReturnType<typeof buildRuntimeSkillWorkspaceBundle> | null =
 		null;
 
-	private knowledgeBaseBundleCache: KnowledgeBaseWorkspaceBundle | null = null;
+	private knowledgeBaseBundlePromise: Promise<KnowledgeBaseWorkspaceBundle> | null = null;
 
 	private stagingDir: string | null = null;
 
@@ -72,6 +75,7 @@ export class SnapshotManager {
 		private readonly n8nVersion: string | undefined,
 		private readonly errorReporter?: ErrorReporter,
 		private readonly runtimeSkillSource?: RuntimeSkillSource,
+		private readonly templatesService?: BuilderTemplatesService,
 	) {}
 
 	/** Get or prepare the image descriptor. */
@@ -83,7 +87,7 @@ export class SnapshotManager {
 	private async prepareImage(): Promise<Image> {
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
 		const runtimeSkillBundle = await this.runtimeSkillBundle();
-		const knowledgeBaseBundle = this.knowledgeBaseBundle();
+		const knowledgeBaseBundle = await this.knowledgeBaseBundle();
 		const cacheKey = await this.snapshotSuffix();
 
 		const workspaceFiles = new Map<string, string>([
@@ -192,7 +196,7 @@ export class SnapshotManager {
 	private async snapshotSuffix(): Promise<string> {
 		this.snapshotSuffixPromise ??= (async () => {
 			const runtimeSkillBundle = await this.runtimeSkillBundle();
-			const knowledgeBaseBundle = this.knowledgeBaseBundle();
+			const knowledgeBaseBundle = await this.knowledgeBaseBundle();
 			const skillsHash = runtimeSkillBundle?.skillsHash ?? EMPTY_RUNTIME_SKILLS_HASH;
 			const knowledgeBaseHash = knowledgeBaseBundle.contentHash ?? EMPTY_KNOWLEDGE_BASE_HASH;
 			return `${skillsHash}-${knowledgeBaseHash}`;
@@ -211,12 +215,22 @@ export class SnapshotManager {
 		return await this.runtimeSkillBundlePromise;
 	}
 
-	private knowledgeBaseBundle(): KnowledgeBaseWorkspaceBundle {
-		this.knowledgeBaseBundleCache ??= buildKnowledgeBaseWorkspaceBundle({
-			root: DAYTONA_WORKSPACE_ROOT,
-		});
+	private async knowledgeBaseBundle(): Promise<KnowledgeBaseWorkspaceBundle> {
+		this.knowledgeBaseBundlePromise ??= this.buildKnowledgeBaseBundle();
+		return await this.knowledgeBaseBundlePromise;
+	}
 
-		return this.knowledgeBaseBundleCache;
+	private async buildKnowledgeBaseBundle(): Promise<KnowledgeBaseWorkspaceBundle> {
+		const templatesService =
+			this.templatesService ??
+			new BuilderTemplatesService(builderTemplatesOptionsFromEnv({ logger: this.logger }));
+		const templatesBundle = await templatesService.getBundle();
+
+		return buildKnowledgeBaseWorkspaceBundle({
+			root: DAYTONA_WORKSPACE_ROOT,
+			templatesArchive: templatesBundle.archive,
+			logger: this.logger,
+		});
 	}
 
 	private async snapshotName(): Promise<string> {
@@ -233,7 +247,7 @@ export class SnapshotManager {
 		this.snapshotPromise = null;
 		this.snapshotSuffixPromise = null;
 		this.runtimeSkillBundlePromise = null;
-		this.knowledgeBaseBundleCache = null;
+		this.knowledgeBaseBundlePromise = null;
 		this.stagingDir = null;
 		if (stagingDir) {
 			void disposeSnapshotImageContext(stagingDir);

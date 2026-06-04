@@ -1,5 +1,5 @@
 import type { Driver, QueryRunner, Table } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { Column } from '../column';
 import { AddColumns, AddEnumCheck, CreateTable, DropEnumCheck } from '../table';

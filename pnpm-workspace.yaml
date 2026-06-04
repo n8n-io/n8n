@@ -75,7 +75,7 @@ catalog:
   '@types/lodash': 4.17.17
   '@types/mime-types': 3.0.1
   '@types/node': 24.10.1
-  '@types/uuid': ^10.0.0
+  '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
   '@stryker-mutator/core': 9.6.1
   '@stryker-mutator/vitest-runner': 9.6.1
@@ -135,7 +135,7 @@ catalog:
   tsdown: ^0.16.5
   tsx: ^4.19.3
   typescript: 6.0.2
-  uuid: 10.0.0
+  uuid: 11.1.1
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
   vite-plugin-singlefile: 2.3.3
