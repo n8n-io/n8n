@@ -369,8 +369,16 @@ export const setupTestServer = ({
 	});
 
 	afterAll(async () => {
+		// Close the HTTP server first so any in-flight requests can't reach the
+		// DI container after testDb.terminate() resets it. Await the close so
+		// pending handlers drain before the next file's beforeAll runs in
+		// persistent Jest workers — otherwise stale handlers call
+		// Container.get(Logger), construct a fresh Logger, and trip Jest's
+		// "environment torn down" guard when winston is imported.
+		await new Promise<void>((resolve, reject) => {
+			testServer.httpServer.close((err) => (err ? reject(err) : resolve()));
+		});
 		await testDb.terminate();
-		testServer.httpServer.close();
 	});
 
 	beforeEach(() => {
