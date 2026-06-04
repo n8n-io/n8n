@@ -26,6 +26,11 @@ const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'blocked',
 ];
 
+const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
+	'require_approval',
+	'always_allow',
+];
+
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 	require_approval: 'settings.n8nAgent.permissions.needsApproval',
 	always_allow: 'settings.n8nAgent.permissions.alwaysAllow',
@@ -35,7 +40,6 @@ const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 const permissionKeys: Array<{
 	key: keyof InstanceAiPermissions;
 	labelKey: BaseTextKey;
-	options?: InstanceAiPermissionMode[];
 }> = [
 	{ key: 'createWorkflow', labelKey: 'settings.n8nAgent.permissions.createWorkflow' },
 	{ key: 'updateWorkflow', labelKey: 'settings.n8nAgent.permissions.updateWorkflow' },
@@ -61,21 +65,9 @@ const permissionKeys: Array<{
 		key: 'restoreWorkflowVersion',
 		labelKey: 'settings.n8nAgent.permissions.restoreWorkflowVersion',
 	},
-	{
-		key: 'executeMcpTool',
-		labelKey: 'settings.n8nAgent.permissions.executeMcpTool',
-		options: ['require_approval', 'always_allow'],
-	},
 ];
 
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
-
-/** Permission rows with options defaulted; Execute MCP tools is hidden when MCP access is off. */
-const permissionRows = computed(() =>
-	permissionKeys
-		.filter((perm) => perm.key !== 'executeMcpTool' || isMcpAccessEnabled.value)
-		.map((perm) => ({ ...perm, options: perm.options ?? PERMISSION_OPTIONS })),
-);
 
 const isEnabled = computed(
 	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
@@ -167,7 +159,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 				</div>
 
 				<div v-if="isAdmin" :class="$style.card">
-					<div :class="$style.settingsRow">
+					<div :class="[$style.settingsRow, { [$style.settingsRowBorder]: isMcpAccessEnabled }]">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
 								{{ i18n.baseText('settings.n8nAgent.mcpAccess.label') }}
@@ -183,6 +175,30 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							@update:model-value="handleMcpAccessToggle"
 						/>
 					</div>
+					<div v-if="isMcpAccessEnabled" :class="$style.settingsRow">
+						<div :class="$style.settingsRowLeft">
+							<span :class="$style.settingsRowLabel">
+								{{ i18n.baseText('settings.n8nAgent.permissions.executeMcpTool') }}
+							</span>
+						</div>
+						<N8nSelect
+							:class="$style.permissionSelect"
+							:model-value="store.getPermission('executeMcpTool')"
+							size="small"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-permission-executeMcpTool"
+							@update:model-value="
+								handlePermissionChange('executeMcpTool', $event as InstanceAiPermissionMode)
+							"
+						>
+							<N8nOption
+								v-for="option in MCP_TOOL_PERMISSION_OPTIONS"
+								:key="option"
+								:value="option"
+								:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
+							/>
+						</N8nSelect>
+					</div>
 				</div>
 
 				<template v-if="isAdmin">
@@ -197,11 +213,11 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 
 					<div :class="$style.card">
 						<div
-							v-for="(perm, index) in permissionRows"
+							v-for="(perm, index) in permissionKeys"
 							:key="perm.key"
 							:class="[
 								$style.settingsRow,
-								{ [$style.settingsRowBorder]: index < permissionRows.length - 1 },
+								{ [$style.settingsRowBorder]: index < permissionKeys.length - 1 },
 							]"
 						>
 							<div :class="$style.settingsRowLeft">
@@ -220,7 +236,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 								"
 							>
 								<N8nOption
-									v-for="option in perm.options"
+									v-for="option in PERMISSION_OPTIONS"
 									:key="option"
 									:value="option"
 									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"

@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository, User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -106,6 +108,21 @@ describe('InstanceAiSettingsService', () => {
 
 		it('isMcpAccessEnabled reflects an update', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(service.isMcpAccessEnabled()).toBe(false);
+		});
+
+		it('applies a persisted value when loading from the database', async () => {
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			Container.set(Logger, logger);
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ mcpAccessEnabled: false }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
 
 			expect(service.isMcpAccessEnabled()).toBe(false);
 		});
