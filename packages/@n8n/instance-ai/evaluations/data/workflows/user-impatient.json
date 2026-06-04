@@ -1,0 +1,25 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I've got an incoming webhook with order data. Set it up to receive and store the orders — build it however makes sense with sensible defaults, don't ask me a bunch of questions."
+		},
+		{
+			"role": "user",
+			"text": "Seriously, just pick sensible defaults and build it — I trust your judgement, I don't want to fill in details."
+		}
+	],
+	"messageBudget": 3,
+	"complexity": "simple",
+	"tags": ["build", "webhook", "behavior", "impatient"],
+	"triggerType": "webhook",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Webhook receives an order payload and the agent's chosen storage persists it",
+			"dataSetup": "The webhook trigger receives a POST with an order payload: { \"orderId\": \"ORD-1042\", \"customer\": \"alice@example.com\", \"total\": 89.99, \"currency\": \"USD\", \"items\": [{ \"sku\": \"SKU-1\", \"qty\": 2 }] }. Whatever storage node the agent chose (database, Google Sheet, Airtable, etc.) returns a success response.",
+			"successCriteria": "The workflow executes without errors. The incoming order payload is persisted to whatever storage destination the agent chose with sensible defaults — the exact destination is not prescribed, since the user delegated the decision. The order's identifying fields (e.g. orderId, customer, total) reach the storage node."
+		}
+	],
+	"datasets": ["full"]
+}
