@@ -73,6 +73,8 @@ import {
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
+	type PlannedTaskService,
+	type PlannedWorkflowVerification,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
@@ -125,9 +127,20 @@ import {
 	type InstanceAiRunTraceMetadataOptions,
 } from './run-trace-metadata';
 import {
-	WorkflowVerificationTaskProjector,
 	parseWorkflowBuildOutcome,
-} from './workflow-verification-task-projector';
+	WorkflowVerificationObligationService,
+} from './workflow-verification-obligation-service';
+import {
+	PlannedTaskActionRunner,
+	type PlannedBuildFollowUp,
+	type PlannedTaskDispatcher,
+	type PlannedTaskFollowUpStarter,
+	type PlannedTaskRunGate,
+	type PlannedTaskRunScope,
+	type PlannedTaskView,
+	type PlannedWorkflowVerificationTracker,
+} from './planned-task-action-runner';
+import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -166,14 +179,6 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
-
-type PlannedBuildFollowUp = {
-	isPlannedBuildFollowUp: true;
-	buildTaskId: string;
-	workItemId: string;
-	isSupportingWorkflowTask?: boolean;
-	savedOutcome?: WorkflowBuildOutcome;
-};
 
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
@@ -602,6 +607,8 @@ export class InstanceAiService {
 
 	private readonly logger: Logger;
 
+	private readonly workflowObligations: WorkflowVerificationObligationService;
+
 	private readonly taskProjector: WorkflowVerificationTaskProjector;
 
 	private checkpointPruneTimer: NodeJS.Timeout | undefined;
@@ -672,10 +679,12 @@ export class InstanceAiService {
 		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('instance-ai');
+		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
 			this.agentMemory,
 			this.eventBus,
 			this.logger,
+			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
 		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
@@ -3288,26 +3297,13 @@ export class InstanceAiService {
 
 	/**
 	 * Resolve the workflow IDs the checkpoint task is verifying so the runWorkflow
-	 * permission override can be scoped, and keep explicit user-requested runs
-	 * approval-gated even when they happen as checkpoint fallback.
+	 * permission override can be scoped.
 	 */
 	private checkpointRequiresRunApproval(
 		graph: PlannedTaskGraph,
-		checkpoint: PlannedTaskRecord,
+		_checkpoint: PlannedTaskRecord,
 	): boolean {
-		if (graph.postBuildRunApprovalRequired === true) return true;
-
-		const deps = new Set(checkpoint.deps);
-		const text = graph.tasks
-			.filter((task) => deps.has(task.id))
-			.map((task) => `${task.title}\n${task.spec}`)
-			.join('\n')
-			.toLowerCase();
-
-		return (
-			/\bthen\s+(run|execute|test)\b/.test(text) ||
-			/\b(run|execute|test)\s+(it\s+)?(once|immediately|manually|after building)\b/.test(text)
-		);
+		return graph.postBuildRunApprovalRequired === true;
 	}
 
 	private async getCheckpointRunPolicy(
@@ -3382,10 +3378,14 @@ export class InstanceAiService {
 	): Promise<boolean> {
 		if (task.role !== 'workflow-builder' || !task.workItemId) return false;
 
-		const obligation = await this.taskProjector.getObligation(task.threadId, task.workItemId, {
-			source: task.plannedTaskId ? 'planned' : 'direct',
-			plannedTaskId: task.plannedTaskId,
-		});
+		const obligation = await this.workflowObligations.getObligation(
+			task.threadId,
+			task.workItemId,
+			{
+				source: task.plannedTaskId ? 'planned' : 'direct',
+				plannedTaskId: task.plannedTaskId,
+			},
+		);
 		if (!obligation) return false;
 		this.trackWorkflowVerificationObligation(obligation, 'background_task_settled');
 
@@ -3449,9 +3449,9 @@ export class InstanceAiService {
 
 		for (const record of records) {
 			if (record.state.setupRoutedAt) continue;
-			if (record.state.plannedTaskId || record.lastBuildOutcome?.plannedTaskId) continue;
+			if (this.workflowObligations.isPlannedRecord(record)) continue;
 
-			const obligation = this.taskProjector.obligationFromRecord(threadId, record, {
+			const obligation = this.workflowObligations.obligationFromRecord(threadId, record, {
 				source: 'direct',
 			});
 			const verificationConcluded =
@@ -3610,6 +3610,169 @@ export class InstanceAiService {
 		await current;
 	}
 
+	private createPlannedTaskActionRunner(
+		activeUser: User,
+		threadId: string,
+		plannedTaskService: PlannedTaskService,
+	): PlannedTaskActionRunner {
+		const scope: PlannedTaskRunScope = { user: activeUser, threadId };
+		return new PlannedTaskActionRunner({
+			scope,
+			plannedTaskService,
+			logger: this.logger,
+			view: this.createPlannedTaskView(),
+			runGate: this.createPlannedTaskRunGate(),
+			dispatcher: this.createPlannedTaskDispatcher(),
+			followUps: this.createPlannedTaskFollowUps(),
+			workflowVerificationTracker: this.createPlannedWorkflowVerificationTracker(),
+		});
+	}
+
+	private createPlannedTaskView(): PlannedTaskView {
+		return {
+			sync: async (scope, graph) => await this.syncPlannedTasksToUi(scope.threadId, graph),
+		};
+	}
+
+	private createPlannedTaskRunGate(): PlannedTaskRunGate {
+		return {
+			hasLiveRun: (threadId) => this.runState.hasLiveRun(threadId),
+		};
+	}
+
+	private createPlannedTaskDispatcher(): PlannedTaskDispatcher {
+		return {
+			dispatch: async ({ scope, graph, tasks }) => {
+				const context = await this.createPlannedTaskDispatchContext(
+					scope.user,
+					scope.threadId,
+					graph,
+				);
+
+				for (const task of tasks) {
+					await this.dispatchPlannedTask(task, context, graph);
+				}
+			},
+		};
+	}
+
+	private createPlannedTaskFollowUps(): PlannedTaskFollowUpStarter {
+		return {
+			startReplan: async ({ scope, graph, failedTask }) =>
+				await this.startInternalFollowUpRun(
+					scope.user,
+					scope.threadId,
+					this.buildPlannedTaskFollowUpMessage('replan', graph, { failedTask }),
+					graph.messageGroupId,
+					true,
+					undefined,
+					undefined,
+					undefined,
+				),
+			startWorkflowVerification: async ({ scope, graph, verification }) =>
+				await this.startInternalFollowUpRun(
+					scope.user,
+					scope.threadId,
+					this.buildWorkflowVerificationFollowUpMessage({
+						obligation: verification.obligation,
+						outcome: verification.outcome,
+						sourceTask: this.toWorkflowVerificationSourceTask(verification),
+					}),
+					graph.messageGroupId,
+					false,
+					undefined,
+					'workflow_verification',
+					undefined,
+				),
+			startSynthesis: async ({ scope, graph }) =>
+				await this.startInternalFollowUpRun(
+					scope.user,
+					scope.threadId,
+					this.buildPlannedTaskFollowUpMessage('synthesize', graph),
+					graph.messageGroupId,
+					false,
+					undefined,
+					'synthesize',
+					undefined,
+				),
+			startWorkflowBuild: async ({ scope, graph, task, workItemId }) => {
+				const plannedBuild: PlannedBuildFollowUp = {
+					isPlannedBuildFollowUp: true,
+					buildTaskId: task.id,
+					workItemId,
+					isSupportingWorkflowTask: task.isSupportingWorkflow === true,
+				};
+
+				return await this.startInternalFollowUpRun(
+					scope.user,
+					scope.threadId,
+					this.buildPlannedTaskFollowUpMessage('build-workflow', graph, { buildTask: task }),
+					graph.messageGroupId,
+					false,
+					undefined,
+					undefined,
+					plannedBuild,
+				);
+			},
+			startCheckpoint: async ({ scope, graph, task }) =>
+				await this.startInternalFollowUpRun(
+					scope.user,
+					scope.threadId,
+					this.buildPlannedTaskFollowUpMessage('checkpoint', graph, { checkpoint: task }),
+					graph.messageGroupId,
+					false,
+					{ isCheckpointFollowUp: true, checkpointTaskId: task.id },
+					undefined,
+					undefined,
+				),
+		};
+	}
+
+	private toWorkflowVerificationSourceTask(
+		verification: PlannedWorkflowVerification,
+	): Pick<
+		ManagedBackgroundTask,
+		'taskId' | 'role' | 'status' | 'result' | 'error' | 'plannedTaskId' | 'workItemId'
+	> {
+		return {
+			taskId: verification.task.backgroundTaskId ?? verification.task.id,
+			role: 'workflow-builder',
+			status: 'completed',
+			result: verification.task.result,
+			error: verification.task.error,
+			plannedTaskId: verification.task.id,
+			workItemId: verification.obligation.workItemId,
+		};
+	}
+
+	private createPlannedWorkflowVerificationTracker(): PlannedWorkflowVerificationTracker {
+		return {
+			scheduled: ({ obligation }) =>
+				this.trackWorkflowVerificationObligation(obligation, 'planned_verification_scheduled'),
+			followUpStartAttempted: ({ obligation }, started) =>
+				this.trackWorkflowVerificationObligation(obligation, 'follow_up_start_attempted', {
+					follow_up_started: started,
+				}),
+		};
+	}
+
+	private async createPlannedTaskDispatchContext(
+		user: User,
+		threadId: string,
+		graph: PlannedTaskGraph,
+	): Promise<OrchestrationContext> {
+		const environment = await this.createExecutionEnvironment(
+			user,
+			threadId,
+			graph.planRunId,
+			createInertAbortSignal(),
+			graph.messageGroupId,
+			this.threadPushRef.get(threadId),
+		);
+		environment.orchestrationContext.tracing = this.getTraceContext(graph.planRunId);
+		return environment.orchestrationContext;
+	}
+
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
 		const revalidated = await this.revalidateActiveUser(user.id);
 		if (!revalidated) {
@@ -3624,217 +3787,34 @@ export class InstanceAiService {
 		const activeUser = revalidated;
 
 		const { plannedTaskService } = await this.createPlannedTaskState();
-		const graph = await plannedTaskService.getGraph(threadId);
-		if (!graph) return;
-
-		await this.syncPlannedTasksToUi(threadId, graph);
-
-		const availableSlots = Math.max(
-			0,
-			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD -
-				this.backgroundTasks.getRunningTasks(threadId).length,
-		);
-		const pendingWorkflowVerification =
-			await this.taskProjector.findPendingPlannedWorkflowVerification(threadId, graph);
-		const action = await plannedTaskService.tick(threadId, {
-			availableSlots,
-			pendingWorkflowVerification,
-		});
-		if (action.type === 'none') return;
-
-		if (action.type === 'replan') {
-			await this.syncPlannedTasksToUi(threadId, action.graph);
-			const startedRunId = await this.startInternalFollowUpRun(
-				activeUser,
-				threadId,
-				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
-					failedTask: action.failedTask,
-				}),
-				action.graph.messageGroupId,
-				true,
-			);
-			// tick() already transitioned the graph to `awaiting_replan`. If the
-			// follow-up run couldn't start (live run present), revert the status
-			// so the next schedulePlannedTasks() pass can re-emit this action.
-			// Without this, tick() returns `none` for non-active graphs and the
-			// replan is silently lost.
-			if (!startedRunId) {
-				await plannedTaskService.revertToActive(threadId);
-			}
-			return;
-		}
-
-		if (action.type === 'orchestrate-workflow-verification') {
-			const { verification } = action;
-			this.trackWorkflowVerificationObligation(
-				verification.obligation,
-				'planned_verification_scheduled',
-			);
-			await this.syncPlannedTasksToUi(threadId, action.graph);
-
-			const startedRunId = await this.startInternalFollowUpRun(
-				activeUser,
-				threadId,
-				this.buildWorkflowVerificationFollowUpMessage({
-					obligation: verification.obligation,
-					outcome: verification.outcome,
-					sourceTask: {
-						taskId: verification.task.backgroundTaskId ?? verification.task.id,
-						role: 'workflow-builder',
-						status: 'completed',
-						result: verification.task.result,
-						error: verification.task.error,
-						plannedTaskId: verification.task.id,
-						workItemId: verification.obligation.workItemId,
-					},
-				}),
-				action.graph.messageGroupId,
-				false,
-				undefined,
-				'workflow_verification',
-			);
-			this.trackWorkflowVerificationObligation(
-				verification.obligation,
-				'follow_up_start_attempted',
-				{
-					follow_up_started: startedRunId.length > 0,
-				},
-			);
-			return;
-		}
-
-		if (action.type === 'synthesize') {
-			await this.syncPlannedTasksToUi(threadId, action.graph);
-			const startedRunId = await this.startInternalFollowUpRun(
-				activeUser,
-				threadId,
-				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
-				action.graph.messageGroupId,
-				false,
-				undefined,
-				'synthesize',
-			);
-			// Same rollback as replan: tick() transitioned to `completed`, but if
-			// the synthesize follow-up didn't actually start, revert so the next
-			// tick can emit it again.
-			if (!startedRunId) {
-				await plannedTaskService.revertToActive(threadId);
-			}
-			return;
-		}
-
-		if (action.type === 'orchestrate-build-workflow') {
-			if (this.runState.hasLiveRun(threadId)) {
-				return;
-			}
-
-			const buildTask = action.tasks[0];
-			const workItemId = buildTask.workflowId
-				? `${action.graph.planRunId}:default`
-				: `wi_${nanoid(8)}`;
-			await plannedTaskService.markRunning(threadId, buildTask.id, {
-				agentId: ORCHESTRATOR_AGENT_ID,
-			});
-			const graphAfterMark = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
-			await this.syncPlannedTasksToUi(threadId, graphAfterMark);
-
-			const buildTaskRecord = graphAfterMark.tasks.find((t) => t.id === buildTask.id) ?? buildTask;
-			const plannedBuild: PlannedBuildFollowUp = {
-				isPlannedBuildFollowUp: true,
-				buildTaskId: buildTask.id,
-				workItemId,
-				isSupportingWorkflowTask: buildTaskRecord.isSupportingWorkflow === true,
-			};
-			const startedRunId = await this.startInternalFollowUpRun(
-				activeUser,
-				threadId,
-				this.buildPlannedTaskFollowUpMessage('build-workflow', graphAfterMark, {
-					buildTask: buildTaskRecord,
-				}),
-				action.graph.messageGroupId,
-				false,
-				undefined,
-				undefined,
-				plannedBuild,
-			);
-
-			if (!startedRunId) {
-				this.logger.warn(
-					'Build workflow follow-up run did not start — reverting build task to planned for retry',
-					{ threadId, buildTaskId: buildTask.id },
-				);
-				await plannedTaskService.revertBuildWorkflowToPlanned(threadId, buildTask.id);
-			}
-			return;
-		}
-
-		if (action.type === 'orchestrate-checkpoint') {
-			// Defer if a run is already active or suspended. The currently-live
-			// run's post-finally reschedule hook will pick this checkpoint up.
-			if (this.runState.hasLiveRun(threadId)) {
-				return;
-			}
-
-			const checkpoint = action.tasks[0];
-
-			// Mark running before starting the follow-up so complete-checkpoint
-			// (which requires status === 'running') always sees the correct state.
-			// If startInternalFollowUpRun no-ops below (tight race), we roll back
-			// the transition to avoid leaving the task in a phantom 'running' state.
-			await plannedTaskService.markRunning(threadId, checkpoint.id, {
-				agentId: ORCHESTRATOR_AGENT_ID,
-			});
-			const graphAfterMark = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
-			await this.syncPlannedTasksToUi(threadId, graphAfterMark);
-
-			const checkpointRecord =
-				graphAfterMark.tasks.find((t) => t.id === checkpoint.id) ?? checkpoint;
-
-			const startedRunId = await this.startInternalFollowUpRun(
-				activeUser,
-				threadId,
-				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
-					checkpoint: checkpointRecord,
-				}),
-				action.graph.messageGroupId,
-				false,
-				{ isCheckpointFollowUp: true, checkpointTaskId: checkpoint.id },
-			);
-
-			if (!startedRunId) {
-				// Rare race: the outer hasLiveRun check passed but the inner guard
-				// in startInternalFollowUpRun did not (another path started a run
-				// between our two checks). Revert the checkpoint back to `planned`
-				// so the next scheduler tick re-emits `orchestrate-checkpoint` —
-				// marking it `failed` here would cascade cancel to every dependent
-				// and destroy downstream work even though nothing actually failed.
-				this.logger.warn(
-					'Checkpoint follow-up run did not start — reverting checkpoint to planned for retry',
-					{ threadId, checkpointTaskId: checkpoint.id },
-				);
-				await plannedTaskService.revertCheckpointToPlanned(threadId, checkpoint.id);
-			}
-			return;
-		}
-
-		const environment = await this.createExecutionEnvironment(
+		const actionRunner = this.createPlannedTaskActionRunner(
 			activeUser,
 			threadId,
-			action.graph.planRunId,
-			createInertAbortSignal(),
-			action.graph.messageGroupId,
-			// Route planned-task workflow runs (build agent, checkpoint verifications)
-			// to the user's iframe session so live execution push events reach the
-			// frontend, matching the orchestrator main-run path.
-			this.threadPushRef.get(threadId),
+			plannedTaskService,
 		);
-		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);
 
-		for (const task of action.tasks) {
-			await this.dispatchPlannedTask(task, environment.orchestrationContext, action.graph);
+		while (true) {
+			const graph = await plannedTaskService.getGraph(threadId);
+			if (!graph) return;
+
+			await this.syncPlannedTasksToUi(threadId, graph);
+
+			const availableSlots = Math.max(
+				0,
+				MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD -
+					this.backgroundTasks.getRunningTasks(threadId).length,
+			);
+			const pendingWorkflowVerification =
+				await this.workflowObligations.findPendingPlannedWorkflowVerification(threadId, graph);
+			const action = await plannedTaskService.tick(threadId, {
+				availableSlots,
+				pendingWorkflowVerification,
+			});
+			if (action.type === 'none') return;
+
+			const result = await actionRunner.run(action);
+			if (result.type !== 'continue-scheduling') return;
 		}
-
-		await this.doSchedulePlannedTasks(activeUser, threadId);
 	}
 
 	/**

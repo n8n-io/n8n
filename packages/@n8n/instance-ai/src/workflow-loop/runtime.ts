@@ -16,6 +16,7 @@ function createInitialState(threadId: string, outcome: WorkflowBuildOutcome): Wo
 		phase: 'building',
 		status: 'active',
 		source: outcome.workflowId ? 'modify' : 'create',
+		owner: outcome.owner,
 		plannedTaskId: outcome.plannedTaskId,
 		rebuildAttempts: 0,
 		preSaveSubmitFailures: 0,

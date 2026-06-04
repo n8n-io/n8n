@@ -1,24 +1,22 @@
 import type { TaskList } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
-	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
-	isWorkflowVerificationObligationUnsettled,
 	ThreadTaskStorage,
 	WorkflowLoopStorage,
-	workflowBuildOutcomeSchema,
 	type ManagedBackgroundTask,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
-	type PlannedWorkflowVerification,
 	type WorkflowBuildOutcome,
-	type WorkflowLoopWorkItemRecord,
 	type WorkflowVerificationObligation,
-	type WorkflowVerificationObligationSource,
 } from '@n8n/instance-ai';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import {
+	parseWorkflowBuildOutcome,
+	type WorkflowVerificationObligationService,
+} from './workflow-verification-obligation-service';
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
@@ -50,13 +48,6 @@ function getErrorMessage(error: unknown): string {
 /** Stable id for the synthetic "Verify workflow" row attached to a build task. */
 function verifyRowId(buildTaskId: string): string {
 	return `${buildTaskId}:verify`;
-}
-
-export function parseWorkflowBuildOutcome(
-	outcome: Record<string, unknown> | undefined,
-): WorkflowBuildOutcome | undefined {
-	const parsed = workflowBuildOutcomeSchema.safeParse(outcome);
-	return parsed.success ? parsed.data : undefined;
 }
 
 function formatVerifiedDetail(evidence: WorkflowVerificationObligation['evidence']): string {
@@ -225,30 +216,8 @@ export class WorkflowVerificationTaskProjector {
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly eventBus: InProcessEventBus,
 		private readonly logger: Logger,
+		private readonly obligations: WorkflowVerificationObligationService,
 	) {}
-
-	/** Read the obligation for a work item, or undefined when no record exists yet. */
-	async getObligation(
-		threadId: string,
-		workItemId: string,
-		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
-	): Promise<WorkflowVerificationObligation | undefined> {
-		const record = await new WorkflowLoopStorage(this.agentMemory).getWorkItem(
-			threadId,
-			workItemId,
-		);
-		if (!record) return undefined;
-		return deriveWorkflowVerificationObligation(threadId, record, options);
-	}
-
-	/** Derive an obligation from an already-loaded work-item record (no storage read). */
-	obligationFromRecord(
-		threadId: string,
-		record: WorkflowLoopWorkItemRecord,
-		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
-	): WorkflowVerificationObligation {
-		return deriveWorkflowVerificationObligation(threadId, record, options);
-	}
 
 	/** Project a planned-task graph into a checklist, adding a verify row per build task. */
 	async projectPlannedTaskList(threadId: string, graph: PlannedTaskGraph): Promise<TaskList> {
@@ -267,33 +236,6 @@ export class WorkflowVerificationTaskProjector {
 		}
 
 		return { tasks };
-	}
-
-	/**
-	 * Return the first planned build task whose workflow verification obligation
-	 * still needs an orchestrator follow-up. This is the scheduler-facing view of
-	 * the same obligation model used by the checklist projection.
-	 */
-	async findPendingPlannedWorkflowVerification(
-		threadId: string,
-		graph: PlannedTaskGraph,
-	): Promise<PlannedWorkflowVerification | undefined> {
-		for (const task of graph.tasks) {
-			if (task.kind !== 'build-workflow' || task.status !== 'succeeded') continue;
-
-			const outcome = parseWorkflowBuildOutcome(task.outcome);
-			if (!outcome) continue;
-
-			const options = { source: 'planned', plannedTaskId: task.id } as const;
-			const obligation =
-				(await this.getObligation(threadId, outcome.workItemId, options)) ??
-				deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
-			if (!isWorkflowVerificationObligationUnsettled(obligation)) continue;
-
-			return { task, obligation, outcome };
-		}
-
-		return undefined;
 	}
 
 	private async projectPlannedVerifyRow(
@@ -331,7 +273,7 @@ export class WorkflowVerificationTaskProjector {
 
 		const options = { source: 'planned', plannedTaskId: task.id } as const;
 		const obligation =
-			(await this.getObligation(threadId, outcome.workItemId, options)) ??
+			(await this.obligations.getObligation(threadId, outcome.workItemId, options)) ??
 			deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
 		return verifyRow(task.id, obligation);
 	}
@@ -384,7 +326,9 @@ export class WorkflowVerificationTaskProjector {
 			];
 		}
 
-		const obligation = await this.getObligation(task.threadId, workItemId, { source: 'direct' });
+		const obligation = await this.obligations.getObligation(task.threadId, workItemId, {
+			source: 'direct',
+		});
 		if (!obligation) return undefined;
 		return directTaskItems(task.taskId, outcome, obligation);
 	}
@@ -402,9 +346,9 @@ export class WorkflowVerificationTaskProjector {
 				{ outcome: WorkflowBuildOutcome | undefined; obligation: WorkflowVerificationObligation }
 			>();
 			for (const record of records) {
-				if (record.state.plannedTaskId || record.lastBuildOutcome?.plannedTaskId) continue;
+				if (this.obligations.isPlannedRecord(record)) continue;
 
-				const obligation = deriveWorkflowVerificationObligation(threadId, record, {
+				const obligation = this.obligations.obligationFromRecord(threadId, record, {
 					source: 'direct',
 				});
 				if (obligation.taskId) {

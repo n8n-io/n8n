@@ -231,6 +231,36 @@ describe('WorkflowLoopStorage', () => {
 			expect(claimed).toBeNull();
 		});
 
+		it('does not claim a work item with a planned owner', async () => {
+			const state = makeState({
+				status: 'completed',
+				phase: 'done',
+				workflowId: 'wf-1',
+				owner: { type: 'planned', taskId: 'planned-1' },
+			});
+
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
+				const result = update({
+					...baseThread,
+					metadata: {
+						instanceAiWorkflowLoop: {
+							'wi-1': { state, attempts: [] },
+						},
+					},
+				});
+				expect(result).toBeNull();
+				return baseThread as never;
+			});
+
+			const claimed = await storage.claimSetupRouting('thread-1', 'wi-1', {
+				claimId: 'claim-1',
+				claimedAt: '2026-01-01T00:00:00.000Z',
+				expiresAt: '2026-01-01T00:15:00.000Z',
+			});
+
+			expect(claimed).toBeNull();
+		});
+
 		it('does not claim a work item whose last outcome belongs to a planned task', async () => {
 			const state = makeState({
 				status: 'completed',

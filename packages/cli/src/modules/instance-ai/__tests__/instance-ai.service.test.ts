@@ -1602,7 +1602,7 @@ type PlannedTaskSchedulerServiceInternals = {
 	cancelRun: jest.Mock;
 	createPlannedTaskState: jest.Mock;
 	syncPlannedTasksToUi: jest.Mock;
-	taskProjector: { findPendingPlannedWorkflowVerification: jest.Mock };
+	workflowObligations: { findPendingPlannedWorkflowVerification: jest.Mock };
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	startInternalFollowUpRun: jest.Mock;
 	buildPlannedTaskFollowUpMessage: jest.Mock;
@@ -1611,6 +1611,8 @@ type PlannedTaskSchedulerServiceInternals = {
 		getThreadResearchMode: jest.Mock;
 		hasLiveRun: jest.Mock;
 	};
+	createPlannedTaskDispatchContext: jest.Mock;
+	dispatchPlannedTask: jest.Mock;
 	logger: { warn: jest.Mock };
 };
 
@@ -1643,7 +1645,7 @@ function createPlannedTaskSchedulerService(): {
 	service.cancelRun = jest.fn();
 	service.createPlannedTaskState = jest.fn(async () => ({ plannedTaskService }));
 	service.syncPlannedTasksToUi = jest.fn(async () => {});
-	service.taskProjector = {
+	service.workflowObligations = {
 		findPendingPlannedWorkflowVerification: jest.fn(async () => undefined),
 	};
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
@@ -1654,6 +1656,8 @@ function createPlannedTaskSchedulerService(): {
 		getThreadResearchMode: jest.fn(() => false),
 		hasLiveRun: jest.fn(() => false),
 	};
+	service.createPlannedTaskDispatchContext = jest.fn(async () => ({}));
+	service.dispatchPlannedTask = jest.fn(async () => {});
 	service.logger = { warn: jest.fn() };
 
 	return { service, plannedTaskService, graph };
@@ -1928,7 +1932,48 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			'follow-up message',
 			'group-1',
 			true,
+			undefined,
+			undefined,
+			undefined,
 		);
+	});
+
+	it('continues scheduling in the same pass after dispatching planned tasks', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		const delegateTask = {
+			id: 'delegate-1',
+			title: 'Research',
+			kind: 'delegate',
+			spec: 'Do the research',
+			deps: [],
+			tools: ['research'],
+			status: 'planned',
+		};
+		graph.tasks = [delegateTask];
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick
+			.mockResolvedValueOnce({
+				type: 'dispatch',
+				graph,
+				tasks: [delegateTask],
+			})
+			.mockResolvedValueOnce({ type: 'none', graph });
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.createPlannedTaskDispatchContext).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			graph,
+		);
+		expect(service.dispatchPlannedTask).toHaveBeenCalledWith(
+			delegateTask,
+			expect.anything(),
+			graph,
+		);
+		expect(plannedTaskService.tick).toHaveBeenCalledTimes(2);
+		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
 	});
 
 	it('routes planned synthesis through workflow verification while an obligation is unsettled', async () => {
@@ -1957,7 +2002,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			task: workflowTask,
 		};
 		plannedTaskService.getGraph.mockResolvedValue(graphWithTask);
-		service.taskProjector.findPendingPlannedWorkflowVerification.mockResolvedValue(
+		service.workflowObligations.findPendingPlannedWorkflowVerification.mockResolvedValue(
 			pendingVerification,
 		);
 		plannedTaskService.tick.mockResolvedValue({
@@ -1982,6 +2027,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			false,
 			undefined,
 			'workflow_verification',
+			undefined,
 		);
 		expect(service.buildPlannedTaskFollowUpMessage).not.toHaveBeenCalledWith(
 			'synthesize',
@@ -2549,7 +2595,7 @@ describe('InstanceAiService — OAuth callback URL', () => {
 
 describe('InstanceAiService — workflow verification follow-up gate', () => {
 	type VerificationGateService = {
-		taskProjector: { getObligation: jest.Mock };
+		workflowObligations: { getObligation: jest.Mock };
 		trackWorkflowVerificationObligation: jest.Mock;
 		buildWorkflowVerificationFollowUpMessage: jest.Mock;
 		startInternalFollowUpRun: jest.Mock;
@@ -2565,7 +2611,7 @@ describe('InstanceAiService — workflow verification follow-up gate', () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as VerificationGateService;
-		service.taskProjector = { getObligation: jest.fn(async () => obligation) };
+		service.workflowObligations = { getObligation: jest.fn(async () => obligation) };
 		service.trackWorkflowVerificationObligation = jest.fn();
 		service.buildWorkflowVerificationFollowUpMessage = jest.fn(() => 'verification message');
 		service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
@@ -2625,7 +2671,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		markWorkItemSetupRouted: jest.Mock;
 		releaseWorkItemSetupRoutingClaim: jest.Mock;
 		buildWorkflowSetupFollowUpMessage: jest.Mock;
-		taskProjector: { obligationFromRecord: jest.Mock };
+		workflowObligations: { isPlannedRecord: jest.Mock; obligationFromRecord: jest.Mock };
 		runState: { getMessageGroupId: jest.Mock };
 		startInternalFollowUpRun: jest.Mock;
 		trackWorkflowVerificationObligation: jest.Mock;
@@ -2749,7 +2795,10 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		service.buildWorkflowSetupFollowUpMessage = jest.fn(
 			() => '<workflow-setup-required>\n{}\n</workflow-setup-required>',
 		);
-		service.taskProjector = {
+		service.workflowObligations = {
+			isPlannedRecord: jest.fn(
+				(record: ReturnType<typeof makeRecord>) => record.state.plannedTaskId !== undefined,
+			),
 			obligationFromRecord: jest.fn((_threadId: string, record: ReturnType<typeof makeRecord>) =>
 				obligationFor(record),
 			),

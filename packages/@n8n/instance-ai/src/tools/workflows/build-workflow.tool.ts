@@ -530,6 +530,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
 						? buildContext.taskId
 						: undefined;
+				const owner = plannedTaskId
+					? { type: 'planned' as const, taskId: plannedTaskId }
+					: { type: 'direct' as const };
 				const resolvedWorkItemId =
 					workItemId ??
 					(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
@@ -556,6 +559,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
+						owner,
 						plannedTaskId,
 						workflowId: savedId,
 						submitted: true,

@@ -49,7 +49,9 @@ work uses the `data-table-manager` skill with direct `data-tables` and
 6. Add checkpoint tasks only for exceptional semantic checks that normal
    workflow verification cannot cover.
 7. Call `create-tasks` with `planningContext.source: "planning-skill"`,
-   a concise `summary`, optional `assumptions`, and the final task graph.
+   a concise `summary`, optional `assumptions`, `postBuildRunRequested: true`
+   only when the user explicitly asked to run, execute, or test a workflow
+   after building it, and the final task graph.
 8. After calling `create-tasks`, do not write visible text. The approval card is
    the user-visible surface.
 

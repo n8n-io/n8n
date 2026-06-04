@@ -159,6 +159,7 @@ describe('deriveWorkflowVerificationObligation', () => {
 
 		expect(obligation).toEqual(
 			expect.objectContaining({
+				owner: { type: 'planned', taskId: 'planned-1' },
 				source: 'planned',
 				plannedTaskId: 'planned-1',
 			}),
@@ -178,6 +179,7 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 			expect.objectContaining({
 				workItemId: 'wi-1',
 				workflowId: 'wf-1',
+				owner: { type: 'planned', taskId: 'task-1' },
 				source: 'planned',
 				plannedTaskId: 'task-1',
 				status: 'ready_to_verify',

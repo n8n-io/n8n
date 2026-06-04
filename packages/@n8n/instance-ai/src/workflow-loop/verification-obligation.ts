@@ -1,11 +1,16 @@
 import type {
 	AttemptRecord,
+	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 	WorkflowVerificationObligation,
 	WorkflowVerificationObligationPolicy,
 	WorkflowVerificationObligationSource,
 	WorkflowVerificationObligationStatus,
+} from './workflow-loop-state';
+import {
+	plannedTaskIdFromWorkflowBuildOwner,
+	resolveWorkflowBuildOwner,
 } from './workflow-loop-state';
 
 export interface WorkflowVerificationObligationRecord {
@@ -16,6 +21,7 @@ export interface WorkflowVerificationObligationRecord {
 
 export interface DeriveWorkflowVerificationObligationOptions {
 	source?: WorkflowVerificationObligationSource;
+	owner?: WorkflowBuildOwner;
 	plannedTaskId?: string;
 	updatedAt?: string;
 }
@@ -103,15 +109,16 @@ export function deriveWorkflowVerificationObligation(
 	const status = deriveStatus(record.state, outcome);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
-	const plannedTaskId =
-		options.plannedTaskId ?? record.state.plannedTaskId ?? outcome?.plannedTaskId;
-	const source = options.source ?? (plannedTaskId ? 'planned' : 'direct');
+	const owner = resolveWorkflowBuildOwner(options, record.state, outcome);
+	const plannedTaskId = plannedTaskIdFromWorkflowBuildOwner(owner);
+	const source = options.source ?? owner.type;
 
 	return {
 		workItemId: record.state.workItemId,
 		threadId,
 		runId: outcome?.runId ?? record.state.runId,
 		taskId: outcome?.taskId ?? record.state.lastTaskId,
+		owner,
 		plannedTaskId,
 		workflowId: outcome?.workflowId ?? record.state.workflowId,
 		source,
@@ -148,6 +155,7 @@ export function deriveWorkflowVerificationObligationFromOutcome(
 		runId: outcome.runId,
 		workflowId: outcome.workflowId,
 		lastTaskId: outcome.taskId,
+		owner: outcome.owner,
 		plannedTaskId: outcome.plannedTaskId,
 		phase: 'verifying',
 		status: 'active',

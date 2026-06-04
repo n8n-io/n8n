@@ -547,6 +547,12 @@ export const deriveWorkflowVerificationObligationFromOutcome: typeof WorkflowLoo
 	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligationFromOutcome);
 export const isWorkflowVerificationObligationUnsettled: typeof WorkflowLoopMod.isWorkflowVerificationObligationUnsettled =
 	lazyFunction(() => loadWorkflowLoop().isWorkflowVerificationObligationUnsettled);
+export const resolveWorkflowBuildOwner: typeof WorkflowLoopMod.resolveWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().resolveWorkflowBuildOwner);
+export const plannedTaskIdFromWorkflowBuildOwner: typeof WorkflowLoopMod.plannedTaskIdFromWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().plannedTaskIdFromWorkflowBuildOwner);
+export const isPlannedWorkflowBuildOwner: typeof WorkflowLoopMod.isPlannedWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().isPlannedWorkflowBuildOwner);
 export declare const workflowBuildOutcomeSchema: typeof WorkflowLoopMod.workflowBuildOutcomeSchema;
 export declare const workflowVerificationEvidenceSchema: typeof WorkflowLoopMod.workflowVerificationEvidenceSchema;
 export declare const attemptRecordSchema: typeof WorkflowLoopMod.attemptRecordSchema;
@@ -555,6 +561,7 @@ export declare const verificationResultSchema: typeof WorkflowLoopMod.verificati
 export type {
 	WorkflowLoopState,
 	WorkflowLoopAction,
+	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	VerificationResult,
 	AttemptRecord,

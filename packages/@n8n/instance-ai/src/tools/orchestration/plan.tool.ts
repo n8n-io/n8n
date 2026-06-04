@@ -41,17 +41,18 @@ const planInputSchema = z.object({
 				),
 			summary: z.string().min(1).describe('Brief summary of the plan and why it is needed'),
 			assumptions: z.array(z.string()).optional().describe('Important assumptions behind the plan'),
+			postBuildRunRequested: z
+				.boolean()
+				.optional()
+				.describe(
+					'Set true when the user explicitly asked to run, execute, or test a workflow after it is built. Omit or false otherwise.',
+				),
 		})
 		.describe('How this task graph was produced'),
 });
 
 function isReplanContext(context: OrchestrationContext): boolean {
 	return context.isReplanFollowUp === true;
-}
-
-function textRequestsPostBuildRun(text: string | undefined): boolean {
-	const normalized = text?.toLowerCase().replace(/\s+/g, ' ') ?? '';
-	return /\b(build|create|make)\b.{0,120}\b(then|and)\s+(run|execute|test)\b/.test(normalized);
 }
 
 const planOutputSchema = z.object({
@@ -226,7 +227,7 @@ export function createPlanTool(context: OrchestrationContext) {
 						{
 							planRunId: context.runId,
 							messageGroupId: context.messageGroupId,
-							postBuildRunApprovalRequired: textRequestsPostBuildRun(context.currentUserMessage),
+							postBuildRunApprovalRequired: input.planningContext.postBuildRunRequested === true,
 						},
 					);
 				} catch (error) {

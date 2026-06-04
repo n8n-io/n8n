@@ -184,6 +184,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(reportBuildOutcome).toHaveBeenCalledWith(
 			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
 				workItemId: 'wi-1',
+				owner: { type: 'direct' },
 				workflowId: 'wf-1',
 				submitted: true,
 			}),
@@ -301,6 +302,7 @@ describe('createBuildWorkflowTool', () => {
 		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0];
 		expect(reportedOutcome).toMatchObject({
 			workItemId: supportingWorkItemId,
+			owner: { type: 'direct' },
 			workflowId: 'wf-support',
 			submitted: true,
 		});
@@ -366,6 +368,7 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
 				workItemId: 'wi-main',
 				taskId: 'task-1',
+				owner: { type: 'planned', taskId: 'task-1' },
 				plannedTaskId: 'task-1',
 				workflowId: 'wf-support',
 				submitted: true,
@@ -375,6 +378,7 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
 				workItemId: 'wi-main',
 				taskId: 'task-1',
+				owner: { type: 'planned', taskId: 'task-1' },
 				plannedTaskId: 'task-1',
 				workflowId: 'wf-support',
 				submitted: true,
@@ -388,6 +392,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(succeededUpdate?.outcome).toMatchObject({
 			workItemId: 'wi-main',
 			taskId: 'task-1',
+			owner: { type: 'planned', taskId: 'task-1' },
 			plannedTaskId: 'task-1',
 			workflowId: 'wf-support',
 		});
@@ -455,6 +460,7 @@ describe('createBuildWorkflowTool', () => {
 				workItemId: 'wi-1',
 				runId: 'run-1',
 				taskId: 'task-1',
+				owner: { type: 'planned', taskId: 'task-1' },
 				plannedTaskId: 'task-1',
 				workflowId: 'wf-1',
 				submitted: true,
@@ -467,6 +473,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(succeededUpdate?.result).toBe('Created workflow "Generated workflow" (wf-1).');
 		expect(succeededUpdate?.outcome).toMatchObject({
 			workItemId: 'wi-1',
+			owner: { type: 'planned', taskId: 'task-1' },
 			plannedTaskId: 'task-1',
 			workflowId: 'wf-1',
 		});

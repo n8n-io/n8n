@@ -56,13 +56,17 @@ function validTasks() {
 	];
 }
 
-function planInput(source: 'planning-skill' | 'replan' = 'planning-skill') {
+function planInput(
+	source: 'planning-skill' | 'replan' = 'planning-skill',
+	overrides: { postBuildRunRequested?: boolean } = {},
+) {
 	return {
 		tasks: validTasks(),
 		planningContext: {
 			source,
 			summary: 'Build the requested coordinated automation.',
 			assumptions: ['Use the available Slack credential if exactly one exists.'],
+			...overrides,
 		},
 	};
 }
@@ -129,6 +133,36 @@ describe('createPlanTool — planning context guard', () => {
 				task_count: 1,
 				has_data_table_requirements: true,
 			}),
+		);
+	});
+
+	it('does not infer post-build run approval from user text', async () => {
+		const context = createMockContext({
+			currentUserMessage: 'Build a workflow and then run it once',
+		});
+		const tool = createPlanTool(context);
+
+		await executeTool(tool, planInput('planning-skill'), { suspend: vi.fn() });
+
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalledWith(
+			'test-thread',
+			validTasks(),
+			expect.objectContaining({ postBuildRunApprovalRequired: false }),
+		);
+	});
+
+	it('stores post-build run approval when planningContext requests it', async () => {
+		const context = createMockContext({ currentUserMessage: 'Build and run it once' });
+		const tool = createPlanTool(context);
+
+		await executeTool(tool, planInput('planning-skill', { postBuildRunRequested: true }), {
+			suspend: vi.fn(),
+		});
+
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalledWith(
+			'test-thread',
+			validTasks(),
+			expect.objectContaining({ postBuildRunApprovalRequired: true }),
 		);
 	});
 
