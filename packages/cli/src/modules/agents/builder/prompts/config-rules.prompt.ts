@@ -15,7 +15,6 @@ const BuilderPromptMemoryWorkerModelSchema = z.object({
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.literal('n8n'),
-	lastMessages: z.number().int().min(1).max(200).optional(),
 	observationalMemory: z
 		.object({
 			enabled: z.boolean().optional(),
@@ -53,14 +52,23 @@ export function getConfigRulesSection(): string {
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
+- Fresh agents must include a brief \`description\` explaining what the agent
+  does. Keep it specific and user-facing; never write placeholder copy.
 - Fresh agents must include
-  \`memory: { "enabled": true, "storage": "n8n", "lastMessages": 50 }\`
+  \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
-- \`memory.storage\` must be "n8n"; \`memory.lastMessages\` defaults to 50.
+- \`memory.storage\` must be "n8n".
 - \`memory.episodicMemory\` requires \`ask_credential\` with
   \`credentialType: "openAiApi"\`.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
   use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
+- Subagent delegation lives at top level under \`subAgents\`.
+  Delegation is always available; do not write an enabled/disabled flag.
+  \`subAgents.agents\` is only for optional saved/published n8n Agent specialists;
+  inline delegation uses \`subAgentId: "inline"\` at tool-call time and does not
+  require saved-agent refs. The runtime also exposes \`write_todos\` for planning
+  complex multi-step work before separate \`delegate_subagent\` calls. Only use
+  \`agentId\` values returned by \`list_sub_agents\`.
 - Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
   support native web search; for those providers, use
   \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. Every
@@ -71,18 +79,12 @@ export function getConfigRulesSection(): string {
 - Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
   the user explicitly asks to change web-search method.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
-- Fresh agents need a real model, credential, and instructions before config
-  is written.`;
+- Fresh agents need a real model, credential, description, and instructions
+  before config is written.`;
 }
 
-export function getSchemaReferenceSection(enabledModules: string[]): string {
-	let zodSchema: ZodObject<ZodRawShape> = BuilderPromptAgentJsonConfigSchema;
-	// don't let agent know about MCP servers if it's not enabled
-	if (!enabledModules.includes('mcp')) {
-		zodSchema = zodSchema.omit({
-			mcpServers: true,
-		});
-	}
+export function getSchemaReferenceSection(): string {
+	const zodSchema: ZodObject<ZodRawShape> = BuilderPromptAgentJsonConfigSchema;
 	const jsonSchemaText = jsonSchemaToCompactText(zodToJsonSchema(zodSchema) as JSONSchema7);
 	return `\
 #### Config Schema Reference

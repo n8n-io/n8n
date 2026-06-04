@@ -53,18 +53,22 @@ describe('ExecutionRedactionService', () => {
 			mode?: WorkflowExecuteMode;
 			workflowId?: string;
 			policy?: 'none' | 'all' | 'non-manual';
+			channels?: { production: boolean; manual: boolean };
 			workflowSettingsPolicy?: 'none' | 'all' | 'non-manual';
 			withRuntimeData?: boolean;
 			withDynamicCredentials?: boolean;
+			executedByUserId?: string | null;
 		} = {},
 	): RedactableExecution => {
 		const {
 			mode = 'manual',
 			workflowId = 'workflow-123',
 			policy,
+			channels,
 			workflowSettingsPolicy,
 			withRuntimeData = true,
 			withDynamicCredentials = false,
+			executedByUserId = null,
 		} = overrides;
 
 		const executionData: IRunExecutionData['executionData'] = {
@@ -75,12 +79,15 @@ describe('ExecutionRedactionService', () => {
 			waitingExecutionSource: null,
 		};
 
-		if (withRuntimeData && policy !== undefined) {
+		if (withRuntimeData && (policy !== undefined || channels !== undefined)) {
+			const redaction = channels
+				? { version: 2 as const, production: channels.production, manual: channels.manual }
+				: { version: 1 as const, policy: policy! };
 			executionData.runtimeData = {
 				version: 1 as const,
 				establishedAt: Date.now(),
 				source: mode,
-				redaction: { version: 1 as const, policy },
+				redaction,
 				...(withDynamicCredentials ? { credentials: 'encrypted-credential-context' } : {}),
 			};
 		} else if (withDynamicCredentials) {
@@ -89,6 +96,19 @@ describe('ExecutionRedactionService', () => {
 				establishedAt: Date.now(),
 				source: mode,
 				credentials: 'encrypted-credential-context',
+			};
+		}
+
+		// Stamp the executing user onto runtimeData, mirroring what
+		// `establishExecutionContext` does for manual runs. Ensure runtimeData
+		// exists even when no policy/dynamic-credentials block created it.
+		if (executedByUserId !== null) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				...executionData.runtimeData,
+				executedByUserId,
 			};
 		}
 
@@ -568,6 +588,45 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
+
+		it('clears items for a production execution when V2 snapshot redacts production', async () => {
+			const execution = makeExecution({
+				channels: { production: true, manual: false },
+				mode: 'trigger',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			// production channel on + non-manual mode → reconstructs 'non-manual' → clears
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not clear a manual execution when V2 snapshot redacts production only', async () => {
+			const execution = makeExecution({
+				channels: { production: true, manual: false },
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			// 'non-manual' policy exempts manual executions
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('clears a manual execution when V2 snapshot redacts both channels', async () => {
+			const execution = makeExecution({
+				channels: { production: true, manual: true },
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			// reconstructs 'all' → clears regardless of mode
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not clear when V2 snapshot redacts neither channel', async () => {
+			const execution = makeExecution({
+				channels: { production: false, manual: false },
+				mode: 'trigger',
+			});
+			await service.processExecution(execution, { user: mockUser });
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('license enforcement', () => {
@@ -617,7 +676,7 @@ describe('ExecutionRedactionService', () => {
 			expect(context.userCanReveal).toBe(false);
 		});
 
-		it('passes hasDynamicCredentials: true in context so strategy sets correct reason', async () => {
+		it('passes enforceDynCredRedaction: true in context so strategy sets correct reason', async () => {
 			const execution = makeExecution({
 				policy: 'none',
 				mode: 'manual',
@@ -626,7 +685,7 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
-			expect(context.hasDynamicCredentials).toBe(true);
+			expect(context.enforceDynCredRedaction).toBe(true);
 		});
 
 		it('throws ForbiddenError on reveal path', async () => {
@@ -671,6 +730,109 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			// Credentials must be scrubbed from the response
+			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
+		});
+	});
+
+	describe('dynamic credentials owner access', () => {
+		it('skips force redaction when requesting user ran the execution', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: mockUser.id,
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('still force-redacts when a different user requested the data', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('still force-redacts when the execution has no recorded executing user', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: null,
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('allows the executing user to reveal their own data', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: mockUser.id,
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).resolves.toBeDefined();
+		});
+
+		it('rejects reveal for a different user even with execution:reveal scope', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('rejects reveal when no executing user is recorded, regardless of scope', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: null,
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('still scrubs runtimeData.credentials when the owner views their data', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: mockUser.id,
+			});
+
+			expect(execution.data.executionData?.runtimeData?.credentials).toBe(
+				'encrypted-credential-context',
+			);
+
+			await service.processExecution(execution, { user: mockUser });
+
 			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
 		});
 	});

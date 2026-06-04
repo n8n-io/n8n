@@ -156,11 +156,9 @@ description: Has no instructions.
 	});
 
 	it('uses locale-independent ordering for registry hashes', () => {
-		const localeCompareSpy = jest
-			.spyOn(String.prototype, 'localeCompare')
-			.mockImplementation(() => {
-				throw new Error('localeCompare must not be used for registry ordering');
-			});
+		const localeCompareSpy = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
+			throw new Error('localeCompare must not be used for registry ordering');
+		});
 
 		try {
 			expect(() =>
@@ -416,7 +414,7 @@ Use the workflow SDK.`,
 				instructions: 'Full private skill body: Extract decisions.',
 			},
 		]);
-		const prepare = jest.fn(async () => {
+		const prepare = vi.fn(async () => {
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
@@ -460,7 +458,7 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const prepare = jest.fn(async () => {
+		const prepare = vi.fn(async () => {
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
@@ -542,7 +540,7 @@ Use the workflow SDK.`,
 				},
 			},
 		]);
-		const loadFile = jest.fn(
+		const loadFile = vi.fn(
 			async (_skillId: string, filePath: string) =>
 				await Promise.resolve({
 					skillId: 'summarize_notes',

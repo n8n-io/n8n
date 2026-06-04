@@ -1,6 +1,6 @@
 import { braveSearch } from '../brave-search';
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 beforeEach(() => {

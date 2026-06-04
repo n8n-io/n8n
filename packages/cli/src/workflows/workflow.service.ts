@@ -346,7 +346,7 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
-		this.redactionEnforcementService.assertPolicyChangeAllowed(
+		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			workflow.settings?.redactionPolicy,
 			workflowUpdateData.settings?.redactionPolicy,
 		);
@@ -456,6 +456,16 @@ export class WorkflowService {
 		// Validate pinData size after all mutations are applied
 		if ('pinData' in workflowUpdateData) {
 			WorkflowHelpers.validatePinDataSize({ ...workflow, ...workflowUpdateData });
+		}
+
+		// Reject illegal credential-to-node bindings before persisting
+		const restrictionValidation = this.workflowValidationService.validateCredentialNodeRestrictions(
+			workflowUpdateData.nodes ?? workflow.nodes,
+		);
+		if (!restrictionValidation.isValid) {
+			throw new WorkflowValidationError(
+				restrictionValidation.error ?? 'Credential binding is not allowed.',
+			);
 		}
 
 		// Run external hook after all validation has passed, right before persisting

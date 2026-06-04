@@ -22,7 +22,7 @@ import { loadNodesFromFile } from '../../../../evaluations/support/load-nodes';
  * - Provides options grounded in n8n capabilities
  *
  * To run:
- * ENABLE_INTEGRATION_TESTS=true N8N_AI_ANTHROPIC_KEY=your-key pnpm jest question-quality.integration
+ * ENABLE_INTEGRATION_TESTS=true N8N_AI_ANTHROPIC_KEY=your-key pnpm vi question-quality.integration
  */
 
 const skipTests = !shouldRunIntegrationTests();
@@ -328,10 +328,10 @@ describe('Question Quality - Integration Tests', () => {
 	let parsedNodeTypes: INodeTypeDescription[];
 	let discoverySubgraph: DiscoverySubgraph;
 
-	jest.setTimeout(600_000); // 10 minutes for the full suite
+	vi.setConfig({ testTimeout: 600_000 }); // 10 minutes for the full suite
 
 	beforeAll(async () => {
-		jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+		vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
 			process.stdout.write(args.map(String).join(' ') + '\n');
 		});
 

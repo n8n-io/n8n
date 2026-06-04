@@ -1,15 +1,28 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval } from './tool';
+import { wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
+	createDelegateSubAgentTool,
+	failedDelegatedChildSuspendOutput,
+	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
+	renderDelegateSubAgentPrompt,
+	type DelegateSubAgentRequest,
+	type DelegateSubAgentToolOutput,
+} from '../runtime/delegate-sub-agent-tool';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
-import { createAgentToolResult } from '../runtime/tool-adapter';
+import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -36,7 +49,6 @@ import type {
 	RunOptions,
 	SerializableAgentState,
 	StreamResult,
-	SubAgentUsage,
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
@@ -46,9 +58,18 @@ import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
-const DEFAULT_LAST_MESSAGES = 10;
-
 type ToolParameter = BuiltTool | { build(): BuiltTool };
+
+const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	RECALL_MEMORY_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
+]);
+
+const SDK_RESERVED_BUILTIN_TOOL_NAMES = new Set([
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
+]);
 
 interface DeferredToolOptions {
 	search?: {
@@ -201,7 +222,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const tools = Array.isArray(t) ? t : [t];
 		const builtTools = tools.map((tool) => ('build' in tool ? tool.build() : tool));
 		for (const built of builtTools) {
-			this.assertToolNameAvailable(built.name);
+			this.assertToolRegistrationAllowed(built);
 		}
 		this.tools.push(...builtTools);
 		return this;
@@ -212,6 +233,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const tools = Array.isArray(t) ? t : [t];
 		for (const tool of tools) {
 			const built = 'build' in tool ? tool.build() : tool;
+			this.assertReservedSdkBuiltInToolName(built);
 			this.deferredTools.push(built);
 		}
 		if (options?.search?.topK !== undefined) {
@@ -260,7 +282,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (m instanceof Memory) {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
-		} else if ('memory' in m && 'lastMessages' in m) {
+		} else if ('memory' in m) {
 			// MemoryConfig — validate the same invariants as the builder path
 			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
@@ -270,11 +292,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			typeof m.saveMessages === 'function'
 		) {
 			// Bare BuiltMemory — wrap in minimal config
-			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+			this.memoryConfig = { memory: m };
 		} else {
 			throw new Error(
-				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
+				'Invalid memory configuration. Use: new Memory() for in-process memory, ' +
+					'or new Memory().storage(myBuiltMemoryBackend) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
@@ -491,67 +513,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	off(event: AgentEvent, handler: AgentEventHandler): void {
 		this.eventBus.off(event, handler);
-	}
-
-	/**
-	 * Wrap this agent as a tool for use in multi-agent composition.
-	 * The tool sends a text prompt to this agent and returns the text of the response.
-	 *
-	 * @example
-	 * ```typescript
-	 * const coordinatorAgent = new Agent('coordinator')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .instructions('Route tasks to specialist agents.')
-	 *   .tool(writerAgent.asTool('Write content given a topic'));
-	 * ```
-	 */
-	asTool(description: string): BuiltTool {
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const agent = this;
-
-		const tool = new Tool(this.name)
-			.description(description)
-			.input(
-				z.object({
-					input: z.string().describe('The input to send to the agent'),
-				}),
-			)
-			.output(
-				z.object({
-					result: z.string().describe('The result of the agent'),
-				}),
-			)
-			.handler(async (rawInput, ctx) => {
-				const { input } = rawInput as { input: string };
-				const result = await agent.generate(input, {
-					telemetry: ctx.parentTelemetry,
-				} as RunOptions & ExecutionOptions);
-
-				const text = result.messages
-					.filter((m) => 'role' in m && m.role === 'assistant')
-					.flatMap((m) => ('content' in m ? m.content : []))
-					.filter((c) => c.type === 'text')
-					.map((c) => ('text' in c ? c.text : ''))
-					.join('');
-
-				// Collect sub-agent usage: this agent's own + any nested sub-agents
-				const subAgentUsage: SubAgentUsage[] = [];
-				if (result.usage) {
-					subAgentUsage.push({ agent: agent.name, model: result.model, usage: result.usage });
-				}
-				if (result.subAgentUsage) {
-					subAgentUsage.push(...result.subAgentUsage);
-				}
-
-				// Return branded result — the runtime unwraps it to extract sub-agent usage.
-				// createAgentToolResult returns `never`, same pattern as ctx.suspend().
-				if (subAgentUsage.length > 0) {
-					return createAgentToolResult({ result: text }, subAgentUsage);
-				}
-				return { result: text };
-			});
-
-		return tool.build();
 	}
 
 	/**
@@ -828,7 +789,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		const allTools = [...finalStaticTools, ...mcpTools];
+		let allTools = [...finalStaticTools, ...mcpTools];
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
@@ -858,6 +819,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				instructions = `${instructions}\n\n${wsInstructions}`;
 			}
 		}
+		const telemetry = this.telemetryConfig ?? (await this.telemetryBuilder?.build());
+		const toolSearch =
+			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
+				? { topK: this.deferredToolSearchTopK }
+				: undefined;
+
+		allTools = this.completeInlineDelegateTools(allTools, {
+			deferredTools: finalDeferredTools,
+			modelConfig,
+			providerTools: this.providerTools,
+			...(telemetry !== undefined ? { telemetry } : {}),
+			...(this.concurrencyValue !== undefined
+				? { toolCallConcurrency: this.concurrencyValue }
+				: {}),
+			...(toolSearch !== undefined ? { toolSearch } : {}),
+		});
 
 		this.runtime = new AgentRuntime({
 			name: this.name,
@@ -865,28 +842,130 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
-			toolSearch:
-				finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
-					? { topK: this.deferredToolSearchTopK }
-					: undefined,
+			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
-			lastMessages: memoryConfig?.lastMessages,
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,
-			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
-			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
+			telemetry,
 		});
 
 		return this.runtime;
+	}
+
+	private completeInlineDelegateTools(
+		tools: BuiltTool[],
+		options: {
+			deferredTools: BuiltTool[];
+			modelConfig: ModelConfig;
+			providerTools: BuiltProviderTool[];
+			telemetry?: BuiltTelemetry;
+			toolCallConcurrency?: number;
+			toolSearch?: { topK?: number };
+		},
+	): BuiltTool[] {
+		return tools.map((tool) => {
+			const delegateOptions = getInlineDelegateSubAgentToolOptions(tool);
+			if (!delegateOptions) return tool;
+
+			const runInlineSubAgent = this.createInlineSubAgentRunner({
+				...options,
+				tools,
+				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
+			});
+			const hostRunner = delegateOptions.runSubAgent;
+			const completedTool = createDelegateSubAgentTool({
+				...delegateOptions,
+				runSubAgent: async (request, _helpersFromHandler) => {
+					const helpers = { runInlineSubAgent };
+					if (hostRunner) {
+						return await hostRunner(request, helpers);
+					}
+					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+						return await runInlineSubAgent(request);
+					}
+					return {
+						status: 'failed',
+						taskPath: request.taskPath,
+						answer: '',
+						error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
+					};
+				},
+			});
+
+			if (tool.withDefaultApproval) {
+				return wrapToolForApproval(completedTool, { requireApproval: true });
+			}
+			return completedTool;
+		});
+	}
+
+	private createInlineSubAgentRunner(options: {
+		deferredTools: BuiltTool[];
+		modelConfig: ModelConfig;
+		providerTools: BuiltProviderTool[];
+		telemetry?: BuiltTelemetry;
+		toolCallConcurrency?: number;
+		toolSearch?: { topK?: number };
+		tools: BuiltTool[];
+		inlineSubAgentBlockedTools?: string[];
+	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
+		return async (request) => {
+			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
+			const deferredTools = filterInlineSubAgentTools(
+				options.deferredTools,
+				options.inlineSubAgentBlockedTools,
+			);
+			const providerTools = filterInlineSubAgentTools(
+				options.providerTools,
+				options.inlineSubAgentBlockedTools,
+			);
+			const childRuntime = new AgentRuntime({
+				name: `${this.name}:${request.taskName}`,
+				model: options.modelConfig,
+				instructions:
+					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
+				tools: tools.length > 0 ? tools : undefined,
+				deferredTools: deferredTools.length > 0 ? deferredTools : undefined,
+				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
+				providerTools: providerTools.length > 0 ? providerTools : undefined,
+				instructionProviderOptions: this.instructionProviderOpts,
+				checkpointStorage: this.checkpointStore,
+				thinking: this.thinkingConfig,
+				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				...(options.toolCallConcurrency !== undefined
+					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+			});
+
+			try {
+				const result = await childRuntime.generate(renderDelegateSubAgentPrompt(request), {
+					...(request.parentAbortSignal !== undefined
+						? { abortSignal: request.parentAbortSignal }
+						: {}),
+					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				});
+				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
+					return failedDelegatedChildSuspendOutput(request.taskPath);
+				}
+				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+			} finally {
+				await childRuntime.dispose();
+			}
+		};
+	}
+
+	private assertToolRegistrationAllowed(tool: BuiltTool): void {
+		this.assertToolNameAvailable(tool.name);
+		this.assertReservedSdkBuiltInToolName(tool);
 	}
 
 	private assertToolNameAvailable(toolName: string): void {
@@ -895,12 +974,31 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
 	}
 
+	private assertReservedSdkBuiltInToolName(tool: BuiltTool): void {
+		if (!SDK_RESERVED_BUILTIN_TOOL_NAMES.has(tool.name)) return;
+		if (isSdkOwnedBuiltInTool(tool)) return;
+
+		throw new Error(`Tool name "${tool.name}" is reserved for SDK built-in tools`);
+	}
+
 	private removeRuntimeSkillTools(): void {
 		if (!this.hasRuntimeSkillTool) return;
 
 		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
 		this.hasRuntimeSkillTool = false;
 	}
+}
+
+export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {
+	return new Set([...SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES, ...(hostBlockedTools ?? [])]);
+}
+
+export function filterInlineSubAgentTools<T extends { readonly name: string }>(
+	tools: T[],
+	hostBlockedTools?: string[],
+): T[] {
+	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
+	return tools.filter((tool) => !blocked.has(tool.name));
 }
 
 function findDuplicateToolNames(tools: BuiltTool[]): string[] {

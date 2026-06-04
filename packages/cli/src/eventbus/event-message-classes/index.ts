@@ -107,6 +107,7 @@ export const eventNamesAudit = [
 	'n8n.audit.personal-sharing-restricted.disabled',
 	'n8n.audit.2fa-enforcement.enabled',
 	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.redaction-enforcement.updated',
 	'n8n.audit.execution.data.revealed',
 	'n8n.audit.execution.data.reveal_failure',
 	'n8n.audit.token-exchange.succeeded',
@@ -129,6 +130,7 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.split-brain.resolved',
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
+	'n8n.audit.oauth.callback.binding.rejected',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

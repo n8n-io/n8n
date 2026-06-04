@@ -32,6 +32,7 @@ import {
 } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import { createPassthroughSsrfGuard, type SsrfGuard } from '@/tools/utils/ssrf-guard';
 import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
@@ -247,6 +248,8 @@ export interface DiscoverySubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Optional checkpointer for interrupt/resume support (used in integration tests) */
 	checkpointer?: BaseCheckpointSaver;
+	/** SSRF guard for web_fetch. Defaults to a passthrough guard when omitted. */
+	ssrf?: SsrfGuard;
 }
 
 export class DiscoverySubgraph extends BaseSubgraph<
@@ -286,16 +289,19 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const discoverySecurityFactory = createLangGraphSecurityManagerFactory();
 		const plannerSecurityFactory = createMutableSecurityManagerFactory(this.plannerWebFetchState);
 
+		// SSRF guard for web_fetch; passthrough when SSRF protection is disabled/unset.
+		const ssrf = config.ssrf ?? createPassthroughSsrfGuard();
+
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools: StructuredTool[] = includePlanMode
 			? [
 					createNodeSearchTool(config.parsedNodeTypes).tool,
 					submitQuestionsTool,
-					createWebFetchTool(discoverySecurityFactory).tool,
+					createWebFetchTool(discoverySecurityFactory, ssrf).tool,
 				]
 			: [
 					createNodeSearchTool(config.parsedNodeTypes).tool,
-					createWebFetchTool(discoverySecurityFactory).tool,
+					createWebFetchTool(discoverySecurityFactory, ssrf).tool,
 				];
 
 		// Conditionally add introspect tool if feature flag is enabled
@@ -354,7 +360,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
 		this.plannerAgent = createPlannerAgent({
 			llm: config.plannerLLM,
-			tools: [createGetDocumentationTool().tool, createWebFetchTool(plannerSecurityFactory).tool],
+			tools: [
+				createGetDocumentationTool().tool,
+				createWebFetchTool(plannerSecurityFactory, ssrf).tool,
+			],
 		});
 
 		// Build the subgraph
