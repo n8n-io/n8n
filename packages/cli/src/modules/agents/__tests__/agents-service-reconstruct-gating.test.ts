@@ -85,7 +85,6 @@ function makeReconstructionService(
 		mock<OauthService>(),
 		{
 			modules,
-			subAgentTimeoutMs: 300_000,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
@@ -310,15 +309,12 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, [], {
-			agentsConfig: { subAgentTimeoutMs: 1234 },
-		});
+		const service = makeReconstructionService(agentsToolsService, []);
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 5,
-			timeoutMs: 1234,
 		});
 	});
 
@@ -326,16 +322,13 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, [], {
-			agentsConfig: { subAgentTimeoutMs: 1234 },
-		});
+		const service = makeReconstructionService(agentsToolsService, []);
 		const entity = makeAgentEntity(undefined, { subAgents: { maxChildren: 2 } });
 
 		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 2,
-			timeoutMs: 1234,
 		});
 	});
 });

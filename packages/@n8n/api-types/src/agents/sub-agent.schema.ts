@@ -17,8 +17,6 @@ export interface ResolvedSubAgentSource {
 
 export interface SubAgentRunPolicy {
 	maxChildren?: number;
-	/** Host-enforced wall-clock timeout for a child run — the n8n runner aborts the child. */
-	timeoutMs?: number;
 }
 
 /**

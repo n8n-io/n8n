@@ -460,7 +460,6 @@ export class AgentRuntimeReconstructionService {
 	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
 		return {
 			maxChildren: config.subAgents?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN,
-			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
 		};
 	}
 }

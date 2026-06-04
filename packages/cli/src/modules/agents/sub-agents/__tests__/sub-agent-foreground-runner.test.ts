@@ -315,27 +315,6 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('passes an abort signal when timeout policy is configured', async () => {
-		await runner.runForeground(
-			{
-				...spawnRequest,
-				policy: { timeoutMs: 1000 },
-			},
-			{
-				projectId,
-				userId,
-				credentialProvider,
-			},
-		);
-
-		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({
-				abortSignal: expect.any(AbortSignal),
-			}),
-		);
-	});
-
 	it('aborts the child run when the parent run is cancelled', async () => {
 		const parentAbort = new AbortController();
 		childAgent.stream.mockImplementation(
@@ -367,45 +346,6 @@ describe('SubAgentForegroundRunner', () => {
 			expect.any(String),
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
-	});
-
-	it('returns failed status when timeout aborts the child run', async () => {
-		jest.useFakeTimers();
-		childAgent.stream.mockImplementation(
-			async (_input, options) =>
-				await new Promise<StreamResult>((resolve) => {
-					options?.abortSignal?.addEventListener('abort', () => {
-						resolve(
-							makeStreamResult([
-								{ type: 'error', error: new Error('aborted') },
-								{ type: 'finish', finishReason: 'error' },
-							]),
-						);
-					});
-				}),
-		);
-
-		try {
-			const run = runner.runForeground(
-				{
-					...spawnRequest,
-					policy: { timeoutMs: 1000 },
-				},
-				{
-					projectId,
-					userId,
-					credentialProvider,
-				},
-			);
-
-			await jest.advanceTimersByTimeAsync(1000);
-
-			await expect(run).resolves.toMatchObject({
-				status: 'failed',
-			});
-		} finally {
-			jest.useRealTimers();
-		}
 	});
 });
 
