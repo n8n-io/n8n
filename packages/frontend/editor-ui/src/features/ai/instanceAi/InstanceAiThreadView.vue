@@ -52,7 +52,7 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { buildFixWithAiPrompt } from './fixWithAi';
+import { buildFixWithAiPrompt, IS_FIX_WITH_AI_OFFER_ENABLED } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -100,6 +100,7 @@ const isChatInProgress = computed(
 );
 
 const activeFixWithAiOffer = computed(() => {
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return null;
 	const run = failedRun.value;
 	if (!run) return null;
 	if (run.executionId === dismissedExecutionId.value) return null;
@@ -562,6 +563,7 @@ function dismissFixWithAiOffer() {
 }
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 	failedRun.value = report;
 }
 </script>
