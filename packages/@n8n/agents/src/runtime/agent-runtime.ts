@@ -79,7 +79,6 @@ import {
 	isSuspendedToolResult,
 	toAiSdkProviderTools,
 	toAiSdkTools,
-	lockAdditionalProperties,
 } from './tool-adapter';
 import { isCancellation } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
@@ -95,6 +94,7 @@ import type {
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
+import { lockAdditionalProperties } from '../utils/json-schema';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
 
