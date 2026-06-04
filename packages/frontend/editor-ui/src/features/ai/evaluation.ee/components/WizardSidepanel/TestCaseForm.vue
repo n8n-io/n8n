@@ -9,6 +9,9 @@ import { N8nButton, N8nIcon, N8nInput, N8nText, N8nTooltip } from '@n8n/design-s
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { getExpectedFieldsForMetrics } from '../../evaluation.constants';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { nodeViewEventBus } from '@/app/event-bus';
 
 const props = defineProps<{
 	sliceInputs: {
@@ -21,12 +24,32 @@ const props = defineProps<{
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const locale = useI18n();
 const router = useRouter();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const { inputs, expectedValues, selectedMetricKeys } = storeToRefs(wizardStore);
 
 const { runEntireWorkflow } = useRunWorkflow({ router });
 
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
+
+// Chat-trigger workflows can't be executed directly — they need a chat message
+// to start. Open and focus the chat panel instead (NodeView listens for this
+// event and opens the chat-hub or logs chat as appropriate).
+const hasChatTrigger = computed(() =>
+	(workflowDocumentStore.value?.allNodes ?? []).some(
+		(node) =>
+			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
+			node.disabled !== true,
+	),
+);
+
+function onRunWorkflow() {
+	if (hasChatTrigger.value) {
+		nodeViewEventBus.emit('openChat');
+		return;
+	}
+	void runEntireWorkflow('main');
+}
 </script>
 
 <template>
@@ -45,7 +68,7 @@ const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetric
 					size="small"
 					type="button"
 					data-test-id="evaluations-wizard-sidepanel-run-workflow"
-					@click="runEntireWorkflow('main')"
+					@click="onRunWorkflow"
 				>
 					{{ locale.baseText('evaluations.wizardSidepanel.step.addTestCases.runButton') }}
 				</N8nButton>
