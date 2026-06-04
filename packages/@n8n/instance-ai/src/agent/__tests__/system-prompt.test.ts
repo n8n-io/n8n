@@ -136,7 +136,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toMatch(/Any edit to an existing workflow that runs the builder/);
 			expect(prompt).toContain('load the `workflow-builder` skill');
-			expect(prompt).toContain('call `build-workflow` directly');
+			expect(prompt).toContain('Prefer workspace edits plus `submit-workflow` when available');
 			expect(prompt).toContain('existing `workflowId`');
 			expect(prompt).toContain('approval before saving');
 		});
@@ -190,9 +190,10 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('building first and routing setup after verification');
 		});
 
-		it('reads workflowId/workItemId from build-workflow output', () => {
+		it('reads workflowId/workItemId from save output', () => {
 			const prompt = getSystemPrompt({});
 
+			expect(prompt).toContain('A save succeeds');
 			expect(prompt).toContain('read `workflowId`, `workItemId`, `triggerNodes`');
 			expect(prompt).toContain('`verificationReadiness`');
 			expect(prompt).toContain('`setupRequirement`');
@@ -249,7 +250,8 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('patch in place');
-			expect(prompt).toContain('call `build-workflow` directly during this checkpoint turn');
+			expect(prompt).toContain('save a small repair during this checkpoint turn');
+			expect(prompt).toContain('Prefer workspace edits plus `submit-workflow`');
 			expect(prompt).toContain('re-verify');
 			expect(prompt).toContain('complete-checkpoint');
 		});

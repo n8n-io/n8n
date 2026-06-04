@@ -6,6 +6,7 @@ description: >-
   credential-aware node configuration, and setup routing. This is the former
   workflow-builder agent guidance, now loaded as a skill by the orchestrator.
 recommended_tools:
+  - submit-workflow
   - build-workflow
   - workflows
   - nodes
@@ -68,7 +69,8 @@ Tool names are part of the compatibility contract. Keep using the same tool
 names the old builder used:
 
 - `submit-workflow` to save TypeScript SDK code from the workspace filesystem.
-- `build-workflow` to save inline TypeScript SDK code or apply targeted patches.
+- `build-workflow` only when no workspace filesystem or `submit-workflow` tool
+  is available.
 - `workflows(action="get-as-code")` before precise patches to an existing
   workflow when you need the current code.
 - `workflows(action="get")`, `workflows(action="list")`, and
@@ -155,16 +157,16 @@ Assistant panel so the user can fill placeholder values.
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Build complete TypeScript SDK code. Prefer editing it in the workspace
-   filesystem and call `submit-workflow`; use `build-workflow` for inline code
-   or targeted patches.
+   filesystem and call `submit-workflow`. Use `build-workflow` only when no
+   workspace filesystem or `submit-workflow` tool is available.
 7. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
    `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
    attached to the correct parent.
-8. Fix errors. If `submit-workflow` or `build-workflow` returns errors, repair
-   the workspace file or use targeted patches when possible. Save again before
-   any verification step.
+8. Fix errors. If the save returns errors, repair the workspace file and call
+   `submit-workflow` again. If using the `build-workflow` fallback, make one
+   batched repair and save again before any verification step.
 9. Modify existing workflows with `workflowId` plus patches where possible. Use
    `workflows(action="get-as-code")` first when you need to identify exact code
    to replace.
@@ -177,13 +179,13 @@ Do not produce visible output until the final step, unless blocked.
 
 Use the current turn's higher-priority instructions to decide who verifies:
 
-- Direct existing-workflow edits: after `build-workflow` succeeds, follow the
+- Direct existing-workflow edits: after the save succeeds, follow the
   orchestrator post-build flow. If `verificationReadiness.status === "ready"`,
   call `verify-built-workflow` with the returned `workItemId` and `workflowId`.
 - Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
   report once with `complete-checkpoint`.
 - Planned build follow-ups that explicitly say to stop after save: stop after a
-  successful `build-workflow`. The checkpoint task owns verification.
+  successful save. The checkpoint task owns verification.
 
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
@@ -207,8 +209,8 @@ Trigger input shapes:
 
 If verification returns remediation with `shouldEdit: false`, stop editing and
 follow its guidance. If verification fails with `shouldEdit: true`, make one
-batched code repair, call `build-workflow` again, and retry within the repair
-budget. If a failure repeats, stop and explain the blocker.
+batched code repair, save again, and retry within the repair budget. If a
+failure repeats, stop and explain the blocker.
 
 Do not publish the main workflow automatically. Publishing is the user's
 decision after testing.
