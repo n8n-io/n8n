@@ -8,7 +8,7 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-7` | LLM model in `provider/model` format. Must be set for the module to enable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
@@ -150,18 +150,18 @@ Runtime behavior:
 
 ```bash
 # Minimal — just set the model
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 
 # With MCP servers
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_MCP_SERVERS="my-tools=https://mcp.example.com/sse"
 
 # With SearXNG (free, self-hosted search)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 
 # With Brave Search (paid API, takes priority over SearXNG)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=BSA-xxx
 
 # With sandbox (n8n sandbox service)
@@ -174,14 +174,14 @@ N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
 N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
 
 # With sandbox (Daytona — explicit provider)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
 DAYTONA_API_URL=https://app.daytona.io/api
 DAYTONA_API_KEY=dtn_xxx
 
 # With filesystem gateway (user runs daemon on their machine)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/computer-use
 
@@ -190,7 +190,7 @@ N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
 # Full configuration with observational memory tuning
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-7
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
 N8N_INSTANCE_AI_MAX_STEPS=50
 N8N_INSTANCE_AI_MAX_LOOP_ITERATIONS=10
@@ -212,7 +212,7 @@ services:
       - "8888:8080"  # optional: expose to host
   n8n:
     environment:
-      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-4-7
+      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-4-8
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 
