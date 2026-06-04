@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_044b33d341feee::t_e14e70490d59bd 1576-1613
+  s_044b33d341feee::t_15af0792d3d35e 1400-1402,1405,1415,1435-1438,1441-1442,1445-1468,1480-1485,1487,1490-1491,1504-1505,1508-1509,1517-1519,1521-1522,1526-1543,1545,1551-1573,1614-1635
+  s_044b33d341feee::t_610ddfe1dc51c9 1544,1550
+  s_044b33d341feee::t_300843f3ae2bd7 1444
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_044b33d341feee::t_8cf52c3955deb4 1376-1377
+  s_044b33d341feee::t_36359783d34304 1409-1410
+  s_044b33d341feee::t_e77c21d09d83cd 223-226,229-239,241,252,255-257
+  s_044b33d341feee::t_a5a19349bed611 862-872
+  s_044b33d341feee::t_8d8a6740be0340 1280-1281
+  s_044b33d341feee::t_094b27660b6aa4 57
+  s_044b33d341feee::t_39652c2759438c 325-337,339-340
+  s_044b33d341feee::t_7a8215871991b2 73
+  s_044b33d341feee::t_8a4a5e7fa04762 1310-1311
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_044b33d341feee::t_689030ca373b23 3906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c230d0b4b0a9f8c7316063d465653692542ae29c",
+  "prompts": {},
+  "sessions": {
+    "s_044b33d341feee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9b3dee5-3775-4fb3-a010-f7fb397e1ddd",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

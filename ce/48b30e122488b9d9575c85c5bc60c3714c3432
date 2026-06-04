@@ -1,0 +1,19 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_d6be588b406382::t_96e6ba67e3ddb0 3701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce48b30e122488b9d9575c85c5bc60c3714c3432",
+  "prompts": {},
+  "sessions": {
+    "s_d6be588b406382": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "db2802a4-9505-4532-82b2-7e8af42a55bb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
