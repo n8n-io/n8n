@@ -130,6 +130,21 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 		return rows[0]?.projectId;
 	}
 
+	async function getInstanceOwnerPersonalProjectId(
+		context: TestMigrationContext,
+	): Promise<string | undefined> {
+		const relation = context.escape.tableName('project_relation');
+		const user = context.escape.tableName('user');
+		const rows = await context.runQuery<Array<{ projectId: string }>>(
+			`SELECT pr."projectId" AS "projectId"
+			 FROM ${relation} pr
+			 INNER JOIN ${user} u ON u."id" = pr."userId"
+			 WHERE u."roleSlug" = 'global:owner' AND pr."role" = 'project:personalOwner'
+			 LIMIT 1`,
+		);
+		return rows[0]?.projectId;
+	}
+
 	describe('up', () => {
 		it("backfills a user thread with its owner's personal project", async () => {
 			const userId = randomUUID();
@@ -177,15 +192,12 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 		});
 
 		it("falls back to the instance owner's personal project for an orphaned thread", async () => {
-			const ownerId = randomUUID();
-			const ownerProjectId = randomUUID();
 			const orphanThreadId = randomUUID();
 
 			await withContext(async (context) => {
-				await insertUser(context, ownerId, 'global:owner');
-				await insertProject(context, ownerProjectId);
-				await insertPersonalOwnerRelation(context, ownerId, ownerProjectId);
-				// resourceId points at a user that no longer exists.
+				// The instance owner + personal project already exist (seeded by initDb).
+				// The orphan's resourceId points at a user that no longer exists, so the
+				// migration falls back to the owner's personal project.
 				await insertThread(context, { id: orphanThreadId, resourceId: randomUUID() });
 			});
 
@@ -193,6 +205,8 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 			dataSource = Container.get(DataSource);
 
 			await withContext(async (context) => {
+				const ownerProjectId = await getInstanceOwnerPersonalProjectId(context);
+				expect(ownerProjectId).toBeTruthy();
 				expect(await getThreadProjectId(context, orphanThreadId)).toBe(ownerProjectId);
 			});
 		});
