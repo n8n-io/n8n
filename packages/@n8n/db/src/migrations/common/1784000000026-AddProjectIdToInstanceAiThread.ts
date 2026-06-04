@@ -19,6 +19,8 @@ const INSTANCE_AI_TABLES = [
 ];
 
 const FK_NAME = 'FK_instance_ai_threads_projectId';
+const THREADS_TABLE = 'instance_ai_threads';
+const PROJECT_ID_COLUMN = 'projectId';
 
 export class AddProjectIdToInstanceAiThread1784000000026 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
@@ -28,18 +30,61 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements Irreversible
 			schemaBuilder: { addColumns, column, addForeignKey, createIndex },
 		} = ctx;
 
-		await addColumns('instance_ai_threads', [
-			column('projectId')
-				.varchar(255)
-				.comment('Project a user thread is scoped to; null for internal sub-agent threads'),
-		]);
-		await addForeignKey('instance_ai_threads', 'projectId', ['project', 'id'], FK_NAME, 'CASCADE');
-		await createIndex('instance_ai_threads', ['projectId']);
+		if (!(await this.hasProjectIdColumn(ctx))) {
+			await addColumns(THREADS_TABLE, [
+				column(PROJECT_ID_COLUMN)
+					.varchar(255)
+					.comment('Project a user thread is scoped to; null for internal sub-agent threads'),
+			]);
+		}
+
+		if (!(await this.hasProjectIdForeignKey(ctx))) {
+			await addForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME, 'CASCADE');
+		}
+
+		if (!(await this.hasProjectIdIndex(ctx))) {
+			await createIndex(THREADS_TABLE, [PROJECT_ID_COLUMN]);
+		}
 	}
 
 	private async clearInstanceAiData({ runQuery, escape }: MigrationContext) {
 		for (const table of INSTANCE_AI_TABLES) {
 			await runQuery(`DELETE FROM ${escape.tableName(table)}`);
 		}
+	}
+
+	private async getThreadsTable({ queryRunner, tablePrefix }: MigrationContext) {
+		return await queryRunner.getTable(`${tablePrefix}${THREADS_TABLE}`);
+	}
+
+	private async hasProjectIdColumn(ctx: MigrationContext) {
+		const table = await this.getThreadsTable(ctx);
+		return table?.columns.some(({ name }) => name === PROJECT_ID_COLUMN) ?? false;
+	}
+
+	private async hasProjectIdForeignKey(ctx: MigrationContext) {
+		const table = await this.getThreadsTable(ctx);
+		const projectTable = `${ctx.tablePrefix}project`;
+
+		return (
+			table?.foreignKeys.some(
+				({ columnNames, referencedColumnNames, referencedTableName }) =>
+					columnNames.includes(PROJECT_ID_COLUMN) &&
+					referencedColumnNames.includes('id') &&
+					(referencedTableName === 'project' || referencedTableName === projectTable),
+			) ?? false
+		);
+	}
+
+	private async hasProjectIdIndex(ctx: MigrationContext) {
+		const table = await this.getThreadsTable(ctx);
+
+		return (
+			table?.indices.some(
+				({ columnNames, name }) =>
+					name === `IDX_${ctx.tablePrefix}${THREADS_TABLE}_${PROJECT_ID_COLUMN}` ||
+					(columnNames.length === 1 && columnNames.includes(PROJECT_ID_COLUMN)),
+			) ?? false
+		);
 	}
 }
