@@ -41,7 +41,7 @@ const descriptionV2: INodeTypeDescription = {
 	group: ['trigger'],
 	// since trigger and node are sharing descriptions and logic we need to sync the versions
 	// and keep them aligned in both nodes
-	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
@@ -92,6 +92,15 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'webhookOAuth2Authentication',
+			required: true,
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['webhookOAuth2'],
+				},
+			},
+		},
 	],
 	properties: [
 		{
@@ -136,7 +145,39 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			],
 			default: 'none',
-			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.6 } }] } },
+			displayOptions: { show: { '@version': [2.6] } },
+			builderHint: {
+				propertyHint:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
+		},
+		{
+			displayName: 'Authentication',
+			name: FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+			type: 'options',
+			options: [
+				{
+					name: 'Basic Auth',
+					value: 'basicAuth',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'n8n User Auth',
+					value: 'n8nUserAuth',
+					description: 'Require user to be logged in with their n8n account',
+				},
+				{
+					name: 'OAuth2 (External Provider)',
+					value: 'webhookOAuth2',
+					description: 'Authenticate form users via an external OAuth2 provider',
+				},
+				{
+					name: 'None',
+					value: 'none',
+				},
+			],
+			default: 'none',
+			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.7 } }] } },
 			builderHint: {
 				propertyHint:
 					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
@@ -219,6 +260,34 @@ const descriptionV2: INodeTypeDescription = {
 						show: {
 							'/authentication': ['n8nUserAuth'],
 							'@version': [{ _cnd: { gte: 2.6 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Display "Logged in As" Banner',
+					name: 'displayLoggedInBanner',
+					type: 'boolean',
+					default: true,
+					description:
+						"Whether to show the authenticated user's name and email at the top of the form",
+					displayOptions: {
+						show: {
+							'/authentication': ['webhookOAuth2'],
+							'@version': [{ _cnd: { gte: 2.7 } }],
+						},
+					},
+				},
+				{
+					displayName: 'User Output Field',
+					name: 'userOutputField',
+					type: 'string',
+					default: 'user',
+					description:
+						"Name of the output field to add the authenticated user's data to (sub, email, name, picture, emailVerified). Leave empty to omit.",
+					displayOptions: {
+						show: {
+							'/authentication': ['webhookOAuth2'],
+							'@version': [{ _cnd: { gte: 2.7 } }],
 						},
 					},
 				},

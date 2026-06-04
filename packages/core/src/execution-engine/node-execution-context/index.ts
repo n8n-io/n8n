@@ -18,3 +18,9 @@ export { parseRequestObject } from './utils/request-helper-functions';
 export { returnJsonArray } from './utils/return-json-array';
 export { resolveSourceOverwrite } from './utils/resolve-source-overwrite';
 export * from './utils/binary-helper-functions';
+export {
+	createWebhookOAuth2State,
+	generatePKCECodeChallenge,
+	generatePKCECodeVerifier,
+	verifyWebhookOAuth2State,
+} from './utils/webhook-oauth2-helpers';

@@ -123,6 +123,33 @@
 				margin-bottom: var(--margin-bottom-card);
 			}
 
+			.logged-in-banner {
+				padding: 12px 16px;
+				background-color: #f0f4ff;
+				border: 1px solid #dbdfe7;
+				border-radius: var(--border-radius-card);
+				margin-bottom: var(--margin-bottom-card);
+				font-size: var(--font-size-paragraph);
+				color: var(--color-label);
+				text-align: left;
+				line-height: 1.5;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.logged-in-banner-picture {
+				width: 32px;
+				height: 32px;
+				border-radius: 50%;
+				flex-shrink: 0;
+				object-fit: cover;
+			}
+			.logged-in-banner a {
+				color: var(--color-html-link);
+				text-decoration: none;
+			}
+			.logged-in-banner a:hover { text-decoration: underline; }
+
 			.n8n-link {
 				padding-bottom: var(--padding-container-top);
 			}
@@ -471,6 +498,9 @@
 	</head>
 
 	<body>
+		{{#if canonicalFormUrl}}
+			<script>history.replaceState(null, '', '{{canonicalFormUrl}}');</script>
+		{{/if}}
 		<div class='container'>
 			<section>
 				{{#if testRun}}
@@ -478,6 +508,19 @@
 						<p>This is a test version of your form</p>
 					</div>
 					<hr>
+				{{/if}}
+
+				{{#if displayLoggedInBanner}}
+					{{#if oauthUser}}
+					<div class="logged-in-banner">
+						{{#if oauthUser.picture}}
+						<img class="logged-in-banner-picture" src="{{oauthUser.picture}}" alt="" referrerpolicy="no-referrer" />
+						{{/if}}
+						<div>
+							Logged in as <strong>{{oauthUser.firstName}}</strong>{{#if oauthUser.email}} ({{oauthUser.email}}){{/if}}{{#if reAuthUrl}} — not you? <a href="{{reAuthUrl}}">Log out</a>{{/if}}
+						</div>
+					</div>
+					{{/if}}
 				{{/if}}
 
 				<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>

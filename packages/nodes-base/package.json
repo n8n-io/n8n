@@ -399,6 +399,7 @@
       "dist/credentials/VonageApi.credentials.js",
       "dist/credentials/VenafiTlsProtectCloudApi.credentials.js",
       "dist/credentials/VenafiTlsProtectDatacenterApi.credentials.js",
+      "dist/credentials/WebhookOAuth2Authentication.credentials.js",
       "dist/credentials/WebflowApi.credentials.js",
       "dist/credentials/WebflowOAuth2Api.credentials.js",
       "dist/credentials/WekanApi.credentials.js",

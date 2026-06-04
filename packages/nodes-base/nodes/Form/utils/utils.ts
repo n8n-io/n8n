@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
+	IFormUser,
 	INode,
 	INodeExecutionData,
 	IUser,
@@ -53,6 +54,8 @@ type FormUserAuthClaims = {
 	lastName: string;
 	nid: string;
 	wid: string;
+	picture?: string;
+	emailVerified?: boolean;
 };
 
 function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
@@ -230,6 +233,10 @@ export function prepareFormData({
 	customCss,
 	nodeVersion,
 	authToken,
+	oauthUser,
+	displayLoggedInBanner,
+	reAuthUrl,
+	canonicalFormUrl,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -246,6 +253,10 @@ export function prepareFormData({
 	customCss?: string;
 	nodeVersion?: number;
 	authToken?: string;
+	oauthUser?: Pick<IFormUser, 'email' | 'firstName' | 'picture' | 'emailVerified'>;
+	displayLoggedInBanner?: boolean;
+	reAuthUrl?: string;
+	canonicalFormUrl?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -268,6 +279,10 @@ export function prepareFormData({
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
 		authToken,
+		oauthUser,
+		displayLoggedInBanner,
+		reAuthUrl,
+		canonicalFormUrl,
 	};
 
 	if (redirectUrl) {
@@ -552,6 +567,10 @@ export function renderForm({
 	buttonLabel,
 	customCss,
 	authToken,
+	oauthUser,
+	displayLoggedInBanner,
+	reAuthUrl,
+	canonicalFormUrl,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -566,6 +585,10 @@ export function renderForm({
 	buttonLabel?: string;
 	customCss?: string;
 	authToken?: string;
+	oauthUser?: Pick<IFormUser, 'email' | 'firstName' | 'picture' | 'emailVerified'>;
+	displayLoggedInBanner?: boolean;
+	reAuthUrl?: string;
+	canonicalFormUrl?: string;
 }) {
 	const instanceId = context.getInstanceId();
 
@@ -608,6 +631,10 @@ export function renderForm({
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
 		authToken,
+		oauthUser,
+		displayLoggedInBanner,
+		reAuthUrl,
+		canonicalFormUrl,
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -658,7 +685,7 @@ export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
  * preventing replay across forms. Signed with HS256 using the instance's
  * hmac signature secret.
  */
-export function generateFormUserAuthToken(node: INode, user: IUser): string {
+export function generateFormUserAuthToken(node: INode, user: IUser | IFormUser): string {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
 	const payload: FormUserAuthClaims = {
 		sub: user.id,
@@ -667,6 +694,8 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
 		lastName: user.lastName,
 		nid: node.id,
 		wid: node.webhookId ?? '',
+		picture: (user as IFormUser).picture,
+		emailVerified: (user as IFormUser).emailVerified,
 	};
 	return jwt.sign(payload, secret, {
 		algorithm: 'HS256',
@@ -679,7 +708,7 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
  * encoded user on success or `null` on any failure (bad format, expired,
  * wrong signature, wrong node). The caller decides how to surface the failure.
  */
-export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
+export function verifyFormUserAuthToken(token: string, node: INode): IFormUser | null {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
 	let claims: unknown;
 	try {
@@ -695,6 +724,8 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
 		email: claims.email,
 		firstName: claims.firstName,
 		lastName: claims.lastName,
+		picture: claims.picture,
+		emailVerified: claims.emailVerified,
 	};
 }
 
@@ -794,12 +825,48 @@ export async function formWebhook(
 	}
 
 	const authentication = (context.getNodeParameter(authProperty) as string) ?? 'none';
-	let authedUser: IUser | undefined;
+	let authedUser: IFormUser | undefined;
+	let oauthUser: Pick<IFormUser, 'email' | 'firstName' | 'picture' | 'emailVerified'> | undefined;
+	let canonicalFormUrl: string | undefined;
 	if (node.typeVersion > 1) {
 		if (authentication === 'n8nUserAuth') {
 			const user = await authenticateFormUserOrRespond(context);
 			if (!user) return { noWebhookResponse: true };
 			authedUser = user;
+		} else if (authentication === 'webhookOAuth2') {
+			const method = req.method.toUpperCase();
+			if (method === 'GET') {
+				const code = (req.query as Record<string, string>)['_oauth_code'];
+				if (code) {
+					const formUser = await context.exchangeOAuth2Code(code);
+					authedUser = formUser;
+					oauthUser = {
+						email: formUser.email,
+						firstName: formUser.firstName,
+						picture: formUser.picture,
+						emailVerified: formUser.emailVerified,
+					};
+					// Strip the one-shot OAuth params from the URL on the client (via
+					// history.replaceState) so a page reload re-enters the OAuth flow
+					// cleanly instead of trying to reuse an already-spent code.
+					const cleanUrl = new URL(req.originalUrl, 'http://placeholder.invalid');
+					cleanUrl.searchParams.delete('_oauth_code');
+					cleanUrl.searchParams.delete('_oauth_state');
+					canonicalFormUrl = `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`;
+				} else {
+					const redirectUrl = await context.buildWebhookOAuth2RedirectUrl();
+					res.redirect(redirectUrl);
+					return { noWebhookResponse: true };
+				}
+			} else {
+				const token = req.headers['x-auth-token'];
+				const user = typeof token === 'string' ? verifyFormUserAuthToken(token, node) : null;
+				if (!user) {
+					res.status(401).send();
+					return { noWebhookResponse: true };
+				}
+				authedUser = user;
+			}
 		} else {
 			try {
 				await validateWebhookAuthentication(context, authProperty);
@@ -882,10 +949,21 @@ export async function formWebhook(
 				// (null origin + SameSite=Lax). Embed an HMAC token so the
 				// POST handler can re-authenticate the user.
 				authToken = generateFormUserAuthToken(node, authedUser);
+			} else if (authentication === 'webhookOAuth2' && authedUser) {
+				authToken = generateFormUserAuthToken(node, authedUser);
 			} else {
 				authToken = await generateFormPostBasicAuthToken(context, authProperty);
 			}
 		}
+
+		const displayLoggedInBanner =
+			authentication === 'webhookOAuth2'
+				? ((context.getNodeParameter('options', {}) as { displayLoggedInBanner?: boolean })
+						.displayLoggedInBanner ?? true)
+				: undefined;
+
+		const reAuthUrl =
+			authentication === 'webhookOAuth2' ? `${req.path}?_oauth_reauth=1` : undefined;
 
 		renderForm({
 			context,
@@ -901,6 +979,10 @@ export async function formWebhook(
 			buttonLabel,
 			customCss: options.customCss,
 			authToken,
+			oauthUser,
+			displayLoggedInBanner,
+			reAuthUrl,
+			canonicalFormUrl,
 		});
 
 		return {
@@ -920,8 +1002,21 @@ export async function formWebhook(
 		formFields,
 		mode,
 		useWorkflowTimezone,
-		userForOutput,
+		authentication === 'webhookOAuth2' ? undefined : userForOutput,
 	);
+
+	if (authentication === 'webhookOAuth2' && authedUser) {
+		const userOutputField = (options as { userOutputField?: string }).userOutputField ?? 'user';
+		if (userOutputField) {
+			returnItem.json[userOutputField] = {
+				sub: authedUser.id,
+				email: authedUser.email,
+				name: authedUser.firstName,
+				picture: authedUser.picture,
+				emailVerified: authedUser.emailVerified,
+			};
+		}
+	}
 
 	return {
 		webhookResponse: { status: 200 },

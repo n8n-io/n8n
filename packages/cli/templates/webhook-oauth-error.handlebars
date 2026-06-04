@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/png" href="https://n8n.io/favicon.ico" />
+		<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet" />
+		<title>Authentication Error</title>
+		<style>
+			* { box-sizing: border-box; margin: 0; padding: 0; }
+			body {
+				font-family: "Open Sans", sans-serif;
+				font-size: 14px;
+				color: #333638;
+				background: #f9f9f9;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 100vh;
+				padding: 24px;
+			}
+			.card {
+				background: #fff;
+				border-radius: 8px;
+				box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+				padding: 40px 32px;
+				max-width: 480px;
+				width: 100%;
+				text-align: center;
+			}
+			.icon { font-size: 40px; margin-bottom: 16px; }
+			h1 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+			.description {
+				font-size: 14px;
+				color: #666;
+				margin-bottom: 24px;
+				line-height: 1.5;
+			}
+			.return-link {
+				display: inline-block;
+				padding: 10px 20px;
+				background: #ff6d5a;
+				color: #fff;
+				border-radius: 4px;
+				text-decoration: none;
+				font-size: 14px;
+				font-weight: 600;
+			}
+			.return-link:hover { background: #e55a47; }
+		</style>
+	</head>
+	<body>
+		<div class="card">
+			<div class="icon">&#x26A0;&#xFE0F;</div>
+			<h1>Authentication failed</h1>
+			<p class="description">
+				{{#if errorDescription}}
+					{{errorDescription}}
+				{{else if errorCode}}
+					An error occurred during login ({{errorCode}}). Please try again.
+				{{else}}
+					An unexpected error occurred during login. Please try again.
+				{{/if}}
+			</p>
+			{{#if returnUrl}}
+			<a class="return-link" href="{{returnUrl}}">Return to form</a>
+			{{/if}}
+		</div>
+	</body>
+</html>

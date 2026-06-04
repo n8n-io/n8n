@@ -991,6 +991,102 @@ describe('FormTrigger, formWebhook', () => {
 			expect(json.user).toBeUndefined();
 		});
 	});
+
+	describe('webhookOAuth2', () => {
+		const formFields: FormFieldsParameter = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+		];
+		const formUser = {
+			id: 'sub-1',
+			email: 'user@example.com',
+			firstName: 'Test User',
+			lastName: '',
+			picture: 'https://example.com/avatar.png',
+			emailVerified: true,
+		};
+
+		const setupContext = (
+			ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+			originalUrl: string,
+			query: Record<string, string>,
+		) => {
+			const render = jest.fn();
+			const status = jest.fn(() => ({ send: jest.fn() })) as any;
+			const redirect = jest.fn();
+
+			ctx.getNode.mockReturnValue({ typeVersion: 2.7, id: 'node-1', webhookId: 'wh-1' } as INode);
+			ctx.getNodeParameter.calledWith('options').mockReturnValue({});
+			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
+			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
+			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
+			ctx.getNodeParameter.calledWith('authentication').mockReturnValue('webhookOAuth2');
+			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
+			ctx.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl,
+				query,
+				headers: { host: 'localhost:5678' },
+				protocol: 'http',
+				ips: [],
+				ip: '127.0.0.1',
+			} as never);
+			ctx.getResponseObject.mockReturnValue({
+				render,
+				redirect,
+				status,
+				setHeader: jest.fn(),
+				writeHead: jest.fn(),
+				end: jest.fn(),
+			} as never);
+			ctx.getMode.mockReturnValue('manual');
+			ctx.getInstanceId.mockReturnValue('instanceId');
+			ctx.getChildNodes.mockReturnValue([]);
+
+			return { render, redirect };
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('exchanges the code and renders with a canonical URL that strips the OAuth params', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { render } = setupContext(
+				ctx,
+				'/form/test?foo=bar&_oauth_code=abc123&_oauth_state=enc.state',
+				{ foo: 'bar', _oauth_code: 'abc123', _oauth_state: 'enc.state' },
+			);
+			ctx.exchangeOAuth2Code.mockResolvedValue(formUser);
+
+			await formWebhook(ctx);
+
+			expect(ctx.exchangeOAuth2Code).toHaveBeenCalledWith('abc123');
+			expect(render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({
+					canonicalFormUrl: '/form/test?foo=bar',
+					oauthUser: {
+						email: 'user@example.com',
+						firstName: 'Test User',
+						picture: 'https://example.com/avatar.png',
+						emailVerified: true,
+					},
+				}),
+			);
+		});
+
+		it('redirects to the OAuth provider on GET without an _oauth_code', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { redirect } = setupContext(ctx, '/form/test', {});
+			ctx.buildWebhookOAuth2RedirectUrl.mockResolvedValue('https://provider.example.com/auth?...');
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.buildWebhookOAuth2RedirectUrl).toHaveBeenCalled();
+			expect(redirect).toHaveBeenCalledWith('https://provider.example.com/auth?...');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
 });
 
 describe('FormTrigger, prepareFormData', () => {
@@ -1286,6 +1382,39 @@ describe('FormTrigger, prepareFormData', () => {
 			{ id: 'option1_field-1', label: 'Blue' },
 			{ id: 'option2_field-1', label: 'Green' },
 		]);
+	});
+
+	it('passes webhookOAuth2 banner and canonical URL fields through to template data', () => {
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'desc',
+			formSubmittedText: undefined,
+			redirectUrl: undefined,
+			formFields: [],
+			testRun: false,
+			query: {},
+			oauthUser: {
+				email: 'user@example.com',
+				firstName: 'Test User',
+				picture: 'https://example.com/avatar.png',
+				emailVerified: true,
+			},
+			displayLoggedInBanner: true,
+			reAuthUrl: '/form/test?_oauth_reauth=1',
+			canonicalFormUrl: '/form/test',
+		});
+
+		expect(result).toMatchObject({
+			oauthUser: {
+				email: 'user@example.com',
+				firstName: 'Test User',
+				picture: 'https://example.com/avatar.png',
+				emailVerified: true,
+			},
+			displayLoggedInBanner: true,
+			reAuthUrl: '/form/test?_oauth_reauth=1',
+			canonicalFormUrl: '/form/test',
+		});
 	});
 });
 

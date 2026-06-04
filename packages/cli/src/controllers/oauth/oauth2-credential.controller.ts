@@ -6,6 +6,7 @@ import { Response } from 'express';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
+import { verifyWebhookOAuth2State } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
@@ -153,6 +154,46 @@ export class OAuth2CredentialController {
 				'body' in error ? jsonStringify(error.body) : undefined,
 			);
 		}
+	}
+
+	/** Callback endpoint for webhook-scoped OAuth2 authentication (form / webhook nodes) */
+	@Get('/webhook-callback', { usesTemplates: true, allowUnauthenticated: true })
+	async handleWebhookOAuth2Callback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		const { code, state, error, error_description } = req.query as Record<string, string>;
+
+		// Provider returned an error (e.g. user denied access)
+		if (error) {
+			const decoded = state ? verifyWebhookOAuth2State(state) : null;
+			return res.render('webhook-oauth-error', {
+				errorCode: error,
+				errorDescription: error_description ?? null,
+				returnUrl: decoded?.returnUrl ?? null,
+			});
+		}
+
+		if (!code || !state) {
+			return res.render('webhook-oauth-error', {
+				errorCode: 'invalid_request',
+				errorDescription: 'Missing required OAuth2 parameters.',
+				returnUrl: null,
+			});
+		}
+
+		const decoded = verifyWebhookOAuth2State(state);
+		if (!decoded) {
+			return res.render('webhook-oauth-error', {
+				errorCode: 'invalid_state',
+				errorDescription:
+					'The login link has expired or is invalid. Please return to the form and try again.',
+				returnUrl: null,
+			});
+		}
+
+		const returnUrl = new URL(decoded.returnUrl, 'http://placeholder.invalid');
+		returnUrl.searchParams.set('_oauth_code', code);
+		// Pass the original state back so the form node can recover the PKCE code_verifier.
+		returnUrl.searchParams.set('_oauth_state', state);
+		return res.redirect(`${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`);
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
