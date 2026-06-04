@@ -7,7 +7,7 @@ import {
 	WorkflowRepository,
 	type IWorkflowDb,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
@@ -16,6 +16,7 @@ import type {
 	INode,
 	INodesGraphResult,
 	ITelemetryTrackProperties,
+	IWorkflowBase,
 	JsonValue,
 } from 'n8n-workflow';
 import {
@@ -43,6 +44,18 @@ import { Telemetry } from '../../telemetry';
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
 
+function countWorkflowCustomTelemetryTags(workflow: IWorkflowDb | IWorkflowBase): number {
+	return workflow.settings?.customTelemetryTags?.length ?? 0;
+}
+
+function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
+	return nodes.filter((node) => (node.customTelemetryTags?.tag?.length ?? 0) > 0).length;
+}
+
+function countNodeCustomTelemetryTags(nodes: INode[]): number {
+	return nodes.reduce((total, node) => total + (node.customTelemetryTags?.tag?.length ?? 0), 0);
+}
+
 function limitNodeGraphStringSize(nodeGraphString: string): string {
 	if (Buffer.byteLength(nodeGraphString, 'utf8') > MAX_NODE_GRAPH_STRING_SIZE) return '{}';
 
@@ -50,9 +63,10 @@ function limitNodeGraphStringSize(nodeGraphString: string): string {
 }
 
 function getExecutionTelemetryProperties(
+	source: RelayEventMap['workflow-post-execute']['source'],
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
-	const executionSource = telemetryMetadata?.source ?? 'user';
+	const executionSource = source ?? 'user';
 
 	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
 
@@ -184,8 +198,36 @@ export class TelemetryEventRelay extends EventRelay {
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
+			'instance-ai-mcp-registry-connection-created': (event) =>
+				this.instanceAiMcpRegistryConnectionCreated(event),
+			'instance-ai-mcp-registry-connection-deleted': (event) =>
+				this.instanceAiMcpRegistryConnectionDeleted(event),
 		});
 	}
+
+	// #region Instance AI MCP
+
+	private instanceAiMcpRegistryConnectionCreated({
+		userId,
+		serverSlug,
+	}: RelayEventMap['instance-ai-mcp-registry-connection-created']) {
+		this.telemetry.track('Instance AI mcp connected', {
+			user_id: userId,
+			server_slug: serverSlug,
+		});
+	}
+
+	private instanceAiMcpRegistryConnectionDeleted({
+		userId,
+		serverSlug,
+	}: RelayEventMap['instance-ai-mcp-registry-connection-deleted']) {
+		this.telemetry.track('Instance AI mcp disconnected', {
+			user_id: userId,
+			server_slug: serverSlug,
+		});
+	}
+
+	// #endregion
 
 	// #endregion
 
@@ -196,12 +238,14 @@ export class TelemetryEventRelay extends EventRelay {
 		role,
 		members,
 		projectId,
+		otelProjectCustomTagsCount,
 	}: RelayEventMap['team-project-updated']) {
 		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
-			members: members.map(({ userId: user_id, role }) => ({ user_id, role })),
 			project_id: projectId,
+			members: members?.map(({ userId: user_id, role }) => ({ user_id, role })),
+			otel_project_custom_tags_count: otelProjectCustomTagsCount,
 		});
 	}
 
@@ -817,6 +861,9 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			project_type: projectType,
 			meta: JSON.stringify(workflow.meta),
+			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
+			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
+			otel_node_custom_tags_count: countNodeCustomTelemetryTags(workflow.nodes),
 			uiContext,
 			source,
 		});
@@ -984,6 +1031,9 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_resolver_id: credentialResolverId,
 			identity_extractor_changed: identityExtractorChanged,
 			redaction_policy: redactionPolicy,
+			otel_workflow_custom_tags_count: countWorkflowCustomTelemetryTags(workflow),
+			otel_nodes_with_custom_tags_count: countNodesWithCustomTelemetryTags(workflow.nodes),
+			otel_node_custom_tags_count: countNodeCustomTelemetryTags(workflow.nodes),
 			source,
 		});
 	}
@@ -993,13 +1043,14 @@ export class TelemetryEventRelay extends EventRelay {
 		workflow,
 		runData,
 		userId,
+		source,
 		telemetryMetadata,
 	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
 		}
 
-		const executionTelemetryProperties = getExecutionTelemetryProperties(telemetryMetadata);
+		const executionTelemetryProperties = getExecutionTelemetryProperties(source, telemetryMetadata);
 
 		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
@@ -1186,6 +1237,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private async serverStarted() {
 		const cpus = os.cpus();
+		const otel = await this.getOtelTelemetryInfo();
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -1246,6 +1298,8 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+				metrics_category_execution_data:
+					this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
 			},
 		};
 
@@ -1309,7 +1363,18 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Instance started', {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
+			otel,
 		});
+	}
+
+	private async getOtelTelemetryInfo() {
+		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const otelConfig = Container.get(OtelConfig);
+
+		return {
+			enabled: otelConfig.enabled,
+			include_node_spans: otelConfig.includeNodeSpans,
+		};
 	}
 
 	private getLicenseFeatures() {

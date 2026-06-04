@@ -130,6 +130,7 @@ export class E2EController {
 		[LICENSE_FEATURES.TOKEN_EXCHANGE]: false,
 		[LICENSE_FEATURES.DATA_REDACTION]: false,
 		[LICENSE_FEATURES.N8N_PACKAGES]: false,
+		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {

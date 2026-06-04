@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
@@ -21,6 +21,7 @@ const cacheService = mock<CacheService>();
 const eventService = mock<EventService>();
 const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 const workflowRepository = mock<WorkflowRepository>();
+const storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 const app = mock<express.Application>();
 const eventBus = new MessageEventBus(mock(), mock(), mock(), mock(), mock(), mock());
 
@@ -46,6 +47,7 @@ describe('workflow_success_total', () => {
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			storageConfig,
 		);
 
 		await prometheusMetricsService.init(app);
@@ -90,6 +92,7 @@ workflow_success_total{workflow_id="1234"} 1"
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			storageConfig,
 		);
 
 		await prometheusMetricsService.init(app);
@@ -131,6 +134,7 @@ workflow_success_total{workflow_name="wf_1234"} 1"
 			instanceSettings,
 			workflowRepository,
 			mock<LicenseMetricsRepository>(),
+			storageConfig,
 		);
 
 		// ACT
@@ -176,6 +180,7 @@ describe('Active workflow count', () => {
 		instanceSettings,
 		workflowRepository,
 		mock<LicenseMetricsRepository>(),
+		storageConfig,
 	);
 
 	afterEach(() => {

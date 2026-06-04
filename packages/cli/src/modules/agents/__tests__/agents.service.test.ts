@@ -14,7 +14,19 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentsToolsService } from '../agents-tools.service';
+import type { Logger } from '@n8n/backend-common';
+import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import type { ActiveExecutions } from '@/active-executions';
+import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { OauthService } from '@/oauth/oauth.service';
+import type { UrlService } from '@/services/url.service';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
@@ -36,6 +48,7 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 
 const agentId = 'agent-1';
@@ -72,6 +85,31 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 		author: testUserAuthor,
 		...overrides,
 	} as unknown as AgentHistory;
+}
+
+function makeRuntimeReconstructionService(
+	modules: string[] = [],
+): AgentRuntimeReconstructionService {
+	return new AgentRuntimeReconstructionService(
+		mock<Logger>(),
+		mock<AgentRepository>(),
+		mock<WorkflowRunner>(),
+		mock<ActiveExecutions>(),
+		mock<ExecutionRepository>(),
+		mock<WorkflowRepository>(),
+		mock<UserRepository>(),
+		mock<WorkflowFinderService>(),
+		mock<UrlService>(),
+		mock<N8NCheckpointStorage>(),
+		mock<AgentSecureRuntime>(),
+		mock<EphemeralNodeExecutor>(),
+		mock<AgentsToolsService>(),
+		mock<N8nMemory>(),
+		mock<OauthService>(),
+		{ modules } as unknown as AgentsConfig,
+		mock<AgentKnowledgeService>(),
+		mock<AgentKnowledgeCommandService>(),
+	);
 }
 
 function makeTaskSnapshot(overrides: Partial<AgentTaskSnapshot> = {}): AgentTaskSnapshot {
@@ -157,17 +195,7 @@ describe('AgentsService', () => {
 			logger,
 			agentRepository,
 			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
 			n8nCheckpointStorage,
-			mock(),
-			mock(),
-			mock(),
 			n8nMemory,
 			agentExecutionService,
 			agentHistoryRepository,
@@ -180,7 +208,6 @@ describe('AgentsService', () => {
 			telemetry,
 			chatIntegrationService,
 			agentKnowledgeService,
-			mock(),
 			mock(),
 		);
 	});
@@ -794,7 +821,32 @@ describe('AgentsService', () => {
 			await service.updateConfig(agentId, projectId, configWithSubAgents);
 
 			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(savedEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'agent-2' }] });
+			expect(savedEntity.schema?.subAgents).toEqual({
+				agents: [{ agentId: 'agent-2' }],
+			});
+		});
+
+		it('normalizes an explicit empty subAgents list without an enabled flag', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const configWithEmptySubAgents = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				subAgents: { agents: [] },
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithEmptySubAgents,
+			});
+
+			await service.updateConfig(agentId, projectId, configWithEmptySubAgents);
+
+			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(savedEntity.schema?.subAgents).toEqual({
+				agents: [],
+			});
 		});
 
 		it('rejects unpublished subagent references', async () => {
@@ -1339,6 +1391,10 @@ describe('AgentsService', () => {
 	});
 
 	describe('integration runtime tools', () => {
+		beforeEach(() => {
+			Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		});
+
 		it('injects each credential integration context/action tool only once', async () => {
 			const integrationRegistry = new ChatIntegrationRegistry();
 			Container.set(ChatIntegrationRegistry, integrationRegistry);
@@ -1356,18 +1412,27 @@ describe('AgentsService', () => {
 						if (item.name) toolNames.push(item.name);
 					}
 				}),
+				on: jest.fn(),
 				hasCheckpointStorage: jest.fn().mockReturnValue(true),
 				checkpoint: jest.fn(),
 			};
 
+			const reconstructionService = makeRuntimeReconstructionService();
 			await (
-				service as unknown as {
+				reconstructionService as unknown as {
 					injectRuntimeDependencies(params: {
 						agent: typeof runtimeAgent;
 						agentId: string;
 						projectId: string;
 						credentialProvider: unknown;
+						userId: string;
+						runtimeProfile: 'top-level';
 						nodeToolsEnabled: boolean;
+						subAgentDelegation: {
+							sourcesById: Record<string, never>;
+							availableSubAgents: [];
+						};
+						parentAgentIdForDelegation: string;
 						credentialIntegrations: Array<{ type: string; credentialId: string }>;
 					}): Promise<void>;
 				}
@@ -1376,7 +1441,14 @@ describe('AgentsService', () => {
 				agentId,
 				projectId,
 				credentialProvider: mock(),
+				userId: 'user-1',
+				runtimeProfile: 'top-level',
 				nodeToolsEnabled: false,
+				parentAgentIdForDelegation: agentId,
+				subAgentDelegation: {
+					sourcesById: {},
+					availableSubAgents: [],
+				},
 				credentialIntegrations: [{ type: 'slack', credentialId: 'cred-slack' }],
 			});
 

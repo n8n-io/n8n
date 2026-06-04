@@ -4,6 +4,7 @@ node_modules
 tmp
 dist
 coverage
+coverage-by-spec
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json

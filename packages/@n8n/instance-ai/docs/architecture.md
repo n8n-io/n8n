@@ -76,10 +76,10 @@ graph TB
 
     subgraph Sandbox ["Sandbox (Optional)"]
         Service -->|per-thread| WorkspaceManager[Workspace Manager]
+        WorkspaceManager --> N8nSandbox[n8n Sandbox Service]
         WorkspaceManager --> DaytonaSandbox[Daytona Container]
-        WorkspaceManager --> LocalSandbox[Local Sandbox]
+        N8nSandbox --> SandboxFS[Filesystem + execute_command]
         DaytonaSandbox --> SandboxFS[Filesystem + execute_command]
-        LocalSandbox --> SandboxFS
     end
 
 
@@ -181,12 +181,13 @@ The agent package — framework-agnostic business logic.
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
 - **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
-- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
+- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
+- **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
-- **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
+- **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
