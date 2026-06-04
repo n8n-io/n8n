@@ -1,3 +1,12 @@
+## [1.123.52](https://github.com/n8n-io/n8n/compare/n8n@1.123.51...n8n@1.123.52) (2026-06-04)
+
+
+### Bug Fixes
+
+* **core:** Reject unsafe property tokens in in-isolate $jmespath ([#31643](https://github.com/n8n-io/n8n/issues/31643)) ([08de252](https://github.com/n8n-io/n8n/commit/08de252a0f49d452cbceb916370ab705ad08155f))
+* **core:** Report only error class and stack for unhandled node errors ([#31640](https://github.com/n8n-io/n8n/issues/31640)) ([fbb9005](https://github.com/n8n-io/n8n/commit/fbb90050c160ef51184e9676bffb8cf0f1ba5be8))
+
+
 ## [1.123.51](https://github.com/n8n-io/n8n/compare/n8n@1.123.50...n8n@1.123.51) (2026-06-03)
 
 
