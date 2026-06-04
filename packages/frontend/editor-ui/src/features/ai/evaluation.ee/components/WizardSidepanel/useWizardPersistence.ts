@@ -64,10 +64,16 @@ export function useWizardPersistence() {
 
 		const inputNames = sliceInputs.value.fieldNames;
 		const expectedFields = getExpectedFieldsForMetrics(wizardStore.selectedMetricKeys);
-		const requiredColumns: DataTableColumnCreatePayload[] = [
-			...inputNames.map((name) => ({ name, type: 'string' as const })),
-			...expectedFields.map((f) => ({ name: f.name, type: 'string' as const })),
-		];
+		// Dedupe by name — an input column and an expected column can share a
+		// name, which would otherwise send a duplicate column and fail the
+		// data-table create.
+		const seenColumns = new Set<string>();
+		const requiredColumns: DataTableColumnCreatePayload[] = [];
+		for (const name of [...inputNames, ...expectedFields.map((f) => f.name)]) {
+			if (seenColumns.has(name)) continue;
+			seenColumns.add(name);
+			requiredColumns.push({ name, type: 'string' as const });
+		}
 
 		// Dry-run before any API calls so shape errors don't leave half-state.
 		const dryRun = buildEvaluationConfigDto({
@@ -356,29 +362,36 @@ export function useWizardPersistence() {
 			const aiNode = wizardStore.aiNodeName;
 			if (!aiNode) return { ok: false, reason: 'Pick an AI node to evaluate' };
 
-			const trigger = allNodes.find((n) => nodeTypesStore.isTriggerNode(n.type));
-			if (!trigger) return { ok: false, reason: 'Workflow has no trigger' };
+			// A workflow can have several triggers; don't assume the first one is
+			// the AI node's upstream. Match the chain against any trigger so a
+			// multi-trigger graph still resolves.
+			const triggerNames = new Set(
+				allNodes.filter((n) => nodeTypesStore.isTriggerNode(n.type)).map((n) => n.name),
+			);
+			if (triggerNames.size === 0) return { ok: false, reason: 'Workflow has no trigger' };
 
 			const ancestors = getParentNodes(byDest, aiNode, 'main');
 			const chain = [aiNode, ...ancestors];
 			let startNodeName: string | undefined;
+			let upstreamNodeName: string | undefined;
 			for (const candidate of chain) {
-				if (candidate === trigger.name) continue;
+				if (triggerNames.has(candidate)) continue;
 				const parents = getParentNodes(byDest, candidate, 'main', 1);
-				if (parents.length === 1 && parents[0] === trigger.name) {
+				if (parents.length === 1 && triggerNames.has(parents[0])) {
 					startNodeName = candidate;
+					upstreamNodeName = parents[0];
 					break;
 				}
 			}
-			if (!startNodeName) {
+			if (!startNodeName || !upstreamNodeName) {
 				return {
 					ok: false,
-					reason: `Couldn't trace AI node "${aiNode}" back to the trigger`,
+					reason: `Couldn't trace AI node "${aiNode}" back to a trigger`,
 				};
 			}
 			return {
 				ok: true,
-				upstreamNodeName: trigger.name,
+				upstreamNodeName,
 				startNodeName,
 				endNodeName: aiNode,
 			};

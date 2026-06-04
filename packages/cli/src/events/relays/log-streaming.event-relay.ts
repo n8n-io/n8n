@@ -16,14 +16,17 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 	return event.user !== undefined;
 }
 
-function withoutTelemetryMetadata(
+function withoutExecutionMetadata(
 	event: RelayEventMap['workflow-post-execute'],
-): Omit<RelayEventMap['workflow-post-execute'], 'telemetryMetadata'> {
-	const eventWithoutTelemetryMetadata = { ...event };
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata'> {
+	const trimmed = { ...event };
 
-	delete eventWithoutTelemetryMetadata.telemetryMetadata;
+	// Execution metadata (provenance + telemetry) is internal and not part of
+	// the log-streaming payload contract.
+	delete trimmed.source;
+	delete trimmed.telemetryMetadata;
 
-	return eventWithoutTelemetryMetadata;
+	return trimmed;
 }
 
 @Service()
@@ -276,7 +279,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
 		const { runData, workflow, executionId, projectId, projectName, ...rest } =
-			withoutTelemetryMetadata(event);
+			withoutExecutionMetadata(event);
 
 		const payload = {
 			...rest,
@@ -1052,6 +1055,10 @@ export class LogStreamingEventRelay extends EventRelay {
 						: 'n8n.audit.2fa-enforcement.disabled',
 					payload: user,
 				});
+				break;
+			case 'data_redaction_enforcement_floor':
+				// Telemetry-only signal. The audit trail for redaction enforcement
+				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
 			default:
 				assertNever(settingName);

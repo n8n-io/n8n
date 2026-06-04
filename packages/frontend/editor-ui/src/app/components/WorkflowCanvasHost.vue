@@ -1,12 +1,7 @@
 <script lang="ts" setup>
 import { computed, provide, shallowRef } from 'vue';
-import {
-	WorkflowDocumentStoreKey,
-	WorkflowIdKey,
-	WorkflowStateKey,
-} from '@/app/constants/injectionKeys';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
-import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { type WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import WorkflowCanvasHostBody from './WorkflowCanvasHostBody.vue';
 
 const props = withDefaults(
@@ -33,10 +28,6 @@ const emit = defineEmits<{
 // existing init flow uses this id without modification.
 const localWorkflowId = computed(() => props.workflowId);
 provide(WorkflowIdKey, localWorkflowId);
-
-// Scoped workflow state — independent of any sibling editor.
-const workflowState = useWorkflowState();
-provide(WorkflowStateKey, workflowState);
 
 // Document store ref is populated by useWorkflowInitialization in the body.
 // NodeView and its descendants read it via WorkflowDocumentStoreKey.

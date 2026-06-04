@@ -6,12 +6,12 @@ import { N8nSandboxServiceSandbox } from '../n8n-sandbox-sandbox';
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockCreateSandbox = jest.fn();
-const mockGetSandbox = jest.fn();
-const mockDeleteSandbox = jest.fn();
-const mockExec = jest.fn();
+const mockCreateSandbox = vi.fn();
+const mockGetSandbox = vi.fn();
+const mockDeleteSandbox = vi.fn();
+const mockExec = vi.fn();
 
-jest.mock('@n8n/sandbox-client', () => {
+vi.mock('@n8n/sandbox-client', () => {
 	class MockSandboxServiceError extends Error {
 		readonly status: number;
 
@@ -69,7 +69,7 @@ function makeExecResult(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockCreateSandbox.mockResolvedValue(makeSandboxRecord());
 	mockGetSandbox.mockResolvedValue(makeSandboxRecord());
 	mockDeleteSandbox.mockResolvedValue(undefined);

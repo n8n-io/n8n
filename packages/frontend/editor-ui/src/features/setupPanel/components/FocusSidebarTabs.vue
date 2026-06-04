@@ -5,10 +5,13 @@ import type { FocusSidebarTabs } from '@/features/setupPanel/types';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nIcon, N8nTabs } from '@n8n/design-system';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 
 const i18n = useI18n();
 const focusPanelStore = useFocusPanelStore();
+const setupPanelStore = useSetupPanelStore();
+const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 
@@ -32,16 +35,19 @@ const emit = defineEmits<{
 }>();
 
 const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => {
-	const opts: Array<TabOptions<FocusSidebarTabs>> = [
-		{
+	const opts: Array<TabOptions<FocusSidebarTabs>> = [];
+	// Only offer the Setup tab when its feature is on — otherwise selecting it
+	// falls through to the focus panel, so the tab does nothing.
+	if (isSetupPanelEnabled.value) {
+		opts.push({
 			label: props.tabLabels?.setup ?? i18n.baseText('setupPanel.tabs.setup'),
 			value: 'setup',
-		},
-		{
-			label: props.tabLabels?.focus ?? i18n.baseText('setupPanel.tabs.focus'),
-			value: 'focus',
-		},
-	];
+		});
+	}
+	opts.push({
+		label: props.tabLabels?.focus ?? i18n.baseText('setupPanel.tabs.focus'),
+		value: 'focus',
+	});
 	if (isEvaluationsWizardSidepanelEnabled.value) {
 		opts.push({
 			label: props.tabLabels?.evaluations ?? i18n.baseText('setupPanel.tabs.evaluations'),

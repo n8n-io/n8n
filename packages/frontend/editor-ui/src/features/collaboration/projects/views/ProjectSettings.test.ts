@@ -743,12 +743,12 @@ describe('ProjectSettings', () => {
 
 	describe('Custom telemetry tags', () => {
 		beforeEach(() => {
-			settingsStore.isOtelEnabled = true;
+			settingsStore.isOtelCustomSpanAttributesEnabled = true;
 			projectsStore.updateProject.mockResolvedValue(undefined);
 		});
 
 		it('should not render telemetry tags section when OTel is disabled', () => {
-			settingsStore.isOtelEnabled = false;
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 			const { queryByTestId } = renderComponent();
 			expect(queryByTestId('project-telemetry-tag-add')).not.toBeInTheDocument();
 		});
@@ -843,7 +843,7 @@ describe('ProjectSettings', () => {
 		});
 
 		it('should not include customTelemetryTags in payload when OTel is disabled', async () => {
-			settingsStore.isOtelEnabled = false;
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 

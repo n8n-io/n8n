@@ -1,5 +1,6 @@
 import { STORES } from '@n8n/stores';
 import type { ChatHubLLMProvider } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -148,7 +149,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 		}
 
 		function addCustomCheck(check: Omit<CustomCheck, 'id'>) {
-			const id = crypto.randomUUID();
+			const id = nanoid();
 			customChecks.value = [...customChecks.value, { ...check, id }];
 		}
 

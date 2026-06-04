@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { ref } from 'vue';
 import type { EvaluationConfigDto } from '@n8n/api-types';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 
-const mockAllNodes = ref<Array<{ name: string; type: string }>>([]);
+// Plain mutable holders instead of module-scope `ref()`s — reactive refs
+// surviving teardown have caused post-teardown rejections on Node 24.
+const { mocks } = vi.hoisted(() => ({
+	mocks: {
+		allNodes: [] as Array<{ name: string; type: string }>,
+		showError: vi.fn(),
+		listEvaluationConfigs: vi.fn(),
+		getDataTableRowsApi: vi.fn(),
+	},
+}));
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({
 		value: {
@@ -19,7 +28,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 				return { id: 'project-id' };
 			},
 			get allNodes() {
-				return mockAllNodes.value;
+				return mocks.allNodes;
 			},
 		},
 	}),
@@ -31,7 +40,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
 
-// useFocusPanelStore drags in NDV / settings parameter chains we don't need here.
+// Avoid activating the real focus-panel store: its watchers outlive the test
+// and have surfaced as post-teardown unhandled rejections on Node 24.
 vi.mock('@/app/stores/focusPanel.store', () => ({
 	useFocusPanelStore: () => ({
 		focusPanelActive: false,
@@ -46,19 +56,16 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-const showError = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError }),
+	useToast: () => ({ showError: mocks.showError }),
 }));
 
-const listEvaluationConfigs = vi.fn();
 vi.mock('../../evaluation.api', () => ({
-	listEvaluationConfigs: (...args: unknown[]) => listEvaluationConfigs(...args),
+	listEvaluationConfigs: (...args: unknown[]) => mocks.listEvaluationConfigs(...args),
 }));
 
-const getDataTableRowsApi = vi.fn();
 vi.mock('@/features/core/dataTable/dataTable.api', () => ({
-	getDataTableRowsApi: (...args: unknown[]) => getDataTableRowsApi(...args),
+	getDataTableRowsApi: (...args: unknown[]) => mocks.getDataTableRowsApi(...args),
 }));
 
 import { useWizardHydration } from './useWizardHydration';
@@ -82,18 +89,18 @@ function makeConfig(overrides: Partial<EvaluationConfigDto> = {}): EvaluationCon
 describe('useWizardHydration', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		mockAllNodes.value = [
+		mocks.allNodes = [
 			{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'Pre-process', type: 'n8n-nodes-base.set' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
-		listEvaluationConfigs.mockReset();
-		getDataTableRowsApi.mockReset();
-		showError.mockReset();
+		mocks.listEvaluationConfigs.mockReset();
+		mocks.getDataTableRowsApi.mockReset();
+		mocks.showError.mockReset();
 	});
 
 	it('decodes a canned correctness metric back into selectedMetricKeys + judgeSelection', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
 					{
@@ -112,7 +119,7 @@ describe('useWizardHydration', () => {
 				],
 			}),
 		]);
-		getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -127,7 +134,7 @@ describe('useWizardHydration', () => {
 	});
 
 	it('decodes a deterministic canned metric (stringSimilarity)', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
 					{
@@ -139,7 +146,7 @@ describe('useWizardHydration', () => {
 				],
 			}),
 		]);
-		getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -150,7 +157,7 @@ describe('useWizardHydration', () => {
 	});
 
 	it('decodes a custom expression check into customChecks', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
 					{
@@ -162,7 +169,7 @@ describe('useWizardHydration', () => {
 				],
 			}),
 		]);
-		getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -177,7 +184,7 @@ describe('useWizardHydration', () => {
 	});
 
 	it('drops a non-canned LLM judge metric — those are no longer surfaced in the wizard', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
 					{
@@ -196,7 +203,7 @@ describe('useWizardHydration', () => {
 				],
 			}),
 		]);
-		getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -207,10 +214,10 @@ describe('useWizardHydration', () => {
 	});
 
 	it('uses single-AI-node mode when endNodeName matches an AI root node', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({ startNodeName: 'Pre-process', endNodeName: 'AI Agent' }),
 		]);
-		getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -223,10 +230,10 @@ describe('useWizardHydration', () => {
 	});
 
 	it('falls back to slice mode when endNodeName is not an AI root node', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({ startNodeName: 'Pre-process', endNodeName: 'Post-process' }),
 		]);
-		getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 0, data: [] });
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -239,7 +246,7 @@ describe('useWizardHydration', () => {
 	});
 
 	it('splits a dataset row into inputs vs expectedValues', async () => {
-		listEvaluationConfigs.mockResolvedValue([
+		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
 					{
@@ -258,7 +265,7 @@ describe('useWizardHydration', () => {
 				],
 			}),
 		]);
-		getDataTableRowsApi.mockResolvedValue({
+		mocks.getDataTableRowsApi.mockResolvedValue({
 			count: 1,
 			data: [
 				{
@@ -280,7 +287,7 @@ describe('useWizardHydration', () => {
 	});
 
 	it('does nothing when there is no existing config', async () => {
-		listEvaluationConfigs.mockResolvedValue([]);
+		mocks.listEvaluationConfigs.mockResolvedValue([]);
 
 		const store = useEvaluationsWizardSidepanelStore();
 		const { hydrate } = useWizardHydration();
@@ -288,6 +295,6 @@ describe('useWizardHydration', () => {
 
 		expect(store.selectedMetricKeys).toEqual([]);
 		expect(store.customChecks).toEqual([]);
-		expect(getDataTableRowsApi).not.toHaveBeenCalled();
+		expect(mocks.getDataTableRowsApi).not.toHaveBeenCalled();
 	});
 });

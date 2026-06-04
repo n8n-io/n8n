@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -45,6 +45,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
 
 		const parentTracingContext: TracingContext = {
@@ -75,14 +76,16 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false });
+			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
 				config,
 				ownershipService,
 				logger,
+				licenseState,
 			);
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(generatedSpanContext);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
 		});
@@ -117,6 +120,32 @@ describe('OtelLifecycleHandler', () => {
 						id: 'proj-1',
 						customAttributes: { env: 'production', team: 'platform' },
 					},
+				}),
+			);
+		});
+
+		it('should omit project and workflow customAttributes when custom OTel span attributes are not licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'proj-1',
+				customTelemetryTags: [{ key: 'env', value: 'production' }],
+			} as never);
+
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: [{ key: 'workflowName', value: 'Workflow Name' }],
+					},
+				},
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					project: { id: 'proj-1', customAttributes: undefined },
+					workflow: expect.objectContaining({ customAttributes: undefined }),
 				}),
 			);
 		});
@@ -181,6 +210,28 @@ describe('OtelLifecycleHandler', () => {
 
 			expect(traceContextService.get).toHaveBeenCalledTimes(1);
 			expect(traceContextService.get).toHaveBeenCalledWith('exec-parent');
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: parentTracingContext }),
+			);
+		});
+
+		it('should inherit parent tracingContext for error workflows, linking the span to the failed execution', async () => {
+			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
+
+			const ctx: WorkflowExecuteBeforeContext = {
+				...baseCtx,
+				executionId: 'exec-error-workflow',
+				executionData: {
+					parentExecution: { executionId: 'exec-failed', workflowId: 'wf-failed' },
+				} as IRunExecutionData,
+			};
+
+			await handler.onWorkflowStart(ctx);
+
+			// Should look up the failed parent execution's trace context, not the error workflow one
+			expect(traceContextService.get).toHaveBeenCalledTimes(1);
+			expect(traceContextService.get).toHaveBeenCalledWith('exec-failed');
+			expect(traceContextService.get).not.toHaveBeenCalledWith('exec-error-workflow');
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ tracingContext: parentTracingContext }),
 			);
@@ -288,6 +339,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
 
 		const prePauseContext: TracingContext = {
@@ -299,14 +351,16 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false });
+			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
 				config,
 				ownershipService,
 				logger,
+				licenseState,
 			);
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 			tracer.startWorkflow.mockReturnValue(resumedSpanContext);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-default' } as never);
 		});
@@ -352,6 +406,40 @@ describe('OtelLifecycleHandler', () => {
 						id: 'resume-proj-tags',
 						customAttributes: { env: 'staging' },
 					},
+				}),
+			);
+		});
+
+		it('should omit project customAttributes on resume when custom OTel span attributes are not licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'resume-proj-tags',
+				customTelemetryTags: [{ key: 'env', value: 'staging' }],
+			} as never);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: {
+					id: 'wf-1',
+					name: 'Test',
+					versionId: 'v1',
+					nodes: [],
+					connections: {},
+					settings: { customTelemetryTags: [{ key: 'workflowName', value: 'Workflow Name' }] },
+				},
+				workflowInstance: undefined as never,
+				executionData: undefined as never,
+				executionId: 'exec-resume-tags',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					project: {
+						id: 'resume-proj-tags',
+						customAttributes: undefined,
+					},
+					workflow: expect.objectContaining({ customAttributes: undefined }),
 				}),
 			);
 		});
@@ -411,17 +499,19 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false });
+			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
 				config,
 				ownershipService,
 				logger,
+				licenseState,
 			);
 		});
 
@@ -486,6 +576,7 @@ describe('OtelLifecycleHandler', () => {
 		let config = makeOtelConfig();
 		const ownershipService = mock<OwnershipService>();
 		const logger = mock<Logger>();
+		const licenseState = mock<LicenseState>();
 		let handler: OtelLifecycleHandler;
 
 		const node = { id: 'n1', name: 'Node1', type: 'test', typeVersion: 1 };
@@ -520,14 +611,16 @@ describe('OtelLifecycleHandler', () => {
 
 		beforeEach(() => {
 			jest.clearAllMocks();
-			config = makeOtelConfig({ publishedOnly: false, includeNodeSpans: true });
+			config = makeOtelConfig({ productionExecutionsOnly: false, includeNodeSpans: true });
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
 				config,
 				ownershipService,
 				logger,
+				licenseState,
 			);
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 		});
 
 		it('should skip node spans when includeNodeSpans is false', () => {
@@ -538,6 +631,7 @@ describe('OtelLifecycleHandler', () => {
 				config,
 				ownershipService,
 				logger,
+				licenseState,
 			);
 
 			handler.onNodeStart(makeStartCtx());
@@ -597,6 +691,20 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should omit node customAttributes when custom OTel span attributes are not licensed', () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(false);
+
+			handler.onNodeEnd(
+				makeEndCtx({
+					metadata: { tracing: { 'llm.model': 'gpt-4o', 'llm.tokens': 500 } },
+				} as unknown as Partial<NodeExecuteAfterContext['taskData']>),
+			);
+
+			expect(tracer.endNode).toHaveBeenCalledWith(
+				expect.objectContaining({ customAttributes: undefined }),
+			);
+		});
+
 		it('should forward taskData.error to tracer.endNode', () => {
 			const error = new Error('node failure');
 			handler.onNodeEnd(
@@ -614,12 +722,13 @@ describe('OtelLifecycleHandler', () => {
 	});
 });
 
-describe('publishedOnly filter', () => {
+describe('productionExecutionsOnly filter', () => {
 	const tracer = mock<ExecutionLevelTracer>();
 	const traceContextService = mock<TraceContextService>();
 	let config = makeOtelConfig();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
+	const licenseState = mock<LicenseState>();
 	let handler: OtelLifecycleHandler;
 
 	const inactiveWorkflow = {
@@ -683,7 +792,7 @@ describe('publishedOnly filter', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		config = makeOtelConfig({ publishedOnly: true, includeNodeSpans: true });
+		config = makeOtelConfig({ productionExecutionsOnly: true, includeNodeSpans: true });
 		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);
 		handler = new OtelLifecycleHandler(
@@ -692,10 +801,12 @@ describe('publishedOnly filter', () => {
 			config,
 			ownershipService,
 			logger,
+			licenseState,
 		);
+		licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 	});
 
-	it('should skip all tracing for an inactive workflow when publishedOnly is true', async () => {
+	it('should skip all tracing for an inactive workflow when productionExecutionsOnly is true', async () => {
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
 		handler.onWorkflowEnd(makeWorkflowEndCtx(inactiveWorkflow));
 		handler.onNodeStart(makeNodeStartCtx(inactiveWorkflow));
@@ -708,7 +819,7 @@ describe('publishedOnly filter', () => {
 		expect(tracer.endNode).not.toHaveBeenCalled();
 	});
 
-	it('should trace an active workflow when publishedOnly is true', async () => {
+	it('should trace an active workflow when productionExecutionsOnly is true', async () => {
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
 		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
@@ -717,8 +828,8 @@ describe('publishedOnly filter', () => {
 		expect(traceContextService.persist).toHaveBeenCalled();
 	});
 
-	it('should trace an inactive workflow when publishedOnly is false', async () => {
-		config.publishedOnly = false;
+	it('should trace an inactive workflow when productionExecutionsOnly is false', async () => {
+		config.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));

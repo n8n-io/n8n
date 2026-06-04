@@ -1,6 +1,8 @@
+import { execFile } from 'node:child_process';
 import { chmodSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
@@ -16,6 +18,11 @@ const API_GRPC_PORT = 9090;
 const API_KEY = 'n8n-sandbox-ci-key';
 const RUNNER_API_KEY = 'ci-runner-key';
 const REGISTRATION_TOKEN = 'ci-reg-token';
+const SANDBOX_READY_TIMEOUT_MS = 120_000;
+const SANDBOX_READY_POLL_INTERVAL_MS = 1_000;
+const DOCKER_COMMAND_MAX_BUFFER = 10 * 1024 * 1024;
+
+const execFileAsync = promisify(execFile);
 
 export interface SandboxMeta {
 	apiUrl: string;
@@ -27,6 +34,73 @@ export type SandboxResult = ServiceResult<SandboxMeta> & {
 };
 
 const CERT_GEN_SENTINEL = 'SANDBOX_CERTS_READY';
+
+function shellQuote(value: string): string {
+	return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+async function ensureHostDockerImage(image: string): Promise<void> {
+	try {
+		await execFileAsync('docker', ['image', 'inspect', image], {
+			maxBuffer: DOCKER_COMMAND_MAX_BUFFER,
+		});
+	} catch {
+		await execFileAsync('docker', ['pull', image], { maxBuffer: DOCKER_COMMAND_MAX_BUFFER });
+	}
+}
+
+async function loadSandboxImageIntoRunner(
+	runnerContainer: StartedTestContainer,
+	image: string,
+): Promise<void> {
+	await ensureHostDockerImage(image);
+
+	const runnerName = runnerContainer.getName().replace(/^\//, '');
+	await execFileAsync(
+		'sh',
+		[
+			'-lc',
+			`docker save ${shellQuote(image)} | docker exec -i ${shellQuote(runnerName)} docker load`,
+		],
+		{ maxBuffer: DOCKER_COMMAND_MAX_BUFFER },
+	);
+}
+
+async function waitForSandboxApiReady(apiContainer: StartedTestContainer): Promise<void> {
+	const host = apiContainer.getHost();
+	const port = apiContainer.getMappedPort(API_HTTP_PORT);
+	const baseUrl = `http://${host}:${port}`;
+	const deadline = Date.now() + SANDBOX_READY_TIMEOUT_MS;
+	let lastError = 'sandbox API was not ready';
+
+	while (Date.now() < deadline) {
+		try {
+			const createResponse = await fetch(`${baseUrl}/sandboxes`, {
+				method: 'POST',
+				headers: { 'X-Api-Key': API_KEY },
+			});
+
+			if (createResponse.ok) {
+				const sandbox = (await createResponse.json()) as { id?: string };
+				if (sandbox.id) {
+					await fetch(`${baseUrl}/sandboxes/${sandbox.id}`, {
+						method: 'DELETE',
+						headers: { 'X-Api-Key': API_KEY },
+					}).catch(() => {});
+				}
+				return;
+			}
+
+			lastError = `${createResponse.status} ${await createResponse.text()}`;
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, SANDBOX_READY_POLL_INTERVAL_MS));
+	}
+
+	throw new Error(`Sandbox service did not become ready: ${lastError}`);
+}
 
 async function generateMtlsCerts(network: StartedNetwork, projectName: string): Promise<string> {
 	const tlsDir = mkdtempSync(join(tmpdir(), `${projectName}-sandbox-tls-`));
@@ -146,6 +220,9 @@ export const sandbox: Service<SandboxResult> = {
 		} catch (error: unknown) {
 			return throwRunnerLogs(error);
 		}
+
+		await loadSandboxImageIntoRunner(runnerContainer, TEST_CONTAINER_IMAGES.sandboxSandbox);
+		await waitForSandboxApiReady(apiContainer);
 
 		return {
 			container: apiContainer,
