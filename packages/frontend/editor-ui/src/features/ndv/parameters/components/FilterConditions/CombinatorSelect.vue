@@ -1,4 +1,7 @@
 <script setup lang="ts">
+/**
+ * Renders the AND/OR combinator selector between filter conditions.
+ */
 import { useI18n } from '@n8n/i18n';
 import type { FilterTypeCombinator } from 'n8n-workflow';
 
