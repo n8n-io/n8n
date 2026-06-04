@@ -15,6 +15,16 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
+/** Distributes `Omit` over a union so each member is narrowed independently. */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+/**
+ * The `instance-policies-updated` payload without the `user` envelope. Kept as a
+ * distributed union so each `settingName` stays bound to its own `value` type
+ * (boolean settings cannot be emitted with a redaction floor, and vice versa).
+ */
+type InstancePolicyUpdate = DistributiveOmit<RelayEventMap['instance-policies-updated'], 'user'>;
+
 @RestController('/settings/security')
 export class SecuritySettingsController {
 	constructor(
@@ -79,7 +89,10 @@ export class SecuritySettingsController {
 				dto.personalSpacePublishing,
 			);
 			updatedSettings.personalSpacePublishing = dto.personalSpacePublishing;
-			this.emitInstancePolicyUpdated(req, 'workflow_publishing', dto.personalSpacePublishing);
+			this.emitInstancePolicyUpdated(req, {
+				settingName: 'workflow_publishing',
+				value: dto.personalSpacePublishing,
+			});
 		}
 		if (dto.personalSpaceSharing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(
@@ -87,7 +100,10 @@ export class SecuritySettingsController {
 				dto.personalSpaceSharing,
 			);
 			updatedSettings.personalSpaceSharing = dto.personalSpaceSharing;
-			this.emitInstancePolicyUpdated(req, 'workflow_sharing', dto.personalSpaceSharing);
+			this.emitInstancePolicyUpdated(req, {
+				settingName: 'workflow_sharing',
+				value: dto.personalSpaceSharing,
+			});
 		}
 
 		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
@@ -110,18 +126,17 @@ export class SecuritySettingsController {
 				// Report the redaction enforcement floor alongside the other instance
 				// policies. `'off' | 'production' | 'all'` captures both adoption
 				// (off vs not) and scope (production vs production+manual).
-				this.emitInstancePolicyUpdated(req, 'data_redaction_enforcement_floor', after);
+				this.emitInstancePolicyUpdated(req, {
+					settingName: 'data_redaction_enforcement_floor',
+					value: after,
+				});
 			}
 		}
 
 		return updatedSettings;
 	}
 
-	private emitInstancePolicyUpdated(
-		req: AuthenticatedRequest,
-		settingName: RelayEventMap['instance-policies-updated']['settingName'],
-		value: RelayEventMap['instance-policies-updated']['value'],
-	) {
+	private emitInstancePolicyUpdated(req: AuthenticatedRequest, update: InstancePolicyUpdate) {
 		this.eventService.emit('instance-policies-updated', {
 			user: {
 				id: req.user.id,
@@ -130,8 +145,7 @@ export class SecuritySettingsController {
 				lastName: req.user.lastName,
 				role: req.user.role,
 			},
-			settingName,
-			value,
+			...update,
 		});
 	}
 }
