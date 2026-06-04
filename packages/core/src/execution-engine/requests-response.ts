@@ -213,8 +213,9 @@ function prepareRequestingNodeForResuming(
 
 		return undefined;
 	}
-	// Always preserve the original branch provenance when resuming an agent.
-	// Without sourceOverwrite, downstream .item cannot traverse through the branch node.
+	// TODO: This unconditionally overwrites preservedSourceOverwrite for nested agent‑as‑tool chains.
+	// When an agent is invoked as a tool and itself pauses, the outer provenance is lost.
+	// Should preserve existing preservedSourceOverwrite if present, only synthesizing as fallback.
 	const metadata: Partial<ITaskMetadata> = {
 		preserveSourceOverwrite: true,
 		preservedSourceOverwrite: {
@@ -259,8 +260,10 @@ export function handleRequest({
 	// 1. create metadata for current node (must succeed before scheduling tools)
 	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
 	if (!result) {
-		// Fallback for edge cases where the agent’s execution context has no source.
-		// The empty stack means no tool execution will happen.
+		// Early return when the agent's execution context has no source (e.g., malformed or incomplete resume request).
+		// Previously this would still schedule tools with inputOverride, which led to unpredictable lineage.
+		// The current safe behaviour is to schedule nothing – the workflow will fail cleanly rather than
+		// producing orphaned tool executions. This matches the engine's contract: no source → no execution.
 		return { nodesToBeExecuted: [] };
 	}
 

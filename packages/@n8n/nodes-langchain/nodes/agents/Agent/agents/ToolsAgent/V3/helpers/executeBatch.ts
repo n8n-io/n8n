@@ -136,7 +136,7 @@ export async function executeBatch(
 		}
 
 		// Finalize the result
-		const itemResult = finalizeResult(batchResult, itemIndex, memory, outputParser);
+		const itemResult = finalizeResult(batchResult, memory, outputParser);
 		returnData.push(itemResult);
 	});
 

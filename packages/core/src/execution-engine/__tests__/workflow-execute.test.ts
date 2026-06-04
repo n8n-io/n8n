@@ -3443,7 +3443,7 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
-	describe('Agent branching and pairedItem reconstruction logic (#26592)', () => {
+	describe('Agent branching and pairedItem reconstruction logic)', () => {
 		test('resumed agent correctly sets pairedItem.input and pairedItem.item and overrides taskSource', async () => {
 			const agentNode = createNodeData({ name: 'AI Agent' });
 
@@ -3547,6 +3547,7 @@ describe('WorkflowExecute', () => {
 					inputs: [{ type: NodeConnectionTypes.Main }],
 					outputs: [{ type: NodeConnectionTypes.Main }],
 				},
+				// eslint-disable-next-line @typescript-eslint/require-await
 				async execute(this: IExecuteFunctions) {
 					const items = this.getInputData();
 
