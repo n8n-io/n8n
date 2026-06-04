@@ -30,7 +30,7 @@ function getStructuredOutputSchema(
 	if (!rawSchema.trim()) {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			'Output schema is empty. Provide a JSON Schema or turn off "Output Structured Data".',
+			'Output schema is empty. Provide a JSON Schema or turn off "Require Specific Output Format".',
 			{ itemIndex },
 		);
 	}
@@ -157,7 +157,7 @@ export class MessageAnAgent implements INodeType {
 			},
 			{
 				displayName:
-					'Structured output is enforced by the model provider. For best results across providers, mark every property as required. Some providers reject optional fields or advanced keywords (e.g. OpenAI and xAI strict mode), and a few do not support structured output at all (e.g. DeepSeek).',
+					'Structured output is enforced by the model provider. For best results across providers, mark every property as required. Some providers reject optional fields or advanced keywords (e.g. OpenAI and xAI), and a few do not support structured output at all (e.g. DeepSeek).',
 				name: 'structuredOutputNotice',
 				type: 'notice',
 				default: '',
