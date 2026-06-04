@@ -161,7 +161,7 @@ describe('TypeORMAgentMemory', () => {
 				{ id: 'thread-1', resourceId: 'user-1', title: '' },
 				'project-1',
 			),
-		).rejects.toThrow('different owner');
+		).rejects.toThrow('Not authorized');
 
 		expect(threadRepo.save).not.toHaveBeenCalled();
 	});

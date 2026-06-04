@@ -22,7 +22,9 @@ import type {
 	ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -223,10 +225,10 @@ export class TypeORMAgentMemory
 			const existing = await this.threadRepo.findOneBy({ id: thread.id });
 			if (existing) {
 				if (existing.resourceId !== thread.resourceId) {
-					throw new UnexpectedError(`Thread ${thread.id} already exists for a different owner`);
+					throw new ForbiddenError('Not authorized for this thread');
 				}
 				if (existing.projectId !== projectId) {
-					throw new UnexpectedError(
+					throw new ConflictError(
 						`Thread ${thread.id} already exists with a different project binding`,
 					);
 				}
