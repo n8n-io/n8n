@@ -32,6 +32,7 @@ import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -114,6 +115,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
+	mockInstance(ExecutionPersistence);
 	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
