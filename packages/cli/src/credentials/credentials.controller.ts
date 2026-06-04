@@ -176,7 +176,18 @@ export class CredentialsController {
 			uiContext: payload.uiContext,
 			isDynamic: newCredential.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
+			jweEnabled: payload.data.jweEnabled === true,
 		});
+
+		if (newCredential.isResolvable) {
+			this.eventService.emit('private-credential-created', {
+				user: req.user,
+				credentialType: newCredential.type,
+				credentialId: newCredential.id,
+				projectId: project?.id,
+				projectType: project?.type,
+			});
+		}
 
 		return newCredential;
 	}
@@ -213,11 +224,18 @@ export class CredentialsController {
 		// We never want to allow users to change the oauthTokenData
 		delete body.data?.oauthTokenData;
 
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+		const isTogglingToPrivate = body.isResolvable === true && credential.isResolvable === false;
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+		const isTogglingToStatic = body.isResolvable === false && credential.isResolvable === true;
+
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
 			req.user,
 			req.body,
 			credential,
+			{ clearOauthTokenData: isTogglingToPrivate },
 		);
+
 		const newCredentialData = await this.credentialsService.createEncryptedData({
 			id: credential.id,
 			name: preparedCredentialData.name,
@@ -248,6 +266,7 @@ export class CredentialsController {
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
+			{ deleteUserEntries: isTogglingToStatic },
 		);
 
 		if (responseData === null) {
@@ -265,7 +284,26 @@ export class CredentialsController {
 			credentialId: credential.id,
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
+			jweEnabled:
+				(preparedCredentialData.data as unknown as ICredentialDataDecryptedObject).jweEnabled ===
+				true,
 		});
+
+		const wasResolvable = Boolean(credential.isResolvable);
+		const willBeResolvable = Boolean(newCredentialData.isResolvable);
+		if (!wasResolvable && willBeResolvable) {
+			this.eventService.emit('private-credential-toggled-to-private', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (wasResolvable && !willBeResolvable) {
+			this.eventService.emit('private-credential-toggled-to-static', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
 
@@ -300,6 +338,14 @@ export class CredentialsController {
 			credentialType: credential.type,
 			credentialId: credential.id,
 		});
+
+		if (credential.isResolvable) {
+			this.eventService.emit('private-credential-deleted', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
 
 		return true;
 	}

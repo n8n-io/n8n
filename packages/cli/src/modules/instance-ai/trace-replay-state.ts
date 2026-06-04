@@ -5,6 +5,15 @@ import type {
 	TraceEvent,
 } from '@n8n/instance-ai';
 
+function hasToolEvents(events: unknown[]): boolean {
+	return events.some(
+		(event) =>
+			typeof event === 'object' &&
+			event !== null &&
+			(event as { kind?: unknown }).kind !== 'header',
+	);
+}
+
 /**
  * Manages test-only trace replay state for Instance AI e2e tests.
  * Encapsulates trace event storage, the active slug, and shared
@@ -76,7 +85,10 @@ export class TraceReplayState {
 	): unknown[] {
 		const fromWriters: unknown[] = [];
 		for (const entry of activeWriterEntries) {
-			if (entry.traceSlug === slug && entry.tracing.traceWriter) {
+			if (
+				(entry.traceSlug === slug || entry.traceSlug === undefined) &&
+				entry.tracing.traceWriter
+			) {
 				fromWriters.push(...entry.tracing.traceWriter.getEvents());
 			}
 		}
@@ -100,7 +112,7 @@ export class TraceReplayState {
 		const slug = this.activeSlug;
 		const events = slug ? this.eventsBySlug.get(slug) : undefined;
 
-		if (events && events.length > 0) {
+		if (events && hasToolEvents(events)) {
 			if (this.sharedTraceSlug !== slug || !this.sharedTraceIndex) {
 				this.sharedTraceIndex = new TI(events as TraceEvent[]);
 				this.sharedIdRemapper = new IR();

@@ -6,6 +6,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { isChatInstance } from '@n8n/ai-utilities';
 import { getPromptInputByType, getConnectedTools } from '@utils/helpers';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
@@ -109,13 +110,17 @@ export async function conversationalAgentExecute(
 			returnData.push({ json: response });
 		} catch (error) {
 			throwIfToolSchema(this, error);
+			const executionError = wrapLangChainParserError(error, this.getNode(), itemIndex);
 
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				returnData.push({
+					json: { error: executionError.message },
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
-			throw error;
+			throw executionError;
 		}
 	}
 

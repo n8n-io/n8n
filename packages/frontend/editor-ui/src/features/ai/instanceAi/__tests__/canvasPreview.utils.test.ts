@@ -233,8 +233,8 @@ describe('getLatestBuilderTarget', () => {
 	test('ignores non-workflow targetResource types', () => {
 		const credSetup = makeAgentNode({
 			agentId: 'agent-cred-1',
-			role: 'browser-credential-setup',
-			kind: 'browser-setup',
+			role: 'credential-setup',
+			kind: 'delegate',
 			status: 'active',
 			targetResource: { type: 'credential', id: 'cred-1' },
 		});
@@ -458,6 +458,40 @@ describe('getLatestDataTableResult', () => {
 			],
 		});
 		expect(getLatestDataTableResult(node)).toBeUndefined();
+	});
+
+	test('returns dataTableId from successful schema action', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-schema',
+					toolName: 'data-tables',
+					args: { action: 'schema', dataTableId: 'Table Name' },
+					result: { dataTableId: 'dt-schema', columns: [] },
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-schema',
+			toolCallId: 'tc-schema',
+		});
+	});
+
+	test('returns dataTableId from successful query action', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-query',
+					toolName: 'data-tables',
+					args: { action: 'query', dataTableId: 'dt-query' },
+					result: { dataTableId: 'dt-query', count: 1, data: [{ id: 1 }] },
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-query',
+			toolCallId: 'tc-query',
+		});
 	});
 
 	test('returns dataTableId from successful insert-rows action', () => {

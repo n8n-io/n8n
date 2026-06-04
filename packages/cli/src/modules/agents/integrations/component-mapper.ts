@@ -35,6 +35,24 @@ interface SuspendPayload {
 	components: SuspendComponent[];
 }
 
+/**
+ * JSON Schema shape passed to {@link ComponentMapper.toCard} when the suspend
+ * payload comes from a rich-interaction-style tool (rich_interaction itself,
+ * the integration action tool's interactive cards, or display-only cards).
+ *
+ * `wrapValueForSchema` inspects the top-level properties to pick the wrapping
+ * convention — a schema with `{ type, value }` produces `{ type: 'button',
+ * value: rawValue }` on click.
+ */
+export const RICH_INTERACTION_RESUME_JSON_SCHEMA = {
+	type: 'object',
+	properties: {
+		type: { type: 'string' },
+		id: { type: 'string' },
+		value: { type: 'string' },
+	},
+} as const;
+
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
 /** Shared state threaded through per-component render helpers. */

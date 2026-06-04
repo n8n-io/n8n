@@ -18,7 +18,7 @@ import { loadNodesFromFile } from '../../../../evaluations/support/load-nodes';
  * using a real LLM with interrupt/resume via MemorySaver checkpointer.
  *
  * To run:
- * ENABLE_INTEGRATION_TESTS=true N8N_AI_ANTHROPIC_KEY=your-key pnpm jest plan-mode-discovery.integration
+ * ENABLE_INTEGRATION_TESTS=true N8N_AI_ANTHROPIC_KEY=your-key pnpm vi plan-mode-discovery.integration
  */
 
 const skipTests = !shouldRunIntegrationTests();
@@ -86,10 +86,10 @@ describe('Plan Mode Discovery - Integration Tests', () => {
 	let parsedNodeTypes: INodeTypeDescription[];
 	let discoverySubgraph: DiscoverySubgraph;
 
-	jest.setTimeout(300_000); // 5 minutes per test
+	vi.setConfig({ testTimeout: 300_000 }); // 5 minutes per test
 
 	beforeAll(async () => {
-		jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+		vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
 			process.stdout.write(args.map(String).join(' ') + '\n');
 		});
 

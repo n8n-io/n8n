@@ -136,10 +136,6 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-credential-continue-button');
 	}
 
-	getConfirmationText(text: string): Locator {
-		return this.page.getByText(text, { exact: false });
-	}
-
 	// ── Plan Review ───────────────────────────────────────────────────
 
 	getPlanApproveButton(): Locator {
@@ -158,23 +154,28 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	// ── Preview ───────────────────────────────────────────────────────
+	//
+	// The artifact preview mounts the workflow editor directly in the page
+	// (no iframe), rooted at `[data-test-id="workflow-canvas-host"]`. Scope
+	// everything to that root so we don't accidentally match canvas elements
+	// that belong to the main editor on the same document.
 
-	getPreviewIframe() {
-		return this.getPreviewIframeLocator().contentFrame();
+	private getPreviewCanvas(): Locator {
+		return this.container.getByTestId('workflow-canvas-host');
 	}
 
 	getPreviewCanvasNodes(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="canvas-node"]');
+		return this.getPreviewCanvas().locator('[data-test-id="canvas-node"]');
 	}
 
 	getPreviewRunningNodes(): Locator {
-		return this.getPreviewIframe().locator(
+		return this.getPreviewCanvas().locator(
 			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
 		);
 	}
 
 	getPreviewSuccessIndicators(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="canvas-node-status-success"]');
+		return this.getPreviewCanvas().locator('[data-test-id="canvas-node-status-success"]');
 	}
 
 	getPreviewToggleButton(): Locator {
@@ -185,16 +186,32 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	/**
+	 * Resolves to the preview's canvas root. Used by tests to assert the
+	 * preview is hidden (collapsing the panel removes the host from the DOM
+	 * via `v-if`, so the locator becomes hidden).
+	 */
 	getPreviewIframeLocator(): Locator {
-		return this.container.getByTestId('workflow-preview-iframe');
+		return this.getPreviewCanvas();
 	}
 
 	getPreviewRunWorkflowButton(): Locator {
-		return this.getPreviewIframe().getByTestId('execute-workflow-button');
+		return this.getPreviewCanvas().getByTestId('execute-workflow-button');
+	}
+
+	async runPreviewWorkflow(): Promise<void> {
+		const runButton = this.getPreviewRunWorkflowButton();
+		const approvalButton = this.getConfirmApproveButton();
+		await runButton.or(approvalButton).first().waitFor({ state: 'visible', timeout: 30_000 });
+		if (await approvalButton.isVisible()) {
+			await approvalButton.click();
+		} else {
+			await runButton.click();
+		}
 	}
 
 	getPreviewNodeByName(nodeName: string): Locator {
-		return this.getPreviewIframe().locator(
+		return this.getPreviewCanvas().locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
 		);
 	}
@@ -221,8 +238,16 @@ export class InstanceAiPage extends BasePage {
 		);
 	}
 
+	/**
+	 * NDV is rendered through a `<Teleport :to="#app-modals">`, and `#app-modals`
+	 * is mounted in `App.vue` as a sibling of the router view — i.e. OUTSIDE both
+	 * `workflow-canvas-host` and `instance-ai-container`. So unlike the canvas
+	 * content above, this must be page-scoped, not scoped to the preview canvas.
+	 * The rendered NDV uses a native dialog, so narrow the page-scoped lookup
+	 * through that dialog to avoid stale page-level matches.
+	 */
 	getPreviewNdvOutputPanel(): Locator {
-		return this.getPreviewIframe().getByTestId('output-panel');
+		return this.page.getByRole('dialog').getByTestId('output-panel');
 	}
 
 	// ── Artifacts ─────────────────────────────────────────────────────

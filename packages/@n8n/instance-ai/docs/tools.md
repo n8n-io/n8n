@@ -26,7 +26,7 @@ for approval before execution starts.
 {
   id: string;          // Stable identifier used by dependency edges
   title: string;       // Short user-facing task title
-  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'checkpoint';
+  kind: 'delegate' | 'build-workflow' | 'checkpoint';
   spec: string;        // Detailed executor briefing for this task
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
@@ -42,11 +42,13 @@ for approval before execution starts.
 - On approval: calls `schedulePlannedTasks()` to start detached execution
 - On denial: returns feedback for the LLM to revise the plan
 
-**Task kinds** map to preconfigured sub-agents:
-- `build-workflow` → workflow builder agent (sandbox or tool mode)
-- `manage-data-tables` → data table agent (all `*-data-table*` tools)
+**Task kinds** map to executors:
+- `build-workflow` → orchestrator follow-up run using the workflow-builder skill
 - `delegate` → custom sub-agent with orchestrator-specified tool subset
-- `checkpoint` → orchestrator-run verification task
+- `checkpoint` → orchestrator-executed verification step
+
+Standalone data-table work is handled directly by the orchestrator with the
+`data-table-manager` skill and the `data-tables` / `parse-file` tools.
 
 ### `delegate`
 
@@ -85,34 +87,6 @@ tracking during synchronous work.
 **Returns**: `{ result: string }`
 
 **Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
-
-### `build-workflow-with-agent`
-
-Spawn a specialized builder sub-agent as a background task. Returns immediately —
-the builder runs detached from the orchestrator.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `task` | string | yes | What to build and any context |
-| `workflowId` | string | no | Existing workflow ID to modify |
-| `conversationContext` | string | no | What user already knows |
-
-**Returns**: `{ result: string }` — contains task ID for background tracking.
-
-**Two modes** (selected based on sandbox availability):
-
-- **Sandbox mode** (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
-  to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
-  Gets filesystem and `execute_command` tools from the workspace.
-- **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
-  `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
-
-Both modes: max 30 steps, publishes events to the event bus, non-blocking.
-
-**Sandbox-only tools** (not in `createAllTools`, only available to the builder):
-- `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
-- `materialize-node-type` — fetches `.d.ts` definitions and writes to sandbox for `tsc`
-- `write-sandbox-file` — writes files to sandbox workspace (path-traversal protected)
 
 ### `cancel-background-task` *(conditional)*
 
@@ -193,21 +167,6 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 | `credentials` | object | yes | Real credential mapping |
 
 **Returns**: `{ updatedNodes: string[] }`
-
-### `browser-credential-setup` *(conditional)*
-
-Spawn a sub-agent with Chrome DevTools MCP for OAuth credential setup via
-browser automation. Only available when browser MCP or gateway browser tools
-are configured.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `credentialType` | string | yes | Credential type to set up (e.g., `notionApi`) |
-| `instructions` | string | yes | Setup instructions for the browser agent |
-
-**Returns**: `{ result: string }`
-
----
 
 ## Workflow Tools (9–13)
 
@@ -451,7 +410,7 @@ Cancel a running execution.
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `setup-credentials`) or browser automation (`browser-credential-setup`).
+> `setup-credentials`) or Computer Use browser credential capture.
 
 ### `list-credentials`
 
@@ -505,8 +464,9 @@ The LLM never sees secrets — the user interacts with the n8n frontend directly
 **Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
 
 **HITL**: Suspends execution and renders the credential setup UI. When
-`needsBrowserSetup=true`, the orchestrator should invoke `browser-credential-setup`
-followed by another `setup-credentials` call to finalize.
+`needsBrowserSetup=true`, the orchestrator should load the
+`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
+directly, then call `setup-credentials` again to finalize.
 
 ### `test-credential`
 
@@ -677,12 +637,23 @@ See `docs/filesystem-access.md`.
 
 ---
 
-## Template Tools (2)
+## Knowledge Base (sandbox workspace)
 
-| Tool | Description |
+Best-practices guides and curated workflow templates are materialized under
+`<workspace_root>/knowledge-base/` when a builder sandbox is available. Agents
+read them with workspace tools — there is no dedicated `get-best-practices` or
+template-search tool.
+
+| Path | Description |
 |------|-------------|
-| `search-template-structures` | Search workflow templates by structure pattern |
-| `search-template-parameters` | Search templates by parameter values |
+| `knowledge-base/index.json` | Combined catalog of technique guides and curated templates |
+| `knowledge-base/best-practices/index.json` | Catalog of workflow technique guides |
+| `knowledge-base/best-practices/*.md` | Best-practices documentation per technique |
+| `knowledge-base/templates/index.json` | Catalog of curated SDK workflow examples |
+| `knowledge-base/templates/*.ts` | Template workflow source files |
+
+Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
+sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
@@ -691,7 +662,6 @@ See `docs/filesystem-access.md`.
 | Tool | Description |
 |------|-------------|
 | `ask-user` | Suspend and request user input (single/multi-select or text) |
-| `get-best-practices` | Get workflow building best practices for common patterns |
 
 ---
 
@@ -707,15 +677,14 @@ everything; sub-agents receive only what they need.
 | Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
 | Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
 | Node discovery tools | ✅ | ✅ (via delegate) | ✅ (builder) |
-| Data table read tools | ✅ (direct) | ✅ (via delegate) | ✅ (data table agent) |
-| Data table write tools | ❌ (via plan) | ❌ | ✅ (data table agent) |
+| Data table tools | ✅ (direct, via `data-table-manager` skill) | ✅ (via delegate) | ❌ |
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
-| Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
-| Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Web research tools | ✅ | ✅ (via delegate) | ❌ |
+| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ❌ | ❌ |
-| Browser MCP tools | ❌ | ❌ | ✅ (browser-credential-setup only) |
+| Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |
 
 ---
 

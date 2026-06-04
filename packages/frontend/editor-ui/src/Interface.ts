@@ -315,6 +315,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available
@@ -696,7 +697,6 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_drop'
 	| 'notice_error_message'
 	| 'add_node_button'
-	| 'add_evaluation_trigger_button'
 	| 'add_evaluation_node_button'
 	| 'templates_callout';
 
