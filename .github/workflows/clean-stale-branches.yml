@@ -39,4 +39,5 @@ jobs:
       - name: Clean stale branches
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .github/scripts/stale/clean-stale-branches.mjs --days="${{ inputs.days }}" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}
+          STALE_DAYS: ${{ inputs.days }}
+        run: node .github/scripts/stale/clean-stale-branches.mjs --days="$STALE_DAYS" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}
