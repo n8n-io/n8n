@@ -65,6 +65,7 @@ packages/cli/src/commands/export/outputs
 .data
 .data/
 .claude/settings.local.json
+.claude/.skill-usage.local.json
 .claude/plans/
 .claude/worktrees/
 .claude/specs/
