@@ -46,6 +46,29 @@ describe('workspace-files', () => {
 		expect(target.sandbox?.executeCommand).not.toHaveBeenCalled();
 	});
 
+	it('preserves the filesystem as `this` when reading', async () => {
+		// Mirrors LazyRuntimeFilesystem.readFile, whose body dereferences `this`
+		// (e.g. `this.getFilesystem()`). A detached call would lose the binding
+		// and throw "Cannot read properties of undefined".
+		class ThisDependentFilesystem {
+			private readonly files = new Map([['/tmp/manifest.json', '{"ok":true}']]);
+
+			async readFile(path: string): Promise<string> {
+				const content = this.files.get(path);
+				if (content === undefined) throw new Error('missing');
+				return await Promise.resolve(content);
+			}
+
+			async writeFile(): Promise<void> {
+				await Promise.resolve();
+			}
+		}
+
+		const target: WorkspaceFileTarget = { filesystem: new ThisDependentFilesystem() };
+
+		await expect(readWorkspaceFile(target, '/tmp/manifest.json')).resolves.toBe('{"ok":true}');
+	});
+
 	it('reads via sandbox commands when no filesystem reader is available', async () => {
 		const { target } = createWorkspaceTarget(new Map([['/tmp/manifest.json', '{"ok":true}']]));
 		target.filesystem = {

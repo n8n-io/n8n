@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
+	type IExecuteSingleFunctions,
 	type ILoadOptionsFunctions,
 	type ICredentialTestFunctions,
 	type IDataObject,
@@ -57,13 +58,22 @@ const googleServiceAccountScopes = {
 		'https://www.googleapis.com/auth/datastore',
 		'https://www.googleapis.com/auth/firebase',
 	],
+	cloudStorage: [
+		'https://www.googleapis.com/auth/devstorage.full_control',
+		'https://www.googleapis.com/auth/cloud-platform',
+	],
 	vertex: ['https://www.googleapis.com/auth/cloud-platform'],
 };
 
 type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;
 
 export async function getGoogleAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions | ICredentialTestFunctions | IPollFunctions,
+	this:
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| ICredentialTestFunctions
+		| IPollFunctions,
 	credentials: IDataObject,
 	service: GoogleServiceAccount,
 ): Promise<IDataObject> {
