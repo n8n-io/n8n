@@ -1,29 +1,30 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { editFileTool } from './edit-file';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
 function mockStat(size: number): void {
-	jest.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
 }
 
 function mockReadFile(content: string): void {
-	(fs.readFile as jest.Mock).mockResolvedValue(content);
+	(fs.readFile as Mock).mockResolvedValue(content);
 }
 
 function mockWriteFile(): void {
-	(fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+	(fs.writeFile as Mock).mockResolvedValue(undefined);
 }
 
 describe('editFileTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});

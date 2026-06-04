@@ -26,7 +26,10 @@ import {
 	itemFilterKey,
 	chartBlockColor,
 	filteredTimelineItemIndexes,
+	isSubAgentTimelineItem,
 } from '@/features/agents/session-timeline.utils';
+import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
@@ -66,7 +69,24 @@ const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
 let loadThreadDetailRequestId = 0;
 
-const items = computed<TimelineItem[]>(() => flattenExecutionsToTimelineItems(executions.value));
+const baseItems = computed<TimelineItem[]>(() =>
+	flattenExecutionsToTimelineItems(executions.value),
+);
+
+// Resolve sub-agent ids to friendly names, loaded lazily and only when the
+// session actually contains delegations (mirrors how the chat resolves the
+// delegate step label).
+const { subAgentNameById } = useSubAgentNames(projectId, () =>
+	baseItems.value.some(isSubAgentTimelineItem),
+);
+
+const items = computed<TimelineItem[]>(() =>
+	baseItems.value.map((item) => {
+		if (!isSubAgentTimelineItem(item)) return item;
+		const name = resolveSubAgentName(item.toolInput, subAgentNameById.value);
+		return name ? { ...item, subAgentName: name } : item;
+	}),
+);
 const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 

@@ -1,8 +1,4 @@
-import type {
-	AuthenticationMethod,
-	ProjectRelation,
-	RedactionEnforcementSettings,
-} from '@n8n/api-types';
+import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -94,6 +90,7 @@ export type RelayEventMap = {
 		workflowIds: string[];
 		packageSourceId: string;
 		packageVersion: string;
+		matchedCredentialIds: string[];
 	};
 
 	'workflow-deleted': {
@@ -573,8 +570,9 @@ export type RelayEventMap = {
 	'team-project-updated': {
 		userId: string;
 		role: string;
-		members: ProjectRelation[];
+		members?: ProjectRelation[];
 		projectId: string;
+		otelProjectCustomTagsCount?: number;
 	};
 
 	'team-project-deleted': {
@@ -980,16 +978,21 @@ export type RelayEventMap = {
 
 	// #region Instance Policies
 
-	'instance-policies-updated': {
-		user: UserLike;
-		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
-		value: boolean;
-	};
+	'instance-policies-updated': { user: UserLike } & (
+		| {
+				settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+				value: boolean;
+		  }
+		| {
+				settingName: 'data_redaction_enforcement_floor';
+				value: RedactionFloor;
+		  }
+	);
 
 	'redaction-enforcement-updated': {
 		user: UserLike;
-		before: RedactionEnforcementSettings;
-		after: RedactionEnforcementSettings;
+		before: RedactionFloor;
+		after: RedactionFloor;
 	};
 
 	// #endregion
@@ -1019,6 +1022,16 @@ export type RelayEventMap = {
 
 	'instance-ai-settings-updated': {
 		mcpSettingsChanged: boolean;
+	};
+
+	'instance-ai-mcp-registry-connection-created': {
+		userId: string;
+		serverSlug: string;
+	};
+
+	'instance-ai-mcp-registry-connection-deleted': {
+		userId: string;
+		serverSlug: string;
 	};
 
 	// #endregion

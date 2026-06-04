@@ -338,7 +338,7 @@ describe('buildAgentTreeFromEvents', () => {
 				type: 'tool-call',
 				runId: 'run-1',
 				agentId: 'agent-001',
-				payload: { toolCallId: 'tc-2', toolName: 'build-workflow-with-agent', args: {} },
+				payload: { toolCallId: 'tc-2', toolName: 'build-workflow', args: {} },
 			},
 			{
 				type: 'run-finish',

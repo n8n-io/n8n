@@ -83,7 +83,7 @@ export const askQuestionInputSchema = z.object({
 	options: z
 		.array(askQuestionOptionSchema)
 		.describe(
-			'Choices to present. Pass an empty array for an open-ended question (the card shows only a freeform input). With a single option the tool auto-resolves to that option without rendering a card.',
+			'Choices to present. Pass an empty array for an open-ended question (the card shows only a freeform input). With a single non-multiple option the tool auto-resolves to that option without rendering a card.',
 		),
 	allowMultiple: z
 		.boolean()
@@ -106,10 +106,18 @@ export type AskQuestionResume = z.infer<typeof askQuestionResumeSchema>;
 // Discriminated union of all resume payloads (used by AgentBuildResumeDto)
 // ---------------------------------------------------------------------------
 
+export const cancellationResumeSchema = z.object({
+	_type: z.literal('agent.cancellation'),
+	message: z.string().min(1),
+});
+
+export type CancellationResumeData = z.infer<typeof cancellationResumeSchema>;
+
 export const interactiveResumeDataSchema = z.union([
 	askLlmResumeSchema,
 	askCredentialResumeSchema,
 	askQuestionResumeSchema,
+	cancellationResumeSchema,
 ]);
 
 export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;
