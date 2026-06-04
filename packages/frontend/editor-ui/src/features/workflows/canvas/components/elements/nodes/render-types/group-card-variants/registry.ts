@@ -1,0 +1,23 @@
+import type { Component } from 'vue';
+
+import GroupCardV1 from './GroupCardV1.vue';
+import GroupCardV2 from './GroupCardV2.vue';
+import GroupCardV3 from './GroupCardV3.vue';
+
+export interface GroupCardVariant {
+	id: string;
+	label: string;
+	component: Component;
+}
+
+/**
+ * Prototype-only registry of collapsed group-card variants for usability
+ * testing. To add a new variant: create `GroupCardV<n>.vue` (copy an existing
+ * one) and append an entry here — the on-canvas switcher and persistence pick
+ * it up automatically.
+ */
+export const GROUP_CARD_VARIANTS: GroupCardVariant[] = [
+	{ id: 'v1', label: 'V1', component: GroupCardV1 },
+	{ id: 'v2', label: 'V2', component: GroupCardV2 },
+	{ id: 'v3', label: 'V3', component: GroupCardV3 },
+];

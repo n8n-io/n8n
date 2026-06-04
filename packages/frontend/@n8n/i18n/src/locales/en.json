@@ -3826,6 +3826,7 @@
 	"canvas.selection.toolbar.ungroup": "Ungroup",
 	"canvas.nodeGroup.defaultTitle": "Group",
 	"canvas.nodeGroup.titlePlaceholder": "Group name",
+	"canvas.nodeGroup.descriptionPlaceholder": "Add description",
 	"canvas.nodeGroup.collapse": "Collapse group",
 	"canvas.nodeGroup.expand": "Expand group",
 	"canvas.nodeGroup.pinNode": "Show a node on the collapsed group",

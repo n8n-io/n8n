@@ -97,6 +97,7 @@ export const workflowMetaSchema = z.record(z.string(), z.unknown()).nullable();
 const workflowGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
+	description: z.string().optional(),
 	nodeIds: z.array(z.string().min(1)),
 	collapsed: z.boolean().optional(),
 	pinnedNodeIds: z.array(z.string().min(1)).optional(),

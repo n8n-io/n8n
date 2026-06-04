@@ -81,6 +81,27 @@ describe('useWorkflowDocumentNodeGroups', () => {
 		});
 	});
 
+	describe('updateDescription', () => {
+		it('updates the description of an existing group', () => {
+			const group = nodeGroups.createGroup(['a', 'b'], 'X');
+			nodeGroups.updateDescription(group.id, 'What this group does');
+			expect(nodeGroups.getGroupById(group.id)?.description).toBe('What this group does');
+		});
+
+		it('allows duplicate descriptions across groups', () => {
+			const a = nodeGroups.createGroup(['a', 'b'], 'A');
+			const b = nodeGroups.createGroup(['c', 'd'], 'B');
+			nodeGroups.updateDescription(a.id, 'Same');
+			nodeGroups.updateDescription(b.id, 'Same');
+			expect(nodeGroups.getGroupById(a.id)?.description).toBe('Same');
+			expect(nodeGroups.getGroupById(b.id)?.description).toBe('Same');
+		});
+
+		it('does nothing for an unknown group id', () => {
+			expect(() => nodeGroups.updateDescription('missing', 'X')).not.toThrow();
+		});
+	});
+
 	describe('deleteGroup', () => {
 		it('removes the group', () => {
 			const group = nodeGroups.createGroup(['a', 'b'], 'X');

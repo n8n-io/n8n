@@ -342,6 +342,7 @@ function onHeaderDragStart(groupId: string, event: MouseEvent) {
 			:read-only="readOnly"
 			:autofocus-title="group.id === autofocusGroupId"
 			@update:name="workflowDocumentStore.updateName"
+			@update:description="workflowDocumentStore.updateDescription"
 			@title:focused="onTitleFocused"
 			@ungroup="workflowDocumentStore.deleteGroup"
 			@toggle-collapsed="onToggleCollapsed"

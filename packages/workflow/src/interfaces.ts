@@ -3059,6 +3059,9 @@ export type WorkflowId = IWorkflowBase['id'];
 export interface IWorkflowGroup {
 	id: string;
 	name: string;
+	/** Optional short summary of what the group does, shown beneath the title on
+	 * the canvas (full in the expanded overlay, clamped on the collapsed box). */
+	description?: string;
 	nodeIds: string[];
 	/** When true the group is rendered as a compact box and its member nodes
 	 * are hidden on the canvas. Defaults to expanded (undefined / false). */

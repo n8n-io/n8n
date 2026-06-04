@@ -42,7 +42,14 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import {
+	getRectOfNodes,
+	MarkerType,
+	Panel,
+	PanelPosition,
+	useVueFlow,
+	VueFlow,
+} from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
@@ -68,6 +75,7 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import CanvasNodeGroupsLayer from './elements/groups/CanvasNodeGroupsLayer.vue';
+import GroupVariantSwitcher from './elements/groups/GroupVariantSwitcher.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -1256,6 +1264,14 @@ defineExpose({
 			@group-created="onNodeGroupCreated"
 			@extract-workflow="emit('extract-workflow', $event)"
 		/>
+
+		<!-- PROTOTYPE: facilitator control to flip collapsed group-card variants. -->
+		<Panel
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			:position="PanelPosition.BottomRight"
+		>
+			<GroupVariantSwitcher />
+		</Panel>
 
 		<Transition name="minimap">
 			<MiniMap

@@ -121,6 +121,12 @@ export function useWorkflowDocumentNodeGroups() {
 		applyUpsertGroup({ ...group, name: newName }, CHANGE_ACTION.UPDATE);
 	}
 
+	function updateDescription(id: string, description: string) {
+		const group = groups.value.get(id);
+		if (!group || group.description === description) return;
+		applyUpsertGroup({ ...group, description }, CHANGE_ACTION.UPDATE);
+	}
+
 	function deleteGroup(id: string) {
 		if (!groups.value.has(id)) return;
 		applyDeleteGroup(id);
@@ -214,6 +220,7 @@ export function useWorkflowDocumentNodeGroups() {
 		createGroup,
 		getNextDefaultName,
 		updateName,
+		updateDescription,
 		deleteGroup,
 		setGroupCollapsed,
 		addPinnedNodeToGroup,

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { computed, nextTick, onMounted, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nIconButton, N8nInlineTextEdit, N8nInput } from '@n8n/design-system';
 import type { GraphNode } from '@vue-flow/core';
 
 import type { IWorkflowGroup } from 'n8n-workflow';
@@ -26,6 +26,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'update:name': [id: string, name: string];
+	'update:description': [id: string, description: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
 	'toggle-collapsed': [id: string];
@@ -34,8 +35,38 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
+const descriptionInput = useTemplateRef<InstanceType<typeof N8nInput>>('descriptionInput');
 
 const isCollapsed = computed(() => props.group.collapsed ?? false);
+
+const description = computed(() => props.group.description ?? '');
+const hasDescription = computed(() => description.value.length > 0);
+
+// Inline-edit state for the description. The display element swaps to a
+// textarea on click; blur commits, Escape cancels, Cmd/Ctrl+Enter commits.
+const isEditingDescription = ref(false);
+const descriptionDraft = ref('');
+
+function startEditDescription() {
+	if (props.readOnly) return;
+	descriptionDraft.value = description.value;
+	isEditingDescription.value = true;
+	void nextTick(() => descriptionInput.value?.focus());
+}
+
+function commitDescription() {
+	if (!isEditingDescription.value) return;
+	isEditingDescription.value = false;
+	const next = descriptionDraft.value.trim();
+	if (next !== description.value) {
+		emit('update:description', props.group.id, next);
+	}
+}
+
+function cancelDescription() {
+	// Clearing the flag first means the subsequent blur's commit is a no-op.
+	isEditingDescription.value = false;
+}
 
 // The overlay only renders the EXPANDED frame. A collapsed group is drawn as a
 // synthetic canvas node (CanvasNodeCollapsedGroup) instead, so the overlay
@@ -139,17 +170,52 @@ watch(
 					</KeyboardShortcutTooltip>
 				</div>
 			</div>
-			<div :class="$style.title" data-test-id="canvas-node-group-title">
-				<N8nInlineTextEdit
-					ref="titleEdit"
-					:model-value="group.name"
-					:read-only="readOnly"
-					:min-width="0"
-					max-width="100%"
-					:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
-					@update:model-value="onTitleUpdate"
+			<div :class="$style.titleBlock">
+				<div :class="$style.title" data-test-id="canvas-node-group-title">
+					<N8nInlineTextEdit
+						ref="titleEdit"
+						:model-value="group.name"
+						:read-only="readOnly"
+						:min-width="0"
+						max-width="100%"
+						:placeholder="i18n.baseText('canvas.nodeGroup.titlePlaceholder')"
+						@update:model-value="onTitleUpdate"
+						@mousedown.stop
+					/>
+				</div>
+				<N8nInput
+					v-if="isEditingDescription"
+					ref="descriptionInput"
+					v-model="descriptionDraft"
+					type="textarea"
+					size="small"
+					:autosize="{ minRows: 2, maxRows: 6 }"
+					:class="$style.descriptionInput"
+					data-test-id="canvas-node-group-description-input"
+					@blur="commitDescription"
+					@keydown.esc.stop.prevent="cancelDescription"
+					@keydown.enter.meta.stop.prevent="commitDescription"
+					@keydown.enter.ctrl.stop.prevent="commitDescription"
 					@mousedown.stop
+					@click.stop
 				/>
+				<div
+					v-else-if="hasDescription || !readOnly"
+					:class="[
+						$style.description,
+						{
+							[$style.descriptionEditable]: !readOnly,
+							[$style.descriptionPlaceholder]: !hasDescription,
+						},
+					]"
+					data-test-id="canvas-node-group-description"
+					@click.stop="startEditDescription"
+					@mousedown.stop
+				>
+					{{
+						hasDescription ? description : i18n.baseText('canvas.nodeGroup.descriptionPlaceholder')
+					}}
+				</div>
 			</div>
 		</div>
 		<div
@@ -238,13 +304,52 @@ watch(
 	z-index: -1;
 }
 
-.title {
+.titleBlock {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--spacing--4xs);
 	flex: 1;
 	min-width: 0;
 	height: 100%;
+}
+
+.title {
+	display: flex;
+	align-items: center;
+	min-width: 0;
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
+}
+
+.description {
+	min-width: 0;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--md);
+	color: var(--color--text--tint-1);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.descriptionEditable {
+	cursor: pointer;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	margin-left: calc(var(--spacing--3xs) * -1);
+	border-radius: var(--radius);
+	transition: background-color 0.1s ease-in;
+
+	&:hover {
+		background: var(--color--foreground--tint-2);
+	}
+}
+
+.descriptionPlaceholder {
+	font-style: italic;
+	color: var(--color--text--tint-2);
+}
+
+.descriptionInput {
+	width: 100%;
 }
 </style>

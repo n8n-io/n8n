@@ -11,7 +11,7 @@ export const GROUP_HEADER_HEIGHT = DEFAULT_NODE_SIZE[1];
 // When collapsed, the group renders as a compact box: a fixed-width header
 // (plus an optional pinned-node list), sharing its top-left anchor with the
 // expanded frame so the anchor never moves on collapse/expand.
-export const GROUP_COLLAPSED_WIDTH = 400;
+export const GROUP_COLLAPSED_WIDTH = 520;
 
 // Height of the collapsed box header: ~24px of padding around the title row.
 export const GROUP_COLLAPSED_HEIGHT = 72;

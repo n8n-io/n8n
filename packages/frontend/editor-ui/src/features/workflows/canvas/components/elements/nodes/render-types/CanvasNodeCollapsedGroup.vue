@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Position } from '@vue-flow/core';
-import { useI18n } from '@n8n/i18n';
-import { N8nActionDropdown, N8nIconButton, type ActionDropdownItem } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSource, type NodeIconSource } from '@/app/utils/nodeIcon';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../../canvas.types';
@@ -18,16 +16,20 @@ import {
 	GROUP_COLLAPSED_HEIGHT,
 } from '../../../../stores/canvasNodeGroups.constants';
 import CanvasHandleRenderer from '../../handles/CanvasHandleRenderer.vue';
+import { useGroupCardVariant } from './group-card-variants/useGroupCardVariant';
+import type { PinnedNodeDisplay } from './group-card-variants/types';
 
 const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 }>();
 
-const i18n = useI18n();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const { render, isReadOnly, isSelected } = useCanvasNode();
+
+// PROTOTYPE: which collapsed group-card design is currently active.
+const { activeVariant } = useGroupCardVariant();
 
 const options = computed(() =>
 	render.value.type === CanvasNodeRenderType.CollapsedGroup ? render.value.options : null,
@@ -82,6 +84,8 @@ const currentGroup = computed(() => {
 	return groupId ? workflowDocumentStore.value.getGroupById(groupId) : undefined;
 });
 
+const description = computed(() => currentGroup.value?.description ?? '');
+
 function iconSourceForNodeId(nodeId: string): NodeIconSource | undefined {
 	const node = workflowDocumentStore.value.getNodeById(nodeId);
 	if (!node) return undefined;
@@ -94,12 +98,6 @@ function iconSourceForNodeId(nodeId: string): NodeIconSource | undefined {
 // predecessors — making the ancestor count a valid topological sort key.
 function executionRank(nodeName: string): number {
 	return workflowDocumentStore.value.getParentNodes(nodeName, NodeConnectionTypes.Main, -1).length;
-}
-
-interface PinnedNodeDisplay {
-	id: string;
-	name: string;
-	iconSource: NodeIconSource | undefined;
 }
 
 // Nodes the user chose to surface on the box, shown as icon + name in
@@ -201,87 +199,23 @@ function onUnpinNode(nodeId: string) {
 			:is-valid-connection="noValidConnection"
 		/>
 
-		<div :class="$style.header">
-			<N8nIconButton
-				v-if="!isReadOnly"
-				:class="$style.expandToggle"
-				variant="ghost"
-				icon="chevrons-up-down"
-				:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
-				data-test-id="canvas-collapsed-group-expand"
-				@click.stop="onExpand"
-				@mousedown.stop
-			/>
-			<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{
-				options.title
-			}}</span>
-			<!-- Stop propagation on the wrapper (not the button): the dropdown's
-				trigger is a descendant and opens first, then we halt the event so it
-				doesn't reach Vue Flow's node drag/select. Stopping on the button
-				itself would swallow the click before the trigger sees it. -->
-			<div
-				v-if="canPickNodes"
-				:class="$style.pinButton"
-				@pointerdown.stop
-				@mousedown.stop
-				@click.stop
-				@dblclick.stop
-			>
-				<N8nActionDropdown
-					:items="pickableItems"
-					placement="bottom-end"
-					data-test-id="canvas-collapsed-group-pin"
-					@select="onPickNode"
-				>
-					<template #activator>
-						<N8nIconButton
-							variant="ghost"
-							icon="plus"
-							:aria-label="i18n.baseText('canvas.nodeGroup.pinNode')"
-						/>
-					</template>
-					<template #menuItem="item">
-						<span :class="$style.menuItem">
-							<NodeIcon :icon-source="iconSourceForNodeId(item.id)" :size="14" />
-							<span :class="$style.menuItemLabel">{{ item.label }}</span>
-						</span>
-					</template>
-				</N8nActionDropdown>
-			</div>
-		</div>
-
-		<ul
-			v-if="pinnedNodes.length"
-			:class="$style.pinnedList"
-			data-test-id="canvas-collapsed-group-pinned"
-		>
-			<li
-				v-for="pinned in pinnedNodes"
-				:key="pinned.id"
-				:class="$style.pinnedItem"
-				data-test-id="canvas-collapsed-group-pinned-item"
-				@pointerdown.stop
-				@mousedown.stop
-				@click.stop="onOpenNode(pinned.name)"
-			>
-				<div :class="$style.iconWrapper">
-					<NodeIcon :icon-source="pinned.iconSource" :size="14" />
-				</div>
-				<span :class="$style.pinnedName">{{ pinned.name }}</span>
-				<N8nIconButton
-					v-if="!isReadOnly"
-					:class="$style.unpinButton"
-					variant="ghost"
-					size="small"
-					icon="x"
-					:aria-label="i18n.baseText('canvas.nodeGroup.unpinNode')"
-					data-test-id="canvas-collapsed-group-unpin"
-					@click.stop="onUnpinNode(pinned.id)"
-					@mousedown.stop
-					@pointerdown.stop
-				/>
-			</li>
-		</ul>
+		<!-- PROTOTYPE: the visible card body is supplied by the active variant.
+			This container owns all data/logic (handles, pinned nodes, expand) and
+			feeds variants props + events. See group-card-variants/registry.ts. -->
+		<component
+			:is="activeVariant.component"
+			:title="options.title"
+			:description="description"
+			:is-read-only="isReadOnly"
+			:pinned-nodes="pinnedNodes"
+			:pickable-items="pickableItems"
+			:can-pick-nodes="canPickNodes"
+			:icon-source-for-node-id="iconSourceForNodeId"
+			@expand="onExpand"
+			@pick-node="onPickNode"
+			@open-node="onOpenNode"
+			@unpin-node="onUnpinNode"
+		/>
 	</div>
 </template>
 
@@ -302,98 +236,5 @@ function onUnpinNode(nodeId: string) {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
 		var(--canvas--color--selected-transparent);
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.expandToggle,
-.pinButton {
-	flex-shrink: 0;
-}
-
-// The "+" picker only appears while hovering the collapsed box.
-.pinButton {
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
-}
-
-.collapsedGroup:hover .pinButton,
-.pinButton:focus-within {
-	opacity: 1;
-}
-
-.title {
-	flex: 1;
-	min-width: 0;
-
-	white-space: nowrap;
-}
-
-.pinnedList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin: 0;
-	margin-top: var(--spacing--xs);
-	list-style: none;
-}
-
-.pinnedItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) 0;
-	border-radius: var(--radius);
-	font-weight: var(--font-weight--regular);
-	font-size: var(--font-size--sm);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
-}
-
-.iconWrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-}
-
-.pinnedName {
-	flex: 1;
-	min-width: 0;
-
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.unpinButton {
-	flex-shrink: 0;
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
-}
-
-.pinnedItem:hover .unpinButton,
-.unpinButton:focus-visible {
-	opacity: 1;
-}
-
-.menuItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-
-.menuItemLabel {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 </style>
