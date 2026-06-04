@@ -34,14 +34,18 @@ directly.
 From the repo root:
 
 ```bash
-TESTCONTAINERS_REUSE_ENABLE=true pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-instance-ai-dev
+TESTCONTAINERS_REUSE_ENABLE=true pnpm --filter n8n-containers services \
+  --services sandbox \
+  --network n8n-instance-ai-dev \
+  --name n8n-svc-sandbox
 ```
 
-This starts the sandbox API and runner containers. For local `pnpm dev`, n8n
-must use the host-mapped API port. You can verify it from any terminal:
+This starts the sandbox API and runner containers and writes the host-reachable
+sandbox environment variables to `packages/cli/bin/.env`. You can verify the
+service from any terminal:
 
 ```bash
-SANDBOX_PORT=$(docker port n8n-sandbox-ci-sandbox-api 8080/tcp | sed 's/.*://')
+SANDBOX_PORT=$(docker port n8n-svc-sandbox-sandbox-api 8080/tcp | sed 's/.*://')
 curl "http://localhost:${SANDBOX_PORT}/healthz"
 ```
 
@@ -56,8 +60,6 @@ Expected response:
 In a second terminal:
 
 ```bash
-export N8N_SANDBOX_PORT=$(docker port n8n-sandbox-ci-sandbox-api 8080/tcp | sed 's/.*://')
-
 export N8N_ENABLED_MODULES=instance-ai
 export N8N_AI_ENABLED=true
 
@@ -65,11 +67,20 @@ export N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
 export N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 
 export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
+
+pnpm dev:ai
+```
+
+The `pnpm --filter n8n-containers services` command writes
+`N8N_INSTANCE_AI_SANDBOX_PROVIDER`, `N8N_SANDBOX_SERVICE_URL`, and
+`N8N_SANDBOX_SERVICE_API_KEY` to `packages/cli/bin/.env`. If you are not using
+that generated `.env` file, export them manually:
+
+```bash
+export N8N_SANDBOX_PORT=$(docker port n8n-svc-sandbox-sandbox-api 8080/tcp | sed 's/.*://')
 export N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 export N8N_SANDBOX_SERVICE_URL="http://localhost:${N8N_SANDBOX_PORT}"
 export N8N_SANDBOX_SERVICE_API_KEY=n8n-sandbox-ci-key
-
-pnpm dev:ai
 ```
 
 For n8n running inside the same Docker network as the sandbox service, use the
@@ -82,8 +93,7 @@ N8N_SANDBOX_SERVICE_URL=http://sandbox-api:8080
 ### 3. Cleanup
 
 ```bash
-docker stop n8n-sandbox-ci-sandbox-runner-1 n8n-sandbox-ci-sandbox-api 2>/dev/null || true
-docker rm n8n-sandbox-ci-sandbox-runner-1 n8n-sandbox-ci-sandbox-api 2>/dev/null || true
+pnpm --filter n8n-containers services:clean
 docker network rm n8n-instance-ai-dev 2>/dev/null || true
 ```
 
