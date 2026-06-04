@@ -3635,6 +3635,47 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
 	});
 
+	it('passes smoothStream to streamText as experimental_transform', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'smooth-stream-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+		});
+
+		const { stream } = await runtime.stream('hello', { smoothStream: {} });
+
+		await collectChunks(stream);
+
+		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+
+		expect(callArgs.experimental_transform).toEqual(expect.any(Function));
+	});
+
+	it('forwards non-default smoothStream options to the AI SDK', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const smoothStreamSpy = vi.spyOn(aiModule, 'smoothStream');
+
+		const runtime = new AgentRuntime({
+			name: 'smooth-stream-options-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+		});
+
+		const smoothStreamOptions = { delayInMs: 25, chunking: 'line' as const };
+		const { stream } = await runtime.stream('hello', { smoothStream: smoothStreamOptions });
+
+		await collectChunks(stream);
+
+		expect(smoothStreamSpy).toHaveBeenCalledWith(smoothStreamOptions);
+
+		smoothStreamSpy.mockRestore();
+	});
+
 	it('inherits telemetry from ExecutionOptions when no own telemetry is set', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 

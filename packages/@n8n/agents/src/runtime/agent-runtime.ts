@@ -727,6 +727,7 @@ export class AgentRuntime {
 			},
 		};
 	}
+
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
 	private buildTelemetryOptions(options?: ExecutionOptions): {
 		experimental_telemetry?: TelemetrySettings;
@@ -1177,7 +1178,7 @@ export class AgentRuntime {
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
-		const { streamText } = loadAi();
+		const { streamText, smoothStream } = loadAi();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -1294,6 +1295,9 @@ export class AgentRuntime {
 					: {}),
 				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildAiSdkOptions(toolMap, options),
+				...(options?.smoothStream
+					? { experimental_transform: smoothStream(options.smoothStream) }
+					: {}),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
