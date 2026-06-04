@@ -212,11 +212,27 @@ function determineWorkflowDeadline(
 	workflowSettings: IWorkflowSettings | undefined,
 	executionsConfig: ExecutionsConfig,
 ): number | undefined {
-	if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-		return startTime + workflowSettings.executionTimeout * Time.seconds.toMilliseconds;
+	const effectiveMaxTimeout =
+		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
+	if (workflowSettings?.executionTimeout !== undefined) {
+		// A defined timeout of <= 0 means the workflow's own timeout is explicitly
+		// disabled, so it runs unbounded rather than falling back to the global
+		// default. Otherwise it is clamped to the configurable maximum. This mirrors
+		// the main-workflow path in workflow-runner.ts and job-processor.ts.
+		if (workflowSettings.executionTimeout <= 0) {
+			return undefined;
+		}
+		return (
+			startTime +
+			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
 	}
 	if (executionsConfig.timeout > 0) {
-		return startTime + executionsConfig.timeout * Time.seconds.toMilliseconds;
+		return (
+			startTime +
+			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
 	}
 	return undefined;
 }
