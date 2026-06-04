@@ -81,11 +81,10 @@ describe('computeNodesRectFromStore', () => {
 		expect(rect.height).toBe(NODE_H);
 	});
 
-	it('returns default-sized rect when no nodes exist', () => {
+	it('returns a zero-sized rect when no nodes exist', () => {
 		const getById = nodeStore();
 		const rect = computeNodesRectFromStore(['missing'], getById);
-		expect(rect.width).toBe(NODE_W);
-		expect(rect.height).toBe(NODE_H);
+		expect(rect).toEqual({ x: 0, y: 0, width: 0, height: 0 });
 	});
 
 	it('uses caller-supplied dimensions over the default (e.g. configurable AI node)', () => {

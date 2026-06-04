@@ -81,7 +81,7 @@ export function computeNodesRectFromStore(
 	const nodes = nodeIds.map((id) => getNodeById(id)).filter((n): n is INodeUi => n !== undefined);
 
 	if (nodes.length === 0) {
-		return { x: 0, y: 0, width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
+		return { x: 0, y: 0, width: 0, height: 0 };
 	}
 
 	let minX = Infinity;
