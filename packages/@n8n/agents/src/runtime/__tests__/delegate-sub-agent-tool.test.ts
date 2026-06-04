@@ -386,6 +386,9 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 					suspendPayload: { message: 'Delete file?' },
 				},
 			],
+			getState: () => {
+				throw new Error('getState is not implemented');
+			},
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toEqual({
@@ -413,6 +416,9 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 					suspendPayload: {},
 				},
 			],
+			getState: () => {
+				throw new Error('getState is not implemented');
+			},
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
