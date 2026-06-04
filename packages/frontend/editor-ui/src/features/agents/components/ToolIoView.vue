@@ -7,7 +7,8 @@ import { ChatSymbol } from '@n8n/chat/constants';
 import type { Chat } from '@n8n/chat/types';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
@@ -50,7 +51,6 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const workflowState = useWorkflowState();
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -221,12 +221,16 @@ onMounted(async () => {
 	// hook already restored the previous execution data — installing the synth
 	// payload now would clobber the real workflow's state.
 	if (unmounted) return;
-	workflowState.setWorkflowExecutionData(synthExecution.value);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setWorkflowExecutionData(synthExecution.value);
 });
 
 onBeforeUnmount(() => {
 	unmounted = true;
-	workflowState.setWorkflowExecutionData(previousWorkflowExecutionData);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>
 
