@@ -62,6 +62,7 @@ describe('TelemetryEventRelay', () => {
 				includeCacheMetrics: false,
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
+				includeExecutionDataMetrics: false,
 			},
 		},
 		logging: {
@@ -2105,6 +2106,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 						metrics_category_routes: false,
+						metrics_category_execution_data: false,
 						metrics_enabled: true,
 					},
 					n8n_binary_data_mode: 'default',
@@ -2142,6 +2144,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_cache: false,
 						metrics_category_logs: false,
 						metrics_category_queue: false,
+						metrics_category_execution_data: false,
 					},
 					otel: {
 						enabled: false,
