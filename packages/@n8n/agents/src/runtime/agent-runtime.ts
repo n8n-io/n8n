@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { scrubSecrets } from '@n8n/utils';
 import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
@@ -2225,7 +2226,7 @@ export class AgentRuntime {
 				type: AgentEvent.ToolExecutionStart,
 				toolCallId,
 				toolName,
-				args: toolInput,
+				args: scrubSecrets(toolInput),
 			});
 		}
 

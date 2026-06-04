@@ -1,3 +1,4 @@
+import { scrubSecrets } from '@n8n/utils';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
@@ -44,7 +45,7 @@ function emitToolExecutionStart(
 		type: AgentEvent.ToolExecutionStart,
 		toolCallId: ctx.toolCallId,
 		toolName: tool.name,
-		args: input,
+		args: scrubSecrets(input),
 	});
 }
 

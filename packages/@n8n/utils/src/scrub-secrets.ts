@@ -13,7 +13,7 @@
  * unreadable.
  */
 const SECRET_KEYS =
-	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token';
+	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|client[_-]?secret|private[_-]?key|session|session[_-]?cookie|cookie|bearer|token';
 
 const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// Authorization-header substrings: `Bearer <token>`, `Basic <token>`, `Token <token>`
@@ -49,10 +49,51 @@ const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	new RegExp(`\\b(?:${SECRET_KEYS})\\s*[:=]\\s*\\S+`, 'gi'),
 ];
 
+const REDACTED_VALUE = '[redacted]';
+const CIRCULAR_VALUE = '[Circular]';
+const SECRET_KEY_PATTERN = new RegExp(`^(?:${SECRET_KEYS}|auth)$`, 'i');
+
 export function scrubSecretsInText(input: string): string {
 	let out = input;
 	for (const pattern of SECRET_VALUE_PATTERNS) {
 		out = out.replace(pattern, '[REDACTED]');
 	}
 	return out;
+}
+
+function normalizeKey(key: string): string {
+	return key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function isSecretKey(key: string): boolean {
+	return SECRET_KEY_PATTERN.test(normalizeKey(key));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function scrubSecrets(value: unknown, seen = new WeakSet<object>()): unknown {
+	if (typeof value === 'string') return scrubSecretsInText(value);
+
+	if (Array.isArray(value)) {
+		if (seen.has(value)) return CIRCULAR_VALUE;
+		seen.add(value);
+		const scrubbed = value.map((item) => scrubSecrets(item, seen));
+		seen.delete(value);
+		return scrubbed;
+	}
+
+	if (!isRecord(value)) return value;
+
+	if (seen.has(value)) return CIRCULAR_VALUE;
+	seen.add(value);
+
+	const scrubbed: Record<string, unknown> = {};
+	for (const [key, item] of Object.entries(value)) {
+		scrubbed[key] = isSecretKey(key) ? REDACTED_VALUE : scrubSecrets(item, seen);
+	}
+
+	seen.delete(value);
+	return scrubbed;
 }

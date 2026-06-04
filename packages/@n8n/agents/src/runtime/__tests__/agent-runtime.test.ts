@@ -2697,12 +2697,28 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 		});
 		const conditionalApprovalTool = new ToolBuilder('lookup')
 			.description('Look up a record')
-			.input(z.object({ id: z.string() }))
+			.input(
+				z.object({
+					id: z.string(),
+					password: z.string(),
+					nested: z.object({ apiKey: z.string() }),
+				}),
+			)
 			.needsApprovalFn(async ({ id }: { id: string }) => {
 				return await Promise.resolve(id === 'secret');
 			})
 			.handler(handler)
 			.build();
+		const startEvents: Array<AgentEventData & { type: AgentEvent.ToolExecutionStart }> = [];
+		const eventBus = new AgentEventBus();
+		eventBus.on(AgentEvent.ToolExecutionStart, (event) => {
+			startEvents.push(event as AgentEventData & { type: AgentEvent.ToolExecutionStart });
+		});
+		const toolInput = {
+			id: 'public',
+			password: 'plain-secret-password',
+			nested: { apiKey: 'secret-api-key' },
+		};
 
 		streamText
 			.mockReturnValueOnce({
@@ -2718,15 +2734,13 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 									type: 'tool-call',
 									toolCallId: 'tc-1',
 									toolName: 'lookup',
-									args: { id: 'public' },
+									args: toolInput,
 								},
 							],
 						},
 					],
 				}),
-				toolCalls: Promise.resolve([
-					{ toolCallId: 'tc-1', toolName: 'lookup', input: { id: 'public' } },
-				]),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'lookup', input: toolInput }]),
 			})
 			.mockReturnValueOnce(makeStreamSuccess('Done'));
 
@@ -2735,6 +2749,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 			model: 'openai/gpt-4o-mini',
 			instructions: 'test',
 			tools: [conditionalApprovalTool],
+			eventBus,
 			checkpointStorage: 'memory',
 		});
 
@@ -2742,9 +2757,14 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 		const chunks = await collectChunks(readableStream);
 
 		expect(handler).toHaveBeenCalledWith(
-			{ id: 'public' },
+			toolInput,
 			expect.objectContaining({ toolCallId: 'tc-1' }),
 		);
+		expect(startEvents[0]?.args).toEqual({
+			id: 'public',
+			password: '[redacted]',
+			nested: { apiKey: '[redacted]' },
+		});
 		expect(chunks.map((c) => c.type)).toContain('tool-execution-start');
 		expect(chunks.map((c) => c.type)).toContain('tool-execution-end');
 		expect(chunks.map((c) => c.type)).not.toContain('tool-call-suspended');

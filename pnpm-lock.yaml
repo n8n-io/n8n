@@ -750,6 +750,9 @@ importers:
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@openrouter/ai-sdk-provider':
         specifier: 'catalog:'
         version: 2.9.0(ai@6.0.134(zod@3.25.67))(zod@3.25.67)
