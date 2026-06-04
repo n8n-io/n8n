@@ -172,15 +172,20 @@ const { hydrate } = useWizardHydration();
 const NEW_WORKFLOW_ID = '__EMPTY__';
 watch(
 	() => [wizardStore.isOpen, workflowDocumentStore.value?.workflowId] as const,
-	([isOpen], oldValues) => {
-		const prevId = oldValues?.[1];
+	([isOpen]) => {
 		const id = workflowDocumentStore.value?.workflowId;
+		// Compare against the store-persisted last workflow id rather than the
+		// watcher's previous value: the pane unmounts when the focus panel closes
+		// between workflows, so on remount the watcher has no previous value and
+		// would otherwise miss the switch (leaving a prior run's results visible).
+		const prevId = wizardStore.lastWorkflowId;
 		// Reset only on a genuine switch between saved workflows. Skip the
 		// new→saved id transition (prevId placeholder/empty) so a user's
 		// in-progress selections on a brand-new workflow aren't wiped on save.
 		if (prevId && prevId !== NEW_WORKFLOW_ID && id && id !== prevId) {
 			wizardStore.reset();
 		}
+		if (id) wizardStore.setLastWorkflowId(id);
 		if (isOpen) void hydrate();
 	},
 	{ immediate: true },

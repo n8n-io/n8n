@@ -699,5 +699,47 @@ describe('EvaluationsWizardSidepanel', () => {
 			expect(store.activeStep).toBe(1);
 			expect(store.selectedMetricKeys).toEqual(['correctness']);
 		});
+
+		it('resets across an unmount/remount on a different workflow (pane closed between workflows)', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+
+			// Pane first opens on wf-1 and reaches the results step with a run.
+			mocks.workflowId = 'wf-1';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			const first = renderComponent();
+			await nextTick();
+			store.setStep(3);
+			store.toggleMetric('correctness');
+			store.setActiveRunId('run-from-wf-1');
+
+			// The focus panel closes between workflows, so the pane unmounts. The
+			// store (and its lastWorkflowId bookkeeping) survives.
+			first.unmount();
+			await nextTick();
+
+			// User switches to wf-2 and re-opens the evaluations pane → fresh mount.
+			mocks.workflowId = 'wf-2';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			renderComponent();
+			await nextTick();
+
+			expect(store.activeStep).toBe(0);
+			expect(store.selectedMetricKeys).toEqual([]);
+			expect(store.activeRunId).toBeNull();
+		});
 	});
 });
