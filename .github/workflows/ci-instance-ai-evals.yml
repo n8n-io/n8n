@@ -12,6 +12,14 @@ on:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
         default: 'n8n-sandbox'
+      iterations:
+        description: 'Iterations per test case (use 10 for a baseline)'
+        required: false
+        default: '3'
+      experiment-name:
+        description: 'LangSmith experiment name (set to instance-ai-baseline to refresh the baseline)'
+        required: false
+        default: ''
 
 concurrency:
   group: instance-ai-evals-${{ github.ref }}
@@ -25,4 +33,6 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       sandbox-provider: ${{ inputs.sandbox-provider }}
+      iterations: ${{ inputs.iterations }}
+      experiment-name: ${{ inputs.experiment-name }}
     secrets: inherit
