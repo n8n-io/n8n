@@ -189,7 +189,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			options.bootstrap = {
-				distinctId,
+				distinctID: distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
 		}
@@ -221,26 +221,6 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const getPostHogEventProperties = (properties: IDataObject = {}) => {
-		const instanceId = rootStore.instanceId;
-		if (!instanceId) {
-			return properties;
-		}
-
-		const propertyGroups = properties.$groups;
-		const groups =
-			typeof propertyGroups === 'object' &&
-			propertyGroups !== null &&
-			!Array.isArray(propertyGroups)
-				? { ...propertyGroups, [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId }
-				: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId };
-
-		return {
-			...properties,
-			$groups: groups,
-		};
-	};
-
 	const setMetadata = (metadata: IDataObject, target: 'user' | 'events') => {
 		if (typeof window.posthog?.people?.set !== 'function') return;
 		if (typeof window.posthog?.register !== 'function') return;
@@ -254,7 +234,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const capture = (event: string, properties: IDataObject = {}) => {
 		if (typeof window.posthog?.capture === 'function') {
-			window.posthog.capture(event, getPostHogEventProperties(properties));
+			window.posthog.capture(event, properties);
 		}
 	};
 

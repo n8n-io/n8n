@@ -79,7 +79,7 @@ declare global {
 					disable_session_recording?: boolean;
 					debug?: boolean;
 					bootstrap?: {
-						distinctId?: string;
+						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
 					};

@@ -21,7 +21,7 @@ Use this guide for code under `packages/frontend/editor-ui/src/experiments/` and
 - Keep `"User is part of experiment"` tracking centralized. Add only experiment-specific `track*` helpers in experiment code.
 - Use `getExperimentTelemetryPayload()` from `@/experiments/utils` for every experiment-specific telemetry helper that may be used as a PostHog experiment exposure or metric event.
 - Custom exposure events must include PostHog's `$feature/<experiment-name>` property with the current variant. The helper adds this property and the human-readable `variant` property.
-- Do not hand-roll `$feature/<experiment-name>` or instance group metadata in experiment stores. `usePostHog().capture()` adds the PostHog instance group to frontend events centrally.
+- Do not hand-roll `$feature/<experiment-name>` or instance group metadata in experiment stores. `usePostHog().init()` calls `posthog.group()` centrally so the PostHog web SDK associates subsequent frontend events with the instance group.
 
 ## PostHog flag lookup
 

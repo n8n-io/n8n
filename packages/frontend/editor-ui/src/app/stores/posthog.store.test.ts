@@ -25,6 +25,7 @@ const CURRENT_USER_ID = '1';
 const CURRENT_INSTANCE_ID = '456';
 const CURRENT_VERSION_CLI = '1.100.0';
 let onFeatureFlagsCallback: ((keys: string[], map: FeatureFlags) => void) | undefined;
+let postHogLoadedCallback: (() => void) | undefined;
 
 function setSettings(overrides?: Partial<FrontendSettings>) {
 	useSettingsStore().setSettings({
@@ -78,9 +79,10 @@ function setup() {
 		},
 	});
 	window.featureFlags = undefined;
+	postHogLoadedCallback = undefined;
 	window.posthog = {
 		init: (_key, options) => {
-			(options as { loaded?: () => void } | undefined)?.loaded?.();
+			postHogLoadedCallback = (options as { loaded?: () => void } | undefined)?.loaded;
 		},
 		identify: () => {},
 		group: () => {},
@@ -139,6 +141,7 @@ describe('Posthog store', () => {
 			setSettings();
 			setCurrentUser();
 			onFeatureFlagsCallback = undefined;
+			postHogLoadedCallback = undefined;
 		});
 
 		it('should init store with serverside flags', () => {
@@ -154,7 +157,7 @@ describe('Posthog store', () => {
 				DEFAULT_POSTHOG_SETTINGS.apiKey,
 				expect.objectContaining({
 					bootstrap: {
-						distinctId: `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+						distinctID: `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
 						featureFlags: flags,
 					},
 				}),
@@ -164,6 +167,10 @@ describe('Posthog store', () => {
 		it('should identify user', () => {
 			const posthog = usePostHog();
 			posthog.init();
+
+			expect(window.posthog?.identify).not.toHaveBeenCalled();
+
+			postHogLoadedCallback?.();
 
 			const userId = `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`;
 			expect(window.posthog?.identify).toHaveBeenCalledWith(userId, {
@@ -176,19 +183,20 @@ describe('Posthog store', () => {
 			const posthog = usePostHog();
 			posthog.init();
 
+			expect(window.posthog?.group).not.toHaveBeenCalled();
+
+			postHogLoadedCallback?.();
+
 			expect(window.posthog?.group).toHaveBeenCalledWith('company', CURRENT_INSTANCE_ID);
 		});
 
-		it('adds the instance group to captured events', () => {
+		it('captures events with the provided properties', () => {
 			const posthog = usePostHog();
 
 			posthog.capture('Test event', { test: 'value' });
 
 			expect(window.posthog?.capture).toHaveBeenCalledWith('Test event', {
 				test: 'value',
-				$groups: {
-					company: CURRENT_INSTANCE_ID,
-				},
 			});
 		});
 
@@ -206,7 +214,6 @@ describe('Posthog store', () => {
 				test: 'value',
 				$groups: {
 					organization: 'n8n',
-					company: CURRENT_INSTANCE_ID,
 				},
 			});
 		});
