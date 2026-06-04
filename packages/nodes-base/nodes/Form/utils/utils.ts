@@ -849,9 +849,12 @@ export async function formWebhook(
 					// Strip the one-shot OAuth params from the URL on the client (via
 					// history.replaceState) so a page reload re-enters the OAuth flow
 					// cleanly instead of trying to reuse an already-spent code.
+					// `_oauth_reauth` is also removed — otherwise the next reload would
+					// force `prompt=login` again, locking the user in a re-auth loop.
 					const cleanUrl = new URL(req.originalUrl, 'http://placeholder.invalid');
 					cleanUrl.searchParams.delete('_oauth_code');
 					cleanUrl.searchParams.delete('_oauth_state');
+					cleanUrl.searchParams.delete('_oauth_reauth');
 					canonicalFormUrl = `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`;
 				} else {
 					const redirectUrl = await context.buildWebhookOAuth2RedirectUrl();

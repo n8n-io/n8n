@@ -18,7 +18,7 @@ type WebhookOAuth2StatePayload = z.infer<typeof webhookOAuth2StateSchema>;
 export function createWebhookOAuth2State(returnUrl: string, codeVerifier?: string): string {
 	const payload: WebhookOAuth2StatePayload = { returnUrl, iat: Date.now() };
 	if (codeVerifier) payload.cv = codeVerifier;
-	return Container.get(Cipher).encrypt(JSON.stringify(payload));
+	return Container.get(Cipher).encryptDEKWithInstanceKey(JSON.stringify(payload));
 }
 
 /** Decrypt and validate the OAuth2 state. Returns null if invalid, tampered, or expired. */
@@ -26,7 +26,7 @@ export function verifyWebhookOAuth2State(
 	state: string,
 ): { returnUrl: string; codeVerifier?: string } | null {
 	try {
-		const plaintext = Container.get(Cipher).decrypt(state);
+		const plaintext = Container.get(Cipher).decryptDEKWithInstanceKey(state);
 		const payload = webhookOAuth2StateSchema.parse(JSON.parse(plaintext));
 		if (Date.now() - payload.iat > STATE_TTL_MS) return null;
 		return { returnUrl: payload.returnUrl, codeVerifier: payload.cv };

@@ -51,31 +51,39 @@ describe('FormTrigger', () => {
 		}
 	});
 
-	it('should expose n8nUserAuth option only on typeVersion >= 2.6', () => {
+	it('should gate n8nUserAuth to >= 2.6 and webhookOAuth2 to >= 2.7', () => {
 		const formTriggerV2 = new FormTriggerV2({
 			displayName: 'n8n Form Trigger',
 			name: 'formTrigger',
 			group: ['trigger'],
 			description: 'Generate webforms in n8n and pass their responses to the workflow',
-			defaultVersion: 2.6,
+			defaultVersion: 2.7,
 		});
 
 		const authParams = formTriggerV2.description.properties.filter(
 			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
 		) as VersionedAuthParam[];
 
-		expect(authParams).toHaveLength(2);
+		const versionShow = (param: VersionedAuthParam) =>
+			param.displayOptions?.show?.['@version']?.[0];
+		const versionCnd = (param: VersionedAuthParam) => {
+			const entry = versionShow(param);
+			return typeof entry === 'object' ? entry._cnd : undefined;
+		};
+		const optionValues = (param: VersionedAuthParam | undefined) =>
+			(param?.options ?? []).map((o) => o.value);
 
-		const versionCnd = (param: VersionedAuthParam) =>
-			param.displayOptions?.show?.['@version']?.[0]?._cnd;
-		const legacyAuth = authParams.find((p) => versionCnd(p)?.lte === 2.5);
-		const v26Auth = authParams.find((p) => versionCnd(p)?.gte === 2.6);
+		const legacyAuth = optionValues(authParams.find((p) => versionCnd(p)?.lte === 2.5));
+		const v26Auth = optionValues(authParams.find((p) => versionShow(p) === 2.6));
+		const v27Auth = optionValues(authParams.find((p) => versionCnd(p)?.gte === 2.7));
 
-		const legacyValues = (legacyAuth?.options ?? []).map((o) => o.value).sort();
-		const v26Values = (v26Auth?.options ?? []).map((o) => o.value).sort();
+		expect(legacyAuth).not.toContain('n8nUserAuth');
+		expect(v26Auth).toContain('n8nUserAuth');
+		expect(v27Auth).toContain('n8nUserAuth');
 
-		expect(legacyValues).toEqual(['basicAuth', 'none']);
-		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
+		expect(legacyAuth).not.toContain('webhookOAuth2');
+		expect(v26Auth).not.toContain('webhookOAuth2');
+		expect(v27Auth).toContain('webhookOAuth2');
 	});
 
 	it('should render a form template with correct fields', async () => {

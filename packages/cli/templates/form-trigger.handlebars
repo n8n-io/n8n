@@ -499,7 +499,7 @@
 
 	<body>
 		{{#if canonicalFormUrl}}
-			<script>history.replaceState(null, '', '{{canonicalFormUrl}}');</script>
+			<script data-url="{{canonicalFormUrl}}">history.replaceState(null, '', document.currentScript.dataset.url);</script>
 		{{/if}}
 		<div class='container'>
 			<section>
