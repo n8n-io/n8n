@@ -1,6 +1,14 @@
+// Override the root 1 MB workerIdleMemoryLimit for integration tests. The root
+// setting forces a fresh worker process for every test file, which pays the
+// full module-load cost (TypeORM, @n8n/di, the n8n CLI surface) on each file
+// and dominates the PG16 integration job's wall time. Removing the key lets
+// workers persist across files and exposes any cross-file leakage so it can
+// be fixed at the source rather than masked.
+const { workerIdleMemoryLimit: _drop, ...rootConfig } = require('../../jest.config');
+
 /** @type {import('jest').Config} */
 module.exports = {
-	...require('../../jest.config'),
+	...rootConfig,
 	testEnvironmentOptions: {
 		url: 'http://localhost/',
 	},
