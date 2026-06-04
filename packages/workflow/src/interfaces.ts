@@ -2007,9 +2007,8 @@ export interface ExecuteAgentInfo {
 	sessionId?: string;
 	/**
 	 * Optional JSON Schema describing the shape the agent should return. When
-	 * provided, it is applied to this call only (overriding the agent's own
-	 * config), and the conforming object is surfaced on
-	 * {@link ExecuteAgentData.structuredOutput}.
+	 * provided, it is applied to this call only, and the conforming object is
+	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
 	 */
 	outputSchema?: JSONSchema7;
 }
