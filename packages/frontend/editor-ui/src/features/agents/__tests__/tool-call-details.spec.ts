@@ -140,6 +140,7 @@ describe('tool-call-details', () => {
 								id: 'a',
 								content: 'Delegated work',
 								status: 'pending',
+								difficulty: 'high',
 								delegateHint: { subAgentId: 'agent-2' },
 							},
 						],
@@ -159,7 +160,7 @@ describe('tool-call-details', () => {
 					output: {
 						status: 'ok',
 						todoCount: 1,
-						todos: [{ id: 'a', content: 'Task', status: 'pending' }],
+						todos: [{ id: 'a', content: 'Task', status: 'pending', difficulty: 'low' }],
 					},
 					state: TOOL_CALL_STATE.DONE,
 				}),

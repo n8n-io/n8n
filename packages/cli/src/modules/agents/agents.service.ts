@@ -1043,6 +1043,23 @@ export class AgentsService {
 			}
 		}
 
+		try {
+			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
+			if (modelsByDifficulty) {
+				for (const difficulty of ['low', 'medium', 'high'] as const) {
+					await this.validateMemoryWorkerModel(
+						modelsByDifficulty[difficulty],
+						`subAgents.modelsByDifficulty.${difficulty}`,
+						findCredential,
+						missing,
+					);
+				}
+			}
+		} catch {
+			// Same behavior as other credential checks: runtime reconstruction surfaces
+			// permission/listing failures with the concrete error.
+		}
+
 		missing.push(
 			...this.agentSkillsService
 				.getMissingSkillIds(config, agentEntity.skills ?? {})

@@ -305,6 +305,18 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		return undefined;
 	}
 
+	function getInjectedInlineSubAgentModelsByDifficulty() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
+					return getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty;
+				}
+			}
+		}
+		return undefined;
+	}
+
 	it('uses the SDK default maxChildren when config does not override it', async () => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
@@ -330,6 +342,55 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 2,
 		});
+	});
+
+	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
+			if (credentialId === 'low-cred') {
+				return { apiKey: 'low-key', url: 'https://low.example/v1' };
+			}
+			if (credentialId === 'high-cred') {
+				return { apiKey: 'high-key' };
+			}
+			throw new Error(`unexpected credential ${credentialId}`);
+		});
+		const service = makeReconstructionService(agentsToolsService, []);
+		const entity = makeAgentEntity(undefined, {
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+				},
+			},
+		});
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(getInjectedInlineSubAgentModelsByDifficulty()).toEqual({
+			low: {
+				id: 'openai/gpt-4o-mini',
+				apiKey: 'low-key',
+				baseURL: 'https://low.example/v1',
+			},
+			high: {
+				id: 'anthropic/claude-sonnet-4-5',
+				apiKey: 'high-key',
+			},
+		});
+	});
+
+	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, []);
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(getInjectedInlineSubAgentModelsByDifficulty()).toBeUndefined();
 	});
 });
 

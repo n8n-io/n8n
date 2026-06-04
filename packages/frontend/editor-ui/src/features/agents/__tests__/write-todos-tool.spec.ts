@@ -48,13 +48,32 @@ describe('write-todos-tool', () => {
 				parseWriteTodosOutput({
 					status: 'ok',
 					todoCount: 1,
-					todos: [{ id: 'a', content: 'Do thing', status: 'pending', extra: true }],
+					todos: [
+						{ id: 'a', content: 'Do thing', status: 'pending', difficulty: 'low', extra: true },
+					],
 				}),
 			).toEqual({
 				status: 'ok',
 				todoCount: 1,
-				todos: [{ id: 'a', content: 'Do thing', status: 'pending' }],
+				todos: [{ id: 'a', content: 'Do thing', status: 'pending', difficulty: 'low' }],
 			});
+		});
+
+		it('returns undefined when difficulty is missing or invalid', () => {
+			expect(
+				parseWriteTodosOutput({
+					status: 'ok',
+					todoCount: 1,
+					todos: [{ id: 'a', content: 'Do thing', status: 'pending' }],
+				}),
+			).toBeUndefined();
+			expect(
+				parseWriteTodosOutput({
+					status: 'ok',
+					todoCount: 1,
+					todos: [{ id: 'a', content: 'Do thing', status: 'pending', difficulty: 'extreme' }],
+				}),
+			).toBeUndefined();
 		});
 
 		it('returns undefined for malformed output', () => {
@@ -78,7 +97,7 @@ describe('write-todos-tool', () => {
 				parseWriteTodosFailedOutput({
 					status: 'ok',
 					todoCount: 1,
-					todos: [{ id: 'a', content: 'Task', status: 'pending' }],
+					todos: [{ id: 'a', content: 'Task', status: 'pending', difficulty: 'medium' }],
 				}),
 			).toBeUndefined();
 			expect(parseWriteTodosFailedOutput({ status: 'failed' })).toBeUndefined();
@@ -98,6 +117,7 @@ describe('write-todos-tool', () => {
 							id: 'research',
 							content: 'Research auth options',
 							status: 'in_progress',
+							difficulty: 'high',
 							delegateHint: {
 								subAgentId: 'inline',
 								expectedOutput: 'Short comparison',
@@ -107,6 +127,7 @@ describe('write-todos-tool', () => {
 							id: 'synthesize',
 							content: 'Synthesize findings',
 							status: 'pending',
+							difficulty: 'medium',
 						},
 					],
 				},
@@ -131,6 +152,7 @@ describe('write-todos-tool', () => {
 							id: 'research',
 							content: 'Research auth options',
 							status: 'pending',
+							difficulty: 'high',
 							delegateHint: { subAgentId: 'agent-2' },
 						},
 					],
@@ -152,6 +174,7 @@ describe('write-todos-tool', () => {
 							id: 'research',
 							content: 'Research auth options',
 							status: 'pending',
+							difficulty: 'medium',
 							delegateHint: { subAgentId: 'unknown-agent-id' },
 						},
 					],

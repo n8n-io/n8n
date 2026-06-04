@@ -174,7 +174,25 @@ subagent.
 - Do not add custom tools, custom instructions, or custom schema fields to
   simulate subagents.
 - Preserve existing \`subAgents.agents\` refs unless the user explicitly asks to
-  change saved subagents.`;
+  change saved subagents.
+- Use \`subAgents.modelsByDifficulty\` only for inline subagents. Saved subagents
+  keep using their own saved model and credential.
+- Valid difficulty keys are only \`low\`, \`medium\`, and \`high\`. Each configured
+  mapping must include both \`model\` and \`credential\`.
+- Missing difficulty mappings fall back to the parent agent model at runtime.
+- Example shape:
+
+\`\`\`json
+"subAgents": {
+  "modelsByDifficulty": {
+    "low": { "model": "openai/gpt-4o-mini", "credential": "credential-id" },
+    "high": { "model": "anthropic/claude-sonnet-4-5", "credential": "credential-id" }
+  }
+}
+\`\`\`
+
+- Do not add display labels, provider names, unknown difficulty keys, or extra fields
+  inside difficulty mappings.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness

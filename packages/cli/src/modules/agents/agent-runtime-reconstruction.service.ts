@@ -4,6 +4,8 @@ import {
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
+	SubAgentTaskDifficulty,
 	ToolDescriptor,
 } from '@n8n/agents';
 import type {
@@ -50,6 +52,7 @@ import {
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -410,7 +413,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			this.attachSubAgentDelegationTool({
+			await this.attachSubAgentDelegationTool({
 				agent,
 				config,
 				parentAgentId: parentAgentIdForDelegation,
@@ -427,7 +430,7 @@ export class AgentRuntimeReconstructionService {
 		}
 	}
 
-	private attachSubAgentDelegationTool(params: {
+	private async attachSubAgentDelegationTool(params: {
 		agent: RuntimeAgent;
 		config: AgentJsonConfig;
 		parentAgentId: string;
@@ -435,9 +438,13 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		userId: string;
 		delegation: SubAgentDelegationConfig;
-	}): void {
+	}): Promise<void> {
 		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
 			params;
+		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
+			config,
+			credentialProvider,
+		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
@@ -447,9 +454,33 @@ export class AgentRuntimeReconstructionService {
 				userId,
 				credentialProvider,
 				policy: this.buildSubAgentPolicy(config),
+				...(inlineSubAgentModelsByDifficulty !== undefined
+					? { inlineSubAgentModelsByDifficulty }
+					: {}),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });
+	}
+
+	private async resolveInlineSubAgentModelsByDifficulty(
+		config: AgentJsonConfig,
+		credentialProvider: CredentialProvider,
+	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
+		const mappings = config.subAgents?.modelsByDifficulty;
+		if (!mappings) return undefined;
+
+		const resolved: Partial<Record<SubAgentTaskDifficulty, ModelConfig>> = {};
+		for (const difficulty of ['low', 'medium', 'high'] as const) {
+			const mapping = mappings[difficulty];
+			if (!mapping) continue;
+			resolved[difficulty] = await resolveCredentialAwareModelConfig(
+				mapping.model,
+				mapping.credential,
+				credentialProvider,
+			);
+		}
+
+		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}
 
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {

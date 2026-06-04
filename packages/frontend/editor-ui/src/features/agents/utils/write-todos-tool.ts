@@ -11,10 +11,13 @@ export const WRITE_TODOS_TOOL_NAME = 'write_todos';
 
 const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
 
+const todoDifficultySchema = z.enum(['low', 'medium', 'high']);
+
 const todoItemSchema = z.object({
 	id: z.string().min(1),
 	content: z.string().min(1),
 	status: todoStatusSchema,
+	difficulty: todoDifficultySchema,
 	delegateHint: z
 		.object({
 			subAgentId: z.string().optional(),
@@ -38,6 +41,7 @@ export type WriteTodosOutput = z.infer<typeof writeTodosOutputSchema>;
 export type WriteTodosFailedOutput = z.infer<typeof writeTodosFailedOutputSchema>;
 export type TodoItem = z.infer<typeof todoItemSchema>;
 export type TodoStatus = z.infer<typeof todoStatusSchema>;
+export type TodoDifficulty = z.infer<typeof todoDifficultySchema>;
 
 export type WriteTodosI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 

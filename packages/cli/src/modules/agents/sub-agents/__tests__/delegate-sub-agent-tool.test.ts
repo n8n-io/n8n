@@ -3,6 +3,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 	type CredentialProvider,
 	type GenerateResult,
+	type ModelConfig,
 } from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
@@ -63,6 +64,27 @@ describe('createN8nDelegateSubAgentTool', () => {
 		runner = mock<SubAgentForegroundRunner>();
 		runner.runForeground.mockResolvedValue(foregroundResult);
 		credentialProvider = mock<CredentialProvider>();
+	});
+
+	it('forwards inlineSubAgentModelsByDifficulty into delegate tool metadata', () => {
+		const inlineSubAgentModelsByDifficulty: Partial<
+			Record<'low' | 'medium' | 'high', ModelConfig>
+		> = {
+			low: { id: 'openai/gpt-4o-mini', apiKey: 'low-key' },
+			high: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'high-key' },
+		};
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			userId,
+			credentialProvider,
+			inlineSubAgentModelsByDifficulty,
+		});
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty).toEqual(
+			inlineSubAgentModelsByDifficulty,
+		);
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {

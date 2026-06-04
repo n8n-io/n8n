@@ -14,6 +14,7 @@ import type {
 	AgentExecutionCounter,
 	FinishReason,
 	GenerateResult,
+	ModelConfig,
 	TokenUsage,
 } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
@@ -25,6 +26,10 @@ export const INLINE_SUB_AGENT_ID = 'inline';
 export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
 	'agents.chat.delegate.childSuspendUnsupported';
 export const INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY = 'inlineDelegateSubAgent';
+
+export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
+const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
+export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
 
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
 // The `.describe(...)` text is what the model reads, so keep it task-oriented.
@@ -47,6 +52,9 @@ const delegateSubAgentInputSchema = z.object({
 			'All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out.',
 		),
 	expectedOutput: z.string().optional().describe('The expected shape or contents of the answer.'),
+	difficulty: SubAgentTaskDifficultySchema.optional().describe(
+		'Optional difficulty estimate for this delegated task. Use low for simple bounded work, medium for moderate analysis or implementation, and high for complex research, architecture, or multi-step reasoning.',
+	),
 });
 
 // Documents the tool result shape for typing/introspection. Note: the handler's
@@ -185,6 +193,11 @@ export interface CreateDelegateSubAgentToolOptions {
 	/** Additional local/deferred tool names the host removes from inline children. */
 	inlineSubAgentBlockedTools?: string[];
 	/**
+	 * Resolved inline sub-agent models by task difficulty. Hosts map persisted config
+	 * to runtime {@link ModelConfig} values before registering the delegate tool.
+	 */
+	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+	/**
 	 * Run the child for this delegation and return its result. When provided, the
 	 * host receives every `subAgentId` (including `"inline"`) and may call
 	 * `helpers.runInlineSubAgent` for inline work.
@@ -255,7 +268,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...formatDelegationPolicyInstructions(resolvedOptions.policy),
 				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
 				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
-				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your available tools after safety filtering; you cannot change their tool set per delegation.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
+				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your available tools after safety filtering; you cannot change their tool set per delegation.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
 			].join('\n'),
 		)
 		.input(delegateSubAgentInputSchema)
@@ -277,6 +290,11 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				policy: resolvedOptions.policy,
 				...(resolvedOptions.inlineSubAgentBlockedTools !== undefined
 					? { inlineSubAgentBlockedTools: resolvedOptions.inlineSubAgentBlockedTools }
+					: {}),
+				...(resolvedOptions.inlineSubAgentModelsByDifficulty !== undefined
+					? {
+							inlineSubAgentModelsByDifficulty: resolvedOptions.inlineSubAgentModelsByDifficulty,
+						}
 					: {}),
 				...(resolvedOptions.runSubAgent !== undefined
 					? { runSubAgent: resolvedOptions.runSubAgent }

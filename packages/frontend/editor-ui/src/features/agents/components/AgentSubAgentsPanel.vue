@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import type { SubAgentTaskDifficulty } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 import {
+	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nIconButton,
@@ -12,14 +15,39 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
+import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
+import AgentModelSelector from './AgentModelSelector.vue';
+import {
+	type AgentCredentialsByProvider,
+	type AgentModelOption,
+	type AgentModelProvider,
+	type AgentModelSelection,
+	type AgentModelsByProvider,
+	isAgentModelProvider,
+} from '../model-providers';
 import type { AgentJsonConfig } from '../types';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
+import { parseModelString, sanitizeModelId } from '../utils/model-string';
 
 const SUB_AGENT_MAX_CHILDREN_MIN = 1;
 const SUB_AGENT_MAX_CHILDREN_MAX = 20;
 const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
+
+const SUB_AGENT_TASK_DIFFICULTIES = [
+	'low',
+	'medium',
+	'high',
+] as const satisfies readonly SubAgentTaskDifficulty[];
+
+const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
+	low: 'agents.builder.subAgents.modelsByDifficulty.low.label',
+	medium: 'agents.builder.subAgents.modelsByDifficulty.medium.label',
+	high: 'agents.builder.subAgents.modelsByDifficulty.high.label',
+};
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -35,13 +63,32 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProjectAgentsList(
 	computed(() => props.projectId),
+);
+const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const projectIdRef = computed(() => props.projectId);
+const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
+	usersStore.currentUserId ?? 'anonymous',
+	projectIdRef,
 );
 
 onMounted(() => {
 	void ensureProjectAgentsLoaded().catch(() => {});
 });
+
+watch(
+	projectIdRef,
+	(id) => {
+		if (id) void ensureLoaded(id);
+	},
+	{ immediate: true },
+);
+
+const filteredModels = computed<AgentModelsByProvider>(() =>
+	getModelsForPicker(credentialsByProvider.value),
+);
 
 function resolveMaxChildrenDisplay(value: number | undefined): number {
 	return value ?? SUB_AGENT_MAX_CHILDREN_DEFAULT;
@@ -80,13 +127,19 @@ const selectedSubAgents = computed(() =>
 	}),
 );
 
-function emitSubAgentsAgents(agents: typeof selectedSubAgentRefs.value) {
-	emit('update:config', {
+function buildSubAgentsUpdate(
+	overrides: Partial<NonNullable<AgentJsonConfig['subAgents']>>,
+): Partial<AgentJsonConfig> {
+	return {
 		subAgents: {
 			...(props.config?.subAgents ?? {}),
-			agents,
+			...overrides,
 		},
-	});
+	};
+}
+
+function emitSubAgentsAgents(agents: typeof selectedSubAgentRefs.value) {
+	emit('update:config', buildSubAgentsUpdate({ agents }));
 }
 
 function onMaxChildrenChange(n: number) {
@@ -99,6 +152,106 @@ function onMaxChildrenChange(n: number) {
 		maxChildrenModelValue.value = n;
 	}
 	emit('update:config', { subAgents });
+}
+
+function credentialsForDifficulty(
+	difficulty: SubAgentTaskDifficulty,
+): AgentCredentialsByProvider | null {
+	const global = credentialsByProvider.value;
+	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
+	if (!mapping?.model) return global;
+
+	const parsed = parseModelString(mapping.model);
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return global;
+
+	return {
+		...(global ?? {}),
+		[parsed.provider]: mapping.credential,
+	};
+}
+
+function selectedModelForDifficulty(difficulty: SubAgentTaskDifficulty): AgentModelOption | null {
+	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
+	if (!mapping?.model) return null;
+
+	const parsed = parseModelString(mapping.model);
+	if (!parsed || !isAgentModelProvider(parsed.provider)) return null;
+
+	const registryEntry = filteredModels.value[parsed.provider]?.models.find(
+		(model) => model.model === parsed.name,
+	);
+	if (registryEntry) return registryEntry;
+
+	return {
+		provider: parsed.provider,
+		model: parsed.name,
+		name: parsed.name,
+		description: null,
+		createdAt: null,
+		metadata: {
+			functionCalling: false,
+			available: true,
+		},
+	};
+}
+
+function hasDifficultyMapping(difficulty: SubAgentTaskDifficulty): boolean {
+	return Boolean(props.config?.subAgents?.modelsByDifficulty?.[difficulty]);
+}
+
+function emitModelsByDifficulty(
+	difficulty: SubAgentTaskDifficulty,
+	mapping: { model: string; credential: string } | undefined,
+) {
+	const existing = { ...(props.config?.subAgents?.modelsByDifficulty ?? {}) };
+	if (mapping) {
+		existing[difficulty] = mapping;
+	} else {
+		delete existing[difficulty];
+	}
+
+	const subAgents = { ...(props.config?.subAgents ?? {}) };
+	if (Object.keys(existing).length > 0) {
+		subAgents.modelsByDifficulty = existing;
+	} else {
+		delete subAgents.modelsByDifficulty;
+	}
+
+	emit('update:config', { subAgents });
+}
+
+function onDifficultyModelChange(
+	difficulty: SubAgentTaskDifficulty,
+	selection: AgentModelSelection,
+) {
+	const credentialId = credentialsForDifficulty(difficulty)?.[selection.provider];
+	if (!credentialId) {
+		toast.showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
+		return;
+	}
+
+	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
+	emitModelsByDifficulty(difficulty, { model, credential: credentialId });
+}
+
+function onDifficultySelectCredential(
+	difficulty: SubAgentTaskDifficulty,
+	provider: AgentModelProvider,
+	credentialId: string | null,
+) {
+	selectCredential(provider, credentialId);
+
+	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
+	if (!mapping?.model || !credentialId) return;
+
+	const parsed = parseModelString(mapping.model);
+	if (parsed?.provider !== provider) return;
+
+	emitModelsByDifficulty(difficulty, { ...mapping, credential: credentialId });
+}
+
+function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
+	emitModelsByDifficulty(difficulty, undefined);
 }
 
 async function onOpenAddSubAgentsModal() {
@@ -185,6 +338,57 @@ function onRemoveSubAgent(agentId: string) {
 				data-testid="agent-sub-agents-max-children-input"
 				@update:model-value="onMaxChildrenChange"
 			/>
+		</div>
+
+		<div :class="$style.inlineModelsSection" data-testid="agent-sub-agents-inline-models">
+			<div :class="$style.inlineModelsIntro">
+				<N8nText size="small" :bold="true">
+					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.title') }}
+				</N8nText>
+				<N8nText size="xsmall" color="text-light">
+					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.hint') }}
+				</N8nText>
+			</div>
+
+			<div
+				v-for="difficulty in SUB_AGENT_TASK_DIFFICULTIES"
+				:key="difficulty"
+				:class="$style.difficultyRow"
+				:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
+			>
+				<div :class="$style.difficultyRowHeader">
+					<N8nText size="small" :bold="true">
+						{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
+					</N8nText>
+					<N8nButton
+						v-if="hasDifficultyMapping(difficulty)"
+						type="secondary"
+						size="small"
+						:disabled="disabled"
+						:data-testid="`agent-sub-agents-difficulty-${difficulty}-clear`"
+						@click="clearDifficultyMapping(difficulty)"
+					>
+						{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear') }}
+					</N8nButton>
+				</div>
+				<div :class="$style.difficultyModelSelector">
+					<AgentModelSelector
+						:selected-model="selectedModelForDifficulty(difficulty)"
+						:credentials="credentialsForDifficulty(difficulty)"
+						:models-by-provider="filteredModels"
+						:is-loading="isLoading"
+						:project-id="projectId"
+						:warn-missing-credentials="true"
+						horizontal
+						:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
+						@change="(selection) => onDifficultyModelChange(difficulty, selection)"
+						@select-credential="
+							(provider, credentialId) =>
+								onDifficultySelectCredential(difficulty, provider, credentialId)
+						"
+					/>
+				</div>
+			</div>
 		</div>
 
 		<hr v-if="selectedSubAgentRefs.length > 0" aria-hidden="true" :class="$style.divider" />
@@ -304,6 +508,38 @@ function onRemoveSubAgent(agentId: string) {
 .shortInput {
 	width: 140px;
 	flex-shrink: 0;
+}
+
+.inlineModelsSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.inlineModelsIntro {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.difficultyRow {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.difficultyRowHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.difficultyModelSelector {
+	display: flex;
+	justify-content: flex-end;
+	width: 100%;
 }
 
 .divider {

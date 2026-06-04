@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 
+import { isZodSchema } from '../../utils/zod';
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
 import {
@@ -7,6 +8,7 @@ import {
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRunner,
 } from '../delegate-sub-agent-tool';
@@ -39,6 +41,51 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.description).toContain('independent workstreams');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
+	});
+
+	it('accepts optional difficulty on the delegate input schema', () => {
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) return;
+
+		expect(
+			tool.inputSchema.safeParse({
+				...input,
+				difficulty: 'medium',
+			}).success,
+		).toBe(true);
+		expect(
+			tool.inputSchema.safeParse({
+				...input,
+				difficulty: 'extreme',
+			}).success,
+		).toBe(false);
+	});
+
+	it('preserves inlineSubAgentModelsByDifficulty in delegate tool metadata', () => {
+		const tool = createDelegateSubAgentTool({
+			inlineSubAgentModelsByDifficulty: {
+				high: 'anthropic/claude-sonnet-4-5',
+			},
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.inlineSubAgentModelsByDifficulty).toEqual({
+			high: 'anthropic/claude-sonnet-4-5',
+		});
 	});
 
 	it('can be created without a host runner for SDK inline execution', async () => {
@@ -78,6 +125,32 @@ describe('createDelegateSubAgentTool', () => {
 				childCount: 0,
 				policy: { maxChildren: 2 },
 			},
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
+	});
+
+	it('forwards difficulty to the runner callback when provided', async () => {
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			answer: 'done',
+		});
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+
+		await tool.handler?.(
+			{ ...input, difficulty: 'high' },
+			{
+				runId: 'parent-run-1',
+				toolCallId: 'tool-call-1',
+			},
+		);
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				difficulty: 'high',
+			}),
 			expect.objectContaining({
 				runInlineSubAgent: expect.any(Function),
 			}),

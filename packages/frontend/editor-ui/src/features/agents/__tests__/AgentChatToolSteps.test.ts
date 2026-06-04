@@ -82,8 +82,8 @@ describe('AgentChatToolSteps', () => {
 					status: 'ok',
 					todoCount: 2,
 					todos: [
-						{ id: 'a', content: 'Research APIs', status: 'in_progress' },
-						{ id: 'b', content: 'Write summary', status: 'pending' },
+						{ id: 'a', content: 'Research APIs', status: 'in_progress', difficulty: 'high' },
+						{ id: 'b', content: 'Write summary', status: 'pending', difficulty: 'medium' },
 					],
 				},
 			},

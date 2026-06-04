@@ -3,6 +3,8 @@ import {
 	generateResultToDelegateSubAgentOutput,
 	INLINE_SUB_AGENT_ID,
 	type DelegateSubAgentToolOutput,
+	type ModelConfig,
+	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
 
@@ -17,14 +19,23 @@ export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForeground
 	sourcesById: Record<string, SubAgentSource>;
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
 	policy?: SubAgentRunPolicy;
+	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 }
 
 export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgentToolOptions) {
-	const { runner, sourcesById, availableSubAgents, policy, ...runContext } = options;
+	const {
+		runner,
+		sourcesById,
+		availableSubAgents,
+		policy,
+		inlineSubAgentModelsByDifficulty,
+		...runContext
+	} = options;
 
 	return createDelegateSubAgentTool({
 		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
 		...(policy !== undefined ? { policy } : {}),
+		...(inlineSubAgentModelsByDifficulty !== undefined ? { inlineSubAgentModelsByDifficulty } : {}),
 		runSubAgent: async (request, helpers) => {
 			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
 				return await helpers.runInlineSubAgent(request);

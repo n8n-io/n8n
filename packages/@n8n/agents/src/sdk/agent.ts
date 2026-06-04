@@ -19,6 +19,7 @@ import {
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
+	type SubAgentTaskDifficulty,
 } from '../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
@@ -996,6 +997,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...options,
 				tools,
 				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
+				inlineSubAgentModelsByDifficulty: delegateOptions.inlineSubAgentModelsByDifficulty,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
@@ -1033,6 +1035,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		toolSearch?: { topK?: number };
 		tools: BuiltTool[];
 		inlineSubAgentBlockedTools?: string[];
+		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
 		return async (request) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
@@ -1044,9 +1047,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				options.providerTools,
 				options.inlineSubAgentBlockedTools,
 			);
+			const childModelConfig = resolveInlineSubAgentModelConfig(request, options);
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
-				model: options.modelConfig,
+				model: childModelConfig,
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,
@@ -1106,6 +1110,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
 		this.hasRuntimeSkillTool = false;
 	}
+}
+
+function resolveInlineSubAgentModelConfig(
+	request: DelegateSubAgentRequest,
+	options: {
+		modelConfig: ModelConfig;
+		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+	},
+): ModelConfig {
+	if (request.difficulty === undefined) {
+		return options.modelConfig;
+	}
+
+	const mappedModel = options.inlineSubAgentModelsByDifficulty?.[request.difficulty];
+	return mappedModel ?? options.modelConfig;
 }
 
 export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {

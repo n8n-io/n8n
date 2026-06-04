@@ -22,6 +22,7 @@ import type {
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
+import { getProviderPrefix, resolveCredentialAwareModelConfig } from './model-config';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -423,19 +424,4 @@ async function resolveMemoryWorkerModelConfig(
 		config.credential,
 		credentialProvider,
 	);
-}
-
-async function resolveCredentialAwareModelConfig(
-	model: string,
-	credential: string,
-	credentialProvider: CredentialProvider,
-): Promise<ModelConfig> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(model), raw);
-	return { id: model, ...mapped } as ModelConfig;
-}
-
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

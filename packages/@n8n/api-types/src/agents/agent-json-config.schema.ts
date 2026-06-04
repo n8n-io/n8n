@@ -68,6 +68,15 @@ const SubAgentConfigSchema = z.object({
 	agentId: z.string().trim().min(1),
 });
 
+const SubAgentTaskDifficultySchema = z.enum(['low', 'medium', 'high']);
+
+const SubAgentDifficultyModelConfigSchema = z
+	.object({
+		model: AgentModelSchema,
+		credential: z.string().trim().min(1),
+	})
+	.strict();
+
 const SubAgentsConfigSchema = z
 	.object({
 		maxChildren: z
@@ -80,6 +89,17 @@ const SubAgentsConfigSchema = z
 				'Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to 10 when unset.',
 			),
 		agents: z.array(SubAgentConfigSchema).optional(),
+		modelsByDifficulty: z
+			.object({
+				low: SubAgentDifficultyModelConfigSchema.optional(),
+				medium: SubAgentDifficultyModelConfigSchema.optional(),
+				high: SubAgentDifficultyModelConfigSchema.optional(),
+			})
+			.strict()
+			.optional()
+			.describe(
+				'Optional inline sub-agent model mappings by task difficulty. Missing mappings fall back to the parent agent model.',
+			),
 	})
 	.strict();
 
@@ -304,6 +324,9 @@ export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
+export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+export type AgentJsonSubAgentsConfig = z.infer<typeof SubAgentsConfigSchema>;
+export type SubAgentDifficultyModelConfig = z.infer<typeof SubAgentDifficultyModelConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
