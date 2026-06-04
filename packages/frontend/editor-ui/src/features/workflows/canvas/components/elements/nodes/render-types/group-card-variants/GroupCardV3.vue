@@ -1,145 +1,109 @@
 <script setup lang="ts">
-// PROTOTYPE VARIANT V3 — currently an exact copy of V1. Edit this file to
-// diverge the V3 card design (e.g. key parameters). See registry.ts.
+// PROTOTYPE VARIANT V3 — turns the collapsed group card into a control surface:
+// title + description, a compact services icon row (click a node to open it),
+// and a few editable "key parameters". Content is curated in v3Config.ts.
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nActionDropdown, N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton } from '@n8n/design-system';
 
-import NodeIcon from '@/app/components/NodeIcon.vue';
 import type { GroupCardProps, GroupCardEmits } from './types';
+import { GROUP_V3_CONFIG } from './v3Config';
+import GroupServiceIcons from './GroupServiceIcons.vue';
+import GroupParamRow from './GroupParamRow.vue';
 
-defineProps<GroupCardProps>();
+const props = defineProps<GroupCardProps>();
 const emit = defineEmits<GroupCardEmits>();
 
 const i18n = useI18n();
+
+// PROTOTYPE section labels (kept as constants so they're not flagged as raw text).
+const servicesLabel = 'Services';
+const parametersLabel = 'Parameters';
+
+const config = computed(() => GROUP_V3_CONFIG[props.title]);
+
+const nodeIdByName = computed<Record<string, string>>(() =>
+	Object.fromEntries(props.memberNodes.map((node) => [node.name, node.id])),
+);
+
+const services = computed(() => {
+	const cfg = config.value;
+	if (!cfg) return [];
+	const nameToId = new Map(props.memberNodes.map((node) => [node.name, node.id]));
+	return cfg.services
+		.map((service) => {
+			const nodes = service.nodeNames
+				.filter((name) => nameToId.has(name))
+				.map((name) => {
+					const id = nameToId.get(name) as string;
+					return { id, name, iconSource: props.iconSourceForNodeId(id) };
+				});
+			return { label: service.label, iconSource: nodes[0]?.iconSource, nodes };
+		})
+		.filter((service) => service.nodes.length > 0);
+});
+
+const parameters = computed(() => config.value?.parameters ?? []);
 </script>
 
 <template>
 	<div :class="$style.body">
-		<div :class="$style.header">
-			<N8nIconButton
-				v-if="!isReadOnly"
-				:class="$style.expandToggle"
-				variant="ghost"
-				icon="chevrons-up-down"
-				:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
-				data-test-id="canvas-collapsed-group-expand"
-				@click.stop="emit('expand')"
-				@mousedown.stop
-			/>
-			<div :class="$style.titleBlock">
-				<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{ title }}</span>
-				<p
-					v-if="description"
-					:class="$style.description"
-					data-test-id="canvas-collapsed-group-description"
-				>
-					{{ description }}
-				</p>
+		<N8nIconButton
+			v-if="!isReadOnly"
+			:class="$style.expandToggle"
+			variant="ghost"
+			icon="chevrons-up-down"
+			:aria-label="i18n.baseText('canvas.nodeGroup.expand')"
+			data-test-id="canvas-collapsed-group-expand"
+			@click.stop="emit('expand')"
+			@mousedown.stop
+		/>
+		<div :class="$style.content">
+			<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{ title }}</span>
+			<p v-if="description" :class="$style.description">{{ description }}</p>
+
+			<div v-if="services.length" :class="$style.serviceRow">
+				<span :class="$style.sectionLabel">{{ servicesLabel }}</span>
+				<GroupServiceIcons
+					:services="services"
+					@open-node="(name: string) => emit('open-node', name)"
+				/>
 			</div>
-			<!-- Stop propagation on the wrapper (not the button): the dropdown's
-				trigger is a descendant and opens first, then we halt the event so it
-				doesn't reach Vue Flow's node drag/select. Stopping on the button
-				itself would swallow the click before the trigger sees it. -->
-			<div
-				v-if="canPickNodes"
-				:class="$style.pinButton"
-				@pointerdown.stop
-				@mousedown.stop
-				@click.stop
-				@dblclick.stop
-			>
-				<N8nActionDropdown
-					:items="pickableItems"
-					placement="bottom-end"
-					data-test-id="canvas-collapsed-group-pin"
-					@select="(id: string) => emit('pick-node', id)"
-				>
-					<template #activator>
-						<N8nIconButton
-							variant="ghost"
-							icon="plus"
-							:aria-label="i18n.baseText('canvas.nodeGroup.pinNode')"
-						/>
-					</template>
-					<template #menuItem="item">
-						<span :class="$style.menuItem">
-							<NodeIcon :icon-source="iconSourceForNodeId(item.id)" :size="14" />
-							<span :class="$style.menuItemLabel">{{ item.label }}</span>
-						</span>
-					</template>
-				</N8nActionDropdown>
+
+			<div v-if="parameters.length" :class="$style.params">
+				<span :class="$style.sectionLabel">{{ parametersLabel }}</span>
+				<GroupParamRow
+					v-for="param in parameters"
+					:key="param.id"
+					:param="param"
+					:group-id="groupId"
+					:node-id-by-name="nodeIdByName"
+					:is-read-only="isReadOnly"
+				/>
 			</div>
 		</div>
-
-		<ul
-			v-if="pinnedNodes.length"
-			:class="$style.pinnedList"
-			data-test-id="canvas-collapsed-group-pinned"
-		>
-			<li
-				v-for="pinned in pinnedNodes"
-				:key="pinned.id"
-				:class="$style.pinnedItem"
-				data-test-id="canvas-collapsed-group-pinned-item"
-				@pointerdown.stop
-				@mousedown.stop
-				@click.stop="emit('open-node', pinned.name)"
-			>
-				<div :class="$style.iconWrapper">
-					<NodeIcon :icon-source="pinned.iconSource" :size="14" />
-				</div>
-				<span :class="$style.pinnedName">{{ pinned.name }}</span>
-				<N8nIconButton
-					v-if="!isReadOnly"
-					:class="$style.unpinButton"
-					variant="ghost"
-					size="small"
-					icon="x"
-					:aria-label="i18n.baseText('canvas.nodeGroup.unpinNode')"
-					data-test-id="canvas-collapsed-group-unpin"
-					@click.stop="emit('unpin-node', pinned.id)"
-					@mousedown.stop
-					@pointerdown.stop
-				/>
-			</li>
-		</ul>
 	</div>
 </template>
 
 <style lang="scss" module>
 .body {
 	display: flex;
-	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
 	flex: 1;
 	min-width: 0;
 }
 
-.header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.expandToggle,
-.pinButton {
+.expandToggle {
 	flex-shrink: 0;
 }
 
-// The "+" picker only appears while hovering the card body.
-.pinButton {
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
-}
-
-.body:hover .pinButton,
-.pinButton:focus-within {
-	opacity: 1;
-}
-
-.titleBlock {
+// Title, description, services and parameters all share this left edge so they
+// line up beneath each other (to the right of the expand chevron).
+.content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	flex: 1;
 	min-width: 0;
 }
@@ -159,67 +123,30 @@ const i18n = useI18n();
 	overflow-wrap: anywhere;
 }
 
-.pinnedList {
+.sectionLabel {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--color--text--tint-1);
+}
+
+.serviceRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+}
+
+.params {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin: 0;
-	margin-top: var(--spacing--xs);
-	list-style: none;
+	margin-top: var(--spacing--2xs);
 }
 
-.pinnedItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) 0;
-	border-radius: var(--radius);
-	font-weight: var(--font-weight--regular);
-	font-size: var(--font-size--sm);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
-}
-
-.iconWrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-}
-
-.pinnedName {
-	flex: 1;
-	min-width: 0;
-
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.unpinButton {
-	flex-shrink: 0;
-	opacity: 0;
-	transition: opacity 0.1s ease-in;
-}
-
-.pinnedItem:hover .unpinButton,
-.unpinButton:focus-visible {
-	opacity: 1;
-}
-
-.menuItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-
-.menuItemLabel {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+.params .sectionLabel {
+	margin-bottom: var(--spacing--3xs);
 }
 </style>

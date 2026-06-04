@@ -20,6 +20,11 @@ export interface GroupCardProps {
 	pickableItems: Array<ActionDropdownItem<string>>;
 	canPickNodes: boolean;
 	iconSourceForNodeId: (nodeId: string) => NodeIconSource | undefined;
+	/** The group's id (stable key for prototype param overrides). */
+	groupId: string;
+	/** All member nodes of the group (id + name). Used by V3 to resolve
+	 * services and click-to-open; ignored by V1/V2. */
+	memberNodes: Array<{ id: string; name: string }>;
 }
 
 export interface GroupCardEmits {

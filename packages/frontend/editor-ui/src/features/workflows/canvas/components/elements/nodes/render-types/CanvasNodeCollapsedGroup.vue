@@ -86,6 +86,20 @@ const currentGroup = computed(() => {
 
 const description = computed(() => currentGroup.value?.description ?? '');
 
+// All member nodes (id + name) — used by the V3 variant to resolve services and
+// click-to-open. Cheap; ignored by V1/V2.
+const memberNodes = computed<Array<{ id: string; name: string }>>(() => {
+	const group = currentGroup.value;
+	if (!group) return [];
+	const store = workflowDocumentStore.value;
+	return group.nodeIds
+		.map((nodeId) => {
+			const node = store.getNodeById(nodeId);
+			return node ? { id: nodeId, name: node.name } : undefined;
+		})
+		.filter((entry): entry is { id: string; name: string } => entry !== undefined);
+});
+
 function iconSourceForNodeId(nodeId: string): NodeIconSource | undefined {
 	const node = workflowDocumentStore.value.getNodeById(nodeId);
 	if (!node) return undefined;
@@ -211,6 +225,8 @@ function onUnpinNode(nodeId: string) {
 			:pickable-items="pickableItems"
 			:can-pick-nodes="canPickNodes"
 			:icon-source-for-node-id="iconSourceForNodeId"
+			:group-id="options.groupId"
+			:member-nodes="memberNodes"
 			@expand="onExpand"
 			@pick-node="onPickNode"
 			@open-node="onOpenNode"

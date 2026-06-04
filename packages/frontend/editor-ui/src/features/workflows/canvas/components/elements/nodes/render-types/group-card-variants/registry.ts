@@ -12,6 +12,9 @@ export interface GroupCardVariant {
 	 * (see render-types/trigger-card). Lets a variant be a whole-canvas
 	 * "version", not only a group-card swap. */
 	triggerCard?: boolean;
+	/** When true, the trigger card also surfaces its (mock-editable) trigger
+	 * rules beneath the description. */
+	triggerRules?: boolean;
 }
 
 /**
@@ -23,5 +26,5 @@ export interface GroupCardVariant {
 export const GROUP_CARD_VARIANTS: GroupCardVariant[] = [
 	{ id: 'v1', label: 'V1', component: GroupCardV1 },
 	{ id: 'v2', label: 'V2', component: GroupCardV2, triggerCard: true },
-	{ id: 'v3', label: 'V3', component: GroupCardV3 },
+	{ id: 'v3', label: 'V3', component: GroupCardV3, triggerCard: true, triggerRules: true },
 ];
