@@ -12,7 +12,7 @@ concurrency:
 jobs:
   grind:
     name: Grind changed editor-ui tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     # Non-blocking: a failure here surfaces in the PR Checks tab as a soft
     # signal but never gates merge. Remove `continue-on-error` once we have
     # confidence the grind has a low false-positive rate.

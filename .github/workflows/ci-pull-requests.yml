@@ -340,6 +340,7 @@ jobs:
       needs.install-and-build.result == 'success' &&
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
       github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test-evals-discovery.yml
     with:
