@@ -1,13 +1,13 @@
 /**
- * Map a low-level agent execution error to an actionable message when the run
- * requested structured output. Returns `null` when the error doesn't look
- * structured-output related, so the caller falls back to the generic message.
+ * Map a low-level agent execution error to a concise, actionable message when
+ * the run requested structured output. Returns `null` when the error doesn't
+ * look structured-output related, so the caller falls back to the generic
+ * message.
  *
  * Structured output is enforced by the model provider, so failures surface as
  * an opaque parse/validation error (e.g. "No output generated") or a provider
- * 400. This adds the context a workflow builder needs: not every model/provider
- * supports JSON Schema structured output, and strict providers require every
- * property to be listed in `required`.
+ * 400. Provider-specific guidance (which models support it, the "all required"
+ * rule) lives in the node's NDV notice — the runtime error stays short.
  */
 export function describeStructuredOutputError(rawError: string): string | null {
 	const haystack = rawError.toLowerCase();
@@ -26,11 +26,22 @@ export function describeStructuredOutputError(rawError: string): string | null {
 	];
 	if (!signals.some((signal) => haystack.includes(signal))) return null;
 
-	return (
-		'The agent could not return structured output matching the provided schema. ' +
-		'The selected model or provider may not support JSON Schema structured output, or the ' +
-		'schema may be incompatible with it — some providers (e.g. OpenAI and xAI) require every ' +
-		'property to be listed in "required", and some (e.g. DeepSeek) do not support structured ' +
-		`output at all. Provider error: ${rawError}`
-	);
+	const message =
+		"Couldn't get structured output matching the schema — the model may not support it.";
+
+	// Only echo the raw provider error when it adds something beyond the AI SDK's
+	// generic "no output generated / could not parse" wrapper — e.g. a provider
+	// 400 that names the offending schema constraint. Otherwise it's just noise.
+	const informativeSignals = [
+		'additionalproperties',
+		'response_format',
+		'json_schema',
+		'output_config',
+		'invalid schema',
+		'does not support',
+		'required',
+	];
+	const hasUsefulDetail = informativeSignals.some((signal) => haystack.includes(signal));
+
+	return hasUsefulDetail ? `${message} (${rawError})` : message;
 }

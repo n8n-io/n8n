@@ -1798,7 +1798,7 @@ describe('AgentsService', () => {
 					true,
 					outputSchema,
 				),
-			).rejects.toThrow('could not return structured output');
+			).rejects.toThrow('structured output');
 		});
 
 		it('falls back to the generic error when the failure is unrelated to structured output', async () => {
