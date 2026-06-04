@@ -1,31 +1,16 @@
-import type { IrreversibleMigration, MigrationContext } from '../migration-types';
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Adds a project foreign key to Instance AI threads. Existing threads have no
- * project to backfill from, so all Instance AI data is cleared first — hence
- * irreversible.
+ * Adds a project foreign key to Instance AI threads and backfills each existing
+ * user thread with its owner's personal project. Sub-agent and orphaned threads
+ * have no matching personal project, so they keep a null binding.
  */
-const INSTANCE_AI_TABLES = [
-	'instance_ai_messages',
-	'instance_ai_observations',
-	'instance_ai_observation_cursors',
-	'instance_ai_observation_locks',
-	'instance_ai_iteration_logs',
-	'instance_ai_run_snapshots',
-	'instance_ai_checkpoints',
-	'instance_ai_pending_confirmations',
-	'instance_ai_resources',
-	'instance_ai_threads',
-];
-
 const FK_NAME = 'FK_instance_ai_threads_projectId';
 const THREADS_TABLE = 'instance_ai_threads';
 const PROJECT_ID_COLUMN = 'projectId';
 
-export class AddProjectIdToInstanceAiThread1784000000026 implements IrreversibleMigration {
+export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
-		await this.clearInstanceAiData(ctx);
-
 		const {
 			schemaBuilder: { addColumns, column, addForeignKey, createIndex },
 		} = ctx;
@@ -38,6 +23,8 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements Irreversible
 			]);
 		}
 
+		await this.backfillPersonalProjects(ctx);
+
 		if (!(await this.hasProjectIdForeignKey(ctx))) {
 			await addForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME, 'CASCADE');
 		}
@@ -47,10 +34,51 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements Irreversible
 		}
 	}
 
-	private async clearInstanceAiData({ runQuery, escape }: MigrationContext) {
-		for (const table of INSTANCE_AI_TABLES) {
-			await runQuery(`DELETE FROM ${escape.tableName(table)}`);
+	async down(ctx: MigrationContext) {
+		const {
+			schemaBuilder: { dropIndex, dropForeignKey, dropColumns },
+		} = ctx;
+
+		if (await this.hasProjectIdIndex(ctx)) {
+			await dropIndex(THREADS_TABLE, [PROJECT_ID_COLUMN], { skipIfMissing: true });
 		}
+		if (await this.hasProjectIdForeignKey(ctx)) {
+			await dropForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME);
+		}
+		if (await this.hasProjectIdColumn(ctx)) {
+			await dropColumns(THREADS_TABLE, [PROJECT_ID_COLUMN]);
+		}
+	}
+
+	/**
+	 * Existing threads predate project scoping. A user thread's `resourceId` is its
+	 * owner's user id, so bind each to that user's personal project. Only null
+	 * bindings are filled — a re-run never overwrites a real binding — and threads
+	 * with no matching personal project (sub-agent or orphaned) stay null.
+	 */
+	private async backfillPersonalProjects({ runQuery, escape }: MigrationContext) {
+		const threads = escape.tableName(THREADS_TABLE);
+		const relation = escape.tableName('project_relation');
+		const projectId = escape.columnName(PROJECT_ID_COLUMN);
+		const resourceId = escape.columnName('resourceId');
+		const userId = escape.columnName('userId');
+		const role = escape.columnName('role');
+
+		// `project:personalOwner` is the relation role used only for personal projects.
+		await runQuery(
+			`UPDATE ${threads}
+			 SET ${projectId} = (
+				 SELECT pr.${projectId}
+				 FROM ${relation} pr
+				 WHERE pr.${userId} = ${threads}.${resourceId}
+					 AND pr.${role} = 'project:personalOwner'
+				 LIMIT 1
+			 )
+			 WHERE ${projectId} IS NULL
+				 AND ${resourceId} IN (
+					 SELECT ${userId} FROM ${relation} WHERE ${role} = 'project:personalOwner'
+				 )`,
+		);
 	}
 
 	private async getThreadsTable({ queryRunner, tablePrefix }: MigrationContext) {
