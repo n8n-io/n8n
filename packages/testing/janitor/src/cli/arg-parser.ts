@@ -69,6 +69,8 @@ export interface CliOptions {
 	outMap?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
+	/** Path to a newline-separated allowlist of spec paths (orchestrate). */
+	includeSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -223,6 +225,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	},
 	'--all-specs=': (opts, value) => {
 		opts.allSpecsFile = value;
+	},
+	'--include-specs-file=': (opts, value) => {
+		opts.includeSpecsFile = value;
 	},
 };
 

@@ -17,30 +17,61 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, accessSync, constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
 const COMMITTED_MAP = path.join(REPO_ROOT, '.github', 'test-metrics', 'e2e-impact-map.json');
 
-/** @returns {string | null} path to a readable impact map, or null → fail-open broad. */
-function resolveMapPath() {
+/**
+ * @param {{ mapPath?: string }} [opts]
+ * @returns {string | null} path to a readable impact map, or null → fail-open broad.
+ *
+ * Wrapped in try/catch so any I/O failure (race deletion, perms, fs error) is
+ * swallowed into a null return — never throws. The caller then omits --map,
+ * which makes select-e2e fail open to broad (run the full suite).
+ */
+export function resolveMapPath(opts = {}) {
 	// FUTURE: fetch a remote webhook to a temp file here and return that path;
-	// wrap in try/catch and return null on failure (fail-open).
-	return existsSync(COMMITTED_MAP) ? COMMITTED_MAP : null;
+	// keep the try/catch — return null on failure (fail-open).
+	const target = opts.mapPath ?? COMMITTED_MAP;
+	try {
+		if (!existsSync(target)) return null;
+		accessSync(target, fsConstants.R_OK);
+		return target;
+	} catch {
+		return null;
+	}
 }
 
-const changedFiles = process.argv.slice(2).join(',') || process.env.CHANGED_FILES || '';
-const mapPath = resolveMapPath();
+/**
+ * Build the janitor argv for `select-e2e`. Pure (no I/O) so the wrapper's glue
+ * can be tested without spawning a subprocess. If `mapPath` is null we omit
+ * `--map`, which makes select-e2e fail open to broad.
+ *
+ * @param {{ changedFiles: string, mapPath: string | null, allSpecs?: string }} input
+ * @returns {string[]}
+ */
+export function buildArgs({ changedFiles, mapPath, allSpecs }) {
+	const args = ['select-e2e', `--changed-files=${changedFiles}`];
+	if (mapPath) args.push(`--map=${mapPath}`);
+	if (allSpecs) args.push(`--all-specs=${allSpecs}`);
+	return args;
+}
 
-const args = ['select-e2e', `--changed-files=${changedFiles}`];
-// Omitting --map (or pointing at a missing file) makes select-e2e fail open to broad.
-if (mapPath) args.push(`--map=${mapPath}`);
-const allSpecs = process.env.ALL_SPECS_FILE;
-if (allSpecs) args.push(`--all-specs=${allSpecs}`);
+function runAsScript() {
+	const changedFiles = process.argv.slice(2).join(',') || process.env.CHANGED_FILES || '';
+	const mapPath = resolveMapPath();
+	const args = buildArgs({ changedFiles, mapPath, allSpecs: process.env.ALL_SPECS_FILE });
+	const out = execFileSync('node', [JANITOR_CLI, ...args], { encoding: 'utf-8' });
+	process.stdout.write(out);
+}
 
-const out = execFileSync('node', [JANITOR_CLI, ...args], { encoding: 'utf-8' });
-process.stdout.write(out);
+// Only execute when invoked directly — keeps the module importable for tests.
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+	runAsScript();
+}
