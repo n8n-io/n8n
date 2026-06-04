@@ -1813,6 +1813,38 @@ describe('AgentRuntime.generate() — structured output', () => {
 		);
 	});
 
+	it('disables strict JSON Schema validation for OpenAI/Groq when a raw JSON Schema is configured', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput({ answer: 'x', score: 1 }));
+
+		const { runtime } = createJsonSchemaStructuredRuntime();
+		await runtime.generate('hello');
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		expect(callArgs.providerOptions).toEqual(
+			expect.objectContaining({
+				openai: { strictJsonSchema: false },
+				groq: { strictJsonSchema: false },
+			}),
+		);
+	});
+
+	it('keeps strict JSON Schema validation (no relaxation) for a Zod schema', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput({ answer: 'x', score: 1 }));
+
+		const { runtime } = createStructuredRuntime();
+		await runtime.generate('hello');
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		// No thinking/provider options configured and Zod output → no strict override.
+		expect(callArgs.providerOptions).toBeUndefined();
+	});
+
 	it('preserves structuredOutput through tool-call iterations', async () => {
 		const tool: BuiltTool = {
 			name: 'add',

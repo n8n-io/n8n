@@ -2303,10 +2303,15 @@ export class AgentRuntime {
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
 		const outputSchema = this.config.structuredOutput;
+		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
+		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
+			this.buildCallProviderOptions(execOptions?.providerOptions),
+			isRawJsonSchemaOutput,
+		);
 		return {
 			model,
 			aiProviderTools,
-			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
+			providerOptions,
 			outputSpec: outputSchema
 				? Output.object({
 						// Zod schemas pass through directly; a raw JSON Schema is made
@@ -2318,6 +2323,36 @@ export class AgentRuntime {
 					})
 				: undefined,
 		};
+	}
+
+	/**
+	 * When structured output is driven by a raw JSON Schema (e.g. one a user
+	 * typed into a workflow node), opt out of strict JSON Schema validation for
+	 * the providers that default to it (OpenAI, Groq). Their strict mode rejects
+	 * schemas whose objects don't list every property in `required` or that use
+	 * keywords it doesn't allow — common in hand-written schemas. With strict off
+	 * the provider still steers generation toward the schema, and the runtime
+	 * validates the model's output against it afterwards.
+	 *
+	 * Zod-defined output keeps strict mode (zod-to-json-schema already produces a
+	 * strict-compliant schema). Providers that hardcode strict (e.g. xAI) or use
+	 * a different namespace (e.g. Azure) are unaffected and remain strict.
+	 *
+	 * Setting options under providers that aren't the active one is a no-op — the
+	 * AI SDK only reads the namespace matching the model in use.
+	 */
+	private relaxStrictJsonSchemaIfNeeded(
+		providerOptions: Record<string, Record<string, unknown>> | undefined,
+		isRawJsonSchemaOutput: boolean,
+	): Record<string, Record<string, unknown>> | undefined {
+		if (!isRawJsonSchemaOutput) return providerOptions;
+
+		const result: Record<string, Record<string, unknown>> = { ...providerOptions };
+		for (const provider of ['openai', 'groq']) {
+			// Keep any caller-provided value (spread last so it wins).
+			result[provider] = { strictJsonSchema: false, ...result[provider] };
+		}
+		return result;
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */
