@@ -117,7 +117,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **Sparse-unique columns:** use a partial index `WHERE col IS NOT NULL`. — [Index Management](#index-management)
 - [ ] **Composite index column order** matches your actual `WHERE` / `ORDER BY` usage. — [Index Management](#index-management)
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
-- [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, or `dropNotNull`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
+- [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, or `dropEnumCheck`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **`async down()` was tested locally**: `pnpm start && pnpm start -- db:revert && pnpm start` on **both** SQLite and Postgres. — [Reversibility](#reversibility)
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
@@ -353,7 +353,7 @@ export class CreateMyTable1234567890000 implements ReversibleMigration {
 
 ### SQLite table recreation risk
 
-Four DSL methods trigger **full table recreation** on SQLite — TypeORM internally creates a temp copy, drops the original, and renames:
+Six DSL methods trigger **full table recreation** on SQLite — TypeORM internally creates a temp copy, drops the original, and renames:
 
 | Method | TypeORM internal call |
 |---|---|
@@ -361,8 +361,10 @@ Four DSL methods trigger **full table recreation** on SQLite — TypeORM interna
 | `dropColumns()` | `queryRunner.dropColumns()` |
 | `addNotNull()` | `queryRunner.changeColumn()` |
 | `dropNotNull()` | `queryRunner.changeColumn()` |
+| `addEnumCheck()` | `queryRunner.changeColumn()` |
+| `dropEnumCheck()` | `queryRunner.changeColumn()` |
 
-All four require a final options parameter with `recreatesOnSqlite: true` — TypeScript rejects calls that omit it.
+All six require a final options parameter with `recreatesOnSqlite: true` — TypeScript rejects calls that omit it.
 
 **The danger:** If the target table has incoming FK constraints with `CASCADE` from other tables, the `DROP TABLE` during recreation fires cascading deletes and **wipes rows from those referencing tables**.
 
