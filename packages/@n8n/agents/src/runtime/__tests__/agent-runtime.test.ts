@@ -2690,6 +2690,65 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 		expect(chunks.map((c) => c.type)).toContain('tool-call-suspended');
 		expect(chunks.map((c) => c.type)).not.toContain('tool-execution-start');
 	});
+
+	it('starts tool execution when conditional approval allows the call immediately', async () => {
+		const handler = vi.fn(async ({ id }: { id: string }) => {
+			return await Promise.resolve({ found: id });
+		});
+		const conditionalApprovalTool = new ToolBuilder('lookup')
+			.description('Look up a record')
+			.input(z.object({ id: z.string() }))
+			.needsApprovalFn(async ({ id }: { id: string }) => {
+				return await Promise.resolve(id === 'secret');
+			})
+			.handler(handler)
+			.build();
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'lookup',
+									args: { id: 'public' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'lookup', input: { id: 'public' } },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [conditionalApprovalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const { stream: readableStream } = await runtime.stream('Look up public');
+		const chunks = await collectChunks(readableStream);
+
+		expect(handler).toHaveBeenCalledWith(
+			{ id: 'public' },
+			expect.objectContaining({ toolCallId: 'tc-1' }),
+		);
+		expect(chunks.map((c) => c.type)).toContain('tool-execution-start');
+		expect(chunks.map((c) => c.type)).toContain('tool-execution-end');
+		expect(chunks.map((c) => c.type)).not.toContain('tool-call-suspended');
+	});
 });
 
 // ---------------------------------------------------------------------------

@@ -10,8 +10,9 @@ import {
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/delegate-sub-agent-tool';
-import type { BuiltTool } from '../../types';
+import type { BuiltTool, InterruptibleToolContext } from '../../types';
 import { Agent } from '../agent';
+import { wrapToolForApproval } from '../tool';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
 let inlineChildGenerateResult:
@@ -133,6 +134,37 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(runtimeConfigs).toHaveLength(2);
+	});
+
+	it('preserves required approval when completing inline delegate tools', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.checkpoint('memory')
+			.tool(wrapToolForApproval(createDelegateSubAgentTool(), { requireApproval: true }))
+			.tool(makeTool('lookup'));
+
+		await (agent as unknown as { build(): Promise<unknown> }).build();
+
+		const builtTools = runtimeConfigs[0]?.tools as BuiltTool[] | undefined;
+		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(delegateTool?.approval?.required).toBe(true);
+
+		const suspend = vi.fn(async (payload: unknown) => {
+			return await Promise.resolve({ suspended: payload });
+		});
+		await delegateTool?.handler?.(delegateInput, {
+			suspend: suspend as unknown as InterruptibleToolContext['suspend'],
+			resumeData: undefined,
+			runId: 'parent-run-1',
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			type: 'approval',
+			toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+			args: delegateInput,
+		});
+		expect(runtimeConfigs).toHaveLength(1);
 	});
 
 	it('lets a host-style runner delegate inline through helpers from tool metadata', async () => {

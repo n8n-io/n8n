@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
@@ -33,6 +34,20 @@ function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
 	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
 }
 
+function emitToolExecutionStart(
+	tool: BuiltTool,
+	input: unknown,
+	ctx: InterruptibleToolContext,
+): void {
+	if (!ctx.toolCallId) return;
+	ctx.emitEvent?.({
+		type: AgentEvent.ToolExecutionStart,
+		toolCallId: ctx.toolCallId,
+		toolName: tool.name,
+		args: input,
+	});
+}
+
 /**
  * Wrap a BuiltTool with an approval gate that suspends before execution and
  * waits for human confirmation. Used by Tool.build() (when .requireApproval()
@@ -45,11 +60,13 @@ function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
 	const originalHandler = tool.handler!;
+	const hasConditionalApproval = config.needsApprovalFn !== undefined;
 
 	return {
 		...tool,
 		approval: {
 			required: config.requireApproval === true,
+			...(hasConditionalApproval ? { conditional: true } : {}),
 		},
 		suspendSchema: APPROVAL_SUSPEND_SCHEMA,
 		resumeSchema: APPROVAL_RESUME_SCHEMA,
@@ -70,6 +87,9 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 						...(displayName ? { displayName } : {}),
 						args: input,
 					});
+				}
+				if (hasConditionalApproval) {
+					emitToolExecutionStart(tool, input, interruptCtx);
 				}
 				return await originalHandler(input, interruptCtx as ToolContext);
 			}

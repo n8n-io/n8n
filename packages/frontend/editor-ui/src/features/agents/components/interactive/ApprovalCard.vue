@@ -18,12 +18,69 @@ const i18n = useI18n();
 
 const toolLabel = computed(() => props.input.displayName ?? props.input.toolName);
 
+const REDACTED_VALUE = '[redacted]';
+const CIRCULAR_VALUE = '[Circular]';
+const SENSITIVE_KEY_PARTS = [
+	'apiKey',
+	'authorization',
+	'bearer',
+	'clientSecret',
+	'cookie',
+	'credential',
+	'password',
+	'privateKey',
+	'refreshToken',
+	'secret',
+	'session',
+	'token',
+].map((key) => key.toLowerCase());
+const SENSITIVE_EXACT_KEYS = new Set(['auth']);
+
+function normalizeArgKey(key: string) {
+	return key.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function isSensitiveArgKey(key: string) {
+	const normalized = normalizeArgKey(key);
+	return (
+		SENSITIVE_EXACT_KEYS.has(normalized) ||
+		SENSITIVE_KEY_PARTS.some((part) => normalized.includes(part))
+	);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function redactApprovalArgs(value: unknown, seen = new WeakSet<object>()): unknown {
+	if (Array.isArray(value)) {
+		if (seen.has(value)) return CIRCULAR_VALUE;
+		seen.add(value);
+		const redacted = value.map((item) => redactApprovalArgs(item, seen));
+		seen.delete(value);
+		return redacted;
+	}
+
+	if (!isRecord(value)) return value;
+
+	if (seen.has(value)) return CIRCULAR_VALUE;
+	seen.add(value);
+
+	const redacted: Record<string, unknown> = {};
+	for (const [key, item] of Object.entries(value)) {
+		redacted[key] = isSensitiveArgKey(key) ? REDACTED_VALUE : redactApprovalArgs(item, seen);
+	}
+	seen.delete(value);
+	return redacted;
+}
+
 const argsText = computed(() => {
 	if (props.input.args === undefined) return '';
+	const redactedArgs = redactApprovalArgs(props.input.args);
 	try {
-		return JSON.stringify(props.input.args, null, 2);
+		return JSON.stringify(redactedArgs, null, 2);
 	} catch {
-		return String(props.input.args);
+		return String(redactedArgs);
 	}
 });
 

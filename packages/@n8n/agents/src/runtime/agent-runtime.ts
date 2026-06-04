@@ -163,6 +163,7 @@ function isDeniedApprovalResumeData(value: unknown): boolean {
 
 function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
 	if (!tool.approval) return true;
+	if (!tool.approval.required && tool.approval.conditional !== true) return true;
 	if (resumeData === undefined) return false;
 	return !isDeniedApprovalResumeData(resumeData);
 }

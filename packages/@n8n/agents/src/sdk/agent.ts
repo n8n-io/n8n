@@ -866,7 +866,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				},
 			});
 
-			if (tool.withDefaultApproval) {
+			if (tool.approval?.required === true) {
 				return wrapToolForApproval(completedTool, { requireApproval: true });
 			}
 			return completedTool;
