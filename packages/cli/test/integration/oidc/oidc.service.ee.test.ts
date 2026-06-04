@@ -488,6 +488,83 @@ describe('OIDC service', () => {
 			// @ts-expect-error - provisioningConfig is private and only accessible within the class
 			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
 		});
+
+		it('should URL-encode special characters in additionalScopes preventing injection', async () => {
+			await oidcService.updateConfig({
+				...baseConfig,
+				additionalScopes: 'groups&redirect_uri=https://evil.com',
+			});
+
+			const authUrl = await oidcService.generateLoginUrl();
+			const scopeParam = authUrl.url.searchParams.get('scope');
+
+			// The scope value should contain the raw string (URL-encoded by the URL object)
+			expect(scopeParam).toContain('groups&redirect_uri=https://evil.com');
+			// There must be no extra redirect_uri parameter injected into the URL
+			const urlString = authUrl.url.toString();
+			const redirectUriMatches = [...urlString.matchAll(/redirect_uri=/g)];
+			expect(redirectUriMatches).toHaveLength(1);
+		});
+	});
+
+	describe('generateTestLoginUrl', () => {
+		it('should include additional scopes in the test authorization URL', async () => {
+			const mockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://example.com/auth/realms/n8n',
+					client_id: 'test-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://example.com/auth',
+				},
+				'test-client-id',
+			);
+			discoveryMock.mockResolvedValue(mockConfiguration);
+
+			await oidcService.updateConfig({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+				prompt: 'select_account',
+				authenticationContextClassReference: [],
+				additionalScopes: 'groups',
+			});
+
+			const authUrl = await oidcService.generateTestLoginUrl();
+
+			expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile groups');
+		});
+
+		it('should only use default scopes when additionalScopes is empty in test URL', async () => {
+			const mockConfiguration = new real_odic_client.Configuration(
+				{
+					issuer: 'https://example.com/auth/realms/n8n',
+					client_id: 'test-client-id',
+					redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+					response_types: ['code'],
+					scopes: ['openid', 'profile', 'email'],
+					authorization_endpoint: 'https://example.com/auth',
+				},
+				'test-client-id',
+			);
+			discoveryMock.mockResolvedValue(mockConfiguration);
+
+			await oidcService.updateConfig({
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+				prompt: 'select_account',
+				authenticationContextClassReference: [],
+				additionalScopes: '',
+			});
+
+			const authUrl = await oidcService.generateTestLoginUrl();
+
+			expect(authUrl.url.searchParams.get('scope')).toEqual('openid email profile');
+		});
 	});
 
 	describe('loginUser', () => {
