@@ -12,6 +12,7 @@ export const Time = {
 	},
 	minutes: {
 		toMilliseconds: 60 * 1000,
+		toSeconds: 60,
 	},
 	hours: {
 		toMilliseconds: 60 * 60 * 1000,
