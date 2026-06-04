@@ -1,10 +1,8 @@
 import { DateTime } from 'luxon';
 
-import { N8N_SANDBOX_WORKSPACE_ROOT } from '@/workspace/sandbox-setup';
-
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
-import { SANDBOX_WORKSPACE_SECTION, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -19,8 +17,8 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
-	/** When true, a lazy thread-scoped sandbox workspace is attached for file/command tools. */
-	sandboxWorkspaceAvailable?: boolean;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -85,18 +83,13 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 		browserAvailable,
 		branchReadOnly,
-		sandboxWorkspaceAvailable,
+		workspaceRoot,
 	} = options;
-
-	const buildKnowledgeBaseNudge = sandboxWorkspaceAvailable
-		? `
-
-**Consult the best-practices knowledge base before building or editing.** Direct single-workflow edits skip the planner, so they also skip its knowledge-base discovery step — do it yourself. Before writing SDK code, \`grep\`/\`rg\` \`${N8N_SANDBOX_WORKSPACE_ROOT}/knowledge-base/best-practices/index.json\` and \`workspace_read_file\` the linked \`.md\` guides for any technique the change involves (scheduling, forms, data persistence, web apps, error handling, batching, pagination, AI agents, etc.). These guides reflect current n8n patterns and supersede your training priors. Skip this only for trivial mechanical edits where you have already reviewed the relevant guidance in this thread.`
-		: '';
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
 ${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
+${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
 You have access to workflow, execution, and credential tools plus a specialized workflow-builder skill. You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 
@@ -104,7 +97,7 @@ You have access to workflow, execution, and credential tools plus a specialized 
 
 Route by **what you are touching**, not by how risky the change feels:
 
-1. **New workflow (no \`workflowId\`) or multi-workflow build** → call \`plan\` immediately. Do not load the \`workflow-builder\` skill, look up node schemas, or call \`build-workflow\` before planning. If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the \`data-table-manager\` skill before \`plan\` and carry the relevant table guidance into \`guidance\` or \`conversationContext\`. The planner sub-agent discovers credentials, data tables, and best practices; workflow tasks include any data table names, columns, seed/import needs, or existing-table requirements in the workflow spec, and the builder creates/uses them. The orchestrator-run checkpoint independently proves every workflow deliverable works. Do NOT ask the user questions first — the planner asks targeted questions itself if needed. Only pass \`guidance\` when the conversation is ambiguous or when you need to pass loaded skill guidance. When \`plan\` returns, tasks are already dispatched.
+1. **New workflow (no \`workflowId\`) or multi-workflow build** → call \`plan\` immediately. Do not load the \`workflow-builder\` skill, look up node schemas, or call \`build-workflow\` before planning. If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the \`data-table-manager\` skill before \`plan\` and carry the relevant table guidance into \`guidance\` or \`conversationContext\`. The planner sub-agent discovers credentials and data tables; workflow tasks include any data table names, columns, seed/import needs, or existing-table requirements in the workflow spec, and the builder creates/uses them. The orchestrator-run checkpoint independently proves every workflow deliverable works. Do NOT ask the user questions first — the planner asks targeted questions itself if needed. Only pass \`guidance\` when the conversation is ambiguous or when you need to pass loaded skill guidance. When \`plan\` returns, tasks are already dispatched.
 
 2. **Any edit to an existing workflow that runs the builder** (add/remove/rewire a node, change an expression, swap a credential, change a schedule, fix a Code node) → load the \`workflow-builder\` skill and call \`build-workflow\` directly with the existing \`workflowId\`. The tool asks for approval before saving when required. A plan-for-every-edit is too slow; run the lightweight post-build verify afterwards (see **Post-build flow**).
 
@@ -126,7 +119,7 @@ When \`credentials(action="setup")\` returns \`needsBrowserSetup=true\`, load th
 
 Never use \`delegate\` to build, patch, fix, or update workflows — workflow building happens in the orchestrator with the \`workflow-builder\` skill and the workflow build tools.
 
-To edit an existing workflow, load the \`workflow-builder\` skill, read the current workflow code when needed with \`workflows(action="get-as-code")\`, and call \`build-workflow\` with the existing \`workflowId\`. The tool handles edit approval before saving when permissions require it. Verify the result afterwards via \`verify-built-workflow\` when the build output says verification is ready (see **Post-build flow**). Use \`plan\` when the change spans multiple workflows, creates new workflows, or a workflow build needs new or changed data-table schemas — then the orchestrator-run checkpoint drives verification.${buildKnowledgeBaseNudge}
+To edit an existing workflow, load the \`workflow-builder\` skill, read the current workflow code when needed with \`workflows(action="get-as-code")\`, and call \`build-workflow\` with the existing \`workflowId\`. The tool handles edit approval before saving when permissions require it. Verify the result afterwards via \`verify-built-workflow\` when the build output says verification is ready (see **Post-build flow**). Use \`plan\` when the change spans multiple workflows, creates new workflows, or a workflow build needs new or changed data-table schemas — then the orchestrator-run checkpoint drives verification.
 
 The \`workflow-builder\` skill handles node discovery, schema lookups, resource discovery, code generation, validation, repair, and saving. It runs in you, the orchestrator, with the native orchestrator tools directly available; it is not a delegated sub-agent or a separate sandbox lifecycle. For planned workflow builds, follow the build task spec exactly. For direct edits, describe the user goal in your own working notes, then implement it with SDK code or targeted \`build-workflow\` patches.
 
@@ -200,7 +193,6 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 You have the \`research\` tool with \`web-search\` and \`fetch-url\` actions. Use them directly for most questions. Use \`plan\` with \`research\` tasks only for broad detached synthesis (comparing services, broad surveys across 3+ doc pages).
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
-${sandboxWorkspaceAvailable ? `\n${SANDBOX_WORKSPACE_SECTION}\n` : ''}
 ${getComputerUsePrompt({ browserAvailable, localGateway })}
 
 ${

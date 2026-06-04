@@ -15,12 +15,15 @@ const {
 	experimentMocks,
 	promptSuggestionsV2,
 	promptSuggestionsV2Component,
+	workflowPreviewSuggestions,
+	workflowPreviewSuggestionsComponent,
 	replaceMock,
 	showErrorMock,
 } = vi.hoisted(() => ({
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
+		workflowPreviewEnabled: { value: false },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -30,6 +33,14 @@ const {
 		promptKey: 'instanceAi.emptyState.suggestions.buildAgent.prompt',
 	})),
 	promptSuggestionsV2Component: { name: 'InstanceAiPromptSuggestionsV2Stub' },
+	workflowPreviewSuggestions: Array.from({ length: 4 }, (_, index) => ({
+		type: 'prompt',
+		id: `wp-suggestion-${index + 1}`,
+		icon: 'workflow',
+		labelKey: 'instanceAi.emptyState.suggestions.buildWorkflow.label',
+		promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
+	})),
+	workflowPreviewSuggestionsComponent: { name: 'WorkflowPreviewSuggestionsStub' },
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
 }));
@@ -51,6 +62,17 @@ vi.mock('@/experiments/instanceAiPromptSuggestionsV2', () => ({
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2: promptSuggestionsV2,
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION: 'v2',
 	InstanceAiPromptSuggestionsV2: promptSuggestionsV2Component,
+}));
+
+vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
+	useInstanceAiWorkflowPreviewSuggestionsExperiment: () => ({
+		isFeatureEnabled: experimentMocks.workflowPreviewEnabled,
+	}),
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS: workflowPreviewSuggestions,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION: 'v3-workflow-preview',
+	WorkflowPreviewSuggestions: workflowPreviewSuggestionsComponent,
+	WorkflowPreviewCanvas: { name: 'WorkflowPreviewCanvasStub', template: '<div />' },
+	getPreviewWorkflow: () => null,
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -160,6 +182,7 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
+		experimentMocks.workflowPreviewEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -189,6 +212,22 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('v2');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+		);
+	});
+
+	it('passes workflow preview suggestions, component, and catalog version when workflow preview experiment is enabled', () => {
+		experimentMocks.workflowPreviewEnabled.value = true;
+
+		const { getByTestId, getByText } = renderView();
+
+		expect(getByText('What do you want to automate?')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
 		);
 	});
 

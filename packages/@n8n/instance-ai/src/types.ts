@@ -723,11 +723,7 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
-	/**
-	 * Curated workflow-template provider for the sandbox setup. When absent or
-	 * when the service returns an empty bundle, the sandbox is created without
-	 * an `examples/` directory and the agent operates without template hints.
-	 */
+	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
@@ -1238,6 +1234,8 @@ export interface OrchestrationContext {
 	schedulePlannedTasks?: () => Promise<void>;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
