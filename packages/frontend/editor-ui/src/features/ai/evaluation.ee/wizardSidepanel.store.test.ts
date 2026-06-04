@@ -174,6 +174,7 @@ describe('wizardSidepanel.store', () => {
 		store.addCustomCheck({ name: 'Check A', expression: '1 === 1' });
 		store.openCustomCheckModal();
 		store.setActiveRunId('run-99');
+		store.setLastWorkflowId('wf-1');
 
 		// Confirm state was applied
 		expect(store.activeStep).toBe(2);
@@ -199,5 +200,8 @@ describe('wizardSidepanel.store', () => {
 		expect(store.customChecks).toEqual([]);
 		expect(store.isCustomCheckModalOpen).toBe(false);
 		expect(store.activeRunId).toBeNull();
+		// lastWorkflowId is bookkeeping that must survive reset so a remount on a
+		// different workflow can still detect the switch.
+		expect(store.lastWorkflowId).toBe('wf-1');
 	});
 });
