@@ -505,96 +505,81 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.stringToArray).toHaveBeenCalledTimes(1);
 	});
 
-	it('should spread array expression values across individual bind values', async () => {
-		const nodeParameters: IDataObject = {
-			operation: 'executeQuery',
+	const createMockExecuteForArrayQuery = (
+		nodeParameters: IDataObject,
+		returnArray: unknown[],
+		matchString: string,
+	) => ({
+		getNodeParameter(
+			parameterName: string,
+			_itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) {
+			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+			return get(nodeParameters, parameter, fallbackValue);
+		},
+		getNode() {
+			node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
+			return node;
+		},
+		evaluateExpression(str: string, _: number) {
+			if (str.includes(matchString)) {
+				return returnArray;
+			}
+			return str.replace('{{', '').replace('}}', '');
+		},
+	}) as unknown as IExecuteFunctions;
+
+	it.each([
+		{
+			description: 'spread string array across individual bind values',
 			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
-			options: {
-				queryReplacement: "={{ ['a', 'b', 'c'] }}",
-				nodeVersion: 2.6,
-			},
-		};
-		const nodeOptions = nodeParameters.options as IDataObject;
-
-		// Override evaluateExpression to return an array for this test
-		const mockExecute = {
-			getNodeParameter(
-				parameterName: string,
-				_itemIndex: number,
-				fallbackValue?: IDataObject,
-				options?: IGetNodeParameterOptions,
-			) {
-				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-				return get(nodeParameters, parameter, fallbackValue);
-			},
-			getNode() {
-				node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
-				return node;
-			},
-			evaluateExpression(str: string, _: number) {
-				// Detect array expression pattern and return a JS array
-				if (str.includes("['a', 'b', 'c']")) {
-					return ['a', 'b', 'c'];
-				}
-				return str.replace('{{', '').replace('}}', '');
-			},
-		} as unknown as IExecuteFunctions;
-
-		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
-
-		expect(runQueries).toHaveBeenCalledWith(
-			[
-				{
-					query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
-					values: ['a', 'b', 'c'],
-					options: { partial: true },
-				},
-			],
-			nodeOptions,
-		);
-	});
-
-	it('should JSON.stringify object elements in array expression bind values', async () => {
+			queryReplacement: "={{ ['a', 'b', 'c'] }}",
+			matchString: "['a', 'b', 'c']",
+			returnArray: ['a', 'b', 'c'],
+			expectedValues: ['a', 'b', 'c'],
+		},
+		{
+			description: 'JSON.stringify object elements in array bind values',
+			query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
+			queryReplacement: '={{ [{id: 1}, {id: 2}] }}',
+			matchString: '[{id: 1}, {id: 2}]',
+			returnArray: [{ id: 1 }, { id: 2 }],
+			expectedValues: ['{"id":1}', '{"id":2}'],
+		},
+		{
+			description: 'handle null, number, and boolean elements in array bind values',
+			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
+			queryReplacement: "={{ [null, 42, true] }}",
+			matchString: '[null, 42, true]',
+			returnArray: [null, 42, true],
+			expectedValues: ['null', '42', 'true'],
+		},
+	])('should $description', async ({ query, queryReplacement, matchString, returnArray, expectedValues }) => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
-			query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
+			query,
 			options: {
-				queryReplacement: '={{ [{id: 1}, {id: 2}] }}',
+				queryReplacement,
 				nodeVersion: 2.6,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
-		// Override evaluateExpression to return an array of objects
-		const mockExecute = {
-			getNodeParameter(
-				parameterName: string,
-				_itemIndex: number,
-				fallbackValue?: IDataObject,
-				options?: IGetNodeParameterOptions,
-			) {
-				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-				return get(nodeParameters, parameter, fallbackValue);
-			},
-			getNode() {
-				node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
-				return node;
-			},
-			evaluateExpression(str: string, _: number) {
-				if (str.includes('[{id: 1}, {id: 2}]')) {
-					return [{ id: 1 }, { id: 2 }];
-				}
-				return str.replace('{{', '').replace('}}', '');
-			},
-		} as unknown as IExecuteFunctions;
+		const mockExecute = createMockExecuteForArrayQuery(
+			nodeParameters,
+			returnArray,
+			matchString,
+		);
 
 		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
 
 		expect(runQueries).toHaveBeenCalledWith(
 			[
 				{
-					query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
-					values: ['{"id":1}', '{"id":2}'],
+					query,
+					values: expectedValues,
 					options: { partial: true },
 				},
 			],
