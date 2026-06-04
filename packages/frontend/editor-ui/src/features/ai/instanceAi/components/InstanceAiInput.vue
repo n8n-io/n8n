@@ -41,6 +41,7 @@ const props = withDefaults(
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		isWorkflowBuilderAvailable?: boolean;
 		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
@@ -54,6 +55,7 @@ const props = withDefaults(
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
+		isWorkflowBuilderAvailable: true,
 	},
 );
 
@@ -93,7 +95,9 @@ const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length >
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
+const isGatedBySetup = computed(
+	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
+);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() =>
@@ -113,6 +117,9 @@ const resolvedSuggestionCatalogVersion = computed(
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
+	if (!props.isWorkflowBuilderAvailable) {
+		return i18n.baseText('instanceAi.input.workflowBuilderUnavailablePlaceholder');
+	}
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
