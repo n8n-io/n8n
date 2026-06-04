@@ -14,12 +14,6 @@ describe('WORKFLOW_RULES', () => {
 		expect(WORKFLOW_RULES).toContain('missing `executeOnce: true`');
 	});
 
-	it('explains how to archive Gmail messages', () => {
-		expect(WORKFLOW_RULES).toContain('Gmail archive means remove INBOX');
-		expect(WORKFLOW_RULES).toContain("operation: 'removeLabels'");
-		expect(WORKFLOW_RULES).toContain("labelIds: ['INBOX']");
-	});
-
 	it('requires action nodes after predicate-only routing', () => {
 		expect(WORKFLOW_RULES).toContain('A Filter or IF only selects items');
 		expect(WORKFLOW_RULES).toContain('wire the corresponding action node on the matching path');

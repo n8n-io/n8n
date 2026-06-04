@@ -44,8 +44,4 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - When wiring N branches to a Merge node, the indices are \`0, 1, ..., N-1\` — never \`1, 2, ..., N\`.
    - Counter-examples to AVOID:
      - WRONG: \`sourceA.to(merge.input(1))\` followed by \`sourceB.to(merge.input(2))\` — this skips input 0 entirely; the first branch is silently dropped.
-     - CORRECT: \`sourceA.to(merge.input(0))\` followed by \`sourceB.to(merge.input(1))\`.
-
-6. **Gmail archive means remove INBOX**
-   - Gmail message nodes do not have an \`archive\` operation. To archive a message, use \`operation: 'removeLabels'\` with \`labelIds: ['INBOX']\`
-   - Do not use \`addLabels\` with an invented \`ARCHIVE\` label.`;
+     - CORRECT: \`sourceA.to(merge.input(0))\` followed by \`sourceB.to(merge.input(1))\`.`;
