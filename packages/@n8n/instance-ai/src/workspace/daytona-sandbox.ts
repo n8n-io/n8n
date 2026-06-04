@@ -182,28 +182,44 @@ export class DaytonaSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		await this.ensureRunning();
-		await this.ensureAuthFresh();
-		const startedAt = Date.now();
-		const fullCommand = toShellCommand(command, args);
-		const result = await this.instance.process.executeCommand(
-			fullCommand,
-			options?.cwd,
-			this.compactEnv(options?.env),
-			Math.ceil((options?.timeout ?? this.timeout) / 1000),
-		);
-		const stdout = result.artifacts?.stdout ?? result.result ?? '';
-		if (stdout) options?.onStdout?.(stdout);
+		return await this.recoverAndRetry(async () => {
+			await this.ensureRunning();
+			await this.ensureAuthFresh();
+			const startedAt = Date.now();
+			const fullCommand = toShellCommand(command, args);
+			const result = await this.instance.process.executeCommand(
+				fullCommand,
+				options?.cwd,
+				this.compactEnv(options?.env),
+				Math.ceil((options?.timeout ?? this.timeout) / 1000),
+			);
+			const stdout = result.artifacts?.stdout ?? result.result ?? '';
+			if (stdout) options?.onStdout?.(stdout);
 
-		return {
-			command,
-			args,
-			success: result.exitCode === 0,
-			exitCode: result.exitCode,
-			stdout,
-			stderr: '',
-			executionTimeMs: Date.now() - startedAt,
-		};
+			return {
+				command,
+				args,
+				success: result.exitCode === 0,
+				exitCode: result.exitCode,
+				stdout,
+				stderr: '',
+				executionTimeMs: Date.now() - startedAt,
+			};
+		});
+	}
+
+	/**
+	 * Run a filesystem operation against the live Daytona FileSystem handle, ensuring the
+	 * sandbox is running with fresh auth first, and recovering once if the remote was
+	 * stopped/deleted while idle. Lets `DaytonaFilesystem` reuse the same recovery as
+	 * `executeCommand` without reaching into private state.
+	 */
+	async withFilesystem<T>(op: (fs: Sandbox['fs']) => Promise<T>): Promise<T> {
+		return await this.recoverAndRetry(async () => {
+			await this.ensureRunning();
+			await this.ensureAuthFresh();
+			return await op(this.instance.fs);
+		});
 	}
 
 	/**
@@ -264,6 +280,59 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 		this.lastClientGeneration = generation;
 		return client;
+	}
+
+	/**
+	 * Drop the in-memory handle so the next `ensureRunning()`/`start()` re-resolves the
+	 * remote (resume if stopped, recreate if gone). The stale `status: 'running'` is the
+	 * reason a resume is otherwise skipped after a long idle.
+	 */
+	private resetLocalHandle(): void {
+		this.sandbox = undefined;
+		this.lastClientGeneration = -1;
+		this.workingDirectory = undefined;
+		this.markNeedsStart();
+	}
+
+	/**
+	 * Whether a failed operation can be recovered by re-resolving the remote.
+	 *
+	 * We don't infer "sandbox unusable" from the failed op's error code, because the code
+	 * isn't a reliable signal: a stopped container returns a 400 from the toolbox, a deleted
+	 * one is 404, auth is 401/403, and transport/proxy conditions vary. Instead we consult
+	 * the authoritative state via the management API — which responds even when the container
+	 * is stopped — and recover only when the sandbox is genuinely gone or not `started`.
+	 * Otherwise we propagate the original error so real failures aren't masked.
+	 *
+	 * A genuine auth failure is handled implicitly: the probe's own `get()` fails too (it
+	 * uses the same credentials), so we fall through to `false` and never recreate.
+	 */
+	private async isRecoverable(error: unknown): Promise<boolean> {
+		if (isSandboxGone(error)) return true;
+		try {
+			const client = await this.auth.getClient();
+			const remote = await client.get(this.sandboxName);
+			return Boolean(remote.state) && remote.state !== SANDBOX_STATE_STARTED;
+		} catch (probeError) {
+			// Gone entirely → recreate; anything else (incl. auth) → don't mask the original.
+			return isSandboxGone(probeError);
+		}
+	}
+
+	/**
+	 * Run a sandbox operation, recovering once if the remote was stopped/deleted out from
+	 * under us. On a recoverable failure the local handle is reset and the operation is
+	 * retried through the normal start path (resume stopped / recreate gone). Retries at
+	 * most once to avoid loops; a second failure propagates.
+	 */
+	private async recoverAndRetry<T>(op: () => Promise<T>): Promise<T> {
+		try {
+			return await op();
+		} catch (error) {
+			if (!(await this.isRecoverable(error))) throw error;
+			this.resetLocalHandle();
+			return await op();
+		}
 	}
 
 	private async findExistingSandbox(client: Daytona): Promise<Sandbox | null> {
