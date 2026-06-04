@@ -2,7 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import type { BuiltTool } from '../../types';
-import { executeTool, toAiSdkTools, toStrictJsonSchema } from '../tool-adapter';
+import { executeTool, toAiSdkTools, lockAdditionalProperties } from '../tool-adapter';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -224,12 +224,12 @@ describe('executeTool — context propagation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// toStrictJsonSchema
+// lockAdditionalProperties
 // ---------------------------------------------------------------------------
 
-describe('toStrictJsonSchema', () => {
+describe('lockAdditionalProperties', () => {
 	it('sets additionalProperties:false on a root object that omits it', () => {
-		const result = toStrictJsonSchema({
+		const result = lockAdditionalProperties({
 			type: 'object',
 			properties: { name: { type: 'string' } },
 			required: ['name'],
@@ -244,13 +244,15 @@ describe('toStrictJsonSchema', () => {
 	});
 
 	it('normalises an object that declares properties without a type', () => {
-		const result = toStrictJsonSchema({ properties: { id: { type: 'string' } } } as JSONSchema7);
+		const result = lockAdditionalProperties({
+			properties: { id: { type: 'string' } },
+		} as JSONSchema7);
 
 		expect(result).toMatchObject({ type: 'object', additionalProperties: false });
 	});
 
 	it('applies additionalProperties:false recursively to nested objects', () => {
-		const result = toStrictJsonSchema({
+		const result = lockAdditionalProperties({
 			type: 'object',
 			properties: {
 				address: {
@@ -271,7 +273,7 @@ describe('toStrictJsonSchema', () => {
 	});
 
 	it('recurses into $defs and anyOf branches', () => {
-		const result = toStrictJsonSchema({
+		const result = lockAdditionalProperties({
 			type: 'object',
 			properties: { ref: { $ref: '#/$defs/Inner' } },
 			anyOf: [{ type: 'object', properties: { a: { type: 'string' } } }],
@@ -287,7 +289,7 @@ describe('toStrictJsonSchema', () => {
 	});
 
 	it('does not override an explicit additionalProperties value', () => {
-		const result = toStrictJsonSchema({
+		const result = lockAdditionalProperties({
 			type: 'object',
 			properties: { name: { type: 'string' } },
 			additionalProperties: true,
@@ -298,7 +300,7 @@ describe('toStrictJsonSchema', () => {
 
 	it('does not mutate the input schema', () => {
 		const input: JSONSchema7 = { type: 'object', properties: { name: { type: 'string' } } };
-		toStrictJsonSchema(input);
+		lockAdditionalProperties(input);
 		expect(input.additionalProperties).toBeUndefined();
 	});
 
@@ -312,7 +314,7 @@ describe('toStrictJsonSchema', () => {
 			writable: true,
 			configurable: true,
 		});
-		const result = toStrictJsonSchema({ type: 'object', properties });
+		const result = lockAdditionalProperties({ type: 'object', properties });
 
 		const resultProps = result.properties as Record<string, JSONSchema7>;
 		// The dangerous key is kept as a real own property, and the rebuilt object's

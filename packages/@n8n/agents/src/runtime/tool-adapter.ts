@@ -73,24 +73,31 @@ export const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
 };
 
 /**
- * Recursively prepare a JSON Schema for use as a *structured output* schema.
+ * Recursively set `additionalProperties: false` on every object in a JSON
+ * Schema so it can be used as a *structured output* schema.
  *
- * Both Anthropic and OpenAI strict structured outputs reject any object schema
- * that does not explicitly set `additionalProperties: false`. Zod schemas get
- * this for free during conversion, but a raw JSON Schema (e.g. supplied by a
- * workflow node) usually omits it. We set it on every object that doesn't
- * specify it, and normalise objects that declare `properties` without a `type`
- * (mirrors {@link fixSchema}).
+ * This only applies the JSON Schema keyword — it closes objects to undeclared
+ * keys. It is NOT a provider "strict mode": it does not require every property
+ * to be in `required`, so declared-optional fields stay optional.
+ *
+ * Anthropic's structured output rejects any object that omits
+ * `additionalProperties: false`. Zod schemas get this during conversion, but a
+ * raw JSON Schema (e.g. typed into a workflow node) usually omits it. We also
+ * normalise objects that declare `properties` without a `type` (mirrors
+ * {@link fixSchema}).
  *
  * Returns a deep copy — the input schema is never mutated.
  */
-export function toStrictJsonSchema(schema: JSONSchema7): JSONSchema7 {
-	const result = strictifyDefinition(schema);
-	// The public entry point is only ever called with an object schema.
+export function lockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
+	const result = lockDefinition(schema);
+	// `lockDefinition` returns a JSONSchema7Definition (object | boolean, since
+	// JSON Schema allows a bare `true`/`false`), but a structured-output schema is
+	// always an object — narrow back to JSONSchema7. The `: schema` fallback only
+	// covers the boolean case, which never happens here.
 	return typeof result === 'object' ? result : schema;
 }
 
-function strictifyDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
+function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 	if (typeof schema !== 'object' || schema === null) return schema;
 
 	const result: JSONSchema7 = { ...schema };
@@ -120,27 +127,27 @@ function strictifyDefinition(schema: JSONSchema7Definition): JSONSchema7Definiti
 	}
 	if (result.items !== undefined) {
 		result.items = Array.isArray(result.items)
-			? result.items.map(strictifyDefinition)
-			: strictifyDefinition(result.items);
+			? result.items.map(lockDefinition)
+			: lockDefinition(result.items);
 	}
 	if (typeof result.additionalProperties === 'object' && result.additionalProperties !== null) {
-		result.additionalProperties = strictifyDefinition(result.additionalProperties);
+		result.additionalProperties = lockDefinition(result.additionalProperties);
 	}
 	for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
 		const branch = result[key];
 		if (Array.isArray(branch)) {
-			result[key] = branch.map(strictifyDefinition);
+			result[key] = branch.map(lockDefinition);
 		}
 	}
 	if (result.not !== undefined) {
-		result.not = strictifyDefinition(result.not);
+		result.not = lockDefinition(result.not);
 	}
 
 	return result;
 }
 
 /**
- * Re-map a record of sub-schemas, strictifying each value. Uses
+ * Re-map a record of sub-schemas, locking each value. Uses
  * `Object.defineProperty` so a user-supplied property name like `__proto__`
  * becomes a normal own property instead of mutating the prototype chain.
  */
@@ -150,7 +157,7 @@ function mapDefinitions(
 	const out: Record<string, JSONSchema7Definition> = {};
 	for (const [key, value] of Object.entries(record)) {
 		Object.defineProperty(out, key, {
-			value: strictifyDefinition(value),
+			value: lockDefinition(value),
 			enumerable: true,
 			writable: true,
 			configurable: true,

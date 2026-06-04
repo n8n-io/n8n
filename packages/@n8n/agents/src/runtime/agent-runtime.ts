@@ -79,7 +79,7 @@ import {
 	isSuspendedToolResult,
 	toAiSdkProviderTools,
 	toAiSdkTools,
-	toStrictJsonSchema,
+	lockAdditionalProperties,
 } from './tool-adapter';
 import { isCancellation } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
@@ -2308,20 +2308,23 @@ export class AgentRuntime {
 			this.buildCallProviderOptions(execOptions?.providerOptions),
 			isRawJsonSchemaOutput,
 		);
+
+		const outputSpec = outputSchema
+			? Output.object({
+					// Zod schemas pass through directly; a raw JSON Schema gets
+					// `additionalProperties: false` locked onto every object (required by Anthropic)
+					// and wrapped with the AI SDK's `jsonSchema()` helper.
+					schema: isZodSchema(outputSchema)
+						? outputSchema
+						: jsonSchema(lockAdditionalProperties(outputSchema)),
+				})
+			: undefined;
+
 		return {
 			model,
 			aiProviderTools,
 			providerOptions,
-			outputSpec: outputSchema
-				? Output.object({
-						// Zod schemas pass through directly; a raw JSON Schema is made
-						// provider-strict (additionalProperties: false on every object)
-						// and wrapped with the AI SDK's `jsonSchema()` helper.
-						schema: isZodSchema(outputSchema)
-							? outputSchema
-							: jsonSchema(toStrictJsonSchema(outputSchema)),
-					})
-				: undefined,
+			outputSpec,
 		};
 	}
 
@@ -2337,9 +2340,6 @@ export class AgentRuntime {
 	 * Zod-defined output keeps strict mode (zod-to-json-schema already produces a
 	 * strict-compliant schema). Providers that hardcode strict (e.g. xAI) or use
 	 * a different namespace (e.g. Azure) are unaffected and remain strict.
-	 *
-	 * Setting options under providers that aren't the active one is a no-op — the
-	 * AI SDK only reads the namespace matching the model in use.
 	 */
 	private relaxStrictJsonSchemaIfNeeded(
 		providerOptions: Record<string, Record<string, unknown>> | undefined,
