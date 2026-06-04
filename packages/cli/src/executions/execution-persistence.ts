@@ -77,7 +77,6 @@ export class ExecutionPersistence {
 		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
-		const data = stringify(rawData);
 		const workflowVersionId = workflowData.versionId ?? null;
 
 		try {
@@ -85,10 +84,16 @@ export class ExecutionPersistence {
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
-				const bundle = { data, workflowData: workflowSnapshot, workflowVersionId };
 				const store = this.getStoreFor(storedAt);
 
-				await this.trackWrite(storedAt, async () => await store.write(ref, bundle, tx));
+				await this.trackWrite(storedAt, async () => {
+					const bundle = {
+						data: stringify(rawData),
+						workflowData: workflowSnapshot,
+						workflowVersionId,
+					};
+					await store.write(ref, bundle, tx);
+				});
 
 				return executionId;
 			});
