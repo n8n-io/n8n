@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
-import { AI_CONNECTION_TYPES } from './nodes/node-search-engine.types';
+import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -123,6 +123,12 @@ const fullInputSchema = sanitizeInputSchema(
 
 type FullInput = z.infer<typeof fullInputSchema>;
 
+interface SearchEngineCache {
+	nodeTypes?: SearchableNodeType[];
+	nodeCount?: number;
+	engine?: NodeSearchEngine;
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -138,9 +144,16 @@ async function handleList(
 async function handleSearch(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'search' }>,
+	cache: SearchEngineCache,
 ) {
 	const nodeTypes = await context.nodeService.listSearchable();
-	const engine = new NodeSearchEngine(nodeTypes);
+	let engine = cache.engine;
+	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
+		cache.nodeTypes = nodeTypes;
+		cache.nodeCount = nodeTypes.length;
+		engine = new NodeSearchEngine(nodeTypes);
+		cache.engine = engine;
+	}
 
 	let results;
 	if (input.connectionType) {
@@ -312,6 +325,8 @@ export function createNodesTool(
 	context: InstanceAiContext,
 	surface: 'full' | 'orchestrator' = 'full',
 ) {
+	const searchEngineCache: SearchEngineCache = {};
+
 	if (surface === 'orchestrator') {
 		const orchestratorExploreAction = z.object({
 			action: z
@@ -385,7 +400,7 @@ export function createNodesTool(
 				case 'list':
 					return await handleList(context, input);
 				case 'search':
-					return await handleSearch(context, input);
+					return await handleSearch(context, input, searchEngineCache);
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':

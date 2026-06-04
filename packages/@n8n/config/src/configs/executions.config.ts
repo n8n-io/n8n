@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import z from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
@@ -98,7 +99,7 @@ export class ExecutionsConfig {
 
 	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
-	maxTimeout: number = 3600; // 1h
+	maxTimeout: number = 1 * Time.hours.toSeconds;
 
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')

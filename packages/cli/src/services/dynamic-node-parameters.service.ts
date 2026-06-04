@@ -24,6 +24,7 @@ import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-work
 
 import { NodeTypes } from '@/node-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
@@ -158,9 +159,8 @@ export class DynamicNodeParametersService {
 			// requiring a baseURL to be defined can at least not a random server be called.
 			// In the future this code has to get improved that it does not use the request information from
 			// the request rather resolves it via the parameter-path and nodeType data.
-			throw new UnexpectedError(
-				'Node type does not exist or does not have "requestDefaults.baseURL" defined!',
-				{ tags: { nodeType: nodeType.description.name } },
+			throw new BadRequestError(
+				`Node type "${nodeType.description.name}" does not exist or does not have "requestDefaults.baseURL" defined!`,
 			);
 		}
 
@@ -353,12 +353,8 @@ export class DynamicNodeParametersService {
 					? ` Other method types on this node — ${otherTypesWithMethods.join('; ')}.`
 					: '';
 
-			throw new UnexpectedError(
+			throw new BadRequestError(
 				`Node type "${nodeType.description.name}" has no ${type} method named "${methodName}". Available ${type} methods: ${availableText}.${otherTypesText}`,
-				{
-					tags: { nodeType: nodeType.description.name },
-					extra: { methodName, type, available, otherTypes: otherTypesWithMethods },
-				},
 			);
 		}
 		return method;

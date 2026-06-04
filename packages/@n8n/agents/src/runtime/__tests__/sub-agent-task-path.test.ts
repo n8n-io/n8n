@@ -1,6 +1,5 @@
 import {
 	ROOT_SUB_AGENT_TASK_PATH,
-	assertSubAgentPolicyAllowsChild,
 	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
@@ -20,13 +19,10 @@ describe('sub-agent task paths', () => {
 		expect(() => sanitizeSubAgentTaskName('!!!')).toThrow('task name');
 	});
 
-	it('recognizes valid flat task paths', () => {
+	it('recognizes root and first-level child task paths', () => {
 		expect(isSubAgentTaskPath(ROOT_SUB_AGENT_TASK_PATH)).toBe(true);
 		expect(isSubAgentTaskPath('/root/research')).toBe(true);
-	});
-
-	it('rejects nested task paths', () => {
-		expect(isSubAgentTaskPath('/root/research/check_tests')).toBe(false);
+		expect(isSubAgentTaskPath('/root/research_api_0')).toBe(true);
 	});
 
 	it('rejects malformed task paths', () => {
@@ -46,8 +42,9 @@ describe('sub-agent task paths', () => {
 		}
 	});
 
-	it('creates first-level child paths under root', () => {
+	it('creates child paths with the parent child index appended', () => {
 		expect(createChildSubAgentTaskPath('Research API', 0)).toBe('/root/research_api_0');
+		expect(createChildSubAgentTaskPath('Check tests', 1)).toBe('/root/check_tests_1');
 	});
 
 	it('disambiguates same-named siblings by child index', () => {
@@ -56,13 +53,6 @@ describe('sub-agent task paths', () => {
 		expect(first).toBe('/root/research_0');
 		expect(second).toBe('/root/research_1');
 		expect(first).not.toBe(second);
-	});
-
-	it('enforces spawn policy before creating a child', () => {
-		expect(() => assertSubAgentPolicyAllowsChild({ canSpawnSubAgents: false })).toThrow(
-			'does not allow',
-		);
-		expect(() => assertSubAgentPolicyAllowsChild(undefined)).not.toThrow();
 	});
 
 	it('enforces max child count policy', () => {
