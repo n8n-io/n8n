@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * pattern. Each row represents a pending (or in-progress / completed)
  * publication request that the outbox consumer will process asynchronously.
  */
-export class CreateWorkflowPublicationOutboxTable1784000000020 implements ReversibleMigration {
+export class CreateWorkflowPublicationOutboxTable1784000000025 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, createIndex, column } }: MigrationContext) {
 		await createTable('workflow_publication_outbox').withColumns(
 			column('id').int.primary.autoGenerate2,
@@ -33,6 +33,11 @@ export class CreateWorkflowPublicationOutboxTable1784000000020 implements Revers
 			column('errorMessage').text.comment(
 				'Error details for surfacing failed publications to the user.',
 			),
+			column('claimedAt')
+				.timestampTimezone()
+				.comment(
+					'When the record was claimed (status set to in_progress); used to detect stale in-progress records.',
+				),
 		).withTimestamps;
 
 		// At most one pending record per workflow: enqueueing a newer version
@@ -43,6 +48,17 @@ export class CreateWorkflowPublicationOutboxTable1784000000020 implements Revers
 			true,
 			'IDX_workflow_publication_outbox_pending_workflow',
 			"status = 'pending'",
+		);
+
+		// At most one in-progress record per workflow, so a workflow is never
+		// published concurrently. The consumer only claims a pending record once
+		// the workflow has no in-progress record.
+		await createIndex(
+			'workflow_publication_outbox',
+			['workflowId'],
+			true,
+			'IDX_workflow_publication_outbox_in_progress_workflow',
+			"status = 'in_progress'",
 		);
 	}
 

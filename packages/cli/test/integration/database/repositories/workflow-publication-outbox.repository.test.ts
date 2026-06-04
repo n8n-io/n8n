@@ -27,6 +27,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(claimed?.workflowId).toBe('wf-1');
 		expect(claimed?.publishedVersionId).toBe('v-1');
 		expect(claimed?.status).toBe('in_progress');
+		// Stamped on claim so a future reaper can find stale in-progress records.
+		expect(claimed?.claimedAt).toBeInstanceOf(Date);
 
 		const claimedAgain = await repository.claimNextPendingRecord();
 		expect(claimedAgain).toBeNull();
@@ -54,6 +56,27 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 		expect(first?.workflowId).toBe('wf-1');
 		expect(second?.workflowId).toBe('wf-2');
+	});
+
+	it('does not claim a second record for a workflow already in progress', async () => {
+		// wf-1 is claimed (in progress), then a newer version is enqueued.
+		await repository.enqueue('wf-1', 'v-1');
+		const inProgress = await repository.claimNextPendingRecord();
+		assert(inProgress);
+		await repository.enqueue('wf-1', 'v-2');
+
+		// A different workflow is claimable, but wf-1's new pending record is not
+		// until its in-progress record is resolved.
+		await repository.enqueue('wf-2', 'v-1');
+		const claimed = await repository.claimNextPendingRecord();
+		expect(claimed?.workflowId).toBe('wf-2');
+		expect(await repository.claimNextPendingRecord()).toBeNull();
+
+		// Once wf-1's in-progress record completes, its pending record is claimable.
+		await repository.markCompleted(inProgress.id);
+		const next = await repository.claimNextPendingRecord();
+		expect(next?.workflowId).toBe('wf-1');
+		expect(next?.publishedVersionId).toBe('v-2');
 	});
 
 	it('enqueues a fresh pending record once the previous one is no longer pending', async () => {

@@ -90,14 +90,19 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw
 		// UPDATE ... RETURNING (unlike INSERT, which returns the rows directly).
 		const [rows]: [WorkflowPublicationOutbox[], number] = await this.query(
-			// Ordering by id gives us FIFO behaviour: ids are monotonically
-			// assigned at insert, so oldest pending row is processed first.
+			// Claim the oldest pending row whose workflow has no in-progress row,
+			// so a workflow is never published concurrently. Ordering by id gives
+			// FIFO: ids are monotonically assigned, so the oldest is processed first.
 			`UPDATE ${tableName}
-			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3)
+			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3), "claimedAt" = CURRENT_TIMESTAMP(3)
 			 WHERE "id" = (
-				 SELECT "id" FROM ${tableName}
-				 WHERE "status" = '${Status.Pending}'
-				 ORDER BY "id" ASC
+				 SELECT o."id" FROM ${tableName} o
+				 WHERE o."status" = '${Status.Pending}'
+				 AND NOT EXISTS (
+					 SELECT 1 FROM ${tableName} ip
+					 WHERE ip."workflowId" = o."workflowId" AND ip."status" = '${Status.InProgress}'
+				 )
+				 ORDER BY o."id" ASC
 				 LIMIT 1
 				 FOR UPDATE SKIP LOCKED
 			 )
@@ -111,21 +116,36 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	// row. The `BEGIN IMMEDIATE` transaction serializes claimers.
 	private async claimWithSqliteTransaction(): Promise<WorkflowPublicationOutbox | null> {
 		return await this.manager.transaction(async (tx) => {
-			// Ordering by id gives us FIFO behaviour: ids are monotonically
-			// assigned at insert, so oldest pending row is processed first.
-			const record = await tx.findOne(WorkflowPublicationOutbox, {
-				where: { status: Status.Pending },
-				order: { id: 'ASC' },
-			});
+			// Claim the oldest pending row whose workflow has no in-progress row,
+			// so a workflow is never published concurrently. Ordering by id gives
+			// FIFO: ids are monotonically assigned, so the oldest is processed first.
+			const record = await tx
+				.createQueryBuilder(WorkflowPublicationOutbox, 'o')
+				.where('o.status = :pending', { pending: Status.Pending })
+				.andWhere((qb) => {
+					const sub = qb
+						.subQuery()
+						.select('1')
+						.from(WorkflowPublicationOutbox, 'ip')
+						.where('ip.workflowId = o.workflowId')
+						.andWhere('ip.status = :inProgress')
+						.getQuery();
+					return `NOT EXISTS ${sub}`;
+				})
+				.setParameter('inProgress', Status.InProgress)
+				.orderBy('o.id', 'ASC')
+				.getOne();
 
 			if (!record) return null;
 
+			const claimedAt = new Date();
 			await tx.update(
 				WorkflowPublicationOutbox,
 				{ id: record.id, status: Status.Pending },
-				{ status: Status.InProgress },
+				{ status: Status.InProgress, claimedAt },
 			);
 			record.status = Status.InProgress;
+			record.claimedAt = claimedAt;
 			return record;
 		});
 	}
