@@ -17,11 +17,12 @@ const mockRekognitionResponse = {
 
 describe('AWS Rekognition Node - binary data input', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const awsApiRequestSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+	let awsApiRequestSpy: jest.SpyInstance;
 	const node = new AwsRekognition();
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		awsApiRequestSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			accessKeyId: 'test-key',
 			secretAccessKey: 'test-secret',
