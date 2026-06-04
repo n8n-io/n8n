@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z, type ZodDiscriminatedUnionOption } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import {
@@ -15,8 +15,45 @@ const TYPED_ARRAY_CONFIG_SCHEMAS = {
 	tasks: AgentJsonTaskConfigSchema,
 };
 
+type DiscriminatedUnionSchema = z.ZodDiscriminatedUnion<
+	string,
+	ReadonlyArray<ZodDiscriminatedUnionOption<string>>
+>;
+
+function isZodOptionalSchema(schema: z.ZodTypeAny): schema is z.ZodOptional<z.ZodTypeAny> {
+	return schema instanceof z.ZodOptional;
+}
+
+function isZodNullableSchema(schema: z.ZodTypeAny): schema is z.ZodNullable<z.ZodTypeAny> {
+	return schema instanceof z.ZodNullable;
+}
+
+function isZodDefaultSchema(schema: z.ZodTypeAny): schema is z.ZodDefault<z.ZodTypeAny> {
+	return schema instanceof z.ZodDefault;
+}
+
+function isZodEffectsSchema(schema: z.ZodTypeAny): schema is z.ZodEffects<z.ZodTypeAny> {
+	return schema instanceof z.ZodEffects;
+}
+
+function isZodArraySchema(schema: z.ZodTypeAny): schema is z.ZodArray<z.ZodTypeAny> {
+	return schema instanceof z.ZodArray;
+}
+
+function isZodRecordSchema(schema: z.ZodTypeAny): schema is z.ZodRecord<z.ZodString, z.ZodTypeAny> {
+	return schema instanceof z.ZodRecord;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isZodObjectSchema(schema: z.ZodTypeAny): schema is z.ZodObject<z.ZodRawShape> {
+	return schema instanceof z.ZodObject;
+}
+
+function isDiscriminatedUnionSchema(schema: z.ZodTypeAny): schema is DiscriminatedUnionSchema {
+	return schema instanceof z.ZodDiscriminatedUnion;
 }
 
 function filterUnsupportedTypedEntries(
@@ -26,15 +63,11 @@ function filterUnsupportedTypedEntries(
 	if (!Array.isArray(entries)) return entries;
 
 	return entries.filter((entry) => {
-		if (typeof entry !== 'object' || entry === null) {
+		if (!isRecord(entry)) {
 			return true;
 		}
 
-		if (!('type' in entry)) {
-			return true;
-		}
-
-		const { type } = entry;
+		const type = getObjectProperty(entry, 'type');
 		if (typeof type !== 'string') {
 			return true;
 		}
@@ -43,8 +76,8 @@ function filterUnsupportedTypedEntries(
 	});
 }
 
-function getObjectProperty(value: object, property: string): unknown {
-	return Object.entries(value).find(([key]) => key === property)?.[1];
+function getObjectProperty(value: Record<string, unknown>, property: string): unknown {
+	return value[property];
 }
 
 function getObjectDiscriminatorLiteralValue(
@@ -63,13 +96,13 @@ function getObjectDiscriminatorLiteralValue(
 }
 
 function getDiscriminatorLiteralValues(schema: z.ZodTypeAny, discriminator: string): string[] {
-	if (schema instanceof z.ZodObject) {
+	if (isZodObjectSchema(schema)) {
 		const value = getObjectDiscriminatorLiteralValue(schema, discriminator);
 		return value === undefined ? [] : [value];
 	}
 
-	if (schema instanceof z.ZodDiscriminatedUnion) {
-		return [...schema.options.values()]
+	if (isDiscriminatedUnionSchema(schema)) {
+		return schema.options
 			.map((option) => getObjectDiscriminatorLiteralValue(option, schema.discriminator))
 			.filter((value): value is string => value !== undefined);
 	}
@@ -78,7 +111,7 @@ function getDiscriminatorLiteralValues(schema: z.ZodTypeAny, discriminator: stri
 }
 
 function getDiscriminatedUnionOption(
-	schema: z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>,
+	schema: DiscriminatedUnionSchema,
 	value: unknown,
 ): z.ZodObject<z.ZodRawShape> | undefined {
 	if (!isRecord(value)) return undefined;
@@ -86,31 +119,45 @@ function getDiscriminatedUnionOption(
 	const discriminatorValue = getObjectProperty(value, schema.discriminator);
 	if (typeof discriminatorValue !== 'string') return undefined;
 
-	return [...schema.options.values()].find(
+	return schema.options.find(
 		(option) =>
 			getObjectDiscriminatorLiteralValue(option, schema.discriminator) === discriminatorValue,
 	);
 }
 
+function getWrappedSchema(schema: z.ZodTypeAny): z.ZodTypeAny | undefined {
+	if (isZodOptionalSchema(schema)) {
+		return schema.unwrap();
+	}
+
+	if (isZodNullableSchema(schema)) {
+		return schema.unwrap();
+	}
+
+	if (isZodDefaultSchema(schema)) {
+		return schema.removeDefault();
+	}
+
+	if (isZodEffectsSchema(schema)) {
+		return schema.innerType();
+	}
+
+	return undefined;
+}
+
 function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown {
-	if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
-		return stripUnknownSchemaFields(value, schema.unwrap());
+	const wrappedSchema = getWrappedSchema(schema);
+	if (wrappedSchema !== undefined) {
+		return stripUnknownSchemaFields(value, wrappedSchema);
 	}
 
-	if (schema instanceof z.ZodDefault) {
-		return stripUnknownSchemaFields(value, schema.removeDefault());
-	}
-
-	if (schema instanceof z.ZodEffects) {
-		return stripUnknownSchemaFields(value, schema.innerType());
-	}
-
-	if (schema instanceof z.ZodArray) {
+	if (isZodArraySchema(schema)) {
 		if (!Array.isArray(value)) return value;
+
 		return value.map((entry) => stripUnknownSchemaFields(entry, schema.element));
 	}
 
-	if (schema instanceof z.ZodRecord) {
+	if (isZodRecordSchema(schema)) {
 		if (!isRecord(value)) return value;
 
 		return Object.fromEntries(
@@ -121,12 +168,12 @@ function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown
 		);
 	}
 
-	if (schema instanceof z.ZodObject) {
+	if (isZodObjectSchema(schema)) {
 		if (!isRecord(value)) return value;
 
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
-			const childSchema = schema.shape[key];
+			const childSchema: z.ZodTypeAny | undefined = schema.shape[key];
 			if (childSchema !== undefined) {
 				sanitized[key] = stripUnknownSchemaFields(entryValue, childSchema);
 			}
@@ -134,7 +181,7 @@ function stripUnknownSchemaFields(value: unknown, schema: z.ZodTypeAny): unknown
 		return sanitized;
 	}
 
-	if (schema instanceof z.ZodDiscriminatedUnion) {
+	if (isDiscriminatedUnionSchema(schema)) {
 		const option = getDiscriminatedUnionOption(schema, value);
 		return option === undefined ? value : stripUnknownSchemaFields(value, option);
 	}

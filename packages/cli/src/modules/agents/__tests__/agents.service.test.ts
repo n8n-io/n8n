@@ -889,6 +889,38 @@ describe('AgentsService', () => {
 			});
 		});
 
+		it('strips missing subagent refs before validating and saving config', async () => {
+			const agent = makeAgent();
+			const subAgent = makeAgent({ id: 'agent-3', activeVersionId: 'published-version-3' });
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) => {
+				if (id === agentId) return agent;
+				if (id === 'agent-3') return subAgent;
+				return null;
+			});
+
+			const configWithSubAgents = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				subAgents: {
+					maxChildren: 10,
+					agents: [{ agentId: 'agent_123' }, { agentId: 'agent-3' }],
+				},
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithSubAgents,
+			});
+
+			await service.updateConfig(agentId, projectId, configWithSubAgents);
+
+			const savedEntity = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(savedEntity.schema?.subAgents).toEqual({
+				maxChildren: 10,
+				agents: [{ agentId: 'agent-3' }],
+			});
+		});
+
 		it('persists subAgents.maxChildren without materializing an agents list', async () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);

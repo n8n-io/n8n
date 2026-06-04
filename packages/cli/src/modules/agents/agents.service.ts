@@ -1563,7 +1563,7 @@ export class AgentsService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
-		this.removeMissingConfigRefs(result.config, entity, new Set(existingTaskIds));
+		await this.removeMissingConfigRefs(result.config, entity, new Set(existingTaskIds));
 		await this.validateSubAgentRefs(result.config, entity);
 		this.validateConfigRefs(result.config, entity);
 
@@ -1918,11 +1918,11 @@ export class AgentsService {
 		}
 	}
 
-	private removeMissingConfigRefs(
+	private async removeMissingConfigRefs(
 		config: AgentJsonConfig,
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
-	): void {
+	): Promise<void> {
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
 			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
@@ -1935,6 +1935,17 @@ export class AgentsService {
 
 		if (config.tasks !== undefined) {
 			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+		}
+
+		if (config.subAgents?.agents !== undefined) {
+			const existingSubAgentIds = new Set(
+				(await this.fetchUniqueSubAgents(config.subAgents.agents, entity.projectId))
+					.filter(({ agent }) => agent !== null)
+					.map(({ agentId }) => agentId),
+			);
+			config.subAgents.agents = config.subAgents.agents.filter(({ agentId }) =>
+				existingSubAgentIds.has(agentId),
+			);
 		}
 	}
 

@@ -117,7 +117,7 @@ describe('AgentSubAgentsPanel', () => {
 	it('initialises max-children input to the default when unset in config', async () => {
 		const wrapper = await mountPanel();
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(5);
+		expect(Number(input.element.getAttribute('value'))).toBe(10);
 	});
 
 	it('initialises max-children input from config', async () => {

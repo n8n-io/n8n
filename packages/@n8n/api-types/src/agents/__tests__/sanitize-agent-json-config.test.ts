@@ -24,6 +24,17 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
 	});
 
+	it('does not add omitted optional schema keys', () => {
+		const sanitized = sanitizeAgentJsonConfig(baseConfig);
+
+		expect(sanitized).toStrictEqual(baseConfig);
+		expect(Object.keys(sanitized as Record<string, unknown>).sort()).toEqual([
+			'instructions',
+			'model',
+			'name',
+		]);
+	});
+
 	it('strips unknown top-level keys before validation', () => {
 		expect(
 			sanitizeAgentJsonConfig({
