@@ -2,7 +2,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { WorkflowPublicationOutbox } from '../entities/workflow-publication-outbox';
+import {
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus as Status,
+} from '../entities/workflow-publication-outbox';
 
 @Service()
 export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPublicationOutbox> {
@@ -42,8 +45,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// them; the conflict path bumps `updatedAt` explicitly.
 		await this.query(
 			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status")
-			 VALUES ($1, $2, 'pending')
-			 ON CONFLICT ("workflowId") WHERE "status" = 'pending'
+			 VALUES ($1, $2, '${Status.Pending}')
+			 ON CONFLICT ("workflowId") WHERE "status" = '${Status.Pending}'
 			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
 			[workflowId, publishedVersionId],
 		);
@@ -57,8 +60,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 		await this.query(
 			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status")
-			 VALUES (?, ?, 'pending')
-			 ON CONFLICT ("workflowId") WHERE "status" = 'pending'
+			 VALUES (?, ?, '${Status.Pending}')
+			 ON CONFLICT ("workflowId") WHERE "status" = '${Status.Pending}'
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
 			[workflowId, publishedVersionId],
 		);
@@ -90,10 +93,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			// Ordering by id gives us FIFO behaviour: ids are monotonically
 			// assigned at insert, so oldest pending row is processed first.
 			`UPDATE "${tableName}"
-			 SET "status" = 'in_progress', "updatedAt" = NOW()
+			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3)
 			 WHERE "id" = (
 				 SELECT "id" FROM "${tableName}"
-				 WHERE "status" = 'pending'
+				 WHERE "status" = '${Status.Pending}'
 				 ORDER BY "id" ASC
 				 LIMIT 1
 				 FOR UPDATE SKIP LOCKED
@@ -104,30 +107,39 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		return rows[0] ?? null;
 	}
 
+	// Two statements rather than one because `update` doesn't return the claimed
+	// row. The `BEGIN IMMEDIATE` transaction serializes claimers.
 	private async claimWithSqliteTransaction(): Promise<WorkflowPublicationOutbox | null> {
 		return await this.manager.transaction(async (tx) => {
 			// Ordering by id gives us FIFO behaviour: ids are monotonically
 			// assigned at insert, so oldest pending row is processed first.
 			const record = await tx.findOne(WorkflowPublicationOutbox, {
-				where: { status: 'pending' },
+				where: { status: Status.Pending },
 				order: { id: 'ASC' },
 			});
 
 			if (!record) return null;
 
-			await tx.update(WorkflowPublicationOutbox, record.id, { status: 'in_progress' });
-			record.status = 'in_progress';
+			await tx.update(
+				WorkflowPublicationOutbox,
+				{ id: record.id, status: Status.Pending },
+				{ status: Status.InProgress },
+			);
+			record.status = Status.InProgress;
 			return record;
 		});
 	}
 
 	/** Mark a claimed record as successfully processed. */
 	async markCompleted(id: number): Promise<void> {
-		await this.update(id, { status: 'completed', errorMessage: null });
+		await this.update(
+			{ id, status: Status.InProgress },
+			{ status: Status.Completed, errorMessage: null },
+		);
 	}
 
 	/** Mark a claimed record as failed and record the error for diagnostics. */
 	async markFailed(id: number, errorMessage: string): Promise<void> {
-		await this.update(id, { status: 'failed', errorMessage });
+		await this.update({ id, status: Status.InProgress }, { status: Status.Failed, errorMessage });
 	}
 }
