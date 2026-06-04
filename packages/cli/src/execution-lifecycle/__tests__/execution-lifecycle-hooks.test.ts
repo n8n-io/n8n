@@ -494,13 +494,20 @@ describe('Execution Lifecycle Hooks', () => {
 		externalHooksTests();
 		statisticsTests();
 
-		it('should include execution telemetry metadata in workflow-post-execute events', async () => {
+		it('should include execution source and telemetry metadata in workflow-post-execute events', async () => {
 			const telemetryMetadata = {
-				source: 'instance_ai' as const,
 				mockDataSources: ['trigger_input' as const],
 			};
 			const lifecycleHooks = getLifecycleHooksForRegularMain(
-				{ executionMode: 'manual', workflowData, pushRef, retryOf, userId, telemetryMetadata },
+				{
+					executionMode: 'manual',
+					workflowData,
+					pushRef,
+					retryOf,
+					userId,
+					source: 'instance_ai',
+					telemetryMetadata,
+				},
 				executionId,
 			);
 
@@ -511,6 +518,7 @@ describe('Execution Lifecycle Hooks', () => {
 				runData: successfulRun,
 				workflow: workflowData,
 				userId,
+				source: 'instance_ai',
 				telemetryMetadata,
 			});
 		});

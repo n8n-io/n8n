@@ -2656,8 +2656,8 @@ describe('createExecutionAdapter run()', () => {
 
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
 
+		expect(runData.source).toBe('instance_ai');
 		expect(runData.telemetryMetadata).toEqual({
-			source: 'instance_ai',
 			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
 		});
 	});
