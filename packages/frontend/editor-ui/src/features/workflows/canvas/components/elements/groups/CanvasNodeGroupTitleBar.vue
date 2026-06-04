@@ -247,9 +247,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	overflow: clip;
+	overflow-clip-margin: var(--spacing--2xs);
 }
 
 .toolbar {
