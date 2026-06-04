@@ -2,8 +2,7 @@ import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 
 /**
  * Pure JSON Schema transforms used when handing a raw JSON Schema to a model
- * provider (tool input schemas and structured-output schemas). No AI SDK
- * dependency — just schema-in, schema-out.
+ * provider (tool input schemas and structured-output schemas).
  */
 
 /**
@@ -32,18 +31,12 @@ export const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
  *
  * Anthropic's structured output rejects any object that omits
  * `additionalProperties: false`. Zod schemas get this during conversion, but a
- * raw JSON Schema (e.g. typed into a workflow node) usually omits it. We also
- * normalise objects that declare `properties` without a `type` (mirrors
- * {@link fixSchema}).
+ * raw JSON Schema (e.g. typed into a workflow node) usually omits it.
  *
  * Returns a deep copy — the input schema is never mutated.
  */
 export function lockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
 	const result = lockDefinition(schema);
-	// `lockDefinition` returns a JSONSchema7Definition (object | boolean, since
-	// JSON Schema allows a bare `true`/`false`), but a structured-output schema is
-	// always an object — narrow back to JSONSchema7. The `: schema` fallback only
-	// covers the boolean case, which never happens here.
 	return typeof result === 'object' ? result : schema;
 }
 
