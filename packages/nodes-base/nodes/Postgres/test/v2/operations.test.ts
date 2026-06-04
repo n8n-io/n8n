@@ -555,7 +555,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			queryReplacement: '={{ [null, 42, true] }}',
 			matchString: '[null, 42, true]',
 			returnArray: [null, 42, true],
-			expectedValues: ['null', '42', 'true'],
+			expectedValues: [null, 42, true],
 		},
 	])(
 		'should $description',

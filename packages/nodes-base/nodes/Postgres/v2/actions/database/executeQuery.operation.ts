@@ -12,6 +12,7 @@ import type {
 	PgpDatabase,
 	PostgresNodeOptions,
 	QueriesRunner,
+	QueryValue,
 	QueryWithValues,
 } from '../../helpers/interfaces';
 import {
@@ -68,7 +69,7 @@ export async function execute(
 			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
 		}
 
-		let values: Array<IDataObject | string> = [];
+		let values: QueryValue[] = [];
 
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
@@ -93,7 +94,10 @@ export async function execute(
 
 							if (Array.isArray(rawEvaluated)) {
 								for (const item of rawEvaluated) {
-									values.push(evaluateExpression(item));
+									if (item === undefined) continue;
+									values.push(
+										typeof item === 'object' && item !== null ? JSON.stringify(item) : item,
+									);
 								}
 								continue;
 							}
