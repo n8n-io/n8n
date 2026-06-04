@@ -30,7 +30,10 @@ import {
 	createWorkspace,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	createScopedWorkspace,
 	setupSandboxWorkspace,
+	getPromptWorkspaceRoot,
+	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
@@ -2987,35 +2990,53 @@ export class InstanceAiService {
 		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
+		let workspaceRoot: string | undefined;
+
 		if (adminSettings.sandboxEnabled) {
-			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
-			const getSandboxEntry = async () => {
-				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
-					(error: unknown) => {
-						sandboxEntryPromise = undefined;
-						throw error;
-					},
-				);
+			const sandboxConfig = await this.resolveSandboxConfig(user);
 
-				return await sandboxEntryPromise;
-			};
-			const getSetupSandboxEntry = async () => {
-				return await this.getOrCreateWorkspace(threadId, user, context, runId);
-			};
+			if (sandboxConfig.enabled) {
+				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
 
-			runtimeWorkspace = createLazyRuntimeWorkspace({
-				ensureWorkspace: async () => (await getSetupSandboxEntry())?.workspace,
-			});
-			const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
-				id: 'instance-ai-runtime-skill-workspace',
-				name: 'Instance AI runtime skill workspace',
-				ensureWorkspace: async () => (await getSandboxEntry())?.workspace,
-			});
-			runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-				source: baseRuntimeSkills,
-				workspace: runtimeSkillWorkspace,
-				logger: this.logger,
-			});
+				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
+				const getSandboxEntry = async () => {
+					sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
+						(error: unknown) => {
+							sandboxEntryPromise = undefined;
+							throw error;
+						},
+					);
+
+					return await sandboxEntryPromise;
+				};
+				const getSetupSandboxEntry = async () => {
+					return await this.getOrCreateWorkspace(threadId, user, context, runId);
+				};
+
+				const scopeWorkspaceForAgent = async (
+					workspace: Workspace | undefined,
+				): Promise<Workspace | undefined> => {
+					if (!workspace) return undefined;
+					const root = await getWorkspaceRoot(workspace);
+					return createScopedWorkspace(workspace, root);
+				};
+
+				runtimeWorkspace = createLazyRuntimeWorkspace({
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
+				});
+				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+					id: 'instance-ai-runtime-skill-workspace',
+					name: 'Instance AI runtime skill workspace',
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
+				});
+				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
+					source: baseRuntimeSkills,
+					workspace: runtimeSkillWorkspace,
+					logger: this.logger,
+				});
+			}
 		}
 
 		const orchestrationContext: OrchestrationContext = {
@@ -3098,6 +3119,7 @@ export class InstanceAiService {
 			},
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
+			workspaceRoot,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,

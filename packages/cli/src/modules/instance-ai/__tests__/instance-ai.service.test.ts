@@ -1,8 +1,7 @@
-import type { z as zType } from 'zod';
-
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
+	const { z } = jest.requireActual('zod');
+	const { getPromptWorkspaceRoot } = jest.requireActual('@n8n/instance-ai');
 	return {
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
@@ -18,6 +17,9 @@ jest.mock('@n8n/instance-ai', () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
+		createScopedWorkspace: jest.fn((workspace: unknown) => workspace),
+		getPromptWorkspaceRoot,
+		getWorkspaceRoot: jest.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: jest.fn(),
 		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
 			registry: {
@@ -137,8 +139,8 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
-import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import {
 	createAllTools,
 	createLazyRuntimeWorkspace,

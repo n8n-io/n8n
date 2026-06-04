@@ -37,10 +37,10 @@ export async function readWorkspaceFile(
 	filePath: string,
 	options?: WorkspaceFileOptions,
 ): Promise<string | null> {
-	const readFile = workspace.filesystem?.readFile;
-	if (readFile) {
+	const filesystem = workspace.filesystem;
+	if (filesystem?.readFile) {
 		try {
-			return decodeWorkspaceFileContent(await readFile(filePath, { encoding: 'utf-8' }));
+			return decodeWorkspaceFileContent(await filesystem.readFile(filePath, { encoding: 'utf-8' }));
 		} catch (error) {
 			options?.logger?.debug(`${resourceLabel(options)} filesystem read missed`, {
 				path: filePath,
