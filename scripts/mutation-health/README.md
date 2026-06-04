@@ -54,9 +54,11 @@ That divergence is exactly why this project exists.
 | File | Purpose |
 | --- | --- |
 | `pick-next.mjs` | Walk `<pkg>/src/`, merge with the live ledger, return the next source file to mutate |
+| `mutate.mjs` | Run Stryker on one source file of any vitest package, write `summary.json` |
+| `stryker.default.mjs` | Default Stryker config for onboarded packages (points at the package's own `vitest.config.*`) |
 | `emit-payload.mjs` | Turn a Stryker `summary.json` into a BQ-ready writer payload |
 
-The Stryker run itself lives in `packages/workflow/scripts/mutate.mjs` and is invoked via `pnpm --filter=n8n-workflow mutate <src-file>`.
+`mutate.mjs` is package-agnostic — run `pnpm mutate <repo-relative-file>` from the repo root and the package is inferred from the path (or pass `--package-dir <pkg>` for a package-relative target, as the nightly does). It uses the package's own `stryker.config.mjs` if one exists (e.g. `packages/workflow` carves out the isolated-vm engine), otherwise `stryker.default.mjs`.
 
 The reader and writer webhooks are plain HTTP — the GHA hits them with `curl`. There is no fetch/post wrapper script; if you want to call them locally, see [Local usage](#local-usage).
 
@@ -78,7 +80,7 @@ The BQ table schema lives with the writer workflow (in n8n's internal Quality pr
        │     within new:        alphabetical
        │     within red/stale:  lowest score first
        │
-       ├─► pnpm --filter=n8n-workflow mutate → summary.json
+       ├─► mutate.mjs --package-dir <pkg>   → summary.json
        │
        ├─► emit-payload.mjs                 → bq-payload.json
        │
@@ -93,6 +95,17 @@ The BQ table schema lives with the writer workflow (in n8n's internal Quality pr
 ```
 
 The writer workflow lives in n8n's internal Quality project. It's created and maintained outside this repo. This README documents the contract it implements.
+
+## Passes, packages & onboarding
+
+The nightly runs a **matrix of `package × pass`** (built once in the `setup` job of `mutation-health-nightly.yml`). Each leg picks, mutates, and writes back independently; the ledger is keyed by package, so they don't collide. Two passes, selectable via the `mode` dispatch input (`both` on schedule):
+
+- **baseline** — `pick-next.mjs --mode baseline` → scores files with no result yet (the `new` bucket). Builds out coverage.
+- **coverage** — `pick-next.mjs --mode coverage` → revisits the weakest scored files (`red`/`stale`, lowest score first). Strengthens existing tests.
+
+To onboard a **vitest** package: add one `{ name, dir, slug }` line to the `packages` array in the `setup` job. No per-package config needed — `stryker.default.mjs` auto-resolves the package's own `vitest.config.*` (verified on plain and DI-decorator packages). Add a local `stryker.config.mjs` only if the package needs special handling.
+
+Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
 
 ## State transitions
 
@@ -205,8 +218,10 @@ Runs use `STRYKER_THRESHOLD=80` as a placeholder. The threshold moves to evidenc
 ## Local usage
 
 ```bash
-# Run Stryker on one file (the inner loop — also invokable via /n8n:mutation-test skill)
-pnpm --filter=n8n-workflow mutate src/cron.ts
+# Run Stryker on one file (the inner loop — also invokable via /n8n:mutant-score skill).
+# Package is inferred from the repo-relative path; works for any vitest package.
+pnpm mutate packages/workflow/src/cron.ts
+pnpm mutate packages/@n8n/crdt/src/utils.ts
 
 # Pull current ledger from BQ
 curl --fail -sS \

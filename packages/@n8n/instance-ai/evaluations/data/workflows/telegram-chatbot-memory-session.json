@@ -24,6 +24,7 @@
 	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "telegram", "chatbot", "ai-agent", "memory", "expressions"],
+	"datasets": ["pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "distinct-telegram-chat",

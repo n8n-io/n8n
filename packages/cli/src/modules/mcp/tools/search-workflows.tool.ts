@@ -2,11 +2,13 @@ import { type User, type WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { SEARCH_WORKFLOWS_SORT_BY_VALUES } from '../mcp.types';
 import type {
 	ToolDefinition,
 	SearchWorkflowsParams,
 	SearchWorkflowsResult,
 	SearchWorkflowsItem,
+	SearchWorkflowsSortBy,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 
@@ -17,10 +19,18 @@ import { createLimitSchema } from './schemas';
 
 const MAX_RESULTS = 200;
 
+const DEFAULT_SORT_BY: SearchWorkflowsSortBy = 'updatedAt:desc';
+
 const inputSchema = {
 	limit: createLimitSchema(MAX_RESULTS),
 	query: z.string().optional().describe('Filter by name or description'),
 	projectId: z.string().optional(),
+	sortBy: z
+		.enum(SEARCH_WORKFLOWS_SORT_BY_VALUES)
+		.optional()
+		.describe(
+			`Sort order for results (default: ${DEFAULT_SORT_BY}). Use updatedAt:desc to find the most recently edited workflows first.`,
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -38,7 +48,9 @@ const outputSchema = {
 				updatedAt: z
 					.string()
 					.nullable()
-					.describe('The ISO timestamp when the workflow was last updated'),
+					.describe(
+						'ISO timestamp the workflow definition was last saved. Use this to identify recently edited workflows.',
+					),
 				triggerCount: z
 					.number()
 					.nullable()
@@ -82,12 +94,14 @@ export const createSearchWorkflowsTool = (
 			limit = MAX_RESULTS,
 			query,
 			projectId,
+			sortBy,
 		}: {
 			limit?: number;
 			query?: string;
 			projectId?: string;
+			sortBy?: SearchWorkflowsSortBy;
 		}) => {
-			const parameters = { limit, query, projectId };
+			const parameters = { limit, query, projectId, sortBy };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'search_workflows',
@@ -99,6 +113,7 @@ export const createSearchWorkflowsTool = (
 					limit,
 					query,
 					projectId,
+					sortBy,
 				});
 
 				// Track successful execution
@@ -136,12 +151,13 @@ export const createSearchWorkflowsTool = (
 export async function searchWorkflows(
 	user: User,
 	workflowService: WorkflowService,
-	{ limit = MAX_RESULTS, query, projectId }: SearchWorkflowsParams,
+	{ limit = MAX_RESULTS, query, projectId, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 
 	const options: ListQuery.Options = {
 		take: safeLimit,
+		sortBy,
 		filter: {
 			isArchived: false,
 			...(query ? { query } : {}),

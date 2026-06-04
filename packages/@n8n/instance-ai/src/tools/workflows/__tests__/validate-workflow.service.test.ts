@@ -1,4 +1,5 @@
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { Mock } from 'vitest';
 
 import type { InstanceAiContext, NodeDescription } from '../../../types';
 import { validateWorkflowConfig } from '../validate-workflow.service';
@@ -11,51 +12,51 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 	return {
 		userId: 'test-user',
 		workflowService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			getAsWorkflowJSON: jest.fn(),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			unarchive: jest.fn(),
-			publish: jest.fn(),
-			unpublish: jest.fn(),
-			clearAiTemporary: jest.fn(),
-			archiveIfAiTemporary: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			getAsWorkflowJSON: vi.fn(),
+			createFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn(),
+			archive: vi.fn(),
+			unarchive: vi.fn(),
+			publish: vi.fn(),
+			unpublish: vi.fn(),
+			clearAiTemporary: vi.fn(),
+			archiveIfAiTemporary: vi.fn(),
 		},
 		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
+			list: vi.fn(),
+			run: vi.fn(),
+			getStatus: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
 		},
 		credentialService: {
-			list: jest.fn().mockResolvedValue([]),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn().mockResolvedValue([]),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
-			getParameterIssues: jest.fn().mockResolvedValue({}),
+			listAvailable: vi.fn(),
+			getDescription: vi.fn(),
+			listSearchable: vi.fn(),
+			getParameterIssues: vi.fn().mockResolvedValue({}),
 		},
 		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
+			list: vi.fn(),
+			create: vi.fn(),
+			delete: vi.fn(),
+			getSchema: vi.fn(),
+			addColumn: vi.fn(),
+			deleteColumn: vi.fn(),
+			renameColumn: vi.fn(),
+			queryRows: vi.fn(),
+			insertRows: vi.fn(),
+			updateRows: vi.fn(),
+			deleteRows: vi.fn(),
 		},
 		...overrides,
 	} as unknown as InstanceAiContext;
@@ -116,7 +117,7 @@ describe('validateWorkflowConfig', () => {
 	describe('credential issues', () => {
 		it('flags a node whose required credential is unset', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
@@ -136,12 +137,12 @@ describe('validateWorkflowConfig', () => {
 
 		it('does not flag a required credential when one is set and exists for the user', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
 			);
-			(context.credentialService.list as jest.Mock).mockResolvedValue([
+			(context.credentialService.list as Mock).mockResolvedValue([
 				{ id: 'cred-1', name: 'My Telegram', type: 'telegramApi' },
 			]);
 			const node = makeNode({
@@ -156,12 +157,12 @@ describe('validateWorkflowConfig', () => {
 
 		it('emits a "do not exist" issue when the selected credential is not in the user\'s store', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
 			);
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 			const node = makeNode({
 				credentials: { telegramApi: { id: 'cred-missing', name: 'Foreign Telegram' } },
 			});
@@ -175,12 +176,12 @@ describe('validateWorkflowConfig', () => {
 
 		it('emits a "not identified" issue when multiple stored credentials match the selected name', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
 			);
-			(context.credentialService.list as jest.Mock).mockResolvedValue([
+			(context.credentialService.list as Mock).mockResolvedValue([
 				{ id: 'cred-1', name: 'Same Name', type: 'telegramApi' },
 				{ id: 'cred-2', name: 'Same Name', type: 'telegramApi' },
 			]);
@@ -197,7 +198,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('skips AI-gateway-managed credentials', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'openAiApi', required: true }],
 				}),
@@ -221,7 +222,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('respects displayOptions when filtering credential types', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [
 						{
@@ -258,7 +259,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('flags an HTTP Request node with genericCredentialType but no credentials set', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(httpRequestDescription);
+			(context.nodeService.getDescription as Mock).mockResolvedValue(httpRequestDescription);
 			const node = makeNode({
 				type: 'n8n-nodes-base.httpRequest',
 				typeVersion: 4,
@@ -278,7 +279,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('flags an HTTP Request node with predefinedCredentialType missing credentials', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(httpRequestDescription);
+			(context.nodeService.getDescription as Mock).mockResolvedValue(httpRequestDescription);
 			const node = makeNode({
 				type: 'n8n-nodes-base.httpRequest',
 				typeVersion: 4,
@@ -299,10 +300,10 @@ describe('validateWorkflowConfig', () => {
 	describe('parameter issues', () => {
 		it('surfaces parameter validation errors from the node service', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
-			(context.nodeService.getParameterIssues as jest.Mock).mockResolvedValue({
+			(context.nodeService.getParameterIssues as Mock).mockResolvedValue({
 				chatId: ['Parameter "chatId" is required'],
 			});
 			const node = makeNode({ parameters: { chatId: '' } });
@@ -319,12 +320,12 @@ describe('validateWorkflowConfig', () => {
 
 		it('honors ignoreIssues to suppress whole categories', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
 			);
-			(context.nodeService.getParameterIssues as jest.Mock).mockResolvedValue({
+			(context.nodeService.getParameterIssues as Mock).mockResolvedValue({
 				chatId: ['Parameter "chatId" is required'],
 			});
 			const node = makeNode({ parameters: { chatId: '' } });
@@ -342,7 +343,7 @@ describe('validateWorkflowConfig', () => {
 	describe('node-level skips', () => {
 		it('skips disabled nodes', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
@@ -357,7 +358,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('emits typeUnknown when the node description cannot be resolved', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockRejectedValue(new Error('not found'));
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not found'));
 			const node = makeNode({ type: 'n8n-nodes-base.madeUpType' });
 
 			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
@@ -371,10 +372,8 @@ describe('validateWorkflowConfig', () => {
 		it('resolves the workflow via workflowService.getAsWorkflowJSON', async () => {
 			const context = createMockContext();
 			const node = makeNode();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
-				makeWorkflow([node]),
-			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(makeWorkflow([node]));
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
@@ -396,7 +395,7 @@ describe('validateWorkflowConfig', () => {
 			context: InstanceAiContext,
 			perNodeInputs: Record<string, unknown[]>,
 		): void {
-			(context.nodeService as unknown as Record<string, unknown>).getResolvedNodeInputs = jest
+			(context.nodeService as unknown as Record<string, unknown>).getResolvedNodeInputs = vi
 				.fn()
 				.mockImplementation(async (_workflow: WorkflowJSON, nodeName: string) => {
 					return await Promise.resolve(perNodeInputs[nodeName] ?? []);
@@ -405,7 +404,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('flags an AI Agent node missing its required ai_languageModel attachment', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
@@ -445,7 +444,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('does not flag an AI Agent when the language model is attached', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
@@ -493,7 +492,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('does not flag optional inputs (required !== true)', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
@@ -515,7 +514,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('does not flag plain-string inputs (no required field)', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			// Standard nodes have plain `'main'` string inputs — never carry a required flag.
@@ -531,7 +530,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('honors ignoreIssues: ["input"] to suppress input issues', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
@@ -554,7 +553,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('skips input checks entirely when getResolvedNodeInputs is not implemented', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			// Adapter optionality: no getResolvedNodeInputs method on the service.
@@ -568,7 +567,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('uses the input.type as fallback message label when displayName is missing', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
@@ -593,7 +592,7 @@ describe('validateWorkflowConfig', () => {
 			context: InstanceAiContext,
 			runData: Record<string, unknown[]> | null,
 		): void {
-			(context.workflowService as unknown as Record<string, unknown>).getLatestRunData = jest
+			(context.workflowService as unknown as Record<string, unknown>).getLatestRunData = vi
 				.fn()
 				.mockImplementation(async (_workflowId: string) => {
 					return await Promise.resolve(runData);
@@ -602,10 +601,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('flags a node whose most recent execution had an error', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {
@@ -623,10 +622,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('does not flag a node whose most recent execution completed without error', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {
@@ -641,10 +640,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('does not flag any execution issues when the workflow has no execution history', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, null);
@@ -656,7 +655,7 @@ describe('validateWorkflowConfig', () => {
 
 		it('skips execution checks silently in inline-workflow mode', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			// Even though getLatestRunData would return errors, inline mode has no
@@ -674,10 +673,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('honors ignoreIssues: ["execution"] to suppress execution flags', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {
@@ -695,10 +694,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('skips execution checks when the adapter does not implement getLatestRunData', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			// No stubLatestRunData — the optional method is absent on this adapter.
@@ -710,10 +709,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('reports execution alongside parameter/credential issues on the same node', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode()]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({
 					credentials: [{ name: 'telegramApi', required: true }],
 				}),
@@ -737,10 +736,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('handles task errors without a message field gracefully', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {
@@ -765,7 +764,7 @@ describe('validateWorkflowConfig', () => {
 			context: InstanceAiContext,
 			runData: Record<string, unknown[]> | null,
 		): void {
-			(context.workflowService as unknown as Record<string, unknown>).getLatestRunData = jest
+			(context.workflowService as unknown as Record<string, unknown>).getLatestRunData = vi
 				.fn()
 				.mockImplementation(async (_workflowId: string) => {
 					return await Promise.resolve(runData);
@@ -774,10 +773,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('drops the error message text from the summary when allowSendingParameterValues is false', async () => {
 			const context = createMockContext({ allowSendingParameterValues: false });
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {
@@ -799,10 +798,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('includes the error message when allowSendingParameterValues is true', async () => {
 			const context = createMockContext({ allowSendingParameterValues: true });
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {
@@ -818,10 +817,10 @@ describe('validateWorkflowConfig', () => {
 
 		it('defaults to allowing message text when the flag is unset (undefined)', async () => {
 			const context = createMockContext(); // no flag in overrides
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(
 				makeWorkflow([makeNode({ name: 'HTTP Request' })]),
 			);
-			(context.nodeService.getDescription as jest.Mock).mockResolvedValue(
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
 				makeDescription({ credentials: [] }),
 			);
 			stubLatestRunData(context, {

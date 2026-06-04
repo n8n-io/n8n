@@ -11,7 +11,6 @@ import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
@@ -32,8 +31,6 @@ export const ExecutionDataStoreKey: InjectionKey<
 export const WorkflowExecutionStateStoreKey: InjectionKey<
 	ShallowRef<ReturnType<typeof useWorkflowExecutionStateStore> | null>
 > = Symbol('WorkflowExecutionStateStore');
-export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore> | null>> =
-	Symbol('NDVStore');
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
