@@ -123,7 +123,7 @@ export class MessageAnAgent implements INodeType {
 				},
 			},
 			{
-				displayName: 'Output Structured Data',
+				displayName: 'Require Specific Output Format',
 				name: 'useStructuredOutput',
 				type: 'boolean',
 				default: false,
@@ -149,6 +149,18 @@ export class MessageAnAgent implements INodeType {
 				typeOptions: {
 					rows: 10,
 				},
+				displayOptions: {
+					show: {
+						useStructuredOutput: [true],
+					},
+				},
+			},
+			{
+				displayName:
+					'Structured output is enforced by the model provider. For best results across providers, mark every property as required. Some providers reject optional fields or advanced keywords (e.g. OpenAI and xAI strict mode), and a few do not support structured output at all (e.g. DeepSeek).',
+				name: 'structuredOutputNotice',
+				type: 'notice',
+				default: '',
 				displayOptions: {
 					show: {
 						useStructuredOutput: [true],

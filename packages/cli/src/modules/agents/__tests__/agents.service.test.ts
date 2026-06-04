@@ -1732,6 +1732,92 @@ describe('AgentsService', () => {
 
 			expect(structuredOutput).not.toHaveBeenCalled();
 		});
+
+		const makeErrorChunkStream = (errorMessage: string) => {
+			const chunks = [{ type: 'error', error: new Error(errorMessage) }];
+			let idx = 0;
+			return jest.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: jest
+							.fn()
+							.mockImplementation(async () =>
+								idx < chunks.length
+									? { done: false, value: chunks[idx++] }
+									: { done: true, value: undefined },
+							),
+						releaseLock: jest.fn(),
+					}),
+				},
+			});
+		};
+
+		const setupErroringAgent = (errorMessage: string) => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: userId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			jest.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: {
+					name: 'Test Agent',
+					structuredOutput: jest.fn(),
+					stream: makeErrorChunkStream(errorMessage),
+					close: jest.fn(),
+				},
+				toolRegistry: {},
+			} as never);
+		};
+
+		const outputSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { answer: { type: 'string' } },
+			required: ['answer'],
+		};
+
+		it('surfaces an actionable error when structured output fails', async () => {
+			setupErroringAgent('No output generated. Check the stream for errors.');
+
+			await expect(
+				service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					userId,
+					true,
+					outputSchema,
+				),
+			).rejects.toThrow('could not return structured output');
+		});
+
+		it('falls back to the generic error when the failure is unrelated to structured output', async () => {
+			setupErroringAgent('Model credential is invalid');
+
+			await expect(
+				service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					userId,
+					true,
+					outputSchema,
+				),
+			).rejects.toThrow('Agent execution failed: Model credential is invalid');
+		});
 	});
 
 	describe('unpublishAgent', () => {
