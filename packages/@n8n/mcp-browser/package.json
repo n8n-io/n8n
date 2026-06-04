@@ -13,14 +13,15 @@
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "dependencies": {
     "@joplin/turndown-plugin-gfm": "1.0.64",
@@ -39,8 +40,11 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
-    "@types/yargs-parser": "21.0.0"
+    "@types/yargs-parser": "21.0.0",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
   }
 }

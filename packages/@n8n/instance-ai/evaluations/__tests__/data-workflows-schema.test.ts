@@ -1,6 +1,9 @@
-jest.mock('fs', () => ({
-	readdirSync: jest.fn(),
-	readFileSync: jest.fn(),
+/* eslint-disable import-x/order */
+import { vi } from 'vitest';
+
+vi.mock('fs', () => ({
+	readdirSync: vi.fn(),
+	readFileSync: vi.fn(),
 }));
 
 import { readdirSync, readFileSync } from 'fs';
@@ -8,8 +11,8 @@ import { readdirSync, readFileSync } from 'fs';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import { WorkflowTestCaseSchema } from '../data/workflows/schema';
 
-const mockedReaddir = jest.mocked(readdirSync);
-const mockedReadFile = jest.mocked(readFileSync);
+const mockedReaddir = vi.mocked(readdirSync);
+const mockedReadFile = vi.mocked(readFileSync);
 
 const validFixture = () => ({
 	conversation: [{ role: 'user' as const, text: 'Build a thing' }],
@@ -26,7 +29,7 @@ const validFixture = () => ({
 });
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockedReaddir.mockReturnValue(['demo.json'] as unknown as ReturnType<typeof readdirSync>);
 });
 

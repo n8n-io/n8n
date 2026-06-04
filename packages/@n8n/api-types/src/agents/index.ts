@@ -1,6 +1,7 @@
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
+export * from './sanitize-agent-json-config';
 export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
@@ -20,6 +21,7 @@ export {
 	askQuestionOptionSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
+	cancellationResumeSchema,
 	interactiveResumeDataSchema,
 	type InteractiveToolName,
 	type AskLlmInput,
@@ -29,5 +31,6 @@ export {
 	type AskQuestionOption,
 	type AskQuestionInput,
 	type AskQuestionResume,
+	type CancellationResumeData,
 	type InteractiveResumeData,
 } from '../agent-builder-interactive';

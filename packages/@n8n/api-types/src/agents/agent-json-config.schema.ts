@@ -1,18 +1,6 @@
 import { z, type ZodError } from 'zod';
 
-import { AgentIntegrationSchema } from './agent-integration.schema';
-
-const SemanticRecallSchema = z.object({
-	topK: z.number().int().min(1).max(100),
-	scope: z.enum(['thread', 'resource']).optional(),
-	messageRange: z
-		.object({
-			before: z.number().int().min(0),
-			after: z.number().int().min(0),
-		})
-		.optional(),
-	embedder: z.string().optional(),
-});
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
 export const AgentModelSchema = z
 	.string()
@@ -29,7 +17,7 @@ export const AgentModelSchema = z
 
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim().min(1),
+	credential: z.string().trim(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -49,7 +37,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim().min(1),
+		credential: z.string().trim(),
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
@@ -60,7 +48,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
-	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
@@ -255,7 +242,7 @@ export const AgentJsonConfigSchema = z.object({
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationSchema).optional(),
+	integrations: z.array(AgentIntegrationConfigSchema).optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -337,8 +324,4 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 
 export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
 	return config?.nodeTools?.enabled === true;
-}
-
-export function isSubAgentsEnabled(subAgents: AgentJsonConfig['subAgents']): boolean {
-	return (subAgents?.agents?.length ?? 0) > 0;
 }

@@ -219,60 +219,68 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 	return result;
 }
 
+function scoreSearchValue(filter: string, value: string, weight: number): number | undefined {
+	if (!fuzzyMatchSimple(filter, value)) return undefined;
+
+	const match = fuzzyMatch(filter, value);
+	if (!match.matched) return undefined;
+
+	return match.outScore * weight;
+}
+
 export function sublimeSearch<T extends object>(
 	filter: string,
 	data: readonly T[],
 	keys: Array<{ key: string; weight: number }> = DEFAULT_KEYS,
+	limit?: number,
 ): Array<{ score: number; item: T }> {
-	const results = data.reduce((accu: Array<{ score: number; item: T }>, item: T) => {
-		let values: Array<{ value: string; weight: number }> = [];
-		keys.forEach(({ key, weight }) => {
+	const results: Array<{ score: number; item: T }> = [];
+
+	for (const item of data) {
+		let itemMatchScore: number | undefined;
+
+		for (const { key, weight } of keys) {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				values = values.concat(value.map((v) => ({ value: v, weight })));
+				for (const entry of value) {
+					if (typeof entry !== 'string') continue;
+
+					const score = scoreSearchValue(filter, entry, weight);
+					if (score !== undefined && (itemMatchScore === undefined || score > itemMatchScore)) {
+						itemMatchScore = score;
+					}
+				}
 			} else if (typeof value === 'string') {
-				values.push({
-					value,
-					weight,
-				});
+				const score = scoreSearchValue(filter, value, weight);
+				if (score !== undefined && (itemMatchScore === undefined || score > itemMatchScore)) {
+					itemMatchScore = score;
+				}
 			}
-		});
-
-		// for each item, check every key and get maximum score
-		const itemMatch = values.reduce(
-			(
-				result: null | { matched: boolean; outScore: number },
-				{ value, weight }: { value: string; weight: number },
-			) => {
-				if (!fuzzyMatchSimple(filter, value)) {
-					return result;
-				}
-
-				const match = fuzzyMatch(filter, value);
-				match.outScore *= weight;
-
-				const { matched, outScore } = match;
-				if (!result && matched) {
-					return match;
-				}
-				if (matched && result && outScore > result.outScore) {
-					return match;
-				}
-				return result;
-			},
-			null,
-		);
-
-		if (itemMatch) {
-			accu.push({
-				score: itemMatch.outScore,
-				item,
-			});
 		}
 
-		return accu;
-	}, []);
+		if (itemMatchScore !== undefined) {
+			const result: { score: number; item: T } = {
+				score: itemMatchScore,
+				item,
+			};
+
+			if (limit === undefined || results.length < limit) {
+				results.push(result);
+			} else {
+				let lowestIndex = 0;
+				let lowestScore = results[0].score;
+				for (let i = 1; i < results.length; i++) {
+					if (results[i].score < lowestScore) {
+						lowestIndex = i;
+						lowestScore = results[i].score;
+					}
+				}
+				if (result.score > lowestScore) {
+					results[lowestIndex] = result;
+				}
+			}
+		}
+	}
 
 	results.sort((a, b) => {
 		return b.score - a.score;

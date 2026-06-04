@@ -1,5 +1,6 @@
 import {
 	assertSubAgentTaskPath,
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
@@ -7,31 +8,25 @@ import {
 	type GenerateResult,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import { Logger } from '@n8n/backend-common';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
-import { Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
-import { ExecutionRecorder } from '../execution-recorder';
 import type { MessageRecord } from '../execution-recorder';
-import {
-	buildFromJson,
-	type MemoryFactory,
-	type ToolExecutor,
-	type ToolResolver,
-} from '../json-config/from-json-config';
+import { ExecutionRecorder } from '../execution-recorder';
+import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
 	projectId: string;
+	/** n8n user ID — required for workflow/node tool resolution during reconstruction. */
+	userId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
-	createToolExecutor(toolCodeByName: Record<string, string>): ToolExecutor;
-	createMemoryFactory(memoryOwnerAgentId: string): MemoryFactory;
-	resolveTool?: ToolResolver;
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
@@ -65,8 +60,8 @@ export class SubAgentForegroundRunner {
 		}
 
 		// The SDK delegate tool already assigned this delegation's task path and
-		// enforced fan-out policy before invoking the runner. Just validate the
-		// forwarded shape — don't recompute it or re-run the gates.
+		// enforced the depth/fan-out policy before invoking the runner. Just
+		// validate the forwarded shape — don't recompute it or re-run the gates.
 		const taskPath = request.taskPath;
 		assertSubAgentTaskPath(taskPath);
 
@@ -74,7 +69,6 @@ export class SubAgentForegroundRunner {
 			projectId: context.projectId,
 		});
 
-		const toolExecutor = context.createToolExecutor(runtimeSource.toolCodeByName);
 		// A delegated run is a fresh conversation, so it gets an ordinary thread id
 		// (a uuid) — exactly like any other agent run, with no special structure.
 		// The parent linkage is persisted as columns on the session record
@@ -86,13 +80,19 @@ export class SubAgentForegroundRunner {
 		// Inherit the parent's episodic-memory scope. When the parent has none,
 		// isolate this run to its own thread rather than widening to the project.
 		const resourceId = request.parentResourceId ?? threadId;
-		const { subAgents: _subAgents, ...childConfig } = runtimeSource.source.config;
-		const agent = await buildFromJson(childConfig, runtimeSource.toolDescriptors, {
-			toolExecutor,
+
+		const reconstructionService = await getReconstructionService();
+		const { agent } = await reconstructionService.reconstructFromResolvedSource({
+			config: runtimeSource.source.config,
+			memoryOwnerAgentId: runtimeSource.source.sourceId,
+			projectId: context.projectId,
 			credentialProvider: context.credentialProvider,
-			resolveTool: context.resolveTool,
+			toolDescriptors: runtimeSource.toolDescriptors,
+			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
-			memoryFactory: createSubAgentMemoryFactory(runtimeSource.source, context),
+			userId: context.userId,
+			runtimeProfile: 'sub-agent',
+			parentAgentIdForDelegation: context.parentAgentId,
 		});
 
 		const timeoutController = request.policy?.timeoutMs ? new AbortController() : undefined;
@@ -114,19 +114,16 @@ export class SubAgentForegroundRunner {
 			});
 			const recorder = new ExecutionRecorder();
 			let structuredOutput: unknown;
+			let childSuspended = false;
 
-			const reader = resultStream.stream.getReader();
-			try {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					recorder.record(value);
-					if (value.type === 'finish' && value.structuredOutput !== undefined) {
-						structuredOutput = value.structuredOutput;
-					}
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				if (value.type === 'tool-call-suspended') {
+					childSuspended = true;
 				}
-			} finally {
-				reader.releaseLock();
+				if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
 			}
 
 			const messageRecord = recorder.getMessageRecord();
@@ -140,6 +137,23 @@ export class SubAgentForegroundRunner {
 				prompt,
 				record: messageRecord,
 			});
+			if (childSuspended) {
+				return {
+					taskPath,
+					threadId,
+					status: 'failed',
+					result: {
+						runId: resultStream.runId,
+						messages: [],
+						finishReason: 'error',
+						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+						getState: () => {
+							throw new Error('getState is not implemented for sub-agent foreground runner');
+						},
+					},
+				};
+			}
+
 			const result = buildGenerateResultFromRecord(
 				resultStream.runId,
 				messageRecord,
@@ -213,6 +227,19 @@ export class SubAgentForegroundRunner {
 	}
 }
 
+/**
+ * Lazy resolution avoids a circular DI dependency: AgentRuntimeReconstructionService
+ * injects SubAgentForegroundRunner into the delegate tool, while this runner needs
+ * reconstruction only when a configured sub-agent run starts.
+ */
+async function getReconstructionService() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { AgentRuntimeReconstructionService } = await import(
+		'../agent-runtime-reconstruction.service'
+	);
+	return Container.get(AgentRuntimeReconstructionService);
+}
+
 function buildGenerateResultFromRecord(
 	runId: string,
 	record: MessageRecord,
@@ -235,6 +262,9 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
+		getState: () => {
+			throw new Error('getState is not implemented for sub-agent foreground runner');
+		},
 	};
 	return result;
 }
@@ -265,15 +295,6 @@ function toKnownFinishReason(
 		return value;
 	}
 	return undefined;
-}
-
-function createSubAgentMemoryFactory(
-	source: ResolvedSubAgentSource,
-	context: SubAgentForegroundRunContext,
-): MemoryFactory {
-	return async (params) => {
-		return await context.createMemoryFactory(source.sourceId)(params);
-	};
 }
 
 /** Merge up to two abort signals: cancellation of either cancels the child run. */

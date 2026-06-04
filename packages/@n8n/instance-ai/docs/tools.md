@@ -637,12 +637,23 @@ See `docs/filesystem-access.md`.
 
 ---
 
-## Template Tools (2)
+## Knowledge Base (sandbox workspace)
 
-| Tool | Description |
+Best-practices guides and curated workflow templates are materialized under
+`<workspace_root>/knowledge-base/` when a builder sandbox is available. Agents
+read them with workspace tools — there is no dedicated `get-best-practices` or
+template-search tool.
+
+| Path | Description |
 |------|-------------|
-| `search-template-structures` | Search workflow templates by structure pattern |
-| `search-template-parameters` | Search templates by parameter values |
+| `knowledge-base/index.json` | Combined catalog of technique guides and curated templates |
+| `knowledge-base/best-practices/index.json` | Catalog of workflow technique guides |
+| `knowledge-base/best-practices/*.md` | Best-practices documentation per technique |
+| `knowledge-base/templates/index.json` | Catalog of curated SDK workflow examples |
+| `knowledge-base/templates/*.ts` | Template workflow source files |
+
+Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
+sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
@@ -651,7 +662,6 @@ See `docs/filesystem-access.md`.
 | Tool | Description |
 |------|-------------|
 | `ask-user` | Suspend and request user input (single/multi-select or text) |
-| `get-best-practices` | Get workflow building best practices for common patterns |
 
 ---
 
@@ -671,7 +681,7 @@ everything; sub-agents receive only what they need.
 | Workspace tools | ✅ | ✅ (via delegate) | ❌ |
 | Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
 | Web research tools | ✅ | ✅ (via delegate) | ❌ |
-| Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Knowledge base (best practices & templates via workspace) | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ❌ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ | ❌ |

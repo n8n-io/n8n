@@ -503,7 +503,7 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(
 		isToolNode.value || isModelNode.value,
 		i18n.baseText.bind(i18n),
-		settingsStore.isOtelEnabled,
+		settingsStore.isOtelCustomSpanAttributesEnabled,
 	),
 );
 

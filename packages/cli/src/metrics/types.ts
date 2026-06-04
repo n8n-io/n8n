@@ -5,7 +5,8 @@ export type MetricCategory =
 	| 'logs'
 	| 'queue'
 	| 'workflowExecutionDuration'
-	| 'workflowStatistics';
+	| 'workflowStatistics'
+	| 'executionData';
 
 export type MetricLabel =
 	| 'credentialsType'
