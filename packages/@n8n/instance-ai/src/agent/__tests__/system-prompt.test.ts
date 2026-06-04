@@ -162,6 +162,8 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('Post-build flow');
 			expect(prompt).toContain('verify-built-workflow');
+			expect(prompt).toContain('inspect the persisted workflow');
+			expect(prompt).toContain('Build/save success only means a workflow was saved');
 			expect(prompt).toContain('`verificationReadiness`');
 			expect(prompt).toContain('`setupRequirement`');
 			expect(prompt).toContain('verificationReadiness.status === "ready"');
@@ -249,6 +251,8 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('patch in place');
+			expect(prompt).toContain('inspect each dependent persisted workflow');
+			expect(prompt).toContain('lacks the requested outcome');
 			expect(prompt).toContain('call `build-workflow` directly during this checkpoint turn');
 			expect(prompt).toContain('re-verify');
 			expect(prompt).toContain('complete-checkpoint');
