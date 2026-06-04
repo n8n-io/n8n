@@ -14,7 +14,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { testDb, createWorkflow } from '@n8n/backend-test-utils';
 import { ExecutionRepository, InvalidAuthTokenRepository, type IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { toCredentialContext, toExecutionContext, type IExecutionContext } from 'n8n-workflow';
 

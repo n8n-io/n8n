@@ -402,7 +402,7 @@ describe('GET /resolve-signup-token', () => {
 		);
 
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent.get('/resolve-signup-token').query({ token }).expect(200);
 

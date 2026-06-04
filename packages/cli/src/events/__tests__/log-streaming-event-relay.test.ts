@@ -1,5 +1,5 @@
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
@@ -16,7 +16,7 @@ describe('LogStreamingEventRelay', () => {
 	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('workflow events', () => {

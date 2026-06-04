@@ -17,7 +17,7 @@ describe('createRichInteractionTool', () => {
 	function makeCtx() {
 		return {
 			resumeData: undefined,
-			suspend: jest.fn().mockResolvedValue(undefined as never),
+			suspend: vi.fn().mockResolvedValue(undefined as never),
 			parentTelemetry: undefined,
 		};
 	}

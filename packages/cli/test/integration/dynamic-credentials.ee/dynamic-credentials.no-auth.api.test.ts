@@ -3,7 +3,7 @@ import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-util
 import type { CredentialsEntity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import nock from 'nock';
 
 import * as utils from '../shared/utils';

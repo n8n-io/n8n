@@ -1,5 +1,5 @@
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -10,7 +10,7 @@ describe('WorkflowPublishedDataService', () => {
 	let service: WorkflowPublishedDataService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		service = new WorkflowPublishedDataService(errorReporter, workflowPublishedVersionRepository);
 	});
 

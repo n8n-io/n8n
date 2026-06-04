@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { Logger } from '@n8n/backend-common';
@@ -6,11 +6,11 @@ import type { Logger } from '@n8n/backend-common';
 import { OtelConfig } from '../otel.config';
 import { OtelService } from '../otel.service';
 
-const start = jest.fn();
-const shutdown = jest.fn();
+const start = vi.fn();
+const shutdown = vi.fn();
 
-jest.mock('@opentelemetry/sdk-node', () => ({
-	NodeSDK: jest.fn().mockImplementation(() => ({
+vi.mock('@opentelemetry/sdk-node', () => ({
+	NodeSDK: vi.fn().mockImplementation(() => ({
 		start,
 		shutdown,
 	})),
@@ -23,7 +23,7 @@ describe('OtelService', () => {
 	const service = new OtelService(config, instanceSettings, logger);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		start.mockReset();
 		shutdown.mockReset();
 	});
@@ -43,7 +43,7 @@ describe('OtelService', () => {
 		});
 		const logger = mock<Logger>();
 		const service = new OtelService(config, instanceSettings, logger);
-		const fetchMock = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED'));
+		const fetchMock = vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED'));
 		global.fetch = fetchMock as unknown as typeof fetch;
 
 		service.init();

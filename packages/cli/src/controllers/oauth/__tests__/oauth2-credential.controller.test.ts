@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
@@ -12,9 +12,9 @@ import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 
-jest.mock('axios');
-jest.mock('@n8n/client-oauth2');
-jest.mock('pkce-challenge');
+vi.mock('axios');
+vi.mock('@n8n/client-oauth2');
+vi.mock('pkce-challenge');
 
 describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
@@ -27,11 +27,11 @@ describe('OAuth2CredentialController', () => {
 	const controller = Container.get(OAuth2CredentialController);
 
 	const timestamp = 1706750625678;
-	jest.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ advanceTimers: true });
 
 	beforeEach(() => {
-		jest.setSystemTime(new Date(timestamp));
-		jest.clearAllMocks();
+		vi.setSystemTime(new Date(timestamp));
+		vi.clearAllMocks();
 	});
 
 	describe('getAuthUri', () => {
@@ -89,17 +89,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -151,17 +146,12 @@ describe('OAuth2CredentialController', () => {
 		it('should handle dynamic credential callback successfully', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const oauthTokenData = { access_token: 'new_token', refresh_token: 'refresh_token' };
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: oauthTokenData,
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret', existing: 'data' };
@@ -225,17 +215,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should render error when credentialResolverId is missing for dynamic credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -284,17 +269,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should render error when authorizationHeader is missing for dynamic credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -343,17 +323,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should render error when authorizationHeader does not start with Bearer', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -403,17 +378,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should handle static credential callback when origin is undefined', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -464,17 +434,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should handle PKCE flow', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -523,17 +488,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should include client_id and client_secret in body for PKCE flow with body authentication', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -586,17 +546,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should handle body authentication method', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -647,17 +602,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should handle callback with additional query parameters', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token' },
 			});
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -722,11 +672,11 @@ describe('OAuth2CredentialController', () => {
 			};
 
 			async function setupCallback(jweEnabled: boolean, tokenResponse: Record<string, unknown>) {
-				const mockGetToken = jest.fn().mockResolvedValue({ data: { ...tokenResponse } });
+				const mockGetToken = vi.fn().mockResolvedValue({ data: { ...tokenResponse } });
 				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-				jest
-					.mocked(ClientOAuth2)
-					.mockImplementation(() => ({ code: { getToken: mockGetToken } }) as any);
+				vi.mocked(ClientOAuth2).mockImplementation(function () {
+					return { code: { getToken: mockGetToken } } as any;
+				});
 				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 				oauthService.resolveCredential.mockResolvedValueOnce([
 					mockResolvedCredential,
@@ -833,13 +783,13 @@ describe('OAuth2CredentialController', () => {
 					data: 'encrypted-data',
 				};
 
-				const mockGetToken = jest
+				const mockGetToken = vi
 					.fn()
 					.mockResolvedValue({ data: { access_token: 'jwe-blob', refresh_token: 'r' } });
 				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-				jest
-					.mocked(ClientOAuth2)
-					.mockImplementation(() => ({ code: { getToken: mockGetToken } }) as any);
+				vi.mocked(ClientOAuth2).mockImplementation(function () {
+					return { code: { getToken: mockGetToken } } as any;
+				});
 				const mockResolvedCredential = mock<CredentialsEntity>({ id: '1', type: 'genericOAuth2' });
 				oauthService.resolveCredential.mockResolvedValueOnce([
 					mockResolvedCredential,
@@ -893,15 +843,10 @@ describe('OAuth2CredentialController', () => {
 
 		it('should handle errors and render error page', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockRejectedValue(new Error('Token exchange failed'));
-			jest.mocked(ClientOAuth2).mockImplementation(
-				() =>
-					({
-						code: {
-							getToken: mockGetToken,
-						},
-					}) as any,
-			);
+			const mockGetToken = vi.fn().mockRejectedValue(new Error('Token exchange failed'));
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as any;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {

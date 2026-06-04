@@ -1,6 +1,6 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
@@ -10,16 +10,16 @@ import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory
 // Module mocks
 // ---------------------------------------------------------------------------
 
-const mcpClientCtor = jest.fn();
-jest.mock('@n8n/agents', () => ({
-	McpClient: jest.fn(function (configs: unknown) {
+const mcpClientCtor = vi.fn();
+vi.mock('@n8n/agents', () => ({
+	McpClient: vi.fn(function (configs: unknown) {
 		mcpClientCtor(configs);
-		return { configs, close: jest.fn() };
+		return { configs, close: vi.fn() };
 	}),
 }));
 
-const proxyFetchMock = jest.fn();
-jest.mock('@n8n/ai-utilities', () => ({
+const proxyFetchMock = vi.fn();
+vi.mock('@n8n/ai-utilities', () => ({
 	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
 }));
 

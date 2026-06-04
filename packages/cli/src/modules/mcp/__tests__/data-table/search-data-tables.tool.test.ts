@@ -21,8 +21,8 @@ const createMocks = (overrides?: {
 
 	const dataTableOps = {
 		getManyAndCount: overrides?.error
-			? jest.fn().mockRejectedValue(overrides.error)
-			: jest.fn().mockResolvedValue({ data, count }),
+			? vi.fn().mockRejectedValue(overrides.error)
+			: vi.fn().mockResolvedValue({ data, count }),
 	} as unknown as DataTableUserOperations;
 
 	const telemetry = createTelemetry();

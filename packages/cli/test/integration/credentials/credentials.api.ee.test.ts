@@ -93,7 +93,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('POST /credentials', () => {
@@ -587,7 +587,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
-		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const redactSpy = vi.spyOn(credentialService, 'redact');
 		const credential = randomCredentialPayloadWithOauthTokenData();
 		const savedCredential = await saveCredential(credential, {
 			user: owner,

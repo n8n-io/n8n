@@ -3,16 +3,17 @@ import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 import { createSearchKnowledgeTool } from '../knowledge/tool';
 import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
 import type { JSONSchema7 } from 'json-schema';
+import type { Mocked } from 'vitest';
 
-jest.unmock('node:fs');
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 
 describe('search_knowledge tool', () => {
 	let commandService: AgentKnowledgeCommandService;
-	let knowledgeService: jest.Mocked<
+	let knowledgeService: Mocked<
 		Pick<
 			AgentKnowledgeService,
 			'listWorkspaceFiles' | 'materializeWorkspace' | 'resolveWorkspaceFiles'
@@ -26,12 +27,12 @@ describe('search_knowledge tool', () => {
 	beforeEach(() => {
 		commandService = new AgentKnowledgeCommandService();
 		knowledgeService = {
-			listWorkspaceFiles: jest.fn(),
-			materializeWorkspace: jest.fn(),
+			listWorkspaceFiles: vi.fn(),
+			materializeWorkspace: vi.fn(),
 			// The real method does a metadata-only DB query. For tests we mirror
 			// whatever materializeWorkspace is configured to produce (using a
 			// throwaway dir) so the tool's cache key reflects the same file set.
-			resolveWorkspaceFiles: jest.fn(async (resolveAgentId, resolveProjectId, fileReferences) => {
+			resolveWorkspaceFiles: vi.fn(async (resolveAgentId, resolveProjectId, fileReferences) => {
 				const { mkdtemp, rm } = await import('node:fs/promises');
 				const { tmpdir } = await import('node:os');
 				const nodePath = await import('node:path');

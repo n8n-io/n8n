@@ -1,10 +1,11 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { InsightsSettings } from '../insights.settings';
+import type { Mocked } from 'vitest';
 
 describe('InsightsSettings', () => {
-	let licenseMock: jest.Mocked<LicenseState>;
+	let licenseMock: Mocked<LicenseState>;
 	let insightsSettings: InsightsSettings;
 
 	beforeAll(() => {

@@ -4,7 +4,7 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
 
@@ -154,7 +154,7 @@ describe('ApiKeyAuthStrategy', () => {
 				const recent = new Date();
 				await repo.update({ id: apiKeyId }, { lastUsedAt: recent });
 
-				const updateSpy = jest.spyOn(repo, 'update');
+				const updateSpy = vi.spyOn(repo, 'update');
 
 				const grant = await strategy.buildTokenGrant(apiKey);
 				expect(grant).toBeTruthy();
@@ -170,7 +170,7 @@ describe('ApiKeyAuthStrategy', () => {
 			const [{ apiKey }] = owner.apiKeys;
 
 			const verifyError = new Error('Unexpected JWT error');
-			jest.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
+			vi.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
 				throw verifyError;
 			});
 

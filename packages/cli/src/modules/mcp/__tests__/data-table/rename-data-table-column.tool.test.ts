@@ -7,8 +7,8 @@ import { createTelemetry, user } from './test-utils';
 const createMocks = (overrides?: { error?: Error }) => {
 	const dataTableOps = {
 		renameColumn: overrides?.error
-			? jest.fn().mockRejectedValue(overrides.error)
-			: jest.fn().mockResolvedValue({ id: 'col-1', name: 'full_name', type: 'string' }),
+			? vi.fn().mockRejectedValue(overrides.error)
+			: vi.fn().mockResolvedValue({ id: 'col-1', name: 'full_name', type: 'string' }),
 	} as unknown as DataTableUserOperations;
 	const telemetry = createTelemetry();
 	return { dataTableOps, telemetry };

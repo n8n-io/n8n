@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { mock, type MockProxy } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
 import type { ITaskData, INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
@@ -26,7 +26,7 @@ describe('extractWebhookLastNodeResponse', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('responseDataType: firstEntryJson', () => {

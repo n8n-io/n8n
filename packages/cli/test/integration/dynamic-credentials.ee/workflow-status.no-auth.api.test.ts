@@ -7,7 +7,7 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import nock from 'nock';
@@ -21,6 +21,7 @@ import { Telemetry } from '@/telemetry';
 import { createCredentials } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
+import type { MockInstance } from 'vitest';
 
 mockInstance(Telemetry);
 
@@ -108,11 +109,11 @@ const setupWorkflow = async () => {
 
 describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
-	let isLeaderSpy: jest.SpyInstance;
+	let isLeaderSpy: MockInstance;
 
 	beforeAll(async () => {
 		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers).
-		isLeaderSpy = jest
+		isLeaderSpy = vi
 			.spyOn(Container.get(InstanceSettings), 'isLeader', 'get')
 			.mockReturnValue(true);
 

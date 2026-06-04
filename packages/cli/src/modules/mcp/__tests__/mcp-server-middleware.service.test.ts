@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Request, Response, NextFunction } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
@@ -10,6 +10,7 @@ import { Telemetry } from '@/telemetry';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import type { Mocked } from 'vitest';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
 	const req = mockDeep<Request>();
@@ -24,17 +25,15 @@ const mockReqWith = (authHeader: string | undefined, body?: any) => {
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
-let mcpServerApiKeyService: jest.Mocked<McpServerApiKeyService>;
-let oauthTokenService: jest.Mocked<McpOAuthTokenService>;
-let telemetry: jest.Mocked<Telemetry>;
+let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
+let oauthTokenService: Mocked<McpOAuthTokenService>;
+let telemetry: Mocked<Telemetry>;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
 	beforeAll(() => {
-		mcpServerApiKeyService = mockInstance(
-			McpServerApiKeyService,
-		) as jest.Mocked<McpServerApiKeyService>;
-		oauthTokenService = mockInstance(McpOAuthTokenService) as jest.Mocked<McpOAuthTokenService>;
+		mcpServerApiKeyService = mockInstance(McpServerApiKeyService) as Mocked<McpServerApiKeyService>;
+		oauthTokenService = mockInstance(McpOAuthTokenService) as Mocked<McpOAuthTokenService>;
 		telemetry = mockInstance(Telemetry);
 
 		service = new McpServerMiddlewareService(
@@ -46,7 +45,7 @@ describe('McpServerMiddlewareService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		oauthTokenService.getCanonicalResourceUrl.mockReturnValue(
 			'https://n8n.example.com/mcp-server/http',
 		);
@@ -151,7 +150,7 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
@@ -178,7 +177,7 @@ describe('McpServerMiddlewareService', () => {
 			const req = mockReqWith('Basic sometoken');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
@@ -205,7 +204,7 @@ describe('McpServerMiddlewareService', () => {
 			const req = mockReqWith('Bearer');
 			const res = mockDeep<Response>();
 			res.status.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
@@ -238,7 +237,7 @@ describe('McpServerMiddlewareService', () => {
 
 			const req = mockReqWith(`Bearer ${oauthToken}`);
 			const res = mockDeep<Response>();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
 
@@ -262,7 +261,7 @@ describe('McpServerMiddlewareService', () => {
 
 			const req = mockReqWith(`Bearer ${apiKeyToken}`);
 			const res = mockDeep<Response>();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user, authType: 'api_key' });
 
@@ -288,7 +287,7 @@ describe('McpServerMiddlewareService', () => {
 
 			const req = mockReqWith(`Bearer ${scopedJwt}`);
 			const res = mockDeep<Response>();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			// verifyApiKey returns the acting principal as `user` and keeps the actor field populated.
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: actor, actor });
@@ -317,7 +316,7 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
@@ -344,7 +343,7 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			const middleware = service.getAuthMiddleware();
 
@@ -372,7 +371,7 @@ describe('McpServerMiddlewareService', () => {
 			res.status.mockReturnThis();
 			res.send.mockReturnThis();
 			res.header.mockReturnThis();
-			const next = jest.fn() as NextFunction;
+			const next = vi.fn() as NextFunction;
 
 			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 

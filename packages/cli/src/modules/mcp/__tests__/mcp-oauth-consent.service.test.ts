@@ -1,31 +1,28 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthConsentService } from '../mcp-oauth-consent.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import type { Mocked } from 'vitest';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
+let authorizationCodeService: Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthConsentService;
 
 describe('McpOAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
-		oauthSessionService = mockInstance(OAuthSessionService) as jest.Mocked<OAuthSessionService>;
-		oauthClientRepository = mockInstance(
-			OAuthClientRepository,
-		) as jest.Mocked<OAuthClientRepository>;
-		userConsentRepository = mockInstance(
-			UserConsentRepository,
-		) as jest.Mocked<UserConsentRepository>;
+		oauthSessionService = mockInstance(OAuthSessionService) as Mocked<OAuthSessionService>;
+		oauthClientRepository = mockInstance(OAuthClientRepository) as Mocked<OAuthClientRepository>;
+		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
 
 		service = new McpOAuthConsentService(
@@ -38,7 +35,7 @@ describe('McpOAuthConsentService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getConsentDetails', () => {

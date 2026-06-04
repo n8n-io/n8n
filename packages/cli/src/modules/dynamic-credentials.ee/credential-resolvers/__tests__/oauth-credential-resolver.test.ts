@@ -6,13 +6,14 @@ import type { OAuth2TokenIntrospectionIdentifier } from '../identifiers/oauth2-i
 import type { OAuth2UserInfoIdentifier } from '../identifiers/oauth2-userinfo-identifier';
 import { OAuthCredentialResolver } from '../oauth-credential-resolver';
 import type { DynamicCredentialEntryStorage } from '../storage/dynamic-credential-entry-storage';
+import type { Mocked } from 'vitest';
 
 describe('OAuthCredentialResolver', () => {
-	let mockLogger: jest.Mocked<Logger>;
-	let mockIdentifier: jest.Mocked<OAuth2TokenIntrospectionIdentifier>;
-	let mockIdentifierUserInfo: jest.Mocked<OAuth2UserInfoIdentifier>;
-	let mockStorage: jest.Mocked<DynamicCredentialEntryStorage>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockIdentifier: Mocked<OAuth2TokenIntrospectionIdentifier>;
+	let mockIdentifierUserInfo: Mocked<OAuth2UserInfoIdentifier>;
+	let mockStorage: Mocked<DynamicCredentialEntryStorage>;
+	let mockCipher: Mocked<Cipher>;
 
 	const validOptions = {
 		metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
@@ -24,34 +25,34 @@ describe('OAuthCredentialResolver', () => {
 
 	beforeEach(() => {
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockIdentifier = {
-			resolve: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<OAuth2TokenIntrospectionIdentifier>;
+			resolve: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<OAuth2TokenIntrospectionIdentifier>;
 
 		mockIdentifierUserInfo = {
-			resolve: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<OAuth2UserInfoIdentifier>;
+			resolve: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<OAuth2UserInfoIdentifier>;
 
 		mockStorage = {
-			getCredentialData: jest.fn(),
-			setCredentialData: jest.fn(),
-			deleteCredentialData: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialEntryStorage>;
+			getCredentialData: vi.fn(),
+			setCredentialData: vi.fn(),
+			deleteCredentialData: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialEntryStorage>;
 
 		mockCipher = {
-			encrypt: jest.fn(),
-			decrypt: jest.fn(),
-			encryptV2: jest.fn(),
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encrypt: vi.fn(),
+			decrypt: vi.fn(),
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 	});
 
 	// Run the standard contract tests
@@ -377,7 +378,7 @@ describe('OAuthCredentialResolver', () => {
 				expect(mockIdentifier.validateOptions).toHaveBeenCalledWith(introspectionOptions);
 				expect(mockIdentifierUserInfo.validateOptions).not.toHaveBeenCalled();
 
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 
 				await resolver.validateOptions(userInfoOptions);
 				expect(mockIdentifierUserInfo.validateOptions).toHaveBeenCalledWith(userInfoOptions);

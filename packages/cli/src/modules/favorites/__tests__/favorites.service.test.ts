@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -56,7 +56,7 @@ describe('FavoritesService', () => {
 		folderRepository,
 	);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('getEnrichedFavorites', () => {
 		it('should return empty array when user has no favorites', async () => {

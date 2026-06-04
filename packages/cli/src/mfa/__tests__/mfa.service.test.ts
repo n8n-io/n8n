@@ -1,7 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SettingsRepository, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import type { CacheService } from '@/services/cache/cache.service';
@@ -9,18 +9,19 @@ import type { CacheService } from '@/services/cache/cache.service';
 import { MFA_ENFORCE_SETTING } from '../constants';
 import { MFA_CACHE_KEY, MfaService } from '../mfa.service';
 import type { TOTPService } from '../totp.service';
+import type { Mocked } from 'vitest';
 
 describe('MfaService', () => {
 	let mfaService: MfaService;
-	let mockUserRepository: jest.Mocked<UserRepository>;
-	let mockSettingsRepository: jest.Mocked<SettingsRepository>;
-	let mockCacheService: jest.Mocked<CacheService>;
-	let mockLicense: jest.Mocked<LicenseState>;
-	let mockTotpService: jest.Mocked<TOTPService>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockUserRepository: Mocked<UserRepository>;
+	let mockSettingsRepository: Mocked<SettingsRepository>;
+	let mockCacheService: Mocked<CacheService>;
+	let mockLicense: Mocked<LicenseState>;
+	let mockTotpService: Mocked<TOTPService>;
+	let mockCipher: Mocked<Cipher>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockUserRepository = mock<UserRepository>();
 		mockSettingsRepository = mock<SettingsRepository>();

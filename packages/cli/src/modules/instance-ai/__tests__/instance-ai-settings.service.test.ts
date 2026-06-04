@@ -1,6 +1,6 @@
 import type { InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository, User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
@@ -43,7 +43,7 @@ describe('InstanceAiSettingsService', () => {
 	let service: InstanceAiSettingsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,

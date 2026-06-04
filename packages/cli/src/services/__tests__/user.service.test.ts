@@ -13,7 +13,7 @@ import {
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -51,7 +51,7 @@ describe('UserService', () => {
 	const publicApiKeyService = mock<PublicApiKeyService>();
 	const projectService = mock<ProjectService>();
 	const jwtService = mockInstance(JwtService, {
-		sign: jest.fn().mockReturnValue('mock-jwt-token'),
+		sign: vi.fn().mockReturnValue('mock-jwt-token'),
 	});
 	const userService = new UserService(
 		mock(),
@@ -75,7 +75,7 @@ describe('UserService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Restore default transaction implementation after each test (because some mock it)
 		manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 			const runInTransaction = (arg2 ?? arg1) as (entityManager: EntityManager) => Promise<unknown>;
@@ -295,7 +295,7 @@ describe('UserService', () => {
 
 	describe('changeUserRole', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,

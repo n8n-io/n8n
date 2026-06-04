@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
@@ -23,14 +23,14 @@ const controller = new RoleMappingRuleController(
 
 describe('RoleMappingRuleController', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('list', () => {
 		const req = mock<AuthenticatedRequest>();
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		const query = { skip: 0, take: 10 };
@@ -72,8 +72,8 @@ describe('RoleMappingRuleController', () => {
 	describe('create', () => {
 		const req = mock<AuthenticatedRequest>();
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		const body = {
@@ -119,8 +119,8 @@ describe('RoleMappingRuleController', () => {
 		req.params = { id: ruleId };
 		req.body = patchBody;
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		it('should return 403 if provisioning is not licensed', async () => {
@@ -158,8 +158,8 @@ describe('RoleMappingRuleController', () => {
 		const req = mock<AuthenticatedRequest>();
 		req.params = { id: ruleId };
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		it('should return 403 if provisioning is not licensed', async () => {
@@ -196,8 +196,8 @@ describe('RoleMappingRuleController', () => {
 		const req = mock<AuthenticatedRequest>();
 		req.params = { id: ruleId };
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		it('should return 403 if provisioning is not licensed', async () => {

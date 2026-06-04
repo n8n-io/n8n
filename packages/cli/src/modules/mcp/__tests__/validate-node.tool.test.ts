@@ -5,13 +5,13 @@ import { createValidateNodeTool } from '../tools/workflow-builder/validate-node.
 
 import { Telemetry } from '@/telemetry';
 
-const mockValidateNodeConfig = jest.fn();
+const mockValidateNodeConfig = vi.fn();
 
-jest.mock('@n8n/workflow-sdk', () => ({
+vi.mock('@n8n/workflow-sdk', () => ({
 	validateNodeConfig: (...args: unknown[]) => mockValidateNodeConfig(...args),
 }));
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_VALIDATE_NODE_TOOL: {
 		toolName: 'validate_node_config',
 		displayTitle: 'Validating node config',
@@ -27,8 +27,8 @@ describe('validate-node MCP tool', () => {
 	let telemetry: Telemetry;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		vi.clearAllMocks();
+		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 	});
 
 	const createTool = () => createValidateNodeTool(user, telemetry);

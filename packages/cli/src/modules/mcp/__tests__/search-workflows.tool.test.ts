@@ -15,6 +15,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { v4 as uuid } from 'uuid';
+import type { Mock } from 'vitest';
 
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -31,11 +32,11 @@ describe('search-workflows MCP tool', () => {
 			];
 
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
+				getMany: vi.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
 
 			const telemetry = mockInstance(Telemetry, {
-				track: jest.fn(),
+				track: vi.fn(),
 			});
 
 			const tool = createSearchWorkflowsTool(
@@ -92,7 +93,7 @@ describe('search-workflows MCP tool', () => {
 			];
 
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows, count: 2 }),
+				getMany: vi.fn().mockResolvedValue({ workflows, count: 2 }),
 			});
 			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
 
@@ -128,7 +129,7 @@ describe('search-workflows MCP tool', () => {
 		test('applies provided filters and clamps high limit', async () => {
 			const workflows = [createWorkflow({ id: 'x', activeVersionId: uuid() })];
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
+				getMany: vi.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
 				limit: 500,
@@ -136,7 +137,7 @@ describe('search-workflows MCP tool', () => {
 				projectId: 'proj-1',
 			});
 
-			const [_userArg, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			const [_userArg, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
@@ -147,34 +148,34 @@ describe('search-workflows MCP tool', () => {
 
 		test('defaults to sorting by most recently updated first', async () => {
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+				getMany: vi.fn().mockResolvedValue({ workflows: [], count: 0 }),
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
 
-			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.sortBy).toBe('updatedAt:desc');
 		});
 
 		test('passes through explicit sortBy option', async () => {
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+				getMany: vi.fn().mockResolvedValue({ workflows: [], count: 0 }),
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
 				sortBy: 'name:asc',
 			});
 
-			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.sortBy).toBe('name:asc');
 		});
 
 		test('clamps non-positive limit up to 1', async () => {
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+				getMany: vi.fn().mockResolvedValue({ workflows: [], count: 0 }),
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
 				limit: 0,
 			});
-			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			const [, optionsArg] = (workflowService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.take).toBe(1);
 		});
 
@@ -188,7 +189,7 @@ describe('search-workflows MCP tool', () => {
 				}),
 			];
 			const workflowService = mockInstance(WorkflowService, {
-				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
+				getMany: vi.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
 			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {});
 			expect(result.data[0]).toMatchObject({

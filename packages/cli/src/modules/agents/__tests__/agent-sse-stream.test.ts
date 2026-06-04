@@ -23,9 +23,9 @@ async function collectEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
 // stringifyError — tested through pumpChunks / emitChunkEvents
 // ---------------------------------------------------------------------------
 
-jest.mock('n8n-workflow', () => ({
+vi.mock('n8n-workflow', () => ({
 	LoggerProxy: {
-		warn: jest.fn(),
+		warn: vi.fn(),
 	},
 }));
 

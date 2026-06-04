@@ -1,12 +1,13 @@
 import { paginatedRequest } from '@/utils/strapi-utils';
 
 import { McpRegistryApiClient } from '../mcp-registry-api.client';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('@/utils/strapi-utils', () => ({
-	paginatedRequest: jest.fn(),
+vi.mock('@/utils/strapi-utils', () => ({
+	paginatedRequest: vi.fn(),
 }));
 
-const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof paginatedRequest>;
+const mockPaginatedRequest = paginatedRequest as MockedFunction<typeof paginatedRequest>;
 
 const PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 const STAGING_URL = 'https://api-staging.n8n.io/api/mcp-servers';
@@ -16,7 +17,7 @@ describe('McpRegistryApiClient', () => {
 	const originalEnv = process.env.ENVIRONMENT;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		delete process.env.ENVIRONMENT;
 		client = new McpRegistryApiClient();
 	});

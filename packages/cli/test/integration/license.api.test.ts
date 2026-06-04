@@ -71,7 +71,7 @@ describe('POST /license/activate', () => {
 	});
 
 	test('errors out properly', async () => {
-		License.prototype.activate = jest.fn().mockImplementation(() => {
+		License.prototype.activate = vi.fn().mockImplementation(() => {
 			throw new Error('some fake error');
 		});
 
@@ -95,8 +95,8 @@ describe('POST /license/renew', () => {
 	});
 
 	test('errors out properly', async () => {
-		License.prototype.getPlanName = jest.fn().mockReturnValue('Enterprise');
-		License.prototype.renew = jest.fn().mockImplementation(() => {
+		License.prototype.getPlanName = vi.fn().mockReturnValue('Enterprise');
+		License.prototype.renew = vi.fn().mockImplementation(() => {
 			throw new Error(GENERIC_ERROR_MESSAGE);
 		});
 

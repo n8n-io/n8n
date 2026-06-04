@@ -8,24 +8,25 @@ import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 
 import { sortByQueryMiddleware } from '../sort-by';
+import type { MockInstance } from 'vitest';
 
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;
 	let mockRes: Response;
-	const nextFn: NextFunction = jest.fn();
+	const nextFn: NextFunction = vi.fn();
 	let args: [ListQuery.Request, Response, NextFunction];
 
-	let sendErrorResponse: jest.SpyInstance;
+	let sendErrorResponse: MockInstance;
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
-		mockRes = { status: () => ({ json: jest.fn() }) } as unknown as Response;
+		mockRes = { status: () => ({ json: vi.fn() }) } as unknown as Response;
 		args = [mockReq, mockRes, nextFn];
 
-		sendErrorResponse = jest.spyOn(ResponseHelper, 'sendErrorResponse');
+		sendErrorResponse = vi.spyOn(ResponseHelper, 'sendErrorResponse');
 	});
 
 	describe('Query filter', () => {

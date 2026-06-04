@@ -7,25 +7,26 @@ import type { Response } from 'express';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import * as discoverService from '../discover.service';
+import type { Mocked } from 'vitest';
 
 const handler = require('../discover.handler');
 
 describe('Discover Handler', () => {
-	let mockApiKeyRepository: jest.Mocked<ApiKeyRepository>;
+	let mockApiKeyRepository: Mocked<ApiKeyRepository>;
 	let mockResponse: Partial<Response>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockApiKeyRepository = mockInstance(ApiKeyRepository);
 
-		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === ApiKeyRepository) return mockApiKeyRepository as any;
 			return {} as any;
 		});
 
 		mockResponse = {
-			json: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		};
 	});
 
@@ -85,7 +86,7 @@ describe('Discover Handler', () => {
 			specUrl: '/api/v1/openapi.yml',
 		};
 
-		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue(mockDiscoverResponse);
+		vi.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue(mockDiscoverResponse);
 
 		const req = {
 			headers: { 'x-n8n-api-key': 'valid-key' },
@@ -108,7 +109,7 @@ describe('Discover Handler', () => {
 			scopes: ['tag:list'],
 		} as any);
 
-		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+		vi.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes: ['tag:list'] as any[],
 			resources: {},
 			filters: {},
@@ -133,7 +134,7 @@ describe('Discover Handler', () => {
 		const scopes = ['tag:list'] as any[];
 		mockApiKeyRepository.findOne.mockResolvedValue({ scopes } as any);
 
-		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+		vi.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes,
 			resources: {},
 			filters: {},
@@ -159,7 +160,7 @@ describe('Discover Handler', () => {
 		const scopes = ['workflow:create'] as any[];
 		mockApiKeyRepository.findOne.mockResolvedValue({ scopes } as any);
 
-		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+		vi.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes,
 			resources: {},
 			filters: {},
@@ -186,7 +187,7 @@ describe('Discover Handler', () => {
 			scopes: ['workflow:read'],
 		} as any);
 
-		jest.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+		vi.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
 			scopes: ['workflow:read'] as any[],
 			resources: {},
 			filters: {},

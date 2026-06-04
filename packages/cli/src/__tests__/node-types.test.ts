@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	LoadedClass,
@@ -52,7 +52,7 @@ describe('NodeTypes', () => {
 				displayName: 'TestNode',
 				properties: [],
 			}),
-			supplyData: jest.fn(),
+			supplyData: vi.fn(),
 		},
 	};
 	const toolSupportingNode: LoadedClass<INodeType> = {
@@ -110,7 +110,7 @@ describe('NodeTypes', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
@@ -181,7 +181,7 @@ describe('NodeTypes', () => {
 			expect(result).toBe(declarativeNode.type);
 			expect(result.execute).toBeDefined();
 
-			const runNodeSpy = jest.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
+			const runNodeSpy = vi.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
 			await result.execute!.call(mock());
 			expect(runNodeSpy).toHaveBeenCalled();
 		});
@@ -196,7 +196,7 @@ describe('NodeTypes', () => {
 			expect(result.description.outputs).toEqual(['ai_tool']);
 			expect(result.execute).toBeDefined();
 
-			const runNodeSpy = jest.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
+			const runNodeSpy = vi.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
 			await result.execute!.call(mock());
 			expect(runNodeSpy).toHaveBeenCalled();
 		});

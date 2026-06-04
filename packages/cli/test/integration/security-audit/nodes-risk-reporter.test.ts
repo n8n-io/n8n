@@ -1,7 +1,7 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -35,7 +35,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	await testDb.terminate();
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 });
 
 test('should report risky official nodes', async () => {

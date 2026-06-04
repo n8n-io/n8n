@@ -253,7 +253,7 @@ describe('POST /executions/:id/retry', () => {
 
 	test('should retry an execution', async () => {
 		const mockedExecutionResponse = { status: 'waiting' } as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockResolvedValue(mockedExecutionResponse);
 
@@ -278,7 +278,7 @@ describe('POST /executions/:id/retry', () => {
 	});
 
 	test('should return 409 when trying to retry a queued execution', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new QueuedExecutionRetryError());
 
@@ -296,7 +296,7 @@ describe('POST /executions/:id/retry', () => {
 	});
 
 	test('should return 409 when trying to retry an aborted execution without execution data', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new AbortedExecutionRetryError());
 
@@ -321,7 +321,7 @@ describe('POST /executions/:id/retry', () => {
 	});
 
 	test('should return 409 when trying to retry a finished execution', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new ConflictError('The execution succeeded, so it cannot be retried.'));
 
@@ -724,7 +724,7 @@ describe('POST /executions/:id/stop', () => {
 			finished: false,
 			status: 'canceled',
 		} as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stop')
 			.mockResolvedValue({
 				...mockedStopResponse,
@@ -777,7 +777,7 @@ describe('POST /executions/:id/stop', () => {
 			finished: false,
 			status: 'canceled',
 		} as any;
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stop')
 			.mockResolvedValue({
 				...mockedStopResponse,
@@ -821,7 +821,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should stop multiple running executions', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(3);
 
@@ -847,7 +847,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should stop executions filtered by workflowId', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(2);
 
@@ -873,7 +873,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should stop executions with date filters', async () => {
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
@@ -906,7 +906,7 @@ describe('POST /executions/stop', () => {
 		// Create a workflow for user1
 		const workflow = await createWorkflow({}, user1);
 
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
@@ -923,7 +923,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should return 0 stopped when user has no workflows', async () => {
-		const executionServiceSpy = jest.spyOn(Container.get(ExecutionService), 'stopMany');
+		const executionServiceSpy = vi.spyOn(Container.get(ExecutionService), 'stopMany');
 
 		// Create a new user with no workflows
 		const userWithNoWorkflows = await createMemberWithApiKey();
@@ -945,7 +945,7 @@ describe('POST /executions/stop', () => {
 		// Create some workflows so owner has workflows to access
 		await createManyWorkflows(2, {}, owner);
 
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(5);
 
@@ -962,7 +962,7 @@ describe('POST /executions/stop', () => {
 	test('member should only stop executions in their accessible workflows', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const executionServiceSpy = jest
+		const executionServiceSpy = vi
 			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(2);
 

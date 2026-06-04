@@ -1,11 +1,12 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	OAUTH_BINDING_COOKIE_NAME,
 	OAuthBrowserBindingService,
 } from '@/oauth/oauth-browser-binding.service';
+import type { Mock } from 'vitest';
 
 const makeConfig = (
 	overrides: Partial<{
@@ -26,7 +27,7 @@ const makeConfig = (
 const makeReq = (cookies: Record<string, unknown> = {}) => ({ cookies }) as unknown as Request;
 
 const makeRes = () => {
-	const res = { cookie: jest.fn().mockReturnThis() } as unknown as Response;
+	const res = { cookie: vi.fn().mockReturnThis() } as unknown as Response;
 	return res;
 };
 
@@ -133,7 +134,7 @@ describe('OAuthBrowserBindingService', () => {
 
 			service.ensureBindingCookie(makeReq(), res);
 
-			const [, , options] = (res.cookie as jest.Mock).mock.calls[0];
+			const [, , options] = (res.cookie as Mock).mock.calls[0];
 			expect(options.maxAge).toBeUndefined();
 			expect(options.expires).toBeUndefined();
 		});

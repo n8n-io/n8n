@@ -1,16 +1,16 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { promises as dns } from 'node:dns';
 
 import { DnsResolver } from '../dns-resolver';
 import type { InMemoryDnsCache } from '../in-memory-dns-cache.service';
 
-jest.mock('node:dns', () => ({
+vi.mock('node:dns', () => ({
 	promises: {
-		lookup: jest.fn(),
+		lookup: vi.fn(),
 	},
 }));
 
-const mockedDns = jest.mocked(dns);
+const mockedDns = vi.mocked(dns);
 
 function asLookupResult(value: unknown): Awaited<ReturnType<typeof dns.lookup>> {
 	return value as Awaited<ReturnType<typeof dns.lookup>>;
@@ -18,7 +18,7 @@ function asLookupResult(value: unknown): Awaited<ReturnType<typeof dns.lookup>> 
 
 describe('DnsResolver', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return cached IPs when available', async () => {

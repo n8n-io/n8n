@@ -15,11 +15,12 @@ import {
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { mockInstance } from '@n8n/backend-test-utils';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { RoleService } from '../role.service';
+import type { Mock } from 'vitest';
 
 describe('CredentialsFinderService', () => {
 	const roleService = mockInstance(RoleService);
@@ -34,13 +35,13 @@ describe('CredentialsFinderService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Setup manager mock for global credentials fetching
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		// @ts-ignore
 		credentialsRepository.manager = {
-			find: jest.fn().mockResolvedValue([]),
+			find: vi.fn().mockResolvedValue([]),
 		} as any;
 
 		// Default mock implementation for all tests
@@ -272,7 +273,7 @@ describe('CredentialsFinderService', () => {
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('should allow global owner access to all credentials without role filtering', async () => {
@@ -333,9 +334,7 @@ describe('CredentialsFinderService', () => {
 				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
 			];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
-				mockGlobalCredentials,
-			);
+			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce(mockGlobalCredentials);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
@@ -352,9 +351,7 @@ describe('CredentialsFinderService', () => {
 				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
 			];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
-				mockGlobalCredentials,
-			);
+			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce(mockGlobalCredentials);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:update' as const,
@@ -373,9 +370,7 @@ describe('CredentialsFinderService', () => {
 				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
 			];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
-				mockGlobalCredentials,
-			);
+			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce(mockGlobalCredentials);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
@@ -391,7 +386,7 @@ describe('CredentialsFinderService', () => {
 
 		test('should handle empty global credentials list with read-only access', async () => {
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce([]);
+			(credentialsRepository.manager.find as Mock).mockResolvedValueOnce([]);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
@@ -457,7 +452,7 @@ describe('CredentialsFinderService', () => {
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Reset to default implementation for each test
 			roleService.rolesWithScope.mockImplementation(async (namespace) => {
@@ -558,7 +553,7 @@ describe('CredentialsFinderService', () => {
 			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
 				sharedCredentials,
 			);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([globalCredential]);
+			credentialsRepository.manager.find = vi.fn().mockResolvedValueOnce([globalCredential]);
 
 			const result = await credentialsFinderService.findAllCredentialsForUser(
 				member,
@@ -630,7 +625,7 @@ describe('CredentialsFinderService', () => {
 			});
 
 			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
-			credentialsRepository.manager.find = jest
+			credentialsRepository.manager.find = vi
 				.fn()
 				.mockResolvedValueOnce([globalCredentialWithoutProject, globalCredentialWithProject]);
 
@@ -669,7 +664,7 @@ describe('CredentialsFinderService', () => {
 			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([
 				sharedGlobalCred,
 			]);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([globalCredential]);
+			credentialsRepository.manager.find = vi.fn().mockResolvedValueOnce([globalCredential]);
 
 			const result = await credentialsFinderService.findAllCredentialsForUser(
 				member,
@@ -685,7 +680,7 @@ describe('CredentialsFinderService', () => {
 
 		test('should use transaction manager for fetching global credentials', async () => {
 			const mockTrx = mock<any>();
-			const mockFind = jest.fn().mockResolvedValueOnce([]);
+			const mockFind = vi.fn().mockResolvedValueOnce([]);
 			mockTrx.find = mockFind;
 
 			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
@@ -709,7 +704,7 @@ describe('CredentialsFinderService', () => {
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('should return empty set for empty input', async () => {
@@ -833,7 +828,7 @@ describe('CredentialsFinderService', () => {
 		];
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Reset to default implementation
 			roleService.rolesWithScope.mockImplementation(async (namespace) => {
@@ -933,7 +928,7 @@ describe('CredentialsFinderService', () => {
 		const member = mock<User>({ role: GLOBAL_MEMBER_ROLE, id: 'user123' });
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('should handle empty role results from RoleService', async () => {

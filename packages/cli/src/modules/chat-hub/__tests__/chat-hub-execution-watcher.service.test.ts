@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository, IExecutionResponse } from '@n8n/db';
 import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
@@ -23,8 +23,8 @@ const WORKFLOW_ID = '3qXqnkHzVukVR9Jq';
 const WAITING_MESSAGE_ID = '11111111-1111-4000-8000-000000000007';
 const MOCK_NEW_MESSAGE_ID = 'aaaaaaaa-1111-4000-8000-000000000001';
 
-jest.mock('uuid', () => ({
-	v4: jest.fn(() => MOCK_NEW_MESSAGE_ID),
+vi.mock('uuid', () => ({
+	v4: vi.fn(() => MOCK_NEW_MESSAGE_ID),
 }));
 
 describe('ChatHubExecutionWatcherService', () => {
@@ -55,7 +55,7 @@ describe('ChatHubExecutionWatcherService', () => {
 		}) as ChatHubExecutionContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		service = new ChatHubExecutionWatcherService(
 			logger,

@@ -2,7 +2,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { PassThrough } from 'node:stream';
 
 import { N8nPackagesController } from '../n8n-packages.controller';

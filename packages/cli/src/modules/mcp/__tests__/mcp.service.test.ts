@@ -11,11 +11,12 @@ import {
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('@n8n/mcp-apps/server', () => ({
+vi.mock('@n8n/mcp-apps/server', () => ({
 	WORKFLOW_PREVIEW_APP_URI: 'ui://workflow-preview/workflow-preview.html',
-	registerWorkflowPreviewApp: jest.fn(),
-	registerMcpAppTool: jest.fn(
+	registerWorkflowPreviewApp: vi.fn(),
+	registerMcpAppTool: vi.fn(
 		(server: { registerTool: (...args: unknown[]) => unknown }, name, config, handler) =>
 			server.registerTool(name, config, handler),
 	),
@@ -244,7 +245,7 @@ describe('McpService', () => {
 			it('should attempt to stop active execution', async () => {
 				const executionId = 'exec-active';
 				const deferred = mcpService.createPendingResponse(executionId);
-				(activeExecutions.has as jest.Mock).mockReturnValue(true);
+				(activeExecutions.has as Mock).mockReturnValue(true);
 
 				// Attach error handler to prevent unhandled rejection
 				deferred.promise.catch(() => {});
@@ -293,7 +294,7 @@ describe('McpService', () => {
 
 	describe('resolveMcpAppsVariant', () => {
 		const buildResolutionService = (opts: {
-			postHogClient: jest.Mocked<PostHogClient>;
+			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
 		}) =>
 			new McpService(
@@ -487,7 +488,7 @@ describe('McpService', () => {
 			// the boolean and focus on `getServer`'s tool-registration behavior.
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
-				postHogClient?: jest.Mocked<PostHogClient>;
+				postHogClient?: Mocked<PostHogClient>;
 			};
 
 			const buildService = ({
@@ -528,8 +529,8 @@ describe('McpService', () => {
 				);
 
 			beforeEach(() => {
-				(registerWorkflowPreviewApp as jest.Mock).mockClear();
-				(registerMcpAppTool as jest.Mock).mockClear();
+				(registerWorkflowPreviewApp as Mock).mockClear();
+				(registerMcpAppTool as Mock).mockClear();
 			});
 
 			it('registers the workflow preview app and wires it to the create-workflow tool when `mcpAppsEnabled` is true', async () => {
@@ -543,7 +544,7 @@ describe('McpService', () => {
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
 				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 
-				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
+				const [, toolName, toolConfig] = (registerMcpAppTool as Mock).mock.calls[0];
 				expect(typeof toolName).toBe('string');
 				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
 				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);

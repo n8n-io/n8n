@@ -1,5 +1,5 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
 			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -18,7 +18,7 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	User,
@@ -58,17 +58,17 @@ import type { RoleService } from '@/services/role.service';
 import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@/permissions.ee/check-access');
-jest.mock('@/workflow-execute-additional-data', () => ({
-	getBase: jest.fn().mockResolvedValue({}),
+vi.mock('@/permissions.ee/check-access');
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: vi.fn().mockResolvedValue({}),
 }));
-jest.mock('node:fs/promises', () => ({
-	readFile: jest.fn().mockResolvedValue('[]'),
+vi.mock('node:fs/promises', () => ({
+	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-const userHasScopesMock = jest.mocked(userHasScopes);
+const userHasScopesMock = vi.mocked(userHasScopes);
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -149,7 +149,7 @@ const user = mock<User>({
 });
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,

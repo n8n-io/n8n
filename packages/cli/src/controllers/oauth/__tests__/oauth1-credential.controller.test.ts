@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Response } from 'express';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { EventService } from '@/events/event.service';
@@ -20,13 +20,13 @@ describe('OAuth1CredentialController', () => {
 	const controller = Container.get(OAuth1CredentialController);
 
 	const timestamp = 1706750625678;
-	jest.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ advanceTimers: true });
 
 	const accessTokenData = { oauth_token: 'token', oauth_token_secret: 'secret' };
 
 	beforeEach(() => {
-		jest.setSystemTime(new Date(timestamp));
-		jest.clearAllMocks();
+		vi.setSystemTime(new Date(timestamp));
+		vi.clearAllMocks();
 	});
 
 	describe('getAuthUri', () => {

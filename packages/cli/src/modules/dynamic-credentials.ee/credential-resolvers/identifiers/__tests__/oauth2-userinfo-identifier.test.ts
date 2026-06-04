@@ -1,15 +1,16 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import axios from 'axios';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2UserInfoIdentifier } from '../oauth2-userinfo-identifier';
+import type { Mocked } from 'vitest';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockedAxios = axios as Mocked<typeof axios>;
 
 describe('OAuth2UserInfoIdentifier', () => {
 	const logger = mockLogger();
@@ -39,7 +40,7 @@ describe('OAuth2UserInfoIdentifier', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		identifier = new OAuth2UserInfoIdentifier(logger, cache);
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();

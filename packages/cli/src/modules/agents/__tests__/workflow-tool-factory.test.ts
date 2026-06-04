@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { WorkflowRepository, UserRepository } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';

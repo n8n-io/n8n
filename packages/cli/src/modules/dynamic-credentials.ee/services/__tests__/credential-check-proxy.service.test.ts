@@ -7,6 +7,7 @@ import { CredentialsEntity } from '@n8n/db';
 
 import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
 import { CredentialCheckProxyService } from '../credential-check-proxy.service';
+import type { Mocked } from 'vitest';
 
 const createMockCredentialEntity = (
 	overrides: Partial<CredentialsEntity> = {},
@@ -30,10 +31,10 @@ const createMockCredentialEntity = (
 
 describe('CredentialCheckProxyService', () => {
 	let service: CredentialCheckProxyService;
-	let mockCredentialResolverWorkflowService: jest.Mocked<CredentialResolverWorkflowService>;
-	let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
-	let mockOauthService: jest.Mocked<OauthService>;
-	let mockEnterpriseCredentialsService: jest.Mocked<EnterpriseCredentialsService>;
+	let mockCredentialResolverWorkflowService: Mocked<CredentialResolverWorkflowService>;
+	let mockExecutionContextService: Mocked<ExecutionContextService>;
+	let mockOauthService: Mocked<OauthService>;
+	let mockEnterpriseCredentialsService: Mocked<EnterpriseCredentialsService>;
 
 	const executionContext: IExecutionContext = {
 		version: 1,
@@ -54,24 +55,24 @@ describe('CredentialCheckProxyService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockCredentialResolverWorkflowService = {
-			getWorkflowStatus: jest.fn(),
-		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
+			getWorkflowStatus: vi.fn(),
+		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
 		mockExecutionContextService = {
-			decryptExecutionContext: jest.fn().mockResolvedValue(plaintextContext),
-		} as unknown as jest.Mocked<ExecutionContextService>;
+			decryptExecutionContext: vi.fn().mockResolvedValue(plaintextContext),
+		} as unknown as Mocked<ExecutionContextService>;
 
 		mockOauthService = {
-			generateAOauth2AuthUri: jest.fn(),
-			generateAOauth1AuthUri: jest.fn(),
-		} as unknown as jest.Mocked<OauthService>;
+			generateAOauth2AuthUri: vi.fn(),
+			generateAOauth1AuthUri: vi.fn(),
+		} as unknown as Mocked<OauthService>;
 
 		mockEnterpriseCredentialsService = {
-			getOne: jest.fn(),
-		} as unknown as jest.Mocked<EnterpriseCredentialsService>;
+			getOne: vi.fn(),
+		} as unknown as Mocked<EnterpriseCredentialsService>;
 
 		service = new CredentialCheckProxyService(
 			mockCredentialResolverWorkflowService,

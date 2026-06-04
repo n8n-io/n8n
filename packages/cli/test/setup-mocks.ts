@@ -16,10 +16,10 @@ for (const key of [
 	delete process.env[key];
 }
 
-jest.mock('@sentry/node');
-jest.mock('@n8n_io/license-sdk');
-jest.mock('@/telemetry');
-jest.mock('@/eventbus/message-event-bus/message-event-bus');
-jest.mock('@/push');
-jest.mock('node:fs');
-jest.mock('node:fs/promises');
+vi.mock('@sentry/node');
+vi.mock('@n8n_io/license-sdk');
+vi.mock('@/telemetry');
+vi.mock('@/eventbus/message-event-bus/message-event-bus');
+vi.mock('@/push');
+vi.mock('node:fs');
+vi.mock('node:fs/promises');

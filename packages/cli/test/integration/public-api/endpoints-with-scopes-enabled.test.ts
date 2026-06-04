@@ -17,7 +17,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
 

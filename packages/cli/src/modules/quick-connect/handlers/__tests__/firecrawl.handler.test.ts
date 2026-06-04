@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import nock from 'nock';
 
 import type { FirecrawlQuickConnect } from '../../quick-connect.config';

@@ -1,7 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
@@ -20,7 +20,7 @@ describe('InsightsService', () => {
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
 		mockCompactionService = mock<InsightsCompactionService>();

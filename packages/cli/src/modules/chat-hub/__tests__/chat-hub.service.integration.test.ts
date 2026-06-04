@@ -4,7 +4,7 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -31,6 +31,7 @@ import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.se
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
+import type { MockInstance } from 'vitest';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
@@ -880,22 +881,21 @@ describe('chatHub', () => {
 			let sessionId: string;
 			let messageId: string;
 
-			let spyExecute: jest.SpyInstance<
+			let spyExecute: MockInstance<
 				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
 				Parameters<WorkflowExecutionService['executeChatWorkflow']>
 			>;
 			let finishRun = (_: IRun) => {};
 
 			beforeEach(async () => {
-				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
 
 				// Mock settings repository to allow anthropic provider
-				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
 
-				jest
-					.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				vi.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
 					// eslint-disable-next-line @typescript-eslint/promise-function-async
 					.mockImplementation(() => {
 						return new Promise((r) => {
@@ -1209,20 +1209,19 @@ describe('chatHub', () => {
 			let sessionId: string;
 			let messageId: string;
 
-			let spyExecute: jest.SpyInstance<
+			let spyExecute: MockInstance<
 				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
 				Parameters<WorkflowExecutionService['executeChatWorkflow']>
 			>;
 			let finishRun = (_: IRun) => {};
 
 			beforeEach(async () => {
-				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
-				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
 
-				jest
-					.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				vi.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
 					// eslint-disable-next-line @typescript-eslint/promise-function-async
 					.mockImplementation(() => {
 						return new Promise((r) => {
@@ -1379,18 +1378,18 @@ describe('chatHub', () => {
 			let messageId: string;
 			let watcherService: ChatHubExecutionWatcherService;
 
-			let spyExecute: jest.SpyInstance<
+			let spyExecute: MockInstance<
 				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
 				Parameters<WorkflowExecutionService['executeChatWorkflow']>
 			>;
 
 			beforeEach(() => {
-				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
 
 				// Mock settings repository
-				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
 				watcherService = Container.get(ChatHubExecutionWatcherService);
 
 				sessionId = crypto.randomUUID();
@@ -1888,7 +1887,7 @@ describe('chatHub', () => {
 
 					// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
 					const executionManager = Container.get(ChatExecutionManager);
-					jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
+					vi.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
 						const runData: IRun = {
 							finished: true,
 							status: 'success',
@@ -2246,7 +2245,7 @@ describe('chatHub', () => {
 
 					// Mock ChatExecutionManager.runWorkflow for the resume
 					const executionManager = Container.get(ChatExecutionManager);
-					const runWorkflowSpy = jest
+					const runWorkflowSpy = vi
 						.spyOn(executionManager, 'runWorkflow')
 						.mockImplementationOnce(async () => {
 							const runData: IRun = {
@@ -2411,7 +2410,7 @@ describe('chatHub', () => {
 
 			describe('multi-main mode execution handling', () => {
 				it('should complete when execution finishes with "waiting" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2549,7 +2548,7 @@ describe('chatHub', () => {
 				});
 
 				it('should complete when execution finishes with "success" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2683,7 +2682,7 @@ describe('chatHub', () => {
 				});
 
 				it('should complete when execution finishes with "error" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2798,7 +2797,7 @@ describe('chatHub', () => {
 				});
 
 				it('should handle execution error by saving error to message', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{

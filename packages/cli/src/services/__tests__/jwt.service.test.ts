@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import jwt from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -18,7 +18,7 @@ describe('JwtService', () => {
 	let globalConfig: GlobalConfig;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		globalConfig = mock<GlobalConfig>({
 			userManagement: {
 				jwtSecret: '',
@@ -48,10 +48,10 @@ describe('JwtService', () => {
 		let jwtService: JwtService;
 
 		beforeAll(() => {
-			jest.useFakeTimers().setSystemTime(new Date(iat * 1000));
+			vi.useFakeTimers().setSystemTime(new Date(iat * 1000));
 		});
 
-		afterAll(() => jest.useRealTimers());
+		afterAll(() => vi.useRealTimers());
 
 		beforeEach(() => {
 			globalConfig.userManagement.jwtSecret = jwtSecret;

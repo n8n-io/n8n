@@ -1,13 +1,19 @@
 /**
- * Jest global setup - plain JS to bypass Jest's transform system.
- * Uses createServiceStack from n8n-containers for unified service management.
+ * Vitest global setup for integration/migration tests using testcontainers.
+ * Starts a postgres container via n8n-containers and exposes its connection
+ * details through `process.env`, which the forked test workers inherit.
+ *
+ * Note: Ryuk handles container cleanup on process exit (crashes/timeouts);
+ * `teardown` is the secondary cleanup path.
  */
-const { createServiceStack } = require('n8n-containers');
-const { randomBytes } = require('crypto');
+import { createServiceStack } from 'n8n-containers';
+import { randomBytes } from 'node:crypto';
 
-module.exports = async () => {
+let stack: Awaited<ReturnType<typeof createServiceStack>> | undefined;
+
+export async function setup() {
 	const suffix = randomBytes(4).toString('hex');
-	const stack = await createServiceStack({
+	stack = await createServiceStack({
 		services: ['postgres'],
 		projectName: `n8n-integration-test-${suffix}`,
 	});
@@ -17,7 +23,7 @@ module.exports = async () => {
 		throw new Error('Failed to start postgres container');
 	}
 
-	const container = pgResult.container;
+	const { container } = pgResult;
 
 	process.env.DB_TYPE = 'postgresdb';
 	process.env.DB_POSTGRESDB_HOST = container.getHost();
@@ -29,9 +35,14 @@ module.exports = async () => {
 	process.env.DB_TABLE_PREFIX = 'test_';
 	process.env.DB_POSTGRESDB_POOL_SIZE = '1'; // Detect connection pooling deadlocks
 
-	globalThis.__TESTCONTAINERS_STACK__ = stack;
-
 	console.log(
 		`\n✓ Postgres ready at ${process.env.DB_POSTGRESDB_HOST}:${process.env.DB_POSTGRESDB_PORT}\n`,
 	);
-};
+}
+
+export async function teardown() {
+	if (stack) {
+		await stack.stop();
+		console.log('\n✓ Testcontainers stack stopped\n');
+	}
+}

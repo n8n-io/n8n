@@ -6,7 +6,7 @@ import { sleep } from 'n8n-workflow';
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
 
-jest.mock('ioredis', () => {
+vi.mock('ioredis', () => {
 	const Redis = require('ioredis-mock');
 
 	return function (...args: unknown[]) {
@@ -134,7 +134,7 @@ for (const backend of ['memory', 'redis'] as const) {
 		});
 
 		describe('get', () => {
-			const createRefreshFn = () => jest.fn(async () => await Promise.resolve('refreshValue'));
+			const createRefreshFn = () => vi.fn(async () => await Promise.resolve('refreshValue'));
 
 			test('should fall back to fallback value', async () => {
 				const promise = cacheService.get('key', { fallbackValue: 'fallback' });
@@ -237,7 +237,7 @@ for (const backend of ['memory', 'redis'] as const) {
 
 		describe('getHash', () => {
 			const createHashRefreshFn = () =>
-				jest.fn(async (_key: string) => await Promise.resolve({ field: 'refreshValue' }));
+				vi.fn(async (_key: string) => await Promise.resolve({ field: 'refreshValue' }));
 
 			test('should treat hash as cache hit when key is present', async () => {
 				const refreshFn = createHashRefreshFn();

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { AiService } from '@/services/ai.service';
@@ -27,7 +27,7 @@ describe('AgentsBuilderSettingsService', () => {
 	let service: AgentsBuilderSettingsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		clearEnvKeys();
 		service = new AgentsBuilderSettingsService(
 			logger,
@@ -73,7 +73,7 @@ describe('AgentsBuilderSettingsService', () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			aiService.getClient.mockResolvedValue({
 				getApiProxyBaseUrl: () => 'https://proxy.example/api',
-				getBuilderApiProxyToken: jest
+				getBuilderApiProxyToken: vi
 					.fn()
 					.mockResolvedValue({ accessToken: 'tok', tokenType: 'Bearer' }),
 			} as never);

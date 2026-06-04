@@ -49,12 +49,12 @@ describe('InvitationController', () => {
 	});
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		await userRepository.delete({ role: Not('global:owner') });
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	function invitationToken(inviterId: string, inviteeId: string): string {
@@ -431,7 +431,7 @@ describe('InvitationController', () => {
 						publicApi: false,
 					});
 				} else {
-					fail(`Unexpected event name: ${eventName}`);
+					expect.fail(`Unexpected event name: ${eventName}`);
 				}
 			}
 		});

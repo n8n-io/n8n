@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { CompactEncrypt, generateKeyPair } from 'jose';
 import type { CryptoKey } from 'jose';
 import { UnexpectedError, UserError } from 'n8n-workflow';

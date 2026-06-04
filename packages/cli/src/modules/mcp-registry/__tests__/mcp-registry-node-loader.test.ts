@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, NodeLoader } from 'n8n-workflow';
 
@@ -48,7 +48,7 @@ function createBaseNodeClass() {
 		description: baseDescription,
 		methods: {
 			loadOptions: {
-				getTools: jest.fn(),
+				getTools: vi.fn(),
 			},
 		},
 	};

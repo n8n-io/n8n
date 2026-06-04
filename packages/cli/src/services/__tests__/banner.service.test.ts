@@ -1,5 +1,5 @@
 import type { SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -11,7 +11,7 @@ describe('BannerService', () => {
 	const bannerService = new BannerService(settingsRepo, errorReporter);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('dismissBanner', () => {

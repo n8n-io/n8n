@@ -1,7 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig } from 'n8n-core';
 import { FileTooLargeError, InvalidSourceTypeError, MissingSourceIdError } from 'n8n-core';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -12,7 +12,7 @@ import { v4 as uuid } from 'uuid';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs/promises');
 
 let repository: BinaryDataRepository;
 let dbManager: DatabaseManager;

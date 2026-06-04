@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,9 +9,10 @@ import { join } from 'node:path';
 
 import { MessageEventBusLogWriter } from '../../message-event-bus-writer/message-event-bus-log-writer';
 import { MessageEventBus } from '../message-event-bus';
+import type { MockInstance } from 'vitest';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
-jest.unmock('node:fs');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.unmock('node:fs');
 
 interface BusConfigOverrides {
 	logFullPath?: string;
@@ -39,7 +40,7 @@ const buildGlobalConfig = (overrides: BusConfigOverrides = {}) =>
 describe('MessageEventBus.initialize', () => {
 	let tempDir: string;
 	let logger: ReturnType<typeof mock<Logger>>;
-	let getInstanceSpy: jest.SpyInstance;
+	let getInstanceSpy: MockInstance;
 	const mockedWriter = mock<MessageEventBusLogWriter>();
 	const executionRepository = mock<ExecutionRepository>();
 
@@ -56,7 +57,7 @@ describe('MessageEventBus.initialize', () => {
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), 'message-event-bus-test-'));
 		logger = mock<Logger>();
-		getInstanceSpy = jest
+		getInstanceSpy = vi
 			.spyOn(MessageEventBusLogWriter, 'getInstance')
 			.mockResolvedValue(mockedWriter);
 		mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
@@ -71,7 +72,7 @@ describe('MessageEventBus.initialize', () => {
 	afterEach(() => {
 		getInstanceSpy.mockRestore();
 		rmSync(tempDir, { recursive: true, force: true });
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('path routing', () => {

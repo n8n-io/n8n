@@ -19,7 +19,7 @@ import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createUser } from '@test-integration/db/users';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
@@ -48,8 +48,9 @@ import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/reso
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import type { Mock } from 'vitest';
 
-jest.mock('fast-glob');
+vi.mock('fast-glob');
 
 type Scope = {
 	workflows: WorkflowEntity[];
@@ -228,12 +229,12 @@ describe('SourceControlService', () => {
 
 	let cipher: Cipher;
 
-	const globMock = fastGlob.default as unknown as jest.Mock<
+	const globMock = fastGlob.default as unknown as Mock<
 		Promise<string[]>,
 		[fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]
 	>;
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
-	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
+	const fsWriteFile = vi.spyOn(fsp, 'writeFile');
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -533,7 +534,7 @@ describe('SourceControlService', () => {
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
 		(statusService as any).gitService = gitService;
-		(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValue(new Set<string>());
+		(gitService.getHistoricallyTrackedFiles as Mock).mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
@@ -968,7 +969,7 @@ describe('SourceControlService', () => {
 		describe('remote data tables', () => {
 			describe('project:Admin user', () => {
 				it('should see only tracked remote data tables in correct scope', async () => {
-					(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValueOnce(
+					(gitService.getHistoricallyTrackedFiles as Mock).mockResolvedValueOnce(
 						new Set([
 							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteInScopeDataTable.id}.json`,
 							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteOutOfScopeDataTable.id}.json`,

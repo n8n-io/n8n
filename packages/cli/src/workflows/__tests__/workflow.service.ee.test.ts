@@ -1,5 +1,5 @@
 import type { CredentialsEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

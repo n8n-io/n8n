@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, User } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import type { EventService } from '@/events/event.service';
@@ -24,7 +24,7 @@ describe('EmailAuthHandler', () => {
 	let handler: EmailAuthHandler;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		handler = new EmailAuthHandler(userRepository, passwordUtility, eventService, globalConfig);
 	});
 

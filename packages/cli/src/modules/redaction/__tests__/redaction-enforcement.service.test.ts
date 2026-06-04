@@ -1,5 +1,5 @@
 import type { RedactionFloor } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { WorkflowSettings } from 'n8n-workflow';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';

@@ -15,7 +15,7 @@ import {
 } from '@n8n/db';
 import type { SharedCredentials, SettingsRepository } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -50,7 +50,7 @@ describe('OwnershipService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getWorkflowProjectCached()', () => {
@@ -298,7 +298,7 @@ describe('OwnershipService', () => {
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
+			userRepository.exists.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);

@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute, InstanceSettings } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
@@ -32,10 +32,11 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import type { Mock, MockedClass } from 'vitest';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
-	getAllCached: jest.fn().mockResolvedValue([]),
+	getAllCached: vi.fn().mockResolvedValue([]),
 });
 mockInstance(CredentialsHelper);
 mockInstance(ExternalSecretsProxy);
@@ -45,24 +46,24 @@ mockInstance(ExternalHooks);
 mockInstance(WorkflowHookContextService);
 mockInstance(DataTableProxyService);
 mockInstance(OwnershipService, {
-	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+	getWorkflowProjectCached: vi.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
 });
 
-const processRunExecutionDataMock = jest.fn();
-jest.mock('n8n-core', () => {
-	const original = jest.requireActual('n8n-core');
+const processRunExecutionDataMock = vi.fn();
+vi.mock('n8n-core', async () => {
+	const original = await vi.importActual<typeof import('n8n-core')>('n8n-core');
 
 	// Mock class constructor and prototype methods
 	return {
 		...original,
-		WorkflowExecute: jest.fn().mockImplementation(() => ({
-			processRunExecutionData: processRunExecutionDataMock,
-		})),
+		WorkflowExecute: vi.fn(function () {
+			return { processRunExecutionData: processRunExecutionDataMock };
+		}),
 	};
 });
 
 const logger = mock<Logger>({
-	scoped: jest.fn().mockImplementation(() => logger),
+	scoped: vi.fn().mockImplementation(() => logger),
 });
 
 const executionsConfig = mock<ExecutionsConfig>({
@@ -99,7 +100,7 @@ describe('JobProcessor', () => {
 			executionRepository.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
 					mode,
-					workflowData: { nodes: [] },
+					workflowData: { nodes: [], staticData: {} },
 					data: mock<IRunExecutionData>({
 						executionData: undefined,
 					}),
@@ -139,7 +140,7 @@ describe('JobProcessor', () => {
 		executionRepository.findSingleExecution.mockResolvedValueOnce(
 			mock<IExecutionResponse>({
 				mode: 'manual',
-				workflowData: { nodes: [] },
+				workflowData: { nodes: [], staticData: {} },
 				data: mock<IRunExecutionData>({
 					executionData: undefined,
 				}),
@@ -186,7 +187,7 @@ describe('JobProcessor', () => {
 		const pinData: IPinData = { pinned: [] };
 		const execution = mock<IExecutionResponse>({
 			mode: 'manual',
-			workflowData: { id: 'workflow-id', nodes: [], pinData },
+			workflowData: { id: 'workflow-id', nodes: [], pinData, staticData: {} },
 			data: mock<IRunExecutionData>({
 				resultData: {
 					runData: {
@@ -201,7 +202,7 @@ describe('JobProcessor', () => {
 		executionRepository.findSingleExecution.mockResolvedValue(execution);
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 		const manualExecutionService = mock<ManualExecutionService>();
 		const jobProcessor = new JobProcessor(
@@ -239,7 +240,7 @@ describe('JobProcessor', () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const execution = mock<IExecutionResponse>({
 			mode: 'manual',
-			workflowData: { id: 'workflow-id', nodes: [] },
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
 			data: mock<IRunExecutionData>({
 				resultData: { runData: {} },
 				executionData: undefined,
@@ -248,7 +249,7 @@ describe('JobProcessor', () => {
 		executionRepository.findSingleExecution.mockResolvedValue(execution);
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 		const manualExecutionService = mock<ManualExecutionService>();
 		const jobProcessor = new JobProcessor(
@@ -276,9 +277,7 @@ describe('JobProcessor', () => {
 		async (mode) => {
 			const { WorkflowExecute } = await import('n8n-core');
 			// Type it correctly so we can use mock methods later
-			const MockedWorkflowExecute = WorkflowExecute as jest.MockedClass<
-				typeof ActualWorkflowExecute
-			>;
+			const MockedWorkflowExecute = WorkflowExecute as MockedClass<typeof ActualWorkflowExecute>;
 			MockedWorkflowExecute.mockClear();
 
 			const executionRepository = mock<ExecutionRepository>();
@@ -295,13 +294,13 @@ describe('JobProcessor', () => {
 			executionRepository.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
 					mode,
-					workflowData: { nodes: [] },
+					workflowData: { nodes: [], staticData: {} },
 					data: executionData,
 				}),
 			);
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 			const manualExecutionService = mock<ManualExecutionService>();
 			const jobProcessor = new JobProcessor(
@@ -428,7 +427,7 @@ describe('JobProcessor', () => {
 
 			await jobProcessor.processJob(job);
 
-			const progressCalls = (job.progress as jest.Mock).mock.calls;
+			const progressCalls = (job.progress as Mock).mock.calls;
 			const mcpResponseCalls = progressCalls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
@@ -639,7 +638,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			// Should send mcp-response with tool result
-			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls.length).toBeGreaterThan(0);
@@ -723,7 +722,7 @@ describe('JobProcessor', () => {
 			);
 
 			// Verify no stack trace is exposed
-			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
@@ -768,7 +767,7 @@ describe('JobProcessor', () => {
 			} as unknown as InstanceSettings;
 
 			// Mock nodeTypes to return a node without supplyData but with AiTool output
-			const mockExecuteFn = jest
+			const mockExecuteFn = vi
 				.fn()
 				.mockResolvedValue([[{ json: { result: 'tool response data' } }]]);
 			const nodeTypes = mock<NodeTypes>();
@@ -814,7 +813,7 @@ describe('JobProcessor', () => {
 			expect(mockExecuteFn).toHaveBeenCalled();
 
 			// Should send mcp-response with tool result
-			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls.length).toBeGreaterThan(0);
@@ -867,8 +866,8 @@ describe('JobProcessor', () => {
 			} as unknown as InstanceSettings;
 
 			// Mock a tool that supplyData returns
-			const mockTool = { invoke: jest.fn().mockResolvedValue('supply data tool result') };
-			const mockSupplyData = jest.fn().mockResolvedValue({ response: mockTool });
+			const mockTool = { invoke: vi.fn().mockResolvedValue('supply data tool result') };
+			const mockSupplyData = vi.fn().mockResolvedValue({ response: mockTool });
 
 			const nodeTypes = mock<NodeTypes>();
 			nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -914,7 +913,7 @@ describe('JobProcessor', () => {
 			expect(mockTool.invoke).toHaveBeenCalledWith({ query: 'test' });
 
 			// Should send mcp-response with tool result
-			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+			const mcpResponseCalls = (job.progress as Mock).mock.calls.filter(
 				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
 			);
 			expect(mcpResponseCalls.length).toBeGreaterThan(0);
@@ -946,7 +945,7 @@ describe('JobProcessor', () => {
 					executionData: undefined,
 				}),
 			});
-			// set Date field after construction, else jest-mock-extended serializes them otherwise.
+			// set Date field after construction, else vitest-mock-extended serializes them otherwise.
 			run.waitTill = waitTill;
 
 			const props = jobProcessor['deriveJobFinishedProps'](run, new Date());
@@ -1024,14 +1023,14 @@ describe('JobProcessor', () => {
 
 	describe('project info in log metadata', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 		it('should include project info in log metadata when present in job data', async () => {
 			const executionRepository = mock<ExecutionRepository>();
 			executionRepository.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
-					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
+					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [], staticData: {} },
 					data: mock<IRunExecutionData>({
 						executionData: undefined,
 					}),
@@ -1096,7 +1095,7 @@ describe('JobProcessor', () => {
 			executionRepository.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
-					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
+					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [], staticData: {} },
 					data: mock<IRunExecutionData>({
 						executionData: undefined,
 					}),
@@ -1131,7 +1130,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			// "Worker started" log should not include project fields
-			const startedCall = (logger.info as jest.Mock).mock.calls.find(
+			const startedCall = (logger.info as Mock).mock.calls.find(
 				(call: unknown[]) =>
 					typeof call[0] === 'string' && call[0].includes('Worker started execution'),
 			) as [string, Record<string, unknown>] | undefined;

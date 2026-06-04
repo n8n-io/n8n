@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	ICredentialType,
 } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';

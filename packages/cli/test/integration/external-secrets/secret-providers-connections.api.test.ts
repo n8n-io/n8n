@@ -7,7 +7,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
 
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -786,7 +786,7 @@ describe('Secret Providers Connections API', () => {
 			expect(provider).toBeDefined();
 			expect(provider?.state).toBe('connected');
 
-			const updateSpy = jest.spyOn(provider!, 'update');
+			const updateSpy = vi.spyOn(provider!, 'update');
 
 			const reloadResponse = await ownerAgent
 				.post('/secret-providers/connections/reloadSuccess/reload')

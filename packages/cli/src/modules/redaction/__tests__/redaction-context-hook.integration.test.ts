@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 import { parse as flattedParse, stringify as flattedStringify } from 'flatted';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	ExecutionContextHookRegistry,
 	ExecutionContextService,

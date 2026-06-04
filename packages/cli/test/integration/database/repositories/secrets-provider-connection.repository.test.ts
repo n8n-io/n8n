@@ -8,7 +8,7 @@ import {
 	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
 
 describe('SecretsProviderConnectionRepository', () => {

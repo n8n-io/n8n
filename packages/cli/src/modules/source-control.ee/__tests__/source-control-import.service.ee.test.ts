@@ -22,7 +22,7 @@ import {
 } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
@@ -41,8 +41,9 @@ import { SourceControlContext } from '../types/source-control-context';
 
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+import type { Mock } from 'vitest';
 
-jest.mock('fast-glob');
+vi.mock('fast-glob');
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -106,11 +107,11 @@ describe('SourceControlImportService', () => {
 		redactionEnforcementService,
 	);
 
-	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const globMock = fastGlob.default as unknown as Mock<Promise<string[]>, string[]>;
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 
@@ -2164,7 +2165,7 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalVersionIdsFromDb', () => {
 		const now = new Date();
-		jest.useFakeTimers({ now });
+		vi.useFakeTimers({ now });
 
 		it('should replace invalid updatedAt with current timestamp', async () => {
 			const mockWorkflows = [
@@ -3136,8 +3137,8 @@ describe('SourceControlImportService', () => {
 				] as any);
 
 				const mockTransaction = {
-					save: jest.fn(async (_entity: any, data: any) => data),
-					delete: jest.fn(async () => {}),
+					save: vi.fn(async (_entity: any, data: any) => data),
+					delete: vi.fn(async () => {}),
 				};
 
 				Object.defineProperty(dataTableRepository, 'manager', {
@@ -3145,7 +3146,7 @@ describe('SourceControlImportService', () => {
 						connection: {
 							options: { type: 'sqlite' },
 						},
-						transaction: jest.fn(async (callback: any) => {
+						transaction: vi.fn(async (callback: any) => {
 							return await callback(mockTransaction);
 						}),
 					},
@@ -3445,7 +3446,7 @@ describe('SourceControlImportService', () => {
 					expect.arrayContaining([expect.objectContaining({ id: 'col1', name: 'validName' })]),
 					expect.anything(),
 				);
-				const columns = (dataTableDDLService.createTableWithColumns as jest.Mock).mock.calls[0][1];
+				const columns = (dataTableDDLService.createTableWithColumns as Mock).mock.calls[0][1];
 				expect(columns).not.toEqual(
 					expect.arrayContaining([expect.objectContaining({ id: 'col2' })]),
 				);

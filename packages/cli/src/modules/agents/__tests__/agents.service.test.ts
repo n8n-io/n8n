@@ -5,7 +5,7 @@ import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-type
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
@@ -50,6 +50,7 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
+import type { Mock, Mocked } from 'vitest';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -151,23 +152,23 @@ function mockAgentTaskService(): ReturnType<typeof mock<AgentTaskService>> {
 
 describe('AgentsService', () => {
 	let service: AgentsService;
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentTaskRepository: jest.Mocked<AgentTaskRepository>;
-	let agentTaskSnapshotRepository: jest.Mocked<AgentTaskSnapshotRepository>;
-	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
-	let n8nMemory: jest.Mocked<N8nMemory>;
-	let memoryBackend: jest.Mocked<N8nMemoryImplementation>;
-	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
-	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
-	let publisher: jest.Mocked<Publisher>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentTaskRepository: Mocked<AgentTaskRepository>;
+	let agentTaskSnapshotRepository: Mocked<AgentTaskSnapshotRepository>;
+	let agentHistoryRepository: Mocked<AgentHistoryRepository>;
+	let n8nMemory: Mocked<N8nMemory>;
+	let memoryBackend: Mocked<N8nMemoryImplementation>;
+	let n8nCheckpointStorage: Mocked<N8NCheckpointStorage>;
+	let agentExecutionService: Mocked<AgentExecutionService>;
+	let chatIntegrationService: Mocked<ChatIntegrationService>;
+	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
+	let publisher: Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
-	let globalConfig: jest.Mocked<GlobalConfig>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let globalConfig: Mocked<GlobalConfig>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
 		agentTaskRepository = mock<AgentTaskRepository>();
@@ -371,7 +372,7 @@ describe('AgentsService', () => {
 		} as unknown as AgentJsonConfig;
 
 		beforeEach(() => {
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({ valid: true, config });
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({ valid: true, config });
 			agentRepository.save.mockImplementation(async (a) => a as Agent);
 			mockProjectCredentials([]);
 		});
@@ -422,7 +423,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				skills: [{ type: 'skill', id: 'missing_skill' }],
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithMissingSkill,
 			});
@@ -441,7 +442,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithMissingTask,
 			});
@@ -461,7 +462,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithOneTask,
 			});
@@ -494,7 +495,7 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Updated instructions',
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithoutIntegrations,
 			});
@@ -521,7 +522,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				integrations: [],
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithEmptyIntegrations,
 			});
@@ -533,7 +534,7 @@ describe('AgentsService', () => {
 		});
 
 		it('persists sanitized integrations when legacy schedule entries are present', async () => {
-			jest.spyOn(service, 'validateConfig').mockRestore();
+			vi.spyOn(service, 'validateConfig').mockRestore();
 			mockProjectCredentials(['cred-slack']);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
@@ -572,7 +573,7 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithoutTools,
 			});
@@ -603,7 +604,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				tools: [{ type: 'custom', id: 'tool-1' }],
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configKeepingOnlyToolOne,
 			});
@@ -627,7 +628,7 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithoutSkills,
 			});
@@ -657,7 +658,7 @@ describe('AgentsService', () => {
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Updated instructions',
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: minimalUpdate,
 			});
@@ -677,7 +678,7 @@ describe('AgentsService', () => {
 
 		describe('credential cleanup', () => {
 			beforeEach(() => {
-				jest.spyOn(service, 'validateConfig').mockRestore();
+				vi.spyOn(service, 'validateConfig').mockRestore();
 				agentRepository.save.mockImplementation(async (a) => a as Agent);
 			});
 
@@ -813,7 +814,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				subAgents: { agents: [{ agentId: 'agent-2' }] },
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithSubAgents,
 			});
@@ -836,7 +837,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				subAgents: { agents: [] },
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithEmptySubAgents,
 			});
@@ -864,7 +865,7 @@ describe('AgentsService', () => {
 				instructions: 'Be helpful',
 				subAgents: { agents: [{ agentId: 'agent-2' }] },
 			} as AgentJsonConfig;
-			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+			vi.spyOn(service, 'validateConfig').mockResolvedValue({
 				valid: true,
 				config: configWithSubAgents,
 			});
@@ -877,12 +878,12 @@ describe('AgentsService', () => {
 	});
 
 	describe('publishAgent', () => {
-		let mockTrx: { save: jest.Mock };
-		let mockTransaction: jest.Mock;
+		let mockTrx: { save: Mock };
+		let mockTransaction: Mock;
 
 		beforeEach(() => {
-			mockTrx = { save: jest.fn() };
-			mockTransaction = jest.fn(
+			mockTrx = { save: vi.fn() };
+			mockTransaction = vi.fn(
 				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
 			);
 			Object.defineProperty(agentRepository, 'manager', {
@@ -974,7 +975,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentHistoryRepository.saveVersion.mockResolvedValue(makeAgentHistory());
 			const taskRepo = {
-				findBy: jest.fn().mockResolvedValue([
+				findBy: vi.fn().mockResolvedValue([
 					{
 						id: 'task-1',
 						name: 'Daily summary',
@@ -983,7 +984,7 @@ describe('AgentsService', () => {
 					},
 				]),
 			};
-			(mockTrx as typeof mockTrx & { getRepository: jest.Mock }).getRepository = jest
+			(mockTrx as typeof mockTrx & { getRepository: Mock }).getRepository = vi
 				.fn()
 				.mockReturnValue(taskRepo);
 
@@ -1261,13 +1262,13 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			const reconstructSpy = jest
+			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			const reconstructSpy = vi
 				.spyOn(service as never, 'reconstructFromConfig')
 				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
-			jest
-				.spyOn(service as never, 'streamChatResponse')
-				.mockImplementation(async function* () {} as never);
+			vi.spyOn(service as never, 'streamChatResponse').mockImplementation(
+				async function* () {} as never,
+			);
 
 			await service
 				.executeForChatPublished({
@@ -1300,11 +1301,12 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			jest
-				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
-			const streamSpy = jest
+			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: {},
+				toolRegistry: {},
+			} as never);
+			const streamSpy = vi
 				.spyOn(service as never, 'streamChatResponse')
 				.mockImplementation(async function* () {} as never);
 
@@ -1335,11 +1337,12 @@ describe('AgentsService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			jest
-				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
-			const streamSpy = jest
+			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: {},
+				toolRegistry: {},
+			} as never);
+			const streamSpy = vi
 				.spyOn(service as never, 'streamChatResponse')
 				.mockImplementation(async function* () {} as never);
 
@@ -1367,11 +1370,12 @@ describe('AgentsService', () => {
 			const agent = makeAgent({ schema });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			jest
-				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
-			const streamSpy = jest
+			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: {},
+				toolRegistry: {},
+			} as never);
+			const streamSpy = vi
 				.spyOn(service as never, 'streamChatResponse')
 				.mockImplementation(async function* () {} as never);
 
@@ -1407,14 +1411,14 @@ describe('AgentsService', () => {
 
 			const toolNames: string[] = [];
 			const runtimeAgent = {
-				tool: jest.fn((tool: { name?: string } | Array<{ name?: string }>) => {
+				tool: vi.fn((tool: { name?: string } | Array<{ name?: string }>) => {
 					for (const item of Array.isArray(tool) ? tool : [tool]) {
 						if (item.name) toolNames.push(item.name);
 					}
 				}),
-				on: jest.fn(),
-				hasCheckpointStorage: jest.fn().mockReturnValue(true),
-				checkpoint: jest.fn(),
+				on: vi.fn(),
+				hasCheckpointStorage: vi.fn().mockReturnValue(true),
+				checkpoint: vi.fn(),
 			};
 
 			const reconstructionService = makeRuntimeReconstructionService();
@@ -1486,7 +1490,7 @@ describe('AgentsService', () => {
 		it('yields max-iterations text chunks before the finish chunk when finishReason is length', async () => {
 			const agentInstance = {
 				name: 'test',
-				stream: jest.fn().mockResolvedValue({
+				stream: vi.fn().mockResolvedValue({
 					runId: 'run-1',
 					stream: makeStream([{ type: 'finish', finishReason: 'max-iterations' }]),
 				}),
@@ -1516,7 +1520,7 @@ describe('AgentsService', () => {
 		it('does not yield max-iterations chunks when finishReason is not length', async () => {
 			const agentInstance = {
 				name: 'test',
-				stream: jest.fn().mockResolvedValue({
+				stream: vi.fn().mockResolvedValue({
 					runId: 'run-1',
 					stream: makeStream([{ type: 'finish', finishReason: 'stop' }]),
 				}),
@@ -1557,18 +1561,18 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			Container.set(CredentialsService, mock<CredentialsService>());
 
-			const releaseLock = jest.fn();
-			const stream = jest.fn().mockResolvedValue({
+			const releaseLock = vi.fn();
+			const stream = vi.fn().mockResolvedValue({
 				stream: {
 					getReader: () => ({
-						read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+						read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
 						releaseLock,
 					}),
 				},
 			});
-			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+			vi.spyOn(service as never, 'compileIsolated').mockResolvedValue({
 				ok: true,
-				agent: { name: 'Test Agent', stream, close: jest.fn().mockResolvedValue(undefined) },
+				agent: { name: 'Test Agent', stream, close: vi.fn().mockResolvedValue(undefined) },
 			} as never);
 
 			await service.executeForWorkflow(
@@ -1603,15 +1607,15 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			Container.set(CredentialsService, mock<CredentialsService>());
 
-			const stream = jest.fn().mockResolvedValue({
+			const stream = vi.fn().mockResolvedValue({
 				stream: {
 					getReader: () => ({
-						read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
-						releaseLock: jest.fn(),
+						read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock: vi.fn(),
 					}),
 				},
 			});
-			jest.spyOn(service as never, 'compileIsolated').mockResolvedValue({
+			vi.spyOn(service as never, 'compileIsolated').mockResolvedValue({
 				ok: true,
 				agent: { name: 'Test Agent', stream },
 			} as never);
@@ -1641,12 +1645,12 @@ describe('AgentsService', () => {
 	});
 
 	describe('unpublishAgent', () => {
-		let mockTrx: { save: jest.Mock };
-		let mockTransaction: jest.Mock;
+		let mockTrx: { save: Mock };
+		let mockTransaction: Mock;
 
 		beforeEach(() => {
-			mockTrx = { save: jest.fn() };
-			mockTransaction = jest.fn(
+			mockTrx = { save: vi.fn() };
+			mockTransaction = vi.fn(
 				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
 			);
 			Object.defineProperty(agentRepository, 'manager', {
@@ -1709,19 +1713,19 @@ describe('AgentsService', () => {
 	});
 
 	describe('revertToPublishedAgent', () => {
-		let mockTrx: { save: jest.Mock; getRepository: jest.Mock };
-		let mockTransaction: jest.Mock;
-		let taskRepo: { findBy: jest.Mock; delete: jest.Mock; update: jest.Mock; insert: jest.Mock };
+		let mockTrx: { save: Mock; getRepository: Mock };
+		let mockTransaction: Mock;
+		let taskRepo: { findBy: Mock; delete: Mock; update: Mock; insert: Mock };
 
 		beforeEach(() => {
 			taskRepo = {
-				findBy: jest.fn().mockResolvedValue([]),
-				delete: jest.fn(),
-				update: jest.fn(),
-				insert: jest.fn(),
+				findBy: vi.fn().mockResolvedValue([]),
+				delete: vi.fn(),
+				update: vi.fn(),
+				insert: vi.fn(),
 			};
-			mockTrx = { save: jest.fn(), getRepository: jest.fn().mockReturnValue(taskRepo) };
-			mockTransaction = jest.fn(
+			mockTrx = { save: vi.fn(), getRepository: vi.fn().mockReturnValue(taskRepo) };
+			mockTransaction = vi.fn(
 				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
 			);
 			Object.defineProperty(agentRepository, 'manager', {
@@ -1833,12 +1837,12 @@ describe('AgentsService', () => {
 	});
 
 	describe('revertToVersion', () => {
-		let mockTrx: { save: jest.Mock };
-		let mockTransaction: jest.Mock;
+		let mockTrx: { save: Mock };
+		let mockTransaction: Mock;
 
 		beforeEach(() => {
-			mockTrx = { save: jest.fn() };
-			mockTransaction = jest.fn(
+			mockTrx = { save: vi.fn() };
+			mockTransaction = vi.fn(
 				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
 			);
 			Object.defineProperty(agentRepository, 'manager', {
@@ -2197,8 +2201,8 @@ describe('AgentsService', () => {
 	});
 
 	describe('validateAgentIsRunnable', () => {
-		const credentialProvider = mock<{ list: jest.Mock }>({
-			list: jest.fn().mockResolvedValue([]),
+		const credentialProvider = mock<{ list: Mock }>({
+			list: vi.fn().mockResolvedValue([]),
 		});
 
 		beforeEach(() => {
@@ -2575,20 +2579,21 @@ describe('AgentsService', () => {
 
 			const mockAgentInstance = {
 				name: 'Test Agent',
-				resume: jest.fn().mockResolvedValue({
+				resume: vi.fn().mockResolvedValue({
 					stream: {
 						getReader: () => ({
-							read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
-							releaseLock: jest.fn(),
+							read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+							releaseLock: vi.fn(),
 						}),
 					},
 				}),
 			};
 
-			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			jest
-				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({ agent: mockAgentInstance, toolRegistry: {} } as never);
+			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: mockAgentInstance,
+				toolRegistry: {},
+			} as never);
 
 			await service
 				.resumeForChat({ agentId, projectId, runId, toolCallId, resumeData: { value: 'yes' } })
@@ -2633,20 +2638,21 @@ describe('AgentsService', () => {
 
 			const mockAgentInstance = {
 				name: 'Test Agent',
-				resume: jest.fn().mockResolvedValue({
+				resume: vi.fn().mockResolvedValue({
 					stream: {
 						getReader: () => ({
-							read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
-							releaseLock: jest.fn(),
+							read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+							releaseLock: vi.fn(),
 						}),
 					},
 				}),
 			};
 
-			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
-			jest
-				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({ agent: mockAgentInstance, toolRegistry: {} } as never);
+			vi.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: mockAgentInstance,
+				toolRegistry: {},
+			} as never);
 
 			await service
 				.resumeForChat({ agentId, projectId, runId, toolCallId, resumeData: { value: 'yes' } })
@@ -2727,10 +2733,10 @@ describe('AgentsService', () => {
 
 	describe('runtime cache invalidation across mains', () => {
 		beforeEach(() => {
-			const mockTrx = { save: jest.fn() };
+			const mockTrx = { save: vi.fn() };
 			Object.defineProperty(agentRepository, 'manager', {
 				value: {
-					transaction: jest.fn(
+					transaction: vi.fn(
 						async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
 					),
 				},

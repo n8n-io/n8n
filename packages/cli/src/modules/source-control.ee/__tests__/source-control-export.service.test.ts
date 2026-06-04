@@ -17,7 +17,7 @@ import type {
 } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { captor, mock } from 'jest-mock-extended';
+import { captor, mock } from 'vitest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
@@ -61,11 +61,11 @@ describe('SourceControlExportService', () => {
 		dataTableRepository,
 	);
 
-	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const fsWriteFile = vi.spyOn(fsp, 'writeFile');
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 

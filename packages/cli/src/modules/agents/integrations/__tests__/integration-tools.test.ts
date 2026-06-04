@@ -1,5 +1,5 @@
 import { zodToJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
 import {
@@ -32,7 +32,7 @@ function makeInterruptibleCtx(
 ): InterruptibleToolContext {
 	return {
 		resumeData: undefined,
-		suspend: jest.fn().mockResolvedValue(undefined as never),
+		suspend: vi.fn().mockResolvedValue(undefined as never),
 		runId: 'run-1',
 		toolCallId: 'tool-1',
 		persistence: { threadId: 'thread-1', resourceId: 'resource-1' },

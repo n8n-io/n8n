@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType, LoadedClass } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ describe('CredentialTypes', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getByName', () => {

@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -29,12 +29,13 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
+import type { Mocked } from 'vitest';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
-jest.mock('axios');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.mock('axios');
 
 const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = axios as Mocked<typeof axios>;
 mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
 mockInstance(Publisher);
@@ -104,7 +105,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	jest.mock('@/eventbus/message-event-bus/message-event-bus');
+	vi.mock('@/eventbus/message-event-bus/message-event-bus');
 	await eventBus?.close();
 });
 
@@ -248,7 +249,7 @@ test('should anonymize audit message to syslog ', async () => {
 
 	syslogDestination.enabled = true;
 
-	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
+	const mockedSyslogClientLog = vi.spyOn(syslogDestination.client, 'log');
 	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
 		const o = JSON.parse(m);
 		expect(o).toHaveProperty('payload');
@@ -342,7 +343,7 @@ test('should send message to sentry ', async () => {
 
 	sentryDestination.enabled = true;
 
-	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
+	const mockedSentryCaptureMessage = vi.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
 		eventBus.confirmMessageDelivered(testMessage, {
 			id: sentryDestination.id,

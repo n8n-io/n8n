@@ -124,7 +124,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('POST /workflows', () => {
@@ -3235,7 +3235,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should update workflow without updating its active version', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -3371,7 +3371,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should not deactivate workflow when updating with active: false', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -3784,7 +3784,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 describe('POST /workflows/:workflowId/activate', () => {
 	test('should activate workflow with provided versionId', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -3817,7 +3817,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	test('should send activated event', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
@@ -4059,7 +4059,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Activation failed'));
 
@@ -4103,7 +4103,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		await authOwnerAgent
@@ -4122,7 +4122,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 	test('should emit only activation event when activating inactive workflow', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4147,7 +4147,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4189,11 +4189,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4227,11 +4227,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4273,7 +4273,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -4296,7 +4296,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should send deactivated event', async () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
@@ -4314,7 +4314,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	});
 
 	test('should handle deactivating already inactive workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);

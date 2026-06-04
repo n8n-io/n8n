@@ -1,16 +1,17 @@
 import type { ApiKeyRepository, UserRepository, User, TokenGrant } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { JwtService } from '@/services/jwt.service';
 
 import type { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
+import type { Mocked } from 'vitest';
 
 const makeUser = (id: string): User => ({ ...mock<User>(), id });
 
 describe('McpServerApiKeyService', () => {
-	let authStrategyRegistry: jest.Mocked<AuthStrategyRegistry>;
+	let authStrategyRegistry: Mocked<AuthStrategyRegistry>;
 	let service: McpServerApiKeyService;
 
 	beforeEach(() => {

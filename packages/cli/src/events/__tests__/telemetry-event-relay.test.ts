@@ -13,7 +13,7 @@ import {
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
@@ -38,7 +38,7 @@ const flushPromises = async () => await new Promise((resolve) => setImmediate(re
 
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>({
-		sanitizeTelemetryProperties: jest.fn((data) => data),
+		sanitizeTelemetryProperties: vi.fn((data) => data),
 	});
 	const license = mock<License>();
 	const licenseState = mock<LicenseState>();
@@ -140,7 +140,7 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = true;
 		const otelConfig = Container.get(OtelConfig);
 		otelConfig.enabled = false;
@@ -166,7 +166,7 @@ describe('TelemetryEventRelay', () => {
 				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
-			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
+			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
 			await telemetryEventRelay.init();
 
@@ -192,7 +192,7 @@ describe('TelemetryEventRelay', () => {
 				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
-			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
+			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
 			await telemetryEventRelay.init();
 
@@ -1261,7 +1261,14 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+					staticData: {},
+				}),
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
@@ -1374,7 +1381,7 @@ describe('TelemetryEventRelay', () => {
 				evaluationTriggerNodeNames: [],
 			};
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
 
 			const event: RelayEventMap['workflow-created'] = {
 				user: {
@@ -1384,7 +1391,14 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+					staticData: {},
+				}),
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
@@ -2316,7 +2330,7 @@ describe('TelemetryEventRelay', () => {
 
 	describe('workflow post execute events', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		const mockWorkflowBase = mock<IWorkflowBase>({
@@ -2463,13 +2477,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2559,13 +2571,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2665,13 +2675,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2766,13 +2774,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2876,9 +2882,9 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as IRun;
 
-			jest
-				.spyOn(TelemetryHelpers, 'userInInstanceRanOutOfFreeAiCredits')
-				.mockImplementation(() => true);
+			vi.spyOn(TelemetryHelpers, 'userInInstanceRanOutOfFreeAiCredits').mockImplementation(
+				() => true,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,

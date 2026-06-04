@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
@@ -21,7 +21,7 @@ describe('ChatStreamService', () => {
 	let chatStreamService: ChatStreamService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		Object.defineProperty(instanceSettings, 'isMultiMain', { value: false, configurable: true });
 		executionsConfig.mode = 'regular';

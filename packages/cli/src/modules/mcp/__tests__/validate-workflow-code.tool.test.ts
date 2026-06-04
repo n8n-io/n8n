@@ -7,13 +7,17 @@ import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/valida
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 
-const mockParseAndValidate = jest.fn();
-const mockStripImportStatements = jest.fn((code: string) => code);
+// Mocks referenced inside vi.mock factories must come from vi.hoisted.
+const { mockParseAndValidate, mockStripImportStatements } = vi.hoisted(() => ({
+	mockParseAndValidate: vi.fn(),
+	mockStripImportStatements: vi.fn((code: string) => code),
+}));
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		parseAndValidate: mockParseAndValidate,
-	})),
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	// `new ParseValidateHandler()` — use a constructable function, not an arrow.
+	ParseValidateHandler: vi.fn(function () {
+		return { parseAndValidate: mockParseAndValidate };
+	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
 	CODE_BUILDER_VALIDATE_TOOL: {
 		toolName: 'validate_workflow_code',
@@ -40,10 +44,10 @@ describe('validate-workflow-code MCP tool', () => {
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {

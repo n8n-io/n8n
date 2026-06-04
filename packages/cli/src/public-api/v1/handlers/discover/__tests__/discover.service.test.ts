@@ -5,30 +5,28 @@ import * as middlewares from '@/public-api/v1/shared/middlewares/global.middlewa
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection
 const createMockMiddleware = (_req: unknown, _res: unknown, next: unknown) => (next as Function)();
-jest.spyOn(middlewares, 'publicApiScope').mockImplementation((scope: ApiKeyScope) => {
+vi.spyOn(middlewares, 'publicApiScope').mockImplementation((scope: ApiKeyScope) => {
 	return Object.assign(
 		(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
 		{ __apiKeyScope: scope },
 	) as middlewares.ScopeTaggedMiddleware;
 });
-jest
-	.spyOn(middlewares, 'apiKeyHasScopeWithGlobalScopeFallback')
-	.mockImplementation(
-		(config: { scope: ApiKeyScope } | { apiKeyScope: ApiKeyScope; globalScope: unknown }) => {
-			const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-			return Object.assign(
-				(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
-				{ __apiKeyScope: scope },
-			) as middlewares.ScopeTaggedMiddleware;
-		},
-	);
+vi.spyOn(middlewares, 'apiKeyHasScopeWithGlobalScopeFallback').mockImplementation(
+	(config: { scope: ApiKeyScope } | { apiKeyScope: ApiKeyScope; globalScope: unknown }) => {
+		const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+		return Object.assign(
+			(req: unknown, res: unknown, next: unknown) => createMockMiddleware(req, res, next),
+			{ __apiKeyScope: scope },
+		) as middlewares.ScopeTaggedMiddleware;
+	},
+);
 
 // Also mock other middleware that handlers import
-jest.spyOn(middlewares, 'projectScope').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'validCursor').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'globalScope').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'validLicenseWithUserQuota').mockReturnValue(createMockMiddleware as any);
-jest.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'projectScope').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'validCursor').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'globalScope').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'validLicenseWithUserQuota').mockReturnValue(createMockMiddleware as any);
+vi.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any);
 
 import { buildDiscoverResponse, _resetCache } from '../discover.service';
 

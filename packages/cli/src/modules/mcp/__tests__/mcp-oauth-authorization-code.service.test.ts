@@ -1,11 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
+import type { Mocked } from 'vitest';
 
-let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
+let authorizationCodeRepository: Mocked<AuthorizationCodeRepository>;
 let service: McpOAuthAuthorizationCodeService;
 
 describe('McpOAuthAuthorizationCodeService', () => {
@@ -15,7 +16,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createAuthorizationCode', () => {

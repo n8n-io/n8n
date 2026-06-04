@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher, Class } from 'n8n-core';
 
 export const mockEntityManager = (entityClass: Class) => {

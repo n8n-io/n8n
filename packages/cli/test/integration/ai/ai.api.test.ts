@@ -8,7 +8,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';

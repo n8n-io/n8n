@@ -1,7 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { EventService } from '@/events/event.service';
@@ -37,7 +37,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock(),
 				mock<EventService>(),
 			);
-			const startCompacting = jest.spyOn(compactingService, 'startCompacting');
+			const startCompacting = vi.spyOn(compactingService, 'startCompacting');
 
 			compactingService.init();
 
@@ -54,7 +54,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock(),
 				mock<EventService>(),
 			);
-			const startCompacting = jest.spyOn(compactingService, 'startCompacting');
+			const startCompacting = vi.spyOn(compactingService, 'startCompacting');
 
 			compactingService.init();
 
@@ -74,12 +74,12 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock<EventService>(),
 			);
 
-			const scheduleOptimizationSpy = jest
+			const scheduleOptimizationSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(compactingService, 'scheduleOptimization')
 				.mockImplementation();
 
-			const scheduleTrimmingSpy = jest
+			const scheduleTrimmingSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(compactingService, 'scheduleTrimming')
 				.mockImplementation();
@@ -102,12 +102,12 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		jest
+		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'compactHistories')
 			.mockImplementation();
 
-		const trimLongRunningHistoriesSpy = jest
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories');
 
@@ -127,11 +127,11 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		jest
+		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation();
-		const trimLongRunningHistoriesSpy = jest
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation();
@@ -152,11 +152,11 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		const optimizeHistoriesSpy = jest
+		const optimizeHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation();
-		const trimLongRunningHistoriesSpy = jest
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation();
@@ -178,11 +178,11 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		const optimizeHistoriesSpy = jest
+		const optimizeHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation();
-		const trimLongRunningHistoriesSpy = jest
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation();

@@ -22,7 +22,7 @@ describe('ModuleSettingsController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('GET /module-settings', () => {

@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
@@ -9,19 +9,26 @@ import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
 import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 
-const spawnMock = jest.fn(() =>
-	mock<ChildProcess>({
-		stdout: {
-			pipe: jest.fn(),
-		},
-		stderr: {
-			pipe: jest.fn(),
-		},
-	}),
-);
-require('child_process').spawn = spawnMock;
+// Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
+// `require('child_process').spawn` does not intercept it — mock the module instead.
+const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
+
+vi.mock('node:child_process', async () => ({
+	...(await vi.importActual<typeof import('node:child_process')>('node:child_process')),
+	spawn: spawnMock,
+}));
 
 describe('TaskRunnerProcess', () => {
+	beforeEach(() => {
+		// restoreMocks resets the implementation before each test.
+		spawnMock.mockReturnValue(
+			mock<ChildProcess>({
+				stdout: { pipe: vi.fn() },
+				stderr: { pipe: vi.fn() },
+			}),
+		);
+	});
+
 	const logger = mockInstance(Logger);
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
@@ -80,7 +87,7 @@ describe('TaskRunnerProcess', () => {
 			'GENERIC_TIMEZONE',
 			'N8N_RUNNERS_INSECURE_MODE',
 		])('should propagate %s from env as is', async (envVar) => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			process.env[envVar] = 'custom value';
 
 			await taskRunnerProcess.start();
@@ -95,7 +102,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should pass NODE_OPTIONS env if maxOldSpaceSize is configured', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.maxOldSpaceSize = '1024';
 
 			await taskRunnerProcess.start();
@@ -110,7 +117,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should not pass NODE_OPTIONS env if maxOldSpaceSize is not configured', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.maxOldSpaceSize = '';
 
 			await taskRunnerProcess.start();
@@ -121,7 +128,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should build env with a null prototype', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 
 			await taskRunnerProcess.start();
 
@@ -131,7 +138,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should not inherit env keys from Object.prototype', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.maxOldSpaceSize = '';
 			const proto = Object.prototype as Record<string, unknown>;
 			proto.NODE_OPTIONS = '--inherited-value';
@@ -148,7 +155,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should pass N8N_RUNNERS_TASK_TIMEOUT if set', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.taskTimeout = 123;
 
 			await taskRunnerProcess.start();
@@ -163,7 +170,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should pass N8N_RUNNERS_HEARTBEAT_INTERVAL if set', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.heartbeatInterval = 456;
 
 			await taskRunnerProcess.start();
@@ -178,7 +185,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('on secure mode, should use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 
 			await taskRunnerProcess.start();
 
@@ -190,7 +197,7 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('on insecure mode, should not use --disallow-code-generation-from-strings and --disable-proto=delete flags', async () => {
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.insecureMode = true;
 			const insecureTaskRunnerProcess = new JsTaskRunnerProcess(
 				logger,

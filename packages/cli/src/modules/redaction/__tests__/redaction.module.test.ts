@@ -1,20 +1,21 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 
 import { ExecutionRedactionService } from '../executions/execution-redaction.service';
 import { RedactionModule } from '../redaction.module';
+import type { Mocked } from 'vitest';
 
 describe('RedactionModule', () => {
 	let module: RedactionModule;
-	let executionRedactionService: jest.Mocked<ExecutionRedactionService>;
-	let executionRedactionServiceProxy: jest.Mocked<ExecutionRedactionServiceProxy>;
+	let executionRedactionService: Mocked<ExecutionRedactionService>;
+	let executionRedactionServiceProxy: Mocked<ExecutionRedactionServiceProxy>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 
 		const logger = mockInstance(Logger);

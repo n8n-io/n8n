@@ -36,16 +36,16 @@ describe('Credential rewrite + wire server round-trip with root token', () => {
 
 	function makeInner(credentials: ICredentialDataDecryptedObject): ICredentialsHelper {
 		return {
-			getParentTypes: jest.fn().mockReturnValue([]),
-			authenticate: jest.fn(),
-			preAuthentication: jest.fn(),
-			runPreAuthentication: jest.fn(),
-			getCredentials: jest.fn(),
-			getDecrypted: jest.fn().mockResolvedValue(credentials),
-			updateCredentials: jest.fn(),
-			updateCredentialsOauthTokenData: jest.fn(),
-			getCredentialsProperties: jest.fn().mockReturnValue([]),
-			isCredentialUsableByNode: jest.fn().mockReturnValue(true),
+			getParentTypes: vi.fn().mockReturnValue([]),
+			authenticate: vi.fn(),
+			preAuthentication: vi.fn(),
+			runPreAuthentication: vi.fn(),
+			getCredentials: vi.fn(),
+			getDecrypted: vi.fn().mockResolvedValue(credentials),
+			updateCredentials: vi.fn(),
+			updateCredentialsOauthTokenData: vi.fn(),
+			getCredentialsProperties: vi.fn().mockReturnValue([]),
+			isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 

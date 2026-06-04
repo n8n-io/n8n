@@ -1,13 +1,14 @@
 import { createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('fs/promises', () => ({
-	readFile: jest.fn(),
+vi.mock('fs/promises', () => ({
+	readFile: vi.fn(),
 }));
 
 import { readFile } from 'fs/promises';
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
+const mockReadFile = readFile as MockedFunction<typeof readFile>;
 
 describe('ThirdPartyLicensesController', () => {
 	const testServer = setupTestServer({ endpointGroups: ['third-party-licenses'] });
@@ -23,7 +24,7 @@ describe('ThirdPartyLicensesController', () => {
 
 	describe('GET /third-party-licenses', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should require authentication', async () => {

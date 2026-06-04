@@ -157,7 +157,7 @@ describe('GET /credentials — connectedByMe', () => {
 		await seedUserEntry(r3.id, memberA.id);
 
 		const repository = Container.get(DynamicCredentialUserEntryRepository);
-		const findSpy = jest.spyOn(repository, 'find');
+		const findSpy = vi.spyOn(repository, 'find');
 
 		try {
 			await testServer.authAgentFor(memberA).get('/credentials').expect(200);

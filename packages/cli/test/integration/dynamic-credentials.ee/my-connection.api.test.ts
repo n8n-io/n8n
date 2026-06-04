@@ -177,7 +177,7 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 		const credential = await saveResolvableCredential();
 		await seedUserEntry(credential.id, memberA.id);
 
-		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		try {
 			await testServer
@@ -201,7 +201,7 @@ describe('DELETE /credentials/:credentialId/my-connection', () => {
 	test('does not emit the event when nothing was deleted', async () => {
 		const credential = await saveResolvableCredential();
 
-		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		try {
 			await testServer

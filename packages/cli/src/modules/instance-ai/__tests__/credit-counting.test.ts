@@ -1,28 +1,29 @@
 import type { z as zType } from 'zod';
+import type { Mock } from 'vitest';
 
 // Manual mocks — must be declared before any imports that touch the mocked modules.
-jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
+vi.mock('@n8n/instance-ai', async () => {
+	const { z } = await vi.importActual<{ z: typeof zType }>('zod');
 	return {
 		McpClientManager: class {
-			getRegularTools = jest.fn().mockResolvedValue({});
-			disconnect = jest.fn();
+			getRegularTools = vi.fn().mockResolvedValue({});
+			disconnect = vi.fn();
 		},
-		createDomainAccessTracker: jest.fn(),
-		createSandbox: jest.fn(),
-		createWorkspace: jest.fn(),
-		createLazyRuntimeWorkspace: jest.fn(),
-		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
-		setupSandboxWorkspace: jest.fn(),
-		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+		createDomainAccessTracker: vi.fn(),
+		createSandbox: vi.fn(),
+		createWorkspace: vi.fn(),
+		createLazyRuntimeWorkspace: vi.fn(),
+		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
+		setupSandboxWorkspace: vi.fn(),
+		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: jest.fn(),
+			loadSkill: vi.fn(),
 		})),
 		workflowBuildOutcomeSchema: z.object({}),
-		handleBuildOutcome: jest.fn(),
-		handleVerificationVerdict: jest.fn(),
-		createInstanceAgent: jest.fn(),
-		createAllTools: jest.fn(),
+		handleBuildOutcome: vi.fn(),
+		handleVerificationVerdict: vi.fn(),
+		createInstanceAgent: vi.fn(),
+		createAllTools: vi.fn(),
 	};
 });
 
@@ -37,8 +38,8 @@ import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thr
 
 function createService(deps: {
 	threadRepo: Partial<InstanceAiThreadRepository>;
-	aiService: { isProxyEnabled: jest.Mock; getClient: jest.Mock };
-	push: { sendToUsers: jest.Mock };
+	aiService: { isProxyEnabled: Mock; getClient: Mock };
+	push: { sendToUsers: Mock };
 }) {
 	// Bypass the constructor (it needs GlobalConfig, DI, etc.) by creating
 	// from prototype and assigning only the fields countCreditsIfFirst uses.
@@ -50,7 +51,7 @@ function createService(deps: {
 		aiService: deps.aiService,
 		push: deps.push,
 		creditedThreads: new Set<string>(),
-		logger: { warn: jest.fn(), debug: jest.fn() },
+		logger: { warn: vi.fn(), debug: vi.fn() },
 	});
 	return service;
 }
@@ -59,20 +60,20 @@ function createMockThreadRepo(
 	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
 ) {
 	return {
-		findOneBy: jest.fn().mockResolvedValue(thread ?? null),
-		save: jest.fn().mockImplementation(async (entity: unknown) => entity),
+		findOneBy: vi.fn().mockResolvedValue(thread ?? null),
+		save: vi.fn().mockImplementation(async (entity: unknown) => entity),
 	};
 }
 
 function createMockAiService(opts: { proxyEnabled?: boolean; creditInfo?: unknown } = {}) {
 	const { proxyEnabled = true, creditInfo = { creditsQuota: 100, creditsClaimed: 1 } } = opts;
 	return {
-		isProxyEnabled: jest.fn().mockReturnValue(proxyEnabled),
-		getClient: jest.fn().mockResolvedValue({
-			getBuilderApiProxyToken: jest
+		isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled),
+		getClient: vi.fn().mockResolvedValue({
+			getBuilderApiProxyToken: vi
 				.fn()
 				.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
-			markBuilderSuccess: jest.fn().mockResolvedValue(creditInfo),
+			markBuilderSuccess: vi.fn().mockResolvedValue(creditInfo),
 		}),
 	};
 }
@@ -94,7 +95,7 @@ describe('countCreditsIfFirst', () => {
 	it('should call markBuilderSuccess and persist creditCounted in metadata', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);
@@ -115,7 +116,7 @@ describe('countCreditsIfFirst', () => {
 	it('should skip markBuilderSuccess when thread metadata already has creditCounted', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditCounted: true } });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);
@@ -127,7 +128,7 @@ describe('countCreditsIfFirst', () => {
 	it('should skip credit counting entirely when thread is not found in DB', async () => {
 		const threadRepo = createMockThreadRepo(null);
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);
@@ -142,7 +143,7 @@ describe('countCreditsIfFirst', () => {
 		const existingMeta = { someKey: 'value', nested: { a: 1 } };
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { ...existingMeta } });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);
@@ -161,7 +162,7 @@ describe('countCreditsIfFirst', () => {
 	it('should return early without DB or API calls when proxy is disabled', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ proxyEnabled: false });
-		const push = { sendToUsers: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);
@@ -173,7 +174,7 @@ describe('countCreditsIfFirst', () => {
 	it('should skip markBuilderSuccess on second call for the same thread (in-memory guard)', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
-		const push = { sendToUsers: jest.fn() };
+		const push = { sendToUsers: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push });
 		await callCountCredits(service);

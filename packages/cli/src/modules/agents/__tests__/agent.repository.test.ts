@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
@@ -14,14 +14,14 @@ describe('AgentRepository', () => {
 	let repository: AgentRepository;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		repository = new AgentRepository(mockDataSource as never);
 	});
 
 	describe('findByIdAndProjectId', () => {
 		it('calls findOne with id, projectId, and the activeVersion relation', async () => {
 			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });
-			jest.spyOn(repository, 'findOne').mockResolvedValue(agent);
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
 
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
@@ -33,7 +33,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('returns null when no agent matches', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			vi.spyOn(repository, 'findOne').mockResolvedValue(null);
 
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
@@ -44,7 +44,7 @@ describe('AgentRepository', () => {
 	describe('findByProjectId', () => {
 		it('calls find ordered by updatedAt descending with the activeVersion relation', async () => {
 			const agents = [mock<Agent>(), mock<Agent>()];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByProjectId('project-1');
 
@@ -57,7 +57,7 @@ describe('AgentRepository', () => {
 		});
 
 		it('returns an empty array when the project has no agents', async () => {
-			jest.spyOn(repository, 'find').mockResolvedValue([]);
+			vi.spyOn(repository, 'find').mockResolvedValue([]);
 
 			const result = await repository.findByProjectId('project-1');
 
@@ -77,7 +77,7 @@ describe('AgentRepository', () => {
 				makeAgent('agent-unrelated', [{ type: 'telegram', credentialId: 'cred-2' }]),
 				makeAgent('agent-empty', []),
 			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
@@ -90,11 +90,9 @@ describe('AgentRepository', () => {
 		});
 
 		it('returns an empty array when no other agent uses the credential', async () => {
-			jest
-				.spyOn(repository, 'find')
-				.mockResolvedValue([
-					makeAgent('agent-self', [{ type: 'telegram', credentialId: 'cred-1' }]),
-				]);
+			vi.spyOn(repository, 'find').mockResolvedValue([
+				makeAgent('agent-self', [{ type: 'telegram', credentialId: 'cred-1' }]),
+			]);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
@@ -112,7 +110,7 @@ describe('AgentRepository', () => {
 				{ id: 'agent-null', integrations: null } as unknown as Agent,
 				{ id: 'agent-undef' } as unknown as Agent,
 			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',
@@ -129,7 +127,7 @@ describe('AgentRepository', () => {
 				makeAgent('agent-other', [{ type: 'slack', credentialId: 'cred-other' }]),
 				makeAgent('agent-match', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			];
-			jest.spyOn(repository, 'find').mockResolvedValue(agents);
+			vi.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByIntegrationCredential(
 				'telegram',

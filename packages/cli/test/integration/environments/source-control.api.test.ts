@@ -58,7 +58,7 @@ describe('Source Control API', () => {
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('GET /source-control/preferences', () => {
@@ -182,7 +182,7 @@ describe('Source Control API', () => {
 					updatedAt: '2023-07-14T11:24:41.000Z',
 				},
 			];
-			const pullWorkfolderSpy = jest
+			const pullWorkfolderSpy = vi
 				.spyOn(Container.get(SourceControlService), 'pullWorkfolder')
 				.mockResolvedValue({ statusCode: 200, statusResult });
 
@@ -199,7 +199,7 @@ describe('Source Control API', () => {
 
 	describe('GET /source-control/get-status', () => {
 		test('should return repo sync status', async () => {
-			jest.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue([
+			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue([
 				{
 					id: 'haQetoXq9GxHSkft',
 					name: 'My workflow 6 edit',
@@ -225,7 +225,7 @@ describe('Source Control API', () => {
 
 		describe('access control', () => {
 			beforeEach(() => {
-				jest.spyOn(Container.get(SourceControlService), 'sanityCheck').mockResolvedValue();
+				vi.spyOn(Container.get(SourceControlService), 'sanityCheck').mockResolvedValue();
 			});
 
 			test.each([
@@ -258,7 +258,7 @@ describe('Source Control API', () => {
 						updatedAt: '2023-07-14T11:24:41.000Z',
 					},
 				];
-				const getStatusSpy = jest
+				const getStatusSpy = vi
 					.spyOn(Container.get(SourceControlStatusService), 'getStatus')
 					.mockResolvedValue(statusResult);
 

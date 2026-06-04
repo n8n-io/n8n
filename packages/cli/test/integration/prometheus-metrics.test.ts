@@ -15,7 +15,7 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import { setupTestServer } from './shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const toLines = (response: Response) => response.text.trim().split('\n');
 
@@ -61,7 +61,7 @@ describe('PrometheusMetricsService', () => {
 
 	afterEach(() => {
 		// Make sure fake timers aren't in effect after a test
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('should return n8n version', async () => {
@@ -83,7 +83,7 @@ describe('PrometheusMetricsService', () => {
 
 		const n8nVersion = semverParse(N8N_VERSION);
 
-		if (!n8nVersion) fail('Failed to parse n8n version');
+		if (!n8nVersion) expect.fail('Failed to parse n8n version');
 
 		const { version, major, minor, patch } = n8nVersion;
 
@@ -223,7 +223,7 @@ describe('PrometheusMetricsService', () => {
 		 * Arrange
 		 */
 		const startTime = DateTime.now().toUnixInteger();
-		jest.useFakeTimers().setSystemTime(startTime * 1000);
+		vi.useFakeTimers().setSystemTime(startTime * 1000);
 
 		prometheusService.enableMetric('routes');
 		await prometheusService.init(server.app);
@@ -252,7 +252,7 @@ describe('PrometheusMetricsService', () => {
 		expect(parseInt(value, 10)).toBe(startTime);
 
 		// Update last activity
-		jest.advanceTimersByTime(1000);
+		vi.advanceTimersByTime(1000);
 		await agent.get('/api/v1/workflows');
 
 		response = await agent.get('/metrics');

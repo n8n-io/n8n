@@ -10,7 +10,7 @@ import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { compare } from 'bcryptjs';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -42,7 +42,7 @@ beforeEach(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 	externalHooks.run.mockReset();
-	jest.replaceProperty(mailer, 'isEmailSetUp', true);
+	mailer.isEmailSetUp = true;
 	authService = Container.get(AuthService);
 });
 
@@ -64,7 +64,7 @@ describe('POST /forgot-password', () => {
 	});
 
 	test('should fail if emailing is not set up', async () => {
-		jest.replaceProperty(mailer, 'isEmailSetUp', false);
+		mailer.isEmailSetUp = false;
 
 		await testServer.authlessAgent
 			.post('/forgot-password')
@@ -262,7 +262,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('owner should be able to reset its password when quota:users = 1', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		vi.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
 
 		const resetPasswordToken = authService.generatePasswordResetToken(owner);
 		const response = await testServer.authlessAgent.post('/change-password').send({
@@ -291,7 +291,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('member should not be able to reset its password when quota:users = 1', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		vi.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
 
 		const resetPasswordToken = authService.generatePasswordResetToken(member);
 		const response = await testServer.authlessAgent.post('/change-password').send({

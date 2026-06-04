@@ -172,7 +172,7 @@ describe('ProjectService', () => {
 				// ASSERT
 				//
 				if (projectFromService === null) {
-					fail('Expected projectFromService not to be null');
+					expect.fail('Expected projectFromService not to be null');
 				}
 				expect(project.id).toBe(projectFromService.id);
 			},

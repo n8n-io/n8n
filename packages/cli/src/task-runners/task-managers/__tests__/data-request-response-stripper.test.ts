@@ -1,5 +1,5 @@
 import type { DataRequestResponse, TaskDataRequestParams } from '@n8n/task-runner';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type IWorkflowExecuteAdditionalData,
 	type INode,

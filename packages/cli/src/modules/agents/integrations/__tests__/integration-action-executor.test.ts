@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
@@ -33,10 +33,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'slack:C123:123.456',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const sentThread = {
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -83,7 +83,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			id: 'linear-message-1',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -127,8 +127,8 @@ describe('ChatIntegrationActionExecutor', () => {
 		};
 		const thread = {
 			id: 'slack:D123:123.456',
-			post: jest.fn().mockResolvedValue(sentMessage),
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
@@ -150,7 +150,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('adds Slack reactions to the current message context', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -201,7 +201,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('adds Slack reactions to an explicit message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -249,7 +249,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('returns a structured error when a Slack reaction has no message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -318,10 +318,10 @@ describe('ChatIntegrationActionExecutor', () => {
 				isMentionable: true,
 				url: 'https://linear.app/n8n/profiles/user-1',
 			}),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
 		};
 		const linearClient = {
-			createIssue: jest.fn().mockResolvedValue({
+			createIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 				issueId: 'issue-uuid',
 			}),
@@ -421,7 +421,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			}),
 		};
 		const linearClient = {
-			createComment: jest.fn().mockResolvedValue({
+			createComment: vi.fn().mockResolvedValue({
 				comment: Promise.resolve(comment),
 				commentId: 'comment-1',
 			}),
@@ -486,10 +486,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
 			updatedAt: new Date('2026-05-18T10:05:00.000Z'),
 			state: Promise.resolve({ id: 'state-2', name: 'In Progress', type: 'started' }),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
 		};
 		const linearClient = {
-			updateIssue: jest.fn().mockResolvedValue({
+			updateIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 			}),
 		};

@@ -54,7 +54,7 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
+// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to vi not shutting down cleanly.
 // We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
 mockInstance(ActiveWorkflowManager);
 

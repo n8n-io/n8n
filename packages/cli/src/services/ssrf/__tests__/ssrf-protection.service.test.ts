@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { DnsResolver } from '../dns-resolver';
 import { SsrfBlockedIpError } from '../ssrf-blocked-ip.error';
@@ -13,7 +13,7 @@ function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtec
 }
 
 const mockScopedLogger = mock<Logger>();
-const mockLogger = mock<Logger>({ scoped: jest.fn().mockReturnValue(mockScopedLogger) });
+const mockLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(mockScopedLogger) });
 
 function createMockDnsResolver() {
 	const resolver = mock<DnsResolver>();
@@ -43,7 +43,7 @@ const expectAllowed = (result: unknown) => {
 
 describe('SsrfProtectionService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateIp', () => {

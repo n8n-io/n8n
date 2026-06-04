@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -44,7 +44,7 @@ describe('ProjectService', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getAccessibleProjectsAndCount', () => {
@@ -203,7 +203,7 @@ describe('ProjectService', () => {
 
 	describe('updateProject', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			ownershipService.invalidateWorkflowProjectCacheForProject.mockResolvedValue(undefined);
 		});
 
@@ -364,11 +364,11 @@ describe('ProjectService', () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
 			Object.defineProperty(projectService, 'workflowService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 			Object.defineProperty(projectService, 'credentialsService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 			Object.defineProperty(projectService, 'agentRepository', {
 				configurable: true,
@@ -403,11 +403,11 @@ describe('ProjectService', () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
 			Object.defineProperty(projectService, 'workflowService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 			Object.defineProperty(projectService, 'credentialsService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);

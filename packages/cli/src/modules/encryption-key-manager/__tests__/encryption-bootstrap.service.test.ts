@@ -9,7 +9,7 @@ describe('EncryptionBootstrapService', () => {
 	const encryptionKeyProxy = mockInstance(EncryptionKeyProxy);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		keyManager.bootstrapLegacyCbcKey.mockResolvedValue(undefined);
 		keyManager.bootstrapGcmKey.mockResolvedValue(undefined);
 	});
@@ -42,7 +42,7 @@ describe('EncryptionBootstrapService', () => {
 
 	it('skips key creation on non-main instances but still sets the provider', async () => {
 		for (const instanceType of ['worker', 'webhook'] as const) {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			await createService(instanceType).run();
 
 			expect(keyManager.bootstrapLegacyCbcKey).not.toHaveBeenCalled();

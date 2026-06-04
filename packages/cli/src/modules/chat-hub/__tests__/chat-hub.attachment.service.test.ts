@@ -1,5 +1,5 @@
 import type { ChatAttachment } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

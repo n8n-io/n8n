@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -106,7 +106,7 @@ describe('WorkflowExecutionService', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
 
 	beforeEach(() => {
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 	});
 
 	describe('runWorkflow()', () => {
@@ -158,7 +158,7 @@ describe('WorkflowExecutionService', () => {
 	describe('executeManually()', () => {
 		beforeEach(() => {
 			workflowRunner.run.mockClear();
-			jest.spyOn(nodeTypes, 'getByNameAndVersion').mockReset();
+			nodeTypes.getByNameAndVersion.mockReset();
 		});
 
 		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {
@@ -180,9 +180,9 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			};
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -216,9 +216,9 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			};
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: ['trigger'] } }));
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -710,7 +710,7 @@ describe('WorkflowExecutionService', () => {
 			} else {
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
 			}
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
@@ -743,9 +743,9 @@ describe('WorkflowExecutionService', () => {
 			};
 			const connections = { ...createMainConnection(hackerNewsNode.name, webhookNode.name) };
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 
 			// ACT
 			const workflowData = mock<IWorkflowBase>({

@@ -5,7 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
@@ -14,6 +14,7 @@ import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event
 import type { EventService } from '@/events/event.service';
 
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
+import type { Mock } from 'vitest';
 
 const mockMiddleware = (
 	_req: express.Request,
@@ -21,11 +22,11 @@ const mockMiddleware = (
 	next: express.NextFunction,
 ) => next();
 
-jest.mock('node:fs', () => ({ readFileSync: jest.fn() }));
-jest.mock('prom-client');
-jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
+vi.mock('node:fs', () => ({ readFileSync: vi.fn() }));
+vi.mock('prom-client');
+vi.mock('express-prom-bundle', () => vi.fn(() => mockMiddleware));
 
-const mockedReadFileSync = jest.mocked(readFileSync);
+const mockedReadFileSync = vi.mocked(readFileSync);
 
 describe('PrometheusMetricsService', () => {
 	let globalConfig: GlobalConfig;
@@ -89,8 +90,8 @@ describe('PrometheusMetricsService', () => {
 			licenseMetricsRepository,
 		);
 
-		promClient.Counter.prototype.inc = jest.fn();
-		(promClient.validateMetricName as jest.Mock).mockReturnValue(true);
+		promClient.Counter.prototype.inc = vi.fn();
+		(promClient.validateMetricName as Mock).mockReturnValue(true);
 
 		mockedReadFileSync.mockImplementation(() => {
 			throw new Error('ENOENT: no such file or directory');
@@ -98,7 +99,7 @@ describe('PrometheusMetricsService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		prometheusMetricsService.disableAllMetrics();
 		prometheusMetricsService.disableAllLabels();
 	});
@@ -292,7 +293,7 @@ describe('PrometheusMetricsService', () => {
 	describe('when event bus events are sent', () => {
 		// Helper to find the event handler function registered by initEventBusMetrics
 		const getEventHandler = () => {
-			const eventBusOnCall = (eventBus.on as jest.Mock).mock.calls.find(
+			const eventBusOnCall = (eventBus.on as Mock).mock.calls.find(
 				(call) => call[0] === 'metrics.eventBus.event',
 			);
 			// The handler is the second argument in the .on(eventName, handler) call
@@ -573,7 +574,7 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
 
 			// Verify instance role metric was not created
-			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			const calls = (promClient.Gauge as Mock).mock.calls;
 			const hasInstanceRoleMetric = calls.some(
 				(call) => call[0]?.name === 'n8n_instance_role_leader',
 			);
@@ -583,7 +584,7 @@ describe('PrometheusMetricsService', () => {
 
 	describe('workflow execution duration metric', () => {
 		const getEventHandler = () => {
-			const call = (eventService.on as jest.Mock).mock.calls.find(
+			const call = (eventService.on as Mock).mock.calls.find(
 				(c) => c[0] === 'workflow-post-execute',
 			);
 			return call ? call[1] : undefined;
@@ -623,7 +624,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should observe duration on successful workflow execution', async () => {
 			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
+			promClient.Histogram.prototype.observe = vi.fn();
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
@@ -645,7 +646,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should observe duration on failed workflow execution', async () => {
 			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
+			promClient.Histogram.prototype.observe = vi.fn();
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
@@ -667,7 +668,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should map crashed status to failed', async () => {
 			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
+			promClient.Histogram.prototype.observe = vi.fn();
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
@@ -690,7 +691,7 @@ describe('PrometheusMetricsService', () => {
 		it('should include workflow_id in observation labels when enabled', async () => {
 			prometheusMetricsService.enableMetric('workflowExecutionDuration');
 			prometheusMetricsService.enableLabels(['workflowId']);
-			promClient.Histogram.prototype.observe = jest.fn();
+			promClient.Histogram.prototype.observe = vi.fn();
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
@@ -712,7 +713,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should skip observation when stoppedAt is missing', async () => {
 			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
+			promClient.Histogram.prototype.observe = vi.fn();
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
@@ -731,7 +732,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should skip observation when runData is missing', async () => {
 			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
+			promClient.Histogram.prototype.observe = vi.fn();
 			await prometheusMetricsService.init(app);
 
 			const handler = getEventHandler();
@@ -746,7 +747,7 @@ describe('PrometheusMetricsService', () => {
 
 	describe('PSS metric', () => {
 		const findPssGaugeConfig = () => {
-			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			const calls = (promClient.Gauge as Mock).mock.calls;
 			return calls.find((call) => call[0]?.name === 'n8n_process_pss_bytes')?.[0];
 		};
 
@@ -787,7 +788,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const config = findPssGaugeConfig();
-			const mockSet = jest.fn();
+			const mockSet = vi.fn();
 			config.collect.call({ set: mockSet });
 
 			expect(mockSet).toHaveBeenCalledWith(12345 * 1024);
@@ -800,7 +801,7 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			const config = findPssGaugeConfig();
-			const mockSet = jest.fn();
+			const mockSet = vi.fn();
 			config.collect.call({ set: mockSet });
 
 			expect(mockSet).not.toHaveBeenCalled();
@@ -819,7 +820,7 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			const config = findPssGaugeConfig();
-			const mockSet = jest.fn();
+			const mockSet = vi.fn();
 			expect(() => config.collect.call({ set: mockSet })).not.toThrow();
 			expect(mockSet).not.toHaveBeenCalled();
 		});
@@ -828,7 +829,7 @@ describe('PrometheusMetricsService', () => {
 	describe('token exchange metrics', () => {
 		// Helper to capture an eventService.on handler by event name
 		const getEventServiceHandler = (eventName: string) => {
-			const call = (eventService.on as jest.Mock).mock.calls.find((c) => c[0] === eventName);
+			const call = (eventService.on as Mock).mock.calls.find((c) => c[0] === eventName);
 			return call ? call[1] : undefined;
 		};
 

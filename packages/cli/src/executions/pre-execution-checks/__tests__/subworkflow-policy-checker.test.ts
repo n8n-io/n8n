@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -32,8 +32,8 @@ describe('SubworkflowPolicyChecker', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.restoreAllMocks();
+		vi.clearAllMocks();
+		vi.restoreAllMocks();
 		ownershipService.getWorkflowProjectCached.mockReset();
 		ownershipService.getPersonalProjectOwnerCached.mockReset();
 		accessService.hasReadAccess.mockReset();

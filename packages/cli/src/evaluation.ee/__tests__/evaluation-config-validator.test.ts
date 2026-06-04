@@ -1,6 +1,6 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -12,6 +12,7 @@ import {
 	isCoercibleBooleanExpression,
 } from '../evaluation-config-validator';
 import type { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
+import type { Mocked } from 'vitest';
 
 function makeNode(over: Partial<INode> & Pick<INode, 'name'>): INode {
 	return {
@@ -82,7 +83,7 @@ function makeConfig(over: Partial<UpsertEvaluationConfigDto> = {}): UpsertEvalua
 	} as UpsertEvaluationConfigDto;
 }
 
-function makeRegistry(): jest.Mocked<LlmJudgeProviderRegistry> {
+function makeRegistry(): Mocked<LlmJudgeProviderRegistry> {
 	const registry = mock<LlmJudgeProviderRegistry>();
 	registry.get.mockImplementation((nodeType) =>
 		nodeType === '@n8n/n8n-nodes-langchain.lmChatOpenAi'
@@ -97,7 +98,7 @@ function makeRegistry(): jest.Mocked<LlmJudgeProviderRegistry> {
 	return registry;
 }
 
-function makeDataTableRepo(): jest.Mocked<DataTableRepository> {
+function makeDataTableRepo(): Mocked<DataTableRepository> {
 	const repo = mock<DataTableRepository>();
 	repo.findOne.mockResolvedValue({
 		id: 'dt-1',
@@ -107,7 +108,7 @@ function makeDataTableRepo(): jest.Mocked<DataTableRepository> {
 	return repo;
 }
 
-function makeCredentialsFinder(): jest.Mocked<CredentialsFinderService> {
+function makeCredentialsFinder(): Mocked<CredentialsFinderService> {
 	const finder = mock<CredentialsFinderService>();
 	finder.findCredentialForUser.mockResolvedValue({
 		id: 'cred-1',
@@ -123,9 +124,9 @@ function makeUser(): User {
 
 describe('EvaluationConfigValidator', () => {
 	let validator: EvaluationConfigValidator;
-	let registry: jest.Mocked<LlmJudgeProviderRegistry>;
-	let dataTableRepo: jest.Mocked<DataTableRepository>;
-	let credentialsFinder: jest.Mocked<CredentialsFinderService>;
+	let registry: Mocked<LlmJudgeProviderRegistry>;
+	let dataTableRepo: Mocked<DataTableRepository>;
+	let credentialsFinder: Mocked<CredentialsFinderService>;
 
 	beforeEach(() => {
 		registry = makeRegistry();

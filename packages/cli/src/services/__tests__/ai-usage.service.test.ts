@@ -6,8 +6,8 @@ import config from '@/config';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { CacheService } from '@/services/cache/cache.service';
 
-jest.mock('@/config', () => ({
-	set: jest.fn(),
+vi.mock('@/config', () => ({
+	set: vi.fn(),
 }));
 
 describe('AiUsageService', () => {
@@ -17,7 +17,7 @@ describe('AiUsageService', () => {
 	const aiUsageService = new AiUsageService(settingsRepository, cacheService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getAiUsageSettings()', () => {

@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -32,20 +32,20 @@ import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-run
 const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint injection branch
 
-const buildFromJsonMock = jest.fn().mockImplementation(async () => builtAgent);
-jest.mock('../json-config/from-json-config', () => ({
+const buildFromJsonMock = vi.fn().mockImplementation(async () => builtAgent);
+vi.mock('../json-config/from-json-config', () => ({
 	buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
 }));
 
-const buildMcpClientForServerMock = jest
+const buildMcpClientForServerMock = vi
 	.fn()
 	.mockImplementation(async () => mock<agents.McpClient>());
-jest.mock('../json-config/mcp-client-factory', () => ({
+vi.mock('../json-config/mcp-client-factory', () => ({
 	buildMcpClientForServer: (...args: unknown[]) => buildMcpClientForServerMock(...args),
 }));
 
 // Avoid loading the rich-interaction tool (its import path resolves to runtime code).
-jest.mock('../integrations/rich-interaction-tool', () => ({
+vi.mock('../integrations/rich-interaction-tool', () => ({
 	createRichInteractionTool: () => ({ name: 'rich_interaction' }) as never,
 }));
 
@@ -105,7 +105,7 @@ function makeAgentEntity(
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — node tools gating', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 	});
 
@@ -178,7 +178,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — node 
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP wiring', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		buildFromJsonMock.mockImplementation(async (_config, _descriptors, options) => {
 			const cfg = _config as AgentJsonConfig;
@@ -237,7 +237,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-agent delegation gating', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		builtAgent.tool.mockClear();
 	});
@@ -288,7 +288,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 
 describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — sub-agent runtime profile', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		builtAgent.tool.mockClear();
 	});

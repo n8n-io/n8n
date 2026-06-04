@@ -12,7 +12,7 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
@@ -21,6 +21,7 @@ import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
+import type { Mocked } from 'vitest';
 
 const projectId = 'project-1';
 const userId = 'user-1';
@@ -93,16 +94,16 @@ const defaultStreamChunks: StreamChunk[] = [
 ];
 
 describe('SubAgentForegroundRunner', () => {
-	let sourceResolver: jest.Mocked<SubAgentSourceResolver>;
-	let reconstructionService: jest.Mocked<AgentRuntimeReconstructionService>;
+	let sourceResolver: Mocked<SubAgentSourceResolver>;
+	let reconstructionService: Mocked<AgentRuntimeReconstructionService>;
 	let runner: SubAgentForegroundRunner;
-	let childAgent: jest.Mocked<BuiltAgent>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let logger: jest.Mocked<Logger>;
-	let credentialProvider: jest.Mocked<CredentialProvider>;
+	let childAgent: Mocked<BuiltAgent>;
+	let agentExecutionService: Mocked<AgentExecutionService>;
+	let logger: Mocked<Logger>;
+	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);
@@ -370,7 +371,7 @@ describe('SubAgentForegroundRunner', () => {
 	});
 
 	it('returns failed status when timeout aborts the child run', async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		childAgent.stream.mockImplementation(
 			async (_input, options) =>
 				await new Promise<StreamResult>((resolve) => {
@@ -398,13 +399,13 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			);
 
-			await jest.advanceTimersByTimeAsync(1000);
+			await vi.advanceTimersByTimeAsync(1000);
 
 			await expect(run).resolves.toMatchObject({
 				status: 'failed',
 			});
 		} finally {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		}
 	});
 });

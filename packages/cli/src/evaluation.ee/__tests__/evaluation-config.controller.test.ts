@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -7,11 +7,12 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { EvaluationApiError } from '../evaluation-api-error';
 import { EvaluationConfigController } from '../evaluation-config.controller';
 import type { EvaluationConfigService } from '../evaluation-config.service';
+import type { Mocked } from 'vitest';
 
 describe('EvaluationConfigController', () => {
 	let controller: EvaluationConfigController;
-	let service: jest.Mocked<EvaluationConfigService>;
-	let workflowFinderService: jest.Mocked<WorkflowFinderService>;
+	let service: Mocked<EvaluationConfigService>;
+	let workflowFinderService: Mocked<WorkflowFinderService>;
 
 	const user = mock<User>({ id: 'user-1' });
 	const workflow = mock<WorkflowEntity>({ id: 'wf-1' });

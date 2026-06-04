@@ -17,7 +17,7 @@ import * as utils from '../shared/utils';
 import { CacheService } from '@/services/cache/cache.service';
 import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
 
-jest.mock('@/telemetry');
+vi.mock('@/telemetry');
 
 let owner: User;
 

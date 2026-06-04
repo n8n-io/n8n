@@ -2,8 +2,8 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { createTeamProject, mockLogger, testDb } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
 import { Container } from '@n8n/di';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
 import { InsightsModule } from '../insights.module';
@@ -22,7 +22,7 @@ describe('InsightsModule', () => {
 	});
 
 	beforeEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		await testDb.truncate(['Project']);
 
 		mockInstanceSettings = mock<InstanceSettings>();

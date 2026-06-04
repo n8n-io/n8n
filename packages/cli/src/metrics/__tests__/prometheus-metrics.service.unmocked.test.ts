@@ -2,7 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -13,7 +13,7 @@ import type { CacheService } from '@/services/cache/cache.service';
 import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus';
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const customPrefix = 'custom_';
 
@@ -179,7 +179,7 @@ describe('Active workflow count', () => {
 	);
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		prometheusMetricsService.disableAllMetrics();
 	});
 

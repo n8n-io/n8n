@@ -11,22 +11,23 @@ import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-n
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 import { ProjectService } from '@/services/project.service.ee';
+import type { Mock, Mocked } from 'vitest';
 
 // Mock middleware before requiring handler
-const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
-jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
-jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
-jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
+const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;
+vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
 const mainHandler = require('../data-tables.handler');
 const handler = require('../data-tables.rows.handler');
 
 describe('DataTable Handler', () => {
-	let mockDataTableService: jest.Mocked<DataTableService>;
-	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
-	let mockProjectRepository: jest.Mocked<ProjectRepository>;
-	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
-	let mockProjectService: jest.Mocked<ProjectService>;
+	let mockDataTableService: Mocked<DataTableService>;
+	let mockDataTableRepository: Mocked<DataTableRepository>;
+	let mockProjectRepository: Mocked<ProjectRepository>;
+	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
+	let mockProjectService: Mocked<ProjectService>;
 	let mockResponse: Partial<Response>;
 
 	const projectId = 'test-project-id';
@@ -42,7 +43,7 @@ describe('DataTable Handler', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockProjectService = mockInstance(ProjectService);
 
-		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
 				return mockDataTableService;
 			}
@@ -65,14 +66,14 @@ describe('DataTable Handler', () => {
 		mockProjectRelationRepository.find.mockResolvedValue([]);
 
 		mockResponse = {
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createDataTable', () => {
@@ -146,7 +147,7 @@ describe('DataTable Handler', () => {
 				projectId,
 				{ skip: 0, take: 100, filter: undefined, sortBy: undefined, search: undefined },
 			);
-			const callArg = (mockResponse.json as jest.Mock).mock.calls[0][0];
+			const callArg = (mockResponse.json as Mock).mock.calls[0][0];
 			expect(callArg).toHaveProperty('data', mockRows);
 			expect(callArg).toHaveProperty('nextCursor');
 		});

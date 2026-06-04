@@ -2,7 +2,7 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
@@ -11,13 +11,14 @@ import { createAdmin, createMember } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 
 import { VariablesService } from '../variables.service.ee';
+import type { Mock } from 'vitest';
 
 describe('VariablesService', () => {
 	let variablesService: VariablesService;
 	let variablesRepository: VariablesRepository;
 	let cacheService: CacheService;
 	let projectService: ProjectService;
-	let licenseState: { isVariablesLicensed: jest.Mock; getMaxVariables: jest.Mock };
+	let licenseState: { isVariablesLicensed: Mock; getMaxVariables: Mock };
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -32,8 +33,8 @@ describe('VariablesService', () => {
 		cacheService = Container.get(CacheService);
 		projectService = Container.get(ProjectService);
 		licenseState = {
-			isVariablesLicensed: jest.fn().mockReturnValue(true),
-			getMaxVariables: jest.fn().mockReturnValue(5),
+			isVariablesLicensed: vi.fn().mockReturnValue(true),
+			getMaxVariables: vi.fn().mockReturnValue(5),
 		};
 
 		variablesService = new VariablesService(
@@ -46,7 +47,7 @@ describe('VariablesService', () => {
 	});
 
 	afterEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		await testDb.truncate(['Variables']);
 	});
 

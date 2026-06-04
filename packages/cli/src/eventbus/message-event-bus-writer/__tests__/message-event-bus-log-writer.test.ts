@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,9 +10,10 @@ import { join } from 'node:path';
 
 import type { EventMessageTypes } from '../../event-message-classes';
 import { MessageEventBusLogWriter } from '../message-event-bus-log-writer';
+import type { MockInstance } from 'vitest';
 
-jest.unmock('node:fs');
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
 
 describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 	let tempDir: string;
@@ -301,7 +302,7 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 
 describe('MessageEventBusLogWriter.getInstance path resolution', () => {
 	let tempDir: string;
-	let startThreadSpy: jest.SpyInstance;
+	let startThreadSpy: MockInstance;
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), 'eventbus-log-writer-getinstance-'));
@@ -319,7 +320,7 @@ describe('MessageEventBusLogWriter.getInstance path resolution', () => {
 			}),
 		);
 		Container.set(InstanceSettings, mock<InstanceSettings>({ n8nFolder: tempDir }));
-		startThreadSpy = jest
+		startThreadSpy = vi
 			.spyOn(MessageEventBusLogWriter.prototype as never, 'startThread')
 			.mockResolvedValue(undefined as never);
 	});

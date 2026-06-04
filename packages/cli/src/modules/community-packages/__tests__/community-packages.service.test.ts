@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import axios from 'axios';
-import { mocked } from 'jest-mock';
-import { mock } from 'jest-mock-extended';
+import { mocked } from 'vi-mock';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
@@ -28,18 +28,18 @@ import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
 import { executeNpmCommand } from '../npm-utils';
 
-jest.mock('node:fs/promises');
-jest.mock('node:child_process');
-jest.mock('axios');
-jest.mock('../community-node-types-utils', () => ({
-	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
+vi.mock('node:fs/promises');
+vi.mock('node:child_process');
+vi.mock('axios');
+vi.mock('../community-node-types-utils', async () => ({
+	getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
 }));
-jest.mock('../npm-utils', () => ({
-	...jest.requireActual('../npm-utils'),
-	executeNpmCommand: jest.fn(),
-	executeNpmRequest: jest.fn().mockResolvedValue({}),
-	checkIfVersionExistsOrThrow: jest.fn().mockResolvedValue(true),
-	verifyIntegrity: jest.fn().mockResolvedValue(undefined),
+vi.mock('../npm-utils', async () => ({
+	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	executeNpmCommand: vi.fn(),
+	executeNpmRequest: vi.fn().mockResolvedValue({}),
+	checkIfVersionExistsOrThrow: vi.fn().mockResolvedValue(true),
+	verifyIntegrity: vi.fn().mockResolvedValue(undefined),
 }));
 
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
@@ -63,7 +63,7 @@ describe('CommunityPackagesService', () => {
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
 
-	const nodesDownloadDir = path.join('tmp', 'n8n-jest-global-downloads');
+	const nodesDownloadDir = path.join('tmp', 'n8n-vi-global-downloads');
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 
 	const logger = mock<Logger>();
@@ -80,7 +80,7 @@ describe('CommunityPackagesService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 
 		const nodeName = randomName();
@@ -381,7 +381,7 @@ describe('CommunityPackagesService', () => {
 		}) as typeof execFile;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			mocked(execFile).mockImplementation(execMockForThisBlock);
 			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
@@ -560,9 +560,9 @@ describe('CommunityPackagesService', () => {
 		});
 
 		beforeEach(() => {
-			jest
-				.spyOn(communityPackagesService, 'installPackage')
-				.mockResolvedValue({} as InstalledPackages);
+			vi.spyOn(communityPackagesService, 'installPackage').mockResolvedValue(
+				{} as InstalledPackages,
+			);
 			mocked(getCommunityNodeTypes).mockResolvedValue([]);
 		});
 
@@ -623,7 +623,7 @@ describe('CommunityPackagesService', () => {
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
-			communityPackagesService.installPackage = jest
+			communityPackagesService.installPackage = vi
 				.fn()
 				.mockRejectedValue(new Error('Installation failed'));
 
@@ -648,7 +648,7 @@ describe('CommunityPackagesService', () => {
 			config.reinstallMissing = true;
 
 			// First installation fails, second succeeds
-			communityPackagesService.installPackage = jest
+			communityPackagesService.installPackage = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('Installation failed'))
 				.mockResolvedValueOnce({} as InstalledPackages);
@@ -862,7 +862,7 @@ describe('CommunityPackagesService', () => {
 
 	describe('updatePackageJsonDependency', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
 		});
 
@@ -898,7 +898,7 @@ describe('CommunityPackagesService', () => {
 				return mock<PackageDirectoryLoader>();
 			});
 
-			jest.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
+			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
 
 			await communityPackagesService.handleInstallEvent({
 				packageName: 'n8n-nodes-test',

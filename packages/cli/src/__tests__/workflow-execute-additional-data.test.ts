@@ -8,7 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
 import type {
 	IWorkflowBase,
@@ -81,26 +81,26 @@ const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionDa
 
 const getCancelablePromise = async (run: IRun) =>
 	await mock<PCancelable<IRun>>({
-		then: jest
+		then: vi
 			.fn()
 			.mockImplementation(async (onfulfilled) => await Promise.resolve(run).then(onfulfilled)),
-		catch: jest
+		catch: vi
 			.fn()
 			.mockImplementation(async (onrejected) => await Promise.resolve(run).catch(onrejected)),
-		finally: jest
+		finally: vi
 			.fn()
 			.mockImplementation(async (onfinally) => await Promise.resolve(run).finally(onfinally)),
 		[Symbol.toStringTag]: 'PCancelable',
 	});
 
-const processRunExecutionData = jest.fn();
+const processRunExecutionData = vi.fn();
 
-jest.mock('n8n-core', () => ({
+vi.mock('n8n-core', async () => ({
 	__esModule: true,
-	...jest.requireActual('n8n-core'),
-	WorkflowExecute: jest.fn().mockImplementation(() => ({
-		processRunExecutionData,
-	})),
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	WorkflowExecute: vi.fn(function () {
+		return { processRunExecutionData };
+	}),
 }));
 
 describe('WorkflowExecuteAdditionalData', () => {
@@ -165,6 +165,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 					},
 					nodes: [],
 					connections: {},
+					// Real object: a mock-generated fn breaks Workflow's observable wrapping
+					// (vitest's vi.fn().mock is enumerable; Jest's was not).
+					staticData: {},
 				}),
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
@@ -225,7 +228,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should pass workflowId to getBase when executing subworkflow', async () => {
-			const getVariablesSpy = jest.spyOn(WorkflowHelpers, 'getVariables');
+			const getVariablesSpy = vi.spyOn(WorkflowHelpers, 'getVariables');
 			const workflowId = 'test-workflow-123';
 
 			const workflowWithId = mock<WorkflowEntity>({
@@ -239,6 +242,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				},
 				nodes: [],
 				connections: {},
+				staticData: {},
 			});
 
 			workflowRepository.get.mockResolvedValueOnce(workflowWithId);
@@ -265,6 +269,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				name: 'Test Workflow',
 				nodes: [],
 				connections: {},
+				staticData: {},
 			});
 
 			it('should execute successfully with manual execution mode (uses draft version, includes test webhooks)', async () => {
@@ -706,8 +711,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const mockVariables = { variable: 1 };
 
 		beforeEach(() => {
-			jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
-			jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
+			urlService.getWebhookBaseUrl.mockReturnValue(mockWebhookBaseUrl);
+			urlService.getInstanceBaseUrl.mockReturnValue(mockInstanceBaseUrl);
 			globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
 				rest: '/rest/',
 				formWaiting: '/form-waiting/',
@@ -715,7 +720,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				webhookWaiting: '/webhook-waiting/',
 				webhookTest: '/webhook-test/',
 			});
-			jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+			vi.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
 		});
 
 		it('should return base additional data with default values', async () => {
@@ -788,7 +793,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const THREAD_ID = 'thread-id';
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			agentsService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentsService.executeForWorkflow>>>(),
 			);

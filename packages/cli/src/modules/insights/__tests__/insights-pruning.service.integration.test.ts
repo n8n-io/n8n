@@ -6,7 +6,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 
 import {

@@ -18,12 +18,12 @@ describe('search-projects MCP tool', () => {
 		const exactProjects = overrides?.exactProjects ?? [];
 
 		const projectRepository = mockInstance(ProjectRepository, {
-			getAccessibleProjectsAndCount: jest.fn().mockResolvedValue([projects, count]),
-			getAccessibleProjectsByExactName: jest.fn().mockResolvedValue(exactProjects),
+			getAccessibleProjectsAndCount: vi.fn().mockResolvedValue([projects, count]),
+			getAccessibleProjectsByExactName: vi.fn().mockResolvedValue(exactProjects),
 		});
 
 		const telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 
 		return { projectRepository, telemetry };
@@ -360,9 +360,9 @@ describe('search-projects MCP tool', () => {
 
 	test('handles errors', async () => {
 		const projectRepository = mockInstance(ProjectRepository, {
-			getAccessibleProjectsAndCount: jest.fn().mockRejectedValue(new Error('DB error')),
+			getAccessibleProjectsAndCount: vi.fn().mockRejectedValue(new Error('DB error')),
 		});
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 
 		const tool = createSearchProjectsTool(
 			user,

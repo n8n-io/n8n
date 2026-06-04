@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
-import { mock, type MockProxy } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
 	Workflow,
@@ -36,8 +36,8 @@ import {
 } from '../webhook-helpers';
 import type { IWebhookResponseCallbackData } from '../webhook.types';
 
-jest.mock('stream/promises', () => ({
-	finished: jest.fn(),
+vi.mock('stream/promises', () => ({
+	finished: vi.fn(),
 }));
 
 describe('autoDetectResponseMode', () => {
@@ -206,7 +206,7 @@ describe('setupResponseNodePromise', () => {
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
 	const res = mock<express.Response>();
-	const responseCallback = jest.fn();
+	const responseCallback = vi.fn();
 	const workflowStartNode = mock<INode>();
 	const workflow = mock<Workflow>({ id: workflowId });
 	const binaryDataService = mockInstance(BinaryDataService);
@@ -216,7 +216,7 @@ describe('setupResponseNodePromise', () => {
 	let responsePromise: IDeferredPromise<IN8nHttpFullResponse>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 
@@ -325,8 +325,8 @@ describe('setupResponseNodePromise', () => {
 describe('handleHostedChatResponse', () => {
 	it('should send executionStarted: true, executionId, and resumeToken when responseMode is hostedChat', async () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const responseMode = 'hostedChat';
 		let didSendResponse = false;
@@ -349,8 +349,8 @@ describe('handleHostedChatResponse', () => {
 
 	it('should not send response when responseMode is not hostedChat', () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
 		let didSendResponse = false;
@@ -365,8 +365,8 @@ describe('handleHostedChatResponse', () => {
 
 	it('should not send response when didSendResponse is true', () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
 		let didSendResponse = true;

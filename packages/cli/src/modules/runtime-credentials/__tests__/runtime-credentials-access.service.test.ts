@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { IRunExecutionData } from 'n8n-workflow';
 
@@ -25,7 +25,7 @@ describe('RuntimeCredentialsAccessService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		cipher.decryptV2.mockResolvedValue(plaintextArtifacts);
 	});
 

@@ -2,7 +2,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -13,14 +13,13 @@ import type { AgentRepository } from '../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../esm-loader';
 import { TelegramIntegration } from '../telegram-integration';
+import type { MockInstance, Mocked, MockedFunction } from 'vitest';
 
-jest.mock('../../esm-loader', () => ({
-	loadTelegramAdapter: jest.fn(),
+vi.mock('../../esm-loader', () => ({
+	loadTelegramAdapter: vi.fn(),
 }));
 
-const mockedLoadTelegramAdapter = loadTelegramAdapter as jest.MockedFunction<
-	typeof loadTelegramAdapter
->;
+const mockedLoadTelegramAdapter = loadTelegramAdapter as MockedFunction<typeof loadTelegramAdapter>;
 
 const expectedSecret = (encryptionKey: string, agentId: string, credentialId: string) =>
 	createHmac('sha256', encryptionKey).update(`telegram:${agentId}:${credentialId}`).digest('hex');
@@ -45,8 +44,8 @@ const makeContext = (
 
 const makeIntegration = (
 	opts: {
-		urlService?: jest.Mocked<UrlService>;
-		agentRepository?: jest.Mocked<AgentRepository>;
+		urlService?: Mocked<UrlService>;
+		agentRepository?: Mocked<AgentRepository>;
 		encryptionKey?: string;
 	} = {},
 ) => {
@@ -71,16 +70,16 @@ const makeIntegration = (
 };
 
 describe('TelegramIntegration.onBeforeConnect', () => {
-	let agentRepository: jest.Mocked<AgentRepository>;
+	let agentRepository: Mocked<AgentRepository>;
 	let integration: TelegramIntegration;
-	let fetchSpy: jest.SpyInstance;
+	let fetchSpy: MockInstance;
 
 	beforeEach(() => {
 		const built = makeIntegration();
 		integration = built.integration;
 		agentRepository = built.agentRepository;
 
-		fetchSpy = jest.spyOn(globalThis, 'fetch');
+		fetchSpy = vi.spyOn(globalThis, 'fetch');
 	});
 
 	afterEach(() => {
@@ -88,11 +87,11 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 	});
 
 	it('passes through when no other agent uses the credential', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		vi.spyOn(agentRepository, 'findByIntegrationCredential').mockResolvedValue([]);
 
 		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
 
-		expect(agentRepository.findByIntegrationCredential).toHaveBeenCalledWith(
+		expect(vi.spyOn(agentRepository, 'findByIntegrationCredential')).toHaveBeenCalledWith(
 			'telegram',
 			'cred-1',
 			'proj-1',
@@ -105,7 +104,7 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 	});
 
 	it('throws ConflictError naming the owning agent when DB has another claimant', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([
+		vi.spyOn(agentRepository, 'findByIntegrationCredential').mockResolvedValue([
 			makeAgent('agent-other', 'Agent Other', [{ type: 'telegram', credentialId: 'cred-1' }]),
 		]);
 
@@ -118,7 +117,7 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 	});
 
 	it('names the first conflicting agent when multiple agents share the credential', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([
+		vi.spyOn(agentRepository, 'findByIntegrationCredential').mockResolvedValue([
 			makeAgent('agent-a', 'Alpha', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			makeAgent('agent-b', 'Beta', [{ type: 'telegram', credentialId: 'cred-1' }]),
 		]);
@@ -226,7 +225,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 });
 
 describe('TelegramIntegration secret token', () => {
-	const createTelegramAdapter = jest.fn();
+	const createTelegramAdapter = vi.fn();
 
 	beforeEach(() => {
 		createTelegramAdapter.mockReset();
@@ -274,7 +273,7 @@ describe('TelegramIntegration secret token', () => {
 	});
 
 	it('onAfterConnect sends secret_token to Telegram matching the secret used by the adapter', async () => {
-		const fetchSpy = jest
+		const fetchSpy = vi
 			.spyOn(globalThis, 'fetch')
 			.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
 
@@ -297,7 +296,7 @@ describe('TelegramIntegration secret token', () => {
 	});
 
 	it('onAfterConnect honors a custom baseUrl from the credential (self-hosted Bot API)', async () => {
-		const fetchSpy = jest
+		const fetchSpy = vi
 			.spyOn(globalThis, 'fetch')
 			.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
 
@@ -322,10 +321,10 @@ describe('TelegramIntegration secret token', () => {
 });
 
 describe('TelegramIntegration.onBeforeDisconnect', () => {
-	let fetchSpy: jest.SpyInstance;
+	let fetchSpy: MockInstance;
 
 	beforeEach(() => {
-		fetchSpy = jest.spyOn(globalThis, 'fetch');
+		fetchSpy = vi.spyOn(globalThis, 'fetch');
 	});
 
 	afterEach(() => {

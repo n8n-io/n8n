@@ -2,12 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 // eslint-disable-next-line import-x/order
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import type { Mock } from 'vitest';
 
-const mockAuthMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => {
+const mockAuthMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => {
 	next();
 });
 const mcpServerMiddlewareService = mockDeep<McpServerMiddlewareService>();
@@ -22,11 +23,11 @@ import { McpSettingsService } from '../mcp.settings.service';
 import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
-const mockHandleRequest = jest.fn().mockResolvedValue(undefined);
-jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
-	const StreamableHTTPServerTransport = jest.fn().mockImplementation((_opts) => ({
+const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
+vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
+	const StreamableHTTPServerTransport = vi.fn().mockImplementation((_opts) => ({
 		handleRequest: mockHandleRequest,
-		close: jest.fn().mockResolvedValue(undefined),
+		close: vi.fn().mockResolvedValue(undefined),
 	}));
 	return { StreamableHTTPServerTransport };
 });
@@ -48,21 +49,21 @@ const createRes = (): FlushableResponse => {
 describe('McpController', () => {
 	let controller: McpController;
 	const logger = mock<Logger>();
-	const telemetry = { track: jest.fn() } as unknown as Telemetry;
+	const telemetry = { track: vi.fn() } as unknown as Telemetry;
 	const mcpService = {
-		getServer: jest.fn(),
-		resolveMcpAppsVariant: jest.fn(),
+		getServer: vi.fn(),
+		resolveMcpAppsVariant: vi.fn(),
 	} as unknown as McpService;
-	const mcpSettingsService = { getEnabled: jest.fn() } as unknown as McpSettingsService;
+	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Default mock — the controller now resolves the MCP Apps variant for
 		// every request, so tests that don't care about the variant still need
 		// a sane default. Individual tests override this with `mockResolvedValue`
 		// when the variant matters.
-		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
 			enabled: false,
 			variant: 'unassigned',
 		});
@@ -76,19 +77,19 @@ describe('McpController', () => {
 	});
 
 	test('returns 403 if MCP access is disabled', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 		const res = createRes();
 		await controller.build(createReq(), res);
 		expect(res.status).toHaveBeenCalledWith(403);
 		expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
-		expect(mcpService.getServer as unknown as jest.Mock).not.toHaveBeenCalled();
+		expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
 		// MCP Apps variant resolution is skipped for rejected requests to
 		// avoid an unnecessary PostHog lookup.
-		expect(mcpService.resolveMcpAppsVariant as jest.Mock).not.toHaveBeenCalled();
+		expect(mcpService.resolveMcpAppsVariant as Mock).not.toHaveBeenCalled();
 	});
 
 	test('tracks disabled-access init errors without MCP Apps variant fields', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 		const res = createRes();
 
 		await controller.build(
@@ -111,27 +112,27 @@ describe('McpController', () => {
 			mcp_connection_status: 'error',
 			error: 'MCP access is disabled',
 		});
-		expect(mcpService.resolveMcpAppsVariant as jest.Mock).not.toHaveBeenCalled();
+		expect(mcpService.resolveMcpAppsVariant as Mock).not.toHaveBeenCalled();
 	});
 
 	test('creates mcp server if MCP access is enabled', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		});
 		const res = createRes();
 		await controller.build(createReq(), res);
-		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalled();
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalled();
 	});
 
 	test('tracks successful initialize connections with auth type and MCP Apps variant', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
 			enabled: true,
 			variant: 'variant',
 		});
@@ -161,12 +162,12 @@ describe('McpController', () => {
 	});
 
 	test('reports the env_override variant when the flag is forced on by an operator', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
 			enabled: true,
 			variant: 'env_override',
 		});
@@ -193,12 +194,12 @@ describe('McpController', () => {
 	});
 
 	test('resolves the MCP Apps variant once and forwards `enabled` to getServer on initialize', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
 			enabled: true,
 			variant: 'variant',
 		});
@@ -215,20 +216,20 @@ describe('McpController', () => {
 			res,
 		);
 
-		expect(mcpService.resolveMcpAppsVariant as jest.Mock).toHaveBeenCalledTimes(1);
-		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
+		expect(mcpService.resolveMcpAppsVariant as Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			true,
 		);
 	});
 
 	test('resolves the MCP Apps variant and forwards `enabled` to getServer on non-initialize requests', async () => {
-		(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-		(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
 			enabled: false,
 			variant: 'control',
 		});
@@ -246,8 +247,8 @@ describe('McpController', () => {
 
 		// Resolution happens for every request so the registered tools stay
 		// consistent with what was advertised at handshake time.
-		expect(mcpService.resolveMcpAppsVariant as jest.Mock).toHaveBeenCalledTimes(1);
-		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
+		expect(mcpService.resolveMcpAppsVariant as Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			false,
 		);
@@ -258,8 +259,8 @@ describe('McpController', () => {
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {
 		const req = {} as Request;
 		const res = createRes();
-		res.header = jest.fn().mockReturnThis();
-		res.end = jest.fn().mockReturnThis();
+		res.header = vi.fn().mockReturnThis();
+		res.end = vi.fn().mockReturnThis();
 
 		await controller.discoverAuthSchemeHead(req, res);
 
@@ -270,7 +271,7 @@ describe('McpController', () => {
 
 	describe('GET /http', () => {
 		test('returns 403 if MCP access is disabled', async () => {
-			(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(false);
+			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 			const res = createRes();
 			await controller.handleGet(createReq(), res);
 			expect(res.status).toHaveBeenCalledWith(403);
@@ -278,20 +279,20 @@ describe('McpController', () => {
 		});
 
 		test('delegates to transport.handleRequest', async () => {
-			(mcpSettingsService.getEnabled as jest.Mock).mockResolvedValue(true);
-			(mcpService.resolveMcpAppsVariant as jest.Mock).mockResolvedValue({
+			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+			(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
 				enabled: true,
 				variant: 'variant',
 			});
-			(mcpService.getServer as unknown as jest.Mock).mockReturnValue({
-				connect: jest.fn().mockResolvedValue(undefined),
-				close: jest.fn().mockResolvedValue(undefined),
+			(mcpService.getServer as unknown as Mock).mockReturnValue({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
 			});
 			const req = createReq();
 			const res = createRes();
 			await controller.handleGet(req, res);
-			expect(mcpService.resolveMcpAppsVariant as jest.Mock).toHaveBeenCalledTimes(1);
-			expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
+			expect(mcpService.resolveMcpAppsVariant as Mock).toHaveBeenCalledTimes(1);
+			expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user-1' }),
 				true,
 			);

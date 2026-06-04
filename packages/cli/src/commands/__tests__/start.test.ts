@@ -4,7 +4,7 @@ import '@/zod-alias-support';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
 import { BinaryDataConfig } from 'n8n-core';
@@ -87,17 +87,17 @@ describe('Start - AuthRolesService initialization', () => {
 		// @ts-expect-error - Read-only property, but needed for testing
 		instanceSettings.instanceType = instanceType;
 		Object.defineProperty(instanceSettings, 'isMultiMain', {
-			get: jest.fn(() => isMultiMain),
+			get: vi.fn(() => isMultiMain),
 			configurable: true,
 		});
 		Object.defineProperty(instanceSettings, 'isLeader', {
-			get: jest.fn(() => isLeader),
+			get: vi.fn(() => isLeader),
 			configurable: true,
 		});
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 
 		// Re-register all mocks
@@ -128,11 +128,11 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
 		Container.set(
 			JwtService,
-			mockInstance(JwtService, { initialize: jest.fn().mockResolvedValue(undefined) }),
+			mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 		Container.set(
 			BinaryDataConfig,
-			mockInstance(BinaryDataConfig, { initialize: jest.fn().mockResolvedValue(undefined) }),
+			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
 
 		start = new Start();
@@ -155,27 +155,27 @@ describe('Start - AuthRolesService initialization', () => {
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 		};
 		// @ts-expect-error - Accessing protected method for testing
-		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
-		start.initLicense = jest.fn().mockResolvedValue(undefined);
-		start.initOrchestration = jest.fn().mockResolvedValue(undefined);
-		start.initBinaryDataService = jest.fn().mockResolvedValue(undefined);
+		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
+		start.initLicense = vi.fn().mockResolvedValue(undefined);
+		start.initOrchestration = vi.fn().mockResolvedValue(undefined);
+		start.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing protected method for testing
-		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
-		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
-		start.initWorkflowHistory = jest.fn();
+		start.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
+		start.initExternalHooks = vi.fn().mockResolvedValue(undefined);
+		start.initWorkflowHistory = vi.fn();
 		// @ts-expect-error - Accessing private method for testing
-		start.initInstanceSettingsLoader = jest.fn().mockResolvedValue(undefined);
-		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
+		start.initInstanceSettingsLoader = vi.fn().mockResolvedValue(undefined);
+		start.cleanupTestRunner = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing private method for testing
-		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
+		start.generateStaticAssets = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing protected property for testing
-		start.moduleRegistry = { initModules: jest.fn().mockResolvedValue(undefined) };
+		start.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
 		// @ts-expect-error - Accessing protected property for testing
-		start.executionContextHookRegistry = { init: jest.fn().mockResolvedValue(undefined) };
+		start.executionContextHookRegistry = { init: vi.fn().mockResolvedValue(undefined) };
 		// @ts-expect-error - Accessing protected property for testing
 		start.license = license;
 		// @ts-expect-error - Accessing protected property for testing
-		start.server = mock<AbstractServer>({ init: jest.fn().mockResolvedValue(undefined) });
+		start.server = mock<AbstractServer>({ init: vi.fn().mockResolvedValue(undefined) });
 	});
 
 	describe('init - conditional initialization based on instance type and leader status', () => {
@@ -288,11 +288,11 @@ describe('Start - AuthRolesService initialization', () => {
 		};
 
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 			// Restore original mock so other tests aren't affected
 			license.isMultiMainLicensed = (() => true) as unknown as typeof license.isMultiMainLicensed;
 		});
@@ -303,7 +303,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = multiMainConfig;
 
 			// First call returns false (no cert yet), second call returns true (leader wrote cert)
-			license.isMultiMainLicensed = jest
+			license.isMultiMainLicensed = vi
 				.fn()
 				.mockReturnValueOnce(false)
 				.mockReturnValue(true) as unknown as typeof license.isMultiMainLicensed;
@@ -311,7 +311,7 @@ describe('Start - AuthRolesService initialization', () => {
 			const initPromise = start.init();
 
 			// Advance past the first retry delay (2s)
-			await jest.advanceTimersByTimeAsync(2_000);
+			await vi.advanceTimersByTimeAsync(2_000);
 
 			await initPromise;
 
@@ -323,7 +323,7 @@ describe('Start - AuthRolesService initialization', () => {
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig = multiMainConfig;
 
-			license.isMultiMainLicensed = jest
+			license.isMultiMainLicensed = vi
 				.fn()
 				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
 
@@ -333,7 +333,7 @@ describe('Start - AuthRolesService initialization', () => {
 			});
 
 			// Advance past all retry delays: 2s + 4s + 8s + 16s + 32s = 62s
-			await jest.advanceTimersByTimeAsync(62_000);
+			await vi.advanceTimersByTimeAsync(62_000);
 
 			const result = await initPromise;
 			expect(result).toBe('rejected');
@@ -346,7 +346,7 @@ describe('Start - AuthRolesService initialization', () => {
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig = multiMainConfig;
 
-			license.isMultiMainLicensed = jest
+			license.isMultiMainLicensed = vi
 				.fn()
 				.mockReturnValue(false) as unknown as typeof license.isMultiMainLicensed;
 

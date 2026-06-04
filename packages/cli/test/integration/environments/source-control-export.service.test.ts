@@ -27,9 +27,10 @@ import type { ExportableCredential } from '@/modules/source-control.ee/types/exp
 import { createCredentials } from '../shared/db/credentials';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
+import type { MockedFunction } from 'vitest';
 
 // Mock file system operations
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
@@ -45,8 +46,8 @@ describe('SourceControlExportService Integration', () => {
 	let projectRepository: ProjectRepository;
 
 	// Mocked functions
-	let mockFsWriteFile: jest.MockedFunction<typeof fsWriteFile>;
-	let mockFsReadFile: jest.MockedFunction<typeof fsReadFile>;
+	let mockFsWriteFile: MockedFunction<typeof fsWriteFile>;
+	let mockFsReadFile: MockedFunction<typeof fsReadFile>;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -81,11 +82,11 @@ describe('SourceControlExportService Integration', () => {
 
 	beforeEach(async () => {
 		// Setup mocks before each test
-		mockFsWriteFile = jest.mocked(fsWriteFile);
+		mockFsWriteFile = vi.mocked(fsWriteFile);
 		mockFsWriteFile.mockClear();
 		mockFsWriteFile.mockResolvedValue();
 
-		mockFsReadFile = jest.mocked(fsReadFile);
+		mockFsReadFile = vi.mocked(fsReadFile);
 		mockFsReadFile.mockClear();
 		// Default to empty tags file
 		mockFsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
@@ -102,7 +103,7 @@ describe('SourceControlExportService Integration', () => {
 			'TagEntity',
 		]);
 		// Reset mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {

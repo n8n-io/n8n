@@ -5,7 +5,7 @@ import type {
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 
@@ -74,7 +74,7 @@ describe('OtelLifecycleHandler', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -320,7 +320,7 @@ describe('OtelLifecycleHandler', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -436,7 +436,7 @@ describe('OtelLifecycleHandler', () => {
 		let handler: OtelLifecycleHandler;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			config = makeOtelConfig({ productionExecutionsOnly: false });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -541,7 +541,7 @@ describe('OtelLifecycleHandler', () => {
 			}) as unknown as NodeExecuteAfterContext;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			config = makeOtelConfig({ productionExecutionsOnly: false, includeNodeSpans: true });
 			handler = new OtelLifecycleHandler(
 				tracer,
@@ -704,7 +704,7 @@ describe('productionExecutionsOnly filter', () => {
 		}) as unknown as NodeExecuteAfterContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		config = makeOtelConfig({ productionExecutionsOnly: true, includeNodeSpans: true });
 		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
 		traceContextService.get.mockResolvedValue(undefined);

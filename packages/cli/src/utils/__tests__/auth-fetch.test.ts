@@ -1,7 +1,7 @@
 import { createAuthFetch } from '@/utils/auth-fetch';
 
-const proxyFetchMock = jest.fn();
-jest.mock('@n8n/ai-utilities', () => ({
+const proxyFetchMock = vi.fn();
+vi.mock('@n8n/ai-utilities', () => ({
 	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
 }));
 
@@ -43,7 +43,7 @@ describe('createAuthFetch', () => {
 	it('returns the original 401 when onUnauthorized returns null', async () => {
 		proxyFetchMock.mockResolvedValueOnce(make401());
 
-		const onUnauthorized = jest.fn().mockResolvedValue(null);
+		const onUnauthorized = vi.fn().mockResolvedValue(null);
 		const fetchFn = createAuthFetch({
 			initialHeaders: { Authorization: 'Bearer A' },
 			onUnauthorized,
@@ -58,7 +58,7 @@ describe('createAuthFetch', () => {
 	it('retries once with refreshed headers when onUnauthorized returns new headers', async () => {
 		proxyFetchMock.mockResolvedValueOnce(make401()).mockResolvedValueOnce(makeOk());
 
-		const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer B' });
+		const onUnauthorized = vi.fn().mockResolvedValue({ Authorization: 'Bearer B' });
 		const fetchFn = createAuthFetch({
 			initialHeaders: { Authorization: 'Bearer A' },
 			onUnauthorized,
@@ -96,7 +96,7 @@ describe('createAuthFetch — header merging', () => {
 			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
 
 		let callCount = 0;
-		const onUnauthorized = jest.fn().mockImplementation(async () => {
+		const onUnauthorized = vi.fn().mockImplementation(async () => {
 			callCount++;
 			return { Authorization: `Bearer refreshed-${callCount}` };
 		});

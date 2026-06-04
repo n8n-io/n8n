@@ -10,7 +10,7 @@ import type {
 } from '@n8n/db';
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
@@ -33,6 +33,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { Mock } from 'vitest';
 
 // Tier high enough that the resolver's tier-default branch lifts the cap to
 // 5, which is greater than every concurrency value used in these tests.
@@ -42,8 +43,8 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 // default, which is the path the surrounding tests assume.
 const buildLicenseMock = (planName = 'Enterprise', concurrencyQuota?: number) =>
 	mock<License>({
-		getPlanName: jest.fn().mockReturnValue(planName),
-		getValue: jest.fn((feature: string) =>
+		getPlanName: vi.fn().mockReturnValue(planName),
+		getValue: vi.fn((feature: string) =>
 			feature === 'quota:evaluations:concurrencyLimit' ? concurrencyQuota : undefined,
 		) as never,
 	});
@@ -102,7 +103,7 @@ describe('TestRunnerService', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findEvaluationTriggerNode', () => {
@@ -815,7 +816,7 @@ describe('TestRunnerService', () => {
 			const abortController = new AbortController();
 
 			// Mock addEventListener on AbortSignal
-			const mockAddEventListener = jest.fn();
+			const mockAddEventListener = vi.fn();
 			const originalAddEventListener = abortController.signal.addEventListener;
 			abortController.signal.addEventListener = mockAddEventListener;
 
@@ -1993,7 +1994,7 @@ describe('TestRunnerService', () => {
 		// Builds a minimal workflow that passes validateWorkflowConfiguration.
 		// Using a plain object cast (not mock<IWorkflowBase>) so per-node
 		// boolean fields like `disabled` read as undefined instead of being
-		// auto-mocked as truthy functions by jest-mock-extended's deep proxy.
+		// auto-mocked as truthy functions by vitest-mock-extended's deep proxy.
 		const buildWorkflow = (): IWorkflowBase =>
 			({
 				id: WORKFLOW_ID,
@@ -2100,7 +2101,7 @@ describe('TestRunnerService', () => {
 			// paths run end-to-end.
 			Object.assign(testRunRepository, {
 				manager: {
-					transaction: jest
+					transaction: vi
 						.fn()
 						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
 				},
@@ -2174,7 +2175,7 @@ describe('TestRunnerService', () => {
 			// `clearAllMocks` resets call history but not implementations. The
 			// `createTestRun` stub is set in the outer `beforeEach`, so it needs
 			// re-stubbing here. `setupHappyPathMocks` re-wires everything else.
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
 			setupHappyPathMocks(5);
 			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
@@ -2674,7 +2675,7 @@ describe('TestRunnerService', () => {
 			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-pin-v' }));
 
 			let capturedWorkflow: { versionId?: string } | undefined;
-			const validateSpy = jest
+			const validateSpy = vi
 				.spyOn(
 					testRunnerService as unknown as {
 						validateWorkflowConfiguration: (wf: { versionId?: string }) => void;
@@ -2799,7 +2800,7 @@ describe('TestRunnerService', () => {
 			// on the pre-fix code path that *would* take it for this run.
 			// Without this, the test would fail on a transaction TypeError
 			// before reaching the abort assertions, hiding the actual bug.
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(async (cb: (trx: unknown) => Promise<void>) => {
 				await cb({});
 			});
@@ -2824,10 +2825,10 @@ describe('TestRunnerService', () => {
 				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
 			).abortControllers.set('tr-mine', new AbortController());
 
-			const trxUpdate = jest.fn().mockResolvedValue({ affected: 1 });
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const trxUpdate = vi.fn().mockResolvedValue({ affected: 1 });
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+				async (cb: (trx: { update: Mock }) => Promise<void>) => {
 					await cb({ update: trxUpdate });
 				},
 			);
@@ -2865,10 +2866,10 @@ describe('TestRunnerService', () => {
 			// re-mark a `completed` run as `cancelled` and corrupt the record.
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-just-finished' } as never]);
 
-			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const trxUpdate = vi.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+				async (cb: (trx: { update: Mock }) => Promise<void>) => {
 					await cb({ update: trxUpdate });
 				},
 			);
@@ -2901,10 +2902,10 @@ describe('TestRunnerService', () => {
 			// so the terminal state wins.
 			// No abort controller registered → `cancelTestRunLocally` returns
 			// false → fallback path fires.
-			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 });
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const trxUpdate = vi.fn().mockResolvedValue({ affected: 0 });
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+				async (cb: (trx: { update: Mock }) => Promise<void>) => {
 					await cb({ update: trxUpdate });
 				},
 			);

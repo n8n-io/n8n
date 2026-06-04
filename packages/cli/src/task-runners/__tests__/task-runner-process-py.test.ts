@@ -1,25 +1,32 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-const spawnMock = jest.fn(() =>
-	mock<ChildProcess>({
-		stdout: {
-			pipe: jest.fn(),
-		},
-		stderr: {
-			pipe: jest.fn(),
-		},
-	}),
-);
-require('child_process').spawn = spawnMock;
+// Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
+// `require('child_process').spawn` does not intercept it — mock the module instead.
+const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
+
+vi.mock('node:child_process', async () => ({
+	...(await vi.importActual<typeof import('node:child_process')>('node:child_process')),
+	spawn: spawnMock,
+}));
 
 describe('PyTaskRunnerProcess', () => {
+	beforeEach(() => {
+		// restoreMocks resets the implementation before each test.
+		spawnMock.mockReturnValue(
+			mock<ChildProcess>({
+				stdout: { pipe: vi.fn() },
+				stderr: { pipe: vi.fn() },
+			}),
+		);
+	});
+
 	const logger = mockInstance(Logger);
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
@@ -33,7 +40,7 @@ describe('PyTaskRunnerProcess', () => {
 	describe('start', () => {
 		beforeEach(() => {
 			taskRunnerProcess = new PyTaskRunnerProcess(logger, runnerConfig, authService, mock());
-			jest.spyOn(authService, 'createGrantToken').mockResolvedValue('grantToken');
+			authService.createGrantToken.mockResolvedValue('grantToken');
 		});
 
 		test.each([

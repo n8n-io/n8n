@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { TranslationRequest } from '@/controllers/translation.controller';
 import {
@@ -33,7 +33,7 @@ describe('TranslationController', () => {
 			const req = mock<TranslationRequest.Credential>({ query: { credentialType } });
 			credentialTypes.recognizes.calledWith(credentialType).mockReturnValue(true);
 			const response = { translation: 'string' };
-			jest.mock(`${CREDENTIAL_TRANSLATIONS_DIR}/de/credential-type.json`, () => response, {
+			vi.mock(`${CREDENTIAL_TRANSLATIONS_DIR}/de/credential-type.json`, () => response, {
 				virtual: true,
 			});
 

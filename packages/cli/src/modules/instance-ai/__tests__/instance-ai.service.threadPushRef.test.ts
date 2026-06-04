@@ -1,27 +1,28 @@
 import type { z as zType } from 'zod';
+import type { Mock } from 'vitest';
 
 // Manual mocks — must be declared before any imports that touch the mocked modules.
-jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
+vi.mock('@n8n/instance-ai', async () => {
+	const { z } = await vi.importActual<{ z: typeof zType }>('zod');
 	return {
 		McpClientManager: class {
-			disconnect = jest.fn();
+			disconnect = vi.fn();
 		},
-		createDomainAccessTracker: jest.fn(),
-		createSandbox: jest.fn(),
-		createWorkspace: jest.fn(),
-		createLazyRuntimeWorkspace: jest.fn(),
-		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
-		setupSandboxWorkspace: jest.fn(),
-		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+		createDomainAccessTracker: vi.fn(),
+		createSandbox: vi.fn(),
+		createWorkspace: vi.fn(),
+		createLazyRuntimeWorkspace: vi.fn(),
+		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
+		setupSandboxWorkspace: vi.fn(),
+		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: jest.fn(),
+			loadSkill: vi.fn(),
 		})),
 		workflowBuildOutcomeSchema: z.object({}),
-		handleBuildOutcome: jest.fn(),
-		handleVerificationVerdict: jest.fn(),
-		createInstanceAgent: jest.fn(),
-		createAllTools: jest.fn(),
+		handleBuildOutcome: vi.fn(),
+		handleVerificationVerdict: vi.fn(),
+		createInstanceAgent: vi.fn(),
+		createAllTools: vi.fn(),
 	};
 });
 
@@ -66,37 +67,37 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		// dependencies clearThreadState reaches.
 		type Internals = {
 			threadPushRef: Map<string, string>;
-			runState: { clearThread: jest.Mock };
-			backgroundTasks: { cancelThread: jest.Mock };
+			runState: { clearThread: Mock };
+			backgroundTasks: { cancelThread: Mock };
 			creditedThreads: Map<string, unknown>;
 			schedulerLocks: Map<string, unknown>;
-			liveness: { clearThreadState: jest.Mock };
+			liveness: { clearThreadState: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
-			eventBus: { clearThread: jest.Mock };
-			finalizeRemainingMessageTraceRoots: jest.Mock;
-			deleteTraceContextsForThread: jest.Mock;
-			destroySandbox: jest.Mock;
-			reapAiTemporaryForThreadCleanup: jest.Mock;
-			dropPendingConfirmationsForThread: jest.Mock;
+			eventBus: { clearThread: Mock };
+			finalizeRemainingMessageTraceRoots: Mock;
+			deleteTraceContextsForThread: Mock;
+			destroySandbox: Mock;
+			reapAiTemporaryForThreadCleanup: Mock;
+			dropPendingConfirmationsForThread: Mock;
 			clearThreadState: (threadId: string) => Promise<void>;
 		};
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
 		service.runState = {
-			clearThread: jest.fn(() => ({ active: undefined, suspended: undefined })),
+			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
 		};
-		service.backgroundTasks = { cancelThread: jest.fn(() => []) };
+		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.creditedThreads = new Map();
 		service.schedulerLocks = new Map();
-		service.liveness = { clearThreadState: jest.fn() };
+		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
-		service.eventBus = { clearThread: jest.fn() };
-		service.finalizeRemainingMessageTraceRoots = jest.fn(async () => {});
-		service.deleteTraceContextsForThread = jest.fn();
-		service.destroySandbox = jest.fn(async () => {});
-		service.reapAiTemporaryForThreadCleanup = jest.fn(async () => {});
-		service.dropPendingConfirmationsForThread = jest.fn(async () => {});
+		service.eventBus = { clearThread: vi.fn() };
+		service.finalizeRemainingMessageTraceRoots = vi.fn(async () => {});
+		service.deleteTraceContextsForThread = vi.fn();
+		service.destroySandbox = vi.fn(async () => {});
+		service.reapAiTemporaryForThreadCleanup = vi.fn(async () => {});
+		service.dropPendingConfirmationsForThread = vi.fn(async () => {});
 
 		await service.clearThreadState('thread-a');
 

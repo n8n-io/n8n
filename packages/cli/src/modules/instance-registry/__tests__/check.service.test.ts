@@ -7,7 +7,7 @@ import type {
 	IClusterCheck,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -16,6 +16,7 @@ import type { Push } from '@/push';
 import { CheckService, computeDiff } from '../checks/check.service';
 import type { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
+import type { MockInstance, Mocked } from 'vitest';
 
 const makeLogger = () => {
 	const logger = mock<Logger>();
@@ -44,11 +45,11 @@ const namedClass = (name: string) => {
 describe('CheckService', () => {
 	let logger: ReturnType<typeof makeLogger>;
 	let instanceSettings: InstanceSettings;
-	let registryService: jest.Mocked<InstanceRegistryService>;
-	let clusterCheckMetadata: jest.Mocked<ClusterCheckMetadata>;
-	let messageEventBus: jest.Mocked<MessageEventBus>;
-	let push: jest.Mocked<Push>;
-	let containerGet: jest.SpyInstance;
+	let registryService: Mocked<InstanceRegistryService>;
+	let clusterCheckMetadata: Mocked<ClusterCheckMetadata>;
+	let messageEventBus: Mocked<MessageEventBus>;
+	let push: Mocked<Push>;
+	let containerGet: MockInstance;
 	let service: CheckService | undefined;
 
 	const buildService = () =>
@@ -62,7 +63,7 @@ describe('CheckService', () => {
 		);
 
 	beforeEach(() => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		logger = makeLogger();
 		instanceSettings = mock<InstanceSettings>({ isLeader: false });
 		registryService = mock<InstanceRegistryService>();
@@ -76,14 +77,14 @@ describe('CheckService', () => {
 		registryService.saveLastKnownState.mockResolvedValue();
 		messageEventBus.sendAuditEvent.mockResolvedValue(undefined);
 
-		containerGet = jest.spyOn(Container, 'get');
+		containerGet = vi.spyOn(Container, 'get');
 	});
 
 	afterEach(() => {
 		service?.shutdown();
 		service = undefined;
 		containerGet.mockRestore();
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('discovers checks via metadata and DI, skipping failures', () => {
@@ -116,7 +117,7 @@ describe('CheckService', () => {
 
 	it('runs reconcile immediately on takeover, again every 180s, and stops on stepdown', async () => {
 		const TickCheck = namedClass('TickCheck');
-		const runMock = jest
+		const runMock = vi
 			.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
 			.mockResolvedValue({});
 		const tickInstance: IClusterCheck = {
@@ -131,20 +132,20 @@ describe('CheckService', () => {
 		expect(runMock).not.toHaveBeenCalled();
 
 		service.startReconciliation();
-		await jest.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(0);
 		expect(runMock).toHaveBeenCalledTimes(1);
 
-		await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
+		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 		expect(runMock).toHaveBeenCalledTimes(2);
 
 		service.stopReconciliation();
-		await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 		expect(runMock).toHaveBeenCalledTimes(2);
 	});
 
 	it('does not reconcile when not leader, nor after shutdown', async () => {
 		const NoOp = namedClass('NoOp');
-		const runMock = jest
+		const runMock = vi
 			.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
 			.mockResolvedValue({});
 		clusterCheckMetadata.getClasses.mockReturnValue([NoOp]);
@@ -156,18 +157,18 @@ describe('CheckService', () => {
 		Object.assign(instanceSettings, { isLeader: false });
 		service = buildService();
 		service.init();
-		await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 		expect(runMock).not.toHaveBeenCalled();
 
 		service.shutdown();
 		service.startReconciliation();
-		await jest.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
+		await vi.advanceTimersByTimeAsync(REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS * 2);
 		expect(runMock).not.toHaveBeenCalled();
 	});
 
 	it('reconcile forwards warnings/audit/push from runChecks and saves current state', async () => {
 		const WorkingCheck = namedClass('WorkingCheck');
-		const workingRun = jest
+		const workingRun = vi
 			.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
 			.mockResolvedValue({
 				warnings: [{ code: 'cluster.w', message: 'warn msg', severity: 'warning' }],
@@ -186,7 +187,7 @@ describe('CheckService', () => {
 		service = buildService();
 		service.init();
 		service.startReconciliation();
-		await jest.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(0);
 
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Cluster check warning',
@@ -206,15 +207,17 @@ describe('CheckService', () => {
 			const FailingCheck = namedClass('FailingCheck');
 			const workingInstance: IClusterCheck = {
 				checkDescription: { name: 'cluster.work', displayName: 'Work Check' },
-				run: jest.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>().mockResolvedValue({
-					warnings: [{ code: 'cluster.w', message: 'warn msg', severity: 'warning' }],
-					auditEvents: [{ eventName: 'n8n.audit.cluster.foo', payload: { a: 1 } }],
-					pushNotifications: [{ type: 'cluster-foo', data: { b: 2 } }],
-				}),
+				run: vi
+					.fn<(...args: [ClusterCheckContext]) => Promise<ClusterCheckResult>>()
+					.mockResolvedValue({
+						warnings: [{ code: 'cluster.w', message: 'warn msg', severity: 'warning' }],
+						auditEvents: [{ eventName: 'n8n.audit.cluster.foo', payload: { a: 1 } }],
+						pushNotifications: [{ type: 'cluster-foo', data: { b: 2 } }],
+					}),
 			};
 			const failingInstance: IClusterCheck = {
 				checkDescription: { name: 'cluster.fail', displayName: 'Fail Check' },
-				run: jest.fn().mockRejectedValue(new Error('boom')),
+				run: vi.fn().mockRejectedValue(new Error('boom')),
 			};
 
 			clusterCheckMetadata.getClasses.mockReturnValue([WorkingCheck, FailingCheck]);
@@ -261,7 +264,7 @@ describe('CheckService', () => {
 
 		it('passes diff context to checks; short-circuits without I/O when no checks are registered', async () => {
 			const DiffCheck = namedClass('DiffCheck');
-			const runMock = jest
+			const runMock = vi
 				.fn<Promise<ClusterCheckResult>, [ClusterCheckContext]>()
 				.mockResolvedValue({});
 			clusterCheckMetadata.getClasses.mockReturnValue([DiffCheck]);

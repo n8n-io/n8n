@@ -1,12 +1,13 @@
 import { type AgentJsonConfig } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
+import type { Mocked } from 'vitest';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
@@ -64,12 +65,12 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 }
 
 describe('SubAgentSourceResolver', () => {
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentHistoryRepository: Mocked<AgentHistoryRepository>;
 	let resolver: SubAgentSourceResolver;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
 		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);

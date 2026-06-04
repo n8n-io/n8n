@@ -1,6 +1,6 @@
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ describe('EventBusController', () => {
 	let controller: EventBusController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.logStreamingManagedByEnv = false;
 		controller = new EventBusController(eventBus, destinationService, instanceSettingsLoaderConfig);
 	});

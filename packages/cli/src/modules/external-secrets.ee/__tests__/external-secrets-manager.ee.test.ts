@@ -1,5 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { DummyProvider, FailedProvider, MockProviders } from '@test/external-secrets/utils';
 
@@ -14,22 +14,23 @@ import type { ExternalSecretsRetryManager } from '../retry-manager.service';
 import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 import type { ExternalSecretsSettingsStore } from '../settings-store.service';
 import type { ExternalSecretsSettings, SecretsProvider } from '../types';
+import type { Mocked } from 'vitest';
 
 describe('ExternalSecretsManager', () => {
-	jest.useFakeTimers();
+	vi.useFakeTimers();
 
 	let manager: ExternalSecretsManager;
 	let mockConfig: ExternalSecretsConfig;
 	let mockProvidersFactory: MockProviders;
 	let mockEventService: any;
 	let mockPublisher: any;
-	let mockSettingsStore: jest.Mocked<ExternalSecretsSettingsStore>;
-	let mockProviderRegistry: jest.Mocked<ExternalSecretsProviderRegistry>;
-	let mockProviderLifecycle: jest.Mocked<ExternalSecretsProviderLifecycle>;
-	let mockRetryManager: jest.Mocked<ExternalSecretsRetryManager>;
-	let mockSecretsCache: jest.Mocked<ExternalSecretsSecretsCache>;
-	let mockSecretsProviderConnectionRepository: jest.Mocked<SecretsProviderConnectionRepository>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockSettingsStore: Mocked<ExternalSecretsSettingsStore>;
+	let mockProviderRegistry: Mocked<ExternalSecretsProviderRegistry>;
+	let mockProviderLifecycle: Mocked<ExternalSecretsProviderLifecycle>;
+	let mockRetryManager: Mocked<ExternalSecretsRetryManager>;
+	let mockSecretsCache: Mocked<ExternalSecretsSecretsCache>;
+	let mockSecretsProviderConnectionRepository: Mocked<SecretsProviderConnectionRepository>;
+	let mockCipher: Mocked<Cipher>;
 
 	const mockSettings: ExternalSecretsSettings = {
 		dummy: {
@@ -43,8 +44,8 @@ describe('ExternalSecretsManager', () => {
 		mockConfig = { updateInterval: 60 } as ExternalSecretsConfig;
 		mockProvidersFactory = new MockProviders();
 		mockProvidersFactory.setProviders({ dummy: DummyProvider });
-		mockEventService = { emit: jest.fn() };
-		mockPublisher = { publishCommand: jest.fn() };
+		mockEventService = { emit: vi.fn() };
+		mockPublisher = { publishCommand: vi.fn() };
 
 		// Mock SettingsStore
 		mockSettingsStore = mock<ExternalSecretsSettingsStore>();
@@ -117,7 +118,7 @@ describe('ExternalSecretsManager', () => {
 
 	afterEach(() => {
 		manager?.shutdown();
-		jest.clearAllTimers();
+		vi.clearAllTimers();
 	});
 
 	describe('init', () => {
@@ -134,7 +135,7 @@ describe('ExternalSecretsManager', () => {
 			// refreshAll is called once during init
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
 
-			jest.advanceTimersByTime(60000); // 60 seconds
+			vi.advanceTimersByTime(60000); // 60 seconds
 
 			// Should be called again after interval
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(2);
@@ -172,12 +173,12 @@ describe('ExternalSecretsManager', () => {
 			// refreshAll called once during init
 			const callsAfterInit = mockSecretsCache.refreshAll.mock.calls.length;
 
-			jest.advanceTimersByTime(60000);
+			vi.advanceTimersByTime(60000);
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1);
 
 			manager.shutdown();
 
-			jest.advanceTimersByTime(60000);
+			vi.advanceTimersByTime(60000);
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1); // No additional calls
 		});
 	});
@@ -196,7 +197,7 @@ describe('ExternalSecretsManager', () => {
 
 	describe('getProviderProperties', () => {
 		it('should return property schema for the given provider type', () => {
-			const getProviderSpy = jest.spyOn(mockProvidersFactory, 'getProvider');
+			const getProviderSpy = vi.spyOn(mockProvidersFactory, 'getProvider');
 
 			const result = manager.getProviderProperties('dummy');
 
@@ -208,7 +209,7 @@ describe('ExternalSecretsManager', () => {
 		});
 
 		it('should throw if provider type does not exist', () => {
-			const getProviderSpy = jest
+			const getProviderSpy = vi
 				.spyOn(mockProvidersFactory, 'getProvider')
 				.mockReturnValue(undefined as unknown as { new (): SecretsProvider });
 
@@ -291,7 +292,7 @@ describe('ExternalSecretsManager', () => {
 			projectAccess: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
-			setUpdateDate: jest.fn(),
+			setUpdateDate: vi.fn(),
 		};
 
 		it('should tear down existing provider, set up new one, refresh cache, and broadcast', async () => {
@@ -405,7 +406,7 @@ describe('ExternalSecretsManager', () => {
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
 			await dummyProvider.connect();
-			jest.spyOn(dummyProvider, 'update');
+			vi.spyOn(dummyProvider, 'update');
 
 			mockProviderRegistry.get.mockReturnValue(dummyProvider);
 
@@ -505,7 +506,7 @@ describe('ExternalSecretsManager', () => {
 		it('should track provider save event', async () => {
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: new Date(), settings: {} });
-			jest.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -562,7 +563,7 @@ describe('ExternalSecretsManager', () => {
 	describe('testProviderSettings', () => {
 		it('should connect provider before testing', async () => {
 			const dummyProvider = new DummyProvider();
-			jest.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -583,7 +584,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should test provider with settings', async () => {
 			const dummyProvider = new DummyProvider();
-			jest.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -607,7 +608,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should return tested state for non-connected provider', async () => {
 			const dummyProvider = new DummyProvider();
-			jest.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([true]);
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -666,7 +667,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should return error state on test failure', async () => {
 			const dummyProvider = new DummyProvider();
-			jest.spyOn(dummyProvider, 'test').mockResolvedValue([false, 'Test failed']);
+			vi.spyOn(dummyProvider, 'test').mockResolvedValue([false, 'Test failed']);
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -685,7 +686,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should disconnect provider after test', async () => {
 			const dummyProvider = new DummyProvider();
-			const disconnectSpy = jest.spyOn(dummyProvider, 'disconnect');
+			const disconnectSpy = vi.spyOn(dummyProvider, 'disconnect');
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -700,7 +701,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should disconnect provider even after connection failure', async () => {
 			const dummyProvider = new DummyProvider();
-			const disconnectSpy = jest.spyOn(dummyProvider, 'disconnect');
+			const disconnectSpy = vi.spyOn(dummyProvider, 'disconnect');
 
 			mockProviderLifecycle.initialize.mockResolvedValue({
 				success: true,
@@ -848,7 +849,7 @@ describe('ExternalSecretsManager', () => {
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				setUpdateDate: jest.fn(),
+				setUpdateDate: vi.fn(),
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
@@ -878,7 +879,7 @@ describe('ExternalSecretsManager', () => {
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				setUpdateDate: jest.fn(),
+				setUpdateDate: vi.fn(),
 			};
 			const disabledConnection = {
 				id: 2,
@@ -889,7 +890,7 @@ describe('ExternalSecretsManager', () => {
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				setUpdateDate: jest.fn(),
+				setUpdateDate: vi.fn(),
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([
@@ -929,7 +930,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					id: 2,
@@ -940,7 +941,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			];
 
@@ -982,7 +983,7 @@ describe('ExternalSecretsManager', () => {
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				setUpdateDate: jest.fn(),
+				setUpdateDate: vi.fn(),
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
@@ -1015,7 +1016,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					id: 2,
@@ -1026,7 +1027,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			];
 
@@ -1069,7 +1070,7 @@ describe('ExternalSecretsManager', () => {
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				setUpdateDate: jest.fn(),
+				setUpdateDate: vi.fn(),
 			};
 
 			const existingProvider = new DummyProvider();
@@ -1103,7 +1104,7 @@ describe('ExternalSecretsManager', () => {
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				setUpdateDate: jest.fn(),
+				setUpdateDate: vi.fn(),
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
@@ -1134,7 +1135,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					id: 2,
@@ -1145,7 +1146,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					id: 3,
@@ -1156,7 +1157,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			];
 
@@ -1187,7 +1188,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 				{
 					id: 2,
@@ -1198,7 +1199,7 @@ describe('ExternalSecretsManager', () => {
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
-					setUpdateDate: jest.fn(),
+					setUpdateDate: vi.fn(),
 				},
 			];
 

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ProjectRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { RoleResolverService } from '../role-resolver.service.ee';
 import type {
@@ -63,7 +63,7 @@ function makeProject(overrides: Partial<ProjectInfo> = {}): ProjectInfo {
 
 describe('RoleResolverService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		projectRepository.find.mockResolvedValue([]);
 	});
 

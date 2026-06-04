@@ -29,12 +29,12 @@ mockInstance(LoadNodesAndCredentials);
 
 describe('Worker', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('initOrchestration', () => {
 		it('should instantiate WorkerStatusService during orchestration setup', async () => {
-			const containerGetSpy = jest.spyOn(Container, 'get');
+			const containerGetSpy = vi.spyOn(Container, 'get');
 
 			await new Worker().initOrchestration();
 
@@ -54,7 +54,7 @@ describe('Worker', () => {
 
 		it('should initialize PubSubRegistry', async () => {
 			const pubSubRegistry = Container.get(PubSubRegistry);
-			const initSpy = jest.spyOn(pubSubRegistry, 'init');
+			const initSpy = pubSubRegistry.init;
 
 			await new Worker().initOrchestration();
 

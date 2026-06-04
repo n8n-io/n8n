@@ -1,5 +1,5 @@
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IConnections,
 	INode,
@@ -12,6 +12,7 @@ import type {
 import type { NodeTypes } from '@/node-types';
 
 import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
+import type { Mocked } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -19,9 +20,9 @@ import { extractResolvedNodeParameters } from '../extract-resolved-node-paramete
 
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeResolutionExecution>,
-): jest.Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
+): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
 	return {
-		findSingleExecution: jest.fn().mockResolvedValue(execution),
+		findSingleExecution: vi.fn().mockResolvedValue(execution),
 	};
 }
 

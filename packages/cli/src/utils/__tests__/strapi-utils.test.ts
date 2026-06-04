@@ -132,7 +132,7 @@ describe('Strapi utils', () => {
 		});
 
 		it('should apply the correct timeout value to axios requests', async () => {
-			const axiosGetSpy = jest.spyOn(axios, 'get');
+			const axiosGetSpy = vi.spyOn(axios, 'get');
 
 			nock('https://strapi.test')
 				.get('/api/nodes')
@@ -179,7 +179,7 @@ describe('Strapi utils', () => {
 
 		it('should handle network timeout and continue gracefully', async () => {
 			// Mock axios to simulate timeout
-			const axiosGetSpy = jest.spyOn(axios, 'get').mockRejectedValueOnce(
+			const axiosGetSpy = vi.spyOn(axios, 'get').mockRejectedValueOnce(
 				Object.assign(new Error('timeout of 6000ms exceeded'), {
 					code: 'ECONNABORTED',
 					name: 'AxiosError',
@@ -236,7 +236,7 @@ describe('Strapi utils', () => {
 				},
 			];
 
-			const axiosGetSpy = jest.spyOn(axios, 'get');
+			const axiosGetSpy = vi.spyOn(axios, 'get');
 
 			nock('https://strapi.test')
 				.get('/api/nodes')
@@ -281,7 +281,7 @@ describe('Strapi utils', () => {
 				},
 			];
 
-			const axiosGetSpy = jest.spyOn(axios, 'get');
+			const axiosGetSpy = vi.spyOn(axios, 'get');
 
 			nock('https://strapi.test')
 				.get('/api/nodes')
@@ -326,7 +326,7 @@ describe('Strapi utils', () => {
 				},
 			];
 
-			const axiosGetSpy = jest.spyOn(axios, 'get');
+			const axiosGetSpy = vi.spyOn(axios, 'get');
 
 			nock('https://strapi.test')
 				.get('/api/nodes')

@@ -1,8 +1,9 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { CollaborationState } from '../collaboration.state';
+import type { Mocked } from 'vitest';
 
 const origDate = global.Date;
 
@@ -16,7 +17,7 @@ const mockDateFactory = (currentDate: string) => {
 
 describe('CollaborationState', () => {
 	let collaborationState: CollaborationState;
-	let mockCacheService: jest.Mocked<CacheService>;
+	let mockCacheService: Mocked<CacheService>;
 
 	beforeEach(() => {
 		mockCacheService = mock<CacheService>();

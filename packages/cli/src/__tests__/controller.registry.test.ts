@@ -1,6 +1,6 @@
-jest.mock('@n8n/backend-common', () => {
+vi.mock('@n8n/backend-common', async () => {
 	return {
-		...jest.requireActual('@n8n/backend-common'),
+		...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),
 		inProduction: true,
 	};
 });
@@ -20,7 +20,7 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express, { json } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { agent as testAgent } from 'supertest';
 import { Z } from '@n8n/api-types';
 import { z } from 'zod';
@@ -39,10 +39,10 @@ describe('ControllerRegistry', () => {
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
 	let agent: SuperAgentTest;
-	const authMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => next());
+	const authMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => next());
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		const app = express();
 		app.use(json());
 		authService.createAuthMiddleware.mockImplementation(() => authMiddleware);

@@ -6,7 +6,7 @@ import type {
 	SettingsRepository,
 	UserRepository,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -23,12 +23,12 @@ describe('ExternalHooks', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 
 	const workflowData = mock<IWorkflowBase>({ id: '123', name: 'Test Workflow' });
-	const hookFn = jest.fn();
+	const hookFn = vi.fn();
 
 	let externalHooks: ExternalHooks;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		globalConfig.externalHooks.files = [];
 		externalHooks = new ExternalHooks(
 			logger,
@@ -44,7 +44,7 @@ describe('ExternalHooks', () => {
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
 			// @ts-expect-error private method
-			const loadHooksSpy = jest.spyOn(externalHooks, 'loadHooks');
+			const loadHooksSpy = vi.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
 			expect(loadHooksSpy).not.toHaveBeenCalled();
 		});
@@ -52,7 +52,7 @@ describe('ExternalHooks', () => {
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
 
-			jest.mock(
+			vi.mock(
 				'/path/to/non-existent-hook.js',
 				() => {
 					throw new Error('File not found');
@@ -71,7 +71,7 @@ describe('ExternalHooks', () => {
 			};
 
 			globalConfig.externalHooks.files = ['/path/to/valid-hook.js'];
-			jest.mock('/path/to/valid-hook.js', () => mockHookFile, { virtual: true });
+			vi.mock('/path/to/valid-hook.js', () => mockHookFile, { virtual: true });
 
 			await externalHooks.init();
 
