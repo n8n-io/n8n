@@ -1,8 +1,8 @@
 name: 'Util: Clean Stale Branches'
 
 on:
-  # schedule:
-  #   - cron: "0 0 * * *" # Everyday at midnight
+  schedule:
+    - cron: "0 10 * * 1" # Every monday
   workflow_dispatch:
     inputs:
       dry-run:
@@ -40,6 +40,6 @@ jobs:
       - name: Clean stale branches
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          STALE_DAYS: ${{ inputs.days }}
-          EXCLUDE_BRANCHES: ${{ inputs.exclude }}
+          STALE_DAYS: ${{ inputs.days || '100' }}
+          EXCLUDE_BRANCHES: ${{ inputs.exclude || '' }}
         run: node .github/scripts/stale/clean-stale-branches.mjs --days="$STALE_DAYS" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}
