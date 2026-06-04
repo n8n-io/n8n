@@ -31,10 +31,43 @@ export type ImpactMap = Record<string, Record<string, string[]>>;
  * ImpactMap exactly. Spec paths repeat across thousands of (file, line) entries,
  * so interning shrinks the artifact ~10x with no loss of the function-level
  * detail that line-precise selection and cross-layer overlap analysis need.
+ *
+ * Each entry's spec set is stored as **whichever is smaller** (lossless):
+ *  - a plain index list `[3, 17]` — cheap when few specs cover the line (sparse), or
+ *  - a base64 **bitmask** string `"b:…"` (one bit per spec) — constant size no
+ *    matter how many specs, so it wins for "hub" lines covered by most specs.
+ * Backend coverage is dense (every spec runs the shared server stack), so hubs
+ * would otherwise dominate the artifact. See `scripts/impact-map.md`.
  */
 export interface InternedImpactMap {
 	specs: string[];
-	files: Record<string, Record<string, number[]>>;
+	files: Record<string, Record<string, number[] | string>>;
+}
+
+const BITMASK_PREFIX = 'b:';
+
+/** Encode a spec-index set as the cheaper of an index list or a base64 bitmask. */
+function encodeSpecSet(indices: number[], specCount: number): number[] | string {
+	const maskBytes = Math.ceil(specCount / 8);
+	const b64Len = Math.ceil(maskBytes / 3) * 4;
+	// +4 ≈ the "b:" prefix and the JSON quotes the string form pays vs the array.
+	if (JSON.stringify(indices).length <= b64Len + 4) return indices;
+	const bytes = new Uint8Array(maskBytes);
+	for (const i of indices) bytes[i >> 3] |= 1 << (i & 7);
+	return BITMASK_PREFIX + Buffer.from(bytes).toString('base64');
+}
+
+/** Decode an entry (index list or `"b:…"` bitmask) back to spec indices. */
+function decodeSpecSet(value: number[] | string): number[] {
+	if (typeof value !== 'string') return value;
+	const bytes = Buffer.from(value.slice(BITMASK_PREFIX.length), 'base64');
+	const out: number[] = [];
+	for (let byte = 0; byte < bytes.length; byte++) {
+		for (let bit = 0; bit < 8; bit++) {
+			if (bytes[byte] & (1 << bit)) out.push(byte * 8 + bit);
+		}
+	}
+	return out;
 }
 
 /** One per-spec lcov and the spec it belongs to (used when records carry no `TN:`). */
@@ -191,22 +224,37 @@ export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
 		if (i === undefined) index.set(s, (i = specs.push(s) - 1));
 		return i;
 	};
+	// Pass 1: intern every spec so the bitmask width (specs.length) is known
+	// before any entry is encoded.
+	for (const file of Object.keys(map))
+		for (const line of Object.keys(map[file])) for (const s of map[file][line]) idOf(s);
+	// Pass 2: store each entry as the cheaper of an index list or a bitmask.
 	const files: InternedImpactMap['files'] = {};
 	for (const file of Object.keys(map)) {
 		files[file] = {};
-		for (const line of Object.keys(map[file])) files[file][line] = map[file][line].map(idOf);
+		for (const line of Object.keys(map[file])) {
+			const indices = map[file][line].map((s) => index.get(s)!);
+			files[file][line] = encodeSpecSet(indices, specs.length);
+		}
 	}
 	return { specs, files };
 }
 
-/** Expand an {@link InternedImpactMap} back to a full {@link ImpactMap}. */
+/**
+ * Expand an {@link InternedImpactMap} back to a full {@link ImpactMap}. Handles
+ * both entry forms (index list or `"b:…"` bitmask) and older maps that predate
+ * the bitmask form (all index lists). Spec lists come back sorted, matching
+ * {@link mergeCoverage}'s output, so decode∘encode round-trips exactly.
+ */
 export function decodeImpactMap(interned: InternedImpactMap): ImpactMap {
 	const { specs, files } = interned;
 	const map: ImpactMap = {};
 	for (const file of Object.keys(files)) {
 		map[file] = {};
 		for (const line of Object.keys(files[file]))
-			map[file][line] = files[file][line].map((i) => specs[i]);
+			map[file][line] = decodeSpecSet(files[file][line])
+				.map((i) => specs[i])
+				.sort();
 	}
 	return map;
 }

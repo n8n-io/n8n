@@ -360,8 +360,63 @@ describe('encode/decode impact map (interned on-disk form)', () => {
 		]);
 		const enc = encodeImpactMap(impactMap);
 		expect(enc.specs).toEqual(['A']); // one entry despite two functions
-		expect(enc.files['f.ts']['10']).toEqual([0]);
+		expect(enc.files['f.ts']['10']).toEqual([0]); // sparse → index list
 		expect(enc.files['f.ts']['20']).toEqual([0]);
+	});
+
+	it('SPARSE entries stay index lists; DENSE entries become bitmasks', () => {
+		const specs = Array.from({ length: 40 }, (_, i) => `spec-${i}.ts`).sort();
+		const map = { 'f.ts': { '5': ['spec-0.ts', 'spec-1.ts'], '10': specs } };
+		const enc = encodeImpactMap(map);
+		expect(Array.isArray(enc.files['f.ts']['5'])).toBe(true); // 2 specs → list
+		expect(typeof enc.files['f.ts']['10']).toBe('string'); // 40 specs → bitmask
+		expect(enc.files['f.ts']['10']).toMatch(/^b:/);
+		// Lossless either way.
+		expect(decodeImpactMap(enc)).toEqual(map);
+	});
+
+	it('LOSSLESS through the bitmask branch for a fully-covered (hub) line', () => {
+		const specs = Array.from({ length: 100 }, (_, i) => `s${i}.spec.ts`).sort();
+		const map = { 'hub.ts': { '1': specs } };
+		const enc = encodeImpactMap(map);
+		expect(enc.files['hub.ts']['1']).toMatch(/^b:/);
+		expect(decodeImpactMap(enc)).toEqual(map);
+	});
+
+	it('BACKWARD-COMPAT: decodes a pre-bitmask map (all index lists)', () => {
+		const old = { specs: ['A', 'B'], files: { 'f.ts': { '1': [0, 1], '2': [1] } } };
+		expect(decodeImpactMap(old)).toEqual({ 'f.ts': { '1': ['A', 'B'], '2': ['B'] } });
+	});
+
+	// The arbExecs property above caps at 5 specs (single-byte masks, indices
+	// 0-4). This drives a WIDE spec universe + SCATTERED subsets so the bitmask
+	// bit-packing (i>>3 across multiple bytes), the list/bitmask threshold, and
+	// the full hub case are all round-tripped.
+	it('LOSSLESS: round-trips wide spec universes + scattered subsets through both encodings', () => {
+		fc.assert(
+			fc.property(
+				fc.integer({ min: 1, max: 200 }),
+				fc.array(fc.array(fc.nat({ max: 1000 }), { minLength: 1, maxLength: 200 }), {
+					minLength: 1,
+					maxLength: 8,
+				}),
+				(n, rawEntries) => {
+					const specs = Array.from(
+						{ length: n },
+						(_, i) => `tests/e2e/s${String(i).padStart(3, '0')}.spec.ts`,
+					);
+					const map: ImpactMap = {};
+					// A hub line covering ALL specs pins specs.length = n (forces
+					// multi-byte masks) and exercises the fully-covered bitmask.
+					map['hub.ts'] = { '1': [...specs].sort() };
+					rawEntries.forEach((idxs, k) => {
+						const set = [...new Set(idxs.map((i) => i % n))].map((i) => specs[i]).sort();
+						if (set.length) map[`f${k}.ts`] = { '1': set };
+					});
+					expect(decodeImpactMap(encodeImpactMap(map))).toEqual(map);
+				},
+			),
+		);
 	});
 });
 
