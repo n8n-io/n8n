@@ -151,11 +151,10 @@ const handleItemHover = (index: number) => {
 	if (!item || item.disabled) return;
 
 	highlightedIndex.value = index;
-	if (hasSubMenu(item)) {
-		openHighlightedSubMenu();
-	} else {
-		openSubMenuIndex.value = -1;
-	}
+
+	requestAnimationFrame(() => {
+		searchRef.value?.focus({ preventScroll: true });
+	});
 };
 
 const getItemDomId = (index: number) => getSearchableItemDomId(instanceId, index);
