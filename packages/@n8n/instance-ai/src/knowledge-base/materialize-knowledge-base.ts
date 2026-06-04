@@ -7,6 +7,13 @@ import {
 import { join as posixJoin } from 'node:path/posix';
 
 import type { Logger } from '../logger';
+import {
+	buildTemplatesIndexFromArchive,
+	KNOWLEDGE_BASE_TEMPLATES_DIR,
+	type KnowledgeBaseTemplateEntry,
+} from './build-templates-index';
+export { KNOWLEDGE_BASE_TEMPLATES_DIR };
+import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
 	loadPrebakedWorkspaceBundle,
@@ -18,8 +25,9 @@ import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
 export const SANDBOX_KNOWLEDGE_BASE_DIR = 'knowledge-base';
 export const KNOWLEDGE_BASE_BEST_PRACTICES_DIR = 'best-practices';
+export const KNOWLEDGE_BASE_INDEX_FILE = 'index.json';
 export const KNOWLEDGE_BASE_MANIFEST_FILE = WORKSPACE_MANIFEST_FILE;
-export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 1;
+export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 4;
 
 export interface KnowledgeBaseIndexEntry {
 	id: BestPracticesGuideId;
@@ -31,6 +39,17 @@ export interface KnowledgeBaseIndexEntry {
 
 export interface KnowledgeBaseBestPracticesIndex {
 	entries: KnowledgeBaseIndexEntry[];
+}
+
+export interface KnowledgeBaseRootIndex {
+	bestPractices: {
+		indexFile: string;
+		entries: KnowledgeBaseIndexEntry[];
+	};
+	templates: {
+		indexFile: string;
+		entries: KnowledgeBaseTemplateEntry[];
+	};
 }
 
 export interface KnowledgeBaseWorkspaceManifest {
@@ -46,20 +65,55 @@ export interface KnowledgeBaseWorkspaceBundle {
 	contentHash: string;
 }
 
-interface MaterializeKnowledgeBaseOptions {
-	workspace: SandboxWorkspace;
+export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 	root: string;
+	templatesArchive?: Buffer | null;
 	logger?: Logger;
 }
 
-export function buildKnowledgeBaseWorkspaceBundle({
-	root,
-}: {
-	root: string;
-}): KnowledgeBaseWorkspaceBundle {
+interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
+	workspace: SandboxWorkspace;
+}
+
+function addTemplatesToKnowledgeBaseFiles(
+	files: Map<string, string>,
+	rootDir: string,
+	templatesArchive: Buffer,
+	logger?: Logger,
+): KnowledgeBaseTemplateEntry[] {
+	const extracted = extractBuilderTemplatesArchive(templatesArchive);
+	if (!extracted) {
+		logger?.warn('[knowledge-base] rejected templates archive during bundle build', {
+			archiveBytes: templatesArchive.byteLength,
+		});
+		return [];
+	}
+
+	const templatesIndex = buildTemplatesIndexFromArchive(extracted);
+	const templatesDir = posixJoin(rootDir, KNOWLEDGE_BASE_TEMPLATES_DIR);
+
+	for (const [name, content] of extracted) {
+		if (!name.endsWith('.ts')) continue;
+		files.set(posixJoin(templatesDir, name), withTrailingNewline(content));
+	}
+
+	const templatesIndexPath = posixJoin(templatesDir, KNOWLEDGE_BASE_INDEX_FILE);
+	files.set(templatesIndexPath, stringifyWorkspaceJson(templatesIndex));
+
+	// The decompressed archive has been copied into `files`; release the
+	// intermediate map so the duplicate copy isn't held until GC.
+	extracted.clear();
+
+	return templatesIndex.entries;
+}
+
+export function buildKnowledgeBaseWorkspaceBundle(
+	options: BuildKnowledgeBaseWorkspaceBundleOptions,
+): KnowledgeBaseWorkspaceBundle {
+	const { root, templatesArchive = null, logger } = options;
 	const rootDir = posixJoin(root, SANDBOX_KNOWLEDGE_BASE_DIR);
 	const files = new Map<string, string>();
-	const entries: KnowledgeBaseIndexEntry[] = [];
+	const bestPracticeEntries: KnowledgeBaseIndexEntry[] = [];
 
 	for (const guideId of Object.values(WorkflowTechnique)) {
 		const doc = bestPracticesRegistry[guideId];
@@ -77,12 +131,33 @@ export function buildKnowledgeBaseWorkspaceBundle({
 			entry.version = doc.version;
 		}
 
-		entries.push(entry);
+		bestPracticeEntries.push(entry);
 	}
 
-	const indexPath = posixJoin(rootDir, KNOWLEDGE_BASE_BEST_PRACTICES_DIR, 'index.json');
-	const index: KnowledgeBaseBestPracticesIndex = { entries };
-	files.set(indexPath, stringifyWorkspaceJson(index));
+	const bestPracticesIndexPath = posixJoin(
+		rootDir,
+		KNOWLEDGE_BASE_BEST_PRACTICES_DIR,
+		KNOWLEDGE_BASE_INDEX_FILE,
+	);
+	const bestPracticesIndex: KnowledgeBaseBestPracticesIndex = { entries: bestPracticeEntries };
+	files.set(bestPracticesIndexPath, stringifyWorkspaceJson(bestPracticesIndex));
+
+	const templateEntries = templatesArchive
+		? addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger)
+		: [];
+
+	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
+	const rootIndex: KnowledgeBaseRootIndex = {
+		bestPractices: {
+			indexFile: posixJoin(KNOWLEDGE_BASE_BEST_PRACTICES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
+			entries: bestPracticeEntries,
+		},
+		templates: {
+			indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
+			entries: templateEntries,
+		},
+	};
+	files.set(rootIndexPath, stringifyWorkspaceJson(rootIndex));
 
 	const manifestPath = posixJoin(rootDir, KNOWLEDGE_BASE_MANIFEST_FILE);
 	const contentHash = computeWorkspaceContentHash(files);
@@ -95,7 +170,7 @@ export function buildKnowledgeBaseWorkspaceBundle({
 	return {
 		rootDir,
 		manifestPath,
-		indexPath,
+		indexPath: rootIndexPath,
 		files,
 		contentHash,
 	};
@@ -103,21 +178,19 @@ export function buildKnowledgeBaseWorkspaceBundle({
 
 const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
 
-export async function loadPrebakedKnowledgeBaseBundle({
-	workspace,
-	root,
-	logger,
-}: MaterializeKnowledgeBaseOptions): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
-	const bundle = buildKnowledgeBaseWorkspaceBundle({ root });
+export async function loadPrebakedKnowledgeBaseBundle(
+	options: MaterializeKnowledgeBaseOptions,
+): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
+	const bundle = buildKnowledgeBaseWorkspaceBundle(options);
 
 	return await loadPrebakedWorkspaceBundle({
-		workspace,
+		workspace: options.workspace,
 		manifestPath: bundle.manifestPath,
 		expectedHash: bundle.contentHash,
 		hashField: 'contentHash',
 		schemaVersion: KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION,
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
-		logger,
+		logger: options.logger,
 		invalidManifestLogMessage: 'Ignoring invalid prebaked knowledge base manifest',
 		staleManifestLogMessage: 'Ignoring stale prebaked knowledge base manifest',
 		staleManifestLogKeys: {
@@ -126,7 +199,7 @@ export async function loadPrebakedKnowledgeBaseBundle({
 		},
 		successLogMessage: 'Using prebaked knowledge base from workspace',
 		successLogContext: (loadedBundle) => ({
-			root,
+			root: options.root,
 			knowledgeBaseRoot: loadedBundle.rootDir,
 			contentHash: loadedBundle.contentHash,
 			fileCount: loadedBundle.files.size,
@@ -143,7 +216,7 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
 		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
-		buildBundle: () => buildKnowledgeBaseWorkspaceBundle({ root: options.root }),
+		buildBundle: () => buildKnowledgeBaseWorkspaceBundle(options),
 		materializedLogMessage: 'Materialized knowledge base into workspace',
 		materializedLogContext: (bundle) => ({
 			root: options.root,
@@ -153,3 +226,8 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		}),
 	});
 }
+
+export type {
+	KnowledgeBaseTemplateEntry,
+	KnowledgeBaseTemplatesIndex,
+} from './build-templates-index';

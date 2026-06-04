@@ -5,34 +5,21 @@ import {
 	NATIVE_NODE_PREFERENCE,
 } from '@n8n/workflow-sdk/prompts/node-selection';
 
-import { N8N_SANDBOX_WORKSPACE_ROOT } from '@/workspace/sandbox-setup';
-
-import { SANDBOX_WORKSPACE_SECTION, SUBAGENT_OUTPUT_CONTRACT } from '../../agent/shared-prompts';
+import { getSandboxWorkspaceSection, SUBAGENT_OUTPUT_CONTRACT } from '../../agent/shared-prompts';
 
 interface PlannerAgentPromptOptions {
-	sandboxWorkspaceAvailable?: boolean;
+	workspaceRoot?: string;
 }
 
-const PLANNER_DISCOVER_WITH_SANDBOX = `2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:
-   - Read \`${N8N_SANDBOX_WORKSPACE_ROOT}/knowledge-base/best-practices/index.json\`, then grep/read the linked \`.md\` guides for each relevant technique (e.g. "form_input", "scheduling", "data_persistence", "web_app")
+const PLANNER_DISCOVER_SECTION = `2. **Discover** — check what exists and learn best practices. Expect 3–6 tool calls for a typical request:
    - \`nodes(action="suggested")\` for the relevant categories
    - \`data-tables(action="list")\` to check for existing tables
    - \`credentials(action="list")\` if the request involves external services
-   - Skip searches for nodes you already know exist (webhooks, schedule triggers, data tables, code, set, filter, etc.)`;
-
-const PLANNER_DISCOVER_WITHOUT_SANDBOX = `2. **Discover** — check what exists. Expect 2–4 tool calls for a typical request:
-   - \`nodes(action="suggested")\` for the relevant categories
-   - \`data-tables(action="list")\` to check for existing tables
-   - \`credentials(action="list")\` if the request involves external services
-   - Use the Node Selection Reference below for best-practice patterns (sandbox knowledge base is unavailable)
    - Skip searches for nodes you already know exist (webhooks, schedule triggers, data tables, code, set, filter, etc.)`;
 
 export function getPlannerAgentPrompt(options: PlannerAgentPromptOptions = {}): string {
-	const { sandboxWorkspaceAvailable = false } = options;
-	const sandboxSection = sandboxWorkspaceAvailable ? `\n${SANDBOX_WORKSPACE_SECTION}\n` : '';
-	const discoverSection = sandboxWorkspaceAvailable
-		? PLANNER_DISCOVER_WITH_SANDBOX
-		: PLANNER_DISCOVER_WITHOUT_SANDBOX;
+	const { workspaceRoot } = options;
+	const sandboxSection = workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : '';
 
 	return `You are the n8n Workflow Planner — you design solution architectures. You do NOT build workflows.
 
@@ -58,7 +45,7 @@ ${sandboxSection}
    - **Use credential-backed resource investigation only when it changes the plan.** You may call \`credentials(action="list")\` so a later resource lookup can validate a resource that affects the architecture (for example checking whether a named Slack channel exists). Do not turn that into a credential-choice question unless the multiple-credentials rule above applies.
    - **List your assumptions** on your first \`add-plan-item\` call. The user reviews the plan before execution and can reject/correct.
 
-${discoverSection}
+${PLANNER_DISCOVER_SECTION}
 
 ## Node Selection Reference
 
@@ -102,7 +89,7 @@ ${NATIVE_NODE_PREFERENCE}
 - **Each item's \`purpose\` describes only that item.** Do not reference work handled by other plan items — each agent only sees its own spec, and cross-task context causes scope creep.
 - **Workflow verification is mandatory.** For **every** \`workflow\` item you add, also add a \`checkpoint\` item whose \`dependsOn\` includes that workflow's ID. Checkpoints are orchestrator-executed — the orchestrator runs them itself using its own tools, they are not delegated.
   - \`title\`: a user-readable verification goal, e.g. \`"Verify 'Daily API Email' workflow runs successfully"\`.
-  - \`instructions\`: detailed steps the orchestrator must execute. Use \`verify-built-workflow\` with the work item ID from the build outcome — it uses pin data captured at build time, so it works even for event-triggered workflows (webhook, form, chat, mcp). Do not put \`executions(action="run")\` in checkpoint instructions; if the user explicitly asked to run or execute the workflow after building, the synthesize follow-up handles that as a separate approval-gated run. State the pass condition in plain terms (e.g. "run completes without errors and produces at least one output row").
+  - \`instructions\`: detailed steps the orchestrator must execute. First inspect the persisted workflow with \`workflows(action="get-json")\` and compare the saved graph to the requested outcome; build/save success alone is not proof of quality. Then use \`verify-built-workflow\` with the work item ID from the build outcome — it uses pin data captured at build time, so it works even for event-triggered workflows (webhook, form, chat, mcp). Do not put \`executions(action="run")\` in checkpoint instructions; if the user explicitly asked to run or execute the workflow after building, the synthesize follow-up handles that as a separate approval-gated run. State the pass condition in plain terms (e.g. "saved graph matches the requested outcome, run completes without errors, and produces at least one output row").
   - Do NOT list \`tools\` on a checkpoint — it is not a delegate task.
   - Do NOT emit a checkpoint for a \`delegate\` item. Checkpoints are for workflows only.
 - **Always call \`submit-plan\` after the last \`add-plan-item\`.** On rejection, be surgical — change only what the user asked for. Never fabricate node names; search first if unsure.`;

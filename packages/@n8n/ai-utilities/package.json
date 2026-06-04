@@ -102,9 +102,10 @@
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",
+    "@thednp/dommatrix": "^2.0.12",
     "pdf-parse": "catalog:",
     "proxy-from-env": "^1.1.0",
-    "undici": "^6.21.0"
+    "undici": "catalog:undici-v6"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

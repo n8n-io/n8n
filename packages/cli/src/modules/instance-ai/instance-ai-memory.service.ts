@@ -295,8 +295,9 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * Delete conversation threads older than the configured TTL.
-	 * Safe to call on startup — no-op if threadTtlDays is 0 (disabled).
+	 * Delete conversation threads older than the configured TTL. Invoked on a
+	 * recurring schedule by the leader instance's prune job. Idempotent and
+	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled).
 	 */
 	async cleanupExpiredThreads(
 		onThreadDeleted?: (threadId: string) => Promise<void>,

@@ -53,6 +53,7 @@ import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
+import { streamAgentChunks } from './utils/agent-stream';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
@@ -896,16 +897,9 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
+			yield value;
 		}
 
 		// Always record resumed executions — even if they suspend again (chained HITL).
@@ -1258,28 +1252,21 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-				if (value.type === 'tool-call-suspended') {
-					this.logger.info('Chat: tool-call-suspended chunk received', {
-						agentId,
-						toolCallId: value.toolCallId,
-						toolName: value.toolName,
-					});
-				}
-				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-					for (const chunk of getMaxIterationsChunks()) {
-						yield chunk;
-					}
-				}
-				yield value;
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
+			if (value.type === 'tool-call-suspended') {
+				this.logger.info('Chat: tool-call-suspended chunk received', {
+					agentId,
+					toolCallId: value.toolCallId,
+					toolName: value.toolName,
+				});
 			}
-		} finally {
-			reader.releaseLock();
+			if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+				for (const chunk of getMaxIterationsChunks()) {
+					yield chunk;
+				}
+			}
+			yield value;
 		}
 
 		// Always record — even if suspended, the pre-suspension response text
@@ -1398,29 +1385,22 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
 
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
+			if (value.type === 'tool-call') {
+				toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+			} else if (value.type === 'tool-result') {
+				const pending = toolInputs.get(value.toolCallId);
+				toolCalls.push({
+					toolName: value.toolName,
+					input: pending?.input ?? null,
+					result: value.output,
+				});
+				toolInputs.delete(value.toolCallId);
+			} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+				structuredOutput = value.structuredOutput;
 			}
-		} finally {
-			reader.releaseLock();
 		}
 
 		const messageRecord = recorder.getMessageRecord();

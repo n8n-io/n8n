@@ -286,7 +286,9 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 					},
 				},
 			],
-			connections: {},
+			connections: {
+				Slack: { main: [[{ node: 'Call Sub', type: 'main', index: 0 }]] },
+			},
 			pinData: {
 				Slack: [{ ok: true }],
 			},

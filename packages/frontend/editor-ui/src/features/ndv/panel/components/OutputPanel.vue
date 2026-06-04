@@ -24,7 +24,6 @@ import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
 import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -81,7 +80,6 @@ const workflowId = useInjectWorkflowId();
 const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionStateStore = computed(() =>
 	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
@@ -162,7 +160,7 @@ const isNodeRunning = computed(() => {
 	return (
 		workflowRunning.value &&
 		!!node.value &&
-		workflowState.executingNode.isNodeExecuting(node.value.name)
+		workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.value.name)
 	);
 });
 

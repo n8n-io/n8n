@@ -2,7 +2,7 @@
 // Shared agent-run chat loop
 //
 // Drives an agent run to completion: opens an SSE event stream, waits for
-// the main run to finish, drains background sub-agents, auto-approves any
+// the main run to finish, drains background agent tasks, auto-approves any
 // confirmation requests, and surfaces the captured events.
 //
 // Used by `harness/runner.ts` (workflow eval) and the computer-use eval
@@ -99,7 +99,7 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 			`[${config.threadId}] Run #${String(runFinishCount)} finished -- time: ${String(Date.now() - config.startTime)}ms`,
 		);
 
-		// Wait for background tasks (sub-agents) to complete
+		// Wait for background agent tasks to complete
 		const remainingMs = Math.max(0, config.timeoutMs - (Date.now() - config.startTime));
 		await waitForBackgroundTasks(config, remainingMs);
 
@@ -140,11 +140,11 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 
 	const hasSpawnedAgents = config.events.some((e) => e.type === 'agent-spawned');
 	if (!hasSpawnedAgents) {
-		config.logger.verbose('No sub-agents spawned -- skipping background task wait');
+		config.logger.verbose('No background agent tasks spawned -- skipping background task wait');
 		return;
 	}
 
-	config.logger.verbose('Sub-agent(s) detected -- waiting for background tasks...');
+	config.logger.verbose('Background agent task(s) detected -- waiting for completion...');
 
 	// Log on count change, plus a heartbeat every 20s so a long stable wait still
 	// emits a liveness signal without spamming every poll interval.
