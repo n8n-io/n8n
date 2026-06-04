@@ -7,8 +7,6 @@
  * near-duplicate copies across files.
  */
 
-import { N8N_SANDBOX_WORKSPACE_ROOT } from '@/workspace/sandbox-setup';
-
 export const SUBAGENT_OUTPUT_CONTRACT = `## Output Discipline
 - You report to a parent agent, not a human. Be terse.
 - Do not narrate ("I'll search for…", "Let me look up…") — just do the work.
@@ -21,17 +19,32 @@ export const UNTRUSTED_CONTENT_DOCTRINE =
 export const ASK_USER_FALLBACK =
 	'If you are stuck or need information only a human can provide (e.g. a chat ID, external resource name, account label), use the `ask-user` tool. Do not retry the same failing approach more than twice — ask the user instead. Never solicit API keys, tokens, or other secrets through `ask-user` — route credential collection through credential setup or Computer Use browser credential capture instead.';
 
-export const SANDBOX_WORKSPACE_SECTION = `## Sandbox workspace
+const WORKSPACE_ROOT_PLACEHOLDER = '<workspace_root>';
 
+function substituteWorkspaceRoot(text: string, workspaceRoot?: string): string {
+	if (!workspaceRoot) return text;
+	return text.replaceAll(WORKSPACE_ROOT_PLACEHOLDER, workspaceRoot);
+}
+
+export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
+	const pathHint = workspaceRoot
+		? `\nWorkspace root: \`${workspaceRoot}\`. Paths below are under this root — pass them to \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` as shown (relative paths like \`knowledge-base/...\` also work).\n`
+		: '';
+
+	const section = `## Sandbox workspace
+${pathHint}
 A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
 
-- \`${N8N_SANDBOX_WORKSPACE_ROOT}/knowledge-base/best-practices/index.json\` — index of workflow technique guides; read the linked \`.md\` files for full documentation
-- \`${N8N_SANDBOX_WORKSPACE_ROOT}/knowledge-base/best-practices/*.md\` — n8n workflow design best practices (scheduling, forms, data persistence, web apps, etc.)
-- \`${N8N_SANDBOX_WORKSPACE_ROOT}/node-types/index.txt\` — searchable catalog of available n8n nodes
-- \`${N8N_SANDBOX_WORKSPACE_ROOT}/workflows/*.json\` — existing workflows on this instance (when synced)
-- Curated template examples under the workspace root (when present)
+- \`<workspace_root>/knowledge-base/index.json\` — combined catalog of technique guides and curated workflow templates
+- \`<workspace_root>/knowledge-base/best-practices/index.json\` — workflow technique guides (read the linked \`.md\` files)
+- \`<workspace_root>/knowledge-base/templates/index.json\` — curated SDK workflow examples (read the linked \`.ts\` source files)
+- \`<workspace_root>/node-types/index.txt\` — searchable catalog of available n8n nodes
+- \`<workspace_root>/workflows/*.json\` — existing workflows on this instance (when synced)
 
-**Consult the best-practices knowledge base early and often.** Before planning or building a workflow — and whenever a request touches a technique you have not already reviewed in this thread — read \`${N8N_SANDBOX_WORKSPACE_ROOT}/knowledge-base/best-practices/index.json\` and \`grep\`/\`rg\` plus \`workspace_read_file\` the linked \`.md\` guides for each relevant technique. These guides reflect current n8n patterns and supersede your training priors, so prefer them over assumptions. Default to checking the knowledge base; skip it only for trivial mechanical changes where you have already reviewed the relevant guidance in this thread.`;
+**Consult the knowledge base before planning or building.** Read \`<workspace_root>/knowledge-base/index.json\` (or the section indexes under \`best-practices/\` and \`templates/\`), then \`workspace_read_file\` the relevant \`.md\` guides for each technique the request involves and matching \`.ts\` template files for structural patterns. Skip only for trivial mechanical edits you have already reviewed in this thread.`;
+
+	return substituteWorkspaceRoot(section, workspaceRoot);
+}
 
 export const PLACEHOLDERS_RULE = `## Placeholders
 Use \`placeholder('descriptive hint')\` for values that cannot be safely picked without the user:
