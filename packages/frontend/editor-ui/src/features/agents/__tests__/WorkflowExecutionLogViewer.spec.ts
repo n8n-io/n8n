@@ -12,6 +12,7 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'wf-1',
 		workflowExecutionData: null,
 		getNodeTypes: () => ({
 			getByName: () => undefined,

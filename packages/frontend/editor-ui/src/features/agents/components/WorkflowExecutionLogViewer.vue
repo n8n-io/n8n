@@ -7,7 +7,6 @@ import type { Chat } from '@n8n/chat/types';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -32,7 +31,6 @@ const props = defineProps<{
 const i18n = useI18n();
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
-const currentWorkflowId = useWorkflowId();
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -179,7 +177,7 @@ onMounted(async () => {
 			// store rather than the prop, so the prop alone isn't enough to make the
 			// table/JSON views render correctly for non-trivial nodes.
 			useWorkflowExecutionStateStore(
-				createWorkflowDocumentId(currentWorkflowId.value),
+				createWorkflowDocumentId(workflowsStore.workflowId),
 			).setWorkflowExecutionData(result);
 			// Default-select the first entry (the trigger) so the user sees data immediately.
 			const first = flatEntries.value[0];
@@ -197,7 +195,7 @@ onBeforeUnmount(() => {
 	unmounted = true;
 	// Restore whatever execution data was in the store before we hijacked it.
 	useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(currentWorkflowId.value),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	).setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>

@@ -7,7 +7,6 @@ import { ChatSymbol } from '@n8n/chat/constants';
 import type { Chat } from '@n8n/chat/types';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -52,7 +51,6 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const workflowId = useWorkflowId();
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -224,14 +222,14 @@ onMounted(async () => {
 	// payload now would clobber the real workflow's state.
 	if (unmounted) return;
 	useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowId.value),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	).setWorkflowExecutionData(synthExecution.value);
 });
 
 onBeforeUnmount(() => {
 	unmounted = true;
 	useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowId.value),
+		createWorkflowDocumentId(workflowsStore.workflowId),
 	).setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>
