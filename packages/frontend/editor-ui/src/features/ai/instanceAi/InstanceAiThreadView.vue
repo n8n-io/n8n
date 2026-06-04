@@ -22,7 +22,7 @@ import {
 } from '@n8n/design-system';
 import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -36,6 +36,8 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
+import { ExecutionErrorToastSuppressionKey } from '@/app/constants/injectionKeys';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -73,6 +75,43 @@ const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
+
+// --- AI-initiated workflow executions ---
+const aiInitiatedExecutionIds = new Set<string>();
+const pushStore = usePushConnectionStore();
+
+function nodeHasActiveWorkflowRunToolCall(node: InstanceAiAgentNode, workflowId: string): boolean {
+	for (const toolCall of node.toolCalls) {
+		if (!toolCall.isLoading) continue;
+		if (toolCall.toolName !== 'executions') continue;
+
+		const args = toolCall.args as Record<string, unknown> | undefined;
+		if (args?.action === 'run' && args.workflowId === workflowId) return true;
+	}
+
+	return node.children.some((child) => nodeHasActiveWorkflowRunToolCall(child, workflowId));
+}
+
+function threadHasActiveWorkflowRunToolCall(workflowId: string): boolean {
+	return thread.messages.some((message) => {
+		if (!message.agentTree) return false;
+		return nodeHasActiveWorkflowRunToolCall(message.agentTree, workflowId);
+	});
+}
+
+const removeAiExecutionStartedListener = pushStore.addEventListener((event) => {
+	if (event.type !== 'executionStarted') return;
+	if (!threadHasActiveWorkflowRunToolCall(event.data.workflowId)) return;
+
+	aiInitiatedExecutionIds.add(event.data.executionId);
+});
+
+provide(ExecutionErrorToastSuppressionKey, {
+	shouldSuppressExecutionErrorToast: (executionId) => aiInitiatedExecutionIds.has(executionId),
+	clearExecutionErrorToastSuppression: (executionId) => {
+		aiInitiatedExecutionIds.delete(executionId);
+	},
+});
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -483,6 +522,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+	removeAiExecutionStartedListener();
+	aiInitiatedExecutionIds.clear();
 	thread.closeSSE();
 	contentResizeObserver?.disconnect();
 });

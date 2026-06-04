@@ -7,16 +7,15 @@ import {
 	handleExecutionFinishedWithErrorOrCanceled,
 	handleExecutionFinishedWithWaitTill,
 	setRunExecutionData,
+	type ExecutionFinishedOptions,
 } from './executionFinished';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import type { useRouter } from 'vue-router';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 export async function executionRecovered(
 	{ data }: ExecutionRecovered,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
+	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
@@ -43,9 +42,17 @@ export async function executionRecovered(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(
+			execution,
+			runExecutionData,
+			options.executionErrorToastSuppression,
+		);
 	} else {
 		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
+	}
+
+	if (execution.data?.waitTill === undefined) {
+		options.executionErrorToastSuppression?.clearExecutionErrorToastSuppression(execution.id);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);

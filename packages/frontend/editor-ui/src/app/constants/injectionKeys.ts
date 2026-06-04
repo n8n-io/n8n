@@ -34,6 +34,13 @@ export const WorkflowExecutionStateStoreKey: InjectionKey<
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
+export interface ExecutionErrorToastSuppression {
+	shouldSuppressExecutionErrorToast: (executionId: string) => boolean;
+	clearExecutionErrorToastSuppression: (executionId: string) => void;
+}
+
+export const ExecutionErrorToastSuppressionKey: InjectionKey<ExecutionErrorToastSuppression> =
+	Symbol('ExecutionErrorToastSuppression');
 /**
  * Context-supplied read-only signal for the workflow editor. When provided and
  * its current value is `true`, the canvas is treated as read-only on top of

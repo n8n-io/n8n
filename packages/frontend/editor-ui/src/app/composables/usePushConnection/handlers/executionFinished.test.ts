@@ -34,11 +34,14 @@ const opts = {
 	router: mock<Router>(),
 };
 
-const mockShowMessage = vi.fn();
+const { mockShowMessage, mockUseToast } = vi.hoisted(() => {
+	const showMessage = vi.fn();
+	const useToast = vi.fn(() => ({ showMessage }));
+
+	return { mockShowMessage: showMessage, mockUseToast: useToast };
+});
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({
-		showMessage: mockShowMessage,
-	}),
+	useToast: mockUseToast,
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -847,6 +850,77 @@ describe('manual execution stats tracking', () => {
 			);
 
 			expect(incrementSpy).toHaveBeenCalledWith('error');
+		});
+
+		it('suppresses execution error toasts for matched execution ids', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const builderStore = mockedStore(useBuilderStore);
+			const incrementSpy = vi.spyOn(builderStore, 'incrementManualExecutionStats');
+			const executionErrorToastSuppression = {
+				shouldSuppressExecutionErrorToast: vi.fn(
+					(executionId: string) => executionId === 'exec-ai',
+				),
+				clearExecutionErrorToastSuppression: vi.fn(),
+			};
+
+			const execution = mock<SimplifiedExecution>({
+				id: 'exec-ai',
+				status: 'error',
+				data: {
+					resultData: {
+						error: { message: 'test error', name: 'Error' },
+					},
+				},
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error: { message: 'test', name: 'Error' } } }),
+				executionErrorToastSuppression,
+			);
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
+			expect(executionErrorToastSuppression.shouldSuppressExecutionErrorToast).toHaveBeenCalledWith(
+				'exec-ai',
+			);
+			expect(incrementSpy).toHaveBeenCalledWith('error');
+		});
+
+		it('shows execution error toasts for unmatched execution ids', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const executionErrorToastSuppression = {
+				shouldSuppressExecutionErrorToast: vi.fn(
+					(executionId: string) => executionId === 'exec-ai',
+				),
+				clearExecutionErrorToastSuppression: vi.fn(),
+			};
+
+			const execution = mock<SimplifiedExecution>({
+				id: 'exec-manual',
+				status: 'error',
+				data: {
+					resultData: {
+						error: { message: 'test error', name: 'Error' },
+					},
+				},
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error: { message: 'test', name: 'Error' } } }),
+				executionErrorToastSuppression,
+			);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', duration: 0 }),
+			);
+			expect(executionErrorToastSuppression.shouldSuppressExecutionErrorToast).toHaveBeenCalledWith(
+				'exec-manual',
+			);
 		});
 
 		it('does not increment stats for canceled executions', () => {

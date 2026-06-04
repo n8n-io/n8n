@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, reactive, ref } from 'vue';
+import { defineComponent, h, inject, reactive, ref } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -12,10 +12,15 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
+import {
+	ExecutionErrorToastSuppressionKey,
+	type ExecutionErrorToastSuppression,
+} from '@/app/constants/injectionKeys';
 import type {
 	FrontendModuleSettings,
 	InstanceAiAgentNode,
 	InstanceAiMessage,
+	PushMessage,
 } from '@n8n/api-types';
 
 const mockWindowSizeState = vi.hoisted(() => ({
@@ -116,12 +121,14 @@ const InstanceAiInputStub = defineComponent({
 let workflowPreviewEmit:
 	| ((event: 'workflow-failures', payload: WorkflowFailuresReport) => void)
 	| null = null;
+let executionErrorToastSuppression: ExecutionErrorToastSuppression | null = null;
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
 	emits: ['workflow-failures'],
 	setup(_, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		executionErrorToastSuppression = inject(ExecutionErrorToastSuppressionKey, null);
 		expose({ requestFitView: vi.fn() });
 		return () => h('div', { 'data-test-id': 'instance-ai-workflow-preview-stub' });
 	},
@@ -222,6 +229,48 @@ function makePlanReviewMessage(): InstanceAiMessage {
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
 	let thread: ThreadRuntime;
+	let pushHandlers: Array<(message: PushMessage) => void>;
+
+	function emitPushMessage(message: PushMessage) {
+		for (const handler of [...pushHandlers]) handler(message);
+	}
+
+	function openPreviewForBuild(workflowId = 'wf-1') {
+		if (!thread.producedArtifacts.has(workflowId)) {
+			thread.producedArtifacts.set(workflowId, {
+				type: 'workflow',
+				id: workflowId,
+				name: 'Workflow',
+			});
+		}
+
+		thread.messages.push({
+			id: 'msg-build',
+			role: 'assistant',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			createdAt: '2026-04-01T00:00:00.000Z',
+			agentTree: {
+				agentId: 'agent-1',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [
+					{
+						toolCallId: 'tc-build',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						result: { success: true, workflowId },
+					},
+				],
+			},
+		} as never);
+	}
 
 	beforeEach(() => {
 		// Default `stubActions: true` — every store action becomes a no-op spy.
@@ -232,6 +281,8 @@ describe('InstanceAiThreadView', () => {
 			'instance-ai': { ...defaultModuleSettings },
 		};
 		workflowPreviewEmit = null;
+		executionErrorToastSuppression = null;
+		pushHandlers = [];
 
 		thread = reactive({
 			id: 'thread-1',
@@ -290,7 +341,12 @@ describe('InstanceAiThreadView', () => {
 		// Auto-stubbed push-store actions return undefined by default; addEventListener's
 		// caller expects a removeListener function, so return a no-op.
 		const pushStore = mockedStore(usePushConnectionStore);
-		pushStore.addEventListener.mockReturnValue(() => {});
+		pushStore.addEventListener.mockImplementation((handler) => {
+			pushHandlers.push(handler);
+			return () => {
+				pushHandlers = pushHandlers.filter((registeredHandler) => registeredHandler !== handler);
+			};
+		});
 		inputFocusSpy.mockClear();
 		telemetryTrackSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
@@ -427,6 +483,72 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 	});
 
+	it('suppresses execution error toasts only for Instance AI initiated runs', async () => {
+		thread.messages = [
+			{
+				id: 'msg-run',
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: true,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-run',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					children: [],
+					toolCalls: [
+						{
+							toolCallId: 'tc-run',
+							toolName: 'executions',
+							args: { action: 'run', workflowId: 'wf-1' },
+							isLoading: true,
+						},
+					],
+				},
+			},
+		] as typeof thread.messages;
+
+		renderView({ props: { threadId: 'thread-1' } });
+		openPreviewForBuild('wf-1');
+
+		await vi.waitFor(() => {
+			expect(executionErrorToastSuppression).not.toBeNull();
+		});
+
+		emitPushMessage({
+			type: 'executionStarted',
+			data: {
+				executionId: 'exec-ai',
+				workflowId: 'wf-1',
+				mode: 'manual',
+				startedAt: new Date('2026-04-01T00:00:00.000Z'),
+				flattedRunData: '',
+			},
+		});
+
+		expect(executionErrorToastSuppression?.shouldSuppressExecutionErrorToast('exec-ai')).toBe(true);
+
+		thread.messages = [];
+		emitPushMessage({
+			type: 'executionStarted',
+			data: {
+				executionId: 'exec-manual',
+				workflowId: 'wf-1',
+				mode: 'manual',
+				startedAt: new Date('2026-04-01T00:00:01.000Z'),
+				flattedRunData: '',
+			},
+		});
+
+		expect(executionErrorToastSuppression?.shouldSuppressExecutionErrorToast('exec-manual')).toBe(
+			false,
+		);
+	});
+
 	it('uses edge reveal when the viewport is too narrow for pinned artifacts', async () => {
 		mockWindowSizeState.width.value = 900;
 		thread.messages = [
@@ -459,38 +581,6 @@ describe('InstanceAiThreadView', () => {
 			thread.producedArtifacts = new Map([
 				[workflowId, { type: 'workflow', id: workflowId, name: workflowName }],
 			]) as typeof thread.producedArtifacts;
-		}
-
-		// Drives useCanvasPreview's auto-open watcher so the preview tab is
-		// selected and the WorkflowPreview stub mounts (otherwise `v-if`
-		// keeps it unrendered and `workflowPreviewEmit` is never captured).
-		function openPreviewForBuild(workflowId = 'wf-1') {
-			thread.messages.push({
-				id: 'msg-build',
-				role: 'assistant',
-				content: '',
-				reasoning: '',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-				agentTree: {
-					agentId: 'agent-1',
-					role: 'orchestrator',
-					status: 'completed',
-					textContent: '',
-					reasoning: '',
-					timeline: [],
-					children: [],
-					toolCalls: [
-						{
-							toolCallId: 'tc-build',
-							toolName: 'build-workflow',
-							args: {},
-							isLoading: false,
-							result: { success: true, workflowId },
-						},
-					],
-				},
-			} as never);
 		}
 
 		async function emitFailure(report: WorkflowFailuresReport = failureReport) {

@@ -49,6 +49,7 @@ import {
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import type { ExecutionErrorToastSuppression } from '@/app/constants/injectionKeys';
 
 export type SimplifiedExecution = Pick<
 	IExecutionResponse,
@@ -58,6 +59,7 @@ export type SimplifiedExecution = Pick<
 export type ExecutionFinishedOptions = {
 	router: ReturnType<typeof useRouter>;
 	workflowState: WorkflowState;
+	executionErrorToastSuppression?: ExecutionErrorToastSuppression | null;
 };
 
 /**
@@ -153,13 +155,21 @@ export async function executionFinished(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(
+			execution,
+			runExecutionData,
+			options.executionErrorToastSuppression,
+		);
 	} else {
 		handleExecutionFinishedWithSuccessOrOther(
 			options.workflowState,
 			execution.status,
 			successToastAlreadyShown,
 		);
+	}
+
+	if (execution.data?.waitTill === undefined) {
+		options.executionErrorToastSuppression?.clearExecutionErrorToastSuppression(execution.id);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
@@ -317,6 +327,7 @@ export function handleExecutionFinishedWithWaitTill(
 export function handleExecutionFinishedWithErrorOrCanceled(
 	execution: SimplifiedExecution,
 	runExecutionData: IRunExecutionData,
+	executionErrorToastSuppression: ExecutionErrorToastSuppression | null = null,
 ) {
 	const toast = useToast();
 	const i18n = useI18n();
@@ -381,7 +392,9 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 			lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
 		});
 
-		toast.showMessage({ title, message, type: 'error', duration: 0 });
+		if (executionErrorToastSuppression?.shouldSuppressExecutionErrorToast(execution.id) !== true) {
+			toast.showMessage({ title, message, type: 'error', duration: 0 });
+		}
 
 		useBuilderStore().incrementManualExecutionStats('error');
 	}

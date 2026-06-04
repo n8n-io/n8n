@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { hasInjectionContext, inject, ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -24,6 +24,7 @@ import {
 	workflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import { ExecutionErrorToastSuppressionKey } from '@/app/constants/injectionKeys';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
 
@@ -35,9 +36,13 @@ export function usePushConnection({
 	workflowState?: WorkflowState;
 }) {
 	const pushStore = usePushConnectionStore();
+	const executionErrorToastSuppression = hasInjectionContext()
+		? inject(ExecutionErrorToastSuppressionKey, null)
+		: null;
 	const options = {
 		router,
 		workflowState: workflowState ?? injectWorkflowState(),
+		executionErrorToastSuppression,
 	};
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
