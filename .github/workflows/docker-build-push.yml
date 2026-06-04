@@ -478,43 +478,7 @@ jobs:
           RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
           DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
           DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-        run: |
-          set -euo pipefail
-          CDXGEN=.github/scripts/node_modules/.bin/cdxgen
-
-          attest_sbom() {
-            local image="$1" digest="$2" label="$3"
-            if [[ -z "$digest" ]]; then
-              echo "Skipping $label - no manifest digest"
-              return
-            fi
-            local ref="${image}@${digest}"
-            local out="sbom-${label}.cdx.json"
-            echo "::group::SBOM for $label ($ref)"
-
-            # Pull the (host-arch) image and scan its filesystem: OS packages + npm.
-            docker pull "$ref"
-            FETCH_LICENSE=true "$CDXGEN" -t docker --no-install-deps --profile license-compliance -o "$out" "$ref"
-
-            # Resolve first-party + override licenses (lenient: this image holds only
-            # a subset of the npm closure, so absent overrides are not stale pins).
-            # Drop cdxgen filesystem-scan phantoms (nested test/fixture/exports-subpath
-            # package.json that aren't real shippable components).
-            node scripts/licenses/enrich-sbom.mjs "$out" --lenient-config --drop-phantom-npm
-
-            # Release-blocking gate, scoped to npm — OS packages carry upstream-distro
-            # license strings we don't control, so they're inventoried but not gated.
-            node scripts/licenses/check-sbom-licenses.mjs "$out" \
-              --allow-ref=LicenseRef-n8n-sustainable-use \
-              --enforce-prefix=pkg:npm/
-
-            cosign attest --yes --type cyclonedx --predicate "$out" "$ref"
-            echo "::endgroup::"
-          }
-
-          attest_sbom "$N8N_IMAGE" "$N8N_DIGEST" "n8n"
-          attest_sbom "$RUNNERS_IMAGE" "$RUNNERS_DIGEST" "runners"
-          attest_sbom "$DISTROLESS_IMAGE" "$DISTROLESS_DIGEST" "runners-distroless"
+        run: node .github/scripts/attest-image-sbom.mjs
 
   security-scan:
     name: Security Scan
