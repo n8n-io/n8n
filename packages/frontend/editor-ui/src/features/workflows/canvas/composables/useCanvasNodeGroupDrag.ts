@@ -1,13 +1,9 @@
-import type { GraphNode, NodeDragEvent, Rect } from '@vue-flow/core';
-import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
+import type { GraphNode, NodeDragEvent } from '@vue-flow/core';
+import { useVueFlow } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { CanvasGroupViewState, CanvasNodeMoveEvent } from '../canvas.types';
 import { CANVAS_NODE_GROUP_ID_PREFIX, isCanvasNodeGroup } from '../canvas.types';
-import {
-	GROUP_HEADER_HEIGHT,
-	GROUP_PADDING_X,
-	GROUP_PADDING_Y_TOP,
-} from '../stores/canvasNodeGroups.constants';
+import { computeMemberRectFromStore, titleBarFromMemberRect } from './useCanvasMapping.groups';
 
 export interface UseCanvasNodeGroupDragDeps {
 	canvasId?: string;
@@ -105,13 +101,20 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 	// Mapping derives title-bar position from store positions, which only
 	// update on drag-stop. Without this live push the rect would lag the drag.
-	function syncGroupBoundsFromMembers(draggedMemberIds: string[]) {
-		if (draggedMemberIds.length === 0) return;
+	// Reuses computeMemberRectFromStore with the dragged members' live
+	// positions as overrides, so the rect formula stays identical to mount
+	// — no shift the first time the title bar re-derives.
+	function syncGroupBoundsFromMembers(
+		draggedMembers: Array<{ id: string; position: { x: number; y: number } }>,
+	) {
+		if (draggedMembers.length === 0) return;
 
 		// O(1) per-node lookup so a non-member drag tick does no work
 		const groupsToSync = new Map<string, { id: string; nodeIds: string[] }>();
-		for (const id of draggedMemberIds) {
-			const group = deps.getGroupForNode(id);
+		const positionOverrides = new Map<string, { x: number; y: number }>();
+		for (const m of draggedMembers) {
+			positionOverrides.set(m.id, m.position);
+			const group = deps.getGroupForNode(m.id);
 			if (group && !groupsToSync.has(group.id)) {
 				groupsToSync.set(group.id, group);
 			}
@@ -119,19 +122,23 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		if (groupsToSync.size === 0) return;
 
 		for (const group of groupsToSync.values()) {
-			const members = group.nodeIds
-				.map((id) => findNode(id))
-				.filter((n): n is GraphNode => n !== undefined);
-			if (members.length === 0) continue;
-
-			const rect: Rect = getRectOfNodes(members);
 			const vfId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`;
+			const groupVfNode = findNode(vfId);
+			if (!groupVfNode) continue; // title bar not yet rendered
+
+			const stashedDimensions =
+				(groupVfNode.data as CanvasGroupViewState | undefined)?.memberDimensions ?? {};
+
+			const rect = computeMemberRectFromStore(
+				group.nodeIds,
+				deps.getNodeById,
+				(id) => stashedDimensions[id],
+				positionOverrides,
+			);
+			const titleBar = titleBarFromMemberRect(rect);
 			updateNode(vfId, (n) => ({
-				position: {
-					x: rect.x - GROUP_PADDING_X,
-					y: rect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT,
-				},
-				width: rect.width + 2 * GROUP_PADDING_X,
+				position: titleBar.position,
+				width: titleBar.width,
 				data: { ...(n.data as CanvasGroupViewState), memberRect: rect },
 			}));
 		}
@@ -164,7 +171,9 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 		// Regular node: if it's a member of some group, keep that group's
 		// title bar tracking the live rect
-		syncGroupBoundsFromMembers([node.id]);
+		syncGroupBoundsFromMembers([
+			{ id: node.id, position: { x: node.position.x, y: node.position.y } },
+		]);
 	}
 
 	function processNodeDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
@@ -190,7 +199,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	function onSelectionDrag(event: NodeDragEvent) {
-		const memberIdsToSync: string[] = [];
+		const membersToSync: Array<{ id: string; position: { x: number; y: number } }> = [];
 
 		for (const node of event.nodes ?? []) {
 			if (isCanvasNodeGroup(node)) {
@@ -198,12 +207,14 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 				applyDelta(node);
 			} else {
 				// Regular node: collect for the post-loop sync below
-				memberIdsToSync.push(node.id);
+				membersToSync.push({ id: node.id, position: { x: node.position.x, y: node.position.y } });
 			}
 		}
 
 		// Keep any group whose members were dragged tracking the live rect
-		if (memberIdsToSync.length > 0) syncGroupBoundsFromMembers(memberIdsToSync);
+		if (membersToSync.length > 0) {
+			syncGroupBoundsFromMembers(membersToSync);
+		}
 	}
 
 	function processSelectionDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {

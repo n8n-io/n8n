@@ -7,7 +7,7 @@ import {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
-import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 export interface MemberRect {
@@ -32,15 +32,51 @@ function readStickyDimensions(node: INodeUi): { width: number; height: number } 
 	return { width, height };
 }
 
+// Precedence: caller-supplied → sticky parameters → DEFAULT_NODE_SIZE.
+function resolveMemberDimensions(
+	node: INodeUi,
+	getNodeDimensions?: GetNodeDimensions,
+): { width: number; height: number } {
+	const supplied = getNodeDimensions?.(node.id);
+	const sticky = readStickyDimensions(node);
+	return {
+		width: supplied?.width ?? sticky?.width ?? DEFAULT_NODE_SIZE[0],
+		height: supplied?.height ?? sticky?.height ?? DEFAULT_NODE_SIZE[1],
+	};
+}
+
+/**
+ * Title bar position + width derived from a member rect.
+ * Snaps the position to the canvas grid; if it didn't, VueFlow's
+ * `snap-to-grid` would shift the title bar on the first drag.
+ */
+export function titleBarFromMemberRect(memberRect: MemberRect): {
+	position: { x: number; y: number };
+	width: number;
+} {
+	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
+	return {
+		position: {
+			x: snap(memberRect.x - GROUP_PADDING_X),
+			y: snap(memberRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+		},
+		width: memberRect.width + 2 * GROUP_PADDING_X,
+	};
+}
+
 /**
  * Bounding rect of a group's members — used to size and position
  * the group's title bar and frame. Reads from workflow store positions (canonical)
  * rather than VueFlow runtime, which can lag or be uninitialized.
+ *
+ * `positionOverrides` lets the drag-time sync substitute live positions for
+ * dragged members (whose store position lags until drag-stop).
  */
 export function computeMemberRectFromStore(
 	memberIds: string[],
 	getNodeById: (id: string) => INodeUi | undefined,
 	getNodeDimensions?: GetNodeDimensions,
+	positionOverrides?: Map<string, { x: number; y: number }>,
 ): MemberRect {
 	const members = memberIds
 		.map((id) => getNodeById(id))
@@ -55,14 +91,11 @@ export function computeMemberRectFromStore(
 	let maxX = -Infinity;
 	let maxY = -Infinity;
 
-	// Precedence: caller-supplied → sticky parameters → DEFAULT_NODE_SIZE.
 	for (const node of members) {
-		const x = node.position[0];
-		const y = node.position[1];
-		const supplied = getNodeDimensions?.(node.id);
-		const sticky = readStickyDimensions(node);
-		const width = supplied?.width ?? sticky?.width ?? DEFAULT_NODE_SIZE[0];
-		const height = supplied?.height ?? sticky?.height ?? DEFAULT_NODE_SIZE[1];
+		const override = positionOverrides?.get(node.id);
+		const x = override?.x ?? node.position[0];
+		const y = override?.y ?? node.position[1];
+		const { width, height } = resolveMemberDimensions(node, getNodeDimensions);
 		if (x < minX) minX = x;
 		if (y < minY) minY = y;
 		if (x + width > maxX) maxX = x + width;
@@ -104,20 +137,28 @@ export function mapGroupsToVueFlowNodes({
 		if (!hasMember) continue;
 
 		const memberRect = computeMemberRectFromStore(group.nodeIds, getNodeById, getNodeDimensions);
+
+		const memberDimensions: Record<string, { width: number; height: number }> = {};
+		for (const id of group.nodeIds) {
+			const node = getNodeById(id);
+			if (node) {
+				memberDimensions[id] = resolveMemberDimensions(node, getNodeDimensions);
+			}
+		}
+
 		const data: CanvasGroupViewState = {
 			group,
 			memberRect,
+			memberDimensions,
 			autofocusTitle: autofocusGroupId === group.id,
 		};
 
+		const titleBar = titleBarFromMemberRect(memberRect);
 		out.push({
 			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
 			type: CANVAS_NODE_GROUP_TYPE,
-			position: {
-				x: memberRect.x - GROUP_PADDING_X,
-				y: memberRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT,
-			},
-			width: memberRect.width + 2 * GROUP_PADDING_X,
+			position: titleBar.position,
+			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
 			selectable: false,

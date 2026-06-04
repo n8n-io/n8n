@@ -7,7 +7,10 @@ import {
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
+import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+
+const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
 function makeNode(id: string, x: number, y: number): INodeUi {
 	return {
@@ -116,14 +119,14 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].type).toBe('canvas-node-group');
 	});
 
-	it('left edge is anchored at memberRect.x - GROUP_PADDING_X', () => {
+	it('left edge sits at memberRect.x - GROUP_PADDING_X, snapped to the canvas grid', () => {
 		const out = setup();
-		expect(out[0].position.x).toBe(100 - GROUP_PADDING_X);
+		expect(out[0].position.x).toBe(snapToGrid(100 - GROUP_PADDING_X));
 	});
 
-	it('top edge places title bar above memberRect (header above frame)', () => {
+	it('top edge places title bar above memberRect, snapped to the canvas grid', () => {
 		const out = setup();
-		expect(out[0].position.y).toBe(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT);
+		expect(out[0].position.y).toBe(snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT));
 	});
 
 	it('width matches member rect + 2 * GROUP_PADDING_X', () => {
@@ -159,6 +162,18 @@ describe('mapGroupsToVueFlowNodes', () => {
 			readOnly: true,
 		});
 		expect(out[0].draggable).toBe(false);
+	});
+
+	it('position lands on the grid', () => {
+		const getById = nodeStore(makeNode('a', 32, 48), makeNode('b', 128, 48));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a', 'b'] }],
+			getNodeById: getById,
+			autofocusGroupId: null,
+			readOnly: false,
+		});
+		expect(Math.abs(out[0].position.x % GRID_SIZE)).toBe(0);
+		expect(Math.abs(out[0].position.y % GRID_SIZE)).toBe(0);
 	});
 
 	it('writes autofocusTitle into data when group id matches autofocusGroupId', () => {

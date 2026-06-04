@@ -3,6 +3,25 @@ import type { GraphNode, NodeDragEvent } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import { useCanvasNodeGroupDrag } from './useCanvasNodeGroupDrag';
 import { CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
+import {
+	GROUP_HEADER_HEIGHT,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+} from '../stores/canvasNodeGroups.constants';
+import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
+
+const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
+
+// Drag-sync only queries findNode for the group title bar (to read stashed
+// memberDimensions). Member positions come from the drag event / store.
+function mockGroupTitleBar(
+	groupId: string,
+	memberDimensions: Record<string, { width: number; height: number }>,
+) {
+	findNodeMock.mockImplementation((id: string) =>
+		id === `group:${groupId}` ? { data: { memberDimensions } } : undefined,
+	);
+}
 
 const updateNodeMock = vi.fn();
 const findNodeMock = vi.fn();
@@ -243,16 +262,14 @@ describe('useCanvasNodeGroupDrag', () => {
 		});
 
 		it('syncs the owning group title bar from live member positions when a member is dragged', () => {
-			// Regression: without this, the title bar's bounding rect only
-			// updates on drag stop, because the canonical mapping reads from
-			// store positions that don't update until then.
+			// While a member is being dragged, the title bar's rect should
+			// track the live cursor position. Without this live push, the
+			// rect would only catch up on drag-stop (when the store updates
+			// and the mapping recomputes).
 			const { drag } = setup();
-			findNodeMock.mockImplementation((id: string) => {
-				if (id === 'a')
-					return { computedPosition: { x: 120, y: 220 }, dimensions: { width: 100, height: 80 } };
-				if (id === 'b')
-					return { computedPosition: { x: 300, y: 200 }, dimensions: { width: 100, height: 80 } };
-				return undefined;
+			mockGroupTitleBar('g1', {
+				a: { width: 100, height: 80 },
+				b: { width: 100, height: 80 },
 			});
 			const member = makeRegularGraphNode('a', 120, 220);
 			drag.onNodeDrag(makeEvent(member));
@@ -261,12 +278,34 @@ describe('useCanvasNodeGroupDrag', () => {
 			const patch = updater({ data: { foo: 'bar' } });
 			// Live member rect: x=[120..400], y=[200..300].
 			expect(patch.position).toEqual({
-				x: 120 - 56, // GROUP_PADDING_X
-				y: 200 - 40 - 40, // GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT
+				x: snapToGrid(120 - GROUP_PADDING_X),
+				y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 			});
-			expect(patch.width).toBe(280 + 2 * 56);
+			expect(patch.width).toBe(280 + 2 * GROUP_PADDING_X);
 			expect(patch.data.foo).toBe('bar'); // preserves other data fields
 			expect(patch.data.memberRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
+		});
+
+		it('title bar rect tracks members at their mapping-time size', () => {
+			const { drag } = setup();
+			// Mapping-time per-member sizes stashed on the title bar's data.
+			// Even if VueFlow's runtime offsetWidth/offsetHeight would report
+			// a different size (e.g. larger by the CSS border), the rect must
+			// stay anchored to these stashed dimensions.
+			mockGroupTitleBar('g1', {
+				a: { width: 100, height: 80 },
+				b: { width: 100, height: 80 },
+			});
+
+			const member = makeRegularGraphNode('a', 100, 200);
+			drag.onNodeDrag(makeEvent(member));
+
+			const updater = updateNodeMock.mock.calls.find((call) => call[0] === 'group:g1')![1];
+			const patch = updater({ data: {} });
+
+			// Rect at mapping-time dimensions: x=[100..400], y=[200..280].
+			expect(patch.data.memberRect).toEqual({ x: 100, y: 200, width: 300, height: 80 });
+			expect(patch.width).toBe(300 + 2 * GROUP_PADDING_X);
 		});
 
 		it('returns only ordinary-node moves when no group title bar is in the selection', () => {
