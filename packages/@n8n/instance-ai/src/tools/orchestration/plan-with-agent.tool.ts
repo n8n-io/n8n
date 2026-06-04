@@ -82,9 +82,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					thread_id: context.threadId,
 					run_id: context.runId,
 					route: 'planned',
-					reason: input.guidance
-						? 'guided_or_ambiguous_work'
-						: 'complex_or_multi_artifact_work',
+					reason: input.guidance ? 'guided_or_ambiguous_work' : 'complex_or_multi_artifact_work',
 					has_guidance: Boolean(input.guidance),
 				});
 			}
