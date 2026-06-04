@@ -4,9 +4,9 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-7"). */
+	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-opus-4-7';
+	model: string = 'anthropic/claude-opus-4-8';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
@@ -40,9 +40,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
 
-	/** Sandbox provider: 'daytona' for isolated Docker containers, 'local' for direct host execution (dev only). */
+	/** Sandbox provider: 'n8n-sandbox' for n8n sandbox service, 'daytona' for Daytona-backed containers. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
-	sandboxProvider: string = 'daytona';
+	sandboxProvider: string = 'n8n-sandbox';
 
 	/** Daytona API URL (e.g. "http://localhost:3000/api"). */
 	@Env('DAYTONA_API_URL')
@@ -100,9 +100,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
 
-	/** Interval in milliseconds between native persistence pruning runs. 0 = disabled. */
-	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
-	snapshotPruneInterval: number = 1 * Time.hours.toMilliseconds;
+	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
+	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
 	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')

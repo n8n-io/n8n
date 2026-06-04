@@ -29,8 +29,6 @@ export interface CliOptions {
 	files?: string[];
 	json: boolean;
 	verbose: boolean;
-	fix: boolean;
-	write: boolean;
 	help: boolean;
 	list: boolean;
 	// TCR-specific options
@@ -109,12 +107,6 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	},
 	'-v': (opts) => {
 		opts.verbose = true;
-	},
-	'--fix': (opts) => {
-		opts.fix = true;
-	},
-	'--write': (opts) => {
-		opts.write = true;
 	},
 	'--list': (opts) => {
 		opts.list = true;
@@ -242,8 +234,6 @@ function createDefaultOptions(): CliOptions {
 		files: [],
 		json: false,
 		verbose: false,
-		fix: false,
-		write: false,
 		help: false,
 		list: false,
 		execute: false,

@@ -316,6 +316,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
+		await client.ensureThread(threadId);
+
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
 		);

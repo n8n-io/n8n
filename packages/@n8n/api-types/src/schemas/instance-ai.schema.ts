@@ -994,13 +994,20 @@ export function applyBranchReadOnlyOverrides(
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
 
+export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
+export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
+
+export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {
+	return instanceAiSandboxProviderSchema.safeParse(value).success;
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
-	sandboxProvider: string;
+	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
@@ -1015,7 +1022,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
-	sandboxProvider: z.string().optional(),
+	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
