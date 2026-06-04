@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	WorkflowPublicationOutbox,
@@ -46,7 +47,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		await this.query(
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
 			 VALUES ($1, $2, '${Status.Pending}')
-			 ON CONFLICT ("workflowId") WHERE "status" = '${Status.Pending}'
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
 			[workflowId, publishedVersionId],
 		);
@@ -61,7 +62,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		await this.query(
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
 			 VALUES (?, ?, '${Status.Pending}')
-			 ON CONFLICT ("workflowId") WHERE "status" = '${Status.Pending}'
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
 			[workflowId, publishedVersionId],
 		);
@@ -150,15 +151,37 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 	/** Mark a claimed record as successfully processed. */
 	async markCompleted(id: number): Promise<void> {
-		await this.update(
+		const result = await this.update(
 			{ id, status: Status.InProgress },
 			{ status: Status.Completed, errorMessage: null },
 		);
+		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
 
 	/** Mark a claimed record as failed and record the error for diagnostics. */
 	async markFailed(id: number, errorMessage: string): Promise<void> {
-		await this.update({ id, status: Status.InProgress }, { status: Status.Failed, errorMessage });
+		const result = await this.update(
+			{ id, status: Status.InProgress },
+			{ status: Status.Failed, errorMessage },
+		);
+		this.assertSingleRowAffected(result.affected, id, Status.Failed);
+	}
+
+	/**
+	 * Guards against transitioning a record that is no longer the in-progress row
+	 * we expect (e.g. it was already resolved or never claimed): such a transition
+	 * affects zero rows and would otherwise be lost silently.
+	 */
+	private assertSingleRowAffected(
+		affected: number | null | undefined,
+		id: number,
+		target: Status,
+	): void {
+		if (affected !== 1) {
+			throw new UnexpectedError(
+				`Expected to transition outbox record ${id} to '${target}', but ${affected ?? 0} rows were affected. The record may not be in progress.`,
+			);
+		}
 	}
 
 	private getTableName(name: string): string {

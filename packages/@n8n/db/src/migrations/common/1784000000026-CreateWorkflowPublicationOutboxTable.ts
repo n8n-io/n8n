@@ -35,25 +35,17 @@ export class CreateWorkflowPublicationOutboxTable1784000000026 implements Revers
 			),
 		).withTimestamps;
 
-		// At most one pending record per workflow: enqueueing a newer version
-		// while one is still pending supersedes the older publishedVersionId.
+		// Uniqueness on (workflowId, status) for active statuses gives us two
+		// invariants in one index: at most one pending record per workflow (a
+		// newer version supersedes the older) and at most one in-progress record
+		// per workflow (never published concurrently). A pending and an in-progress
+		// record can still coexist, since their (workflowId, status) tuples differ.
 		await createIndex(
 			'workflow_publication_outbox',
-			['workflowId'],
+			['workflowId', 'status'],
 			true,
-			'IDX_workflow_publication_outbox_pending_workflow',
-			"status = 'pending'",
-		);
-
-		// At most one in-progress record per workflow, so a workflow is never
-		// published concurrently. The consumer only claims a pending record once
-		// the workflow has no in-progress record.
-		await createIndex(
-			'workflow_publication_outbox',
-			['workflowId'],
-			true,
-			'IDX_workflow_publication_outbox_in_progress_workflow',
-			"status = 'in_progress'",
+			'IDX_workflow_publication_outbox_active_workflow_status',
+			"status IN ('pending', 'in_progress')",
 		);
 	}
 

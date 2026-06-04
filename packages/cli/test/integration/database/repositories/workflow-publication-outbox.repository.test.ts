@@ -114,6 +114,17 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(record?.errorMessage).toBe('boom');
 	});
 
+	it('throws when transitioning a record that is not in progress', async () => {
+		await repository.enqueue('wf-1', 'v-1');
+		const claimed = await repository.claimNextPendingRecord();
+		assert(claimed);
+		await repository.markCompleted(claimed.id);
+
+		// Record is already completed, so it is no longer in progress.
+		await expect(repository.markCompleted(claimed.id)).rejects.toThrow();
+		await expect(repository.markFailed(claimed.id, 'boom')).rejects.toThrow();
+	});
+
 	// TODO: cover Postgres `FOR UPDATE SKIP LOCKED` concurrency control under
 	// parallel claimers in a follow-up.
 });

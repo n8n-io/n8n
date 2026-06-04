@@ -14,13 +14,9 @@ export type WorkflowPublicationOutboxStatus =
 	(typeof WorkflowPublicationOutboxStatus)[keyof typeof WorkflowPublicationOutboxStatus];
 
 @Entity({ name: 'workflow_publication_outbox' })
-@Index('IDX_workflow_publication_outbox_pending_workflow', ['workflowId'], {
+@Index('IDX_workflow_publication_outbox_active_workflow_status', ['workflowId', 'status'], {
 	unique: true,
-	where: `status = '${WorkflowPublicationOutboxStatus.Pending}'`,
-})
-@Index('IDX_workflow_publication_outbox_in_progress_workflow', ['workflowId'], {
-	unique: true,
-	where: `status = '${WorkflowPublicationOutboxStatus.InProgress}'`,
+	where: `status IN ('${WorkflowPublicationOutboxStatus.Pending}', '${WorkflowPublicationOutboxStatus.InProgress}')`,
 })
 export class WorkflowPublicationOutbox extends WithTimestamps {
 	@PrimaryGeneratedColumn()
