@@ -25,6 +25,29 @@ describe('toExecutionContext — redaction snapshot', () => {
 		expect(parsed.redaction).toEqual({ version: 2, production: true, manual: false });
 	});
 
+	it('parses a V2 redaction snapshot with source attribution', () => {
+		const parsed = toExecutionContext({
+			...baseContext,
+			redaction: { version: 2, production: true, manual: false, source: 'instance' },
+		});
+
+		expect(parsed.redaction).toEqual({
+			version: 2,
+			production: true,
+			manual: false,
+			source: 'instance',
+		});
+	});
+
+	it('rejects an unknown source value', () => {
+		expect(() =>
+			toExecutionContext({
+				...baseContext,
+				redaction: { version: 2, production: true, manual: false, source: 'project' },
+			}),
+		).toThrow();
+	});
+
 	it('parses a context without a redaction snapshot', () => {
 		const parsed = toExecutionContext({ ...baseContext });
 
