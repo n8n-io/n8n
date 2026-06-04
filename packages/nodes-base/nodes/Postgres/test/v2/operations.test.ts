@@ -509,27 +509,28 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		nodeParameters: IDataObject,
 		returnArray: unknown[],
 		matchString: string,
-	) => ({
-		getNodeParameter(
-			parameterName: string,
-			_itemIndex: number,
-			fallbackValue?: IDataObject,
-			options?: IGetNodeParameterOptions,
-		) {
-			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
-			return get(nodeParameters, parameter, fallbackValue);
-		},
-		getNode() {
-			node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
-			return node;
-		},
-		evaluateExpression(str: string, _: number) {
-			if (str.includes(matchString)) {
-				return returnArray;
-			}
-			return str.replace('{{', '').replace('}}', '');
-		},
-	}) as unknown as IExecuteFunctions;
+	) =>
+		({
+			getNodeParameter(
+				parameterName: string,
+				_itemIndex: number,
+				fallbackValue?: IDataObject,
+				options?: IGetNodeParameterOptions,
+			) {
+				const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+				return get(nodeParameters, parameter, fallbackValue);
+			},
+			getNode() {
+				node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
+				return node;
+			},
+			evaluateExpression(str: string, _: number) {
+				if (str.includes(matchString)) {
+					return returnArray;
+				}
+				return str.replace('{{', '').replace('}}', '');
+			},
+		}) as unknown as IExecuteFunctions;
 
 	it.each([
 		{
@@ -551,41 +552,40 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		{
 			description: 'handle null, number, and boolean elements in array bind values',
 			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
-			queryReplacement: "={{ [null, 42, true] }}",
+			queryReplacement: '={{ [null, 42, true] }}',
 			matchString: '[null, 42, true]',
 			returnArray: [null, 42, true],
 			expectedValues: ['null', '42', 'true'],
 		},
-	])('should $description', async ({ query, queryReplacement, matchString, returnArray, expectedValues }) => {
-		const nodeParameters: IDataObject = {
-			operation: 'executeQuery',
-			query,
-			options: {
-				queryReplacement,
-				nodeVersion: 2.6,
-			},
-		};
-		const nodeOptions = nodeParameters.options as IDataObject;
-
-		const mockExecute = createMockExecuteForArrayQuery(
-			nodeParameters,
-			returnArray,
-			matchString,
-		);
-
-		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
-
-		expect(runQueries).toHaveBeenCalledWith(
-			[
-				{
-					query,
-					values: expectedValues,
-					options: { partial: true },
+	])(
+		'should $description',
+		async ({ query, queryReplacement, matchString, returnArray, expectedValues }) => {
+			const nodeParameters: IDataObject = {
+				operation: 'executeQuery',
+				query,
+				options: {
+					queryReplacement,
+					nodeVersion: 2.6,
 				},
-			],
-			nodeOptions,
-		);
-	});
+			};
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const mockExecute = createMockExecuteForArrayQuery(nodeParameters, returnArray, matchString);
+
+			await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[
+					{
+						query,
+						values: expectedValues,
+						options: { partial: true },
+					},
+				],
+				nodeOptions,
+			);
+		},
+	);
 });
 
 describe('Test PostgresV2, insert operation', () => {
