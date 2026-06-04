@@ -24,6 +24,172 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
 	});
 
+	it('strips unknown top-level keys before validation', () => {
+		expect(
+			sanitizeAgentJsonConfig({
+				...baseConfig,
+				legacyTopLevelField: 'removed',
+			}),
+		).toEqual(baseConfig);
+	});
+
+	it('strips unknown nested object keys before validation', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2', legacyLabel: 'Research' }],
+				legacyBudget: 99,
+			},
+			config: {
+				toolCallConcurrency: 2,
+				webSearch: { enabled: true, provider: 'native', legacyProviderSetting: true },
+				nodeTools: { enabled: true, legacyNodeToolSetting: true },
+				legacyRuntimeSetting: true,
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2' }],
+			},
+			config: {
+				toolCallConcurrency: 2,
+				webSearch: { enabled: true, provider: 'native' },
+				nodeTools: { enabled: true },
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown keys from supported typed-array entries', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'wf-1',
+					name: 'Run workflow',
+					legacyWorkflowField: true,
+				},
+				{
+					type: 'node',
+					name: 'Send message',
+					description: 'Sends a message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {
+							channel: '#support',
+							arbitraryRuntimeParameter: true,
+						},
+						credentials: {
+							slackApi: {
+								id: 'cred-1',
+								name: 'Slack',
+								legacyCredentialField: true,
+							},
+						},
+						legacyNodeConfigField: true,
+					},
+					legacyNodeToolField: true,
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'wf-1',
+					name: 'Run workflow',
+				},
+				{
+					type: 'node',
+					name: 'Send message',
+					description: 'Sends a message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {
+							channel: '#support',
+							arbitraryRuntimeParameter: true,
+						},
+						credentials: {
+							slackApi: {
+								id: 'cred-1',
+								name: 'Slack',
+							},
+						},
+					},
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown keys from strict nested MCP config schemas', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					description: 'GitHub tools',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'bearerAuth',
+					credential: 'cred-github',
+					metadata: {
+						nodeTypeName: '@n8n/mcp-registry.github',
+						legacyMetadataField: true,
+					},
+					toolFilter: {
+						mode: 'allow',
+						tools: ['create_issue'],
+						legacyToolFilterField: true,
+					},
+					approval: {
+						mode: 'selected',
+						tools: ['create_issue'],
+						legacyApprovalField: true,
+					},
+					connectionTimeoutMs: 10_000,
+					legacyServerField: true,
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					description: 'GitHub tools',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'bearerAuth',
+					credential: 'cred-github',
+					metadata: {
+						nodeTypeName: '@n8n/mcp-registry.github',
+					},
+					toolFilter: {
+						mode: 'allow',
+						tools: ['create_issue'],
+					},
+					approval: {
+						mode: 'selected',
+						tools: ['create_issue'],
+					},
+					connectionTimeoutMs: 10_000,
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
 	it('strips unsupported integration types such as the removed schedule integration', () => {
 		const config = {
 			...baseConfig,
@@ -105,17 +271,24 @@ describe('sanitizeAgentJsonConfig', () => {
 
 		const sanitized = sanitizeAgentJsonConfig(legacyConfig);
 		expect(sanitized).toMatchObject({
-			...legacyConfig,
+			name: legacyConfig.name,
+			model: legacyConfig.model,
+			instructions: legacyConfig.instructions,
+			tools: [],
+			skills: [],
+			credential: legacyConfig.credential,
+			memory: legacyConfig.memory,
+			providerTools: legacyConfig.providerTools,
+			config: legacyConfig.config,
 			integrations: [],
-			legacyTopLevelField: 'should survive until schema parse',
 		});
+		expect(sanitized).not.toHaveProperty('legacyTopLevelField');
 
 		const parsed = AgentJsonConfigSchema.safeParse(sanitized);
 		expect(parsed.success).toBe(true);
 		if (!parsed.success) return;
 
 		expect(parsed.data.integrations).toEqual([]);
-		expect(parsed.data).not.toHaveProperty('legacyTopLevelField');
 	});
 
 	it('strips unsupported entries across integrations, tools, skills, and tasks in one pass', () => {
@@ -183,14 +356,15 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
 	});
 
-	it('accepts subAgents.maxChildren as part of agent JSON config', () => {
-		const parsed = AgentJsonConfigSchema.safeParse({
+	it('preserves schema-known fields such as subAgents.maxChildren', () => {
+		const sanitized = sanitizeAgentJsonConfig({
 			...baseConfig,
 			subAgents: {
 				maxChildren: 3,
 				agents: [{ agentId: 'agent-2' }],
 			},
 		});
+		const parsed = AgentJsonConfigSchema.safeParse(sanitized);
 
 		expect(parsed.success).toBe(true);
 		if (!parsed.success) return;

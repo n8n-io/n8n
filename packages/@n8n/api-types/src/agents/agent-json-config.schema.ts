@@ -97,7 +97,7 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
-const AgentJsonSkillConfigSchema = z.object({
+export const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
 	id: z
 		.string()
@@ -105,7 +105,7 @@ const AgentJsonSkillConfigSchema = z.object({
 		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
-const AgentJsonTaskConfigSchema = z.object({
+export const AgentJsonTaskConfigSchema = z.object({
 	type: z.literal('task'),
 	id: z
 		.string()
@@ -206,7 +206,7 @@ export const McpServerConfigSchema = z
 	})
 	.strict();
 
-const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
+export const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
 		id: z
@@ -233,6 +233,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			type: z.literal('node'),
 			name: z.string().min(1),
 			description: z.string().optional(),
+			inputSchema: z.never().optional(),
 			node: NodeConfigSchema,
 			requireApproval: z.boolean().optional(),
 		})

@@ -1485,6 +1485,10 @@ export class AgentsService {
 	async validateConfig(
 		raw: unknown,
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
+		if (hasNodeToolInputSchema(raw)) {
+			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
+		}
+
 		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
@@ -1551,24 +1555,17 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		await this.validateSubAgentRefs(result.config, entity);
-		this.validateConfigRefs(result.config, entity);
-
 		// Task refs resolve against task definition bodies (a separate table), so
-		// validate them here where the DB is reachable. Orphan bodies are pruned
+		// load them here where the DB is reachable. Orphan bodies are pruned
 		// after the save below. `tasksProvided` also gates the schema overlay.
 		const tasksProvided = result.config.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
-		if (tasksProvided) {
-			const existingTaskIdSet = new Set(existingTaskIds);
-			for (const ref of result.config.tasks ?? []) {
-				if (!existingTaskIdSet.has(ref.id)) {
-					throw new UserError(`Invalid agent config: Missing task body: ${ref.id}`);
-				}
-			}
-		}
+
+		this.removeMissingConfigRefs(result.config, entity, new Set(existingTaskIds));
+		await this.validateSubAgentRefs(result.config, entity);
+		this.validateConfigRefs(result.config, entity);
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
@@ -1620,7 +1617,6 @@ export class AgentsService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
-		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -1922,6 +1918,26 @@ export class AgentsService {
 		}
 	}
 
+	private removeMissingConfigRefs(
+		config: AgentJsonConfig,
+		entity: Agent,
+		existingTaskIds: ReadonlySet<string>,
+	): void {
+		if (config.skills !== undefined) {
+			const skills = entity.skills ?? {};
+			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
+		}
+
+		if (config.tools !== undefined) {
+			const tools = entity.tools ?? {};
+			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
+		}
+
+		if (config.tasks !== undefined) {
+			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+		}
+	}
+
 	/**
 	 * Resolve configured sub-agent refs to their saved agents, de-duplicated
 	 * (order preserved) and fetched once each. `agent` is null when the id no
@@ -2105,10 +2121,12 @@ function getProviderPrefix(modelId: string): string {
 	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
 }
 
-function normalizeSubAgentsConfig(
-	subAgents: AgentJsonConfig['subAgents'],
-): AgentJsonConfig['subAgents'] {
-	if (!subAgents) return undefined;
-	const agents = subAgents.agents ?? [];
-	return { agents };
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasNodeToolInputSchema(raw: unknown): boolean {
+	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
+
+	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
 }
