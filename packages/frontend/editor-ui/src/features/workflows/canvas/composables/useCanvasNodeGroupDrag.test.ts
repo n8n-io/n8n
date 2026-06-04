@@ -12,17 +12,6 @@ import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
-// Drag-sync only queries findNode for the group title bar (to read stashed
-// memberDimensions). Member positions come from the drag event / store.
-function mockGroupTitleBar(
-	groupId: string,
-	memberDimensions: Record<string, { width: number; height: number }>,
-) {
-	findNodeMock.mockImplementation((id: string) =>
-		id === `group:${groupId}` ? { data: { memberDimensions } } : undefined,
-	);
-}
-
 const updateNodeMock = vi.fn();
 const findNodeMock = vi.fn();
 vi.mock('@vue-flow/core', async (importOriginal) => {
@@ -70,7 +59,9 @@ function makeSelectionEvent(...nodes: GraphNode[]): NodeDragEvent {
 }
 
 describe('useCanvasNodeGroupDrag', () => {
-	function setup() {
+	function setup(opts?: {
+		getNodeDimensions?: (id: string) => { width: number; height: number } | undefined;
+	}) {
 		updateNodeMock.mockClear();
 		findNodeMock.mockReset();
 		const store = new Map<string, INodeUi>([
@@ -87,16 +78,17 @@ describe('useCanvasNodeGroupDrag', () => {
 			getNodeById: (id) => store.get(id),
 			getGroupById: (id) => groups.find((g) => g.id === id),
 			getGroupForNode: (id) => groups.find((g) => g.nodeIds.includes(id)),
+			getNodeDimensions: opts?.getNodeDimensions,
 		});
 		return { drag };
 	}
 
-	it('ignores drag events on non-group nodes', () => {
+	it('ignores drag events on nodes that are not in any group', () => {
 		const { drag } = setup();
-		const regular = makeRegularGraphNode('a');
-		drag.onNodeDragStart(makeEvent(regular));
-		drag.onNodeDrag(makeEvent(regular));
-		drag.processNodeDragStop(makeEvent(regular));
+		const unrelated = makeRegularGraphNode('unrelated');
+		drag.onNodeDragStart(makeEvent(unrelated));
+		drag.onNodeDrag(makeEvent(unrelated));
+		drag.processNodeDragStop(makeEvent(unrelated));
 		expect(updateNodeMock).not.toHaveBeenCalled();
 	});
 
@@ -266,11 +258,12 @@ describe('useCanvasNodeGroupDrag', () => {
 			// track the live cursor position. Without this live push, the
 			// rect would only catch up on drag-stop (when the store updates
 			// and the mapping recomputes).
-			const { drag } = setup();
-			mockGroupTitleBar('g1', {
+			const memberDimensions: Record<string, { width: number; height: number }> = {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },
-			});
+			};
+			const { drag } = setup({ getNodeDimensions: (id) => memberDimensions[id] });
+			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
 			const member = makeRegularGraphNode('a', 120, 220);
 			drag.onNodeDrag(makeEvent(member));
 			expect(updateNodeMock).toHaveBeenCalledWith('group:g1', expect.any(Function));
@@ -287,15 +280,16 @@ describe('useCanvasNodeGroupDrag', () => {
 		});
 
 		it('title bar rect tracks members at their mapping-time size', () => {
-			const { drag } = setup();
-			// Mapping-time per-member sizes stashed on the title bar's data.
+			// The composable receives getNodeDimensions from the mapping layer.
 			// Even if VueFlow's runtime offsetWidth/offsetHeight would report
 			// a different size (e.g. larger by the CSS border), the rect must
-			// stay anchored to these stashed dimensions.
-			mockGroupTitleBar('g1', {
+			// stay anchored to the mapping-time dimensions.
+			const memberDimensions: Record<string, { width: number; height: number }> = {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },
-			});
+			};
+			const { drag } = setup({ getNodeDimensions: (id) => memberDimensions[id] });
+			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
 
 			const member = makeRegularGraphNode('a', 100, 200);
 			drag.onNodeDrag(makeEvent(member));

@@ -41,7 +41,6 @@ function makeData(overrides: Partial<CanvasGroupViewState> = {}): CanvasGroupVie
 	return {
 		group: baseGroup,
 		memberRect: { x: 0, y: 0, width: 500, height: 100 },
-		memberDimensions: {},
 		autofocusTitle: false,
 		...overrides,
 	};

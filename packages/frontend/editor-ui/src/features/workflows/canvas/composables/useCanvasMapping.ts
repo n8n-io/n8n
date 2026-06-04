@@ -797,6 +797,7 @@ export function useCanvasMapping({
 		nodeExecutionRunDataOutputMapById,
 		nodeExecutionWaitingForNextById,
 		nodeHasIssuesById,
+		memberDimensionsByNodeId,
 		connections: mappedConnections,
 		nodes: mappedNodes,
 		groupNodes: groupVueFlowNodes,

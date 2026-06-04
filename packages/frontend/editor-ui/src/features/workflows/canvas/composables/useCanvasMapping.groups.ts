@@ -138,18 +138,9 @@ export function mapGroupsToVueFlowNodes({
 
 		const memberRect = computeMemberRectFromStore(group.nodeIds, getNodeById, getNodeDimensions);
 
-		const memberDimensions: Record<string, { width: number; height: number }> = {};
-		for (const id of group.nodeIds) {
-			const node = getNodeById(id);
-			if (node) {
-				memberDimensions[id] = resolveMemberDimensions(node, getNodeDimensions);
-			}
-		}
-
 		const data: CanvasGroupViewState = {
 			group,
 			memberRect,
-			memberDimensions,
 			autofocusTitle: autofocusGroupId === group.id,
 		};
 

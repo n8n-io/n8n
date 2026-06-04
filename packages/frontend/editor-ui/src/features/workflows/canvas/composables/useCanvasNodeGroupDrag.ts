@@ -3,13 +3,18 @@ import { useVueFlow } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { CanvasGroupViewState, CanvasNodeMoveEvent } from '../canvas.types';
 import { CANVAS_NODE_GROUP_ID_PREFIX, isCanvasNodeGroup } from '../canvas.types';
-import { computeMemberRectFromStore, titleBarFromMemberRect } from './useCanvasMapping.groups';
+import {
+	computeMemberRectFromStore,
+	titleBarFromMemberRect,
+	type GetNodeDimensions,
+} from './useCanvasMapping.groups';
 
 export interface UseCanvasNodeGroupDragDeps {
 	canvasId?: string;
 	getNodeById: (id: string) => INodeUi | undefined;
 	getGroupById: (groupId: string) => { nodeIds: string[] } | undefined;
 	getGroupForNode: (nodeId: string) => { id: string; nodeIds: string[] } | undefined;
+	getNodeDimensions?: GetNodeDimensions;
 }
 
 interface GroupDragSnapshot {
@@ -123,16 +128,12 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 		for (const group of groupsToSync.values()) {
 			const vfId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`;
-			const groupVfNode = findNode(vfId);
-			if (!groupVfNode) continue; // title bar not yet rendered
-
-			const stashedDimensions =
-				(groupVfNode.data as CanvasGroupViewState | undefined)?.memberDimensions ?? {};
+			if (!findNode(vfId)) continue; // title bar not yet rendered
 
 			const rect = computeMemberRectFromStore(
 				group.nodeIds,
 				deps.getNodeById,
-				(id) => stashedDimensions[id],
+				deps.getNodeDimensions,
 				positionOverrides,
 			);
 			const titleBar = titleBarFromMemberRect(rect);
