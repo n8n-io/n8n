@@ -94,7 +94,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			// so a workflow is never published concurrently. Ordering by id gives
 			// FIFO: ids are monotonically assigned, so the oldest is processed first.
 			`UPDATE ${tableName}
-			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3), "claimedAt" = CURRENT_TIMESTAMP(3)
+			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3)
 			 WHERE "id" = (
 				 SELECT o."id" FROM ${tableName} o
 				 WHERE o."status" = '${Status.Pending}'
@@ -138,14 +138,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 			if (!record) return null;
 
-			const claimedAt = new Date();
 			await tx.update(
 				WorkflowPublicationOutbox,
 				{ id: record.id, status: Status.Pending },
-				{ status: Status.InProgress, claimedAt },
+				{ status: Status.InProgress },
 			);
 			record.status = Status.InProgress;
-			record.claimedAt = claimedAt;
 			return record;
 		});
 	}

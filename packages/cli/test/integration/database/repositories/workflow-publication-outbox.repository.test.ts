@@ -27,8 +27,6 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(claimed?.workflowId).toBe('wf-1');
 		expect(claimed?.publishedVersionId).toBe('v-1');
 		expect(claimed?.status).toBe('in_progress');
-		// Stamped on claim so a future reaper can find stale in-progress records.
-		expect(claimed?.claimedAt).toBeInstanceOf(Date);
 
 		const claimedAgain = await repository.claimNextPendingRecord();
 		expect(claimedAgain).toBeNull();

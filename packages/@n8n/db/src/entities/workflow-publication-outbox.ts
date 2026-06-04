@@ -1,6 +1,6 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
-import { DateTimeColumn, WithTimestamps } from './abstract-entity';
+import { WithTimestamps } from './abstract-entity';
 
 export const WorkflowPublicationOutboxStatus = {
 	Pending: 'pending',
@@ -37,8 +37,4 @@ export class WorkflowPublicationOutbox extends WithTimestamps {
 
 	@Column({ type: 'text', nullable: true })
 	errorMessage: string | null;
-
-	/** When the record was claimed (status set to in_progress); used to detect stale in-progress records. */
-	@DateTimeColumn({ nullable: true })
-	claimedAt: Date | null;
 }

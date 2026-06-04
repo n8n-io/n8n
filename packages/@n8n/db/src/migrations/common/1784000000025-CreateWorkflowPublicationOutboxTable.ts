@@ -33,11 +33,6 @@ export class CreateWorkflowPublicationOutboxTable1784000000025 implements Revers
 			column('errorMessage').text.comment(
 				'Error details for surfacing failed publications to the user.',
 			),
-			column('claimedAt')
-				.timestampTimezone()
-				.comment(
-					'When the record was claimed (status set to in_progress); used to detect stale in-progress records.',
-				),
 		).withTimestamps;
 
 		// At most one pending record per workflow: enqueueing a newer version
