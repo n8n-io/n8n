@@ -192,8 +192,6 @@ function resolveDryRun(values) {
 		dryRun = true; // explicit override always wins toward safety
 	}
 
-	dryRun = true;
-
 	return dryRun;
 }
 
