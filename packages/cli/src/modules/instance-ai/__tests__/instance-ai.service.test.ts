@@ -1,8 +1,7 @@
-import type { z as zType } from 'zod';
-
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
+	const { z } = jest.requireActual('zod');
+	const { getPromptWorkspaceRoot } = jest.requireActual('@n8n/instance-ai');
 	return {
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
@@ -18,6 +17,9 @@ jest.mock('@n8n/instance-ai', () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
+		createScopedWorkspace: jest.fn((workspace: unknown) => workspace),
+		getPromptWorkspaceRoot,
+		getWorkspaceRoot: jest.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: jest.fn(),
 		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
 			registry: {
@@ -137,9 +139,10 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
-import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import {
+	buildAgentTreeFromEvents,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -825,6 +828,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}),
 		);
 		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockImplementation(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		}));
 	});
 
 	it('serializes workspace creation for concurrent calls on the same thread', async () => {
@@ -1032,6 +1042,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}>;
 			settingsService: {
 				getAdminSettings: jest.Mock;
+				getSandboxStatus: jest.Mock;
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
@@ -1069,6 +1080,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getSandboxStatus: jest.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: true,
+				unavailableReason: null,
+			})),
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
@@ -1168,6 +1185,34 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+
+		(createLazyRuntimeWorkspace as jest.Mock).mockClear();
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockClear();
+		(createSandbox as jest.Mock).mockClear();
+		(setupSandboxWorkspace as jest.Mock).mockClear();
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockClear();
+		service.settingsService.getSandboxStatus.mockReturnValue({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			workflowBuilderAvailable: false,
+			unavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+		});
+
+		const unavailableEnvironment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-2',
+			'run-2',
+			new AbortController().signal,
+		);
+
+		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
+		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
+		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
+		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
+		expect(createSandbox).not.toHaveBeenCalled();
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 });
 
@@ -2073,6 +2118,23 @@ describe('InstanceAiService — terminal outcome replay', () => {
 });
 
 describe('InstanceAiService — agent tree snapshots', () => {
+	beforeEach(() => {
+		(buildAgentTreeFromEvents as jest.Mock).mockImplementation(
+			(events: Array<{ type: string; payload?: { text?: string } }>) => ({
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: events
+					.map((event) => (event.type === 'text-delta' ? (event.payload?.text ?? '') : ''))
+					.join(''),
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			}),
+		);
+	});
+
 	it('falls back to persisted run ids when an old background group mapping was pruned', async () => {
 		const service = createSnapshotService();
 		const terminalEvent: InstanceAiEvent = {

@@ -1053,6 +1053,10 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload: user,
 				});
 				break;
+			case 'data_redaction_enforcement_floor':
+				// Telemetry-only signal. The audit trail for redaction enforcement
+				// is emitted separately via 'redaction-enforcement-updated'.
+				break;
 			default:
 				assertNever(settingName);
 		}

@@ -5,6 +5,7 @@ import {
 	HookDescription,
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
+import type { RedactionSource } from 'n8n-workflow';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
 import { policyToChannels } from './redaction-channels';
@@ -34,7 +35,7 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 	 * A workflow can be equal to or stricter than the floor, never weaker.
 	 */
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-		const floor = await this.instanceRedactionEnforcementService.getFloor();
+		const floor = await this.instanceRedactionEnforcementService.get();
 		const workflow = policyToChannels(options.workflow.settings?.redactionPolicy ?? 'none');
 
 		const floorEnforcesProduction = floor !== 'off';
@@ -52,12 +53,22 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 		// manual-implies-production invariant; past executions keep their V1 snapshot.
 		const production = workflow.production || floorEnforcesProduction || manual;
 
+		// Attribution: `'instance'` when the floor enforced redaction the workflow did
+		// not ask for, `'workflow'` otherwise. The workflow's manual-implies-production
+		// clamp is workflow-side, so a manual-only workflow that produces production
+		// redaction is still attributed to the workflow, not the floor.
+		const floorRaisedTheBar =
+			(floorEnforcesProduction && !workflow.production) ||
+			(floorEnforcesManual && !workflow.manual);
+		const source: RedactionSource = floorRaisedTheBar ? 'instance' : 'workflow';
+
 		return {
 			contextUpdate: {
 				redaction: {
 					version: 2,
 					production,
 					manual,
+					source,
 				},
 			},
 		};
