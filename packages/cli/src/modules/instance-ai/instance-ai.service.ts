@@ -41,7 +41,6 @@ import {
 	InstanceAiLivenessPolicy,
 	McpClientManager,
 	createDomainAccessTracker,
-	createSubAgentResourceId,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
 	classifyAttachments,
@@ -171,8 +170,16 @@ type PlannedBuildFollowUp = {
 	isPlannedBuildFollowUp: true;
 	buildTaskId: string;
 	workItemId: string;
+	isSupportingWorkflowTask?: boolean;
 	savedOutcome?: WorkflowBuildOutcome;
 };
+
+function isSupportingWorkflowBuildTask(task: PlannedTaskRecord): boolean {
+	if (task.isSupportingWorkflow === true) return true;
+
+	const text = `${task.title}\n${task.spec}`;
+	return /\b(?:supporting\s+(?:sub-)?workflow|sub-workflow\s+named)\b/i.test(text);
+}
 
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
@@ -1567,7 +1574,7 @@ export class InstanceAiService {
 		});
 
 		// Persist the user's time zone so checkpoint / replan / synthesize
-		// follow-up runs can reinject it into the planner and system prompt
+		// follow-up runs can reinject it into the system prompt
 		// instead of falling back to GENERIC_TIMEZONE.
 		if (timeZone) {
 			this.runState.setTimeZone(threadId, timeZone);
@@ -1666,9 +1673,7 @@ export class InstanceAiService {
 		// Clean up any awaiting_approval plan graph for this thread. The user
 		// cancelled before approving, so leaving the graph persisted would (a)
 		// cause doSchedulePlannedTasks() to republish the stale checklist on
-		// every later pass via syncPlannedTasksToUi(), and (b) incorrectly let a
-		// future unrelated create-tasks call bypass the replan-only guard via
-		// threadHasExistingPlan(). Only target awaiting_approval — active and
+		// every later pass via syncPlannedTasksToUi(). Only target awaiting_approval — active and
 		// awaiting_replan graphs have their own settlement logic via the
 		// background-task cancellations above.
 		void this.cancelAwaitingApprovalPlan(threadId);
@@ -2026,7 +2031,7 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
-			// Runs holding an inline HITL confirmation (planner `submit-plan`,
+			// Runs holding an inline HITL confirmation (`create-tasks`,
 			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
@@ -2523,6 +2528,7 @@ export class InstanceAiService {
 				kind: options.buildTask.kind,
 				spec: options.buildTask.spec,
 				workflowId: options.buildTask.workflowId,
+				isSupportingWorkflow: options.buildTask.isSupportingWorkflow,
 				deps: options.buildTask.deps,
 			};
 		}
@@ -3211,7 +3217,7 @@ export class InstanceAiService {
 						kind: 'inline',
 					});
 
-					// Inline HITL (planner questions / plan approval / sub-agent asks)
+					// Inline HITL (plan approval / sub-agent asks)
 					// keeps the orchestrator run active, so the normal suspended/completed
 					// snapshot paths do not execute. Queue a snapshot after the current
 					// confirmation-request event is published to preserve refresh recovery.
@@ -3230,10 +3236,6 @@ export class InstanceAiService {
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
-			findSubAgentResumeInfo: async (agentKind) =>
-				await this.checkpointStore.findSuspendedSubAgentResumeInfo(
-					createSubAgentResourceId(threadId, agentKind),
-				),
 			persistInFlightUserMessage: async () => {
 				await this.persistUserMessageOnFirstSuspend(threadId, runId);
 			},
@@ -3575,7 +3577,7 @@ export class InstanceAiService {
 		// Resolve user time zone from the thread's run-state snapshot (captured on the
 		// initial user-facing run) before falling back to the instance default. Follow-up
 		// runs (checkpoint / replan / synthesize) used to drop this context, which made
-		// the planner emit "instance default timezone" for user-local schedules.
+		// user-local schedules fall back to "instance default timezone".
 		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
 		const resumeReason: OrchestratorResumeReason =
 			resumeReasonOverride ??
@@ -3746,6 +3748,7 @@ export class InstanceAiService {
 				isPlannedBuildFollowUp: true,
 				buildTaskId: buildTask.id,
 				workItemId,
+				isSupportingWorkflowTask: isSupportingWorkflowBuildTask(buildTaskRecord),
 			};
 			const startedRunId = await this.startInternalFollowUpRun(
 				activeUser,
@@ -3921,8 +3924,8 @@ export class InstanceAiService {
 			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
-			// Make the current user message available to sub-agents (e.g. planner)
-			// since memory history only returns previously-saved messages.
+			// Make the current user message available since memory history only
+			// returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
 			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
@@ -3955,6 +3958,7 @@ export class InstanceAiService {
 					taskId: plannedBuild.buildTaskId,
 					workItemId: plannedBuild.workItemId,
 					allowPostPlanWorkflowCreate: true,
+					isSupportingWorkflowTask: plannedBuild.isSupportingWorkflowTask,
 					plannedTaskService,
 					workflowTaskService: workflowTasks,
 					onBuildOutcome: (outcome) => {

@@ -95,11 +95,13 @@ The system implements the four pillars of the deep agent pattern:
 
 ### 1. Explicit Planning
 
-The orchestrator uses a `plan` tool to externalize its execution strategy for
-work that needs dependency coordination: multiple workflows, shared artifacts,
-cross-workflow data contracts, or ambiguous business process design. Clear
-single-workflow builds, including new and one-off workflows, go directly to the
-builder and do not create a plan merely to obtain verification.
+The orchestrator loads the `planning` skill to externalize its execution
+strategy for work that needs dependency coordination: multiple workflows, shared
+artifacts, cross-workflow data contracts, or ambiguous business process design.
+After normal discovery, it calls `create-tasks` to persist the task graph for
+user approval. Clear single-workflow builds, including new and one-off
+workflows, go directly to the builder and do not create a plan merely to obtain
+verification.
 
 Plans are stored in thread-scoped storage (see ADR-017).
 
@@ -133,11 +135,11 @@ prompts written by the orchestrator.
 ```mermaid
 graph TD
     O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
-    O -->|plan| S3[Planned Tasks]
+    O -->|planning skill + create-tasks| S3[Planned Tasks]
     O -->|direct| T1[list-workflows]
     O -->|direct| T2[run-workflow]
     O -->|direct| T3[get-execution]
-    O -->|direct| T4[plan]
+    O -->|direct| T4[create-tasks]
     O -->|direct| T5[data-tables]
 
     S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
@@ -158,14 +160,14 @@ graph TD
 **Orchestrator** handles directly:
 - Read-only queries (list-workflows, get-execution, list-credentials)
 - Execution triggers (run-workflow)
-- Planning (plan tool — always direct)
+- Planning (`planning` skill + `create-tasks` — always direct)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 
 **Single-task delegation** (`delegate`):
 - Complex multi-step operations that are not handled by a planned build follow-up
 - Tasks that benefit from clean context (no accumulated noise)
 
-**Multi-task plans** (`plan` tool):
+**Multi-task plans** (`planning` skill + `create-tasks`):
 - Dependency-aware task graphs with parallel execution
 - Each task dispatched to a preconfigured executor (build-workflow, checkpoint, or delegate)
 - User approves the plan before execution starts
@@ -183,7 +185,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `delegate`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
@@ -334,8 +336,9 @@ In-memory registry of active, suspended, and pending runs per thread. Manages:
 
 ### Planned Task System
 
-The `plan` tool creates dependency-aware task graphs for multi-step work. Each
-task has a `kind` that determines its executor:
+The `planning` skill guides discovery and `create-tasks` creates
+dependency-aware task graphs for multi-step work. Each task has a `kind` that
+determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
@@ -384,7 +387,7 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, `web-search`,
+- **Core tools** (always-loaded): `create-tasks`, `delegate`, `ask-user`, `web-search`,
   `fetch-url` — these are directly available to the LLM
 - **Deferred tools** (behind ToolSearchProcessor): all other domain tools —
   discovered on-demand via `search_tools` and activated via `load_tool`

@@ -291,6 +291,7 @@ export const plannedTaskArgSchema = z.object({
 	deps: z.array(z.string()),
 	tools: z.array(z.string()).optional(),
 	workflowId: z.string().optional(),
+	isSupportingWorkflow: z.boolean().optional(),
 });
 
 export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
@@ -787,7 +788,7 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
-	/** Full planned task details — updated progressively by plan-with-agent via tasks-update. */
+	/** Full planned task details — updated by create-tasks via tasks-update. */
 	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
@@ -1077,7 +1078,7 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
-	if (toolName === 'plan') return 'planner';
+	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';

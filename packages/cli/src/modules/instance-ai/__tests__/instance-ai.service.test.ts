@@ -2021,6 +2021,44 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			}),
 		);
 	});
+
+	it('passes planned supporting-workflow build metadata to follow-up turns', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		const buildTask = {
+			id: 'processor',
+			title: 'Build processor sub-workflow',
+			kind: 'build-workflow',
+			spec: 'Build the reusable processor.',
+			deps: [],
+			isSupportingWorkflow: true,
+		};
+		graph.tasks = [buildTask];
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'orchestrate-build-workflow',
+			graph,
+			tasks: [buildTask],
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			false,
+			undefined,
+			undefined,
+			expect.objectContaining({
+				isPlannedBuildFollowUp: true,
+				buildTaskId: 'processor',
+				workItemId: expect.stringMatching(/^wi_/),
+				isSupportingWorkflowTask: true,
+			}),
+		);
+	});
 });
 
 describe('InstanceAiService — suspended run user revalidation', () => {

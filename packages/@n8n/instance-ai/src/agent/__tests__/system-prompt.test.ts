@@ -97,12 +97,12 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toMatch(/handle a single simple task directly/);
-			expect(prompt).toMatch(/call `create-tasks` for multiple dependent tasks/);
+			expect(prompt).toMatch(/call `create-tasks` with `planningContext\.source: "replan"`/);
 		});
 	});
 
 	describe('When to Plan — complexity axis', () => {
-		it('routes clear single-workflow builds directly and keeps plan for coordinated work', () => {
+		it('routes clear single-workflow builds directly and uses the planning skill for coordinated work', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
@@ -111,8 +111,13 @@ describe('getSystemPrompt', () => {
 				'load the `workflow-builder` skill and call `build-workflow` directly',
 			);
 			expect(prompt).toMatch(/Plan-worthy workflow work/);
+			expect(prompt).toContain('load the `planning` skill');
+			expect(prompt).toContain(
+				'call `create-tasks` with `planningContext.source: "planning-skill"`',
+			);
 			expect(prompt).toContain('multiple workflows');
 			expect(prompt).toContain('shared data-table schema');
+			expect(prompt).not.toContain('call `plan`');
 			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
@@ -122,14 +127,14 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toMatch(/Standalone data-table work/);
 			expect(prompt).toContain('`data-table-manager` skill');
 			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
-			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
 		});
 
 		it('loads the data-table skill before planning workflows that use tables', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain(
-				'If workflow work needs shared data tables, load the `data-table-manager` skill before `plan`',
+				'If workflow work needs shared data tables, load the `data-table-manager` skill before `planning`',
 			);
 		});
 
@@ -155,6 +160,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toMatch(/Replan follow-up/);
 			expect(prompt).toMatch(/route, don't re-plan/);
+			expect(prompt).toContain('planningContext.source: "replan"');
 		});
 	});
 

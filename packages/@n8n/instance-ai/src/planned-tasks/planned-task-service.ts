@@ -150,7 +150,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	/**
 	 * Transition a graph from `awaiting_approval` → `active` after the user
-	 * approves the plan. Callers (create-tasks, submit-plan) must invoke this
+	 * approves the plan. Callers must invoke this
 	 * before schedulePlannedTasks() so tick() can begin dispatching. No-op on
 	 * any other status (a cancelled plan stays cancelled, an already-active
 	 * plan doesn't regress).

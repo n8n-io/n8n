@@ -791,6 +791,8 @@ export interface InstanceAiContext {
 		 * exists and the builder may retry directly without creating a new plan.
 		 */
 		allowPostPlanWorkflowCreate?: boolean;
+		/** True when the active planned build task's final deliverable is a supporting workflow. */
+		isSupportingWorkflowTask?: boolean;
 		plannedTaskService?: PlannedTaskService;
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
@@ -819,6 +821,12 @@ export interface PlannedTask {
 	tools?: string[];
 	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
 	workflowId?: string;
+	/**
+	 * True when the build-workflow task's final deliverable is intentionally a
+	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
+	 * larger main-workflow task should not set this.
+	 */
+	isSupportingWorkflow?: boolean;
 }
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -1262,25 +1270,6 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
-	/**
-	 * Resume info for a suspended sub-agent of this thread, looked up from the
-	 * persisted checkpoint store by the deterministic sub-agent resourceId
-	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
-	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
-	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
-	 * + the persistence the planner was running under, so the resume path
-	 * can rebuild the sub-agent with the same persistence and call
-	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
-	 * without stashing anything across its own suspend/resume cycle.
-	 */
-	findSubAgentResumeInfo?: (agentKind: string) => Promise<
-		| {
-				runId: string;
-				toolCallId: string;
-				persistence: { threadId: string; resourceId: string };
-		  }
-		| undefined
-	>;
 	/**
 	 * Persist the current user message to thread memory immediately, so it
 	 * survives a restart that happens while the orchestrator is suspended on

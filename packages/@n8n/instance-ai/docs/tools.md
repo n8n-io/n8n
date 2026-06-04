@@ -10,18 +10,22 @@ its input/output schema via Zod.
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
 
-### `plan`
+### `create-tasks`
 
-Persist a dependency-aware task plan for detached multi-step execution. Use only
-when the work requires architecture or dependency coordination, such as multiple
-workflows, cross-workflow dependencies, shared data-table schema work, or
-user-requested plan review. Clear single-workflow builds, including new and
-one-off workflows, use `build-workflow-with-agent` directly instead. The plan is
-shown to the user for approval before execution starts.
+Persist a dependency-aware task plan for detached multi-step execution. For
+initial plan-worthy work, the orchestrator loads the `planning` skill, performs
+discovery with normal domain tools, then calls `create-tasks` with
+`planningContext.source: "planning-skill"`. For
+`<planned-task-follow-up type="replan">` turns, use
+`planningContext.source: "replan"` when multiple dependent tasks still need
+scheduling. Clear single-workflow builds, including new and one-off workflows,
+use `workflow-builder` plus `build-workflow` directly. The plan is shown to the
+user for approval before execution starts.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
+| `planningContext` | object | yes | `{ source: "planning-skill" \| "replan", summary: string, assumptions?: string[] }` |
 
 **Task schema**:
 
@@ -34,6 +38,7 @@ shown to the user for approval before execution starts.
   deps: string[];      // Task IDs that must succeed before this task can start
   tools?: string[];    // Required tool subset for delegate tasks
   workflowId?: string; // Existing workflow ID to modify (build-workflow tasks only)
+  isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
 }
 ```
 
@@ -43,7 +48,8 @@ shown to the user for approval before execution starts.
 - First call persists the plan, publishes `tasks-update` event, and **suspends**
   for user approval
 - On approval: calls `schedulePlannedTasks()` to start detached execution
-- On denial: returns feedback for the LLM to revise the plan
+- On rejection: returns feedback for the LLM to revise the plan
+- On denial: cancels the graph and blocks same-turn resubmission
 
 **Task kinds** map to executors:
 - `build-workflow` → orchestrator follow-up run using the workflow-builder skill
@@ -75,7 +81,7 @@ fixed taxonomy of sub-agent types.
 
 **Behavior**:
 - Validates `tools` against registered native domain tool names
-- Forbids orchestration tools (`plan`, `delegate`) and MCP tools
+- Forbids orchestration tools (`create-tasks`, `delegate`) and MCP tools
 - Creates a fresh agent with specified tools and low `maxSteps` (default 10)
 - Sub-agent publishes events directly to the event bus
 - Sub-agent has no memory — receives context only via the briefing
@@ -681,7 +687,7 @@ everything; sub-agents receive only what they need.
 
 | Tool Category | Orchestrator | Sub-Agents (delegate) | Background Agents |
 |---------------|:---:|:---:|:---:|
-| Orchestration tools (`plan`, `delegate`, etc.) | ✅ | ❌ | ❌ |
+| Orchestration tools (`create-tasks`, `delegate`, etc.) | ✅ | ❌ | ❌ |
 | Workflow tools | ✅ | ✅ (via delegate) | ✅ (builder) |
 | Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
 | Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
