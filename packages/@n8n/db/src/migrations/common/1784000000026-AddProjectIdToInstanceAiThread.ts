@@ -65,18 +65,21 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 		const role = escape.columnName('role');
 
 		// `project:personalOwner` is the relation role used only for personal projects.
+		// `project_relation.userId` is a uuid on Postgres while a thread's `resourceId`
+		// is varchar, and Postgres has no implicit uuid = varchar cast. Cast the uuid to
+		// text (not resourceId to uuid — sub-agent resourceIds are not valid uuids).
 		await runQuery(
 			`UPDATE ${threads}
 			 SET ${projectId} = (
 				 SELECT pr.${projectId}
 				 FROM ${relation} pr
-				 WHERE pr.${userId} = ${threads}.${resourceId}
+				 WHERE CAST(pr.${userId} AS TEXT) = ${threads}.${resourceId}
 					 AND pr.${role} = 'project:personalOwner'
 				 LIMIT 1
 			 )
 			 WHERE ${projectId} IS NULL
 				 AND ${resourceId} IN (
-					 SELECT ${userId} FROM ${relation} WHERE ${role} = 'project:personalOwner'
+					 SELECT CAST(${userId} AS TEXT) FROM ${relation} WHERE ${role} = 'project:personalOwner'
 				 )`,
 		);
 	}
