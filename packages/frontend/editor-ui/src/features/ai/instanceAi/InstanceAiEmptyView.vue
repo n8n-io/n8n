@@ -10,6 +10,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
@@ -34,6 +35,7 @@ import {
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -52,6 +54,7 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 const store = useInstanceAiStore();
 const projectsStore = useProjectsStore();
 const selectedProject = ref(projectsStore.personalProject?.id);
+const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
@@ -122,6 +125,10 @@ onMounted(() => {
 });
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return;
+	}
+
 	if (!selectedProject.value) {
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
@@ -167,9 +174,11 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
+					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
 					>
 						<template #footer>
@@ -190,9 +199,11 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
+					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -261,6 +272,9 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 .centeredInput {
 	width: 100%;
 	max-width: 680px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 .workflowPreview {
@@ -291,6 +305,9 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	max-width: 750px;
 	margin: 0 auto;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 :global(.workflow-preview-fade-enter-active) {

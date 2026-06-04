@@ -28,6 +28,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
@@ -44,6 +45,7 @@ import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPane
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -59,6 +61,7 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
+const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
@@ -489,6 +492,10 @@ const workflowPreviewRef =
 
 // --- Message handlers ---
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return;
+	}
+
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
@@ -637,8 +644,8 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									/>
 								</TransitionGroup>
 								<!-- Builder sub-agents are extracted from their parent assistant
-     messages and rendered here so they always sit at the bottom
-     of the conversation. -->
+	     messages and rendered here so they always sit at the bottom
+	     of the conversation. -->
 								<div v-if="builderAgents.length" :class="$style.builderAgents">
 									<AgentSection
 										v-for="builder in builderAgents"
@@ -690,6 +697,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 								<div :class="$style.inputContainer">
 									<div :class="$style.inputConstraint">
+										<WorkflowBuilderUnavailableNotice
+											v-if="!settingsStore.isWorkflowBuilderAvailable"
+										/>
 										<InstanceAiStatusBar />
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
@@ -713,6 +723,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 													:is-submitting="thread.isSendingMessage"
 													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
 													:is-plan-edit-mode="thread.activePlanEdit !== null"
+													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"
 													:amend-context="thread.amendContext"
 													:contextual-suggestion="thread.contextualSuggestion"
@@ -1076,6 +1087,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	max-width: 750px;
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 @media (prefers-reduced-motion: reduce) {
