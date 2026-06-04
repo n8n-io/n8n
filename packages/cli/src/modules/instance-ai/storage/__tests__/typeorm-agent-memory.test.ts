@@ -189,4 +189,47 @@ describe('TypeORMAgentMemory', () => {
 		expect(threadRepo.create).not.toHaveBeenCalled();
 		expect(threadRepo.save).not.toHaveBeenCalled();
 	});
+
+	it('saveThread derives a sub-agent thread project from its parent', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		const parentThreadId = '00000000-0000-4000-8000-000000000001';
+		threadRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({
+			id: parentThreadId,
+			resourceId: 'user-1',
+			title: '',
+			metadata: null,
+			projectId: 'project-1',
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		} as InstanceAiThread);
+		threadRepo.create.mockImplementation((entity) => entity as InstanceAiThread);
+		threadRepo.save.mockImplementation(async (entity) => ({
+			...(entity as InstanceAiThread),
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		}));
+		const { memory } = createMemory({ threadRepo });
+
+		await memory.saveThread({
+			id: 'sub-thread-1',
+			resourceId: `instance-ai-subagent:${parentThreadId}:workflow-builder`,
+			title: '',
+		});
+
+		expect(threadRepo.create).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'sub-thread-1', projectId: 'project-1' }),
+		);
+	});
+
+	it('saveThread rejects creating a thread with no derivable project', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValue(null);
+		const { memory } = createMemory({ threadRepo });
+
+		await expect(
+			memory.saveThread({ id: 'orphan-thread', resourceId: 'user-without-project', title: '' }),
+		).rejects.toThrow('without a project');
+
+		expect(threadRepo.save).not.toHaveBeenCalled();
+	});
 });

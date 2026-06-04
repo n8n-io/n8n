@@ -14,14 +14,16 @@ import {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	Thread,
-	ThreadPatch,
+import {
+	SUB_AGENT_RESOURCE_PREFIX,
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
+	type Thread,
+	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -206,10 +208,28 @@ export class TypeORMAgentMemory
 					resourceId: thread.resourceId,
 					title: thread.title ?? '',
 					metadata: thread.metadata ?? null,
+					projectId: await this.resolveSubAgentProjectId(thread.resourceId),
 				}),
 			);
 			return toThread(saved);
 		});
+	}
+
+	// Sub-agent threads are created by the agents SDK without a project. Derive it
+	// from the parent thread encoded in the resourceId
+	// (`instance-ai-subagent:<parentThreadId>:<kind>`); user threads are created via
+	// saveThreadWithProject and never reach this create path.
+	private async resolveSubAgentProjectId(resourceId: string): Promise<string> {
+		const parentThreadId = resourceId.startsWith(`${SUB_AGENT_RESOURCE_PREFIX}:`)
+			? resourceId.split(':')[1]
+			: undefined;
+		const parent = parentThreadId ? await this.threadRepo.findOneBy({ id: parentThreadId }) : null;
+		if (!parent?.projectId) {
+			throw new UnexpectedError(
+				`Cannot create Instance AI thread for resource "${resourceId}" without a project`,
+			);
+		}
+		return parent.projectId;
 	}
 
 	// Binds the thread to a project as part of the insert (atomic, so a partial

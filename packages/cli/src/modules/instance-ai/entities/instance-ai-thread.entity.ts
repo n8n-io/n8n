@@ -10,13 +10,13 @@ export class InstanceAiThread extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255 })
 	resourceId: string;
 
-	@ManyToOne(() => Project, { onDelete: 'CASCADE', nullable: true })
+	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'projectId' })
-	project: Project | null;
+	project: Project;
 
 	@Index()
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	projectId: string | null;
+	@Column({ type: 'varchar', length: 255 })
+	projectId: string;
 
 	@Column({ type: 'text', default: '' })
 	title: string;

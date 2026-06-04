@@ -44,7 +44,11 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 		await dbConnection.close();
 	});
 
-	async function insertUser(context: TestMigrationContext, id: string): Promise<void> {
+	async function insertUser(
+		context: TestMigrationContext,
+		id: string,
+		roleSlug: string = 'global:member',
+	): Promise<void> {
 		const tableName = context.escape.tableName('user');
 		await context.runQuery(
 			`INSERT INTO ${tableName} ("id", "email", "firstName", "lastName", "password", "roleSlug", "createdAt", "updatedAt")
@@ -55,7 +59,7 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 				firstName: 'Test',
 				lastName: 'User',
 				password: 'hashed',
-				roleSlug: 'global:member',
+				roleSlug,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			},
@@ -147,18 +151,20 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 			});
 		});
 
-		it('leaves sub-agent threads (resourceId is not a user) unbound', async () => {
+		it("binds a sub-agent thread to its parent thread's project", async () => {
 			const userId = randomUUID();
 			const personalProjectId = randomUUID();
+			const parentThreadId = randomUUID();
 			const subAgentThreadId = randomUUID();
 
 			await withContext(async (context) => {
 				await insertUser(context, userId);
 				await insertProject(context, personalProjectId);
 				await insertPersonalOwnerRelation(context, userId, personalProjectId);
+				await insertThread(context, { id: parentThreadId, resourceId: userId });
 				await insertThread(context, {
 					id: subAgentThreadId,
-					resourceId: `instance-ai-subagent:${randomUUID()}:builder`,
+					resourceId: `instance-ai-subagent:${parentThreadId}:workflow-builder`,
 				});
 			});
 
@@ -166,24 +172,28 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 			dataSource = Container.get(DataSource);
 
 			await withContext(async (context) => {
-				expect(await getThreadProjectId(context, subAgentThreadId)).toBeNull();
+				expect(await getThreadProjectId(context, subAgentThreadId)).toBe(personalProjectId);
 			});
 		});
 
-		it('leaves a thread unbound when its owner has no personal project', async () => {
-			const userId = randomUUID();
-			const threadId = randomUUID();
+		it("falls back to the instance owner's personal project for an orphaned thread", async () => {
+			const ownerId = randomUUID();
+			const ownerProjectId = randomUUID();
+			const orphanThreadId = randomUUID();
 
 			await withContext(async (context) => {
-				await insertUser(context, userId);
-				await insertThread(context, { id: threadId, resourceId: userId });
+				await insertUser(context, ownerId, 'global:owner');
+				await insertProject(context, ownerProjectId);
+				await insertPersonalOwnerRelation(context, ownerId, ownerProjectId);
+				// resourceId points at a user that no longer exists.
+				await insertThread(context, { id: orphanThreadId, resourceId: randomUUID() });
 			});
 
 			await runSingleMigration(MIGRATION_NAME);
 			dataSource = Container.get(DataSource);
 
 			await withContext(async (context) => {
-				expect(await getThreadProjectId(context, threadId)).toBeNull();
+				expect(await getThreadProjectId(context, orphanThreadId)).toBe(ownerProjectId);
 			});
 		});
 	});
