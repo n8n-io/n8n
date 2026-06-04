@@ -2344,13 +2344,14 @@ export function useCanvasOperations() {
 		// Reset editable workflow execution state. This must run BEFORE resetWorkflow()
 		// — it targets the per-workflow execution-state store keyed on workflowId, and
 		// resetWorkflow() empties that id.
-		if (workflowId) {
-			// Disposes every tracked executionData store + IN_PROGRESS placeholder and clears
-			// all session-level fields, then disposes the per-workflow store so pinia state
-			// doesn't accumulate one entry per workflow opened in this session.
-			executionStateStore.resetExecutionState();
-			disposeWorkflowExecutionStateStore(executionStateStore);
-		}
+		//
+		// Disposes every tracked executionData store + IN_PROGRESS placeholder and clears
+		// all session-level fields, then disposes the per-workflow store so pinia state
+		// doesn't accumulate one entry per workflow opened in this session. Runs
+		// unconditionally so the shared empty-id store (unsaved workflows) is reset too —
+		// otherwise its execution state / executing-node queue would leak across resets.
+		executionStateStore.resetExecutionState();
+		disposeWorkflowExecutionStateStore(executionStateStore);
 		useBuilderStore().resetManualExecutionStats();
 
 		workflowsStore.resetWorkflow();
