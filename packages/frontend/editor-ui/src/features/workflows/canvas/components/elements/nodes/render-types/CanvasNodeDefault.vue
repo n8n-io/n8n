@@ -18,6 +18,11 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
+import { useGroupCardVariant } from './group-card-variants/useGroupCardVariant';
+import TriggerCardBody from './trigger-card/TriggerCardBody.vue';
+
+// PROTOTYPE: width of a trigger rendered as a title + description card.
+const TRIGGER_CARD_WIDTH = 300;
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -66,6 +71,13 @@ const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
+// PROTOTYPE: when the active variant opts in (V2), render trigger nodes as a
+// title + description card instead of the icon-with-label-below default.
+const { activeVariant } = useGroupCardVariant();
+const isTriggerCard = computed(
+	() => !!renderOptions.value.trigger && !!activeVariant.value.triggerCard,
+);
+
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
@@ -80,6 +92,7 @@ const classes = computed(() => {
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
+		[$style.cardLayout]: isTriggerCard.value,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 		[$style.placeholder]: renderOptions.value.placeholder,
 		waiting: executionWaiting.value || executionStatus.value === 'waiting',
@@ -107,7 +120,7 @@ const nodeSize = computed(() =>
 const nodeBorderOpacity = calculateNodeBorderOpacity();
 
 const styles = computed(() => ({
-	'--canvas-node--width': `${nodeSize.value.width}px`,
+	'--canvas-node--width': `${isTriggerCard.value ? TRIGGER_CARD_WIDTH : nodeSize.value.width}px`,
 	'--canvas-node--height': `${nodeSize.value.height}px`,
 	'--node--icon--size': `${iconSize.value}px`,
 	'--canvas-node--border--opacity-light': nodeBorderOpacity.value.light,
@@ -192,34 +205,44 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
-		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
-		<NodeIcon
+		<!-- PROTOTYPE: trigger rendered as a title + description card (V2 variant). -->
+		<TriggerCardBody
+			v-if="isTriggerCard"
+			:node-id="id"
+			:node-name="name"
 			:icon-source="iconSource"
-			:size="iconSize"
-			:shrink="false"
-			:disabled="isDisabled"
-			:class="$style.icon"
+			:is-read-only="isReadOnly"
 		/>
-		<CanvasNodeSettingsIcons
-			v-if="
-				!renderOptions.configuration &&
-				!isDisabled &&
-				!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
-			"
-		/>
-		<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
-		<div :class="$style.description">
-			<div v-if="label" :class="$style.label">
-				{{ label }}
+		<template v-else>
+			<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
+			<NodeIcon
+				:icon-source="iconSource"
+				:size="iconSize"
+				:shrink="false"
+				:disabled="isDisabled"
+				:class="$style.icon"
+			/>
+			<CanvasNodeSettingsIcons
+				v-if="
+					!renderOptions.configuration &&
+					!isDisabled &&
+					!(hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value)
+				"
+			/>
+			<CanvasNodeDisabledStrikeThrough v-if="isStrikethroughVisible" />
+			<div :class="$style.description">
+				<div v-if="label" :class="$style.label">
+					{{ label }}
+				</div>
+				<div v-if="isDisabled" :class="$style.disabledLabel">
+					({{ i18n.baseText('node.disabled') }})
+				</div>
+				<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+					{{ subtitle }}
+				</div>
 			</div>
-			<div v-if="isDisabled" :class="$style.disabledLabel">
-				({{ i18n.baseText('node.disabled') }})
-			</div>
-			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
-				{{ subtitle }}
-			</div>
-		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+			<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		</template>
 	</div>
 </template>
 
@@ -261,6 +284,13 @@ function onActivate(event: MouseEvent) {
 			border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
 				var(--trigger-node--radius);
 		}
+	}
+
+	// PROTOTYPE: trigger card grows to fit its title + description; width comes
+	// from --canvas-node--width (overridden to the card width).
+	&.cardLayout {
+		height: auto;
+		min-height: var(--canvas-node--height);
 	}
 
 	/**

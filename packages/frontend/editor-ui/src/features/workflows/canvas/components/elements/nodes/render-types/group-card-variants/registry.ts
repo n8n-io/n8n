@@ -8,6 +8,10 @@ export interface GroupCardVariant {
 	id: string;
 	label: string;
 	component: Component;
+	/** When true, trigger nodes also render as a title + description card
+	 * (see render-types/trigger-card). Lets a variant be a whole-canvas
+	 * "version", not only a group-card swap. */
+	triggerCard?: boolean;
 }
 
 /**
@@ -18,6 +22,6 @@ export interface GroupCardVariant {
  */
 export const GROUP_CARD_VARIANTS: GroupCardVariant[] = [
 	{ id: 'v1', label: 'V1', component: GroupCardV1 },
-	{ id: 'v2', label: 'V2', component: GroupCardV2 },
+	{ id: 'v2', label: 'V2', component: GroupCardV2, triggerCard: true },
 	{ id: 'v3', label: 'V3', component: GroupCardV3 },
 ];
