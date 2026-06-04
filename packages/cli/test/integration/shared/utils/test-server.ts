@@ -375,9 +375,14 @@ export const setupTestServer = ({
 		// persistent Jest workers — otherwise stale handlers call
 		// Container.get(Logger), construct a fresh Logger, and trip Jest's
 		// "environment torn down" guard when winston is imported.
-		await new Promise<void>((resolve, reject) => {
-			testServer.httpServer.close((err) => (err ? reject(err) : resolve()));
-		});
+		// Skip when the server never started listening (some suites bail in
+		// beforeAll); calling close() on a non-listening server throws
+		// "Server is not running" and would mask the real beforeAll failure.
+		if (testServer.httpServer.listening) {
+			await new Promise<void>((resolve, reject) => {
+				testServer.httpServer.close((err) => (err ? reject(err) : resolve()));
+			});
+		}
 		await testDb.terminate();
 	});
 
