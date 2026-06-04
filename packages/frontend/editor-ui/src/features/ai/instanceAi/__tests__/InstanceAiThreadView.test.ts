@@ -9,9 +9,14 @@ import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type {
+	FrontendModuleSettings,
+	InstanceAiAgentNode,
+	InstanceAiMessage,
+} from '@n8n/api-types';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -25,6 +30,10 @@ const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -59,6 +68,7 @@ const InstanceAiInputStub = defineComponent({
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isPlanEditMode: { type: Boolean, required: false },
+		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 	},
 	emits: ['submit', 'cancel-plan-edit'],
 	setup(props, { emit, expose }) {
@@ -70,6 +80,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mode' },
 					props.isPlanEditMode ? 'plan-edit' : 'normal',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-availability' },
+					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
 				h(
 					'button',
@@ -138,6 +153,16 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 	},
 });
 
+const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
+	enabled: true,
+	localGatewayDisabled: false,
+	proxyEnabled: false,
+	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+};
+
 function makePlanReviewMessage(): InstanceAiMessage {
 	const planner: InstanceAiAgentNode = {
 		agentId: 'planner-1',
@@ -203,6 +228,9 @@ describe('InstanceAiThreadView', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings },
+		};
 		workflowPreviewEmit = null;
 
 		thread = reactive({
@@ -307,6 +335,26 @@ describe('InstanceAiThreadView', () => {
 		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
 		// Inline mount is always present so non-floating forms can render.
 		expect(getByTestId('instance-ai-confirmation-panel-inline')).toBeTruthy();
+	});
+
+	it('shows an upfront unavailable state and blocks sends when the builder is unavailable', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				...defaultModuleSettings,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+			},
+		};
+
+		const { getByTestId, getByText } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-workflow-builder-unavailable')).toBeVisible();
+		expect(getByText('Workflow builder unavailable')).toBeVisible();
+		expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
 
 	it('swaps the chat input for the floating panel when a generic approval is pending', () => {

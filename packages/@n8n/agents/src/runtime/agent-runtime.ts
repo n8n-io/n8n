@@ -1,6 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { scrubSecrets } from '@n8n/utils';
-import type { TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -227,6 +227,18 @@ export interface AgentRuntimeConfig {
 	toolCallConcurrency?: number;
 	titleGeneration?: TitleGenerationConfig;
 	telemetry?: BuiltTelemetry;
+	/** Existing run id to continue, used when resuming a suspended run. */
+	runId?: string;
+	/**
+	 * Pre-fetched model cost from the catalog. When provided, skips the per-run
+	 * catalog fetch. Set once during Agent.build() and shared across per-run runtimes.
+	 */
+	modelCost?: ModelCost;
+	/**
+	 * Shared RunStateManager for suspend/resume. When provided, per-run runtimes
+	 * use the same store so resume() can find state from a prior run.
+	 */
+	runState?: RunStateManager;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -343,7 +355,6 @@ type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?
 interface LoopContext {
 	list: AgentMessageList;
 	options?: RuntimeExecutionOptions;
-	runId: string;
 	pendingResume?: PendingResume;
 }
 
@@ -395,15 +406,19 @@ export class AgentRuntime {
 
 	private deferredToolManager: DeferredToolManager | undefined;
 
+	private runId: string;
+
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
 		}
-		this.runState = new RunStateManager(config.checkpointStorage);
+		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
+		this.modelCost = config.modelCost;
 		this.currentState = {
 			persistence: undefined,
 			status: 'idle',
@@ -421,6 +436,7 @@ export class AgentRuntime {
 	 * observer cycles) to settle. Safe to call multiple times.
 	 */
 	async dispose(): Promise<void> {
+		this.eventBus.dispose();
 		await this.backgroundTasks.flush();
 	}
 
@@ -439,7 +455,6 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const runId = generateRunId();
 		let list: AgentMessageList | undefined = undefined;
 		try {
 			const initializedList = await this.initRun(input, options);
@@ -447,10 +462,10 @@ export class AgentRuntime {
 			const rawResult = await this.withTelemetryRootSpan(
 				'generate',
 				options,
-				runId,
-				async () => await this.runGenerateLoop({ list: initializedList, options, runId }),
+				this.runId,
+				async () => await this.runGenerateLoop({ list: initializedList, options }),
 			);
-			return this.finalizeGenerate(rawResult, list, runId);
+			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
 			await this.flushTelemetry(options);
 			const isAbort = this.eventBus.isAborted;
@@ -458,7 +473,13 @@ export class AgentRuntime {
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return { runId, messages: list?.responseDelta() ?? [], finishReason: 'error', error };
+			return {
+				runId: this.runId,
+				messages: list?.responseDelta() ?? [],
+				finishReason: 'error',
+				error,
+				getState: () => this.getState(),
+			};
 		}
 	}
 
@@ -467,7 +488,6 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const runId = generateRunId();
 		let list: AgentMessageList;
 		try {
 			list = await this.initRun(input, options);
@@ -477,10 +497,14 @@ export class AgentRuntime {
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
-			return { runId, stream: makeErrorStream(error) };
+			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
 
-		return { runId, stream: this.startStreamLoop({ list, options, runId }) };
+		return {
+			runId: this.runId,
+			stream: this.startStreamLoop({ list, options }),
+			getState: () => this.getState(),
+		};
 	}
 
 	/**
@@ -506,8 +530,9 @@ export class AgentRuntime {
 		data: unknown,
 		options: { runId: string; toolCallId: string } & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		const state = await this.runState.resume(options.runId);
-		if (!state) throw new Error(`No suspended run found for runId: ${options.runId}`);
+		this.runId = options.runId;
+		const state = await this.runState.resume(this.runId);
+		if (!state) throw new Error(`No suspended run found for runId: ${this.runId}`);
 
 		const toolCall = state.pendingToolCalls[options.toolCallId];
 		if (!toolCall) throw new Error(`No tool call found for toolCallId: ${options.toolCallId}`);
@@ -581,29 +606,28 @@ export class AgentRuntime {
 				const rawResult = await this.withTelemetryRootSpan(
 					'generate',
 					resumeOptions,
-					options.runId,
+					this.runId,
 					async () =>
 						await this.runGenerateLoop({
 							list,
 							options: resumeOptions,
-							runId: options.runId,
 							pendingResume,
 						}),
 				);
 				if (!rawResult.pendingSuspend) {
-					await this.cleanupRun(options.runId);
+					await this.cleanupRun();
 				}
-				return this.finalizeGenerate(rawResult, list, options.runId);
+				return this.finalizeGenerate(rawResult, list);
 			}
 
 			return {
-				runId: options.runId,
+				runId: this.runId,
 				stream: this.startStreamLoop({
 					list,
 					options: resumeOptions,
-					runId: options.runId,
 					pendingResume,
 				}),
+				getState: () => this.getState(),
 			};
 		} catch (error) {
 			const isAbort = this.eventBus.isAborted;
@@ -613,13 +637,14 @@ export class AgentRuntime {
 			}
 			if (method === 'generate') {
 				return {
-					runId: options.runId,
+					runId: this.runId,
 					messages: [],
 					finishReason: 'error' as const,
 					error,
+					getState: () => this.getState(),
 				};
 			}
-			return { runId: options.runId, stream: makeErrorStream(error) };
+			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
 	}
 
@@ -706,17 +731,13 @@ export class AgentRuntime {
 	 * Post-loop finalization for generate: apply cost, set model id, roll up sub-agent usage,
 	 * transition to success, and emit AgentEnd. Returns the finalized result.
 	 */
-	private finalizeGenerate(
-		result: GenerateResult,
-		list: AgentMessageList,
-		runId: string,
-	): GenerateResult {
-		result.runId = runId;
+	private finalizeGenerate(result: GenerateResult, list: AgentMessageList): GenerateResult {
+		result.runId = this.runId;
 		result.usage = this.applyCost(result.usage);
 		result.model = this.modelIdString;
 		this.updateState({ status: 'success', messageList: list.serialize() });
 		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: result.messages });
-		return result;
+		return { ...result, getState: () => this.getState() };
 	}
 
 	/** Resolve telemetry: own config wins, then inherited from options, then nothing. */
@@ -752,6 +773,17 @@ export class AgentRuntime {
 			},
 		};
 	}
+
+	private buildSmoothStreamTransformOptions(options?: ExecutionOptions): {
+		experimental_transform?: StreamTextTransform<ToolSet>;
+	} {
+		if (options?.smoothStream === false) return {};
+
+		const { smoothStream } = loadAi();
+
+		return { experimental_transform: smoothStream(options?.smoothStream ?? {}) };
+	}
+
 	/** Map resolved telemetry to AI SDK's experimental_telemetry shape. */
 	private buildTelemetryOptions(options?: ExecutionOptions): {
 		experimental_telemetry?: TelemetrySettings;
@@ -914,7 +946,7 @@ export class AgentRuntime {
 
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
-		const { list, options, runId, pendingResume } = ctx;
+		const { list, options, pendingResume } = ctx;
 		this.hydrateDeferredToolsFromList(list);
 
 		let totalUsage: TokenUsage | undefined;
@@ -936,7 +968,7 @@ export class AgentRuntime {
 		const pendingToolCtx: ToolBatchContext = {
 			toolMap: pendingLoopContext.toolMap,
 			list,
-			runId,
+			runId: this.runId,
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
@@ -961,7 +993,6 @@ export class AgentRuntime {
 					options,
 					list,
 					totalUsage,
-					runId,
 					maxIterations,
 					iterationCount,
 				);
@@ -978,6 +1009,7 @@ export class AgentRuntime {
 						suspendPayload: s.payload,
 						resumeSchema: s.resumeSchema,
 					})),
+					getState: () => this.getState(),
 				};
 			}
 		}
@@ -1031,7 +1063,7 @@ export class AgentRuntime {
 			const batch = await this.iterateToolCallsConcurrent({
 				toolMap,
 				list,
-				runId,
+				runId: this.runId,
 				persistence: options?.persistence,
 				telemetry: runTelemetry,
 				executionCounter: options?.executionCounter,
@@ -1048,7 +1080,6 @@ export class AgentRuntime {
 					options,
 					list,
 					totalUsage,
-					runId,
 					maxIterations,
 					iterationCount + 1,
 				);
@@ -1065,6 +1096,7 @@ export class AgentRuntime {
 						suspendPayload: s.payload,
 						resumeSchema: s.resumeSchema,
 					})),
+					getState: () => this.getState(),
 				};
 			}
 
@@ -1096,12 +1128,13 @@ export class AgentRuntime {
 		}
 
 		return {
-			runId: runId ?? '',
+			runId: this.runId,
 			messages: list.responseDelta(),
 			finishReason: lastFinishReason,
 			usage: totalUsage,
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(toolCallSummary.length > 0 && { toolCalls: toolCallSummary }),
+			getState: () => this.getState(),
 		};
 	}
 
@@ -1110,7 +1143,7 @@ export class AgentRuntime {
 	 * Returns the readable side immediately; the loop runs in the background.
 	 */
 	private startStreamLoop(ctx: LoopContext): ReadableStream<StreamChunk> {
-		const { options, runId } = ctx;
+		const { options } = ctx;
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		const writer = writable.getWriter();
 
@@ -1161,12 +1194,12 @@ export class AgentRuntime {
 		this.withTelemetryRootSpan(
 			'stream',
 			options,
-			runId,
+			this.runId,
 			async () => await this.runStreamLoop({ ...ctx, writer }),
 		)
 			.catch(async (error: unknown) => {
 				await this.flushTelemetry(options);
-				await this.cleanupRun(runId);
+				await this.cleanupRun();
 				try {
 					await writer.write({ type: 'error', error });
 					await writer.write({ type: 'finish', finishReason: 'error' });
@@ -1189,7 +1222,7 @@ export class AgentRuntime {
 	private async runStreamLoop(
 		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
-		const { list, options, runId, pendingResume, writer } = ctx;
+		const { list, options, pendingResume, writer } = ctx;
 		this.hydrateDeferredToolsFromList(list);
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
@@ -1205,7 +1238,7 @@ export class AgentRuntime {
 		const { streamText } = loadAi();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
-			await this.cleanupRun(runId);
+			await this.cleanupRun();
 			this.updateState({ status });
 			await writer.write({ type: 'error', error });
 			await writer.write({ type: 'finish', finishReason: 'error' });
@@ -1232,7 +1265,7 @@ export class AgentRuntime {
 		const pendingToolCtx: ToolBatchContext = {
 			toolMap: pendingLoopContext.toolMap,
 			list,
-			runId,
+			runId: this.runId,
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
@@ -1273,7 +1306,6 @@ export class AgentRuntime {
 						options,
 						list,
 						totalUsage,
-						runId,
 						maxIterations,
 						iterationCount,
 					);
@@ -1319,6 +1351,7 @@ export class AgentRuntime {
 					: {}),
 				...(staticLoopContext.outputSpec ? { output: staticLoopContext.outputSpec } : {}),
 				...this.buildAiSdkOptions(toolMap, options),
+				...this.buildSmoothStreamTransformOptions(options),
 			});
 
 			// Consume the stream. When the AbortSignal fires mid-stream the
@@ -1404,7 +1437,7 @@ export class AgentRuntime {
 				const batch = await this.iterateToolCallsConcurrent({
 					toolMap,
 					list,
-					runId,
+					runId: this.runId,
 					persistence: options?.persistence,
 					telemetry: runTelemetry,
 					executionCounter: options?.executionCounter,
@@ -1442,7 +1475,6 @@ export class AgentRuntime {
 						options,
 						list,
 						totalUsage,
-						runId,
 						maxIterations,
 						iterationCount + 1,
 					);
@@ -1502,7 +1534,7 @@ export class AgentRuntime {
 				}
 			}
 
-			await this.cleanupRun(runId);
+			await this.cleanupRun();
 			await this.flushTelemetry(options);
 
 			this.updateState({ status: 'success', messageList: list.serialize() });
@@ -2411,19 +2443,16 @@ export class AgentRuntime {
 
 	/**
 	 * Persist a suspended run state and update the current state snapshot.
-	 * Returns the runId (reuses existingRunId when resuming to prevent dangling runs).
+	 * Returns the runtime's runId.
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
 		options: RuntimeExecutionOptions | undefined,
 		list: AgentMessageList,
 		totalUsage: TokenUsage | undefined,
-		existingRunId?: string,
 		maxIterations?: number,
 		iterationCount?: number,
 	): Promise<string> {
-		const runId = existingRunId ?? generateRunId();
-
 		// Persist loop controls only. providerOptions are intentionally excluded
 		// because they may contain sensitive data (API keys, auth headers).
 		const resolvedMaxIterations = maxIterations ?? options?.maxIterations;
@@ -2440,16 +2469,14 @@ export class AgentRuntime {
 			executionOptions,
 			...(resolvedIterationCount !== undefined ? { iterationCount: resolvedIterationCount } : {}),
 		};
-		await this.runState.suspend(runId, state);
+		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-		return runId;
+		return this.runId;
 	}
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
-	private async cleanupRun(runId: string | undefined): Promise<void> {
-		if (runId) {
-			await this.runState.complete(runId);
-		}
+	private async cleanupRun(): Promise<void> {
+		await this.runState.complete(this.runId);
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */

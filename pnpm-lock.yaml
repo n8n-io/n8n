@@ -842,6 +842,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       https-proxy-agent:
         specifier: 'catalog:'
         version: 7.0.6
@@ -1534,12 +1537,27 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
       express:
         specifier: 5.1.0
         version: 5.1.0
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
 
   packages/@n8n/decorators:
     dependencies:
@@ -1936,6 +1954,9 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
@@ -5012,6 +5033,9 @@ importers:
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -5216,6 +5240,10 @@ importers:
         version: 3.25.67
 
   packages/testing/rules-engine:
+    dependencies:
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*

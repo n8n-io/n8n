@@ -35,7 +35,7 @@ on:
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
-        default: 'LRxcNt'
+        default: 'nHHLA5'
         type: string
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
@@ -61,8 +61,10 @@ on:
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
-  # Browser cache location - must match install-browsers script
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
+  # Browser cache location - must match install-browsers script.
+  # Absolute so nested pnpm invocations (e.g. coverage shard runner) don't
+  # re-resolve a relative path against the package's INIT_CWD and double it.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/testing/playwright/.playwright-browsers
   # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
   TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'

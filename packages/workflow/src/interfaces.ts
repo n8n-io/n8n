@@ -3124,7 +3124,6 @@ export type WorkflowExecutionMockDataSource =
 	| 'workflow_pin_data';
 
 export interface IWorkflowExecutionTelemetryMetadata {
-	source: WorkflowExecutionSource;
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 }
 
@@ -3151,6 +3150,13 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	/**
+	 * Who initiated this run. Unset means a regular user-initiated run;
+	 * `'instance_ai'` when the AI assistant ran the workflow on the user's
+	 * behalf. Consumed by the execution push (so the editor can tell agent runs
+	 * apart) and by telemetry.
+	 */
+	source?: WorkflowExecutionSource;
 	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {

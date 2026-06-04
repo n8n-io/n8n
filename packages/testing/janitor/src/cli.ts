@@ -80,7 +80,7 @@ import {
 } from './core/method-usage-analyzer.js';
 import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
-import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
@@ -290,20 +290,13 @@ function runTcr(options: CliOptions): void {
 function runAnalyze(options: CliOptions): void {
 	const config = getConfig();
 	const runner = createDefaultRunner();
-
-	// Create project
-	const { project, root } = createProject(config.rootDir);
+	const root = config.rootDir;
 
 	// Build run options
 	const runOptions: RunOptions = {};
 
 	if (options.files && options.files.length > 0) {
 		runOptions.files = options.files;
-	}
-
-	if (options.fix) {
-		runOptions.fix = true;
-		runOptions.write = options.write;
 	}
 
 	// Pass rule-specific config
@@ -315,21 +308,20 @@ function runAnalyze(options: CliOptions): void {
 
 	// Run analysis
 	let report = options.rule
-		? runner.runRule(project, root, options.rule, runOptions)
-		: runner.run(project, root, runOptions);
+		? runner.runRule(options.rule, { rootDir: root }, runOptions)
+		: runner.run({ rootDir: root }, runOptions);
 
 	if (!report) {
 		console.error('Failed to generate report');
 		process.exit(1);
 	}
 
-	// Auto-filter by baseline if present (unless --ignore-baseline or --fix)
+	// Auto-filter by baseline if present (unless --ignore-baseline)
 	const baseline = loadBaseline(config.rootDir);
 	let baselineFiltered = false;
 	const originalViolations = report.summary.totalViolations;
 
-	if (baseline && !options.fix && !options.ignoreBaseline) {
-		// Don't filter during fix mode or when baseline is ignored
+	if (baseline && !options.ignoreBaseline) {
 		report = filterReportByBaseline(report, baseline, config.rootDir);
 		baselineFiltered = true;
 	}
@@ -350,14 +342,10 @@ function runAnalyze(options: CliOptions): void {
 		}
 
 		toConsole(report, options.verbose);
-
-		if (options.fix) {
-			printFixResults(report, options.write);
-		}
 	}
 
 	// Exit with error code if violations found
-	if (report.summary.totalViolations > 0 && !(options.fix && options.write)) {
+	if (report.summary.totalViolations > 0) {
 		process.exit(1);
 	}
 }
@@ -365,12 +353,10 @@ function runAnalyze(options: CliOptions): void {
 function runBaseline(options: CliOptions): void {
 	const config = getConfig();
 
-	// Create runner and project
 	const runner = createDefaultRunner();
-	const { project, root } = createProject(config.rootDir);
 
 	// Run full analysis (no file filter, no baseline filter)
-	const report = runner.run(project, root, {});
+	const report = runner.run({ rootDir: config.rootDir }, {});
 
 	if (!report) {
 		console.error('Failed to generate report');

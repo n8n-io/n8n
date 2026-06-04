@@ -118,6 +118,7 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 
 export const CANVAS_NODES_GROUPING_EXPERIMENT = createExperiment('083_canvas_nodes_grouping');
 
+export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
 export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperiment(
 	'087_instance_ai_workflow_preview_suggestions',
 );
@@ -152,5 +153,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 	CANVAS_NODES_GROUPING_EXPERIMENT.name,
+	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 ];

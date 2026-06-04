@@ -94,9 +94,11 @@ const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
 });
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(true, i18n.baseText.bind(i18n), settingsStore.isOtelEnabled).filter(
-		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
-	),
+	createCommonNodeSettings(
+		true,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	).filter((s) => s.name !== 'notes' && s.name !== 'notesInFlow'),
 );
 
 const settingsNodeValues = computed<INodeParameters>(() => {
