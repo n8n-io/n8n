@@ -194,6 +194,7 @@ import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../comm
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -391,6 +392,7 @@ const sqliteMigrations: Migration[] = [
 	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
 	AddResourceToOAuthAuthorizationCodes1784000000024,
+	MigrateRedactionEnforcementToFloor1784000000025,
 ];
 
 export { sqliteMigrations };

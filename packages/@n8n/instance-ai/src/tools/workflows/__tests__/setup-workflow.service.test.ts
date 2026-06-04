@@ -23,6 +23,8 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			list: vi.fn(),
 			get: vi.fn(),
 			getAsWorkflowJSON: vi.fn(),
+			getWorkflowHead: vi.fn(),
+			getWorkflowSnapshot: vi.fn(),
 			createFromWorkflowJSON: vi.fn(),
 			updateFromWorkflowJSON: vi.fn(),
 			archive: vi.fn(),

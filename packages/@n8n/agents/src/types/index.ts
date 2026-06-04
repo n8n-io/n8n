@@ -92,7 +92,6 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ObservationCapableMemory,
 	MemoryDescriptor,
-	SemanticRecallConfig,
 	MemoryConfig,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,

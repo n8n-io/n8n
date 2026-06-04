@@ -1,4 +1,5 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { CredentialTypes } from '@/credential-types';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
@@ -10,6 +11,10 @@ import { createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
+import {
+	buildImportPackageBuffer,
+	serializedWorkflowWithCredential,
+} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
 
@@ -22,6 +27,9 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
+	const credentialTypesMock = mockInstance(CredentialTypes);
+	credentialTypesMock.recognizes.mockReturnValue(true);
+
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -138,8 +146,38 @@ describe('POST /n8n-packages/import', () => {
 					activeVersionId: null,
 				},
 			],
+			credentials: { matched: [] },
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('returns 422 when credential references cannot be resolved', async () => {
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-miss',
+					name: 'Missing Credential',
+					credentialId: 'non-existent-credential',
+					credentialName: 'Missing',
+				}),
+			],
+			{ sourceId: 'http-integration-credential-fail' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toMatchObject({
+			message: expect.stringContaining('credential reference'),
+			failures: [
+				expect.objectContaining({
+					kind: 'not_found',
+					sourceId: 'non-existent-credential',
+				}),
+			],
+		});
 	});
 });

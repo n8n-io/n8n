@@ -327,7 +327,11 @@ async function promoteMainWorkflow(context: InstanceAiContext, workflowId: strin
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// Keeps the last code submitted (or patched) so patches work even before save,
 	// and always match the LLM's own code — not a roundtripped version.
+	// lastCodeVersionId pins the cache to the workflow version it was derived
+	// from; a mismatch on the next turn (user edited the workflow in the canvas)
+	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
+	let lastCodeVersionId: string | null = null;
 	let planGuardRejectionCount = 0;
 
 	const rejectPlanGuardCall = () => {
@@ -432,13 +436,32 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (patches) {
 				// Patch mode: apply str_replace to existing code.
-				// Source priority: lastCode (same session) → fetch from backend (cross-session)
+				// Cache-hit fast path uses a cheap head check (versionId only, no
+				// nodes/connections payload) to confirm `lastCode` still matches the
+				// server. On match we reuse the cached code; on drift we invalidate
+				// and fall through to the snapshot fetch below, which returns body
+				// + versionId in one round-trip.
+				if (lastCode && lastCodeVersionId && workflowId) {
+					try {
+						const head = await context.workflowService.getWorkflowHead(workflowId);
+						if (head.versionId !== lastCodeVersionId) {
+							lastCode = null;
+							lastCodeVersionId = null;
+						}
+					} catch {
+						// Best-effort: a transient head-lookup failure shouldn't break
+						// patch mode. If the cache is stale, patches will either fail to
+						// apply cleanly or the next save will surface the conflict.
+					}
+				}
+
 				let baseCode = lastCode;
 				if (!baseCode && workflowId) {
 					try {
-						const json = await context.workflowService.getAsWorkflowJSON(workflowId);
-						baseCode = generateWorkflowCode(json);
-						lastCode = baseCode; // Sync so future patches match this code
+						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
+						baseCode = generateWorkflowCode(snapshot.json);
+						lastCode = baseCode;
+						lastCodeVersionId = snapshot.versionId;
 					} catch {
 						return {
 							success: false,
@@ -638,6 +661,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						projectId ? { projectId } : undefined,
 					);
+					lastCodeVersionId = updated.versionId;
 					return await createSuccessResponse(updated.id);
 				} else {
 					const created = await context.workflowService.createFromWorkflowJSON(json, {
@@ -645,6 +669,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						markAsAiTemporary: true,
 					});
 					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+					lastCodeVersionId = created.versionId;
 					return await createSuccessResponse(created.id);
 				}
 			} catch (error) {
