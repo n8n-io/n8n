@@ -100,9 +100,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
 
-	/** Interval in milliseconds between native persistence pruning runs. 0 = disabled. */
-	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
-	snapshotPruneInterval: number = 1 * Time.hours.toMilliseconds;
+	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
+	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
 	/** Retention period in milliseconds for stale native persistence checkpoints before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')

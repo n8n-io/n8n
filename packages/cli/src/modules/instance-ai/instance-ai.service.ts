@@ -102,6 +102,7 @@ import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry } from './filesystem';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
@@ -636,6 +637,7 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
@@ -2098,7 +2100,7 @@ export class InstanceAiService {
 
 	@OnLeaderTakeover()
 	startCheckpointPruning(): void {
-		if (this.checkpointPruneTimer || this.instanceAiConfig.snapshotPruneInterval <= 0) return;
+		if (this.checkpointPruneTimer || this.instanceAiConfig.pruneInterval <= 0) return;
 		this.checkpointPruningStopped = false;
 		this.scheduleCheckpointPrune(0);
 	}
@@ -2110,10 +2112,10 @@ export class InstanceAiService {
 		this.checkpointPruneTimer = undefined;
 	}
 
-	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.snapshotPruneInterval): void {
+	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.pruneInterval): void {
 		if (this.checkpointPruningStopped) return;
 		this.checkpointPruneTimer = setTimeout(() => {
-			void this.pruneStaleCheckpoints();
+			void this.runScheduledPrune();
 		}, delayMs);
 		this.checkpointPruneTimer.unref();
 	}
@@ -2193,7 +2195,14 @@ export class InstanceAiService {
 		}
 	}
 
-	private async pruneStaleCheckpoints(now = Date.now()): Promise<void> {
+	/**
+	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
+	 * drop expired pending confirmations, and delete expired conversation
+	 * threads, then schedule the next run. A checkpoint failure reschedules
+	 * with a shorter retry delay; the confirmation and thread steps swallow
+	 * their own errors so they never disrupt the cycle.
+	 */
+	private async runScheduledPrune(now = Date.now()): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
 
 		try {
@@ -2204,12 +2213,31 @@ export class InstanceAiService {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
 			await this.pruneStalePendingConfirmations(now);
+			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
 		} catch (error: unknown) {
 			this.logger.warn('Failed to expire stale Instance AI checkpoints', {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Delete conversation threads older than the configured TTL as part of the
+	 * recurring leader prune. Has its own try/catch so a failure here never
+	 * disrupts checkpoint pruning or the next scheduled run. No-op when
+	 * `threadTtlDays` is 0 (handled inside `cleanupExpiredThreads`).
+	 */
+	private async pruneExpiredThreads(): Promise<void> {
+		try {
+			await this.memoryService.cleanupExpiredThreads(
+				async (threadId) => await this.clearThreadState(threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to clean up expired Instance AI conversation threads', {
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
