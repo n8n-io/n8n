@@ -110,9 +110,7 @@ describe('useCanvasNodeGroupDrag', () => {
 	});
 
 	it('source-of-truth for initial positions is the store, not VueFlow findNode', () => {
-		// Members may be hidden (collapsed); positions must still come from
-		// the workflow document store. setup() injects only the store; no
-		// findNode is mocked. The drag still works.
+		// Hidden (collapsed) members have no VueFlow node — drag must still work.
 		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
@@ -125,11 +123,10 @@ describe('useCanvasNodeGroupDrag', () => {
 	});
 
 	it('processNodeDragStop strips group title bars from the move list', () => {
+		// Title bars have no INodeUi-backed position to persist.
 		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
-		// Title bar nodes must never appear in the returned moves —
-		// they have no INodeUi-backed position to persist.
 		const moves = drag.processNodeDragStop(makeEvent(groupNode));
 		expect(moves.find((m) => m.id === 'group:g1')).toBeUndefined();
 	});
@@ -159,10 +156,8 @@ describe('useCanvasNodeGroupDrag', () => {
 	});
 
 	it('emits moves when drag has zero delta', () => {
-		// VueFlow still fires drag-stop for click-without-drag — the emit
-		// set still contains the (unchanged) member positions today. We
-		// always emit for consistency with single-node behaviour; this
-		// test pins the current contract so a future change is intentional.
+		// VueFlow fires drag-stop for click-without-drag — emit unchanged
+		// positions for consistency with single-node behaviour.
 		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
@@ -184,13 +179,11 @@ describe('useCanvasNodeGroupDrag', () => {
 			groupNode.position = { x: 40, y: 60 };
 			otherNode.position = { x: 40, y: 60 };
 			drag.onSelectionDrag(makeSelectionEvent(groupNode, otherNode));
-			// Members get updateNode calls with the group's delta applied
-			// to their stored positions.
 			expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 140, y: 260 } });
 			expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 340, y: 260 } });
 			const moves = drag.processSelectionDragStop(makeSelectionEvent(groupNode, otherNode));
-			// Member moves come from the group's delta; the ordinary node
-			// 'c' comes from event.nodes; the title bar is filtered out.
+			// Members from the group's delta + ordinary 'c' from event.nodes;
+			// title bar filtered out.
 			expect(moves).toEqual([
 				{ id: 'a', position: { x: 140, y: 260 } },
 				{ id: 'b', position: { x: 340, y: 260 } },
@@ -199,9 +192,7 @@ describe('useCanvasNodeGroupDrag', () => {
 		});
 
 		it('dedupes members that also appear directly in event.nodes', () => {
-			// If a member is in event.nodes (e.g. selected) and was already
-			// moved via the group's delta, it should appear once — using the
-			// group-derived position, not the event.nodes position.
+			// A selected member appears once, with the group-derived position.
 			const { drag } = setup();
 			const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 			const memberDirect = makeRegularGraphNode('a', 999, 999);
@@ -214,18 +205,15 @@ describe('useCanvasNodeGroupDrag', () => {
 		});
 
 		it('moves both groups when dragging a multi-selection of two title bars', () => {
-			// Repro: vue-flow fires BOTH selectionDragStart and nodeDragStart for
-			// a multi-select drag (selection first, then node). The per-node
-			// handler must not clobber the selection handler's snapshots, or
-			// the non-clicked group's members never get the drag delta and the
-			// title bar snaps back on drag stop ("bounce up").
+			// Repro: VueFlow fires both selectionDragStart and nodeDragStart on
+			// multi-select — the per-node handler must not clobber the selection
+			// snapshots (otherwise the non-clicked group "bounces back" on stop).
 			const { drag } = setup();
 			const groupA = makeGroupGraphNode('group:g1', 0, 0);
 			const groupB = makeGroupGraphNode('group:g2', 0, 0);
 			const selEvent = makeSelectionEvent(groupA, groupB);
 
-			// Vue-flow emits selectionDragStart, then nodeDragStart for the
-			// clicked node — replay both.
+			// Replay both events VueFlow emits for the clicked node.
 			drag.onSelectionDragStart(selEvent);
 			drag.onNodeDragStart({ ...selEvent, node: groupA });
 
@@ -235,13 +223,11 @@ describe('useCanvasNodeGroupDrag', () => {
 			drag.onSelectionDrag(selEvent);
 			drag.onNodeDrag({ ...selEvent, node: groupA });
 
-			// Both groups' members must have been moved by the delta.
 			expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 110, y: 220 } });
 			expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 310, y: 220 } });
 			expect(updateNodeMock).toHaveBeenCalledWith('c', { position: { x: 510, y: 520 } });
 			expect(updateNodeMock).toHaveBeenCalledWith('d', { position: { x: 710, y: 520 } });
 
-			// processSelectionDragStop must persist all four members.
 			const moves = drag.processSelectionDragStop(selEvent);
 			expect(moves).toEqual(
 				expect.arrayContaining([
@@ -254,10 +240,8 @@ describe('useCanvasNodeGroupDrag', () => {
 		});
 
 		it('syncs the owning group title bar from live member positions when a member is dragged', () => {
-			// While a member is being dragged, the title bar's rect should
-			// track the live cursor position. Without this live push, the
-			// rect would only catch up on drag-stop (when the store updates
-			// and the mapping recomputes).
+			// Title bar must track the live cursor — store positions only
+			// catch up on drag-stop.
 			const memberDimensions: Record<string, { width: number; height: number }> = {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },
@@ -280,10 +264,8 @@ describe('useCanvasNodeGroupDrag', () => {
 		});
 
 		it('title bar rect tracks members at their mapping-time size', () => {
-			// The composable receives getNodeDimensions from the mapping layer.
-			// Even if VueFlow's runtime offsetWidth/offsetHeight would report
-			// a different size (e.g. larger by the CSS border), the rect must
-			// stay anchored to the mapping-time dimensions.
+			// Even if VueFlow's offsetWidth/offsetHeight reports a different
+			// size (e.g. CSS border included), the rect stays at mapping-time.
 			const memberDimensions: Record<string, { width: number; height: number }> = {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },

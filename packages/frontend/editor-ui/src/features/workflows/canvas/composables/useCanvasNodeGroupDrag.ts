@@ -88,8 +88,6 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		finalGroupPositions.set(node.id, { x: node.position.x, y: node.position.y });
 	}
 
-	// Clears only the group-keyed maps below; non-group nodes are never tracked
-	// here, so this is a no-op for them.
 	function reset() {
 		snapshots = new Map();
 		finalGroupPositions.clear();
@@ -104,11 +102,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		return out;
 	}
 
-	// Mapping derives title-bar position from store positions, which only
-	// update on drag-stop. Without this live push the rect would lag the drag.
-	// Reuses computeMemberRectFromStore with the dragged members' live
-	// positions as overrides, so the rect formula stays identical to mount
-	// — no shift the first time the title bar re-derives.
+	// Live push so the title bar tracks the drag — store positions only
+	// catch up on drag-stop. Same formula as mapping, with live overrides.
 	function syncGroupBoundsFromMembers(
 		draggedMembers: Array<{ id: string; position: { x: number; y: number } }>,
 	) {
@@ -149,9 +144,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		return (event.nodes?.length ?? 0) > 1;
 	}
 
-	// Vue-flow emits both selectionDrag* and nodeDrag* for multi-select drags
-	// (selection first, then node). The per-node handler would clobber the
-	// selection handler's snapshots — skip and let selection-drag own it.
+	// VueFlow fires both selectionDrag* and nodeDrag* for multi-select —
+	// let selection-drag own the snapshots, skip the per-node path here.
 	function onNodeDragStart(event: NodeDragEvent) {
 		if (isMultiSelectDrag(event)) return;
 		const node = event.node;
@@ -161,9 +155,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	// Per-tick handler shared by single-node and selection drag:
-	//   - Group title bar  → push the drag delta to its members.
-	//   - Regular member   → keep its owning group's title bar tracking
-	//                        the live rect (collected and synced in one shot).
+	// Group titles → propagate the delta. Members → batch-sync their groups.
 	function handleDragTick(nodes: readonly GraphNode[]) {
 		const membersToSync: Array<{ id: string; position: { x: number; y: number } }> = [];
 		for (const node of nodes) {
@@ -195,9 +187,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 	function onSelectionDragStart(event: NodeDragEvent) {
 		reset();
-
-		// Snapshot each group title bar in the selection so applyDelta can
-		// compute member moves from a fixed baseline on every drag tick.
+		// Snapshot every selected group title bar — applyDelta needs a baseline.
 		for (const node of event.nodes ?? []) {
 			if (isCanvasNodeGroup(node)) snapshotGroup(node);
 		}
