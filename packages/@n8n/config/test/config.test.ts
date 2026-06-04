@@ -302,7 +302,7 @@ describe('GlobalConfig', () => {
 			searxngUrl: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
-			snapshotPruneInterval: 3_600_000,
+			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 86_400_000,
 		},
