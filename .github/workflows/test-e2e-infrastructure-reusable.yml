@@ -42,4 +42,5 @@ jobs:
       runner: blacksmith-8vcpu-ubuntu-2204
       timeout-minutes: 120
       artifact-prefix: 'benchmark-${{ matrix.lane }}'
+      currents-project-id: 'LRxcNt'
     secrets: inherit

@@ -420,5 +420,8 @@ function makeStreamResult(chunks: StreamChunk[]): StreamResult {
 				controller.close();
 			},
 		}),
+		getState: () => {
+			throw new Error('not implemented');
+		},
 	};
 }

@@ -1,6 +1,5 @@
-import type { NodeTypes } from '@/node-types';
-import { mockInstance } from '@n8n/backend-test-utils';
 import type { LicenseState } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
@@ -32,6 +31,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import { OtelConfig } from '@/modules/otel/otel.config';
+import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -62,6 +62,7 @@ describe('TelemetryEventRelay', () => {
 				includeCacheMetrics: false,
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
+				includeExecutionDataMetrics: false,
 			},
 		},
 		logging: {
@@ -2105,6 +2106,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 						metrics_category_routes: false,
+						metrics_category_execution_data: false,
 						metrics_enabled: true,
 					},
 					n8n_binary_data_mode: 'default',
@@ -2142,6 +2144,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_cache: false,
 						metrics_category_logs: false,
 						metrics_category_queue: false,
+						metrics_category_execution_data: false,
 					},
 					otel: {
 						enabled: false,
@@ -2396,8 +2399,8 @@ describe('TelemetryEventRelay', () => {
 				executionId: 'execution123',
 				userId: 'user123',
 				runData,
+				source: 'instance_ai',
 				telemetryMetadata: {
-					source: 'instance_ai',
 					mockDataSources: ['trigger_input', 'verification_pin_data'],
 				},
 			};
@@ -2971,6 +2974,21 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
 				user_id: 'user456',
 				'2fa_enforcement': false,
+			});
+		});
+
+		it('should track data_redaction_enforcement_floor update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user-redaction' },
+				settingName: 'data_redaction_enforcement_floor',
+				value: 'all',
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user-redaction',
+				data_redaction_enforcement_floor: 'all',
 			});
 		});
 	});
