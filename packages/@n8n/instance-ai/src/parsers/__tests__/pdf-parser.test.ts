@@ -95,4 +95,34 @@ describe('extractPdfText', () => {
 			}),
 		).rejects.toThrow(/no extractable text/);
 	});
+
+	// `pdf-parse` v2 is backed by pdfjs-dist, which references the `DOMMatrix`
+	// global. Node.js does not provide it, so the parser must polyfill it before
+	// parsing — otherwise pdfjs throws "DOMMatrix is not defined" on PDFs that
+	// exercise that code path.
+	describe('DOMMatrix polyfill', () => {
+		const hadDomMatrix = 'DOMMatrix' in globalThis;
+		const originalDomMatrix: unknown = Reflect.get(globalThis, 'DOMMatrix');
+
+		afterAll(() => {
+			if (hadDomMatrix) {
+				Reflect.set(globalThis, 'DOMMatrix', originalDomMatrix);
+			} else {
+				Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			}
+		});
+
+		it('defines a usable DOMMatrix global before parsing when one is absent', async () => {
+			Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			mockGetText.mockResolvedValue({ text: 'Hello world', total: 1 });
+
+			await extractPdfText({
+				data: toBase64('pdf-bytes'),
+				mimeType: 'application/pdf',
+				fileName: 'doc.pdf',
+			});
+
+			expect(typeof Reflect.get(globalThis, 'DOMMatrix')).toBe('function');
+		});
+	});
 });
