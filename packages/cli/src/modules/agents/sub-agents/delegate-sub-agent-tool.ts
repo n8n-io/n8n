@@ -1,6 +1,7 @@
 import {
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
+	INLINE_SUB_AGENT_ID,
 	type DelegateSubAgentToolOutput,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
@@ -24,7 +25,11 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 	return createDelegateSubAgentTool({
 		...(availableSubAgents !== undefined ? { availableSubAgents } : {}),
 		...(policy !== undefined ? { policy } : {}),
-		runSubAgent: async (request) => {
+		runSubAgent: async (request, helpers) => {
+			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+				return await helpers.runInlineSubAgent(request);
+			}
+
 			const selectedSource = selectSubAgentSource({
 				sourcesById,
 				subAgentId: request.subAgentId,
@@ -32,8 +37,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 			if (!selectedSource) {
 				return {
 					status: 'failed',
-					answer:
-						'No subagent matched this request. Provide subAgentId when multiple configured subagents are available.',
+					taskPath: request.taskPath,
+					answer: '',
+					error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
 				};
 			}
 
@@ -70,13 +76,11 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 function selectSubAgentSource(options: {
 	sourcesById: Record<string, SubAgentSource>;
-	subAgentId?: string;
+	subAgentId: string;
 }): SubAgentSource | undefined {
 	const { sourcesById, subAgentId } = options;
-	if (subAgentId) return sourcesById?.[subAgentId];
-
-	const sources = Object.values(sourcesById);
-	return sources.length === 1 ? sources[0] : undefined;
+	if (subAgentId === INLINE_SUB_AGENT_ID) return undefined;
+	return sourcesById?.[subAgentId];
 }
 
 export function formatSubAgentToolOutput(

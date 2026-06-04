@@ -6,6 +6,7 @@ import type { ErrorReporter } from 'n8n-core';
 
 import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import type { Task } from '@/task-runners/task-managers/task-requester';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
@@ -146,6 +147,36 @@ describe('TaskRequester', () => {
 					},
 				]);
 			});
+		});
+	});
+
+	describe('cancelTasks', () => {
+		it('rejects pending tasks with TaskCancelledError when their execution is cancelled', async () => {
+			const taskId = 'taskId';
+			const executionId = 'executionId';
+
+			const mockTask = mock<Task>({ taskId });
+			instance.tasks.set(taskId, mockTask);
+
+			let capturedRejection: unknown;
+			const pending = new Promise((_, reject) => {
+				instance.taskAcceptRejects.set(taskId, {
+					accept: jest.fn(),
+					reject: (reason) => {
+						capturedRejection = reason;
+						reject(reason);
+					},
+				});
+			});
+
+			(
+				instance as unknown as { executionIdsToTaskIds: Map<string, Set<string>> }
+			).executionIdsToTaskIds.set(executionId, new Set([taskId]));
+
+			instance.cancelTasks(executionId);
+
+			await expect(pending).rejects.toBeInstanceOf(TaskCancelledError);
+			expect(capturedRejection).toBeInstanceOf(TaskCancelledError);
 		});
 	});
 });

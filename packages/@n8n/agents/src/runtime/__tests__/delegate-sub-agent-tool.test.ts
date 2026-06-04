@@ -1,15 +1,18 @@
+import { vi } from 'vitest';
+
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
 	generateResultToDelegateSubAgentOutput,
 	renderDelegateSubAgentPrompt,
-	type DelegateSubAgentRequest,
-	type DelegateSubAgentToolOutput,
+	type DelegateSubAgentRunner,
 } from '../delegate-sub-agent-tool';
 
 const input = {
+	subAgentId: INLINE_SUB_AGENT_ID,
 	taskName: 'Research API',
 	goal: 'Find the API behavior.',
 	context: 'Focus on auth endpoints.',
@@ -33,19 +36,29 @@ describe('createDelegateSubAgentTool', () => {
 
 		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(tool.description).toContain('focused child agent');
+		expect(tool.description).toContain('independent workstreams');
 		expect(tool.inputSchema).toBeDefined();
 		expect(tool.outputSchema).toBeDefined();
 	});
 
+	it('can be created without a host runner for SDK inline execution', async () => {
+		const tool = createDelegateSubAgentTool();
+
+		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+			status: 'failed',
+			answer: '',
+			error:
+				'delegate_subagent was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.',
+		});
+	});
+
 	it('passes model input and parent runtime context to the runner callback', async () => {
-		const runSubAgent = vi
-			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
-			.mockResolvedValue({
-				status: 'completed',
-				taskPath: '/root/research_api',
-				runId: 'child-run-1',
-				answer: 'done',
-			});
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api',
+			runId: 'child-run-1',
+			answer: 'done',
+		});
 		const tool = createDelegateSubAgentTool({
 			policy: { maxChildren: 2 },
 			runSubAgent,
@@ -56,19 +69,41 @@ describe('createDelegateSubAgentTool', () => {
 			toolCallId: 'tool-call-1',
 		});
 
-		expect(runSubAgent).toHaveBeenCalledWith({
-			...input,
-			taskPath: '/root/research_api_0',
-			parentRunId: 'parent-run-1',
-			parentToolCallId: 'tool-call-1',
-			childCount: 0,
-			policy: { maxChildren: 2 },
+		expect(runSubAgent).toHaveBeenCalledWith(
+			{
+				...input,
+				taskPath: '/root/research_api_0',
+				parentRunId: 'parent-run-1',
+				parentToolCallId: 'tool-call-1',
+				childCount: 0,
+				policy: { maxChildren: 2 },
+			},
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
+	});
+
+	it('passes runInlineSubAgent helpers to the host runner callback', async () => {
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>(async (_request, helpers) => {
+			expect(helpers.runInlineSubAgent).toEqual(expect.any(Function));
+			await Promise.resolve();
+			return {
+				status: 'completed',
+				taskPath: '/root/research_api_0',
+				answer: 'routed',
+			};
 		});
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+
+		await tool.handler?.(input, { runId: 'parent-run-1' });
+
+		expect(runSubAgent).toHaveBeenCalledOnce();
 	});
 
 	it('forwards the parent persistence thread id and resource id', async () => {
 		const runSubAgent = vi
-			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
+			.fn<DelegateSubAgentRunner>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
@@ -82,12 +117,15 @@ describe('createDelegateSubAgentTool', () => {
 				parentThreadId: 'parent-thread-1',
 				parentResourceId: 'resource-1',
 			}),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
 		);
 	});
 
 	it('omits parent persistence fields when the parent run has no persistence scope', async () => {
 		const runSubAgent = vi
-			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
+			.fn<DelegateSubAgentRunner>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 
@@ -100,7 +138,7 @@ describe('createDelegateSubAgentTool', () => {
 
 	it('forwards the parent run abort signal to the runner callback', async () => {
 		const runSubAgent = vi
-			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
+			.fn<DelegateSubAgentRunner>()
 			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
 		const tool = createDelegateSubAgentTool({ runSubAgent });
 		const controller = new AbortController();
@@ -109,6 +147,9 @@ describe('createDelegateSubAgentTool', () => {
 
 		expect(runSubAgent).toHaveBeenCalledWith(
 			expect.objectContaining({ parentAbortSignal: controller.signal }),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
 		);
 	});
 
@@ -157,14 +198,12 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('tracks child count per parent run id', async () => {
-		const runSubAgent = vi
-			.fn<(request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>>()
-			.mockResolvedValue({
-				status: 'completed',
-				taskPath: '/root/research_api',
-				runId: 'child-run-1',
-				answer: 'done',
-			});
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
+			status: 'completed',
+			taskPath: '/root/research_api',
+			runId: 'child-run-1',
+			answer: 'done',
+		});
 		const tool = createDelegateSubAgentTool({
 			policy: { maxChildren: 1 },
 			runSubAgent,
@@ -227,9 +266,9 @@ describe('renderDelegateSubAgentPrompt', () => {
 	it('includes the goal and omits unset sections', () => {
 		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
 
-		expect(prompt).toContain('Goal:\nFind it.');
-		expect(prompt).not.toContain('Context:');
-		expect(prompt).not.toContain('Expected output:');
+		expect(prompt).toContain('YOUR TASK:\nFind it.');
+		expect(prompt).not.toContain('CONTEXT:');
+		expect(prompt).not.toContain('EXPECTED OUTPUT:');
 	});
 
 	it('includes context and expected output when provided', () => {
@@ -239,9 +278,24 @@ describe('renderDelegateSubAgentPrompt', () => {
 			expectedOutput: 'a summary',
 		});
 
-		expect(prompt).toContain('Goal:\nFind it.');
-		expect(prompt).toContain('Context:\nauth endpoints');
-		expect(prompt).toContain('Expected output:\na summary');
+		expect(prompt).toContain('YOUR TASK:\nFind it.');
+		expect(prompt).toContain('CONTEXT:\nauth endpoints');
+		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
+	});
+
+	it('uses generic summary guidance for delegated work', () => {
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
+
+		expect(prompt).toContain('- What you did');
+		expect(prompt).toContain('- What you found or accomplished');
+		expect(prompt).toContain('- Important outputs, decisions, or evidence');
+		expect(prompt).toContain('- Any issues, assumptions, or limitations');
+		expect(prompt).toContain(
+			'If the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.',
+		);
+		expect(prompt).toContain(
+			'Be thorough but concise -- your response is returned to the parent agent as a summary.',
+		);
 	});
 });
 
@@ -299,5 +353,74 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			answer: '',
 			error: 'boom',
 		});
+	});
+
+	it('returns a failed delegate output for delegated child suspension stopgap', async () => {
+		const { failedDelegatedChildSuspendOutput } = await import('../delegate-sub-agent-tool');
+
+		expect(failedDelegatedChildSuspendOutput('/root/x_0')).toEqual({
+			status: 'failed',
+			taskPath: '/root/x_0',
+			answer: '',
+			error: 'agents.chat.delegate.childSuspendUnsupported',
+		});
+	});
+
+	it('maps a suspended child result to suspended with pendingSuspend metadata', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-3',
+			messages: [
+				{
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'awaiting approval' }],
+				},
+			],
+			finishReason: 'tool-calls',
+			pendingSuspend: [
+				{
+					runId: 'child-run-3',
+					toolCallId: 'tool-call-1',
+					toolName: 'delete_file',
+					input: { path: '/tmp/foo.txt' },
+					suspendPayload: { message: 'Delete file?' },
+				},
+			],
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toEqual({
+			status: 'suspended',
+			taskPath: '/root/x_0',
+			runId: 'child-run-3',
+			answer: 'awaiting approval',
+			finishReason: 'tool-calls',
+			pendingSuspend: result.pendingSuspend,
+		});
+	});
+
+	it('prefers failed over suspended when the child result also has pendingSuspend', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-4',
+			messages: [],
+			finishReason: 'error',
+			error: new Error('child failed'),
+			pendingSuspend: [
+				{
+					runId: 'child-run-4',
+					toolCallId: 'tool-call-1',
+					toolName: 'delete_file',
+					input: {},
+					suspendPayload: {},
+				},
+			],
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			error: 'child failed',
+		});
+		expect(
+			generateResultToDelegateSubAgentOutput('/root/x_0', result).pendingSuspend,
+		).toBeUndefined();
 	});
 });

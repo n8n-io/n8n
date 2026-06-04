@@ -1436,7 +1436,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new WorkflowHasIssuesError();
+			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
 	}
 
@@ -1916,12 +1916,18 @@ export class WorkflowExecute {
 								toReport = sanitized;
 							}
 							if (toReport) {
+								const { executionId, instanceBaseUrl } = this.additionalData;
 								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,
 										nodeVersion: executionNode.typeVersion,
 										workflowId: workflow.id,
+										executionId,
+										executionUrl:
+											instanceBaseUrl && executionId
+												? `${instanceBaseUrl}workflow/${workflow.id}/executions/${executionId}`
+												: undefined,
 									},
 								});
 							}

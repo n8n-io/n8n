@@ -12,7 +12,7 @@ final response.
 for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
 `streamText`) and is responsible for:
 
-- Building the LLM message context (memory history, semantic recall, working
+- Building the LLM message context (memory history, working
   memory in the system prompt, user input)
 - Stripping orphaned tool-call/tool-result pairs before LLM calls
   (`stripOrphanedToolMessages`)
@@ -23,8 +23,7 @@ for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
   in parallel)
 - Suspending and resuming runs for Human-in-the-Loop (HITL) **and** for tools
   that return a branded suspend result (`suspendSchema` / `resumeSchema`)
-- Persisting new messages to a memory store at the end of each completed turn,
-  optionally saving **embeddings** for semantic recall
+- Persisting new messages to a memory store at the end of each completed turn
 - Extracting and persisting **working memory** from assistant output when
   configured
 - Optional **structured output** (`Output.object` + Zod), **thinking** /
@@ -69,6 +68,40 @@ graph TD
 `ExecutionOptions` includes `abortSignal?: AbortSignal`, forwarded into
 `AgentEventBus.resetAbort()` so callers can cancel via an external signal as
 well as `agent.abort()`.
+
+---
+
+## Inline Sub-Agent Delegation
+
+`createDelegateSubAgentTool()` can be registered directly on an `Agent` without
+a host `runSubAgent` callback. In that mode, `Agent.build()` completes the tool
+with the SDK's inline child runner after the parent model and effective tool
+surface have been resolved.
+
+```typescript
+const agent = new Agent('parent')
+  .model('anthropic/claude-sonnet-4-5')
+  .instructions('...')
+  .tool(searchTool)
+  .tool(createDelegateSubAgentTool());
+```
+
+The model selects the default inline path by passing `subAgentId: "inline"`.
+When a host supplies a `runSubAgent` callback, `Agent.build()` routes every
+delegation (including `"inline"`) through that callback and passes
+`helpers.runInlineSubAgent` so the host can reuse the SDK inline runner. Without a
+host callback, `"inline"` is handled by the SDK inline runner directly. Both paths
+return the same `DelegateSubAgentToolOutput` shape and emit the same sub-agent
+lifecycle events.
+
+Inline children:
+
+- reuse the parent model config for this first implementation
+- start from the parent agent's effective local/deferred tool list
+- always drop SDK-blocked tools such as `delegate_subagent`, `write_todos`, and memory recall
+- may drop additional host-blocked local/deferred tool names configured on the delegate tool
+- inherit parent provider tools after the same blocklist filtering
+- run in a fresh context using the shared delegated-task prompt
 
 ---
 
@@ -351,8 +384,7 @@ implement TTL or eviction as needed.
 ## Memory persistence
 
 At end of turn, `saveToMemory()` uses `list.turnDelta()` and
-`saveMessagesToThread`. If **semantic recall** is configured with an embedder
-and `memory.saveEmbeddings`, new messages are embedded and stored.
+`saveMessagesToThread`.
 
 **Working memory:** when configured, the runtime injects an `update_working_memory`
 tool into the agent's tool set. The current state is included in the system prompt
