@@ -45,10 +45,6 @@ export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_o
 
 export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
 
-export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
-	'056_ai_builder_template_examples',
-);
-
 export const AI_BUILDER_PLAN_MODE_EXPERIMENT = createExperiment('073_builder_plan_mode');
 
 export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
@@ -129,7 +125,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
-	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	AI_BUILDER_PLAN_MODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	RESOURCE_CENTER_EXPERIMENT.name,

@@ -25,7 +25,6 @@ import { LLMServiceError } from '@/errors';
 import type { ParentGraphState } from '@/parent-graph-state';
 import { buildDiscoveryPrompt } from '@/prompts';
 import { createGetDocumentationTool } from '@/tools/get-documentation.tool';
-import { createGetWorkflowExamplesTool } from '@/tools/get-workflow-examples.tool';
 import {
 	createIntrospectTool,
 	extractIntrospectionEventsFromMessages,
@@ -281,7 +280,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.featureFlags = config.featureFlags;
 
 		// Check feature flags
-		const includeExamples = config.featureFlags?.templateExamples === true;
 		const includePlanMode = config.featureFlags?.planMode === true;
 		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
@@ -309,14 +307,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			baseTools.push(createIntrospectTool(config.logger).tool);
 		}
 
-		// Conditionally add documentation and workflow examples tools if feature flag is enabled
-		const tools = includeExamples
-			? [
-					...baseTools,
-					createGetDocumentationTool().tool,
-					createGetWorkflowExamplesTool(config.logger).tool,
-				]
-			: baseTools;
+		const tools = baseTools;
 
 		this.toolMap = new Map(tools.map((toolInstance) => [toolInstance.name, toolInstance]));
 
@@ -329,7 +320,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Generate prompt based on feature flags
 		const discoveryPrompt = buildDiscoveryPrompt({
-			includeExamples,
 			includeQuestions: includePlanMode,
 		});
 

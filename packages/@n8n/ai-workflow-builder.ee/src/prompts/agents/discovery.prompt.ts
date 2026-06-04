@@ -40,7 +40,6 @@ export function formatExampleCategorizations(): string {
 }
 
 export interface DiscoveryPromptOptions {
-	includeExamples: boolean;
 	includeQuestions: boolean;
 }
 
@@ -60,19 +59,6 @@ const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request 
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
 4. Call submit_discovery_results with your nodesFound array`;
-
-const PROCESS_WITH_EXAMPLES = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
-4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
-5. Call submit_discovery_results with your nodesFound array`;
-
-const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
-4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
-5. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
-6. Call submit_discovery_results with your nodesFound array`;
 
 const AI_NODE_SELECTION = `AI node selection guidance:
 
@@ -369,7 +355,6 @@ Guidelines:
 function generateToolCallRequirement(options: DiscoveryPromptOptions): string {
 	const toolExamples = ['search_nodes'];
 	if (options.includeQuestions) toolExamples.push('submit_questions');
-	if (options.includeExamples) toolExamples.push('get_documentation', 'get_workflow_examples');
 
 	return `<output_requirement>
 Use tools when needed (e.g. ${toolExamples.join(', ')}).
@@ -386,23 +371,12 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	if (options.includeQuestions) {
 		tools.push('- submit_questions: Ask clarifying questions when critical details are missing');
 	}
-	if (options.includeExamples) {
-		tools.push(
-			'- get_documentation: Retrieve best practices for workflow techniques to improve quality',
-		);
-		tools.push(
-			'- get_workflow_examples: Find real community workflows as reference for structuring integrations',
-		);
-	}
 	tools.push('- web_fetch: Fetch content from a URL the user provided (requires approval)');
 	tools.push('- submit_discovery_results: Submit final results');
 	return tools.join('\n');
 }
 
 function selectProcessSection(options: DiscoveryPromptOptions): string {
-	if (options.includeExamples && options.includeQuestions)
-		return PROCESS_WITH_EXAMPLES_AND_QUESTIONS;
-	if (options.includeExamples) return PROCESS_WITH_EXAMPLES;
 	if (options.includeQuestions) return PROCESS_WITH_QUESTIONS;
 	return PROCESS;
 }
