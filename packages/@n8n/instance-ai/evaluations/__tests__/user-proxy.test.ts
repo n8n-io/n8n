@@ -210,6 +210,50 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(1);
 	});
 
+	it('answers ask-user questions from remaining scripted user turns before consulting the agent', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'I need weather alerts.' },
+				{ role: 'assistant', text: 'Which cities and where should alerts go?' },
+				{
+					role: 'user',
+					text: 'London, New York, Tokyo. Alert above 30C via Telegram chat -1001234567890.',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			questionEvent('req-scripted-q', [
+				{ id: 'cities', question: 'Which cities?', type: 'text' },
+				{
+					id: 'destination',
+					question: 'Where should alerts go?',
+					type: 'single',
+					options: ['Email', 'Slack', 'SMS'],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('questions');
+		if (response.kind === 'questions') {
+			expect(response.answers).toEqual([
+				{
+					questionId: 'cities',
+					selectedOptions: [],
+					customText: 'London, New York, Tokyo. Alert above 30C via Telegram chat -1001234567890.',
+				},
+				{
+					questionId: 'destination',
+					selectedOptions: [],
+					customText: 'London, New York, Tokyo. Alert above 30C via Telegram chat -1001234567890.',
+				},
+			]);
+		}
+		expect(agent.callCount).toBe(0);
+	});
+
 	it('returns approval with userInput when the agent picks approve_or_reject', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
@@ -228,6 +272,32 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect(response.approved).toBe(true);
 			expect(response.userInput).toBe('looks good');
 		}
+	});
+
+	it('rejects plan review with remaining scripted details before consulting the agent', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Build an Airtable to Slack workflow.' },
+				{ role: 'assistant', text: 'Which table and channel?' },
+				{
+					role: 'user',
+					text: 'Use GET https://api.airtable.com/v0/app123abc/Tasks and Slack #daily-tasks.',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(planReviewEvent('req-scripted-plan'));
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+			expect(response.userInput).toContain('Before I approve');
+			expect(response.userInput).toContain('https://api.airtable.com/v0/app123abc/Tasks');
+			expect(response.userInput).toContain('#daily-tasks');
+		}
+		expect(agent.callCount).toBe(0);
 	});
 
 	it('returns approval with no userInput when the agent omits it', async () => {
@@ -391,7 +461,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(response.kind).toBe('approval');
 	});
 
-	it('returns the permissive payload on a repeat requestId without consulting the agent', async () => {
+	it('reuses the first payload on a repeat requestId without consulting the agent', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'answer_questions',
@@ -408,10 +478,10 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		await proxy.respondToConfirmation(event);
 		const second = await proxy.respondToConfirmation(event);
 
-		// Repeat falls back to buildAutoApprovePayload; for questions inputType
-		// that means kind: 'questions' with empty answers.
 		expect(second.kind).toBe('questions');
-		if (second.kind === 'questions') expect(second.answers).toEqual([]);
+		if (second.kind === 'questions') {
+			expect(second.answers).toEqual([{ questionId: 'q1', selectedOptions: ['#general'] }]);
+		}
 		expect(agent.callCount).toBe(1); // only first call invoked the agent
 	});
 
@@ -521,6 +591,24 @@ describe('UserProxyLlm.decideFollowUp', () => {
 
 		const decision = await proxy.decideFollowUp();
 		expect(decision.kind).toBe('done');
+	});
+
+	it('falls back to the next scripted user turn when follow-up generation fails', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue(undefined);
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Build a workflow.' },
+				{ role: 'assistant', text: 'Which channel?' },
+				{ role: 'user', text: 'Use #ops-alerts.' },
+			],
+			messageBudget: 3,
+			agent,
+		});
+
+		const decision = await proxy.decideFollowUp();
+
+		expect(decision).toEqual({ kind: 'followUp', message: 'Use #ops-alerts.' });
 	});
 
 	it('returns done when the agent picks a confirmation-only action', async () => {

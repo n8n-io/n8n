@@ -12,20 +12,72 @@ export const SONNET_MODEL = 'anthropic/claude-sonnet-4-6';
 export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 
 // ---------------------------------------------------------------------------
-// API key resolution
+// Model config resolution
 // ---------------------------------------------------------------------------
 
-function getApiKey(): string {
-	const key =
-		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-		process.env.N8N_AI_ANTHROPIC_KEY ??
-		process.env.ANTHROPIC_API_KEY;
+const PROVIDER_API_KEY_ENV: Record<string, string> = {
+	anthropic: 'ANTHROPIC_API_KEY',
+	google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+	openai: 'OPENAI_API_KEY',
+	xai: 'XAI_API_KEY',
+};
+
+export interface EvalModelConfig {
+	modelId: string;
+	provider: string;
+	providerModelId: string;
+	apiKey: string;
+	url?: string;
+}
+
+function getModelId(model?: string): string {
+	const modelId =
+		model ?? process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? process.env.N8N_INSTANCE_AI_MODEL;
+	if (!modelId) {
+		throw new Error(
+			'Missing eval model. Set N8N_INSTANCE_AI_MODEL or N8N_INSTANCE_AI_EVAL_MODEL in your environment.',
+		);
+	}
+	return modelId;
+}
+
+function getApiKey(modelId: string): string {
+	const [provider] = modelId.split('/');
+	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
+	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
+	const key = process.env.N8N_INSTANCE_AI_MODEL_API_KEY ?? providerKey;
+
 	if (!key) {
 		throw new Error(
-			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY, N8N_AI_ANTHROPIC_KEY, or ANTHROPIC_API_KEY in your environment.',
+			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_MODEL_API_KEY${
+				providerKeyEnv ? ` or ${providerKeyEnv}` : ''
+			} in your environment.`,
 		);
 	}
 	return key;
+}
+
+function getModelUrl(): string | undefined {
+	const url = process.env.N8N_INSTANCE_AI_MODEL_URL?.trim();
+	if (!url) return undefined;
+	return url;
+}
+
+export function resolveEvalModelConfig(model?: string): EvalModelConfig {
+	const modelId = getModelId(model);
+	const [provider, ...rest] = modelId.split('/');
+	const joinedProviderModelId = rest.join('/');
+	let providerModelId = modelId;
+	if (joinedProviderModelId.length > 0) {
+		providerModelId = joinedProviderModelId;
+	}
+	return {
+		modelId,
+		provider,
+		providerModelId,
+		apiKey: getApiKey(modelId),
+		url: getModelUrl(),
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -50,10 +102,16 @@ export function createEvalAgent(
 		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
+	const { modelId, provider, apiKey, url } = resolveEvalModelConfig(options.model);
 	const agent = new Agent(name).model({
-		id: options.model ?? SONNET_MODEL,
-		apiKey: getApiKey(),
+		id: modelId,
+		apiKey,
+		url,
 	});
+
+	if (provider === 'openai') {
+		agent.thinking('openai', { reasoningEffort: 'high' });
+	}
 
 	if (options.cache) {
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);

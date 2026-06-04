@@ -317,6 +317,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			workflowId: string;
 			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
+			buildTrace?: BuildResult['buildTrace'];
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -354,6 +355,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowId: string;
 					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
+					buildTrace?: BuildResult['buildTrace'];
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -362,6 +364,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						undefined,
+						execArgs.buildTrace,
 						args.pinAiRoots,
 					),
 				{
@@ -484,6 +488,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				workflowId: build.workflowId,
 				scenario,
 				workflowJsons: build.workflowJsons,
+				buildTrace: build.buildTrace,
 			});
 		} catch (error: unknown) {
 			// Mirror direct mode's per-scenario guard — without this, n8n API errors

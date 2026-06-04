@@ -150,6 +150,12 @@ export interface EventOutcome {
 	agentActivities: AgentActivity[];
 }
 
+export interface BuildTrace {
+	finalText: string;
+	toolCalls: CapturedToolCall[];
+	agentActivities: AgentActivity[];
+}
+
 // ---------------------------------------------------------------------------
 // Workflow evaluation test cases
 // ---------------------------------------------------------------------------
@@ -216,6 +222,8 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** Captured build-time sub-agent/tool activity for builder debugging. */
+	buildTrace?: BuildTrace;
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
 	n8nBaseUrl?: string;
