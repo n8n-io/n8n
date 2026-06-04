@@ -785,8 +785,12 @@ async function onResolvableChange(value: boolean) {
 			return;
 		}
 	} else if (isTogglingToStatic) {
-		// Private → Static: warn only when there are connected users to disconnect
-		const connectedUserCount = currentCredential.value?.connectedUserCount ?? 0;
+		// Private → Static: warn only when there are connected users to disconnect.
+		// `connectedUserCount` reflects the server state at modal-open and isn't
+		// refreshed when the current user connects within the same session, so fold
+		// in `connectedByMe` to make sure the warning still appears in that case.
+		const serverConnectedCount = currentCredential.value?.connectedUserCount ?? 0;
+		const connectedUserCount = Math.max(serverConnectedCount, connectedByMe.value ? 1 : 0);
 		if (connectedUserCount > 0) {
 			const confirmAction = await confirmModal('switchToStatic', {
 				count: String(connectedUserCount),
