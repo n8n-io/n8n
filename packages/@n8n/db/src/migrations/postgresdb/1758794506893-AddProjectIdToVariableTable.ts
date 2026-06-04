@@ -27,7 +27,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 		);
 
 		await addColumns(VARIABLES_TABLE_NAME, [column('projectId').varchar(36)], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 		await addForeignKey(VARIABLES_TABLE_NAME, 'projectId', ['project', 'id'], undefined, 'CASCADE');
 
@@ -67,7 +67,7 @@ export class AddProjectIdToVariableTable1758794506893 implements ReversibleMigra
 
 		// Remove foreign key constraints and drop the projectId column
 		await dropForeignKey(VARIABLES_TABLE_NAME, 'projectId', ['project', 'id']);
-		await dropColumns(VARIABLES_TABLE_NAME, ['projectId'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(VARIABLES_TABLE_NAME, ['projectId'], { recreatesOnSqlite: true });
 
 		// Recreate the original unique index on key
 		await queryRunner.query(`

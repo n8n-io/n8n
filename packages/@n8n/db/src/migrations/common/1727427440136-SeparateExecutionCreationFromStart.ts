@@ -9,10 +9,10 @@ export class SeparateExecutionCreationFromStart1727427440136 implements Reversib
 		await addColumns(
 			'execution_entity',
 			[column('createdAt').notNull.timestamp().default('NOW()')],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
-		await dropNotNull('execution_entity', 'startedAt', { ackThisRecreatesOnSqlite: true });
+		await dropNotNull('execution_entity', 'startedAt', { recreatesOnSqlite: true });
 
 		const executionEntity = escape.tableName('execution_entity');
 		const createdAt = escape.columnName('createdAt');
@@ -23,7 +23,7 @@ export class SeparateExecutionCreationFromStart1727427440136 implements Reversib
 	}
 
 	async down({ schemaBuilder: { dropColumns, addNotNull } }: MigrationContext) {
-		await dropColumns('execution_entity', ['createdAt'], { ackThisRecreatesOnSqlite: true });
-		await addNotNull('execution_entity', 'startedAt', { ackThisRecreatesOnSqlite: true });
+		await dropColumns('execution_entity', ['createdAt'], { recreatesOnSqlite: true });
+		await addNotNull('execution_entity', 'startedAt', { recreatesOnSqlite: true });
 	}
 }

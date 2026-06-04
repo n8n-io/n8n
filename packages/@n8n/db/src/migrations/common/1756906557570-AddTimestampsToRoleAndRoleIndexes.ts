@@ -22,7 +22,7 @@ export class AddTimestampsToRoleAndRoleIndexes1756906557570 implements Irreversi
 				new Column('createdAt').timestampTimezone().notNull.default('NOW()'),
 				new Column('updatedAt').timestampTimezone().notNull.default('NOW()'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
 		// This index should allow us to efficiently query project relations by their role

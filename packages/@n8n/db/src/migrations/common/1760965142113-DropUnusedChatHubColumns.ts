@@ -7,7 +7,7 @@ const table = {
 export class DropUnusedChatHubColumns1760965142113 implements ReversibleMigration {
 	async up({ schemaBuilder: { dropColumns, addColumns, column } }: MigrationContext) {
 		await dropColumns(table.messages, ['turnId', 'runIndex', 'state'], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 		await addColumns(
 			table.messages,
@@ -19,14 +19,14 @@ export class DropUnusedChatHubColumns1760965142113 implements ReversibleMigratio
 						'ChatHubMessageStatus enum, eg. "success", "error", "running", "cancelled"',
 					),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({
 		schemaBuilder: { dropColumns, addColumns, column, addForeignKey },
 	}: MigrationContext) {
-		await dropColumns(table.messages, ['status'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(table.messages, ['status'], { recreatesOnSqlite: true });
 		await addColumns(
 			table.messages,
 			[
@@ -39,7 +39,7 @@ export class DropUnusedChatHubColumns1760965142113 implements ReversibleMigratio
 					.default("'active'")
 					.notNull.comment('ChatHubMessageState enum: "active", "superseded", "hidden", "deleted"'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 		await addForeignKey(table.messages, 'turnId', [table.messages, 'id'], undefined, 'CASCADE');
 	}

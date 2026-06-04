@@ -48,7 +48,7 @@ export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration
 					.varchar(128)
 					.comment('Cached name of the custom agent (if provider is "custom-agent")'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
 		// Add agentId to chat_hub_messages
@@ -59,13 +59,13 @@ export class CreateChatHubAgentTable1760020000000 implements ReversibleMigration
 					.varchar(36)
 					.comment('ID of the custom agent (if provider is "custom-agent")'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropTable, dropColumns } }: MigrationContext) {
-		await dropColumns(table.messages, ['agentId'], { ackThisRecreatesOnSqlite: true });
-		await dropColumns(table.sessions, ['agentId', 'agentName'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(table.messages, ['agentId'], { recreatesOnSqlite: true });
+		await dropColumns(table.sessions, ['agentId', 'agentName'], { recreatesOnSqlite: true });
 		await dropTable(table.agents);
 	}
 }

@@ -55,7 +55,7 @@ export class AddSubAgentLinkageToAgentExecutionThreads1784000000022
 					.varchar(36)
 					.comment('Saved agent id of the parent that delegated this subagent run.'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
 		if (isPostgres) {

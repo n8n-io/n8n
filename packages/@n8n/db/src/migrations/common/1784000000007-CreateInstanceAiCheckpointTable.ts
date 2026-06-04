@@ -13,7 +13,7 @@ export class CreateInstanceAiCheckpointTable1784000000007 implements ReversibleM
 					.comment('OpenTelemetry trace ID for the root Instance AI run.'),
 				column('spanId').varchar(64).comment('OpenTelemetry span ID for the root Instance AI run.'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
 		await createTable(checkpointTable)
@@ -40,6 +40,6 @@ export class CreateInstanceAiCheckpointTable1784000000007 implements ReversibleM
 
 	async down({ schemaBuilder: { dropTable, dropColumns } }: MigrationContext) {
 		await dropTable(checkpointTable);
-		await dropColumns(runSnapshotsTable, ['traceId', 'spanId'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(runSnapshotsTable, ['traceId', 'spanId'], { recreatesOnSqlite: true });
 	}
 }

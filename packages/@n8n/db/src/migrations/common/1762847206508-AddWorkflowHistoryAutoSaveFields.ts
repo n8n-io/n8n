@@ -14,13 +14,13 @@ export class AddWorkflowHistoryAutoSaveFields1762847206508 implements Reversible
 				column(autosaved).bool.notNull.default(false),
 				column(description).text,
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
 		await dropColumns(tableName, [name, autosaved, description], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 	}
 }

@@ -14,7 +14,7 @@ export class AddRoleColumnToProjectSecretsProviderAccess1772619247761
 					.notNull.default("'secretsProviderConnection:user'")
 					.withEnumCheck(['secretsProviderConnection:owner', 'secretsProviderConnection:user']),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
@@ -22,6 +22,6 @@ export class AddRoleColumnToProjectSecretsProviderAccess1772619247761
 		const fullTableName = `${tablePrefix}${table}`;
 		const checkName = `CHK_${tablePrefix}${table}_role`;
 		await queryRunner.dropCheckConstraint(fullTableName, checkName);
-		await dropColumns(table, ['role'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(table, ['role'], { recreatesOnSqlite: true });
 	}
 }

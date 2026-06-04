@@ -10,11 +10,11 @@ export class AddTypeToChatHubSessions1772700000000 implements ReversibleMigratio
 					.notNull.default("'production'")
 					.withEnumCheck(['production', 'manual']),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('chat_hub_sessions', ['type'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns('chat_hub_sessions', ['type'], { recreatesOnSqlite: true });
 	}
 }

@@ -12,13 +12,13 @@ export class AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 implements Rev
 					.varchar(36)
 					.comment('LangSmith trace ID (UUID v4, e.g. "f47ac10b-58cc-4372-a567-0e02b2c3d479").'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
 		await dropColumns('instance_ai_run_snapshots', ['langsmithRunId', 'langsmithTraceId'], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 	}
 }

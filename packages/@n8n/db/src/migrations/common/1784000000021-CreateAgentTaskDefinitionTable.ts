@@ -94,7 +94,7 @@ export class CreateAgentTaskDefinitionTable1784000000021 implements ReversibleMi
 					.varchar(36)
 					.comment('Published agent_history version that supplied the task snapshot'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 		await addForeignKey(
 			'agent_execution_threads',
@@ -115,7 +115,7 @@ export class CreateAgentTaskDefinitionTable1784000000021 implements ReversibleMi
 			'versionId',
 		]);
 		await dropColumns('agent_execution_threads', ['taskId', 'taskVersionId'], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 		await dropTable('agent_task_run_lock');
 		await dropTable('agent_task_snapshot');

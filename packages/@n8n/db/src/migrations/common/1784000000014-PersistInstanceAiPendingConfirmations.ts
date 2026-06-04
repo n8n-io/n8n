@@ -44,13 +44,13 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 						'Soft-delete timestamp: null means live; non-null marks the row as a tombstone.',
 					),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
 		// Soft-delete sets `state = null` on consumed/pruned snapshots, so the
 		// column must be nullable. Created NOT NULL in `1784000000007`.
 		await schemaBuilder.dropNotNull(checkpointsTable, 'state', {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 
 		// Enforce the soft-delete invariant at the DB level: a tombstoned row
@@ -88,8 +88,8 @@ export class PersistInstanceAiPendingConfirmations1784000000014 implements Rever
 		const stateCol = escape.columnName('state');
 		await runQuery(`DELETE FROM ${table} WHERE ${stateCol} IS NULL`);
 
-		await addNotNull(checkpointsTable, 'state', { ackThisRecreatesOnSqlite: true });
-		await dropColumns(checkpointsTable, ['expiredAt'], { ackThisRecreatesOnSqlite: true });
+		await addNotNull(checkpointsTable, 'state', { recreatesOnSqlite: true });
+		await dropColumns(checkpointsTable, ['expiredAt'], { recreatesOnSqlite: true });
 	}
 
 	private async createPendingConfirmationsTable({

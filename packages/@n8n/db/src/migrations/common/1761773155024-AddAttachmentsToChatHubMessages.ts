@@ -13,11 +13,11 @@ export class AddAttachmentsToChatHubMessages1761773155024 implements ReversibleM
 					'File attachments for the message (if any), stored as JSON. Files are stored as base64-encoded data URLs.',
 				),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(table.messages, ['attachments'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(table.messages, ['attachments'], { recreatesOnSqlite: true });
 	}
 }

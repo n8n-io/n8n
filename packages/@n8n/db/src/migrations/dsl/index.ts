@@ -15,7 +15,13 @@ import {
 	DropTable,
 } from './table';
 
-type RecreatesOnSqliteAck = { ackThisRecreatesOnSqlite: true };
+/**
+ * Marks an operation that recreates the entire table on SQLite.
+ * Adding this option is an explicit acknowledgment of that risk.
+ *
+ * @see {@link BaseMigration.withFKsDisabled}
+ */
+type RecreatesOnSqliteAck = { recreatesOnSqlite: true };
 
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
 	column: (name: string) => new Column(name),
@@ -159,11 +165,42 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 	dropNotNull: (tableName: string, columnName: string, _opts: RecreatesOnSqliteAck) =>
 		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
 
-	/** WARNING: This recreates the entire table on SQLite. */
-	addEnumCheck: (tableName: string, columnName: string, values: string[]) =>
-		new AddEnumCheck(tableName, columnName, values, tablePrefix, queryRunner),
-	/** WARNING: This recreates the entire table on SQLite. */
-	dropEnumCheck: (tableName: string, columnName: string) =>
+	/**
+	 * Adds a CHECK constraint that emulates an enum on the given column.
+	 *
+	 * **WARNING — SQLite table recreation:** On SQLite, TypeORM implements this by
+	 * recreating the entire table. If other tables have incoming FK constraints with
+	 * CASCADE on the target table, the DROP triggers cascading deletes and **wipes
+	 * data from those tables**.
+	 *
+	 * **Mitigation:** On SQLite migrations, set `withFKsDisabled = true as const`
+	 * when the target table has incoming FKs. For common migrations, add a
+	 * SQLite-only subclass with the flag instead of setting it on the common class.
+	 *
+	 * @see {@link BaseMigration.withFKsDisabled}
+	 */
+	addEnumCheck: (
+		tableName: string,
+		columnName: string,
+		values: string[],
+		_opts: RecreatesOnSqliteAck,
+	) => new AddEnumCheck(tableName, columnName, values, tablePrefix, queryRunner),
+
+	/**
+	 * Drops a CHECK constraint that emulates an enum on the given column.
+	 *
+	 * **WARNING — SQLite table recreation:** On SQLite, TypeORM implements this by
+	 * recreating the entire table. If other tables have incoming FK constraints with
+	 * CASCADE on the target table, the DROP triggers cascading deletes and **wipes
+	 * data from those tables**.
+	 *
+	 * **Mitigation:** On SQLite migrations, set `withFKsDisabled = true as const`
+	 * when the target table has incoming FKs. For common migrations, add a
+	 * SQLite-only subclass with the flag instead of setting it on the common class.
+	 *
+	 * @see {@link BaseMigration.withFKsDisabled}
+	 */
+	dropEnumCheck: (tableName: string, columnName: string, _opts: RecreatesOnSqliteAck) =>
 		new DropEnumCheck(tableName, columnName, tablePrefix, queryRunner),
 
 	/* eslint-enable */

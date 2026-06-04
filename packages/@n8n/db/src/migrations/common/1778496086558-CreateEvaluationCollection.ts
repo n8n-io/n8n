@@ -57,7 +57,7 @@ export class CreateEvaluationCollection1778496086558 implements ReversibleMigrat
 		}
 
 		await addColumns(TEST_RUN_TABLE, [column('collectionId').varchar(36)], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 
 		await addForeignKey(
@@ -81,7 +81,7 @@ export class CreateEvaluationCollection1778496086558 implements ReversibleMigrat
 			[EVALUATION_COLLECTION_TABLE, 'id'],
 			FK_TEST_RUN_COLLECTION,
 		);
-		await dropColumns(TEST_RUN_TABLE, ['collectionId'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(TEST_RUN_TABLE, ['collectionId'], { recreatesOnSqlite: true });
 		await dropTable(EVALUATION_COLLECTION_TABLE);
 	}
 }

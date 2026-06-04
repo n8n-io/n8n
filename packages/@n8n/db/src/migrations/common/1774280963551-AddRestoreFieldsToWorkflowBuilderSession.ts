@@ -8,7 +8,7 @@ export class AddRestoreFieldsToWorkflowBuilderSession1774280963551 implements Re
 				column('activeVersionCardId').varchar(255),
 				column('resumeAfterRestoreMessageId').varchar(255),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
@@ -16,7 +16,7 @@ export class AddRestoreFieldsToWorkflowBuilderSession1774280963551 implements Re
 		await dropColumns(
 			'workflow_builder_session',
 			['activeVersionCardId', 'resumeAfterRestoreMessageId'],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 }

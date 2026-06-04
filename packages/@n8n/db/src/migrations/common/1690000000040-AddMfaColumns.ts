@@ -9,13 +9,13 @@ export class AddMfaColumns1690000000030 implements ReversibleMigration {
 				column('mfaSecret').text,
 				column('mfaRecoveryCodes').text,
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
 		await dropColumns('user', ['mfaEnabled', 'mfaSecret', 'mfaRecoveryCodes'], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 	}
 }

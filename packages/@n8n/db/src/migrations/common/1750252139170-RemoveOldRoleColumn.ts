@@ -26,7 +26,7 @@ export class RemoveOldRoleColumn1750252139170 implements ReversibleMigration {
 			`UPDATE ${userTableName} SET ${roleSlugColumn} = ${roleColumn} WHERE ${roleColumn} != ${roleSlugColumn}`,
 		);
 
-		await dropColumns('user', ['role'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns('user', ['role'], { recreatesOnSqlite: true });
 	}
 
 	async down({ schemaBuilder: { addColumns, column }, escape, runQuery }: MigrationContext) {
@@ -35,7 +35,7 @@ export class RemoveOldRoleColumn1750252139170 implements ReversibleMigration {
 		const roleSlugColumn = escape.columnName('roleSlug');
 
 		await addColumns('user', [column('role').varchar(128).default("'global:member'").notNull], {
-			ackThisRecreatesOnSqlite: true,
+			recreatesOnSqlite: true,
 		});
 
 		await runQuery(

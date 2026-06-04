@@ -4,20 +4,20 @@ const tableName = 'workflow_history';
 
 export class ModifyWorkflowHistoryNodesAndConnections1695829275184 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, dropColumns, column } }: MigrationContext) {
-		await dropColumns(tableName, ['nodes', 'connections'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(tableName, ['nodes', 'connections'], { recreatesOnSqlite: true });
 		await addColumns(
 			tableName,
 			[column('nodes').json.notNull, column('connections').json.notNull],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns, addColumns, column } }: MigrationContext) {
-		await dropColumns(tableName, ['nodes', 'connections'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(tableName, ['nodes', 'connections'], { recreatesOnSqlite: true });
 		await addColumns(
 			tableName,
 			[column('nodes').text.notNull, column('connections').text.notNull],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 }

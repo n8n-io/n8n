@@ -14,7 +14,7 @@ export class AddToolsColumnToChatHubTables1761830340990 implements ReversibleMig
 					.json.notNull.default("'[]'")
 					.comment('Tools available to the agent as JSON node definitions'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 		await addColumns(
 			table.agents,
@@ -23,12 +23,12 @@ export class AddToolsColumnToChatHubTables1761830340990 implements ReversibleMig
 					.json.notNull.default("'[]'")
 					.comment('Tools available to the agent as JSON node definitions'),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns(table.sessions, ['tools'], { ackThisRecreatesOnSqlite: true });
-		await dropColumns(table.agents, ['tools'], { ackThisRecreatesOnSqlite: true });
+		await dropColumns(table.sessions, ['tools'], { recreatesOnSqlite: true });
+		await dropColumns(table.agents, ['tools'], { recreatesOnSqlite: true });
 	}
 }

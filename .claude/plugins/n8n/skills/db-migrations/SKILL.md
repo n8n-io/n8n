@@ -219,7 +219,7 @@ export class MigrateThing1234567890000 implements IrreversibleMigration {
     const { schemaBuilder: { addColumns, column, createIndex } } = ctx;
 
     // One-liner DSL calls stay inline — naming them adds no information.
-    await addColumns('my_table', [column('slug').varchar(255)], { ackThisRecreatesOnSqlite: true });
+    await addColumns('my_table', [column('slug').varchar(255)], { recreatesOnSqlite: true });
 
     // The non-trivial step gets a named method.
     await this.backfillSlugs(ctx);
@@ -362,7 +362,7 @@ Four DSL methods trigger **full table recreation** on SQLite — TypeORM interna
 | `addNotNull()` | `queryRunner.changeColumn()` |
 | `dropNotNull()` | `queryRunner.changeColumn()` |
 
-All four require a final options parameter with `ackThisRecreatesOnSqlite: true` — TypeScript rejects calls that omit it.
+All four require a final options parameter with `recreatesOnSqlite: true` — TypeScript rejects calls that omit it.
 
 **The danger:** If the target table has incoming FK constraints with `CASCADE` from other tables, the `DROP TABLE` during recreation fires cascading deletes and **wipes rows from those referencing tables**.
 
@@ -617,7 +617,7 @@ export class AddAndBackfillColumn1234567890000 implements IrreversibleMigration 
 		await ctx.schemaBuilder.addColumns(
 			'my_table',
 			[ctx.schemaBuilder.column('newCol').text],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 		await this.backfillNewCol(ctx);
 	}

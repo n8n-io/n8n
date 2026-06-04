@@ -15,7 +15,7 @@ export class AddResolvableFieldsToCredentials1764689448000 implements Reversible
 				column('resolvableAllowFallback').bool.notNull.default(false),
 				column('resolverId').varchar(16),
 			],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 
 		await addForeignKey(
@@ -31,7 +31,7 @@ export class AddResolvableFieldsToCredentials1764689448000 implements Reversible
 		await dropColumns(
 			credentialsTableName,
 			['isResolvable', 'resolvableAllowFallback', 'resolverId'],
-			{ ackThisRecreatesOnSqlite: true },
+			{ recreatesOnSqlite: true },
 		);
 	}
 }
