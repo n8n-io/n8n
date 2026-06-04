@@ -120,16 +120,26 @@ const RedactionSettingSchemaV1 = z.object({
 
 export type IRedactionSettingV1 = z.output<typeof RedactionSettingSchemaV1>;
 
+const RedactionSourceSchema = z.union([z.literal('workflow'), z.literal('instance')]);
+
+export type RedactionSource = z.output<typeof RedactionSourceSchema>;
+
 /**
  * Per-channel redaction snapshot. Each channel records, independently, whether
  * execution data is redacted for production and manual executions. This is the
  * strictest-per-channel resolution of the workflow setting and the instance floor,
  * captured at execution time.
+ *
+ * `source` records which layer raised the bar:
+ * - `'instance'` when the floor enforced redaction the workflow did not ask for.
+ * - `'workflow'` otherwise (workflow setting met or exceeded the floor, including
+ *   the floor='off' case).
  */
 const RedactionSettingSchemaV2 = z.object({
 	version: z.literal(2),
 	production: z.boolean(),
 	manual: z.boolean(),
+	source: RedactionSourceSchema.optional(),
 });
 
 export type IRedactionSettingV2 = z.output<typeof RedactionSettingSchemaV2>;
