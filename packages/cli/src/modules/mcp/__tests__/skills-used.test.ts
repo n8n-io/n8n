@@ -24,11 +24,15 @@ describe('sanitizeSkillsUsed', () => {
 		]);
 	});
 
-	test('keeps namespaced identifiers', () => {
-		expect(sanitizeSkillsUsed(['n8n:plan', 'frontend-design:frontend-design'])).toEqual([
-			'n8n:plan',
-			'frontend-design:frontend-design',
+	test('keeps identifiers with underscores and dots', () => {
+		expect(sanitizeSkillsUsed(['snake_case_skill', 'dotted.skill.name'])).toEqual([
+			'snake_case_skill',
+			'dotted.skill.name',
 		]);
+	});
+
+	test('keeps identifiers starting with a digit', () => {
+		expect(sanitizeSkillsUsed(['1-step-skill'])).toEqual(['1-step-skill']);
 	});
 
 	test('trims and lowercases entries', () => {
@@ -44,12 +48,11 @@ describe('sanitizeSkillsUsed', () => {
 				'workflow-builder',
 				'has spaces',
 				'has/slash',
-				'has.dot',
-				'has_underscore',
+				'has:colon',
 				'unicode-‑hyphen',
 				'contains "quote"',
-				'1starts-with-digit',
 				'-starts-with-dash',
+				'.starts-with-dot',
 			]),
 		).toEqual(['workflow-builder']);
 	});
@@ -60,9 +63,9 @@ describe('sanitizeSkillsUsed', () => {
 		]);
 	});
 
-	test('drops entries longer than 128 chars', () => {
-		const tooLong = 'a'.repeat(129);
-		const justRight = 'a'.repeat(128);
+	test('drops entries longer than 64 chars', () => {
+		const tooLong = 'a'.repeat(65);
+		const justRight = 'a'.repeat(64);
 		expect(sanitizeSkillsUsed([tooLong, justRight, 'workflow-builder'])).toEqual([
 			justRight,
 			'workflow-builder',
