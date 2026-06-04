@@ -4,6 +4,7 @@ import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import {
 	assertSubAgentPolicyAllowsChildCount,
 	createChildSubAgentTaskPath,
+	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	type SubAgentTaskPath,
 	type SubAgentTaskPathPolicy,
 } from './sub-agent-task-path';
@@ -76,6 +77,12 @@ const delegateSubAgentOutputSchema = z.object({
 			}),
 		)
 		.optional(),
+	delegationBudget: z
+		.object({
+			maxChildren: z.number(),
+			remainingChildren: z.number(),
+		})
+		.optional(),
 });
 
 /** The arguments the LLM provides when calling delegate_subagent. */
@@ -142,6 +149,11 @@ export interface DelegateSubAgentToolOutput {
 	error?: string;
 	/** Present when status is 'suspended' — child run paused awaiting tool resume. */
 	pendingSuspend?: GenerateResult['pendingSuspend'];
+	/** Remaining child delegation budget after this call, when maxChildren is configured. */
+	delegationBudget?: {
+		maxChildren: number;
+		remainingChildren: number;
+	};
 }
 
 /**
@@ -204,9 +216,35 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *     policy: { maxChildren: 5 },
  *   }));
  */
+function resolveDelegateSubAgentPolicy(
+	policy: DelegateSubAgentPolicy | undefined,
+): DelegateSubAgentPolicy {
+	const resolvedPolicy = {
+		...policy,
+		maxChildren: policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN,
+	};
+
+	if (
+		!Number.isFinite(resolvedPolicy.maxChildren) ||
+		!Number.isInteger(resolvedPolicy.maxChildren)
+	) {
+		throw new Error('delegate_subagent policy.maxChildren must be a finite positive integer');
+	}
+
+	if (resolvedPolicy.maxChildren < 1) {
+		throw new Error('delegate_subagent policy.maxChildren must be at least 1');
+	}
+
+	return resolvedPolicy;
+}
+
 export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions = {}) {
 	// Per-parent fan-out counter keyed by run/thread/task — drives maxChildren.
 	const childCounts = new Map<string, number>();
+	const resolvedOptions: CreateDelegateSubAgentToolOptions = {
+		...options,
+		policy: resolveDelegateSubAgentPolicy(options.policy),
+	};
 
 	const tool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
 		.description(
@@ -218,7 +256,8 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 			[
 				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your available tools after safety filtering. The child cannot see this conversation or your memory, so everything it needs must be in the call.',
 				'Use a configured subagent ID only when one is listed and its name/description fits the subtask better than a generic inline child.',
-				...formatAvailableSubAgents(options.availableSubAgents),
+				...formatAvailableSubAgents(resolvedOptions.availableSubAgents),
+				...formatDelegationPolicyInstructions(resolvedOptions.policy),
 				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
 				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
 				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your available tools after safety filtering; you cannot change their tool set per delegation.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
@@ -226,7 +265,9 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		)
 		.input(delegateSubAgentInputSchema)
 		.output(delegateSubAgentOutputSchema)
-		.handler(async (input, ctx) => await handleDelegateSubAgent(input, ctx, options, childCounts))
+		.handler(
+			async (input, ctx) => await handleDelegateSubAgent(input, ctx, resolvedOptions, childCounts),
+		)
 		.build();
 
 	return withSdkOwnedBuiltInMetadata({
@@ -234,14 +275,16 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		metadata: {
 			...tool.metadata,
 			[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY]: {
-				...(options.availableSubAgents !== undefined
-					? { availableSubAgents: options.availableSubAgents }
+				...(resolvedOptions.availableSubAgents !== undefined
+					? { availableSubAgents: resolvedOptions.availableSubAgents }
 					: {}),
-				...(options.policy !== undefined ? { policy: options.policy } : {}),
-				...(options.inlineSubAgentBlockedTools !== undefined
-					? { inlineSubAgentBlockedTools: options.inlineSubAgentBlockedTools }
+				policy: resolvedOptions.policy,
+				...(resolvedOptions.inlineSubAgentBlockedTools !== undefined
+					? { inlineSubAgentBlockedTools: resolvedOptions.inlineSubAgentBlockedTools }
 					: {}),
-				...(options.runSubAgent !== undefined ? { runSubAgent: options.runSubAgent } : {}),
+				...(resolvedOptions.runSubAgent !== undefined
+					? { runSubAgent: resolvedOptions.runSubAgent }
+					: {}),
 			} satisfies DelegateSubAgentToolMetadata,
 		},
 	});
@@ -269,6 +312,41 @@ function formatAvailableSubAgents(
 	];
 }
 
+function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | undefined): string[] {
+	if (policy?.maxChildren === undefined) return [];
+
+	const runLabel = policy.maxChildren === 1 ? 'run' : 'runs';
+	return [
+		[
+			'DELEGATION LIMITS:',
+			`- You may spawn at most ${policy.maxChildren} child sub-agent ${runLabel} in this parent run.`,
+			`- When parallel delegation is useful, you may issue up to ${policy.maxChildren} independent delegate_subagent calls together.`,
+			'- This is a hard budget, not a suggestion. Do not plan or attempt more delegate_subagent calls than this budget allows.',
+			'- Budget child delegations up front. Prefer the highest-value independent workstreams and do the rest yourself.',
+		].join('\n'),
+	];
+}
+
+function buildDelegationBudget(
+	childCountAfterThisCall: number,
+	policy: DelegateSubAgentPolicy | undefined,
+): DelegateSubAgentToolOutput['delegationBudget'] {
+	if (policy?.maxChildren === undefined) return undefined;
+
+	return {
+		maxChildren: policy.maxChildren,
+		remainingChildren: Math.max(policy.maxChildren - childCountAfterThisCall, 0),
+	};
+}
+
+function withDelegationBudget(
+	output: DelegateSubAgentToolOutput,
+	delegationBudget: DelegateSubAgentToolOutput['delegationBudget'],
+): DelegateSubAgentToolOutput {
+	if (delegationBudget === undefined) return output;
+	return { ...output, delegationBudget };
+}
+
 /**
  * Tool handler: enforce policy (fan-out), assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
@@ -293,6 +371,8 @@ async function handleDelegateSubAgent(
 
 		taskPath = createChildSubAgentTaskPath(input.taskName, childCount);
 		childCounts.set(childCountKey, childCount + 1);
+		const childCountAfterThisCall = childCount + 1;
+		const delegationBudget = buildDelegationBudget(childCountAfterThisCall, options.policy);
 
 		request = {
 			...input,
@@ -324,21 +404,26 @@ async function handleDelegateSubAgent(
 				);
 			},
 		});
-		emitSubAgentCompleted(ctx, request, output, startedAt);
-		return output;
+		const outputWithBudget = withDelegationBudget(output, delegationBudget);
+		emitSubAgentCompleted(ctx, request, outputWithBudget, startedAt);
+		return outputWithBudget;
 	} catch (error) {
+		const delegationBudget =
+			request !== undefined
+				? buildDelegationBudget(request.childCount + 1, options.policy)
+				: undefined;
 		if (request !== undefined && startedAt !== undefined) {
-			emitSubAgentCompleted(
-				ctx,
-				request,
+			const failedOutput = withDelegationBudget(
 				{
 					status: 'failed',
 					...(taskPath !== undefined ? { taskPath } : {}),
 					answer: '',
 					error: stringifyUnknown(error),
 				},
-				startedAt,
+				delegationBudget,
 			);
+			emitSubAgentCompleted(ctx, request, failedOutput, startedAt);
+			return failedOutput;
 		}
 		return {
 			status: 'failed',

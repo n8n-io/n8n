@@ -70,6 +70,15 @@ const SubAgentConfigSchema = z.object({
 
 const SubAgentsConfigSchema = z
 	.object({
+		maxChildren: z
+			.number()
+			.int()
+			.min(1)
+			.max(20)
+			.optional()
+			.describe(
+				'Maximum number of child sub-agent runs this parent agent may spawn in one parent run. Defaults to 5 when unset.',
+			),
 		agents: z.array(SubAgentConfigSchema).optional(),
 	})
 	.strict();

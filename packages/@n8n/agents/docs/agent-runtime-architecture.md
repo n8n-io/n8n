@@ -18,9 +18,15 @@ for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
   (`stripOrphanedToolMessages`)
 - Running the agentic tool-call loop (default **20** iterations,
   `MAX_LOOP_ITERATIONS`)
-- **Configurable tool-call concurrency** — tools in one LLM turn run in batches
-  of `toolCallConcurrency` (default `1`; `Infinity` runs all executable calls
-  in parallel)
+- **Configurable tool-call concurrency** — ordinary tool calls in one LLM turn
+  run in batches of `toolCallConcurrency` (default `1`; `Infinity` runs all
+  executable calls in parallel).
+- **Delegated child-run fan-out** — consecutive `delegate_subagent` calls use
+  the effective `maxChildren` policy as their batch size, so a parent with
+  `maxChildren: 5` can start up to five child runs in parallel even when regular
+  tool concurrency is `1`. The same `maxChildren` value remains the hard per-parent
+  child spawn cap. In n8n, `subAgents.maxChildren` overrides the SDK default.
+  There is no separate delegation concurrency knob.
 - Suspending and resuming runs for Human-in-the-Loop (HITL) **and** for tools
   that return a branded suspend result (`suspendSchema` / `resumeSchema`)
 - Persisting new messages to a memory store at the end of each completed turn
@@ -93,6 +99,11 @@ delegation (including `"inline"`) through that callback and passes
 host callback, `"inline"` is handled by the SDK inline runner directly. Both paths
 return the same `DelegateSubAgentToolOutput` shape and emit the same sub-agent
 lifecycle events.
+
+`maxChildren` limits how many child sub-agent runs a parent may spawn in one parent
+run and how many consecutive `delegate_subagent` tool calls the runtime may execute
+in parallel. Tool results from `delegate_subagent` may include `delegationBudget`
+with `remainingChildren` so the parent can adapt after earlier delegations.
 
 Inline children:
 

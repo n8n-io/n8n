@@ -12,6 +12,12 @@ import type { ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../agent-runtime';
+import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
+	createDelegateSubAgentTool,
+	type DelegateSubAgentRunner,
+} from '../delegate-sub-agent-tool';
 import { AgentEventBus } from '../event-bus';
 import { InMemoryMemory } from '../memory-store';
 import { toAiSdkTools } from '../tool-adapter';
@@ -1341,6 +1347,165 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.finishReason).toBe('stop');
 		// Peak concurrency within any batch should never exceed 2
 		expect(Math.max(...batchSizes)).toBeLessThanOrEqual(2);
+	});
+
+	it('runs consecutive delegate_subagent calls in parallel up to maxChildren when toolCallConcurrency is 1', async () => {
+		let activeDelegations = 0;
+		let peakDelegations = 0;
+
+		const runSubAgent: DelegateSubAgentRunner = async (request) => {
+			activeDelegations++;
+			peakDelegations = Math.max(peakDelegations, activeDelegations);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			activeDelegations--;
+			return {
+				status: 'completed',
+				taskPath: request.taskPath,
+				answer: `done:${request.taskName}`,
+			};
+		};
+
+		const delegateTool = createDelegateSubAgentTool({
+			policy: { maxChildren: 5 },
+			runSubAgent,
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 5 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+						args: {
+							subAgentId: 'inline',
+							taskName: `ping_${index + 1}`,
+							goal: 'Reply with ping.',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('spawn 5 sub agents');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDelegations).toBe(5);
+	});
+
+	it('batches delegate_subagent parallelism by maxChildren when more calls are issued than the budget', async () => {
+		let activeDelegations = 0;
+		let peakDelegations = 0;
+
+		const runSubAgent: DelegateSubAgentRunner = async (request) => {
+			activeDelegations++;
+			peakDelegations = Math.max(peakDelegations, activeDelegations);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			activeDelegations--;
+			return {
+				status: 'completed',
+				taskPath: request.taskPath,
+				answer: `done:${request.taskName}`,
+			};
+		};
+
+		const delegateTool = createDelegateSubAgentTool({
+			policy: { maxChildren: 2 },
+			runSubAgent,
+		});
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls(
+					Array.from({ length: 4 }, (_, index) => ({
+						toolCallId: `tc-${index + 1}`,
+						toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+						args: {
+							subAgentId: 'inline',
+							taskName: `ping_${index + 1}`,
+							goal: 'Reply with ping.',
+						},
+					})),
+				),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('spawn 4 sub agents');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peakDelegations).toBe(2);
+		expect(
+			result.toolCalls?.some((entry) =>
+				JSON.stringify(entry.output).includes('exceeds maxChildren 2'),
+			),
+		).toBe(true);
+	});
+
+	it('fails fast when delegate metadata has an invalid maxChildren batch size', async () => {
+		const malformedDelegateTool: BuiltTool = {
+			name: DELEGATE_SUB_AGENT_TOOL_NAME,
+			description: 'Malformed delegate tool',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ done: true }),
+			metadata: {
+				[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY]: {
+					policy: { maxChildren: 0 },
+				},
+			},
+		};
+		const { runtime } = createRuntimeWithTools([malformedDelegateTool], 1);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+					args: {
+						subAgentId: 'inline',
+						taskName: 'ping',
+						goal: 'Reply with ping.',
+					},
+				},
+			]),
+		);
+
+		const result = await runtime.generate('spawn sub agent');
+
+		expect(result.finishReason).toBe('error');
+		expect(result.error).toBeInstanceOf(Error);
+		if (result.error instanceof Error) {
+			expect(result.error.message).toBe('Invalid tool-call batch size for delegate_subagent: 0');
+		}
+	});
+
+	it('keeps non-delegate tools sequential when toolCallConcurrency is 1', async () => {
+		let active = 0;
+		let peak = 0;
+
+		const slowTool = makeMockTool('slow_tool', async () => {
+			active++;
+			peak = Math.max(peak, active);
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			active--;
+			return { done: true };
+		});
+
+		const { runtime } = createRuntimeWithTools([slowTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-1', toolName: 'slow_tool', args: { value: 'a' } },
+					{ toolCallId: 'tc-2', toolName: 'slow_tool', args: { value: 'b' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const result = await runtime.generate('run tools');
+
+		expect(result.finishReason).toBe('stop');
+		expect(peak).toBe(1);
 	});
 
 	it('tool error becomes LLM-visible message — loop continues and slow tool completes', async () => {

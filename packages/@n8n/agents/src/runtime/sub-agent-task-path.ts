@@ -39,6 +39,9 @@ export interface SubAgentTaskPathPolicy {
 	maxChildren?: number;
 }
 
+/** Default per-parent child delegation budget when none is configured. */
+export const DEFAULT_SUB_AGENT_MAX_CHILDREN = 5;
+
 /** Path of the initiating (orchestrating) agent. */
 export const ROOT_SUB_AGENT_TASK_PATH = '/root' satisfies SubAgentTaskPath;
 

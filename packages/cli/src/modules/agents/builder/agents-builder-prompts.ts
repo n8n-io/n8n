@@ -152,6 +152,12 @@ subagent.
 
 - Do not write a flag to enable or disable delegation; delegation is always
   available.
+- Use \`subAgents.maxChildren\` only when the user asks to limit or increase how
+  many child sub-agent runs the parent may spawn in one run.
+- \`subAgents.maxChildren\` is a hard per-parent-run delegation budget. It is not
+  the same as \`config.toolCallConcurrency\`.
+- Do not create fields such as \`subAgents.maxConcurrentDelegations\`,
+  \`delegationConcurrency\`, or \`delegateConcurrency\`.
 - Add saved subagent refs only when the user asks to use specific published
   agents, reusable specialists, named helper agents, or saved-agent delegation.
 - Use \`list_sub_agents\` to discover published same-project agents that can be

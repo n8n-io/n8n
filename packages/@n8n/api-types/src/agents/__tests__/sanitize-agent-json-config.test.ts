@@ -182,4 +182,27 @@ describe('sanitizeAgentJsonConfig', () => {
 
 		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
 	});
+
+	it('accepts subAgents.maxChildren as part of agent JSON config', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2' }],
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+		expect(parsed.data.subAgents?.maxChildren).toBe(3);
+	});
+
+	it.each([0, -1, 1.5, 21])('rejects invalid subAgents.maxChildren %s', (maxChildren) => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				...baseConfig,
+				subAgents: { maxChildren },
+			}).success,
+		).toBe(false);
+	});
 });

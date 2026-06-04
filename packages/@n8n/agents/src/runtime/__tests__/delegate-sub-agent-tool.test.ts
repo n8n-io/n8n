@@ -197,6 +197,72 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('defaults maxChildren to 5 when policy is omitted', () => {
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(tool.systemInstruction).toContain('at most 5 child sub-agent runs');
+	});
+
+	it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+		'rejects invalid maxChildren policy value %s',
+		(maxChildren) => {
+			expect(() =>
+				createDelegateSubAgentTool({
+					policy: { maxChildren },
+					runSubAgent: async () =>
+						await Promise.resolve({
+							status: 'completed',
+							taskPath: '/root/research_api_0',
+							answer: 'done',
+						}),
+				}),
+			).toThrow('delegate_subagent policy.maxChildren');
+		},
+	);
+
+	it('includes maxChildren as a hard delegation budget in model-facing instructions', () => {
+		const tool = createDelegateSubAgentTool({
+			policy: { maxChildren: 2 },
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(tool.systemInstruction).toContain('DELEGATION LIMITS');
+		expect(tool.systemInstruction).toContain('at most 2 child sub-agent runs');
+		expect(tool.systemInstruction).toContain(
+			'issue up to 2 independent delegate_subagent calls together',
+		);
+		expect(tool.systemInstruction).toContain('hard budget');
+	});
+
+	it('returns remaining delegation budget after a successful child spawn', async () => {
+		const tool = createDelegateSubAgentTool({
+			policy: { maxChildren: 2 },
+			runSubAgent: async (request) =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: request.taskPath,
+					answer: 'done',
+				}),
+		});
+
+		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
+			status: 'completed',
+			delegationBudget: { maxChildren: 2, remainingChildren: 1 },
+		});
+	});
+
 	it('tracks child count per parent run id', async () => {
 		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
 			status: 'completed',

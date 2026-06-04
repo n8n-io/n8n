@@ -32,10 +32,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
-	/** Maximum number of sub-agents a single parent run may spawn. Bounds fan-out width. */
-	@Env('N8N_AGENTS_SUBAGENT_MAX_CHILDREN')
-	subAgentMaxChildren: number = 5;
-
 	/** Abort an individual sub-agent run after this many milliseconds. */
 	@Env('N8N_AGENTS_SUBAGENT_TIMEOUT_MS')
 	subAgentTimeoutMs: number = 5 * Time.minutes.toMilliseconds;

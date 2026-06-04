@@ -1,5 +1,6 @@
 import {
 	createWriteTodosTool,
+	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -223,6 +224,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
+			config,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
@@ -327,6 +329,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
+		config: AgentJsonConfig;
 		nodeToolsEnabled: boolean;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
@@ -340,6 +343,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
+			config,
 			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
@@ -408,6 +412,7 @@ export class AgentRuntimeReconstructionService {
 		if (runtimeProfile === 'top-level') {
 			this.attachSubAgentDelegationTool({
 				agent,
+				config,
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
@@ -424,13 +429,15 @@ export class AgentRuntimeReconstructionService {
 
 	private attachSubAgentDelegationTool(params: {
 		agent: RuntimeAgent;
+		config: AgentJsonConfig;
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		userId: string;
 		delegation: SubAgentDelegationConfig;
 	}): void {
-		const { agent, parentAgentId, projectId, credentialProvider, userId, delegation } = params;
+		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
+			params;
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
@@ -439,7 +446,7 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				userId,
 				credentialProvider,
-				policy: this.buildSubAgentPolicy(),
+				policy: this.buildSubAgentPolicy(config),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });
@@ -450,9 +457,9 @@ export class AgentRuntimeReconstructionService {
 		this.logger.debug('Injected write_todos tool', { agentId });
 	}
 
-	private buildSubAgentPolicy(): SubAgentRunPolicy {
+	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
 		return {
-			maxChildren: this.agentsConfig.subAgentMaxChildren,
+			maxChildren: config.subAgents?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN,
 			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
 		};
 	}

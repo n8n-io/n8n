@@ -1,5 +1,9 @@
 import type * as agents from '@n8n/agents';
-import { DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
+import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	getInlineDelegateSubAgentToolOptions,
+	WRITE_TODOS_TOOL_NAME,
+} from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
 import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -58,6 +62,7 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
+		agentsConfig?: Partial<AgentsConfig>;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -78,7 +83,11 @@ function makeReconstructionService(
 		agentsToolsService,
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules } as unknown as AgentsConfig,
+		{
+			modules,
+			subAgentTimeoutMs: 300_000,
+			...(overrides.agentsConfig ?? {}),
+		} as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
 		mock<AgentKnowledgeCommandService>(),
 	);
@@ -283,6 +292,51 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).toContain(WRITE_TODOS_TOOL_NAME);
+	});
+
+	function getInjectedDelegatePolicy() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
+					return getInlineDelegateSubAgentToolOptions(tool)?.policy;
+				}
+			}
+		}
+		return undefined;
+	}
+
+	it('uses the SDK default maxChildren when config does not override it', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, [], {
+			agentsConfig: { subAgentTimeoutMs: 1234 },
+		});
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(getInjectedDelegatePolicy()).toMatchObject({
+			maxChildren: 5,
+			timeoutMs: 1234,
+		});
+	});
+
+	it('uses subAgents.maxChildren over the SDK default', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, [], {
+			agentsConfig: { subAgentTimeoutMs: 1234 },
+		});
+		const entity = makeAgentEntity(undefined, { subAgents: { maxChildren: 2 } });
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(getInjectedDelegatePolicy()).toMatchObject({
+			maxChildren: 2,
+			timeoutMs: 1234,
+		});
 	});
 });
 
