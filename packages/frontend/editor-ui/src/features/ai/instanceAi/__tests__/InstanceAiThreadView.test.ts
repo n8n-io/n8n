@@ -448,7 +448,8 @@ describe('InstanceAiThreadView', () => {
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
 	});
 
-	describe('Fix with AI card', () => {
+	// Re-enable when IS_FIX_WITH_AI_OFFER_ENABLED is true (INS-407).
+	describe.skip('Fix with AI card', () => {
 		const failureReport: WorkflowFailuresReport = {
 			workflowId: 'wf-1',
 			executionId: 'exec-1',
