@@ -162,16 +162,19 @@ function emitToolChunk(
 				endTime: chunk.endTime,
 			});
 			break;
-		case 'tool-result':
+		case 'tool-result': {
+			const toolResultChunk = chunk as typeof chunk & { canceled?: boolean };
 			send({
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 				output: chunk.output,
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
+				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
 			onToolEvent?.toolResult?.(chunk.toolName);
 			break;
+		}
 		case 'tool-call-suspended': {
 			const payload: ToolSuspendedPayload = {
 				toolCallId: chunk.toolCallId,

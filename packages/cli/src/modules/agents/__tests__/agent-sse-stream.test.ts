@@ -66,6 +66,21 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 	});
 });
 
+describe('agent-sse-stream — stream completion', () => {
+	it('completes after the runtime stream closes even when a finish chunk is present', async () => {
+		const events = await collectEvents([
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'text-end', id: 't-1' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'text-end', id: 't-1' },
+		]);
+	});
+});
+
 describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 	it('forwards tool-execution-start with its server startTime', async () => {
 		const events = await collectEvents([

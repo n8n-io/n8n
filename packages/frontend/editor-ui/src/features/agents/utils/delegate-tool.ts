@@ -8,13 +8,17 @@ import { z } from 'zod';
  * tool step.
  */
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
+export const INLINE_SUB_AGENT_ID = 'inline';
+/** Mirrors `DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE` in `@n8n/agents`. */
+export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
+	'agents.chat.delegate.childSuspendUnsupported';
 
 // FE-local parsers for the fields the chat reads off a delegate_subagent call.
 // The full input/output shapes live in `@n8n/agents` (not exported as
 // api-types); we only parse what the tool step renders — the sub-agent it ran
 // (input) and its answer (output). Extra keys are stripped.
 const delegateInputSchema = z.object({
-	subAgentId: z.string().optional(),
+	subAgentId: z.string().min(1),
 	taskName: z.string().optional(),
 });
 
@@ -22,7 +26,7 @@ const delegateOutputSchema = z.object({
 	// A failed delegation still RESOLVES the tool call (the SDK never throws for
 	// it), so the chat relies on `status`/`error` rather than the tool-call's
 	// own error flag to render it as a failure.
-	status: z.enum(['completed', 'failed']).optional(),
+	status: z.enum(['completed', 'failed', 'suspended']).optional(),
 	answer: z.string().optional(),
 	error: z.string().optional(),
 });
@@ -49,6 +53,17 @@ export function parseDelegateOutput(output: unknown): DelegateOutput | undefined
 	return result.success ? result.data : undefined;
 }
 
+/** Localize a delegate tool error when it is a known i18n key. */
+export function formatDelegateError(
+	error: string,
+	i18n?: Pick<ReturnType<typeof useI18n>, 'baseText'>,
+): string {
+	if (i18n && error === DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE) {
+		return i18n.baseText(DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE);
+	}
+	return error;
+}
+
 /**
  * True when a `delegate_subagent` call resolved with a failed result. Such a
  * call settles successfully at the tool layer, so its step must be flipped to an
@@ -72,11 +87,27 @@ export function humanizeTaskName(taskName: string | undefined): string {
  * `''`. Shared by the chat tool step and the session timeline so both label a
  * delegation identically.
  */
+/** Friendly label for a raw sub-agent id (delegate hints, todo delegateHint, etc.). */
+export function resolveSubAgentIdForDisplay(
+	subAgentId: string,
+	nameById: Map<string, string>,
+): string {
+	if (subAgentId === INLINE_SUB_AGENT_ID) {
+		return humanizeTaskName('inline');
+	}
+	const resolved = nameById.get(subAgentId)?.trim();
+	if (resolved) return resolved;
+	return humanizeTaskName(subAgentId) || subAgentId;
+}
+
 export function resolveSubAgentName(input: unknown, nameById: Map<string, string>): string {
 	const parsed = parseDelegateInput(input);
 	// A blank/empty resolved name must fall through to the task name, so this is a
 	// truthiness check (not nullish) on purpose.
-	const resolved = parsed?.subAgentId ? nameById.get(parsed.subAgentId)?.trim() : undefined;
+	const resolved =
+		parsed?.subAgentId && parsed.subAgentId !== INLINE_SUB_AGENT_ID
+			? nameById.get(parsed.subAgentId)?.trim()
+			: undefined;
 	if (resolved) return resolved;
 	return humanizeTaskName(parsed?.taskName);
 }

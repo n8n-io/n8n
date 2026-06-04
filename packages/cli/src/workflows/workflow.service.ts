@@ -346,7 +346,7 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot update an archived workflow.');
 		}
 
-		this.redactionEnforcementService.assertPolicyChangeAllowed(
+		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			workflow.settings?.redactionPolicy,
 			workflowUpdateData.settings?.redactionPolicy,
 		);
