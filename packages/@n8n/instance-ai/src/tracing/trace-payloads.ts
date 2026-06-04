@@ -943,7 +943,6 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	if (
 		name.startsWith('workspace_') ||
 		name === WORKSPACE_TOOL_IDS.WRITE_FILE ||
-		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW ||
 		name === ORCHESTRATION_TOOL_IDS.APPLY_WORKFLOW_CREDENTIALS
 	) {
 		return 'workspace';
@@ -960,7 +959,7 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow') || name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW) {
+	if (name.includes('workflow')) {
 		return 'workflow';
 	}
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';

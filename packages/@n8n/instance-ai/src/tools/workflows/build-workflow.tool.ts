@@ -6,9 +6,9 @@ import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { ensureWebhookIds } from './ensure-webhook-ids';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
-import { ensureWebhookIds } from './submit-workflow.tool';
 import {
 	getReferencedWorkflowIds,
 	isMockableTriggerNodeType,
