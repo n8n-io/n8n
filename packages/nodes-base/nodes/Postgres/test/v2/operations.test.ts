@@ -511,6 +511,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			query: 'INSERT INTO my_table (col1, col2, col3) VALUES ($1, $2, $3)',
 			options: {
 				queryReplacement: "={{ ['a', 'b', 'c'] }}",
+				nodeVersion: 2.6,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -527,6 +528,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 				return get(nodeParameters, parameter, fallbackValue);
 			},
 			getNode() {
+				node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
 				return node;
 			},
 			evaluateExpression(str: string, _: number) {
@@ -558,6 +560,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 			query: 'INSERT INTO my_table (col1, col2) VALUES ($1, $2)',
 			options: {
 				queryReplacement: '={{ [{id: 1}, {id: 2}] }}',
+				nodeVersion: 2.6,
 			},
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -574,6 +577,7 @@ describe('Test PostgresV2, executeQuery operation', () => {
 				return get(nodeParameters, parameter, fallbackValue);
 			},
 			getNode() {
+				node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
 				return node;
 			},
 			evaluateExpression(str: string, _: number) {
