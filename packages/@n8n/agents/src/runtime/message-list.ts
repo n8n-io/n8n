@@ -102,6 +102,19 @@ export class AgentMessageList {
 	/** Rendered observation-log memory for this run. Set by buildMessageList / resume. */
 	observationLogMemory: string | undefined;
 
+	/**
+	 * Bump the monotonic clock so subsequent live messages are timestamped strictly
+	 * after the given moment. Used to keep new live messages ordered after activity
+	 * the resource-filtered history does not reflect (e.g. resources sharing a
+	 * thread). The observation-log cursor relies on (createdAt, id) keyset
+	 * monotonicity within a thread.
+	 */
+	seedLastCreatedAt(timestamp: number): void {
+		if (Number.isFinite(timestamp) && timestamp > this.lastCreatedAt) {
+			this.lastCreatedAt = timestamp;
+		}
+	}
+
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
 			const dbMsg = this.addMessage(m, 'history');
@@ -133,7 +146,11 @@ export class AgentMessageList {
 	 * Returns the mutated host message, or `undefined` if the toolCallId is
 	 * not found (internal invariant violation — caller should log/throw).
 	 */
-	setToolCallResult(toolCallId: string, output: JSONValue): AgentDbMessage | undefined {
+	setToolCallResult(
+		toolCallId: string,
+		output: JSONValue,
+		options?: { canceled?: boolean },
+	): AgentDbMessage | undefined {
 		const host = this.findToolCallHost(toolCallId);
 		if (!host) return undefined;
 
@@ -143,6 +160,11 @@ export class AgentMessageList {
 		const mutableBlock = block;
 		mutableBlock.state = 'resolved';
 		(mutableBlock as Extract<ContentToolCall, { state: 'resolved' }>).output = output;
+		if (options?.canceled) {
+			(mutableBlock as Extract<ContentToolCall, { state: 'resolved' }>).canceled = true;
+		} else if ('canceled' in mutableBlock) {
+			delete (mutableBlock as { canceled?: boolean }).canceled;
+		}
 		if ('error' in mutableBlock) {
 			delete (mutableBlock as { error: unknown }).error;
 		}

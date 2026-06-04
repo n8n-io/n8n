@@ -146,6 +146,7 @@ describe('CredentialSharing.ee', () => {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
 			});
 	});
 

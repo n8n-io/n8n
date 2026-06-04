@@ -1,15 +1,37 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { z } from 'zod';
+import type { z } from 'zod';
 
+import { getModelCost } from './catalog';
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval } from './tool';
-import { AgentRuntime } from '../runtime/agent-runtime';
+import { wrapToolForApproval } from './tool';
+import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
+	createDelegateSubAgentTool,
+	failedDelegatedChildSuspendOutput,
+	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
+	renderDelegateSubAgentPrompt,
+	type DelegateSubAgentRequest,
+	type DelegateSubAgentToolOutput,
+} from '../runtime/delegate-sub-agent-tool';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
-import { createAgentToolResult } from '../runtime/tool-adapter';
+import { RunStateManager } from '../runtime/run-state';
+import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
+import {
+	appendSkillCatalogToInstructions,
+	createRuntimeSkillSource,
+	createRuntimeSkillTools,
+	RUNTIME_SKILL_TOOL_NAMES,
+} from '../skills';
+import type { RuntimeSkill, RuntimeSkillSource } from '../skills';
 import type {
 	AgentEventHandler,
 	AgentMiddleware,
@@ -27,27 +49,40 @@ import type {
 	ModelConfig,
 	Provider,
 	RunOptions,
-	SerializableAgentState,
 	StreamResult,
-	SubAgentUsage,
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
 import type { AgentEvent } from '../types/runtime/event';
+import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
-const DEFAULT_LAST_MESSAGES = 10;
-
 type ToolParameter = BuiltTool | { build(): BuiltTool };
+
+const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	RECALL_MEMORY_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
+]);
+
+const SDK_RESERVED_BUILTIN_TOOL_NAMES = new Set([
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
+]);
 
 interface DeferredToolOptions {
 	search?: {
 		topK?: number;
 	};
 }
+
+type ActiveRuntime = {
+	runtime: AgentRuntime;
+	bus: AgentEventBus;
+};
 
 /**
  * Lightweight read-only view of an agent's configured state.
@@ -107,6 +142,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private providerTools: BuiltProviderTool[] = [];
 
+	private skillSource?: RuntimeSkillSource;
+
+	private hasRuntimeSkillTool = false;
+
 	private memoryConfig?: MemoryConfig;
 
 	// TODO: Guardrails are accepted by the builder API for forward
@@ -123,8 +162,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private thinkingConfig?: ThinkingConfig;
 
-	private runtime?: AgentRuntime;
-
 	private concurrencyValue?: number;
 
 	private telemetryBuilder?: Telemetry;
@@ -137,9 +174,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private mcpClients: McpClient[] = [];
 
-	private buildPromise: Promise<AgentRuntime> | undefined;
+	private defaultExecutionOptions?: ExecutionOptions;
 
-	private eventBus = new AgentEventBus();
+	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
+
+	private agentHandlers = new Map<AgentEvent, Set<AgentEventHandler>>();
+
+	private activeRuntimes = new Set<ActiveRuntime>();
 
 	private workspaceInstance?: Workspace;
 
@@ -185,14 +226,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/** Add a tool to the agent's capabilities. Accepts a built tool or a Tool builder (which will be built automatically). Can also accept an array of tools. */
 	tool(t: ToolParameter | ToolParameter[]): this {
-		if (Array.isArray(t)) {
-			for (const tool of t) {
-				this.tool(tool);
-			}
-			return this;
+		const tools = Array.isArray(t) ? t : [t];
+		const builtTools = tools.map((tool) => ('build' in tool ? tool.build() : tool));
+		for (const built of builtTools) {
+			this.assertToolRegistrationAllowed(built);
 		}
-		const built = 'build' in t ? t.build() : t;
-		this.tools.push(built);
+		this.tools.push(...builtTools);
 		return this;
 	}
 
@@ -201,11 +240,36 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		const tools = Array.isArray(t) ? t : [t];
 		for (const tool of tools) {
 			const built = 'build' in tool ? tool.build() : tool;
+			this.assertReservedSdkBuiltInToolName(built);
 			this.deferredTools.push(built);
 		}
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
 		}
+		return this;
+	}
+
+	/**
+	 * Add runtime-loadable skills to the agent. The model sees only a compact
+	 * name/description catalog in the system prompt, then calls `load_skill`
+	 * to retrieve the full instructions for a relevant skill.
+	 */
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this {
+		const source = Array.isArray(sourceOrSkills)
+			? createRuntimeSkillSource(sourceOrSkills)
+			: sourceOrSkills;
+
+		this.removeRuntimeSkillTools();
+		this.skillSource = source;
+		if (source.registry.skills.length === 0) return this;
+
+		const reservedTool = this.tools.find((tool) => RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		if (reservedTool) {
+			throw new Error(`Tool name "${reservedTool.name}" is reserved for runtime skills`);
+		}
+
+		this.tools.push(...createRuntimeSkillTools(source));
+		this.hasRuntimeSkillTool = true;
 		return this;
 	}
 
@@ -225,7 +289,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		if (m instanceof Memory) {
 			// Memory builder — call build()
 			this.memoryConfig = m.build();
-		} else if ('memory' in m && 'lastMessages' in m) {
+		} else if ('memory' in m) {
 			// MemoryConfig — validate the same invariants as the builder path
 			this.memoryConfig = normalizeMemoryConfig(m);
 		} else if (
@@ -235,11 +299,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			typeof m.saveMessages === 'function'
 		) {
 			// Bare BuiltMemory — wrap in minimal config
-			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+			this.memoryConfig = { memory: m };
 		} else {
 			throw new Error(
-				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
-					'or new Memory().storage(myBuiltMemoryBackend).lastMessages(N) for a persistent backend. ' +
+				'Invalid memory configuration. Use: new Memory() for in-process memory, ' +
+					'or new Memory().storage(myBuiltMemoryBackend) for a persistent backend. ' +
 					'See the Memory class documentation for all options.',
 			);
 		}
@@ -346,7 +410,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.telemetryBuilder = undefined;
 			this.telemetryConfig = t;
-			this.runtime?.setTelemetry(t);
+			this.buildPromise = undefined;
 		}
 		return this;
 	}
@@ -413,6 +477,29 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/**
+	 * Set default execution options for all `generate()` and `stream()` calls.
+	 * Options passed directly to those methods take precedence over these defaults.
+	 *
+	 * @example
+	 * ```typescript
+	 * const agent = new Agent('assistant')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .instructions('You are a helpful assistant.')
+	 *   .configuration({ maxIterations: 5 });
+	 *
+	 * // Uses maxIterations: 5 from defaults
+	 * await agent.generate('Hello');
+	 *
+	 * // Overrides maxIterations to 10 for this call only
+	 * await agent.generate('Hello', { maxIterations: 10 });
+	 * ```
+	 */
+	configuration(options: ExecutionOptions): this {
+		this.defaultExecutionOptions = options;
+		return this;
+	}
+
 	/** Get the evals attached to this agent. */
 	get evaluations(): BuiltEval[] {
 		return [...this.agentEvals];
@@ -423,7 +510,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Handlers are called synchronously during the agentic loop.
 	 */
 	on(event: AgentEvent, handler: AgentEventHandler): void {
-		this.eventBus.on(event, handler);
+		let handlers = this.agentHandlers.get(event);
+		if (!handlers) {
+			handlers = new Set();
+			this.agentHandlers.set(event, handlers);
+		}
+		handlers.add(handler);
+		for (const { bus } of this.activeRuntimes) {
+			bus.on(event, handler);
+		}
 	}
 
 	/**
@@ -432,68 +527,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * cleanly between turns instead of accumulating on a long-lived agent.
 	 */
 	off(event: AgentEvent, handler: AgentEventHandler): void {
-		this.eventBus.off(event, handler);
-	}
-
-	/**
-	 * Wrap this agent as a tool for use in multi-agent composition.
-	 * The tool sends a text prompt to this agent and returns the text of the response.
-	 *
-	 * @example
-	 * ```typescript
-	 * const coordinatorAgent = new Agent('coordinator')
-	 *   .model('anthropic/claude-sonnet-4-5')
-	 *   .instructions('Route tasks to specialist agents.')
-	 *   .tool(writerAgent.asTool('Write content given a topic'));
-	 * ```
-	 */
-	asTool(description: string): BuiltTool {
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const agent = this;
-
-		const tool = new Tool(this.name)
-			.description(description)
-			.input(
-				z.object({
-					input: z.string().describe('The input to send to the agent'),
-				}),
-			)
-			.output(
-				z.object({
-					result: z.string().describe('The result of the agent'),
-				}),
-			)
-			.handler(async (rawInput, ctx) => {
-				const { input } = rawInput as { input: string };
-				const result = await agent.generate(input, {
-					telemetry: ctx.parentTelemetry,
-				} as RunOptions & ExecutionOptions);
-
-				const text = result.messages
-					.filter((m) => 'role' in m && m.role === 'assistant')
-					.flatMap((m) => ('content' in m ? m.content : []))
-					.filter((c) => c.type === 'text')
-					.map((c) => ('text' in c ? c.text : ''))
-					.join('');
-
-				// Collect sub-agent usage: this agent's own + any nested sub-agents
-				const subAgentUsage: SubAgentUsage[] = [];
-				if (result.usage) {
-					subAgentUsage.push({ agent: agent.name, model: result.model, usage: result.usage });
-				}
-				if (result.subAgentUsage) {
-					subAgentUsage.push(...result.subAgentUsage);
-				}
-
-				// Return branded result — the runtime unwraps it to extract sub-agent usage.
-				// createAgentToolResult returns `never`, same pattern as ctx.suspend().
-				if (subAgentUsage.length > 0) {
-					return createAgentToolResult({ result: text }, subAgentUsage);
-				}
-				return { result: text };
-			});
-
-		return tool.build();
+		const handlers = this.agentHandlers.get(event);
+		if (!handlers) return;
+		handlers.delete(handler);
+		if (handlers.size === 0) {
+			this.agentHandlers.delete(event);
+		}
+		for (const { bus } of this.activeRuntimes) {
+			bus.off(event, handler);
+		}
 	}
 
 	/**
@@ -537,34 +579,35 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		};
 	}
 
-	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
-	getState(): SerializableAgentState {
-		if (!this.runtime) {
-			return {
-				persistence: undefined,
-				status: 'idle',
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-			};
-		}
-		return this.runtime.getState();
-	}
-
 	/**
 	 * Cancel the currently running agent.
 	 * Synchronous — sets an abort flag; the agentic loop checks it asynchronously.
 	 */
 	abort(): void {
-		this.eventBus.abort();
+		for (const { bus } of this.activeRuntimes) {
+			bus.abort();
+		}
 	}
 
 	/**
-	 * Wait for any in-flight background tasks (title generation, future
-	 * observer cycles) to settle. Call before letting the agent go out of
-	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 * Close the agent and release all held resources.
+	 *
+	 * - Waits for any in-flight background tasks (title generation, observer
+	 *   cycles) to settle via the runtime's `dispose()`.
+	 * - Disconnects every MCP client attached via `.mcp()`. Errors from
+	 *   individual client disconnects are swallowed so a single misbehaving
+	 *   server does not prevent the others from closing.
+	 *
+	 * Safe to call multiple times.
 	 */
 	async close(): Promise<void> {
-		if (this.runtime) await this.runtime.dispose();
+		const tasks: Array<Promise<unknown>> = [];
+		for (const active of this.activeRuntimes) {
+			active.bus.abort();
+			tasks.push(this.cleanupRuntime(active));
+		}
+		tasks.push(...this.mcpClients.map(async (c) => await c.close()));
+		await Promise.allSettled(tasks);
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -572,8 +615,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const runtime = await this.ensureBuilt();
-		return await runtime.generate(this.toMessages(input), options);
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config);
+		const mergedOptions = this.mergeWithDefaults(options);
+		try {
+			return await active.runtime.generate(this.toMessages(input), mergedOptions);
+		} finally {
+			await this.cleanupRuntime(active);
+		}
 	}
 
 	/** Stream a response. Lazy-builds on first call. */
@@ -581,8 +630,16 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const runtime = await this.ensureBuilt();
-		return await runtime.stream(this.toMessages(input), options);
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config);
+		const mergedOptions = this.mergeWithDefaults(options);
+		try {
+			const result = await active.runtime.stream(this.toMessages(input), mergedOptions);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
 	}
 
 	/** Resume a suspended tool call with data. Lazy-builds on first call. */
@@ -601,11 +658,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		const runtime = await this.ensureBuilt();
+		const config = await this.ensureBuilt();
 		if (method === 'generate') {
-			return await runtime.resume('generate', data, options);
+			const active = this.createRuntime(config, options.runId);
+			try {
+				return await active.runtime.resume('generate', data, options);
+			} finally {
+				await this.cleanupRuntime(active);
+			}
 		}
-		return await runtime.resume('stream', data, options);
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.resume('stream', data, options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
 	}
 
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
@@ -632,12 +701,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return await this.resume('stream', { approved: false }, options);
 	}
 
+	private mergeWithDefaults(
+		options?: RunOptions & ExecutionOptions,
+	): (RunOptions & ExecutionOptions) | undefined {
+		if (!this.defaultExecutionOptions) return options;
+		return { ...this.defaultExecutionOptions, ...options };
+	}
+
 	/**
 	 * @internal Lazy-build the agent on first use. Stores the promise so
 	 * concurrent callers share one build operation. On error the promise is
 	 * cleared so the caller can retry.
 	 */
-	private async ensureBuilt(): Promise<AgentRuntime> {
+	private async ensureBuilt(): Promise<AgentRuntimeConfig> {
 		if (!this.buildPromise) {
 			const p = this.build();
 			this.buildPromise = p;
@@ -648,13 +724,76 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return await this.buildPromise;
 	}
 
+	private createRuntime(config: AgentRuntimeConfig, runId?: string): ActiveRuntime {
+		const bus = new AgentEventBus();
+		for (const [event, handlers] of this.agentHandlers) {
+			for (const handler of handlers) {
+				bus.on(event, handler);
+			}
+		}
+		const runtime = new AgentRuntime({ ...config, eventBus: bus, runId });
+		const active = { runtime, bus };
+		this.activeRuntimes.add(active);
+		return active;
+	}
+
+	private trackStreamRuntime(
+		stream: ReadableStream<StreamChunk>,
+		active: ActiveRuntime,
+	): ReadableStream<StreamChunk> {
+		const reader = stream.getReader();
+		let cleanupPromise: Promise<void> | undefined;
+		const cleanup = async () => {
+			const doCleanup = async () => {
+				try {
+					reader.releaseLock();
+				} catch {
+					// The lock may already be released after cancellation/error cleanup.
+				}
+				await this.cleanupRuntime(active);
+			};
+			cleanupPromise ??= doCleanup();
+			return await cleanupPromise;
+		};
+
+		return new ReadableStream<StreamChunk>({
+			async pull(controller) {
+				try {
+					const { done, value } = await reader.read();
+					if (done) {
+						controller.close();
+						await cleanup();
+						return;
+					}
+					controller.enqueue(value);
+				} catch (error) {
+					controller.error(error);
+					await cleanup();
+				}
+			},
+			async cancel(reason) {
+				try {
+					await reader.cancel(reason);
+				} finally {
+					await cleanup();
+				}
+			},
+		});
+	}
+
+	private async cleanupRuntime(active: ActiveRuntime): Promise<void> {
+		if (!this.activeRuntimes.delete(active)) return;
+		active.bus.dispose();
+		await active.runtime.dispose();
+	}
+
 	private toMessages(input: string | AgentMessage[]): AgentMessage[] {
 		if (Array.isArray(input)) return input;
 		return [{ role: 'user', content: [{ type: 'text', text: input }] }];
 	}
 
 	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
-	protected async build(): Promise<AgentRuntime> {
+	protected async build(): Promise<AgentRuntimeConfig> {
 		if (!this.modelConfig) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
@@ -674,7 +813,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		let finalDeferredTools = configuredDeferredTools;
 		if (this.requireToolApprovalValue) {
 			finalStaticTools = finalTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
+				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
+					? t
+					: wrapToolForApproval(t, { requireApproval: true }),
 			);
 			finalDeferredTools = configuredDeferredTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
@@ -710,8 +851,19 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 
 		// Detect collisions between direct, deferred, and MCP tools.
+		const staticCollisions = findDuplicateToolNames(finalStaticTools);
+		if (staticCollisions.length > 0) {
+			throw new Error(
+				`Static tool name collision — the following tool names resolve to duplicates: ${staticCollisions.join(', ')}`,
+			);
+		}
+
 		const staticNames = new Set(finalStaticTools.map((t) => t.name));
-		const reservedDeferredToolNames = new Set([SEARCH_TOOLS_TOOL_NAME, LOAD_TOOL_TOOL_NAME]);
+		const reservedDeferredToolNames = new Set([
+			SEARCH_TOOLS_TOOL_NAME,
+			LOAD_TOOL_TOOL_NAME,
+			...RUNTIME_SKILL_TOOL_NAMES,
+		]);
 		const deferredNames = new Set<string>();
 		const deferredCollisions: string[] = [];
 		for (const tool of finalDeferredTools) {
@@ -739,7 +891,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			);
 		}
 
-		const allTools = [...finalStaticTools, ...mcpTools];
+		let allTools = [...finalStaticTools, ...mcpTools];
 
 		// Validate checkpoint again after discovering actual MCP tools
 		// (catches the case where MCP tools have suspendSchema after listing).
@@ -759,40 +911,220 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			: undefined;
 
 		let instructions = this.instructionsText;
+		if (this.skillSource) {
+			await this.skillSource.prepare?.();
+			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
 			if (wsInstructions) {
 				instructions = `${instructions}\n\n${wsInstructions}`;
 			}
 		}
+		const telemetry = this.telemetryConfig ?? (await this.telemetryBuilder?.build());
+		const toolSearch =
+			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
+				? { topK: this.deferredToolSearchTopK }
+				: undefined;
 
-		this.runtime = new AgentRuntime({
+		allTools = this.completeInlineDelegateTools(allTools, {
+			deferredTools: finalDeferredTools,
+			modelConfig,
+			providerTools: this.providerTools,
+			...(telemetry !== undefined ? { telemetry } : {}),
+			...(this.concurrencyValue !== undefined
+				? { toolCallConcurrency: this.concurrencyValue }
+				: {}),
+			...(toolSearch !== undefined ? { toolSearch } : {}),
+		});
+
+		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
+		try {
+			const modelId =
+				typeof modelConfig === 'string'
+					? modelConfig
+					: 'id' in modelConfig && typeof modelConfig.id === 'string'
+						? modelConfig.id
+						: undefined;
+			modelCost = modelId ? await getModelCost(modelId) : undefined;
+		} catch {
+			modelCost = undefined;
+		}
+
+		const runState = new RunStateManager(this.checkpointStore);
+
+		return {
 			name: this.name,
 			model: modelConfig,
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
-			toolSearch:
-				finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
-					? { topK: this.deferredToolSearchTopK }
-					: undefined,
+			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
-			lastMessages: memoryConfig?.lastMessages,
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,
-			semanticRecall: memoryConfig?.semanticRecall,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
-			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
-		});
-
-		return this.runtime;
+			modelCost,
+			runState,
+		};
 	}
+
+	private completeInlineDelegateTools(
+		tools: BuiltTool[],
+		options: {
+			deferredTools: BuiltTool[];
+			modelConfig: ModelConfig;
+			providerTools: BuiltProviderTool[];
+			telemetry?: BuiltTelemetry;
+			toolCallConcurrency?: number;
+			toolSearch?: { topK?: number };
+		},
+	): BuiltTool[] {
+		return tools.map((tool) => {
+			const delegateOptions = getInlineDelegateSubAgentToolOptions(tool);
+			if (!delegateOptions) return tool;
+
+			const runInlineSubAgent = this.createInlineSubAgentRunner({
+				...options,
+				tools,
+				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
+			});
+			const hostRunner = delegateOptions.runSubAgent;
+			const completedTool = createDelegateSubAgentTool({
+				...delegateOptions,
+				runSubAgent: async (request, _helpersFromHandler) => {
+					const helpers = { runInlineSubAgent };
+					if (hostRunner) {
+						return await hostRunner(request, helpers);
+					}
+					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+						return await runInlineSubAgent(request);
+					}
+					return {
+						status: 'failed',
+						taskPath: request.taskPath,
+						answer: '',
+						error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
+					};
+				},
+			});
+
+			if (tool.withDefaultApproval) {
+				return wrapToolForApproval(completedTool, { requireApproval: true });
+			}
+			return completedTool;
+		});
+	}
+
+	private createInlineSubAgentRunner(options: {
+		deferredTools: BuiltTool[];
+		modelConfig: ModelConfig;
+		providerTools: BuiltProviderTool[];
+		telemetry?: BuiltTelemetry;
+		toolCallConcurrency?: number;
+		toolSearch?: { topK?: number };
+		tools: BuiltTool[];
+		inlineSubAgentBlockedTools?: string[];
+	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
+		return async (request) => {
+			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
+			const deferredTools = filterInlineSubAgentTools(
+				options.deferredTools,
+				options.inlineSubAgentBlockedTools,
+			);
+			const providerTools = filterInlineSubAgentTools(
+				options.providerTools,
+				options.inlineSubAgentBlockedTools,
+			);
+			const childRuntime = new AgentRuntime({
+				name: `${this.name}:${request.taskName}`,
+				model: options.modelConfig,
+				instructions:
+					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
+				tools: tools.length > 0 ? tools : undefined,
+				deferredTools: deferredTools.length > 0 ? deferredTools : undefined,
+				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
+				providerTools: providerTools.length > 0 ? providerTools : undefined,
+				instructionProviderOptions: this.instructionProviderOpts,
+				checkpointStorage: this.checkpointStore,
+				thinking: this.thinkingConfig,
+				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				...(options.toolCallConcurrency !== undefined
+					? { toolCallConcurrency: options.toolCallConcurrency }
+					: {}),
+			});
+
+			try {
+				const result = await childRuntime.generate(renderDelegateSubAgentPrompt(request), {
+					...(request.parentAbortSignal !== undefined
+						? { abortSignal: request.parentAbortSignal }
+						: {}),
+					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				});
+				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
+					return failedDelegatedChildSuspendOutput(request.taskPath);
+				}
+				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+			} finally {
+				await childRuntime.dispose();
+			}
+		};
+	}
+
+	private assertToolRegistrationAllowed(tool: BuiltTool): void {
+		this.assertToolNameAvailable(tool.name);
+		this.assertReservedSdkBuiltInToolName(tool);
+	}
+
+	private assertToolNameAvailable(toolName: string): void {
+		if (!this.hasRuntimeSkillTool || !RUNTIME_SKILL_TOOL_NAMES.has(toolName)) return;
+
+		throw new Error(`Tool name "${toolName}" is reserved for runtime skills`);
+	}
+
+	private assertReservedSdkBuiltInToolName(tool: BuiltTool): void {
+		if (!SDK_RESERVED_BUILTIN_TOOL_NAMES.has(tool.name)) return;
+		if (isSdkOwnedBuiltInTool(tool)) return;
+
+		throw new Error(`Tool name "${tool.name}" is reserved for SDK built-in tools`);
+	}
+
+	private removeRuntimeSkillTools(): void {
+		if (!this.hasRuntimeSkillTool) return;
+
+		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
+		this.hasRuntimeSkillTool = false;
+	}
+}
+
+export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {
+	return new Set([...SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES, ...(hostBlockedTools ?? [])]);
+}
+
+export function filterInlineSubAgentTools<T extends { readonly name: string }>(
+	tools: T[],
+	hostBlockedTools?: string[],
+): T[] {
+	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
+	return tools.filter((tool) => !blocked.has(tool.name));
+}
+
+function findDuplicateToolNames(tools: BuiltTool[]): string[] {
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
+	for (const tool of tools) {
+		if (seen.has(tool.name)) {
+			duplicates.add(tool.name);
+		}
+		seen.add(tool.name);
+	}
+	return [...duplicates].sort();
 }

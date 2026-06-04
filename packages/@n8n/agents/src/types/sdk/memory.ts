@@ -1,6 +1,6 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { ModelConfig, SerializableAgentState } from './agent';
+import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -61,38 +61,6 @@ export interface BuiltMemory {
 		messages: AgentDbMessage[];
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
-	// --- Semantic recall (optional) ---
-	search?(
-		query: string,
-		opts?: {
-			/** @default 'resource' */
-			scope?: 'thread' | 'resource';
-			threadId?: string;
-			resourceId?: string;
-			topK?: number;
-			messageRange?: { before: number; after: number };
-		},
-	): Promise<AgentDbMessage[]>;
-	// --- Tier 3: Vector operations (optional — runtime handles embeddings) ---
-	saveEmbeddings?(opts: {
-		scope?: 'thread' | 'resource';
-		threadId?: string;
-		resourceId?: string;
-		entries: Array<{
-			id: string;
-			vector: number[];
-			text: string;
-			model: string;
-		}>;
-	}): Promise<void>;
-	queryEmbeddings?(opts: {
-		/** @default 'resource' */
-		scope?: 'thread' | 'resource';
-		threadId?: string;
-		resourceId?: string;
-		vector: number[];
-		topK: number;
-	}): Promise<Array<{ id: string; score: number }>>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
 	episodic?: EpisodicMemoryMethods;
 	// --- Lifecycle (optional) ---
@@ -100,18 +68,6 @@ export interface BuiltMemory {
 	close?(): Promise<void>;
 	/** Return a serializable descriptor of this backend for schema persistence. */
 	describe(): MemoryDescriptor;
-}
-
-// --- Semantic Recall Config ---
-
-export interface SemanticRecallConfig {
-	/** @default 'resource' */
-	scope?: 'thread' | 'resource';
-	topK: number;
-	messageRange?: { before: number; after: number };
-	embedder?: string; // e.g. 'openai/text-embedding-3-small' — required for queryEmbeddings(), optional for search()-based backends
-	/** API key for the embedder provider. Falls back to environment variables if not set. */
-	apiKey?: string;
 }
 
 export type EpisodicMemoryStatus = 'active' | 'superseded' | 'dropped';
@@ -185,6 +141,20 @@ export interface EpisodicMemorySearchOptions {
 	includeStatuses?: EpisodicMemoryStatus[];
 }
 
+export interface EpisodicMemoryTaskLockHandle {
+	resourceId: string;
+	holderId: string;
+	heldUntil: Date;
+}
+
+export interface EpisodicMemoryTaskLockMethods {
+	acquire(
+		resourceId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<EpisodicMemoryTaskLockHandle | null>;
+	release(handle: EpisodicMemoryTaskLockHandle): Promise<void>;
+}
+
 export interface EpisodicMemoryMethods {
 	saveEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
@@ -202,6 +172,7 @@ export interface EpisodicMemoryMethods {
 	): Promise<EpisodicMemoryReflectionResult>;
 	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
 	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
+	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 
 export interface BuiltEpisodicMemoryStore {
@@ -223,6 +194,7 @@ export interface EpisodicMemoryExtractorInput {
 	observations: ObservationLogEntry[];
 	renderedObservations: string;
 	existingEntries: RetrievedEpisodicMemoryEntry[];
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface EpisodicMemoryExtraction {
@@ -249,6 +221,7 @@ export interface EpisodicMemoryReflectorInput {
 	seedEntryIds: string[];
 	entries: RetrievedEpisodicMemoryEntry[];
 	sources: EpisodicMemoryEntrySource[];
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type EpisodicMemoryReflectFn = (
@@ -328,9 +301,7 @@ export interface ObservationalMemoryConfig {
 }
 
 interface MemoryConfigBase {
-	lastMessages: number;
 	observationLog?: ObservationLogMemoryConfig;
-	semanticRecall?: SemanticRecallConfig;
 	episodicMemory?: EpisodicMemoryConfig;
 	titleGeneration?: TitleGenerationConfig;
 }

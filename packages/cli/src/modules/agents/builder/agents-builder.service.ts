@@ -6,6 +6,7 @@ import type {
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
@@ -19,6 +20,7 @@ import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { streamAgentChunks } from '../utils/agent-stream';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
@@ -26,6 +28,7 @@ import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { getBuilderRuntimeSkills } from './skills';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -43,6 +46,7 @@ export class AgentsBuilderService {
 		private readonly builderSettings: AgentsBuilderSettingsService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -54,7 +58,7 @@ export class AgentsBuilderService {
 	 */
 	async getBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		return await this.n8nMemory.getMessages(threadId);
+		return await this.n8nMemory.getImplementation(agentId).getMessages(threadId);
 	}
 
 	/**
@@ -62,8 +66,9 @@ export class AgentsBuilderService {
 	 */
 	async clearBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteMessagesByThread(threadId);
+		await memory.deleteThread(threadId);
 	}
 	// ---------------------------------------------------------------------------
 	// Public — streaming
@@ -174,6 +179,7 @@ export class AgentsBuilderService {
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 		const modelRecommendationsSection = await getModelRecommendationsSection();
+		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
 			configJson,
 			configHash: getAgentConfigHash(currentConfig),
@@ -181,7 +187,9 @@ export class AgentsBuilderService {
 			toolList,
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
+			enabledModules,
 		});
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
@@ -192,14 +200,17 @@ export class AgentsBuilderService {
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
-		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
+		const builderMemory = new Memory()
+			.storage(this.n8nMemory.getImplementation(agentId))
+			.observationalMemory();
 
-		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
+			.skills(runtimeSkills)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.configuration({ maxIterations: 30 });
 
 		const telemetry = await buildBuilderTelemetry({
 			agentId,
@@ -223,15 +234,8 @@ export class AgentsBuilderService {
 	 * plain reader→generator adapter.
 	 */
 	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			yield value;
 		}
 	}
 

@@ -10,6 +10,7 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { authAllowlistedNodes } from './constants';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
@@ -63,12 +64,23 @@ export class WaitingForms extends WaitingWebhooks {
 
 		this.logReceivedWebhook(req.method, executionId);
 
-		sanitizeWebhookRequest(req);
-
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		// Sanitize unless the resume node opts in to receiving auth cookies
+		// (FORM_NODE_TYPE is in `authAllowlistedNodes` for n8nUserAuth support).
+		// Note: this runs AFTER `getExecution` (previously ran unconditionally
+		// before it). `getExecution` must remain a pure DB lookup that does not
+		// consume cookies.
+		const resumeNodeName = execution?.data?.resultData?.lastNodeExecuted;
+		const resumeNodeType = resumeNodeName
+			? execution?.workflowData?.nodes?.find((n) => n.name === resumeNodeName)?.type
+			: undefined;
+		if (!resumeNodeType || !authAllowlistedNodes.has(resumeNodeType)) {
+			sanitizeWebhookRequest(req);
+		}
 
 		// Validate token for forms (backwards compat: skip for old executions without resumeToken)
 		let webhookPath: string | undefined;

@@ -93,6 +93,14 @@ describe('parseFilters', () => {
 		assert.deepEqual(filters.get('non-python'), ['**', '!packages/@n8n/task-runner-python/**']);
 	});
 
+	it('parses YAML-list-style multi-line filter', () => {
+		const input = `db:
+  - packages/@n8n/db/**
+  - packages/cli/**`;
+		const filters = parseFilters(input);
+		assert.deepEqual(filters.get('db'), ['packages/@n8n/db/**', 'packages/cli/**']);
+	});
+
 	it('parses mixed single and multi-line', () => {
 		const input = `non-python:
   **
@@ -159,6 +167,13 @@ describe('evaluateFilter', () => {
 		assert.equal(evaluateFilter(files, patterns), true);
 	});
 
+	it('list-style parsed db filter matches db package changes', () => {
+		const filters = parseFilters(`db:
+  - packages/@n8n/db/**
+  - packages/cli/**`);
+		assert.equal(evaluateFilter(['packages/@n8n/db/src/index.ts'], filters.get('db') ?? []), true);
+	});
+
 	it('non-.github files with workflows filter returns false', () => {
 		const files = ['packages/cli/src/index.ts'];
 		const patterns = ['.github/**'];
@@ -173,6 +188,72 @@ describe('evaluateFilter', () => {
 		const files = ['packages/@n8n/task-runner-python/src/main.py'];
 		const patterns = ['**', '!packages/@n8n/task-runner-python/**', 'packages/@n8n/task-runner-python/**'];
 		assert.equal(evaluateFilter(files, patterns), true);
+	});
+});
+
+// --- runtime filter (E2E-chain scoping) ---
+
+describe('runtime filter', () => {
+	const runtimePatterns = [
+		'**',
+		'!packages/@n8n/task-runner-python/**',
+		'!.github/**',
+		'!**/*.md',
+		'!**/LICENSE',
+		'!**/CHANGELOG.md',
+		'!**/*.test.ts',
+		'!**/*.spec.ts',
+		'!packages/testing/playwright/**',
+		'!packages/frontend/@n8n/storybook/**',
+	];
+
+	it('triggers on a runtime source file', () => {
+		assert.equal(evaluateFilter(['packages/cli/src/foo.ts'], runtimePatterns), true);
+	});
+
+	it('does not trigger on a unit test file', () => {
+		assert.equal(evaluateFilter(['packages/cli/src/foo.test.ts'], runtimePatterns), false);
+	});
+
+	it('does not trigger on a spec file', () => {
+		assert.equal(evaluateFilter(['packages/cli/src/foo.spec.ts'], runtimePatterns), false);
+	});
+
+	it('does not trigger on playwright tests', () => {
+		assert.equal(
+			evaluateFilter(['packages/testing/playwright/tests/x.spec.ts'], runtimePatterns),
+			false,
+		);
+	});
+
+	it('does not trigger on storybook files', () => {
+		assert.equal(
+			evaluateFilter(['packages/frontend/@n8n/storybook/preview.ts'], runtimePatterns),
+			false,
+		);
+	});
+
+	it('does not trigger on docs or LICENSE', () => {
+		assert.equal(evaluateFilter(['README.md'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['LICENSE'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['packages/cli/LICENSE'], runtimePatterns), false);
+		assert.equal(evaluateFilter(['docs/CHANGELOG.md'], runtimePatterns), false);
+	});
+
+	it('does not trigger on .github workflow changes', () => {
+		assert.equal(evaluateFilter(['.github/workflows/x.yml'], runtimePatterns), false);
+	});
+
+	it('does not trigger on task-runner-python changes', () => {
+		assert.equal(
+			evaluateFilter(['packages/@n8n/task-runner-python/src/main.py'], runtimePatterns),
+			false,
+		);
+	});
+
+	it('mixed PR with source and test file triggers (any positive-match file wins)', () => {
+		const files = ['packages/cli/src/foo.ts', 'packages/cli/src/foo.test.ts'];
+		assert.equal(evaluateFilter(files, runtimePatterns), true);
 	});
 });
 

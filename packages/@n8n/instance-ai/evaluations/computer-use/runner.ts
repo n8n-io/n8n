@@ -22,7 +22,7 @@ import type { DaemonInfo } from './daemon';
 import { applyGrader } from './graders';
 import { findFiles } from './graders/fs';
 import { isContained } from './path-utils';
-import type { GraderResult, Scenario, ScenarioResult, ScenarioTrace } from './types';
+import type { GraderResult, Scenario, ExecutionScenarioResult, ScenarioTrace } from './types';
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 
@@ -39,7 +39,7 @@ export interface RunScenarioOptions {
 	keepData?: boolean;
 }
 
-export async function runScenario(options: RunScenarioOptions): Promise<ScenarioResult> {
+export async function runScenario(options: RunScenarioOptions): Promise<ExecutionScenarioResult> {
 	const { client, scenario, daemon, logger } = options;
 	const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 	const sandboxDir = daemon.directory;

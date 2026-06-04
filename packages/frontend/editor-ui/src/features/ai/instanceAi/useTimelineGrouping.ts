@@ -8,14 +8,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from './agentTimeline.utils';
 
 /** Render hints for tool calls that show as special UI — not as generic "tool call" steps. */
-const SPECIAL_RENDER_HINTS = new Set([
-	'tasks',
-	'delegate',
-	'builder',
-	'data-table',
-	'researcher',
-	'eval-setup',
-]);
+const SPECIAL_RENDER_HINTS = new Set(['tasks', 'delegate', 'builder', 'data-table', 'eval-setup']);
 
 /** Returns true if a tool call renders as a generic ToolCallStep (not special UI). */
 function isGenericToolCall(tc: InstanceAiToolCallState): boolean {
@@ -93,6 +86,14 @@ export function useTimelineGrouping(
 			};
 		}
 
+		function appendArtifacts(group: ResponseGroupSegment, artifacts: ArtifactInfo[]) {
+			for (const artifact of artifacts) {
+				if (!group.artifacts.some((existing) => existing.resourceId === artifact.resourceId)) {
+					group.artifacts.push(artifact);
+				}
+			}
+		}
+
 		for (const entry of timeline) {
 			if (entry.type === 'text') {
 				// Text from the same API response as the current group stays inside
@@ -116,6 +117,18 @@ export function useTimelineGrouping(
 				} else if (tc?.confirmation?.inputType === 'questions' && !tc.isLoading) {
 					currentGroup.questionCount++;
 				}
+				if (tc) {
+					appendArtifacts(
+						currentGroup,
+						extractArtifacts({
+							...agentNode.value,
+							targetResource: undefined,
+							toolCalls: [tc],
+							children: [],
+							timeline: [],
+						}),
+					);
+				}
 			} else if (entry.type === 'child') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
 					currentGroup = newGroup(entry.responseId);
@@ -125,7 +138,7 @@ export function useTimelineGrouping(
 				currentGroup.childCount++;
 				const child = agentNode.value.children.find((c) => c.agentId === entry.agentId);
 				if (child) {
-					currentGroup.artifacts.push(...extractArtifacts(child));
+					appendArtifacts(currentGroup, extractArtifacts(child));
 				}
 			}
 		}
@@ -146,7 +159,7 @@ export function useTimelineGrouping(
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
-			return seg.toolCallCount > 0 || seg.childCount > 0;
+			return seg.toolCallCount > 0 || seg.childCount > 0 || seg.artifacts.length > 0;
 		});
 
 		// If there are no collapsible response groups, skip grouping entirely.

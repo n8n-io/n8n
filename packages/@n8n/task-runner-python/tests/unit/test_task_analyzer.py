@@ -3,7 +3,11 @@ import pytest
 from src.errors.security_violation_error import SecurityViolationError
 from src.task_analyzer import TaskAnalyzer
 from src.config.security_config import SecurityConfig
-from src.constants import BLOCKED_ATTRIBUTES, BLOCKED_NAMES
+from src.constants import (
+    BLOCKED_ATTRIBUTES,
+    BLOCKED_NAMES,
+    EXECUTOR_SAFE_FORMAT_KEY,
+)
 
 
 class TestTaskAnalyzer:
@@ -254,6 +258,171 @@ class TestFormatStringAttacks(TestTaskAnalyzer):
                 analyzer.validate(code)
             assert "disallowed" in exc_info.value.description.lower()
 
+    def test_nested_format_spec_blocked_attributes_detected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        nested_attempts = [
+            '"{x:{y.__class__}}".format(x="a", y=obj)',
+            '"{x:{y.__globals__}}".format(x="a", y=fn)',
+            '"{0:{1.__class__}}".format("a", obj)',
+            '"{x!r:>{y.__bases__}}".format(x="a", y=obj)',
+            '"{a:{b}{c.__class__}}".format(a="x", b="y", c=obj)',
+            '"{a:{b:{c.__class__}}}".format(a="x", b="y", c=obj)',
+        ]
+
+        for code in nested_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+    def test_nested_format_spec_without_blocked_attributes_allowed(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        safe_nested = [
+            '"{0:>{1}}".format("a", 10)',
+            '"{x:{width}}".format(x="a", width=5)',
+            '"{value:{spec}}".format(value=42, spec=".2f")',
+        ]
+
+        for code in safe_nested:
+            analyzer.validate(code)
+
+
+class TestFormatMethodAccess(TestTaskAnalyzer):
+    def test_format_call_form_allowed(self, analyzer: TaskAnalyzer) -> None:
+        allowed = [
+            '"Hello {}".format(name)',
+            '"{key}".format(key="value")',
+            'template = "Hello {}"; template.format(name)',
+            '"{}".format_map({"a": 1})',
+            'f"{x}".format()',
+        ]
+        for code in allowed:
+            analyzer.validate(code)
+
+    def test_bare_format_extraction_blocked(self, analyzer: TaskAnalyzer) -> None:
+        bare_extractions = [
+            'f = "hello".format',
+            "getter = template.format_map",
+            "fn = obj.format",
+            "return obj.format",
+        ]
+        for code in bare_extractions:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            description = exc_info.value.description.lower()
+            assert "format" in description
+            assert "bound method" in description
+
+    def test_format_method_in_call_chain_allowed(self, analyzer: TaskAnalyzer) -> None:
+        chained = [
+            '"a".format("b").upper()',
+            '"{}".format("x").lower()',
+        ]
+        for code in chained:
+            analyzer.validate(code)
+
+
+class TestImportAliasValidation(TestTaskAnalyzer):
+    def test_import_alias_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"import json as {name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_from_import_alias_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"from json import dumps as {name}"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_safe_import_aliases_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe = [
+            "import json as j",
+            "from json import dumps as d",
+            "from collections import Counter as C",
+        ]
+        for code in safe:
+            analyzer.validate(code)
+
+
+class TestExceptHandlerNameValidation(TestTaskAnalyzer):
+    def test_except_handler_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"""
+try:
+    pass
+except Exception as {name}:
+    pass
+"""
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_safe_except_handler_names_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe = [
+            "try:\n    pass\nexcept Exception as err:\n    pass",
+            "try:\n    pass\nexcept (ValueError, TypeError) as e:\n    pass",
+        ]
+        for code in safe:
+            analyzer.validate(code)
+
+
+class TestRuntimeGuardName(TestTaskAnalyzer):
+    """The runtime format guard is injected into user globals under a reserved
+    name. User code must not be able to read, assign, or shadow it."""
+
+    def test_runtime_guard_name_is_blocked(self) -> None:
+        assert EXECUTOR_SAFE_FORMAT_KEY in BLOCKED_NAMES
+
+    def test_reading_runtime_guard_name_blocked(self, analyzer: TaskAnalyzer) -> None:
+        code = f"x = {EXECUTOR_SAFE_FORMAT_KEY}"
+        with pytest.raises(SecurityViolationError) as exc_info:
+            analyzer.validate(code)
+        assert EXECUTOR_SAFE_FORMAT_KEY in exc_info.value.description
+
+    def test_assigning_runtime_guard_name_blocked(self, analyzer: TaskAnalyzer) -> None:
+        code = f"{EXECUTOR_SAFE_FORMAT_KEY} = lambda *a, **k: None"
+        with pytest.raises(SecurityViolationError) as exc_info:
+            analyzer.validate(code)
+        assert EXECUTOR_SAFE_FORMAT_KEY in exc_info.value.description
+
+    def test_import_alias_to_runtime_guard_name_blocked(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        code = f"import json as {EXECUTOR_SAFE_FORMAT_KEY}"
+        with pytest.raises(SecurityViolationError) as exc_info:
+            analyzer.validate(code)
+        assert EXECUTOR_SAFE_FORMAT_KEY in exc_info.value.description
+
+    def test_def_runtime_guard_name_blocked(self, analyzer: TaskAnalyzer) -> None:
+        code = f"def {EXECUTOR_SAFE_FORMAT_KEY}(): pass"
+        with pytest.raises(SecurityViolationError) as exc_info:
+            analyzer.validate(code)
+        assert EXECUTOR_SAFE_FORMAT_KEY in exc_info.value.description
+
+
+class TestDynamicFormatTemplateBlocked(TestTaskAnalyzer):
+    def test_method_extraction_via_dynamic_template_blocked(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        code = """
+d = chr(95) * 2
+template = "{0." + d + "globals" + d + "}"
+caller = template.format
+"""
+        with pytest.raises(SecurityViolationError) as exc_info:
+            analyzer.validate(code)
+        assert "bound method" in exc_info.value.description.lower()
+
 
 class TestMatchPatternValidation(TestTaskAnalyzer):
     def test_match_pattern_with_blocked_attributes_blocked(
@@ -400,6 +569,110 @@ def __builtins__(): pass
         ]
         for code in safe:
             analyzer.validate(code)
+
+
+class TestFunctionParameterValidation(TestTaskAnalyzer):
+    def test_function_positional_param_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"def f({name}): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_function_positional_only_param_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"def f({name}, /): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_function_keyword_only_param_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"def f(*, {name}): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_function_vararg_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"def f(*{name}): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_function_kwarg_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"def f(**{name}): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_function_param_with_default_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"def f({name}=None): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_async_function_param_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"async def f({name}): pass"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_lambda_param_using_blocked_name_rejected(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        for name in BLOCKED_NAMES:
+            code = f"f = lambda {name}: 0"
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert name in exc_info.value.description
+
+    def test_safe_function_params_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe = [
+            "def f(x): pass",
+            "def f(x, y, z): pass",
+            "def f(x, /, y, *, z): pass",
+            "def f(*args, **kwargs): pass",
+            "def f(x=1, y=2): pass",
+            "async def f(x): pass",
+            "g = lambda x, y: x + y",
+        ]
+        for code in safe:
+            analyzer.validate(code)
+
+    def test_runtime_guard_name_as_param_rejected(self, analyzer: TaskAnalyzer) -> None:
+        """A parameter named like the injected runtime guard would otherwise
+        cause rewritten `.format()` calls inside that scope to resolve to the
+        parameter instead of the guard."""
+
+        shapes = [
+            f"def f({EXECUTOR_SAFE_FORMAT_KEY}): return 1",
+            f"def f(*{EXECUTOR_SAFE_FORMAT_KEY}): return 1",
+            f"def f(**{EXECUTOR_SAFE_FORMAT_KEY}): return 1",
+            f"async def f({EXECUTOR_SAFE_FORMAT_KEY}): return 1",
+            f"g = lambda {EXECUTOR_SAFE_FORMAT_KEY}: 0",
+        ]
+        for code in shapes:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert EXECUTOR_SAFE_FORMAT_KEY in exc_info.value.description
 
 
 class TestClassDefNameValidation(TestTaskAnalyzer):

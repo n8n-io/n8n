@@ -1,4 +1,5 @@
-import type { AttributeValue } from '@n8n/agents';
+import type { AttributeValue, RuntimeSkillRegistry } from '@n8n/agents';
+import { scrubSecretsInText } from '@n8n/utils';
 import { createHash } from 'node:crypto';
 
 import {
@@ -9,7 +10,6 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
-import { scrubSecretsInText } from '../utils/scrub-secrets';
 import { isRecord } from '../utils/stream-helpers';
 
 const MAX_TRACE_DEPTH = 4;
@@ -45,6 +45,7 @@ export interface AgentTraceInputOptions {
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
 	runtimeTools?: InstanceAiToolRegistry;
+	runtimeSkills?: RuntimeSkillRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -959,11 +960,7 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
-	if (
-		name.includes('workflow') ||
-		name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW ||
-		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW
-	) {
+	if (name.includes('workflow') || name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW) {
 		return 'workflow';
 	}
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
@@ -1101,6 +1098,29 @@ function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
 	};
 }
 
+function summarizeRuntimeSkillRegistry(
+	registry: RuntimeSkillRegistry | undefined,
+): Record<string, unknown> {
+	if (!registry || registry.skills.length === 0) {
+		return {};
+	}
+
+	const categories = Array.from(
+		new Set(
+			registry.skills
+				.map((skill) => skill.category)
+				.filter((category): category is string => typeof category === 'string'),
+		),
+	).sort();
+
+	return {
+		runtime_skill_count: registry.skills.length,
+		runtime_skill_names: registry.skills.map((skill) => skill.name),
+		runtime_skill_registry_hash: registry.skillsHash,
+		...(categories.length > 0 ? { runtime_skill_categories: categories } : {}),
+	};
+}
+
 export function sanitizeTraceValue(value: unknown, depth = 0): unknown {
 	if (value === null || value === undefined) {
 		return value;
@@ -1223,5 +1243,6 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
 		...summarizeToolSet('runtime', options.runtimeTools),
+		...summarizeRuntimeSkillRegistry(options.runtimeSkills),
 	});
 }

@@ -36,12 +36,12 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
 	StreamResult,
-	SubAgentUsage,
 	BuiltAgent,
 	AgentRunState,
 	AgentResumeData,
@@ -53,6 +53,7 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolExecutionContext,
 	InterruptibleToolContext,
 	BuiltTool,
 	BuiltProviderTool,
@@ -83,6 +84,8 @@ export type {
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
 	NewEpisodicMemoryCursor,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
@@ -90,7 +93,6 @@ export type {
 	RetrievedEpisodicMemoryEntry,
 	ObservationCapableMemory,
 	MemoryDescriptor,
-	SemanticRecallConfig,
 	MemoryConfig,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,
@@ -98,10 +100,7 @@ export type {
 	TitleGenerationConfig,
 } from './sdk/memory';
 
-export type {
-	ObservationCursor,
-	ScopeKind,
-} from './sdk/observation';
+export type { ObservationCursor } from './sdk/observation';
 
 export type {
 	BuiltObservationLogStore,
@@ -118,15 +117,12 @@ export type {
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
-	ObservationLogScopeKind,
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 	TokenCounter,
 } from './sdk/observation-log';
 export {
-	createObservationLogThreadScopeId,
-	createObservationLogThreadScopePrefix,
 	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,

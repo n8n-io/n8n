@@ -42,6 +42,7 @@ globalConfig.endpoints.metrics = {
 	activeWorkflowCountInterval: 60,
 	includeWorkflowStatistics: false,
 	workflowStatisticsInterval: 300,
+	includeExecutionDataMetrics: false,
 };
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
@@ -488,5 +489,24 @@ describe('PrometheusMetricsService', () => {
 		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_users'));
 		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_workflows'));
 		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_credentials'));
+	});
+
+	it('should return execution data metrics if enabled', async () => {
+		prometheusService.enableMetric('executionData');
+		await prometheusService.init(server.app);
+
+		const response = await agent.get('/metrics');
+
+		expect(response.status).toEqual(200);
+
+		const lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_execution_data_reads_total{mode="db",result="success"} 0');
+		expect(lines).toContain('n8n_test_execution_data_writes_total{mode="fs",result="failure"} 0');
+		expect(lines).toContain('n8n_test_execution_data_unreadable_bundles_total{mode="db"} 0');
+
+		expect(
+			lines.some((l) => /^n8n_test_execution_data_storage_mode\{mode="(db|fs)"\} 1$/.test(l)),
+		).toBe(true);
 	});
 });

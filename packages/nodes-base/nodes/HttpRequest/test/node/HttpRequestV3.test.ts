@@ -809,4 +809,218 @@ describe('HttpRequestV3', () => {
 			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('Parallel item scoping fixes', () => {
+		// Build the nested options object the node reads via getNodeParameter('options', itemIndex)
+		const makeOptions = (item: Record<string, unknown>) => ({
+			batching: { batch: { batchSize: 1, batchInterval: 0 } },
+			redirect: '',
+			proxy: '',
+			timeout: '',
+			allowUnauthorizedCerts: false,
+			queryParameterArrays: '',
+			lowercaseHeaders: true,
+			response: {
+				response: {
+					responseFormat: item.responseFormat ?? 'autodetect',
+					outputPropertyName: item.outputPropertyName ?? 'data',
+					fullResponse: item.fullResponse ?? false,
+					neverError: item.neverError ?? false,
+				},
+			},
+		});
+
+		// Configures getInputData and getNodeParameter for multiple items.
+		// Per-item values (url, responseFormat, outputPropertyName, fullResponse, neverError)
+		// are stored in each item's json and returned based on itemIndex.
+		const setupItems = (items: Array<{ json: Record<string, unknown> }>) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue(items);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					const item = items[itemIndex]?.json ?? {};
+					switch (paramName) {
+						case 'url':
+							return item.url;
+						case 'method':
+							return 'GET';
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return makeOptions(item);
+						case 'options.response.response.responseFormat':
+							return item.responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return item.fullResponse ?? fallback;
+						case 'options.response.response.neverError':
+							return item.neverError ?? fallback;
+						case 'options.response.response.outputPropertyName':
+							return item.outputPropertyName ?? fallback;
+						default:
+							return fallback;
+					}
+				},
+			);
+		};
+
+		// Mimics prepareBinaryData: derives fileExtension from mimeType but does NOT set fileName.
+		// This lets setFilename() derive the name from requestOptions.uri or responseFileName.
+		const mimeToExt: Record<string, string> = {
+			'image/png': 'png',
+			'text/plain': 'txt',
+			'application/pdf': 'pdf',
+		};
+
+		beforeEach(() => {
+			(executeFunctions.helpers.prepareBinaryData as jest.Mock).mockImplementation(
+				async (buffer: Buffer, _filePath?: string, mimeType?: string) => {
+					const fileExtension = mimeType ? mimeToExt[mimeType] : undefined;
+					const bin: Record<string, unknown> = { data: buffer.toString('base64'), mimeType };
+					if (fileExtension) bin.fileExtension = fileExtension;
+					return bin;
+				},
+			);
+		});
+
+		it('should preserve a fileName already set by prepareBinaryData', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/download',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/octet-stream' },
+				body: Buffer.from('data'),
+			});
+			// Simulate prepareBinaryData parsing Content-Disposition and setting fileName directly
+			(executeFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValueOnce({
+				data: 'ZGF0YQ==',
+				mimeType: 'application/octet-stream',
+				fileName: 'custom.txt',
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename returns preparedBinaryData.fileName unchanged when already set
+			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
+		});
+
+		it('should derive filename from the original request URI when no Content-Disposition is present', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/file1.png',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/file2.png',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: Buffer.from('img'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename: fileExtension='png', uri ends with 'png' → uri.split('/').pop()
+			expect(result[0][0].binary?.data.fileName).toBe('file1.png');
+			expect(result[0][1].binary?.data.fileName).toBe('file2.png');
+		});
+
+		it('should use per-item original request URI as filename fallback', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/fileA.txt',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/fileB.txt',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			// Both redirect to same URL; requests[itemIndex].options.uri stays as the original
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'text/plain' },
+				body: Buffer.from('txt'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result[0][0].binary?.data.fileName).toBe('fileA.txt');
+			expect(result[0][1].binary?.data.fileName).toBe('fileB.txt');
+		});
+
+		it('should not crash when an earlier item fails with continueOnFail (requests[] alignment)', async () => {
+			// Item 0 has an invalid URL → fails in request-build loop → continueOnFail
+			// Item 1 has a valid URL → must still be processed correctly
+			// Without the requests[] placeholder fix, requests[1] === undefined → TypeError
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					if (paramName === 'url') {
+						// Item 0 → null URL (triggers NodeOperationError in build loop)
+						// Item 1 → valid URL
+						return itemIndex === 0 ? null : 'http://example.com/ok';
+					}
+					if (paramName === 'method') return 'GET';
+					if (paramName === 'authentication') return 'none';
+					if (paramName === 'options') {
+						return {
+							batching: { batch: { batchSize: 1, batchInterval: 0 } },
+							redirect: '',
+							proxy: '',
+							timeout: '',
+							allowUnauthorizedCerts: false,
+							queryParameterArrays: '',
+							lowercaseHeaders: true,
+							response: {
+								response: {
+									responseFormat: 'json',
+									outputPropertyName: 'data',
+									fullResponse: false,
+									neverError: false,
+								},
+							},
+						};
+					}
+					if (paramName === 'options.response.response.responseFormat') return 'json';
+					if (paramName === 'options.response.response.fullResponse') return false;
+					if (paramName === 'options.response.response.neverError') return false;
+					if (paramName === 'options.response.response.outputPropertyName') return 'data';
+					return fallback;
+				},
+			);
+
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { ok: true },
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Item 0 → error output (continueOnFail)
+			expect(result[0][0].json.error).toBeDefined();
+			// Item 1 → valid response, no crash
+			expect(result[0][1].json.ok).toBe(true);
+		});
+	});
 });
