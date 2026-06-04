@@ -109,17 +109,17 @@ const cannotSaveOidcSettings = computed(() => {
 	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 
 	return (
-		ssoStore.oidcConfig?.clientId === clientId.value &&
-		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
-		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
-		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
-		ssoStore.oidcConfig?.prompt === prompt.value &&
-		ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
-		!isAdditionalScopesInvalid.value &&
-		!isUserRoleProvisioningChanged.value &&
-		!isRuleMappingDirty &&
-		storedAcrString === authenticationContextClassReference.value &&
-		currentAcrString === storedAcrString
+		isAdditionalScopesInvalid.value ||
+		(ssoStore.oidcConfig?.clientId === clientId.value &&
+			ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
+			ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
+			ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
+			ssoStore.oidcConfig?.prompt === prompt.value &&
+			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
+			!isUserRoleProvisioningChanged.value &&
+			!isRuleMappingDirty &&
+			storedAcrString === authenticationContextClassReference.value &&
+			currentAcrString === storedAcrString)
 	);
 });
 
