@@ -1,7 +1,6 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe(
 	'Instance AI sidebar @capability:proxy',
 	{

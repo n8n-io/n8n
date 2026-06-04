@@ -6,6 +6,7 @@ import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord } from './execution-recorder';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 export interface RecordMessageParams {
@@ -19,6 +20,8 @@ export interface RecordMessageParams {
 	hitlStatus?: 'suspended' | 'resumed';
 	/** Where the message originated from, e.g. 'chat', 'slack', 'task'. */
 	source?: string;
+	/** Optional metadata persisted on the thread when it is first created. */
+	threadMetadata?: AgentExecutionThreadMetadata;
 	/** When the run was triggered by a scheduled task, the task's id (stamped on the session). */
 	taskId?: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
@@ -56,6 +59,7 @@ export class AgentExecutionService {
 			record,
 			source,
 			hitlStatus,
+			threadMetadata,
 			taskId,
 			taskVersionId,
 		} = params;
@@ -66,6 +70,7 @@ export class AgentExecutionService {
 			agentId,
 			agentName,
 			projectId,
+			threadMetadata,
 			taskId,
 			taskVersionId,
 		);

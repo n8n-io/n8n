@@ -114,6 +114,17 @@ export class N8NCredentialResolver implements ICredentialResolver {
 		return await this.n8nIdentifier.resolve(context, configuration);
 	}
 
+	/**
+	 * The identity this resolver keys on IS the n8n user id, so the owning user
+	 * is the resolved identifier.
+	 */
+	async resolveOwningUserId(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<string> {
+		return await this.resolveIdentifier(context, handle.configuration);
+	}
+
 	async validateIdentity(
 		context: ICredentialContext,
 		handle: CredentialResolverHandle,

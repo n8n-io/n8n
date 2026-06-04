@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "2.23.0",
+  "version": "2.25.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -8,6 +8,7 @@
     "debug": "./scripts/debug.sh",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "vitest run",

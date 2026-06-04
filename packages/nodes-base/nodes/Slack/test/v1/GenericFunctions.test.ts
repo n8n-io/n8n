@@ -1,6 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { slackApiRequest, slackApiRequestAllItems, validateJSON } from '../../V1/GenericFunctions';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	toMultiOptionsCsv,
+	validateJSON,
+} from '../../V1/GenericFunctions';
 import type * as _importType0 from 'n8n-workflow';
 
 vi.mock('n8n-workflow', async () => ({
@@ -145,6 +150,31 @@ describe('Slack V1 > GenericFunctions', () => {
 
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('toMultiOptionsCsv', () => {
+		it('joins array values', () => {
+			expect(toMultiOptionsCsv(['U123', 'U456'])).toBe('U123,U456');
+		});
+
+		it('accepts a comma-joined string and trims trailing whitespace', () => {
+			expect(toMultiOptionsCsv('U123,U456 ')).toBe('U123,U456');
+		});
+
+		it('trims whitespace around each entry in a comma-string', () => {
+			expect(toMultiOptionsCsv(' U123 , U456 ')).toBe('U123,U456');
+		});
+
+		it('drops empty entries', () => {
+			expect(toMultiOptionsCsv(['U123', '', '  ', 'U456'])).toBe('U123,U456');
+		});
+
+		it('returns empty string for undefined/null/empty', () => {
+			expect(toMultiOptionsCsv(undefined)).toBe('');
+			expect(toMultiOptionsCsv(null)).toBe('');
+			expect(toMultiOptionsCsv('')).toBe('');
+			expect(toMultiOptionsCsv([])).toBe('');
 		});
 	});
 

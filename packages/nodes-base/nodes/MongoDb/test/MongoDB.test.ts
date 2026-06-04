@@ -608,7 +608,7 @@ describe('MongoDB CRUD Node', () => {
 
 	describe('createSearchIndex operation', () => {
 		// Direct method replacement (not vi.spyOn) so the recorded calls survive
-		// the per-test `restoreMocks` reset in the root jest config.
+		// the per-test `restoreMocks` reset in the vitest config.
 		const calls: unknown[][] = [];
 		const original = Collection.prototype.createSearchIndex;
 		beforeAll(() => {

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.23.0",
+  "version": "2.25.1",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -8,6 +8,7 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data && pnpm run build:agent-library",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json && pnpm run build:data && pnpm run build:agent-library",
     "build:data": "node scripts/build.mjs",
     "build:agent-library": "node scripts/bundle-agent-library.mjs",
     "buildAndDev": "pnpm run build && pnpm run dev",
