@@ -30,7 +30,10 @@ function tscDecoratorTransform(): Plugin {
 
 	function createEmitter() {
 		const configPath = ts.findConfigFile(projectDir, ts.sys.fileExists, 'tsconfig.json');
-		if (!configPath) throw new Error('Could not find tsconfig.json for @n8n/db');
+		if (!configPath) {
+			throw new Error('Could not find tsconfig.json for @n8n/db');
+		}
+
 		const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
 		const parsed = ts.parseJsonConfigFileContent(config, ts.sys, projectDir);
 		// Root the Program at the entity files only; their imported types (e.g. the union
@@ -60,13 +63,36 @@ function tscDecoratorTransform(): Plugin {
 		};
 
 		const versions = new Map<string, number>();
-		for (const f of rootFiles) versions.set(path.normalize(f), 0);
+		const contents = new Map<string, string>();
+		for (const f of rootFiles) {
+			versions.set(path.normalize(f), 0);
+		}
+
+		// Re-read `fileName` from disk and, if its content changed since the last read,
+		// bump the script version so the LanguageService invalidates its cached emit.
+		function refresh(fileName: string): string | undefined {
+			const norm = path.normalize(fileName);
+			const next = fs.existsSync(norm) ? fs.readFileSync(norm, 'utf-8') : undefined;
+			if (next !== contents.get(norm)) {
+				if (next === undefined) {
+					contents.delete(norm);
+				} else {
+					contents.set(norm, next);
+				}
+
+				versions.set(norm, (versions.get(norm) ?? 0) + 1);
+			}
+			return next;
+		}
 
 		const host: ts.LanguageServiceHost = {
 			getScriptFileNames: () => Array.from(versions.keys()),
 			getScriptVersion: (f) => String(versions.get(path.normalize(f)) ?? 0),
-			getScriptSnapshot: (f) =>
-				fs.existsSync(f) ? ts.ScriptSnapshot.fromString(fs.readFileSync(f, 'utf-8')) : undefined,
+			getScriptSnapshot: (f) => {
+				const cached = contents.get(path.normalize(f));
+				const text = cached ?? (fs.existsSync(f) ? fs.readFileSync(f, 'utf-8') : undefined);
+				return text === undefined ? undefined : ts.ScriptSnapshot.fromString(text);
+			},
 			getCurrentDirectory: () => projectDir,
 			getCompilationSettings: () => options,
 			getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
@@ -81,11 +107,19 @@ function tscDecoratorTransform(): Plugin {
 
 		return (fileName: string) => {
 			const norm = path.normalize(fileName);
-			if (!versions.has(norm)) versions.set(norm, 0);
+			// Pick up on-disk edits (watch mode) by bumping the script version when the
+			// content changes; otherwise the LanguageService reuses a stale cached emit.
+			if (refresh(norm) === undefined) {
+				return null;
+			}
+
 			const output = service.getEmitOutput(norm);
 			const js = output.outputFiles.find((f) => f.name.endsWith('.js'));
 			const map = output.outputFiles.find((f) => f.name.endsWith('.js.map'));
-			if (!js) return null;
+			if (!js) {
+				return null;
+			}
+
 			return { code: js.text, map: map ? (JSON.parse(map.text) as unknown) : null };
 		};
 	}
