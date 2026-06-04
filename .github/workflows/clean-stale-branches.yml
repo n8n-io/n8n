@@ -13,6 +13,10 @@ on:
         description: 'Days of inactivity before a branch is considered stale.'
         type: string
         default: '100'
+      exclude:
+        description: 'Comma-separated branch-name globs to always keep (e.g. release/*,1.x).'
+        type: string
+        default: ''
 
 permissions:
   contents: write # delete branches; ruleset reads use the token's implicit metadata access
@@ -26,18 +30,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          sparse-checkout: .github/scripts/stale
+          sparse-checkout: .github/scripts
 
-      # No dependencies to install — the script uses only Node builtins + global
-      # fetch. We still pin the Node version (fetch is non-experimental from 21+)
-      # rather than relying on the runner's baked-in Node.
       - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        uses: ./.github/actions/setup-nodejs
         with:
-          node-version: '24.15.0'
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Clean stale branches
         env:
           GITHUB_TOKEN: ${{ github.token }}
           STALE_DAYS: ${{ inputs.days }}
+          EXCLUDE_BRANCHES: ${{ inputs.exclude }}
         run: node .github/scripts/stale/clean-stale-branches.mjs --days="$STALE_DAYS" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}

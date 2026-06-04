@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { globToRegExp, refMatches, protectingRuleset, classifyBranches } from './clean-stale-branches.mjs';
+import { refMatches, matchingExcludePattern, protectingRuleset, classifyBranches } from './clean-stale-branches.mjs';
 
 /**
  * Run these tests with:
@@ -18,36 +18,6 @@ const RULESETS = [
 	{ name: 'Release Candidate branch Ruleset', include: ['refs/heads/release-candidate/*'], exclude: [] },
 ];
 
-describe('globToRegExp', () => {
-	it('matches a literal pattern exactly', () => {
-		const re = globToRegExp('refs/heads/master');
-		assert.equal(re.test('refs/heads/master'), true);
-		assert.equal(re.test('refs/heads/master-2'), false);
-		assert.equal(re.test('refs/heads/feature/master'), false);
-	});
-
-	it('treats * as within a single path segment', () => {
-		const re = globToRegExp('refs/heads/release/*');
-		assert.equal(re.test('refs/heads/release/1.50.1'), true);
-		// * does not cross a slash
-		assert.equal(re.test('refs/heads/release/team/1.50.1'), false);
-		assert.equal(re.test('refs/heads/release'), false);
-	});
-
-	it('treats ** as crossing path segments', () => {
-		const re = globToRegExp('refs/heads/release/**');
-		assert.equal(re.test('refs/heads/release/team/1.50.1'), true);
-		assert.equal(re.test('refs/heads/release/1.50.1'), true);
-	});
-
-	it('escapes regex metacharacters in the literal parts', () => {
-		const re = globToRegExp('refs/heads/1.x');
-		assert.equal(re.test('refs/heads/1.x'), true);
-		// the dot must be literal, not "any char"
-		assert.equal(re.test('refs/heads/1ax'), false);
-	});
-});
-
 describe('refMatches', () => {
 	it('matches the ~ALL wildcard against any ref', () => {
 		assert.equal(refMatches('refs/heads/anything', '~ALL', 'master'), true);
@@ -58,9 +28,50 @@ describe('refMatches', () => {
 		assert.equal(refMatches('refs/heads/develop', '~DEFAULT_BRANCH', 'master'), false);
 	});
 
-	it('falls back to glob matching for normal patterns', () => {
+	it('matches a literal pattern exactly', () => {
+		assert.equal(refMatches('refs/heads/master', 'refs/heads/master', 'master'), true);
+		assert.equal(refMatches('refs/heads/master-2', 'refs/heads/master', 'master'), false);
+		assert.equal(refMatches('refs/heads/feature/master', 'refs/heads/master', 'master'), false);
+	});
+
+	it('treats * as within a single path segment', () => {
 		assert.equal(refMatches('refs/heads/release/1.50.1', 'refs/heads/release/*', 'master'), true);
+		// * does not cross a slash
+		assert.equal(refMatches('refs/heads/release/team/1.50.1', 'refs/heads/release/*', 'master'), false);
+		assert.equal(refMatches('refs/heads/release', 'refs/heads/release/*', 'master'), false);
 		assert.equal(refMatches('refs/heads/feature/x', 'refs/heads/release/*', 'master'), false);
+	});
+
+	it('treats ** as crossing path segments', () => {
+		assert.equal(refMatches('refs/heads/release/team/1.50.1', 'refs/heads/release/**', 'master'), true);
+		assert.equal(refMatches('refs/heads/release/1.50.1', 'refs/heads/release/**', 'master'), true);
+	});
+
+	it('treats metacharacters in the literal parts as literal', () => {
+		assert.equal(refMatches('refs/heads/1.x', 'refs/heads/1.x', 'master'), true);
+		// the dot must be literal, not "any char"
+		assert.equal(refMatches('refs/heads/1ax', 'refs/heads/1.x', 'master'), false);
+	});
+});
+
+describe('matchingExcludePattern', () => {
+	it('matches the bare branch name against keep-patterns', () => {
+		assert.equal(matchingExcludePattern('release/1.50.1', ['release/*']), 'release/*');
+		assert.equal(matchingExcludePattern('1.x', ['1.x']), '1.x');
+	});
+
+	it('returns the first matching pattern', () => {
+		assert.equal(matchingExcludePattern('release/1.50.1', ['1.x', 'release/*']), 'release/*');
+	});
+
+	it('returns null when nothing matches or the list is empty', () => {
+		assert.equal(matchingExcludePattern('some-feature', ['release/*', '1.x']), null);
+		assert.equal(matchingExcludePattern('some-feature', []), null);
+	});
+
+	it('supports ** crossing path segments', () => {
+		assert.equal(matchingExcludePattern('dependabot/npm/lodash', ['dependabot/**']), 'dependabot/**');
+		assert.equal(matchingExcludePattern('dependabot/npm/lodash', ['dependabot/*']), null);
 	});
 });
 
@@ -225,6 +236,43 @@ describe('classifyBranches', () => {
 	});
 
 	it('defaults openPrRefs to empty when omitted', () => {
+		const { remove } = classifyBranches({
+			branches: [{ name: 'lonely', committedDate: daysAgo(500) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+		});
+		assert.equal(remove.length, 1);
+	});
+
+	it('keeps a stale branch matching an exclude pattern even with no protecting ruleset', () => {
+		const { keep, remove } = classifyBranches({
+			branches: [{ name: 'release/1.50.1', committedDate: daysAgo(800) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+			excludePatterns: ['release/*'],
+		});
+		assert.equal(remove.length, 0);
+		assert.equal(keep[0].reason, 'excluded: matches keep-pattern "release/*"');
+	});
+
+	it('still deletes stale branches that match no exclude pattern', () => {
+		const { remove } = classifyBranches({
+			branches: [{ name: 'old-feature', committedDate: daysAgo(500) }],
+			rulesets: [],
+			defaultBranch: 'master',
+			staleDays: 100,
+			now,
+			excludePatterns: ['release/*', '1.x'],
+		});
+		assert.equal(remove.length, 1);
+		assert.equal(remove[0].name, 'old-feature');
+	});
+
+	it('defaults excludePatterns to empty when omitted', () => {
 		const { remove } = classifyBranches({
 			branches: [{ name: 'lonely', committedDate: daysAgo(500) }],
 			rulesets: [],

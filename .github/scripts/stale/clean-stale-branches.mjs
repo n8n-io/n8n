@@ -28,33 +28,19 @@
 
 import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
+import { minimatch } from 'minimatch';
 
 const API = 'https://api.github.com';
 const DAY_MS = 86_400_000; // 24 hours in millis
 
 // --- pure logic (exported for tests) ---------------------------------------
 
-// Convert a GitHub ruleset ref glob to a RegExp.
-// `*` matches within a path segment, `**` matches across `/`, `?` matches one char.
-export function globToRegExp(glob) {
-	let re = '';
-	for (let i = 0; i < glob.length; i++) {
-		const c = glob[i];
-		if (c === '*') {
-			if (glob[i + 1] === '*') {
-				re += '.*';
-				i++;
-			} else {
-				re += '[^/]*';
-			}
-		} else if (c === '?') {
-			re += '[^/]';
-		} else {
-			re += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-		}
-	}
-	return new RegExp(`^${re}$`);
-}
+// GitHub ruleset ref globs use fnmatch semantics: `*` matches within a path
+// segment, `**` matches across `/`, `?` matches a single char. minimatch (the
+// same glob matcher used by our other workflow scripts) implements exactly
+// these rules — `dot` so leading-dot segments aren't skipped, `noext` to keep
+// GitHub's plain fnmatch behaviour (no `+(...)` extglobs).
+const GLOB_OPTIONS = { dot: true, noext: true };
 
 export function refMatches(ref, pattern, defaultBranch) {
 	if (pattern === '~ALL') {
@@ -63,7 +49,15 @@ export function refMatches(ref, pattern, defaultBranch) {
 	if (pattern === '~DEFAULT_BRANCH') {
 		return ref === `refs/heads/${defaultBranch}`;
 	}
-	return globToRegExp(pattern).test(ref);
+	return minimatch(ref, pattern, GLOB_OPTIONS);
+}
+
+// Returns the first keep-pattern that matches the branch name, else null.
+// These are operator-supplied globs matched against the bare branch name
+// (e.g. `release/*`, `1.x`) — an explicit safety net independent of rulesets,
+// so stale cleanup stays safe even if a protecting ruleset is ever removed.
+export function matchingExcludePattern(branchName, excludePatterns) {
+	return excludePatterns.find((pattern) => minimatch(branchName, pattern, GLOB_OPTIONS)) ?? null;
 }
 
 // Returns the protecting ruleset's name if `ref` is protected from deletion, else null.
@@ -94,10 +88,19 @@ export function protectingRuleset(ref, rulesets, defaultBranch) {
  *   staleDays: number,
  *   now: number,
  *   openPrRefs?: Map<string, number[]>,
+ *   excludePatterns?: string[],
  * }} input
  * @returns {{ keep: Array<{name:string,ageDays:number|null,reason:string}>, remove: Array<{name:string,ageDays:number|null,reason:string}> }}
  */
-export function classifyBranches({ branches, rulesets, defaultBranch, staleDays, now, openPrRefs = new Map() }) {
+export function classifyBranches({
+	branches,
+	rulesets,
+	defaultBranch,
+	staleDays,
+	now,
+	openPrRefs = new Map(),
+	excludePatterns = [],
+}) {
 	const keep = [];
 	const remove = [];
 
@@ -111,6 +114,11 @@ export function classifyBranches({ branches, rulesets, defaultBranch, staleDays,
 		const rulesetName = protectingRuleset(ref, rulesets, defaultBranch);
 		if (rulesetName) {
 			keep.push({ name: branch.name, ageDays, reason: `protected: ruleset "${rulesetName}" (deletion)` });
+			continue;
+		}
+		const excludePattern = matchingExcludePattern(branch.name, excludePatterns);
+		if (excludePattern) {
+			keep.push({ name: branch.name, ageDays, reason: `excluded: matches keep-pattern "${excludePattern}"` });
 			continue;
 		}
 		if (branch.name === defaultBranch) {
@@ -193,6 +201,17 @@ function resolveDryRun(values) {
 	}
 
 	return dryRun;
+}
+
+// Glob patterns of branch names to always keep. Sourced from repeated
+// `--exclude` flags and/or the comma-separated EXCLUDE_BRANCHES env var; both
+// accept comma-separated lists. Blank entries are dropped.
+function resolveExcludePatterns(values) {
+	const raw = [...(values.exclude ?? []), process.env.EXCLUDE_BRANCHES ?? ''];
+	return raw
+		.flatMap((entry) => entry.split(','))
+		.map((pattern) => pattern.trim())
+		.filter(Boolean);
 }
 
 // --- data fetching ----------------------------------------------------------
@@ -327,12 +346,15 @@ async function deleteBranch(ctx, name) {
 
 // --- reporting --------------------------------------------------------------
 
-function printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, openPrCount, keep, remove }) {
+function printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, excludePatterns, openPrCount, keep, remove }) {
 	console.log(`Repository:        ${owner}/${repo}`);
 	console.log(`Default branch:    ${defaultBranch}`);
 	console.log(`Stale threshold:   ${staleDays} days`);
 	console.log(`Mode:              ${dryRun ? 'DRY RUN (no deletions)' : 'EXECUTE (will delete)'}`);
 	console.log(`Deletion rulesets: ${rulesets.length ? rulesets.map((r) => `"${r.name}"`).join(', ') : '(none)'}`);
+	console.log(
+		`Keep patterns:     ${excludePatterns?.length ? excludePatterns.map((p) => `"${p}"`).join(', ') : '(none)'}`,
+	);
 	console.log(`Open-PR refs kept: ${openPrCount ?? 0}`);
 	console.log('');
 
@@ -353,21 +375,25 @@ async function main() {
 			execute: { type: 'boolean', default: false },
 			'dry-run': { type: 'boolean' },
 			days: { type: 'string' },
+			exclude: { type: 'string', multiple: true },
 			help: { type: 'boolean', default: false },
 		},
 	});
 
 	if (values.help) {
 		console.log(
-			'Usage: clean-stale-branches.mjs [--days=N] [--execute]\n' +
-				'  --days=N    Days of inactivity before a branch is stale (default 100, or STALE_DAYS env)\n' +
-				'  --execute   Actually delete stale branches (default is dry run)\n' +
+			'Usage: clean-stale-branches.mjs [--days=N] [--exclude=GLOB]... [--execute]\n' +
+				'  --days=N        Days of inactivity before a branch is stale (default 100, or STALE_DAYS env)\n' +
+				'  --exclude=GLOB  Branch-name glob to always keep; repeatable or comma-separated\n' +
+				'                  (e.g. --exclude="release/*,1.x", or EXCLUDE_BRANCHES env)\n' +
+				'  --execute       Actually delete stale branches (default is dry run)\n' +
 				'Auth via GH_TOKEN/GITHUB_TOKEN or `gh auth token`. Repo via GITHUB_REPOSITORY or `gh repo view`.',
 		);
 		return;
 	}
 
 	const dryRun = resolveDryRun(values);
+	const excludePatterns = resolveExcludePatterns(values);
 
 	const staleDays = Number(values.days ?? process.env.STALE_DAYS ?? 100);
 	if (!Number.isFinite(staleDays) || staleDays <= 0) {
@@ -398,9 +424,21 @@ async function main() {
 		staleDays,
 		now: Date.now(),
 		openPrRefs,
+		excludePatterns,
 	});
 
-	printReport({ owner, repo, defaultBranch, staleDays, dryRun, rulesets, openPrCount: openPrRefs.size, keep, remove });
+	printReport({
+		owner,
+		repo,
+		defaultBranch,
+		staleDays,
+		dryRun,
+		rulesets,
+		excludePatterns,
+		openPrCount: openPrRefs.size,
+		keep,
+		remove,
+	});
 
 	if (dryRun) {
 		console.log(`Dry run complete. ${remove.length} branch(es) would be deleted. Re-run with --execute to delete.`);
