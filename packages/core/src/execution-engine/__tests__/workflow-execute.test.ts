@@ -1765,6 +1765,101 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	describe('AI tool continue-on-fail default', () => {
+		// Runs an AI tool node (rewireOutputLogTo === ai_tool) whose execute() throws,
+		// wired to a downstream node that consumes its output (mirroring the agent that
+		// reads the tool result), then returns the finished run for assertions.
+		async function runFailingAiTool(nodeOverrides: Partial<INode> = {}) {
+			const toolNodeTypes = mock<INodeTypes>();
+			const toolNode: INode = {
+				...createNodeData({ name: 'My Tool', type: 'test.tool' }),
+				rewireOutputLogTo: NodeConnectionTypes.AiTool,
+				...nodeOverrides,
+			};
+			const consumer = createNodeData({ name: 'Consumer', type: 'test.consumer' });
+
+			const throwingType = mock<INodeType>({
+				description: {
+					name: 'test.tool',
+					displayName: 'Test Tool',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw new NodeOperationError(toolNode, 'boom');
+				},
+			});
+			const successType = mock<INodeType>({
+				description: {
+					name: 'test.consumer',
+					displayName: 'Test Consumer',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					return [[{ json: { consumed: true } }]];
+				},
+			});
+			toolNodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				type === 'test.tool' ? throwingType : successType,
+			);
+
+			const workflow = new DirectedGraph()
+				.addNodes(toolNode, consumer)
+				.addConnections({ from: toolNode, to: consumer })
+				.toWorkflow({ name: '', active: false, nodeTypes: toolNodeTypes });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ node: toolNode, data: { main: [[{ json: {} }]] }, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			return await workflowExecute.processRunExecutionData(workflow);
+		}
+
+		it('continues the workflow and surfaces the error on the ai_tool channel by default', async () => {
+			const result = await runFailingAiTool();
+
+			// Workflow did not halt: the downstream consumer still ran.
+			expect(result.finished).toBe(true);
+			expect(result.data.resultData.error).toBeUndefined();
+			expect(result.data.resultData.runData.Consumer).toBeDefined();
+
+			// The tool run is recorded as an error (canvas shows red)...
+			const toolRun = result.data.resultData.runData['My Tool'][0];
+			expect(toolRun.executionStatus).toBe('error');
+			expect(toolRun.error?.message).toBe('boom');
+
+			// ...and the error is surfaced on the ai_tool channel for the agent.
+			expect(toolRun.data?.[NodeConnectionTypes.AiTool]).toEqual([[{ json: { error: 'boom' } }]]);
+		});
+
+		it("halts the workflow when onError is explicitly 'stopWorkflow'", async () => {
+			const result = await runFailingAiTool({ onError: 'stopWorkflow' });
+
+			// Explicit opt-out wins: the workflow stops as it did before the default changed.
+			expect(result.finished).not.toBe(true);
+			expect(result.data.resultData.error?.message).toBe('boom');
+		});
+	});
+
 	describe('prepareWaitingToExecution', () => {
 		let runExecutionData: IRunExecutionData;
 		let workflowExecute: WorkflowExecute;

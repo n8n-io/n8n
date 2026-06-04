@@ -21,7 +21,7 @@ You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk`.
 
 This skill runs inside the orchestrator. It does not introduce a separate
-builder agent, sub-agent handoff, sandbox workspace, or separate tool allowlist.
+builder agent, delegated handoff, sandbox workspace, or separate tool allowlist.
 Use the orchestrator tools already available in the current turn. If a relevant
 orchestrator or MCP tool is available through tool search, use it when it helps
 complete the build.
@@ -335,7 +335,7 @@ column names.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
-  `{{ }}`.
+  `{{ }}`. `$json` is only the current item from the immediate predecessor.
 - Do not use TypeScript-only syntax that the workflow parser cannot interpret,
   such as `as const`.
 - Use string values directly for discriminator fields like `resource` and
@@ -392,8 +392,10 @@ Follow these rules strictly when generating workflows:
    alive, and do not add an IF gate before a loop only to check whether items
    exist.
 3. Use `executeOnce: true` for a node that receives many items but should run
-   once, such as a summary notification, report generation, or API call that
-   does not vary per input item.
+   once, such as a summary notification, report generation, shared-context
+   fetch, or API call that does not vary per input item. Duplicate
+   notifications or repeated shared-context fetches usually mean this is
+   missing.
 4. Pick the right control-flow primitive:
    - Per-item loop with side effects: `splitInBatches` with `batchSize: 1`,
      feeding the per-item work and looping back via `nextBatch`.
@@ -402,6 +404,9 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
+   - A Filter or IF only selects items; it does not perform the requested side
+     effect. If the user asks to archive, update, delete, send, or create only
+     matching items, wire the corresponding action node on the matching path.
 5. Input and output indices are zero-based. `.input(0)` and `.output(0)` are the
    first input and output. `.input(1)` is the second input, not the first.
 
@@ -428,13 +433,17 @@ Follow these rules strictly when generating workflows:
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
   definitions. They contain node-specific configuration rules and examples.
+- Gmail archive: the message resource has no `archive` operation. To archive a
+  Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
+  `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.
 
 ## Expression Reference
 
 Available variables inside `expr('{{ ... }}')`:
 
-- `$json`: current item's JSON data from the immediate predecessor node.
-- `$('NodeName').item.json`: access another node's output by name.
+- `$json`: current item's JSON data from the immediate predecessor node only.
+- `$('NodeName').item.json`: access another node's output item paired with the
+  current item.
 - `$input.first()`, `$input.all()`, and `$input.item`.
 - `$binary`: binary data from the current item.
 - `$now` and `$today`: Luxon date/time helpers.
@@ -451,11 +460,18 @@ expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')
 
 When `$json` is unsafe, reference the source node explicitly. This matters for
 AI Agent subnodes, fan-in nodes after IF/Switch/Merge, and values that come from
-further upstream:
+further upstream or from before a node that replaces item JSON:
 
 ```ts
 sessionKey: nodeJson(telegramTrigger, 'message.chat.id')
+eventId: nodeJson(extractEventId, 'eventId')
 ```
+
+Use `$('NodeName').item.json.field` or `nodeJson(sourceNode, 'field')` for
+per-item upstream values. Do not use `.first()` or `$input.first()` for
+per-item data in a multi-item workflow; it always reads item 0 and makes every
+downstream item reuse the first value. Use `.first()` only for a true global
+first item, such as a single configuration row.
 
 ## SDK Patterns Reference
 

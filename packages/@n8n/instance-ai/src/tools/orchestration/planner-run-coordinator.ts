@@ -176,10 +176,8 @@ function buildPlannerSubAgent(
 	context: OrchestrationContext,
 	tracedPlannerTools: ReturnType<typeof traceSubAgentTools>,
 	subAgentId: string,
+	plannerPrompt: string,
 ) {
-	const plannerPrompt = getPlannerAgentPrompt({
-		sandboxWorkspaceAvailable: Boolean(context.workspace),
-	});
 	const subAgent = new Agent('Workflow Planner Agent')
 		.model(context.modelId)
 		.instructions(plannerPrompt, {
@@ -232,15 +230,25 @@ export class PlannerRunCoordinator {
 
 	private readonly subAgent: ReturnType<typeof buildPlannerSubAgent>;
 
+	private readonly plannerPrompt: string;
+
 	// Held as a field so finishTrace/failTrace can finalise the span whether the
 	// run ends in handleTerminalResult or in the handler's catch.
 	private traceRun: Awaited<ReturnType<typeof startSubAgentTrace>>;
 
 	constructor(private readonly context: OrchestrationContext) {
 		this.subAgentId = `agent-planner-${context.runId}`;
+		this.plannerPrompt = getPlannerAgentPrompt({
+			workspaceRoot: context.workspace && context.workspaceRoot ? context.workspaceRoot : undefined,
+		});
 		this.plannerTools = buildPlannerTools(context, this.accumulator);
 		this.tracedPlannerTools = traceSubAgentTools(context, this.plannerTools, 'planner');
-		this.subAgent = buildPlannerSubAgent(context, this.tracedPlannerTools, this.subAgentId);
+		this.subAgent = buildPlannerSubAgent(
+			context,
+			this.tracedPlannerTools,
+			this.subAgentId,
+			this.plannerPrompt,
+		);
 	}
 
 	/** First-call leg: persist the in-flight user message, brief the planner,
@@ -289,13 +297,10 @@ export class PlannerRunCoordinator {
 			kind: 'planner',
 			inputs: { guidance, messageCount: messages.length },
 		});
-		const plannerPrompt = getPlannerAgentPrompt({
-			sandboxWorkspaceAvailable: Boolean(context.workspace),
-		});
 		mergeTraceRunInputs(
 			this.traceRun,
 			buildAgentTraceInputs({
-				systemPrompt: plannerPrompt,
+				systemPrompt: this.plannerPrompt,
 				tools: tracedPlannerTools,
 				modelId: context.modelId,
 			}),
@@ -350,13 +355,10 @@ export class PlannerRunCoordinator {
 			kind: 'planner',
 			inputs: { resumed: true },
 		});
-		const plannerPrompt = getPlannerAgentPrompt({
-			sandboxWorkspaceAvailable: Boolean(context.workspace),
-		});
 		mergeTraceRunInputs(
 			this.traceRun,
 			buildAgentTraceInputs({
-				systemPrompt: plannerPrompt,
+				systemPrompt: this.plannerPrompt,
 				tools: tracedPlannerTools,
 				modelId: context.modelId,
 			}),
