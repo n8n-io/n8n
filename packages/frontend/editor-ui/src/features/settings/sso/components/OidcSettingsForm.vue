@@ -83,7 +83,7 @@ const getOidcConfig = async () => {
 	prompt.value = config.prompt ?? 'select_account';
 	authenticationContextClassReference.value =
 		config.authenticationContextClassReference?.join(',') || '';
-	additionalScopes.value = config.additionalScopes;
+	additionalScopes.value = config.additionalScopes ?? '';
 };
 
 const loadOidcConfig = async () => {
