@@ -1,0 +1,25 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a daily standup reminder on Slack — post it to standups@company.com every weekday morning."
+		},
+		{
+			"role": "user",
+			"text": "Wait, standups@company.com is wrong — that's an email, not a Slack channel. Post to #standups (C04STANDUP01)."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["build", "slack", "schedule", "behavior", "user-error"],
+	"triggerType": "schedule",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Schedule fires on a weekday morning and the reminder posts to the corrected channel",
+			"dataSetup": "The schedule trigger fires on a weekday morning. The Slack post-message node returns a success response with the posted message metadata.",
+			"successCriteria": "The workflow executes without errors. The reminder is posted to the #standups channel (C04STANDUP01). It is NOT sent to standups@company.com and there is no email-sending node — the implausible first value must not survive into the build."
+		}
+	],
+	"datasets": ["full"]
+}
