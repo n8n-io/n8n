@@ -70,6 +70,10 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
 	if (event.data.status === 'success') return;
+	// Only offer "Fix with AI" for human-initiated runs. When the agent ran the
+	// workflow itself (source 'instance_ai'), it already sees the errors in its
+	// tool result and fixes them on its own.
+	if (event.data.source === 'instance_ai') return;
 
 	const execStore = useExecutionDataStore(createExecutionDataId(event.data.executionId));
 	const runData = execStore.executionRunData;
