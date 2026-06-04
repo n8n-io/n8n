@@ -206,6 +206,8 @@ export interface GenerateResult {
 	 * callers can handle them without try/catch.
 	 */
 	error?: unknown;
+	/** Return a snapshot of the agent state for this run. */
+	getState(): SerializableAgentState;
 }
 
 export interface StreamResult {
@@ -213,6 +215,11 @@ export interface StreamResult {
 	runId: string;
 	/** The readable stream of chunks. */
 	stream: ReadableStream<StreamChunk>;
+	/**
+	 * Return the current agent state for this run.
+	 * May be called while streaming or after the stream closes.
+	 */
+	getState(): SerializableAgentState;
 }
 
 export interface ResumeOptions {
@@ -233,8 +240,6 @@ export interface BuiltAgent {
 	): Promise<StreamResult>;
 
 	on(event: AgentEvent, handler: AgentEventHandler): void;
-
-	getState(): SerializableAgentState;
 
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;
