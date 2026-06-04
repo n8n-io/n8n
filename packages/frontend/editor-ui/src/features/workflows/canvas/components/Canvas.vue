@@ -153,7 +153,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		renderData: CanvasRenderData;
-		memberDimensionsByNodeId?: Record<string, { width: number; height: number }>;
+		nodeDimensionsById?: Record<string, { width: number; height: number }>;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -170,7 +170,7 @@ const props = withDefaults(
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
-		memberDimensionsByNodeId: () => ({}),
+		nodeDimensionsById: () => ({}),
 		readOnly: false,
 		canExecute: false,
 		executing: false,
@@ -542,7 +542,7 @@ const groupDrag = useCanvasNodeGroupDrag({
 	getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
 	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
-	getNodeDimensions: (id) => props.memberDimensionsByNodeId?.[id],
+	getNodeDimensions: (id) => props.nodeDimensionsById?.[id],
 });
 
 function onNodeDragStart(event: NodeDragEvent) {

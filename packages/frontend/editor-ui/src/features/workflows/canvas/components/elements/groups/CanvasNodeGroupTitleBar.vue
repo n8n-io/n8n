@@ -48,7 +48,7 @@ const group = computed(() => props.data.group);
 
 const frameStyle = computed(() => ({
 	top: `${HEADER_HEIGHT}px`,
-	height: `${props.data.memberRect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM}px`,
+	height: `${props.data.nodesRect.height + PADDING_Y_TOP + PADDING_Y_BOTTOM}px`,
 }));
 
 const isTitleTruncated = ref(false);
@@ -63,7 +63,7 @@ function updateTruncated() {
 }
 
 watch(
-	() => [group.value.name, props.data.memberRect.width],
+	() => [group.value.name, props.data.nodesRect.width],
 	async () => {
 		await nextTick();
 		updateTruncated();

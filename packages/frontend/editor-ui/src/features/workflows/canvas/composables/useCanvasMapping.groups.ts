@@ -10,7 +10,7 @@ import {
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
-export interface MemberRect {
+export interface NodesRect {
 	x: number;
 	y: number;
 	width: number;
@@ -33,7 +33,7 @@ function readStickyDimensions(node: INodeUi): { width: number; height: number } 
 }
 
 // Precedence: caller-supplied → sticky parameters → DEFAULT_NODE_SIZE.
-function resolveMemberDimensions(
+function resolveNodeDimensions(
 	node: INodeUi,
 	getNodeDimensions?: GetNodeDimensions,
 ): { width: number; height: number } {
@@ -46,43 +46,41 @@ function resolveMemberDimensions(
 }
 
 /**
- * Title bar position + width derived from a member rect.
+ * Title bar position + width derived from the group's nodes-bounding rect.
  * Snaps the position to the canvas grid; if it didn't, VueFlow's
  * `snap-to-grid` would shift the title bar on the first drag.
  */
-export function titleBarFromMemberRect(memberRect: MemberRect): {
+export function titleBarFromNodesRect(nodesRect: NodesRect): {
 	position: { x: number; y: number };
 	width: number;
 } {
 	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 	return {
 		position: {
-			x: snap(memberRect.x - GROUP_PADDING_X),
-			y: snap(memberRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+			x: snap(nodesRect.x - GROUP_PADDING_X),
+			y: snap(nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 		},
-		width: memberRect.width + 2 * GROUP_PADDING_X,
+		width: nodesRect.width + 2 * GROUP_PADDING_X,
 	};
 }
 
 /**
- * Bounding rect of a group's members — used to size and position
+ * Bounding rect of a group's nodes — used to size and position
  * the group's title bar and frame. Reads from workflow store positions (canonical)
  * rather than VueFlow runtime, which can lag or be uninitialized.
  *
  * `positionOverrides` lets the drag-time sync substitute live positions for
- * dragged members (whose store position lags until drag-stop).
+ * dragged nodes (whose store position lags until drag-stop).
  */
-export function computeMemberRectFromStore(
-	memberIds: string[],
+export function computeNodesRectFromStore(
+	nodeIds: string[],
 	getNodeById: (id: string) => INodeUi | undefined,
 	getNodeDimensions?: GetNodeDimensions,
 	positionOverrides?: Map<string, { x: number; y: number }>,
-): MemberRect {
-	const members = memberIds
-		.map((id) => getNodeById(id))
-		.filter((n): n is INodeUi => n !== undefined);
+): NodesRect {
+	const nodes = nodeIds.map((id) => getNodeById(id)).filter((n): n is INodeUi => n !== undefined);
 
-	if (members.length === 0) {
+	if (nodes.length === 0) {
 		return { x: 0, y: 0, width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
 	}
 
@@ -91,11 +89,11 @@ export function computeMemberRectFromStore(
 	let maxX = -Infinity;
 	let maxY = -Infinity;
 
-	for (const node of members) {
+	for (const node of nodes) {
 		const override = positionOverrides?.get(node.id);
 		const x = override?.x ?? node.position[0];
 		const y = override?.y ?? node.position[1];
-		const { width, height } = resolveMemberDimensions(node, getNodeDimensions);
+		const { width, height } = resolveNodeDimensions(node, getNodeDimensions);
 		if (x < minX) minX = x;
 		if (y < minY) minY = y;
 		if (x + width > maxX) maxX = x + width;
@@ -120,7 +118,7 @@ export interface MapGroupsToVueFlowNodesInputs {
 
 /**
  * Map each workflow group to a `canvas-node-group` VueFlow node (title bar + frame).
- * Members are mapped separately by `mappedNodes`.
+ * Group nodes themselves are mapped separately by `mappedNodes`.
  */
 export function mapGroupsToVueFlowNodes({
 	allGroups,
@@ -131,20 +129,20 @@ export function mapGroupsToVueFlowNodes({
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
 	for (const group of allGroups) {
-		// Skip until at least one member resolves — otherwise the rect collapses to
-		// (0, 0) and lands the title bar at canvas origin. Re-emits when members arrive.
-		const hasMember = group.nodeIds.some((id) => getNodeById(id) !== undefined);
-		if (!hasMember) continue;
+		// Skip until at least one node resolves — otherwise the rect collapses to
+		// (0, 0) and lands the title bar at canvas origin. Re-emits when nodes arrive.
+		const hasNode = group.nodeIds.some((id) => getNodeById(id) !== undefined);
+		if (!hasNode) continue;
 
-		const memberRect = computeMemberRectFromStore(group.nodeIds, getNodeById, getNodeDimensions);
+		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDimensions);
 
 		const data: CanvasGroupViewState = {
 			group,
-			memberRect,
+			nodesRect,
 			autofocusTitle: autofocusGroupId === group.id,
 		};
 
-		const titleBar = titleBarFromMemberRect(memberRect);
+		const titleBar = titleBarFromNodesRect(nodesRect);
 		out.push({
 			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
 			type: CANVAS_NODE_GROUP_TYPE,
@@ -154,7 +152,7 @@ export function mapGroupsToVueFlowNodes({
 			draggable: !readOnly,
 			selectable: false,
 			connectable: false,
-			// Behind member nodes so the expanded frame doesn't overlap them.
+			// Behind the group's nodes so the expanded frame doesn't overlap them.
 			zIndex: -1,
 			data,
 		});

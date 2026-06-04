@@ -577,10 +577,10 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
-	// Display size by node id, used by `computeMemberRectFromStore` so the group
-	// bounding rect wraps each member's actual rendered size. Sticky notes are
+	// Display size by node id, used by `computeNodesRectFromStore` so the group
+	// bounding rect wraps each node's actual rendered size. Sticky notes are
 	// omitted — their own width/height parameters are read there directly.
-	const memberDimensionsByNodeId = computed(() => {
+	const nodeDimensionsById = computed(() => {
 		const dimensionsById: Record<string, { width: number; height: number }> = {};
 
 		for (const node of nodes.value) {
@@ -604,7 +604,7 @@ export function useCanvasMapping({
 		return mapGroupsToVueFlowNodes({
 			allGroups,
 			getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
-			getNodeDimensions: (id) => memberDimensionsByNodeId.value[id],
+			getNodeDimensions: (id) => nodeDimensionsById.value[id],
 			autofocusGroupId: nodeGroupIdToAutofocusTitle?.value ?? null,
 			readOnly: readOnly.value || suppressInteraction.value,
 		});
@@ -797,7 +797,7 @@ export function useCanvasMapping({
 		nodeExecutionRunDataOutputMapById,
 		nodeExecutionWaitingForNextById,
 		nodeHasIssuesById,
-		memberDimensionsByNodeId,
+		nodeDimensionsById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
 		groupNodes: groupVueFlowNodes,

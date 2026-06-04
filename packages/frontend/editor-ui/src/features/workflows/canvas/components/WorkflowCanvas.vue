@@ -70,7 +70,7 @@ const {
 	nodes: mappedWorkflowNodes,
 	groupNodes: mappedGroupNodes,
 	connections: mappedConnections,
-	memberDimensionsByNodeId,
+	nodeDimensionsById,
 } = useCanvasMapping({
 	nodes,
 	connections,
@@ -179,7 +179,7 @@ defineExpose({
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:render-data="renderData"
-				:member-dimensions-by-node-id="memberDimensionsByNodeId"
+				:node-dimensions-by-id="nodeDimensionsById"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"

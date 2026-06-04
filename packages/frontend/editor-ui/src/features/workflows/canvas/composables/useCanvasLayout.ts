@@ -65,7 +65,7 @@ export function useCanvasLayout(
 	} = useVueFlow(canvasId);
 
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
-		// Group title-bar nodes are positioned from their members' bounding rect, not by dagre.
+		// Group title-bar nodes are positioned from their nodes' bounding rect, not by dagre.
 		const source = target === 'selection' ? getSelectedNodes.value : allNodes.value;
 		return {
 			nodes: source.filter((node) => !isCanvasNodeGroup(node)),

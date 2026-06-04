@@ -40,7 +40,7 @@ const baseGroup: IWorkflowGroup = {
 function makeData(overrides: Partial<CanvasGroupViewState> = {}): CanvasGroupViewState {
 	return {
 		group: baseGroup,
-		memberRect: { x: 0, y: 0, width: 500, height: 100 },
+		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
 		autofocusTitle: false,
 		...overrides,
 	};
@@ -85,7 +85,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 	});
 
 	describe('frame', () => {
-		it('renders the frame around the members', () => {
+		it('renders the frame around the nodes', () => {
 			const wrapper = render();
 			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeTruthy();
 		});
