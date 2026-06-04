@@ -26,7 +26,10 @@ jobs:
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
           - name: Postgres 16
-            runner: blacksmith-8vcpu-ubuntu-2204
+            # Benchmark: 8vcpu → 4vcpu to verify the persistent-worker win
+            # still holds on a smaller runner. Revert if the gap shrinks
+            # below what we save on runner cost.
+            runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
             TEST_IMAGE_POSTGRES: 'postgres:16'
