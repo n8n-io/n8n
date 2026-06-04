@@ -55,3 +55,18 @@ export function bySpecDir(outputDir: string = coverageOptions.outputDir ?? './co
 }
 
 export const BY_SPEC_DIR = bySpecDir();
+
+/**
+ * Per-spec BACKEND raw coverage (DEVP-370), written by the backend coverage
+ * fixture and read by emit-spec-backend-lcovs. Separate from BY_SPEC_DIR so the
+ * frontend (browser `page.coverage`) and backend (n8n server V8 via the e2e
+ * coverage hook) raws never collide. Like BY_SPEC_DIR it MUST be a sibling of
+ * `outputDir`, never inside it (the shard report's generate() cleans outputDir).
+ */
+export function backendBySpecDir(
+	outputDir: string = coverageOptions.outputDir ?? './coverage',
+): string {
+	return `${outputDir.replace(/\/+$/, '')}-by-spec-backend`;
+}
+
+export const BACKEND_BY_SPEC_DIR = backendBySpecDir();
