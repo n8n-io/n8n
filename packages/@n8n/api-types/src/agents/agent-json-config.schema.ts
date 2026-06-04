@@ -77,7 +77,7 @@ const SubAgentsConfigSchema = z
 			.max(20)
 			.optional()
 			.describe(
-				'Maximum number of child sub-agent runs this parent agent may spawn in one parent run. Defaults to 5 when unset.',
+				'Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to 10 when unset.',
 			),
 		agents: z.array(SubAgentConfigSchema).optional(),
 	})

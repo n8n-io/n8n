@@ -314,7 +314,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
-			maxChildren: 5,
+			maxChildren: 10,
 		});
 	});
 

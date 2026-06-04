@@ -19,7 +19,7 @@ import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 
 const SUB_AGENT_MAX_CHILDREN_MIN = 1;
 const SUB_AGENT_MAX_CHILDREN_MAX = 20;
-const SUB_AGENT_MAX_CHILDREN_DEFAULT = 5;
+const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;

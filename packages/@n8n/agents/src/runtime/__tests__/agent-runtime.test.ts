@@ -1393,7 +1393,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(peakDelegations).toBe(5);
 	});
 
-	it('batches delegate_subagent parallelism by maxChildren when more calls are issued than the budget', async () => {
+	it('batches delegate_subagent parallelism by maxChildren when more calls are issued than the parallel limit', async () => {
 		let activeDelegations = 0;
 		let peakDelegations = 0;
 
@@ -1435,11 +1435,10 @@ describe('AgentRuntime — concurrent tool execution', () => {
 
 		expect(result.finishReason).toBe('stop');
 		expect(peakDelegations).toBe(2);
-		expect(
-			result.toolCalls?.some((entry) =>
-				JSON.stringify(entry.output).includes('exceeds maxChildren 2'),
-			),
-		).toBe(true);
+		expect(result.toolCalls).toHaveLength(4);
+		for (const entry of result.toolCalls ?? []) {
+			expect(JSON.stringify(entry.output)).toContain('"status":"completed"');
+		}
 	});
 
 	it('fails fast when delegate metadata has an invalid maxChildren batch size', async () => {

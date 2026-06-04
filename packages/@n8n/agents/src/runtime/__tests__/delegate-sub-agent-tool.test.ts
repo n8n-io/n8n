@@ -197,7 +197,7 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('defaults maxChildren to 5 when policy is omitted', () => {
+	it('defaults maxChildren to 10 when policy is omitted', () => {
 		const tool = createDelegateSubAgentTool({
 			runSubAgent: async () =>
 				await Promise.resolve({
@@ -207,7 +207,8 @@ describe('createDelegateSubAgentTool', () => {
 				}),
 		});
 
-		expect(tool.systemInstruction).toContain('at most 5 child sub-agent runs');
+		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
+		expect(tool.systemInstruction).toContain('Up to 10 child sub-agent runs');
 	});
 
 	it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
@@ -227,7 +228,7 @@ describe('createDelegateSubAgentTool', () => {
 		},
 	);
 
-	it('includes maxChildren as a hard delegation budget in model-facing instructions', () => {
+	it('describes maxChildren as a parallelism limit in model-facing instructions', () => {
 		const tool = createDelegateSubAgentTool({
 			policy: { maxChildren: 2 },
 			runSubAgent: async () =>
@@ -238,15 +239,14 @@ describe('createDelegateSubAgentTool', () => {
 				}),
 		});
 
-		expect(tool.systemInstruction).toContain('DELEGATION LIMITS');
-		expect(tool.systemInstruction).toContain('at most 2 child sub-agent runs');
-		expect(tool.systemInstruction).toContain(
-			'issue up to 2 independent delegate_subagent calls together',
-		);
-		expect(tool.systemInstruction).toContain('hard budget');
+		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
+		expect(tool.systemInstruction).toContain('Up to 2 child sub-agent runs');
+		expect(tool.systemInstruction).toContain('limits parallelism, not the total number');
+		expect(tool.systemInstruction).not.toContain('hard budget');
+		expect(tool.systemInstruction).not.toContain('at most 2 child sub-agent runs');
 	});
 
-	it('returns remaining delegation budget after a successful child spawn', async () => {
+	it('does not return delegationBudget in tool output', async () => {
 		const tool = createDelegateSubAgentTool({
 			policy: { maxChildren: 2 },
 			runSubAgent: async (request) =>
@@ -257,13 +257,12 @@ describe('createDelegateSubAgentTool', () => {
 				}),
 		});
 
-		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
-			status: 'completed',
-			delegationBudget: { maxChildren: 2, remainingChildren: 1 },
-		});
+		const output = await tool.handler?.(input, { runId: 'parent-run-1' });
+		expect(output).toMatchObject({ status: 'completed' });
+		expect(output).not.toHaveProperty('delegationBudget');
 	});
 
-	it('tracks child count per parent run id', async () => {
+	it('assigns distinct task paths for repeated delegations in the same parent run', async () => {
 		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
 			status: 'completed',
 			taskPath: '/root/research_api',
@@ -279,14 +278,16 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'completed',
 		});
 		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
-			status: 'failed',
-			error: 'Sub-agent child count 2 exceeds maxChildren 1',
+			status: 'completed',
 		});
 		await expect(tool.handler?.(input, { runId: 'parent-run-2' })).resolves.toMatchObject({
 			status: 'completed',
 		});
 
-		expect(runSubAgent).toHaveBeenCalledTimes(2);
+		expect(runSubAgent).toHaveBeenCalledTimes(3);
+		expect(runSubAgent.mock.calls[0]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
+		expect(runSubAgent.mock.calls[1]?.[0]).toMatchObject({ taskPath: '/root/research_api_1' });
+		expect(runSubAgent.mock.calls[2]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
 	});
 
 	it('returns a failed output when the runner callback throws', async () => {

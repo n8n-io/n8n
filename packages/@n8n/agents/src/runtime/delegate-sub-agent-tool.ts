@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import {
-	assertSubAgentPolicyAllowsChildCount,
 	createChildSubAgentTaskPath,
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	type SubAgentTaskPath,
@@ -77,12 +76,6 @@ const delegateSubAgentOutputSchema = z.object({
 			}),
 		)
 		.optional(),
-	delegationBudget: z
-		.object({
-			maxChildren: z.number(),
-			remainingChildren: z.number(),
-		})
-		.optional(),
 });
 
 /** The arguments the LLM provides when calling delegate_subagent. */
@@ -149,11 +142,6 @@ export interface DelegateSubAgentToolOutput {
 	error?: string;
 	/** Present when status is 'suspended' — child run paused awaiting tool resume. */
 	pendingSuspend?: GenerateResult['pendingSuspend'];
-	/** Remaining child delegation budget after this call, when maxChildren is configured. */
-	delegationBudget?: {
-		maxChildren: number;
-		remainingChildren: number;
-	};
 }
 
 /**
@@ -161,7 +149,7 @@ export interface DelegateSubAgentToolOutput {
  *
  * You supply `runSubAgent` — the host callback that actually runs the child for
  * a delegation and returns its result. Everything else (input/output schema,
- * system prompt, task-path bookkeeping, policy enforcement, and the
+ * system prompt, task-path bookkeeping, parallelism policy, and the
  * `subagent-started` / `-completed` lifecycle events) is owned by
  * the tool.
  */
@@ -185,7 +173,7 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * model selects one by passing its id as `subAgentId`.
 	 */
 	availableSubAgents?: Array<{ id: string; name: string; description?: string }>;
-	/** Fan-out limits and spawn switch enforced before each delegation. */
+	/** Parallelism limit for delegated child runs (also used as delegate_subagent batch size). */
 	policy?: DelegateSubAgentPolicy;
 	/** Additional local/deferred tool names the host removes from inline children. */
 	inlineSubAgentBlockedTools?: string[];
@@ -205,7 +193,7 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *
  * The tool owns the cross-cutting concerns: the model-facing input/output
  * schema, the description + system instruction that teach the LLM when/how to
- * delegate, task-path bookkeeping, fan-out policy enforcement, and the
+ * delegate, task-path bookkeeping, parallelism policy, and the
  * `subagent-started` / `-completed`
  * lifecycle events. You only supply HOW to run the child, via `runSubAgent`.
  *
@@ -213,7 +201,7 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *   agent.tool(createDelegateSubAgentTool({
  *     runSubAgent: (request) => runner.run(request),
  *     availableSubAgents,
- *     policy: { maxChildren: 5 },
+ *     policy: { maxChildren: 10 },
  *   }));
  */
 function resolveDelegateSubAgentPolicy(
@@ -239,8 +227,8 @@ function resolveDelegateSubAgentPolicy(
 }
 
 export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions = {}) {
-	// Per-parent fan-out counter keyed by run/thread/task — drives maxChildren.
-	const childCounts = new Map<string, number>();
+	// Per-parent child path index for stable task paths (/root/name_0, /root/name_1, ...).
+	const childPathIndexes = new Map<string, number>();
 	const resolvedOptions: CreateDelegateSubAgentToolOptions = {
 		...options,
 		policy: resolveDelegateSubAgentPolicy(options.policy),
@@ -266,7 +254,8 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		.input(delegateSubAgentInputSchema)
 		.output(delegateSubAgentOutputSchema)
 		.handler(
-			async (input, ctx) => await handleDelegateSubAgent(input, ctx, resolvedOptions, childCounts),
+			async (input, ctx) =>
+				await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes),
 		)
 		.build();
 
@@ -318,37 +307,16 @@ function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | und
 	const runLabel = policy.maxChildren === 1 ? 'run' : 'runs';
 	return [
 		[
-			'DELEGATION LIMITS:',
-			`- You may spawn at most ${policy.maxChildren} child sub-agent ${runLabel} in this parent run.`,
-			`- When parallel delegation is useful, you may issue up to ${policy.maxChildren} independent delegate_subagent calls together.`,
-			'- This is a hard budget, not a suggestion. Do not plan or attempt more delegate_subagent calls than this budget allows.',
-			'- Budget child delegations up front. Prefer the highest-value independent workstreams and do the rest yourself.',
+			'DELEGATION PARALLELISM:',
+			`- Up to ${policy.maxChildren} child sub-agent ${runLabel} can execute at the same time.`,
+			'- This limits parallelism, not the total number of delegated tasks.',
+			'- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.',
 		].join('\n'),
 	];
 }
 
-function buildDelegationBudget(
-	childCountAfterThisCall: number,
-	policy: DelegateSubAgentPolicy | undefined,
-): DelegateSubAgentToolOutput['delegationBudget'] {
-	if (policy?.maxChildren === undefined) return undefined;
-
-	return {
-		maxChildren: policy.maxChildren,
-		remainingChildren: Math.max(policy.maxChildren - childCountAfterThisCall, 0),
-	};
-}
-
-function withDelegationBudget(
-	output: DelegateSubAgentToolOutput,
-	delegationBudget: DelegateSubAgentToolOutput['delegationBudget'],
-): DelegateSubAgentToolOutput {
-	if (delegationBudget === undefined) return output;
-	return { ...output, delegationBudget };
-}
-
 /**
- * Tool handler: enforce policy (fan-out), assign the child's task path,
+ * Tool handler: assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
  * parent tool context, then run the child via the host `runSubAgent` callback
  * while emitting started/progress/completed lifecycle events. Any error is
@@ -359,25 +327,22 @@ async function handleDelegateSubAgent(
 	input: DelegateSubAgentInput,
 	ctx: ToolContext,
 	options: CreateDelegateSubAgentToolOptions,
-	childCounts: Map<string, number>,
+	childPathIndexes: Map<string, number>,
 ): Promise<DelegateSubAgentToolOutput> {
 	let taskPath: SubAgentTaskPath | undefined;
 	let request: DelegateSubAgentRequest | undefined;
 	let startedAt: number | undefined;
 	try {
-		const childCountKey = getChildCountKey(ctx);
-		const childCount = childCounts.get(childCountKey) ?? 0;
-		assertSubAgentPolicyAllowsChildCount(childCount, options.policy);
+		const childPathIndexKey = getChildPathIndexKey(ctx);
+		const childPathIndex = childPathIndexes.get(childPathIndexKey) ?? 0;
 
-		taskPath = createChildSubAgentTaskPath(input.taskName, childCount);
-		childCounts.set(childCountKey, childCount + 1);
-		const childCountAfterThisCall = childCount + 1;
-		const delegationBudget = buildDelegationBudget(childCountAfterThisCall, options.policy);
+		taskPath = createChildSubAgentTaskPath(input.taskName, childPathIndex);
+		childPathIndexes.set(childPathIndexKey, childPathIndex + 1);
 
 		request = {
 			...input,
 			taskPath,
-			childCount,
+			childCount: childPathIndex,
 			...(ctx.runId !== undefined ? { parentRunId: ctx.runId } : {}),
 			...(ctx.persistence?.threadId !== undefined
 				? { parentThreadId: ctx.persistence.threadId }
@@ -404,24 +369,16 @@ async function handleDelegateSubAgent(
 				);
 			},
 		});
-		const outputWithBudget = withDelegationBudget(output, delegationBudget);
-		emitSubAgentCompleted(ctx, request, outputWithBudget, startedAt);
-		return outputWithBudget;
+		emitSubAgentCompleted(ctx, request, output, startedAt);
+		return output;
 	} catch (error) {
-		const delegationBudget =
-			request !== undefined
-				? buildDelegationBudget(request.childCount + 1, options.policy)
-				: undefined;
 		if (request !== undefined && startedAt !== undefined) {
-			const failedOutput = withDelegationBudget(
-				{
-					status: 'failed',
-					...(taskPath !== undefined ? { taskPath } : {}),
-					answer: '',
-					error: stringifyUnknown(error),
-				},
-				delegationBudget,
-			);
+			const failedOutput: DelegateSubAgentToolOutput = {
+				status: 'failed',
+				...(taskPath !== undefined ? { taskPath } : {}),
+				answer: '',
+				error: stringifyUnknown(error),
+			};
 			emitSubAgentCompleted(ctx, request, failedOutput, startedAt);
 			return failedOutput;
 		}
@@ -480,7 +437,7 @@ function subAgentLifecycleBase(request: DelegateSubAgentRequest) {
 	};
 }
 
-function getChildCountKey(ctx: ToolContext): string {
+function getChildPathIndexKey(ctx: ToolContext): string {
 	return ctx.runId ?? ctx.persistence?.threadId ?? ctx.persistence?.resourceId ?? 'adhoc';
 }
 
