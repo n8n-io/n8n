@@ -2656,6 +2656,24 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('does not emit an audit event for data_redaction_enforcement_floor (telemetry-only; audit is handled by redaction-enforcement-updated)', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user404',
+					email: 'admin7@example.com',
+					firstName: 'Seventh',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: 'data_redaction_enforcement_floor',
+				value: 'all',
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('redaction enforcement events', () => {
