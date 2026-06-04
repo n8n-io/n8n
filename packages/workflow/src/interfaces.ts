@@ -483,6 +483,14 @@ export interface IExecuteData {
 	node: INode;
 	source: ITaskDataConnectionsSource | null;
 	runIndex?: number;
+	/**
+	 * Set when a waiting webhook node is resumed. In that case `data.main` already
+	 * holds the resolved output branches returned by the node's `webhook()` method
+	 * (e.g. `[[], [item], []]`), and the node is flagged as disabled to prevent the
+	 * wait from starting over. The disabled-node handler must then forward every
+	 * output branch instead of only the first one. See `WorkflowExecute.handleDisabledNode`.
+	 */
+	forwardAllOutputs?: boolean;
 }
 
 export type IContextObject = {

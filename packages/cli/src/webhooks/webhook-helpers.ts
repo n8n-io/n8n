@@ -392,8 +392,13 @@ export function prepareExecutionData(
 	if (executionId !== undefined) {
 		// Set the data the webhook node did return on the waiting node if executionId
 		// already exists as it means that we are restarting an existing execution.
+		// The resuming node is flagged as disabled to stop the wait from starting over,
+		// so mark it to forward every output branch (not just the first). Otherwise items
+		// routed to outputs other than 0 are silently dropped.
+		// See https://github.com/n8n-io/n8n/issues/12823
 		runExecutionData.executionData!.nodeExecutionStack[0].data.main =
 			webhookResultData.workflowData ?? [];
+		runExecutionData.executionData!.nodeExecutionStack[0].forwardAllOutputs = true;
 	}
 
 	if (Object.keys(runExecutionDataMerge).length !== 0) {

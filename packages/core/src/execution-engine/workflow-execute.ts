@@ -916,8 +916,19 @@ export class WorkflowExecute {
 	/**
 	 * Handles execution of disabled nodes by passing through input data
 	 */
-	private handleDisabledNode(inputData: ITaskDataConnections): IRunNodeResponse {
+	private handleDisabledNode(
+		inputData: ITaskDataConnections,
+		forwardAllOutputs = false,
+	): IRunNodeResponse {
 		if (Object.hasOwn(inputData, 'main') && inputData.main.length > 0) {
+			// Resumed waiting webhook nodes are flagged as disabled so the wait does not
+			// start over, but their `main` already holds the full set of output branches
+			// returned by `webhook()`. Forward all of them so items routed to outputs
+			// other than the first are not silently dropped.
+			// See https://github.com/n8n-io/n8n/issues/12823
+			if (forwardAllOutputs) {
+				return { data: inputData.main as INodeExecutionData[][] };
+			}
 			// If the node is disabled simply return the data from the first main input
 			if (inputData.main[0] === null) {
 				return { data: undefined };
@@ -1285,7 +1296,7 @@ export class WorkflowExecute {
 		let inputData = executionData.data;
 
 		if (node.disabled === true) {
-			return this.handleDisabledNode(inputData);
+			return this.handleDisabledNode(inputData, executionData.forwardAllOutputs);
 		}
 
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
