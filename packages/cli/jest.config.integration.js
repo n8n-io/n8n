@@ -1,13 +1,26 @@
-// Override the root 1 MB workerIdleMemoryLimit for integration tests. The root
-// setting forces a fresh worker process for every test file, which pays the
-// full module-load cost (TypeORM, @n8n/di, the n8n CLI surface) on each file
-// and dominates the PG16 integration job's wall time. Removing the key lets
-// workers persist across files and exposes any cross-file leakage so it can
-// be fixed at the source rather than masked.
+// The root jest config sets `workerIdleMemoryLimit: '1MB'` which forces a
+// fresh worker process for every test file. Removing it lets workers persist
+// across files and skip the per-file module-load cost (TypeORM, @n8n/di, the
+// n8n CLI surface), which dominates wall time on the Postgres 16 integration
+// job. On SQLite we can't yet remove it: TypeORM/sqlite-pooled leaks state
+// across migrate() calls and per-file migration time grows linearly until it
+// hits the 10s hook timeout. So we keep the 1 MB limit (effective recycling)
+// for SQLite and uncap for Postgres. `JEST_WORKER_IDLE_MEMORY_LIMIT` overrides
+// both (use empty string to disable; any other value sets the limit).
 const { workerIdleMemoryLimit: _drop, ...rootConfig } = require('../../jest.config');
 
+function resolveWorkerIdleMemoryLimit() {
+	const override = process.env.JEST_WORKER_IDLE_MEMORY_LIMIT;
+	if (override !== undefined) {
+		return override === '' ? undefined : override;
+	}
+	return process.env.DB_TYPE === 'sqlite' ? '1MB' : undefined;
+}
+
+const workerIdleMemoryLimit = resolveWorkerIdleMemoryLimit();
+
 /** @type {import('jest').Config} */
-module.exports = {
+const config = {
 	...rootConfig,
 	testEnvironmentOptions: {
 		url: 'http://localhost/',
@@ -31,3 +44,9 @@ module.exports = {
 	testMatch: ['<rootDir>/test/integration/**/*.test.ts', '<rootDir>/src/**/*.integration.test.ts'],
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 };
+
+if (workerIdleMemoryLimit !== undefined) {
+	config.workerIdleMemoryLimit = workerIdleMemoryLimit;
+}
+
+module.exports = config;

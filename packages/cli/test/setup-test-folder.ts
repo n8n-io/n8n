@@ -7,19 +7,9 @@ process.env.N8N_ENCRYPTION_KEY = 'test_key';
 const baseDir = join(tmpdir(), 'n8n-tests/');
 mkdirSync(baseDir, { recursive: true });
 
-const previousUserFolder = process.env.N8N_USER_FOLDER;
 const testDir = mkdtempSync(baseDir);
 mkdirSync(join(testDir, '.n8n'));
 process.env.N8N_USER_FOLDER = testDir;
-
-// Diagnostic: does `setupFilesAfterEnv` re-evaluate this module per test file
-// in persistent workers? If PID repeats with the SAME testDir across files in
-// one worker, this body only ran once and every test file is reusing the same
-// SQLite path — the leading hypothesis for the schema-drift cascade.
-// eslint-disable-next-line no-console
-console.log(
-	`[SETUP-FOLDER] pid=${process.pid} uptime=${Math.round(process.uptime())}s testDir=${testDir} prev=${previousUserFolder ?? 'none'}`,
-);
 process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'true';
 
 writeFileSync(
