@@ -1,12 +1,10 @@
-import type { z as zType } from 'zod';
-
 // Manual mocks — must be declared before any imports that touch the mocked modules.
 jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
+	const { z } = jest.requireActual('zod');
+	const { getPromptWorkspaceRoot } = jest.requireActual('@n8n/instance-ai');
 	return {
 		McpClientManager: class {
 			getRegularTools = jest.fn().mockResolvedValue({});
-			getBrowserTools = jest.fn().mockResolvedValue({});
 			disconnect = jest.fn();
 		},
 		createDomainAccessTracker: jest.fn(),
@@ -19,6 +17,9 @@ jest.mock('@n8n/instance-ai', () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
+		createScopedWorkspace: jest.fn((workspace: unknown) => workspace),
+		getPromptWorkspaceRoot,
+		getWorkspaceRoot: jest.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: jest.fn(),
 		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
 			registry: {
@@ -57,7 +58,7 @@ jest.mock('@n8n/instance-ai', () => {
 			evaluateTerminal(
 				_events: unknown[],
 				status: 'completed' | 'cancelled' | 'errored',
-				options: { errorMessage?: string } = {},
+				options: { errorMessage?: string; suppressCompletedFallback?: boolean } = {},
 			) {
 				if (status === 'errored') {
 					return {
@@ -76,6 +77,15 @@ jest.mock('@n8n/instance-ai', () => {
 									'I hit an error before I could finish that response. Please try again.',
 							},
 						},
+					};
+				}
+
+				if (status === 'completed' && options.suppressCompletedFallback) {
+					return {
+						status,
+						visibilitySource: 'none',
+						action: 'none',
+						reason: 'completed-silent-suppressed',
 					};
 				}
 
@@ -129,9 +139,10 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
-import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import {
+	buildAgentTreeFromEvents,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -339,7 +350,12 @@ type StartRunServiceInternals = {
 		setTimeZone: jest.MockedFunction<(threadId: string, timeZone: string) => void>;
 	};
 	threadPushRef: Map<string, string>;
+	userMessagePersistenceByRun: Map<
+		string,
+		{ userId: string; message: { id: string; text: string } }
+	>;
 	executeRun: jest.Mock;
+	trackInFlightExecution: jest.Mock;
 };
 
 function createStartRunService(): StartRunServiceInternals {
@@ -356,7 +372,9 @@ function createStartRunService(): StartRunServiceInternals {
 		setTimeZone: jest.fn(),
 	};
 	service.threadPushRef = new Map();
+	service.userMessagePersistenceByRun = new Map();
 	service.executeRun = jest.fn();
+	service.trackInFlightExecution = jest.fn();
 	return service;
 }
 
@@ -412,15 +430,17 @@ function createCheckpointService(): ServiceInternals {
 type CheckpointPruneServiceInternals = {
 	startCheckpointPruning: () => void;
 	stopCheckpointPruning: () => void;
-	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	runScheduledPrune: (now?: number) => Promise<void>;
+	pruneStalePendingConfirmations: jest.MockedFunction<(now: number) => Promise<void>>;
+	pruneExpiredThreads: jest.MockedFunction<() => Promise<void>>;
 	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
 	checkpointStore: {
-		deleteOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
+		markExpiredOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
 	};
 	checkpointPruneTimer?: NodeJS.Timeout;
 	checkpointPruningStopped: boolean;
 	instanceAiConfig: {
-		snapshotPruneInterval: number;
+		pruneInterval: number;
 		snapshotRetention: number;
 	};
 	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
@@ -431,12 +451,14 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 		InstanceAiService.prototype,
 	) as unknown as CheckpointPruneServiceInternals;
 	service.scheduleCheckpointPrune = jest.fn();
+	service.pruneStalePendingConfirmations = jest.fn(async (_now: number) => undefined);
+	service.pruneExpiredThreads = jest.fn(async () => undefined);
 	service.checkpointStore = {
-		deleteOlderThan: jest.fn(async (_olderThan: Date) => 0),
+		markExpiredOlderThan: jest.fn(async (_olderThan: Date) => 0),
 	};
 	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
-		snapshotPruneInterval: 60 * 60 * 1000,
+		pruneInterval: 60 * 60 * 1000,
 		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
 	};
 	service.logger = {
@@ -503,7 +525,6 @@ type WorkspaceServiceInternals = {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
-		runId?: string,
 	) => Promise<unknown>;
 };
 
@@ -563,6 +584,7 @@ type ShutdownServiceInternals = {
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: jest.MockedFunction<() => void> };
 	_mcpClientManager?: { disconnect: jest.MockedFunction<() => Promise<void>> };
+	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: jest.Mock; warn: jest.Mock };
 };
 
@@ -625,7 +647,11 @@ type TerminalGuardOrderServiceInternals = {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
-		options?: { messageGroupId?: string; errorMessage?: string },
+		options?: {
+			messageGroupId?: string;
+			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
+		},
 	) => { action: string; reason: string } | undefined;
 	evaluateWaitingResponse: (
 		threadId: string,
@@ -803,6 +829,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}),
 		);
 		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockImplementation(({ source }) => source);
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockImplementation(() => ({
+			registry: {
+				skillsHash: 'runtime-skills-hash',
+				skills: [{ id: 'data-table-manager' }],
+			},
+			loadSkill: jest.fn(),
+		}));
 	});
 
 	it('serializes workspace creation for concurrent calls on the same thread', async () => {
@@ -913,21 +946,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createWorkspace as jest.Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
 
-		await service.getOrCreateWorkspace(
-			'thread-1',
-			fakeUser,
-			{} as InstanceAiContext,
-			'run_123456789',
-		);
+		await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
-				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				id: 'acme-eval-instance-ai-thread-thread-1',
+				name: 'acme-eval-instance-ai-thread-thread-1',
 				labels: expect.objectContaining({
 					'n8n-builder': 'instance-ai-thread-thread-1',
 					name_prefix: 'Acme-Eval',
-					run_id: 'run_123456789',
 					thread_id: 'thread-1',
 				}),
 			}),
@@ -1010,6 +1037,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}>;
 			settingsService: {
 				getAdminSettings: jest.Mock;
+				getSandboxStatus: jest.Mock;
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
@@ -1026,7 +1054,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
-			instanceAiConfig: { subAgentMaxSteps: number; browserMcp: boolean };
+			instanceAiConfig: { subAgentMaxSteps: number };
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: unknown;
@@ -1047,6 +1075,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
+			getSandboxStatus: jest.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: true,
+				unavailableReason: null,
+			})),
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
@@ -1065,7 +1099,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
-		service.instanceAiConfig = { subAgentMaxSteps: 10, browserMcp: false };
+		service.instanceAiConfig = { subAgentMaxSteps: 10 };
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = {};
@@ -1132,11 +1166,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createSandbox).toHaveBeenCalledTimes(1);
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'run-1-instance-ai-thread-thread-1',
-				name: 'run-1-instance-ai-thread-thread-1',
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
 				labels: expect.objectContaining({
 					'n8n-builder': 'instance-ai-thread-thread-1',
-					run_id: 'run-1',
 					thread_id: 'thread-1',
 				}),
 			}),
@@ -1146,6 +1179,34 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createWorkspace).toHaveBeenCalledWith(sandbox);
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
+
+		(createLazyRuntimeWorkspace as jest.Mock).mockClear();
+		(createLazyWorkspaceRuntimeSkillSource as jest.Mock).mockClear();
+		(createSandbox as jest.Mock).mockClear();
+		(setupSandboxWorkspace as jest.Mock).mockClear();
+		(loadInstanceAiRuntimeSkillSource as jest.Mock).mockClear();
+		service.settingsService.getSandboxStatus.mockReturnValue({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			workflowBuilderAvailable: false,
+			unavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+		});
+
+		const unavailableEnvironment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-2',
+			'run-2',
+			new AbortController().signal,
+		);
+
+		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
+		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
+		expect(createLazyRuntimeWorkspace).not.toHaveBeenCalled();
+		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
+		expect(createSandbox).not.toHaveBeenCalled();
+		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
 	});
 });
 
@@ -1176,6 +1237,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
 		service._mcpClientManager = { disconnect: jest.fn(async () => {}) };
+		service.inFlightExecutions = new Set();
 		service.logger = { debug: jest.fn(), warn: jest.fn() };
 
 		await service.shutdown();
@@ -1357,16 +1419,18 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 	});
 });
 
-describe('InstanceAiService — checkpoint pruning', () => {
-	it('deletes checkpoints older than the retention window', async () => {
+describe('InstanceAiService — scheduled pruning', () => {
+	it('marks checkpoints expired older than the retention window', async () => {
 		const service = createCheckpointPruneService();
 		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
 
-		await service.pruneStaleCheckpoints(now);
+		await service.runScheduledPrune(now);
 
-		expect(service.checkpointStore.deleteOlderThan).toHaveBeenCalledWith(
+		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
 			new Date('2026-05-06T12:00:00.000Z'),
 		);
+		expect(service.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
+		expect(service.pruneExpiredThreads).toHaveBeenCalled();
 		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 	});
 
@@ -1381,11 +1445,57 @@ describe('InstanceAiService — checkpoint pruning', () => {
 
 	it('does not start checkpoint pruning when disabled', () => {
 		const service = createCheckpointPruneService();
-		service.instanceAiConfig.snapshotPruneInterval = 0;
+		service.instanceAiConfig.pruneInterval = 0;
 
 		service.startCheckpointPruning();
 
 		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
+	});
+});
+
+type ExpiredThreadPruneServiceInternals = {
+	pruneExpiredThreads: () => Promise<void>;
+	clearThreadState: jest.MockedFunction<(threadId: string) => Promise<void>>;
+	memoryService: {
+		cleanupExpiredThreads: jest.MockedFunction<
+			(onThreadDeleted?: (threadId: string) => Promise<void>) => Promise<number>
+		>;
+	};
+	logger: { warn: jest.Mock };
+};
+
+function createExpiredThreadPruneService(): ExpiredThreadPruneServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ExpiredThreadPruneServiceInternals;
+	service.clearThreadState = jest.fn(async (_threadId: string) => undefined);
+	service.memoryService = {
+		cleanupExpiredThreads: jest.fn(async (_onThreadDeleted) => 0),
+	};
+	service.logger = { warn: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — expired thread pruning', () => {
+	it('delegates to the memory service and clears state for deleted threads', async () => {
+		const service = createExpiredThreadPruneService();
+		service.memoryService.cleanupExpiredThreads.mockImplementation(async (onThreadDeleted) => {
+			await onThreadDeleted?.('thread-1');
+			return 1;
+		});
+
+		await service.pruneExpiredThreads();
+
+		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledTimes(1);
+		expect(service.clearThreadState).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('swallows errors so the recurring prune is not disrupted', async () => {
+		const service = createExpiredThreadPruneService();
+		service.memoryService.cleanupExpiredThreads.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(service.pruneExpiredThreads()).resolves.toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalled();
 	});
 });
 
@@ -1484,7 +1594,15 @@ type ResolveConfirmationServiceInternals = {
 		findSuspendedByRequestId: jest.Mock;
 		rejectPendingConfirmation: jest.Mock;
 	};
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+	resumeSuspendedRun: jest.Mock;
+	dropPendingConfirmation: jest.Mock;
+	pendingConfirmationRepo: { claim: jest.Mock };
+	tryResumeFromOrphan: jest.Mock;
+	finalizeUnresumableOrphan: jest.Mock;
+	publishRunFinish: jest.Mock;
+	saveAgentTreeSnapshot: jest.Mock;
+	dbSnapshotStorage: unknown;
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock; info: jest.Mock };
 };
 
 function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
@@ -1498,7 +1616,20 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 		findSuspendedByRequestId: jest.fn(),
 		rejectPendingConfirmation: jest.fn(),
 	};
-	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	service.resumeSuspendedRun = jest.fn(async () => false);
+	service.dropPendingConfirmation = jest.fn(async () => {});
+	service.pendingConfirmationRepo = { claim: jest.fn(async () => undefined) };
+	service.tryResumeFromOrphan = jest.fn(async () => false);
+	service.finalizeUnresumableOrphan = jest.fn();
+	service.publishRunFinish = jest.fn();
+	service.saveAgentTreeSnapshot = jest.fn(async () => {});
+	service.dbSnapshotStorage = {};
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+	};
 	return service;
 }
 
@@ -1525,6 +1656,7 @@ function createPlannedTaskSchedulerService(): {
 		tick: jest.Mock;
 		revertToActive: jest.Mock;
 		revertCheckpointToPlanned: jest.Mock;
+		revertBuildWorkflowToPlanned: jest.Mock;
 		markRunning: jest.Mock;
 	};
 	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
@@ -1538,6 +1670,7 @@ function createPlannedTaskSchedulerService(): {
 		tick: jest.fn(async () => ({ type: 'none' })),
 		revertToActive: jest.fn(async () => {}),
 		revertCheckpointToPlanned: jest.fn(async () => {}),
+		revertBuildWorkflowToPlanned: jest.fn(async () => {}),
 		markRunning: jest.fn(async () => {}),
 	};
 
@@ -1573,6 +1706,8 @@ type SuspendedRunResumeServiceInternals = {
 	dbSnapshotStorage: unknown;
 	createOrchestratorResumeTraceContext: jest.Mock;
 	processResumedStream: jest.Mock;
+	dropPendingConfirmation: jest.Mock;
+	trackInFlightExecution: jest.Mock;
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1581,6 +1716,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	) as unknown as SuspendedRunResumeServiceInternals;
 	service.revalidateActiveUser = jest.fn();
 	service.cancelRun = jest.fn();
+	service.dropPendingConfirmation = jest.fn(async () => {});
+	service.trackInFlightExecution = jest.fn();
 	service.runState = {
 		findSuspendedByRequestId: jest.fn(() => ({
 			agent: {},
@@ -1668,6 +1805,124 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		);
 		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
+		expect(service.dropPendingConfirmation).toHaveBeenCalledWith('req-1');
+	});
+
+	it('throws a UserError when an inline orphan is reclaimed after a restart (no checkpoint to resume)', async () => {
+		// Inline confirmations were held by an in-process Promise that died
+		// with the previous main; there's nothing to load from the checkpoint
+		// store, so the only honest answer is the terminal UserError.
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'inline',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', kind: 'inline' }),
+		);
+	});
+
+	it('falls back to UserError when a suspended orphan lacks the fields needed to resume', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			// no agentRunId / toolCallId / checkpointKey -> can't resume
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', kind: 'suspended' }),
+		);
+	});
+
+	it('reclaims and resumes a suspended orphan when the checkpoint is still loadable', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		const orphan = {
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			toolCallId: 'tool-call-1',
+			checkpointKey: 'agent-run-1',
+		};
+		service.pendingConfirmationRepo.claim.mockResolvedValue(orphan);
+		service.tryResumeFromOrphan.mockResolvedValue(true);
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toBe(true);
+		expect(service.tryResumeFromOrphan).toHaveBeenCalledWith(orphan, expect.anything());
+		expect(service.finalizeUnresumableOrphan).not.toHaveBeenCalled();
+	});
+
+	it('falls back to UserError when the resume attempt itself fails', async () => {
+		// e.g. checkpoint expired between claim and load, or env build fails
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			toolCallId: 'tool-call-1',
+			checkpointKey: 'agent-run-1',
+		});
+		service.tryResumeFromOrphan.mockResolvedValue(false);
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/lost when the assistant restarted/,
+		);
+
+		expect(service.tryResumeFromOrphan).toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).toHaveBeenCalled();
+	});
+
+	it('returns false silently when no DB row is claimable for an unknown confirmation', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.resolvePendingConfirmation.mockReturnValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.pendingConfirmationRepo.claim.mockResolvedValue(undefined);
+
+		const result = await service.resolveConfirmation('user-1', 'req-missing', approval);
+
+		expect(result).toBe(false);
+		expect(service.tryResumeFromOrphan).not.toHaveBeenCalled();
+		expect(service.finalizeUnresumableOrphan).not.toHaveBeenCalled();
 	});
 });
 
@@ -1704,6 +1959,48 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			'follow-up message',
 			'group-1',
 			true,
+		);
+	});
+
+	it('runs planned workflow builds as orchestrator follow-up turns', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		const buildTask = {
+			id: 'wf-1',
+			title: 'Build workflow',
+			kind: 'build-workflow',
+			spec: 'Build the workflow',
+			deps: [],
+			workflowId: 'existing-wf',
+		};
+		graph.tasks = [buildTask];
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		plannedTaskService.tick.mockResolvedValue({
+			type: 'orchestrate-build-workflow',
+			graph,
+			tasks: [buildTask],
+		});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(plannedTaskService.markRunning).toHaveBeenCalledWith('thread-a', 'wf-1', {
+			agentId: 'agent-001',
+		});
+		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith('build-workflow', graph, {
+			buildTask,
+		});
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			false,
+			undefined,
+			expect.objectContaining({
+				isPlannedBuildFollowUp: true,
+				buildTaskId: 'wf-1',
+				workItemId: 'plan-run-1:default',
+			}),
 		);
 	});
 });
@@ -1862,6 +2159,23 @@ describe('InstanceAiService — terminal outcome replay', () => {
 });
 
 describe('InstanceAiService — agent tree snapshots', () => {
+	beforeEach(() => {
+		(buildAgentTreeFromEvents as jest.Mock).mockImplementation(
+			(events: Array<{ type: string; payload?: { text?: string } }>) => ({
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: events
+					.map((event) => (event.type === 'text-delta' ? (event.payload?.text ?? '') : ''))
+					.join(''),
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			}),
+		);
+	});
+
 	it('falls back to persisted run ids when an old background group mapping was pruned', async () => {
 		const service = createSnapshotService();
 		const terminalEvent: InstanceAiEvent = {
@@ -1962,6 +2276,21 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			'text-delta',
 			'run-finish',
 		]);
+	});
+
+	it('does not publish completed fallback output when silence is expected', () => {
+		const service = createTerminalGuardOrderService();
+
+		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+			suppressCompletedFallback: true,
+		});
+
+		expect(decision).toMatchObject({
+			action: 'none',
+			reason: 'completed-silent-suppressed',
+		});
+		expect(service.eventBus.events).toEqual([]);
 	});
 
 	it('publishes fallback error before run-finish on a silent failed run', () => {
@@ -2151,11 +2480,9 @@ describe('InstanceAiService — AI temporary workflow cleanup', () => {
 });
 
 describe('InstanceAiService — OAuth callback URL', () => {
-	// Regression: the OAuth callback URL handed to the browser-credential-setup
-	// sub-agent must come from urlService.getInstanceBaseUrl() (which honors
-	// WEBHOOK_URL on cloud), not from globalConfig.editorBaseUrl with a
-	// localhost fallback. With the old fallback the agent pasted
-	// http://localhost:5678/... into the user's Slack app on a cloud instance.
+	// Regression: the OAuth callback URL exposed to browser-assisted credential
+	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
+	// on cloud), not from globalConfig.editorBaseUrl with a localhost fallback.
 	it('builds oauth2CallbackUrl from urlService.getInstanceBaseUrl()', () => {
 		const source = InstanceAiService.toString();
 

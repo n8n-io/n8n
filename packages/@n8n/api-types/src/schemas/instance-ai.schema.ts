@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
@@ -70,7 +71,6 @@ export const instanceAiAgentKindSchema = z.enum([
 	'builder',
 	'data-table',
 	'delegate',
-	'browser-setup',
 	'planner',
 	'eval-setup',
 ]);
@@ -728,6 +728,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	expired?: boolean;
 }
 
 export interface InstanceAiToolCallState {
@@ -764,8 +765,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate,
-	 * browser-setup, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -994,15 +994,20 @@ export function applyBranchReadOnlyOverrides(
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
 
+export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
+export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
+
+export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {
+	return instanceAiSandboxProviderSchema.safeParse(value).success;
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	lastMessages: number;
 	subAgentMaxSteps: number;
-	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
-	sandboxProvider: string;
+	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
@@ -1013,13 +1018,11 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	lastMessages: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
-	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
-	sandboxProvider: z.string().optional(),
+	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
@@ -1053,10 +1056,32 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
+// ---------------------------------------------------------------------------
+// MCP registry connections — per-user
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiMcpConnectionResponse {
+	id: string;
+	serverSlug: string;
+	/** Display title from the registry server (e.g. "Notion"). Falls back to `serverSlug` if the server is no longer in the registry. */
+	serverTitle: string;
+	/**
+	 * Icons for the registry server, with optional `theme` tagging so the FE
+	 * can pick a light- or dark-mode variant. Empty if the server is no longer
+	 * in the registry.
+	 */
+	serverIcons: McpRegistryServerIconResponse[];
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
@@ -1081,9 +1106,16 @@ export interface InstanceAiEvalInterceptedRequest {
 }
 
 export interface InstanceAiEvalNodeResult {
-	output: unknown;
-	/** Full count of output items (`output` is truncated for artifact size) */
-	outputCount?: number;
+	/** Outputs by connection type → per-branch items. Empty when pinned, errored, or didn't run. */
+	outputs: Record<string, unknown[][]>;
+	/** Total items across all branches (full untruncated count). */
+	outputCount: number;
+	/** True when any branch in `outputs` was truncated for size. */
+	truncated?: boolean;
+	/** Number of times this node ran (>1 inside loops). `outputs` captures the LAST iteration. */
+	iterationCount: number;
+	/** 0-based index of the first iteration that errored, if any. */
+	firstErrorIteration?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
@@ -1165,41 +1197,3 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
-
-// ---------------------------------------------------------------------------
-// Sub-agent evaluation endpoint
-// ---------------------------------------------------------------------------
-
-export class InstanceAiEvalSubAgentRequest extends Z.class({
-	/** Role name from the server's sub-agent registry (currently: "builder"). */
-	role: z.string().min(1).max(64),
-	/** The task the sub-agent should perform. */
-	prompt: z.string().min(1).max(10_000),
-	/** Optional model override. Defaults to the server's configured Instance AI model. */
-	modelId: z.string().min(1).optional(),
-	/** Max agent steps. Defaults to 40. */
-	maxSteps: z.number().int().positive().max(200).optional(),
-	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
-	timeoutMs: z.number().int().positive().max(600_000).optional(),
-}) {}
-
-export interface InstanceAiEvalToolCall {
-	toolName: string;
-	args: unknown;
-}
-
-export interface InstanceAiEvalToolResult {
-	toolName: string;
-	result: unknown;
-	isError: boolean;
-}
-
-export interface InstanceAiEvalSubAgentResponse {
-	text: string;
-	toolCalls: InstanceAiEvalToolCall[];
-	toolResults: InstanceAiEvalToolResult[];
-	capturedWorkflowIds: string[];
-	durationMs: number;
-	stopReason?: string;
-	error?: string;
-}

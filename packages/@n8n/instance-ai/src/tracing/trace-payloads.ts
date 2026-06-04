@@ -1,4 +1,5 @@
 import type { AttributeValue, RuntimeSkillRegistry } from '@n8n/agents';
+import { scrubSecretsInText } from '@n8n/utils';
 import { createHash } from 'node:crypto';
 
 import {
@@ -9,7 +10,6 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
-import { scrubSecretsInText } from '../utils/scrub-secrets';
 import { isRecord } from '../utils/stream-helpers';
 
 const MAX_TRACE_DEPTH = 4;
@@ -960,11 +960,7 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
-	if (
-		name.includes('workflow') ||
-		name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW ||
-		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW
-	) {
+	if (name.includes('workflow') || name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW) {
 		return 'workflow';
 	}
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';

@@ -26,7 +26,7 @@ jobs:
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
           - name: Postgres 16
-            runner: blacksmith-4vcpu-ubuntu-2204
+            runner: blacksmith-8vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
             TEST_IMAGE_POSTGRES: 'postgres:16'
@@ -35,7 +35,7 @@ jobs:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 
@@ -50,6 +50,7 @@ jobs:
         run: ${{ matrix.test-cmd }}
 
       - name: Run Migration Tests
+        if: matrix.migration-cmd != ''
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
 

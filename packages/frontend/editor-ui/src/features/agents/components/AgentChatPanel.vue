@@ -75,6 +75,7 @@ const {
 	sendMessage,
 	stopGenerating,
 	resume,
+	cancelAndSteer,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -132,14 +133,15 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (
-		!text ||
-		isStreaming.value ||
-		isPreparingToSend.value ||
-		isBuilderReadOnly.value ||
-		hasOpenInteractiveQuestion.value
-	)
+	if (!text || isStreaming.value || isPreparingToSend.value || isBuilderReadOnly.value) return;
+
+	// When there is an open interactive question, the user's message cancels
+	// the suspended tool and steers the agent in a new direction.
+	if (hasOpenInteractiveQuestion.value) {
+		inputText.value = '';
+		await cancelAndSteer(text);
 		return;
+	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -171,7 +173,6 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenInteractiveQuestion.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -286,17 +287,10 @@ onBeforeUnmount(() => {
 				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
 				:can-submit="
-					!hasOpenInteractiveQuestion &&
-					!isStreaming &&
-					!isPreparingToSend &&
-					!isBuilderReadOnly &&
-					inputText.trim().length > 0
+					!isStreaming && !isPreparingToSend && !isBuilderReadOnly && inputText.trim().length > 0
 				"
 				:disabled="
-					isBuilderReadOnly ||
-					hasOpenInteractiveQuestion ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
+					isBuilderReadOnly || isPreparingToSend || (isStreaming && messagingState !== 'receiving')
 				"
 				data-testid="chat-input"
 				@submit="onSubmit"

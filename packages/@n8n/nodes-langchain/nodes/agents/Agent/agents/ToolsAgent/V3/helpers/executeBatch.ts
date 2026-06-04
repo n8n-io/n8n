@@ -3,6 +3,7 @@ import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { processHitlResponses } from '@utils/agent-execution';
 import type { RequestResponseMetadata } from '@utils/agent-execution/types';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { NodeOperationError, assertParamIsNumber } from 'n8n-workflow';
 import type {
@@ -106,7 +107,7 @@ export async function executeBatch(
 	batchResults.forEach((result, index) => {
 		const itemIndex = startIndex + index;
 		if (result.status === 'rejected') {
-			const error = result.reason as Error;
+			const error = wrapLangChainParserError(result.reason, ctx.getNode(), itemIndex);
 			if (ctx.continueOnFail()) {
 				returnData.push({
 					json: { error: error.message },

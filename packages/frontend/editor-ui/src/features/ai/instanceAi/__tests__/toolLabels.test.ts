@@ -82,7 +82,6 @@ describe('getToolIcon', () => {
 
 	test('returns key-round for credential tools', () => {
 		expect(getToolIcon('credentials')).toBe('key-round');
-		expect(getToolIcon('browser-credential-setup')).toBe('key-round');
 	});
 
 	test('returns file-text for filesystem tools', () => {

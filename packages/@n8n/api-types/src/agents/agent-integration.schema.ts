@@ -19,6 +19,25 @@ const createSimpleIntegrationSchema = <Value extends string>(typeName: Value) =>
 		credentialId: z.string().min(1),
 	});
 
+const createDraftCredIntegrationSchema = <
+	Value extends string,
+	Settings extends z.ZodTypeAny | z.ZodEffects<z.ZodTypeAny>,
+>(
+	typeName: Value,
+	settingsSchema: Settings,
+) =>
+	z.object({
+		type: z.literal<Value>(typeName),
+		credentialId: z.string(),
+		settings: settingsSchema,
+	});
+
+const createDraftSimpleIntegrationSchema = <Value extends string>(typeName: Value) =>
+	z.object({
+		type: z.literal<Value>(typeName),
+		credentialId: z.string(),
+	});
+
 export const AGENT_TELEGRAM_ACCESS_MODES = ['private', 'public'] as const;
 
 export const AgentTelegramSettingsSchema = z
@@ -53,16 +72,9 @@ export type AgentTelegramIntegrationSettings = z.infer<typeof AgentTelegramSetti
 export const AgentIntegrationSettingsSchema = z.union([AgentTelegramSettingsSchema, z.undefined()]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
 
-export const AGENT_SCHEDULE_TRIGGER_TYPE = 'schedule';
-
-export const AgentScheduleIntegrationSchema = z
-	.object({
-		type: z.literal(AGENT_SCHEDULE_TRIGGER_TYPE),
-		active: z.boolean(),
-		cronExpression: z.string().min(1, 'cronExpression is required'),
-		wakeUpPrompt: z.string().min(1, 'wakeUpPrompt is required'),
-	})
-	.strict();
+/** Supported chat integration types; keep in sync with `credentialIntegrations` below. */
+export const SUPPORTED_AGENT_INTEGRATION_TYPES = ['telegram', 'slack', 'linear'] as const;
+export type SupportedAgentIntegrationType = (typeof SUPPORTED_AGENT_INTEGRATION_TYPES)[number];
 
 const credentialIntegrations = [
 	createCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
@@ -73,37 +85,20 @@ const credentialIntegrations = [
 	createSimpleIntegrationSchema('linear'),
 ] as const;
 
-export const AgentCredentialIntegrationSchema = z.discriminatedUnion(
+const draftCredentialIntegrations = [
+	createDraftCredIntegrationSchema('telegram', AgentTelegramSettingsSchema).extend({
+		settings: AgentTelegramSettingsSchema.optional(),
+	}),
+	createDraftSimpleIntegrationSchema('slack'),
+	createDraftSimpleIntegrationSchema('linear'),
+] as const;
+
+export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
+
+/** Draft config variant that allows cleared stale credential IDs. */
+export const AgentIntegrationConfigSchema = z.discriminatedUnion(
 	'type',
-	credentialIntegrations,
+	draftCredentialIntegrations,
 );
 
-export const AgentIntegrationSchema = z.discriminatedUnion('type', [
-	...credentialIntegrations,
-	AgentScheduleIntegrationSchema,
-]);
-
-export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationSchema>;
-export type AgentScheduleIntegrationConfig = z.infer<typeof AgentScheduleIntegrationSchema>;
-export type AgentCredentialIntegrationConfig = Exclude<
-	AgentIntegrationConfig,
-	{ type: typeof AGENT_SCHEDULE_TRIGGER_TYPE }
->;
-
-export type AgentScheduleIntegration = AgentScheduleIntegrationConfig;
-export type AgentCredentialIntegrationDto = AgentCredentialIntegrationConfig;
-export type AgentIntegration = AgentIntegrationConfig;
-
-export function isAgentScheduleIntegration(
-	integration: AgentIntegrationConfig | null | undefined,
-): integration is AgentScheduleIntegrationConfig {
-	return integration?.type === AGENT_SCHEDULE_TRIGGER_TYPE;
-}
-
-export function isAgentCredentialIntegration(
-	integration: AgentIntegrationConfig | null | undefined,
-): integration is AgentCredentialIntegrationConfig {
-	return (
-		integration !== null && integration !== undefined && !isAgentScheduleIntegration(integration)
-	);
-}
+export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;

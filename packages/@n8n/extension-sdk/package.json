@@ -36,9 +36,10 @@
     "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
     "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsdown && pnpm create-json-schema",
+    "build:unchecked": "pnpm run build",
     "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "peerDependencies": {
     "vue": "catalog:frontend",

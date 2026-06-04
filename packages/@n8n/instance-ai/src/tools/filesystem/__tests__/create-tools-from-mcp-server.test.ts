@@ -1,5 +1,6 @@
 import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX } from '@n8n/api-types';
 import type { McpTool, McpToolCallResult } from '@n8n/api-types';
+import type { Mock, Mocked } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { LocalMcpServer } from '../../../types';
@@ -81,11 +82,11 @@ const GENERIC_ERROR_RESULT: McpToolCallResult = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): jest.Mocked<LocalMcpServer> {
+function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): Mocked<LocalMcpServer> {
 	return {
-		getAvailableTools: jest.fn().mockReturnValue(tools),
-		getToolsByCategory: jest.fn().mockReturnValue([]),
-		callTool: jest.fn(),
+		getAvailableTools: vi.fn().mockReturnValue(tools),
+		getToolsByCategory: vi.fn().mockReturnValue([]),
+		callTool: vi.fn(),
 	};
 }
 
@@ -100,10 +101,10 @@ function getExecute(server: LocalMcpServer, toolName = 'write_file') {
 
 /** Build a ctx object with suspend/resumeData for use in execute calls. */
 function makeCtx(opts: {
-	suspend?: jest.Mock;
+	suspend?: Mock;
 	resumeData?: Record<string, unknown> | null;
 }): unknown {
-	return { suspend: opts.suspend ?? jest.fn(), resumeData: opts.resumeData ?? null };
+	return { suspend: opts.suspend ?? vi.fn(), resumeData: opts.resumeData ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +134,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips tools with invalid names', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'bad tool' },
 				{ ...SAMPLE_TOOL, name: 'read_file' },
@@ -153,7 +154,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips tools with unsafe object key names', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'constructor' },
 				{ ...SAMPLE_TOOL, name: 'read_file' },
@@ -173,7 +174,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips normalized name collisions between local gateway tools', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'custom_tool' },
 				{ ...SAMPLE_TOOL, name: 'custom-tool' },
@@ -193,7 +194,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips compatibility-normalized non-ASCII tool names', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'ＴＯＯＬ' },
 				{ ...SAMPLE_TOOL, name: 'read_file' },
@@ -213,7 +214,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips oversized raw schemas before tool construction', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const properties = Object.fromEntries(
 				Array.from({ length: 251 }, (_, index) => [`field_${index}`, { type: 'string' }]),
 			);
@@ -309,7 +310,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('passes through a generic error result unchanged', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(GENERIC_ERROR_RESULT);
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 			const execute = getExecute(server);
 
 			const result = await execute({}, makeCtx({ suspend }));
@@ -321,13 +322,13 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('calls suspend() for a plain-text GATEWAY_CONFIRMATION_REQUIRED error', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR);
-			const suspend = jest.fn().mockResolvedValue(undefined);
+			const suspend = vi.fn().mockResolvedValue(undefined);
 			const execute = getExecute(server);
 
 			await execute({ filePath: 'test.ts' }, makeCtx({ suspend }));
 
 			expect(suspend).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				inputType: 'resource-decision',
 				severity: 'warning',
@@ -340,7 +341,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('filters unsupported confirmation options after parsing the daemon payload', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR_WITH_UNSUPPORTED_OPTION);
-			const suspend = jest.fn().mockResolvedValue(undefined);
+			const suspend = vi.fn().mockResolvedValue(undefined);
 			const execute = getExecute(server);
 
 			await execute({ filePath: 'test.ts' }, makeCtx({ suspend }));
@@ -356,13 +357,13 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('calls suspend() for a JSON-envelope GATEWAY_CONFIRMATION_REQUIRED error', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(JSON_ENVELOPE_CONFIRMATION_ERROR);
-			const suspend = jest.fn().mockResolvedValue(undefined);
+			const suspend = vi.fn().mockResolvedValue(undefined);
 			const execute = getExecute(server);
 
 			await execute({}, makeCtx({ suspend }));
 
 			expect(suspend).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				inputType: 'resource-decision',
 				resourceDecision: CONFIRMATION_PAYLOAD,
