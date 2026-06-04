@@ -4,6 +4,11 @@
   "version": "2.24.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./primitives": "./src/primitives/index.ts",
+    "./*": "./src/*"
+  },
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
