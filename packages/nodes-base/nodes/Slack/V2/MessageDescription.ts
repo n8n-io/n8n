@@ -22,13 +22,11 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Delete Scheduled',
 				value: 'deleteScheduled',
 				action: 'Delete a scheduled message',
-				description: 'Delete a message scheduled for future delivery',
 			},
 			{
 				name: 'Get Many Scheduled',
 				value: 'getManyScheduled',
 				action: 'Get many scheduled messages',
-				description: 'List pending scheduled messages',
 			},
 			{
 				name: 'Get Permalink',
@@ -39,7 +37,6 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Schedule',
 				value: 'schedule',
 				action: 'Schedule a message',
-				description: 'Schedule a message to be sent at a future time',
 			},
 			{
 				name: 'Search',
@@ -568,6 +565,21 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Post At',
+		name: 'postAt',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['schedule'],
+			},
+		},
+		description:
+			'When the message should be sent. Must be in the future and within 120 days from now.',
+	},
+	{
 		displayName: 'Options',
 		name: 'otherOptions',
 		type: 'collection',
@@ -770,25 +782,6 @@ export const messageFields: INodeProperties[] = [
 					'The message will be sent from this username (i.e. as if this individual sent the message). Add chat:write.customize scope on Slack API',
 			},
 		],
-	},
-
-	/* ----------------------------------------------------------------------- */
-	/*                                 message:schedule                        */
-	/* ----------------------------------------------------------------------- */
-	{
-		displayName: 'Post At',
-		name: 'postAt',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['schedule'],
-			},
-		},
-		description:
-			'When the message should be sent. Must be in the future and within 120 days from now.',
 	},
 
 	/* ----------------------------------------------------------------------- */
