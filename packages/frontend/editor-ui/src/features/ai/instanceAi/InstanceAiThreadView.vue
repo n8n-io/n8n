@@ -660,16 +660,19 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
-								<Transition name="confirmation-slide">
-									<InstanceAiFixWithAiPanel
-										v-if="activeFixWithAiOffer"
-										:node-name="activeFixWithAiOffer.errors[0].nodeName"
-										:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-										:failed-count="activeFixWithAiOffer.errors.length"
-										@fix-with-ai="handleFixWithAiFromOffer"
-										@dismiss="dismissFixWithAiOffer"
-									/>
-								</Transition>
+
+								<template v-if="IS_FIX_WITH_AI_OFFER_ENABLED">
+									<Transition name="confirmation-slide">
+										<InstanceAiFixWithAiPanel
+											v-if="activeFixWithAiOffer"
+											:node-name="activeFixWithAiOffer.errors[0].nodeName"
+											:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+											:failed-count="activeFixWithAiOffer.errors.length"
+											@fix-with-ai="handleFixWithAiFromOffer"
+											@dismiss="dismissFixWithAiOffer"
+										/>
+									</Transition>
+								</template>
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
