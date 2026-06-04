@@ -50,6 +50,8 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -77,15 +79,15 @@ catalog:
   '@types/node': 24.10.1
   '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
-  '@stryker-mutator/core': 9.6.1
-  '@stryker-mutator/vitest-runner': 9.6.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
+  ai: ^6.0.170
   axios: 1.16.1
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
   callsites: 3.1.0
   chat: ^4.28.1
+  cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
   csv-parse: 6.2.1
@@ -130,6 +132,7 @@ catalog:
   semver: 7.7.3
   simple-git: 3.36.0
   stream-json: 1.9.1
+  tar: ^7.5.16
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
@@ -158,10 +161,6 @@ catalogs:
     eslint-plugin-playwright: 2.2.2
     playwright: 1.60.0
     playwright-core: 1.60.0
-  undici-v6:
-    undici: ^6.24.0
-  undici-v7:
-    undici: ^7.16.0
   frontend:
     '@sentry/vue': ^10.36.0
     '@testing-library/jest-dom': ^6.6.3
@@ -194,6 +193,10 @@ catalogs:
     '@storybook/vue3-vite': ^10.1.11
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
+  undici-v6:
+    undici: ^6.24.0
+  undici-v7:
+    undici: ^7.16.0
 
 minimumReleaseAge: 4320
 

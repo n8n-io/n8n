@@ -143,10 +143,6 @@
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
-      "undici@5": "catalog:undici-v6",
-      "undici@6": "catalog:undici-v6",
-      "undici@7": "catalog:undici-v7",
-      "tar": "^7.5.11",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
       "ajv@8": "8.18.0",
@@ -184,7 +180,12 @@
       "@tootallnate/once@2": "2.0.1",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
-      "langsmith": "0.6.0"
+      "langsmith": "0.6.0",
+      "@turbo/darwin-64@<=2.9.15": "2.9.15",
+      "@turbo/windows-64@<=2.9.15": "2.9.15",
+      "tar": "7.5.16",
+      "undici@<=7.26.0": "7.26.0",
+      "vue-i18n@<=11.4.4": "11.4.4"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

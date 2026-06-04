@@ -67,7 +67,7 @@
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
-    "ai": "^6.0.116",
+    "ai": "catalog:",
     "ajv": "^8.18.0",
     "yaml": "catalog:",
     "zod": "catalog:"
