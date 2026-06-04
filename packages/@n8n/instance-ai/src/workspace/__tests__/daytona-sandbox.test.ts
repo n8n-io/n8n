@@ -425,7 +425,7 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 		const sandbox = await startAndStageRemoteGone();
 
 		await expect(sandbox.destroy()).resolves.toBeUndefined();
-		// Second destroy goes through the no-local-sandbox branch. Need a fresh
+		// Second destroy goes through the no cached sandbox branch. Need a fresh
 		// queued error since the previous one was consumed.
 		queueNotFound();
 		await expect(sandbox.destroy()).resolves.toBeUndefined();

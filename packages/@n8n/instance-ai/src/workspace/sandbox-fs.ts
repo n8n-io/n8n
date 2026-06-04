@@ -2,11 +2,10 @@
  * Sandbox File I/O Utilities
  *
  * Thin wrappers around sandbox command execution for file operations.
- * Works with both Daytona (remote) and Local (host) sandbox providers,
- * since both support executeCommand / processes.spawn.
+ * Works with sandbox providers that support executeCommand / processes.spawn.
  *
  * We avoid workspace.filesystem because Daytona workspaces don't have one —
- * only LocalSandbox gets a filesystem attached in createWorkspace().
+ * command fallback keeps setup compatible with command-only providers.
  */
 
 interface SandboxCommandResult {

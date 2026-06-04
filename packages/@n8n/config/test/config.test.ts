@@ -288,7 +288,7 @@ describe('GlobalConfig', () => {
 			reflectorObservationTokens: 40_000,
 			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
-			sandboxProvider: 'daytona',
+			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',

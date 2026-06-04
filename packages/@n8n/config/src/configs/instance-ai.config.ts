@@ -40,9 +40,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
 
-	/** Sandbox provider: 'daytona' for isolated Docker containers, 'local' for direct host execution (dev only). */
+	/** Sandbox provider: 'n8n-sandbox' for n8n sandbox service, 'daytona' for Daytona-backed containers. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
-	sandboxProvider: string = 'daytona';
+	sandboxProvider: string = 'n8n-sandbox';
 
 	/** Daytona API URL (e.g. "http://localhost:3000/api"). */
 	@Env('DAYTONA_API_URL')
