@@ -64,6 +64,8 @@ const scrollHighlightedItem = () => {
 };
 
 const navigate = async (direction: 'up' | 'down') => {
+	closeOpenSubMenu();
+
 	if (direction === 'down') {
 		highlightedIndex.value = getNextValidIndex(props.items, highlightedIndex.value, 1);
 	} else {
