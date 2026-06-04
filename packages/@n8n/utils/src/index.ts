@@ -13,4 +13,4 @@ export * from './files/path';
 export * from './placeholder';
 export * from './jwt';
 export * from './scrub-secrets';
-export * from './types';
+export type * from './types';
