@@ -505,6 +505,7 @@ overrides:
   date-fns-tz: 2.0.0
   form-data: 4.0.4
   pdf-parse: 2.4.5
+  pdfjs-dist: 5.4.296
   tmp: 0.2.6
   nodemailer: 7.0.11
   validator: 13.15.26
@@ -586,9 +587,9 @@ patchedDependencies:
   minifaker:
     hash: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
     path: patches/minifaker.patch
-  pdfjs-dist@5.3.31:
-    hash: 421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd
-    path: patches/pdfjs-dist@5.3.31.patch
+  pdfjs-dist@5.4.296:
+    hash: e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f
+    path: patches/pdfjs-dist@5.4.296.patch
   pkce-challenge@5.0.0:
     hash: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
     path: patches/pkce-challenge@5.0.0.patch
@@ -4850,8 +4851,8 @@ importers:
         specifier: 9.1.1
         version: 9.1.1
       pdfjs-dist:
-        specifier: 5.3.31
-        version: 5.3.31(patch_hash=421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd)
+        specifier: 5.4.296
+        version: 5.4.296(patch_hash=e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f)
       pg:
         specifier: 'catalog:'
         version: 8.17.0
@@ -18270,10 +18271,6 @@ packages:
     resolution: {integrity: sha512-mHU89HGh7v+4u2ubfnevJ03lmPgQ5WU4CxAVmTSh/sxVTEDYd1er/dKS/A6vg77NX47KTEoihq8jZBLr8Cxuwg==}
     engines: {node: '>=20.16.0 <21 || >=22.3.0'}
     hasBin: true
-
-  pdfjs-dist@5.3.31:
-    resolution: {integrity: sha512-EhPdIjNX0fcdwYQO+e3BAAJPXt+XI29TZWC7COhIXs/K0JHcUt1Gdz1ITpebTwVMFiLsukdUZ3u0oTO7jij+VA==}
-    engines: {node: '>=20.16.0 || >=22.3.0'}
 
   pdfjs-dist@5.4.296:
     resolution: {integrity: sha512-DlOzet0HO7OEnmUmB6wWGJrrdvbyJKftI1bhMitK7O2N8W2gc757yyYBbINy9IDafXAV9wmKr9t7xsTaNKRG5Q==}
@@ -38456,13 +38453,9 @@ snapshots:
   pdf-parse@2.4.5:
     dependencies:
       '@napi-rs/canvas': 0.1.80
-      pdfjs-dist: 5.4.296
+      pdfjs-dist: 5.4.296(patch_hash=e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f)
 
-  pdfjs-dist@5.3.31(patch_hash=421253c8e411cdaef58ba96d2bb44ae0784e1b3e446f5caca50710daa1fa5dcd):
-    optionalDependencies:
-      '@napi-rs/canvas': 0.1.80
-
-  pdfjs-dist@5.4.296:
+  pdfjs-dist@5.4.296(patch_hash=e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f):
     optionalDependencies:
       '@napi-rs/canvas': 0.1.80
 

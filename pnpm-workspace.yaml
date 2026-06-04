@@ -120,6 +120,7 @@ catalog:
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
   pdf-parse: 2.4.5
+  pdfjs-dist: 5.4.296
   pg: 8.17.0
   picocolors: 1.0.1
   playwright-core: 1.60.0
