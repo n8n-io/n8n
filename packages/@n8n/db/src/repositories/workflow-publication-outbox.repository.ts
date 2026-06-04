@@ -39,12 +39,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		workflowId: string,
 		publishedVersionId: string,
 	): Promise<void> {
-		const tableName = this.metadata.tableName;
+		const tableName = this.getTableName('workflow_publication_outbox');
 
 		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits
 		// them; the conflict path bumps `updatedAt` explicitly.
 		await this.query(
-			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
 			 VALUES ($1, $2, '${Status.Pending}')
 			 ON CONFLICT ("workflowId") WHERE "status" = '${Status.Pending}'
 			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
@@ -56,10 +56,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		workflowId: string,
 		publishedVersionId: string,
 	): Promise<void> {
-		const tableName = this.metadata.tableName;
+		const tableName = this.getTableName('workflow_publication_outbox');
 
 		await this.query(
-			`INSERT INTO "${tableName}" ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
 			 VALUES (?, ?, '${Status.Pending}')
 			 ON CONFLICT ("workflowId") WHERE "status" = '${Status.Pending}'
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
@@ -85,17 +85,17 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	private async claimWithPostgresLocking(): Promise<WorkflowPublicationOutbox | null> {
-		const tableName = this.metadata.tableName;
+		const tableName = this.getTableName('workflow_publication_outbox');
 
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw
 		// UPDATE ... RETURNING (unlike INSERT, which returns the rows directly).
 		const [rows]: [WorkflowPublicationOutbox[], number] = await this.query(
 			// Ordering by id gives us FIFO behaviour: ids are monotonically
 			// assigned at insert, so oldest pending row is processed first.
-			`UPDATE "${tableName}"
+			`UPDATE ${tableName}
 			 SET "status" = '${Status.InProgress}', "updatedAt" = CURRENT_TIMESTAMP(3)
 			 WHERE "id" = (
-				 SELECT "id" FROM "${tableName}"
+				 SELECT "id" FROM ${tableName}
 				 WHERE "status" = '${Status.Pending}'
 				 ORDER BY "id" ASC
 				 LIMIT 1
@@ -141,5 +141,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	/** Mark a claimed record as failed and record the error for diagnostics. */
 	async markFailed(id: number, errorMessage: string): Promise<void> {
 		await this.update({ id, status: Status.InProgress }, { status: Status.Failed, errorMessage });
+	}
+
+	private getTableName(name: string): string {
+		const { tablePrefix } = this.globalConfig.database;
+		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
 	}
 }
