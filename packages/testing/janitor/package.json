@@ -13,7 +13,9 @@
     "dist"
   ],
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc",
+    "build:unchecked": "tsc --noCheck",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:unit": "vitest run",

@@ -2975,6 +2975,32 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('instance AI MCP events', () => {
+		it('tracks on `instance-ai-mcp-registry-connection-created`', () => {
+			eventService.emit('instance-ai-mcp-registry-connection-created', {
+				userId: 'user-1',
+				serverSlug: 'linear',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI mcp connected', {
+				user_id: 'user-1',
+				server_slug: 'linear',
+			});
+		});
+
+		it('tracks on `instance-ai-mcp-registry-connection-deleted`', () => {
+			eventService.emit('instance-ai-mcp-registry-connection-deleted', {
+				userId: 'user-1',
+				serverSlug: 'linear',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI mcp disconnected', {
+				user_id: 'user-1',
+				server_slug: 'linear',
+			});
+		});
+	});
+
 	describe('getSemanticVersioning', () => {
 		it('should parse standard semantic version', () => {
 			const result = getSemanticVersioning('2.11.0');
