@@ -35,7 +35,13 @@ function isConnectionLink(value: unknown): value is ConnectionLink {
 
 function getActiveNodes(json: WorkflowJSON): ActiveNode[] {
 	return (json.nodes ?? [])
-		.filter((node) => !node.disabled && node.type !== STICKY_NOTE_TYPE)
+		.filter(
+			(node): node is WorkflowJSON['nodes'][number] & ActiveNode =>
+				typeof node.name === 'string' &&
+				node.name.length > 0 &&
+				!node.disabled &&
+				node.type !== STICKY_NOTE_TYPE,
+		)
 		.map((node) => ({ name: node.name, type: node.type }));
 }
 
@@ -153,6 +159,7 @@ function findBranchNodesWithoutOutgoingConnections(json: WorkflowJSON): string[]
 
 	for (const node of json.nodes ?? []) {
 		if (node.disabled || !BRANCH_NODE_TYPES.has(node.type)) continue;
+		if (typeof node.name !== 'string' || node.name.length === 0) continue;
 		if (!hasOutgoingMainConnection(json, node.name)) {
 			nodeNames.push(node.name);
 		}
