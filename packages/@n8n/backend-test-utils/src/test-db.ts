@@ -12,6 +12,12 @@ let isInitialized = false;
 let testDbName: string | undefined;
 let originalDatabase: string | undefined;
 
+// Each worker gets its own monotonic counter so we can chart degradation
+// over the run from CI logs (grep for "[BENCH-INIT]" / "[BENCH-TRUNC]").
+const workerTag = `w${process.env.JEST_WORKER_ID ?? '0'}`;
+let initSeq = 0;
+let truncSeq = 0;
+
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
@@ -38,14 +44,17 @@ export const getBootstrapDBOptions = (): DataSourceOptions => {
 export async function init() {
 	if (isInitialized) return;
 
+	const t0 = Date.now();
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
 	testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	const templateDb = dbType === 'postgresdb' ? process.env.N8N_TEST_TEMPLATE_DB : undefined;
 
+	let tCreate = 0;
 	if (dbType === 'postgresdb') {
 		originalDatabase = globalConfig.database.postgresdb.database;
+		const tcStart = Date.now();
 		const bootstrapPostgres = await new Connection(getBootstrapDBOptions()).initialize();
 		if (templateDb) {
 			await bootstrapPostgres.query(`CREATE DATABASE ${testDbName} TEMPLATE ${templateDb}`);
@@ -53,20 +62,36 @@ export async function init() {
 			await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		}
 		await bootstrapPostgres.destroy();
+		tCreate = Date.now() - tcStart;
 
 		globalConfig.database.postgresdb.database = testDbName;
 	}
 
+	const tConnStart = Date.now();
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.init();
+	const tConn = Date.now() - tConnStart;
 
+	let tMig = 0;
+	let tRoles = 0;
 	if (templateDb) {
 		// Template already carries migrations + seeded roles — just mark state.
 		dbConnection.connectionState.migrated = true;
 	} else {
+		const tMigStart = Date.now();
 		await dbConnection.migrate();
+		tMig = Date.now() - tMigStart;
+		const tRolesStart = Date.now();
 		await Container.get(AuthRolesService).init();
+		tRoles = Date.now() - tRolesStart;
 	}
+
+	const seq = ++initSeq;
+	const elapsedFromBoot = Math.round(process.uptime());
+	// eslint-disable-next-line no-console
+	console.log(
+		`[BENCH-INIT] ${workerTag} seq=${seq} uptime=${elapsedFromBoot}s total=${Date.now() - t0}ms create=${tCreate}ms conn=${tConn}ms migrate=${tMig}ms roles=${tRoles}ms template=${templateDb ? 'YES' : 'no'}`,
+	);
 
 	isInitialized = true;
 }
@@ -119,6 +144,7 @@ export function isReady() {
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
+	const t0 = Date.now();
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.close();
 	dbConnection.connectionState.connected = false;
@@ -129,8 +155,15 @@ export async function terminate() {
 			try {
 				globalConfig.database.postgresdb.database = originalDatabase;
 				const bootstrap = await new Connection(getBootstrapDBOptions()).initialize();
+				const dropStart = Date.now();
 				await bootstrap.query(`DROP DATABASE IF EXISTS "${testDbName}"`);
+				const tDrop = Date.now() - dropStart;
 				await bootstrap.destroy();
+				const elapsedFromBoot = Math.round(process.uptime());
+				// eslint-disable-next-line no-console
+				console.log(
+					`[BENCH-TERM] ${workerTag} uptime=${elapsedFromBoot}s total=${Date.now() - t0}ms drop=${tDrop}ms`,
+				);
 			} catch (error) {
 				// Best effort - don't fail tests over cleanup
 				console.warn(`Failed to drop test database "${testDbName}":`, error);
@@ -169,6 +202,7 @@ type EntityName =
  * Truncate specific DB tables in a test DB.
  */
 export async function truncate(entities: EntityName[]) {
+	const t0 = Date.now();
 	const connection = Container.get(Connection);
 
 	// Collect junction tables to clean
@@ -196,5 +230,14 @@ export async function truncate(entities: EntityName[]) {
 
 	for (const name of entities) {
 		await connection.getRepository(name).delete({});
+	}
+
+	const seq = ++truncSeq;
+	if (seq <= 5 || seq % 50 === 0) {
+		const elapsedFromBoot = Math.round(process.uptime());
+		// eslint-disable-next-line no-console
+		console.log(
+			`[BENCH-TRUNC] ${workerTag} seq=${seq} uptime=${elapsedFromBoot}s total=${Date.now() - t0}ms entities=${entities.length} junctions=${junctionTablesToClean.size}`,
+		);
 	}
 }
