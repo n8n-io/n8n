@@ -263,8 +263,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 									<N8nTooltip
 										:content="
 											copiedBlock === 'workflow-output'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
 										"
 									>
 										<N8nButton
@@ -274,8 +274,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 											:icon="copiedBlock === 'workflow-output' ? 'check' : 'copy'"
 											:aria-label="
 												copiedBlock === 'workflow-output'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 											@click="copyJsonBlock('workflow-output', item.toolOutput)"
 										/>
@@ -300,8 +300,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 										<N8nTooltip
 											:content="
 												copiedBlock === 'tool-input'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 										>
 											<N8nButton
@@ -311,8 +311,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 												:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
 												:aria-label="
 													copiedBlock === 'tool-input'
-														? i18n.baseText('agents.builder.addTrigger.copied')
-														: i18n.baseText('agents.builder.addTrigger.copy')
+														? i18n.baseText('generic.copied')
+														: i18n.baseText('generic.copy')
 												"
 												@click="copyJsonBlock('tool-input', item.toolInput)"
 											/>
@@ -332,8 +332,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 										<N8nTooltip
 											:content="
 												copiedBlock === 'tool-output'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 										>
 											<N8nButton
@@ -343,8 +343,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 												:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
 												:aria-label="
 													copiedBlock === 'tool-output'
-														? i18n.baseText('agents.builder.addTrigger.copied')
-														: i18n.baseText('agents.builder.addTrigger.copy')
+														? i18n.baseText('generic.copied')
+														: i18n.baseText('generic.copy')
 												"
 												@click="copyJsonBlock('tool-output', item.toolOutput)"
 											/>
@@ -377,8 +377,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 								<N8nTooltip
 									:content="
 										copiedBlock === 'agent-output'
-											? i18n.baseText('agents.builder.addTrigger.copied')
-											: i18n.baseText('agents.builder.addTrigger.copy')
+											? i18n.baseText('generic.copied')
+											: i18n.baseText('generic.copy')
 									"
 								>
 									<N8nButton
@@ -388,8 +388,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 										:icon="copiedBlock === 'agent-output' ? 'check' : 'copy'"
 										:aria-label="
 											copiedBlock === 'agent-output'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
 										"
 										@click="copyJsonBlock('agent-output', agentStructuredContent)"
 									/>
