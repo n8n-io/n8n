@@ -22,6 +22,8 @@ import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
+import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import { N8nClient } from '../clients/n8n-client';
 import {
 	compareBuckets,
@@ -47,11 +49,13 @@ import {
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
+	runWorkflowChecks,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	type BuildResult,
 } from '../harness/runner';
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
@@ -65,6 +69,15 @@ import type {
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
+
+const checkOutcomeSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	kind: z.enum(['deterministic', 'llm']),
+	dimension: z.enum(CHECK_DIMENSIONS),
+	status: z.enum(['pass', 'fail', 'n_a']),
+	comment: z.string().optional(),
+});
 
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
@@ -82,6 +95,7 @@ const targetOutputSchema = z.object({
 	nodeCount: z.number().default(0),
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId: z.string().optional(),
+	workflowChecks: z.array(checkOutcomeSchema).optional(),
 });
 
 type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
@@ -133,6 +147,8 @@ type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
 interface Lane {
 	client: N8nClient;
+	/** Base URL the client was constructed with, forwarded for the HTML report. */
+	baseUrl: string;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	seedResult: { seededTypes: string[]; credentialIds: string[] };
@@ -197,9 +213,17 @@ async function main(): Promise<void> {
 			const seedResult = await seedCredentials(client, undefined, logger);
 			logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)${tag}`);
 
+			logger.info(`Seeding MCP registry...${tag}`);
+			const mcpSeedResult = await seedMcpRegistry(client, logger);
+			if (mcpSeedResult.seeded) {
+				logger.info(`Seeded ${String(mcpSeedResult.count)} MCP registry server(s)${tag}`);
+			} else {
+				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
+			}
+
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
-			return { client, preRunWorkflowIds, claimedWorkflowIds, seedResult };
+			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, seedResult };
 		}),
 	);
 
@@ -267,7 +291,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 	const lsClient = new Client();
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -347,6 +371,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						args.pinAiRoots,
 					),
 				{
 					name: 'scenario_execution',
@@ -389,6 +414,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
+				if (build.success && !build.workflowChecks) {
+					// No transcript in prebuilt mode — checks run with empty prompt context.
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: '',
+						agentText: undefined,
+						logger,
+					});
+				}
 				return { build, lane, buildDurationMs };
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
@@ -447,37 +481,61 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				execDurationMs: 0,
 				nodeCount: 0,
 				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
 			};
 		}
 
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
+		const maxExecAttempts = 5;
 		let result;
-		try {
-			result = await builtOnLane.tracedExecute({
-				workflowId: build.workflowId,
-				scenario,
-				workflowJsons: build.workflowJsons,
-			});
-		} catch (error: unknown) {
-			// Mirror direct mode's per-scenario guard — without this, n8n API errors
-			// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-			// escape to LangSmith, come back as a Run with null outputs, and be
-			// misclassified as builder regressions by the feedback extractor.
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-			return {
-				buildSuccess: true,
-				workflowId: build.workflowId,
-				passed: false,
-				score: 0,
-				reasoning: `Scenario execution error: ${errorMessage}`,
-				failureCategory: 'framework_issue',
-				execErrors: [errorMessage],
-				buildDurationMs,
-				execDurationMs: Date.now() - execStart,
-				nodeCount,
-			};
+		for (let attempt = 1; ; attempt++) {
+			try {
+				result = await builtOnLane.tracedExecute({
+					workflowId: build.workflowId,
+					scenario,
+					workflowJsons: build.workflowJsons,
+				});
+				break;
+			} catch (error: unknown) {
+				const baseError = error instanceof Error ? error : new Error(String(error));
+				const cause = baseError.cause;
+				const causeText =
+					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
+				const errorMessage =
+					causeText && causeText !== baseError.message
+						? `${baseError.message}: ${causeText}`
+						: baseError.message;
+				const isTransient =
+					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
+						errorMessage,
+					);
+				if (isTransient && attempt < maxExecAttempts) {
+					logger.warn(
+						`    [${scenario.name}] execution attempt ${attempt}/${maxExecAttempts} failed (${errorMessage}); retrying`,
+					);
+					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+					continue;
+				}
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors
+				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
+				// escape to LangSmith, come back as a Run with null outputs, and be
+				// misclassified as builder regressions by the feedback extractor.
+				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				return {
+					buildSuccess: true,
+					workflowId: build.workflowId,
+					passed: false,
+					score: 0,
+					reasoning: `Scenario execution error: ${errorMessage}`,
+					failureCategory: 'framework_issue',
+					execErrors: [errorMessage],
+					buildDurationMs,
+					execDurationMs: Date.now() - execStart,
+					nodeCount,
+					workflowChecks: build.workflowChecks,
+				};
+			}
 		}
 		const execDurationMs = Date.now() - execStart;
 
@@ -500,6 +558,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			execDurationMs,
 			nodeCount,
 			threadId: build.threadId,
+			workflowChecks: build.workflowChecks,
 		};
 	};
 
@@ -531,6 +590,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
+		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		if (output.workflowChecks) {
+			for (const outcome of output.workflowChecks) {
+				if (outcome.status === 'n_a') continue;
+				feedback.push({
+					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
+					score: outcome.status === 'pass' ? 1 : 0,
+					comment: outcome.comment ?? undefined,
+				});
+			}
+		}
 		return feedback;
 	};
 
@@ -549,6 +619,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		datasetName,
 		args.filter,
 		args.exclude,
+		args.tier,
 		logger,
 	);
 	const evaluateData =
@@ -585,6 +656,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			testCasesWithFiles,
 			args.iterations,
 			transcriptByThreadId,
+			lanes[0]?.baseUrl,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -663,12 +735,14 @@ function filteredExamplesIterable(
 	datasetName: string,
 	filter: string | undefined,
 	exclude: string | undefined,
+	tier: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude).map((tc) => tc.fileSlug);
+	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude, tier).map((tc) => tc.fileSlug);
 	const labelParts: string[] = [];
 	if (filter) labelParts.push(`filter "${filter}"`);
 	if (exclude) labelParts.push(`exclude "${exclude}"`);
+	if (tier) labelParts.push(`tier "${tier}"`);
 	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
 		logger.info(`${label} matched no local test case files`);
@@ -785,6 +859,7 @@ function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
+	n8nBaseUrl: string | undefined,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -805,6 +880,7 @@ function reshapeLangSmithRuns(
 			let workflowId: string | undefined;
 			let buildError: string | undefined;
 			let threadId: string | undefined;
+			let workflowChecks: CheckOutcome[] | undefined;
 
 			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -822,6 +898,7 @@ function reshapeLangSmithRuns(
 				if (output.workflowId) workflowId = output.workflowId;
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
+				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -842,6 +919,8 @@ function reshapeLangSmithRuns(
 				buildError,
 				threadId,
 				transcript,
+				workflowChecks,
+				n8nBaseUrl,
 			});
 		}
 		allRunResults.push(runResults);
@@ -856,7 +935,7 @@ function reshapeLangSmithRuns(
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	const { args, lanes, logger, prebuiltManifest } = config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
 		return { totalRuns: 0, testCases: [] };
@@ -892,6 +971,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 						async ({ tc }) =>
 							await runWorkflowTestCase({
 								client: lane.client,
+								baseUrl: lane.baseUrl,
 								testCase: tc.testCase,
 								timeoutMs: args.timeoutMs,
 								seededCredentialTypes: lane.seedResult.seededTypes,
@@ -901,6 +981,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
 								prebuiltWorkflowId: pickPrebuiltWorkflowId(prebuiltManifest, tc.fileSlug, iter),
+								pinAiRoots: args.pinAiRoots,
 							}),
 						MAX_CONCURRENT_BUILDS,
 					);
@@ -1014,6 +1095,8 @@ function writeEvalResults(
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
+	const checksSummary = aggregateWorkflowChecks(evaluation);
+
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
@@ -1026,6 +1109,7 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -1044,6 +1128,9 @@ function writeEvalResults(
 			name: tc.testCase.conversation[0].text.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
+			workflowChecksPerRun: tc.runs.map((run) =>
+				run.workflowChecks ? statusMap(run.workflowChecks) : null,
+			),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,

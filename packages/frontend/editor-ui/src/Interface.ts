@@ -35,6 +35,7 @@ import type {
 	PublicInstalledPackage,
 	IDestinationNode,
 	AgentRequestQuery,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -265,6 +266,7 @@ export interface IWorkflowDb {
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // For workflow list we don't need the full workflow data
@@ -314,6 +316,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available
@@ -695,7 +698,6 @@ export type NodeCreatorOpenSource =
 	| 'node_connection_drop'
 	| 'notice_error_message'
 	| 'add_node_button'
-	| 'add_evaluation_trigger_button'
 	| 'add_evaluation_node_button'
 	| 'templates_callout';
 

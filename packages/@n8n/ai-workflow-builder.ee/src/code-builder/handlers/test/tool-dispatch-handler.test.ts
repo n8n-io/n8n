@@ -63,14 +63,14 @@ describe('ToolDispatchHandler', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('executeGeneralToolCall (via dispatch)', () => {
 		it('should include toolCallId in all tool progress events for successful tool', async () => {
 			const mockTool = {
 				name: 'mock_tool',
-				invoke: jest.fn().mockResolvedValue('result'),
+				invoke: vi.fn().mockResolvedValue('result'),
 			} as unknown as StructuredToolInterface;
 
 			const handler = createHandler(new Map([['mock_tool', mockTool]]));
@@ -124,7 +124,7 @@ describe('ToolDispatchHandler', () => {
 		it('should include toolCallId in tool progress events when tool throws', async () => {
 			const mockTool = {
 				name: 'failing_tool',
-				invoke: jest.fn().mockRejectedValue(new Error('Tool failed')),
+				invoke: vi.fn().mockRejectedValue(new Error('Tool failed')),
 			} as unknown as StructuredToolInterface;
 
 			const handler = createHandler(new Map([['failing_tool', mockTool]]));
@@ -153,7 +153,7 @@ describe('ToolDispatchHandler', () => {
 		it('should include displayTitle in tool progress chunks when toolDisplayTitles is provided', async () => {
 			const mockTool = {
 				name: 'get_node_types',
-				invoke: jest.fn().mockResolvedValue('result'),
+				invoke: vi.fn().mockResolvedValue('result'),
 			} as unknown as StructuredToolInterface;
 
 			const toolDisplayTitles = new Map([['get_node_types', 'Getting node definitions']]);
@@ -183,7 +183,7 @@ describe('ToolDispatchHandler', () => {
 		it('should not include displayTitle when toolDisplayTitles is not provided', async () => {
 			const mockTool = {
 				name: 'mock_tool',
-				invoke: jest.fn().mockResolvedValue('result'),
+				invoke: vi.fn().mockResolvedValue('result'),
 			} as unknown as StructuredToolInterface;
 
 			const handler = createHandler(new Map([['mock_tool', mockTool]]));
@@ -211,7 +211,7 @@ describe('ToolDispatchHandler', () => {
 		it('should include displayTitle in error chunks when tool throws', async () => {
 			const mockTool = {
 				name: 'search_nodes',
-				invoke: jest.fn().mockRejectedValue(new Error('Search failed')),
+				invoke: vi.fn().mockRejectedValue(new Error('Search failed')),
 			} as unknown as StructuredToolInterface;
 
 			const toolDisplayTitles = new Map([['search_nodes', 'Searching nodes']]);
@@ -277,7 +277,7 @@ describe('ToolDispatchHandler', () => {
 		function createMockTextEditorToolHandler(): TextEditorToolHandler {
 			return {
 				// eslint-disable-next-line require-yield
-				execute: jest.fn().mockImplementation(async function* () {
+				execute: vi.fn().mockImplementation(async function* () {
 					return undefined;
 				}),
 			} as unknown as TextEditorToolHandler;
@@ -286,7 +286,7 @@ describe('ToolDispatchHandler', () => {
 		/** Create a mock TextEditorHandler */
 		function createMockTextEditorHandler(): TextEditorHandler {
 			return {
-				getWorkflowCode: jest.fn().mockReturnValue('const wf = {};'),
+				getWorkflowCode: vi.fn().mockReturnValue('const wf = {};'),
 			} as unknown as TextEditorHandler;
 		}
 
@@ -294,7 +294,7 @@ describe('ToolDispatchHandler', () => {
 		function createMockValidateToolHandler(workflowReady = false): ValidateToolHandler {
 			return {
 				// eslint-disable-next-line require-yield
-				execute: jest.fn().mockImplementation(async function* () {
+				execute: vi.fn().mockImplementation(async function* () {
 					return { workflowReady, parseDuration: 10 };
 				}),
 			} as unknown as ValidateToolHandler;
@@ -490,7 +490,7 @@ describe('ToolDispatchHandler', () => {
 		it('should leave hasUnvalidatedEdits undefined for general tools', async () => {
 			const mockTool = {
 				name: 'search_nodes',
-				invoke: jest.fn().mockResolvedValue('result'),
+				invoke: vi.fn().mockResolvedValue('result'),
 			} as unknown as StructuredToolInterface;
 
 			const handler = new ToolDispatchHandler({
@@ -512,7 +512,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should set hasUnvalidatedEdits to true after batch_str_replace', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 2 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 2 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -564,7 +564,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should route to textEditorHandler.executeBatch', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 1 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 1 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -599,7 +599,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should handle errors gracefully and push error ToolMessage', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockImplementation(() => {
+				executeBatch: vi.fn().mockImplementation(() => {
 					throw new Error('Batch replacement failed at index 1 of 2: No match found');
 				}),
 			} as unknown as TextEditorHandler;
@@ -639,7 +639,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should yield running and completed progress chunks on success', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 2 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 2 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -687,11 +687,11 @@ describe('ToolDispatchHandler', () => {
 			};
 
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 1 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 1 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const mockTextEditorToolHandler = {
-				tryParseForPreview: jest.fn().mockResolvedValue({
+				tryParseForPreview: vi.fn().mockResolvedValue({
 					chunk: {
 						messages: [
 							{
@@ -733,11 +733,11 @@ describe('ToolDispatchHandler', () => {
 
 		it('should append parse error to tool message when parse fails after batch_str_replace', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 1 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 1 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const mockTextEditorToolHandler = {
-				tryParseForPreview: jest.fn().mockResolvedValue({
+				tryParseForPreview: vi.fn().mockResolvedValue({
 					parseError: 'Unexpected token',
 				} satisfies PreviewParseResult),
 			} as unknown as TextEditorToolHandler;
@@ -773,7 +773,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should skip preview when textEditorToolHandler is not provided', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 1 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 1 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -810,7 +810,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should parse replacements when sent as JSON string', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn().mockReturnValue('All 1 replacements applied successfully.'),
+				executeBatch: vi.fn().mockReturnValue('All 1 replacements applied successfully.'),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -846,7 +846,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should return error when replacements item missing old_str', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn(),
+				executeBatch: vi.fn(),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -880,7 +880,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should return error when replacements item missing new_str', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn(),
+				executeBatch: vi.fn(),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -914,7 +914,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should return error when replacements is not an array or string', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn(),
+				executeBatch: vi.fn(),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({
@@ -948,7 +948,7 @@ describe('ToolDispatchHandler', () => {
 
 		it('should return error when replacements item has non-string old_str', async () => {
 			const mockTextEditorHandler = {
-				executeBatch: jest.fn(),
+				executeBatch: vi.fn(),
 			} as unknown as TextEditorHandler;
 
 			const handler = new ToolDispatchHandler({

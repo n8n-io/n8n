@@ -94,6 +94,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 });
 
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
+export const WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT = createExperiment('086_workflow_card_mcp_toggle');
 export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 	'082_instance_ai_proactive_agent',
 );
@@ -113,6 +114,13 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 		variant1: 'variant-1',
 		variant2: 'variant-2',
 	},
+);
+
+export const CANVAS_NODES_GROUPING_EXPERIMENT = createExperiment('083_canvas_nodes_grouping');
+
+export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
+export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperiment(
+	'087_instance_ai_workflow_preview_suggestions',
 );
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -137,10 +145,14 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
+	WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
 	INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT.name,
 	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
+	CANVAS_NODES_GROUPING_EXPERIMENT.name,
+	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 ];

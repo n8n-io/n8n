@@ -1,30 +1,31 @@
-jest.mock('@n8n/agents', () => ({
-	McpClient: jest.fn().mockImplementation(() => ({
-		listTools: jest.fn().mockResolvedValue([]),
-		close: jest.fn().mockResolvedValue(undefined),
-	})),
+/* eslint-disable import-x/order */
+import type { Mock, Mocked } from 'vitest';
+
+vi.mock('@n8n/agents', () => ({
+	McpClient: vi.fn(function () {
+		return {
+			listTools: vi.fn().mockResolvedValue([]),
+			close: vi.fn().mockResolvedValue(undefined),
+		};
+	}),
 }));
 
-jest.mock('../../agent/sanitize-mcp-schemas', () => ({
-	sanitizeMcpToolSchemas: jest.fn((tools: unknown) => tools),
+vi.mock('../../agent/sanitize-mcp-schemas', () => ({
+	sanitizeMcpToolSchemas: vi.fn((tools: unknown) => tools),
 }));
 
+import { McpClient } from '@n8n/agents';
 import { createResultError, createResultOk, UserError } from 'n8n-workflow';
 
+import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { SsrfUrlValidator } from '../mcp-client-manager';
 import { McpClientManager } from '../mcp-client-manager';
 
-const { McpClient: mockedMcpClient } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@n8n/agents') as { McpClient: jest.Mock };
-const { sanitizeMcpToolSchemas: mockedSanitizeMcpToolSchemas } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('../../agent/sanitize-mcp-schemas') as {
-		sanitizeMcpToolSchemas: jest.Mock;
-	};
+const mockedMcpClient = McpClient as unknown as Mock;
+const mockedSanitizeMcpToolSchemas = sanitizeMcpToolSchemas as unknown as Mock;
 
 interface LoggerMock {
-	warn: jest.Mock;
+	warn: Mock;
 }
 
 interface SanitizeOptions {
@@ -41,15 +42,15 @@ interface SanitizeOptions {
 	}) => void;
 }
 
-function createValidatorMock(): jest.Mocked<SsrfUrlValidator> {
+function createValidatorMock(): Mocked<SsrfUrlValidator> {
 	return {
-		validateUrl: jest.fn().mockResolvedValue(createResultOk(undefined)),
-	} as jest.Mocked<SsrfUrlValidator>;
+		validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	} as Mocked<SsrfUrlValidator>;
 }
 
 describe('McpClientManager', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('protocol whitelist (always-on)', () => {
@@ -108,7 +109,7 @@ describe('McpClientManager', () => {
 
 	describe('server and schema filtering', () => {
 		it('skips external MCP servers with unsafe names', async () => {
-			const logger: LoggerMock = { warn: jest.fn() };
+			const logger: LoggerMock = { warn: vi.fn() };
 			const manager = new McpClientManager();
 
 			await manager.getRegularTools(
@@ -137,29 +138,8 @@ describe('McpClientManager', () => {
 			);
 		});
 
-		it('skips browser MCP configs with unsafe names', async () => {
-			const logger: LoggerMock = { warn: jest.fn() };
-			const manager = new McpClientManager();
-
-			await expect(
-				manager.getBrowserTools(
-					{ name: 'bad name', url: 'https://browser.example.com/mcp' },
-					logger as never,
-				),
-			).resolves.toEqual(new Map());
-
-			expect(mockedMcpClient).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped MCP server with unsafe name',
-				expect.objectContaining({
-					serverName: 'bad name',
-					source: 'browser MCP',
-				}),
-			);
-		});
-
 		it('logs tools skipped during schema sanitization', async () => {
-			const logger: LoggerMock = { warn: jest.fn() };
+			const logger: LoggerMock = { warn: vi.fn() };
 			mockedSanitizeMcpToolSchemas.mockImplementationOnce(
 				(_tools: unknown, options?: SanitizeOptions) => {
 					options?.onError?.({
@@ -239,26 +219,16 @@ describe('McpClientManager', () => {
 			await manager.getRegularTools([{ name: 'stdio', command: '/usr/bin/mcp' }]);
 			expect(validator.validateUrl).not.toHaveBeenCalled();
 		});
-
-		it('applies validation to browser MCP config too', async () => {
-			const validator = createValidatorMock();
-			validator.validateUrl.mockResolvedValue(createResultError(new Error('blocked')));
-			const manager = new McpClientManager(validator);
-			await expect(
-				manager.getBrowserTools({ name: 'browser', url: 'http://internal/' }),
-			).rejects.toThrow(UserError);
-		});
 	});
 
 	describe('disconnect', () => {
 		it('disconnects every tracked client and clears caches', async () => {
 			const manager = new McpClientManager();
 			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }]);
-			await manager.getBrowserTools({ name: 'b', url: 'https://b.example.com/' });
-			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 
 			const disconnectMocks = mockedMcpClient.mock.results.map(
-				(r) => (r.value as { close: jest.Mock }).close,
+				(r) => (r.value as { close: Mock }).close,
 			);
 
 			await manager.disconnect();
@@ -278,12 +248,44 @@ describe('McpClientManager', () => {
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
 
-		it('keeps regular and browser caches separate', async () => {
+		it('does not share cached clients across different scoped fetch cache keys', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools([{ name: 'shared', url: 'https://shared.example.com/' }]);
-			await manager.getBrowserTools({ name: 'shared', url: 'https://shared.example.com/' });
-			// Same config shape but different bucket → two clients
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:1',
+				},
+			]);
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:2',
+				},
+			]);
+
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+
+		it('reuses cached clients when scoped fetch cache key matches', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:1',
+				},
+			]);
+			await manager.getRegularTools([
+				{
+					name: 'shared',
+					url: 'https://shared.example.com/',
+					cacheKey: 'registry-connection:1',
+				},
+			]);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -301,23 +303,16 @@ describe('McpClientManager', () => {
 			expect(tools1).toBe(tools2);
 		});
 
-		it('coalesces concurrent browser-tool calls with the same config into one client', async () => {
-			const manager = new McpClientManager();
-			const config = { name: 'browser', url: 'https://browser.example.com/' };
-
-			await Promise.all([manager.getBrowserTools(config), manager.getBrowserTools(config)]);
-
-			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
-		});
-
 		it('lets the next call retry after an in-flight failure', async () => {
 			const manager = new McpClientManager();
 			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
 
-			mockedMcpClient.mockImplementationOnce(() => ({
-				listTools: jest.fn().mockRejectedValue(new Error('boom')),
-				close: jest.fn().mockResolvedValue(undefined),
-			}));
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockRejectedValue(new Error('boom')),
+					close: vi.fn().mockResolvedValue(undefined),
+				};
+			});
 
 			await expect(manager.getRegularTools(configs)).rejects.toThrow('boom');
 			// In-flight entry must be cleared so a retry actually re-attempts.
@@ -342,10 +337,12 @@ describe('McpClientManager', () => {
 			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
 
 			const deferred = deferListTools();
-			mockedMcpClient.mockImplementationOnce(() => ({
-				listTools: jest.fn().mockReturnValue(deferred.promise),
-				close: jest.fn().mockResolvedValue(undefined),
-			}));
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockReturnValue(deferred.promise),
+					close: vi.fn().mockResolvedValue(undefined),
+				};
+			});
 
 			const stranded = manager.getRegularTools(configs);
 			// Yield so connectAndListTools registers the client before we tear down.

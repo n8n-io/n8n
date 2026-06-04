@@ -1,14 +1,14 @@
-import { Workspace } from '@n8n/agents';
+import { Workspace, type WorkspaceFilesystem } from '@n8n/agents';
 
+import type { ErrorReporter, Logger } from '../logger';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { DaytonaSandbox } from './daytona-sandbox';
-import { LocalFilesystem } from './local-filesystem';
-import { LocalSandbox } from './local-sandbox';
+import { loadDaytona } from './lazy-daytona';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
-import type { Logger } from '../logger';
+import { SnapshotManager } from './snapshot-manager';
 
-export type SandboxProvider = 'daytona' | 'local' | 'n8n-sandbox';
+export type SandboxProvider = 'daytona' | 'n8n-sandbox';
 
 interface SandboxConfigBase {
 	provider: SandboxProvider;
@@ -24,6 +24,7 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	provider: 'daytona';
 	id?: string;
 	name?: string;
+	labels?: Record<string, string>;
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
@@ -46,37 +47,66 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	logger?: Logger;
 }
 
-interface LocalSandboxConfig extends SandboxConfigBase {
-	enabled: true;
-	provider: 'local';
-}
-
 interface N8nSandboxConfig extends SandboxConfigBase {
 	enabled: true;
 	provider: 'n8n-sandbox';
-	serviceUrl?: string;
+	serviceUrl: string;
 	apiKey?: string;
 }
 
-export type SandboxConfig =
-	| DisabledSandboxConfig
-	| DaytonaSandboxConfig
-	| LocalSandboxConfig
-	| N8nSandboxConfig;
+export type SandboxConfig = DisabledSandboxConfig | DaytonaSandboxConfig | N8nSandboxConfig;
+
+export type SandboxInstance = DaytonaSandbox | N8nSandboxServiceSandbox;
+
+export interface CreateSandboxOptions {
+	logger?: Logger;
+	errorReporter?: ErrorReporter;
+	useSnapshotFallback?: boolean;
+}
+
+const NOOP_LOGGER: Logger = {
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	debug: () => {},
+};
 
 /**
  * Create a sandbox instance based on config.
  * Returns undefined when sandbox is disabled.
  *
- * - 'daytona': Isolated Docker container via Daytona API (production)
- * - 'local': Direct host execution via LocalSandbox (development only, no isolation)
+ * - 'daytona': Isolated Docker container via Daytona API.
+ * - 'n8n-sandbox': n8n sandbox service-backed container.
  */
-export function createSandbox(
+export async function createSandbox(
 	config: SandboxConfig,
-): DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined {
+	options: CreateSandboxOptions = {},
+): Promise<SandboxInstance | undefined> {
 	if (!config.enabled) return undefined;
 
 	if (config.provider === 'daytona') {
+		const mode = config.getAuthToken ? 'proxy' : 'direct';
+		const logger = options.logger ?? config.logger;
+		const snapshotManager = options.useSnapshotFallback
+			? new SnapshotManager(
+					config.image,
+					logger ?? NOOP_LOGGER,
+					config.n8nVersion,
+					options.errorReporter,
+				)
+			: undefined;
+		const snapshot =
+			snapshotManager && mode === 'direct'
+				? await snapshotManager.ensureSnapshot(
+						new (loadDaytona().Daytona)({
+							apiKey: config.daytonaApiKey,
+							apiUrl: config.daytonaApiUrl,
+						}),
+						mode,
+					)
+				: await snapshotManager?.ensureSnapshot(undefined, mode);
+		const image = snapshotManager ? await snapshotManager.ensureImage() : config.image;
+
 		// Pass the auth source through to the sandbox so it owns the JWT lifecycle:
 		// proxy mode mints fresh tokens on demand via `getAuthToken`; direct mode uses the static key.
 		return new DaytonaSandbox({
@@ -85,11 +115,17 @@ export function createSandbox(
 			apiKey: config.getAuthToken ? undefined : config.daytonaApiKey,
 			getAuthToken: config.getAuthToken,
 			refreshSkewMs: config.refreshSkewMs,
-			logger: config.logger,
+			logger,
 			apiUrl: config.daytonaApiUrl,
-			...(config.image ? { image: config.image } : {}),
+			labels: config.labels,
+			...(image ? { image } : {}),
+			...(snapshot ? { snapshot } : {}),
+			ephemeral: true,
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
+			createTimeoutSeconds: config.createTimeoutSeconds ?? 300,
+			errorReporter: options.errorReporter,
+			createStrategyMode: mode,
 		});
 	}
 
@@ -101,44 +137,22 @@ export function createSandbox(
 		});
 	}
 
-	// Local fallback for development — no isolation, runs commands directly on host.
-	// Block in production to prevent unrestricted host command execution.
-	if (process.env.NODE_ENV === 'production') {
-		throw new Error(
-			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
-		);
-	}
-
-	return new LocalSandbox({
-		workingDirectory: './workspace',
-	});
+	const exhaustiveProvider: never = config;
+	throw new Error(`Unsupported sandbox provider: ${JSON.stringify(exhaustiveProvider)}`);
 }
 
 /**
  * Create a Workspace wrapping a sandbox instance.
- * When sandbox is a LocalSandbox, also provides a local filesystem.
  */
-export function createWorkspace(
-	sandbox: DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined,
-): Workspace | undefined {
+export function createWorkspace(sandbox: SandboxInstance | undefined): Workspace | undefined {
 	if (!sandbox) return undefined;
 
-	if (sandbox instanceof LocalSandbox) {
-		return new Workspace({
-			sandbox,
-			filesystem: new LocalFilesystem({ basePath: './workspace' }),
-		});
-	}
+	const createWorkspaceWithFilesystem = (filesystem: WorkspaceFilesystem) =>
+		new Workspace({ sandbox, filesystem });
 
 	if (sandbox instanceof N8nSandboxServiceSandbox) {
-		return new Workspace({
-			sandbox,
-			filesystem: new N8nSandboxFilesystem(sandbox),
-		});
+		return createWorkspaceWithFilesystem(new N8nSandboxFilesystem(sandbox));
 	}
 
-	return new Workspace({
-		sandbox,
-		filesystem: new DaytonaFilesystem(sandbox),
-	});
+	return createWorkspaceWithFilesystem(new DaytonaFilesystem(sandbox));
 }

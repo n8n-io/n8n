@@ -1,0 +1,45 @@
+{
+  "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. Keys are PURLs (pkg:npm/<name>@<version>) — exact match required. 'source' points to where the license was verified so reviewers can re-check. Optional 'skipDiskText: true' opts out of on-disk LICENSE text lookup when the file disagrees with the overridden SPDX id.",
+  "overrides": {
+    "pkg:npm/%40rudderstack/rudder-sdk-node@3.0.5": {
+      "license": "MIT",
+      "source": "compiled/node_modules/@rudderstack/rudder-sdk-node/LICENSE.md — verbatim MIT (Copyright Segment Inc.), no license field in package.json"
+    },
+    "pkg:npm/%40ewoudenberg/difflib@0.1.0": {
+      "license": "Python-2.0",
+      "source": "https://github.com/ewoudenberg/difflib.js — package.json declares legacy licenses[] array with PSF type, http://docs.python.org/license.html"
+    },
+    "pkg:npm/binascii@0.0.2": {
+      "license": "MIT",
+      "source": "compiled/node_modules/binascii/LICENSE — verbatim MIT, no license field in package.json"
+    },
+    "pkg:npm/busboy@1.6.0": {
+      "license": "MIT",
+      "source": "compiled/node_modules/busboy/LICENSE — package.json uses legacy licenses[] array"
+    },
+    "pkg:npm/imap@0.8.19": {
+      "license": "MIT",
+      "source": "compiled/node_modules/imap/LICENSE — package.json uses legacy licenses[] array"
+    },
+    "pkg:npm/js-nacl@1.4.0": {
+      "license": "MIT",
+      "source": "compiled/node_modules/js-nacl/README.md — 'is licensed under the MIT license', wraps libsodium (ISC)"
+    },
+    "pkg:npm/seq-queue@0.0.5": {
+      "license": "MIT",
+      "source": "compiled/node_modules/seq-queue/LICENSE — verbatim MIT, no license field in package.json"
+    },
+    "pkg:npm/ssh2@1.15.0": {
+      "license": "MIT",
+      "source": "compiled/node_modules/ssh2/LICENSE — package.json uses legacy licenses[] array"
+    },
+    "pkg:npm/streamsearch@1.1.0": {
+      "license": "MIT",
+      "source": "compiled/node_modules/streamsearch/LICENSE — package.json uses legacy licenses[] array"
+    },
+    "pkg:npm/utf7@1.0.2": {
+      "license": "MIT",
+      "source": "DISCREPANCY: package.json declares legacy licenses[]=BSD, but compiled/node_modules/utf7/LICENSE ships verbatim MIT text (https://github.com/chris-rock/node-utf7/blob/master/LICENSE). On-disk LICENSE file taken as authoritative — this is the file customers actually receive in the release tarball. If a future legal review concludes differently, set skipDiskText:true and switch license to BSD-3-Clause."
+    }
+  }
+}

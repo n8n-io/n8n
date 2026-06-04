@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { CanvasRenderData } from '../canvas.utils';
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
@@ -54,7 +55,6 @@ import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import type { WorkflowObjectAccessors } from '@/app/types';
 
 export function useCanvasMapping({
@@ -71,7 +71,9 @@ export function useCanvasMapping({
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowState = injectWorkflowState();
+	const workflowExecutionStateStore = computed(() =>
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+	);
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const { dirtinessByName } = useNodeDirtiness();
@@ -197,7 +199,7 @@ export function useCanvasMapping({
 	);
 
 	const nodeTooltipById = computed(() => {
-		if (!workflowsStore.isWorkflowRunning) {
+		if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 			return {};
 		}
 
@@ -245,7 +247,7 @@ export function useCanvasMapping({
 
 	const nodeExecutionRunningById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
-			acc[node.id] = workflowState.executingNode.isNodeExecuting(node.name);
+			acc[node.id] = workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.name);
 			return acc;
 		}, {}),
 	);
@@ -253,9 +255,9 @@ export function useCanvasMapping({
 	const nodeExecutionWaitingForNextById = computed(() =>
 		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			acc[node.id] =
-				node.name === workflowState.executingNode.lastAddedExecutingNode &&
-				workflowState.executingNode.executingNode.length === 0 &&
-				workflowsStore.isWorkflowRunning;
+				node.name === workflowExecutionStateStore.value.executingNode.lastAddedExecutingNode &&
+				workflowExecutionStateStore.value.executingNode.executingNode.length === 0 &&
+				workflowExecutionStateStore.value.isWorkflowRunning;
 
 			return acc;
 		}, {}),

@@ -1,5 +1,9 @@
-jest.mock('../data/workflows', () => ({
-	loadWorkflowTestCasesWithFiles: jest.fn(),
+/* eslint-disable import-x/order */
+import { vi } from 'vitest';
+import type { Mock } from 'vitest';
+
+vi.mock('../data/workflows', () => ({
+	loadWorkflowTestCasesWithFiles: vi.fn(),
 }));
 
 import type { Client } from 'langsmith';
@@ -9,7 +13,7 @@ import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import { syncDataset } from '../langsmith/dataset-sync';
 
-const mockedLoad = jest.mocked(loadWorkflowTestCasesWithFiles);
+const mockedLoad = vi.mocked(loadWorkflowTestCasesWithFiles);
 
 function scenarioFixture(testCaseFile: string, scenarioName: string) {
 	return {
@@ -26,6 +30,7 @@ function scenarioFixture(testCaseFile: string, scenarioName: string) {
 					successCriteria: `criteria for ${scenarioName}`,
 				},
 			],
+			datasets: ['full'],
 		},
 		fileSlug: testCaseFile,
 	};
@@ -50,6 +55,7 @@ function existingExample(id: string, testCaseFile: string, scenarioName: string)
 			tags: ['test'],
 			triggerType: 'manual',
 		},
+		split: [testCaseFile, 'full'],
 		outputs: {},
 		runs: [],
 	} as unknown as Example;
@@ -59,13 +65,19 @@ type UpsertArg = Array<{ id: string; inputs: Record<string, unknown> }>;
 
 function buildClient(existing: Example[] = []): {
 	client: Client;
-	createExamples: jest.Mock<Promise<void>, [UpsertArg]>;
-	updateExamples: jest.Mock<Promise<void>, [UpsertArg]>;
-	deleteExamples: jest.Mock<Promise<void>, [string[]]>;
+	createExamples: Mock<(...args: [UpsertArg]) => Promise<void>>;
+	updateExamples: Mock<(...args: [UpsertArg]) => Promise<void>>;
+	deleteExamples: Mock<(...args: [string[]]) => Promise<void>>;
 } {
-	const createExamples = jest.fn<Promise<void>, [UpsertArg]>().mockResolvedValue(undefined);
-	const updateExamples = jest.fn<Promise<void>, [UpsertArg]>().mockResolvedValue(undefined);
-	const deleteExamples = jest.fn<Promise<void>, [string[]]>().mockResolvedValue(undefined);
+	const createExamples = vi
+		.fn<(...args: [UpsertArg]) => Promise<void>>()
+		.mockResolvedValue(undefined);
+	const updateExamples = vi
+		.fn<(...args: [UpsertArg]) => Promise<void>>()
+		.mockResolvedValue(undefined);
+	const deleteExamples = vi
+		.fn<(...args: [string[]]) => Promise<void>>()
+		.mockResolvedValue(undefined);
 
 	async function* listExamples() {
 		await Promise.resolve();
@@ -73,10 +85,10 @@ function buildClient(existing: Example[] = []): {
 	}
 
 	const client = {
-		hasDataset: jest.fn().mockResolvedValue(true),
-		readDataset: jest.fn().mockResolvedValue({ id: 'dataset-1' }),
-		createDataset: jest.fn(),
-		listExamples: jest.fn().mockImplementation(listExamples),
+		hasDataset: vi.fn().mockResolvedValue(true),
+		readDataset: vi.fn().mockResolvedValue({ id: 'dataset-1' }),
+		createDataset: vi.fn(),
+		listExamples: vi.fn().mockImplementation(listExamples),
 		createExamples,
 		updateExamples,
 		deleteExamples,
@@ -86,17 +98,17 @@ function buildClient(existing: Example[] = []): {
 }
 
 const logger: EvalLogger = {
-	info: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
-	verbose: jest.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	verbose: vi.fn(),
 } as unknown as EvalLogger;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 describe('syncDataset', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('creates new examples with random UUIDs when they are not already in the dataset', async () => {
@@ -156,6 +168,37 @@ describe('syncDataset', () => {
 		expect(createExamples).not.toHaveBeenCalled();
 		expect(updateExamples).not.toHaveBeenCalled();
 		expect(deleteExamples).not.toHaveBeenCalled();
+	});
+
+	it('writes datasets values into the example split alongside the file slug', async () => {
+		const fixture = scenarioFixture('foo', 'happy-path');
+		fixture.testCase.datasets = ['pr', 'full'];
+		mockedLoad.mockReturnValue([fixture]);
+		const { client, createExamples } = buildClient([]);
+
+		await syncDataset(client, 'ds', logger);
+
+		expect(createExamples).toHaveBeenCalledTimes(1);
+		const created = createExamples.mock.calls[0][0];
+		expect((created[0] as unknown as { split: string[] }).split).toEqual(['foo', 'pr', 'full']);
+	});
+
+	it('updates an existing example when only its split (tier membership) changed', async () => {
+		const existing = existingExample('split-uuid', 'foo', 'happy-path'); // split: ['foo', 'full']
+		const fixture = scenarioFixture('foo', 'happy-path');
+		fixture.testCase.datasets = ['pr', 'full']; // now also tagged 'pr'
+		mockedLoad.mockReturnValue([fixture]);
+		const { client, createExamples, updateExamples } = buildClient([existing]);
+
+		await syncDataset(client, 'ds', logger);
+
+		expect(createExamples).not.toHaveBeenCalled();
+		expect(updateExamples).toHaveBeenCalledTimes(1);
+		expect((updateExamples.mock.calls[0][0][0] as unknown as { split: string[] }).split).toEqual([
+			'foo',
+			'pr',
+			'full',
+		]);
 	});
 
 	it('creates a fresh example when a previously-deleted scenario is re-added (resurrection path)', async () => {

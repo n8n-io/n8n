@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import { N8nHeading, N8nInput, N8nInputNumber, N8nInputLabel } from '@n8n/design-system';
-import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';
 
 const i18n = useI18n();
-const { store, getString, getNumber, getBool } = useSettingsField();
+const { store, getString, getNumber } = useSettingsField();
 </script>
 
 <template>
@@ -27,16 +26,6 @@ const { store, getString, getNumber, getBool } = useSettingsField();
 				@update:model-value="store.setField('subAgentMaxSteps', $event ?? 100)"
 			/>
 		</N8nInputLabel>
-
-		<div :class="$style.switchRow">
-			<span :class="$style.switchLabel">{{
-				i18n.baseText('instanceAi.settings.browserMcp.label')
-			}}</span>
-			<ElSwitch
-				:model-value="getBool('browserMcp')"
-				@update:model-value="store.setField('browserMcp', Boolean($event))"
-			/>
-		</div>
 
 		<N8nInputLabel
 			:label="i18n.baseText('instanceAi.settings.mcpServers.label')"
@@ -64,17 +53,5 @@ const { store, getString, getNumber, getBool } = useSettingsField();
 
 .numberInput {
 	max-width: 140px;
-}
-
-.switchRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--4xs) 0;
-}
-
-.switchLabel {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
 }
 </style>

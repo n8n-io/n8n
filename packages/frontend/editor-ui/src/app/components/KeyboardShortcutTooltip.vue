@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { KeyboardShortcut } from '@/Interface';
-import type { Placement } from 'element-plus';
+import type { N8nTooltipProps } from '@n8n/design-system/components/N8nTooltip';
 
 import { N8nKeyboardShortcut, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	label: string;
 	shortcut?: KeyboardShortcut;
-	placement?: Placement;
+	placement?: N8nTooltipProps['placement'];
 	disabled?: boolean;
 }
 withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });

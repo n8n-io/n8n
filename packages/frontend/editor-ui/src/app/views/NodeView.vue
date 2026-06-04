@@ -2,6 +2,7 @@
 import {
 	computed,
 	defineAsyncComponent,
+	inject,
 	nextTick,
 	onMounted,
 	ref,
@@ -11,6 +12,7 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 } from 'vue';
+import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
@@ -19,6 +21,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
@@ -126,6 +129,8 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -181,6 +186,10 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionState = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -194,6 +203,9 @@ const tagsStore = useTagsStore();
 
 const ndvStore = injectNDVStore();
 const focusPanelStore = useFocusPanelStore();
+const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
@@ -264,7 +276,6 @@ const readOnlyNotification = ref<null | { visible: boolean }>(null);
 const fallbackNodes = ref<INodeUi[]>([]);
 
 const workflowId = useInjectWorkflowId();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
 	return Array.isArray(nodeId) ? nodeId[0] : nodeId;
@@ -287,6 +298,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 const isNDVV2 = computed(() => true);
 
+// Optional context-supplied read-only signal (e.g. AI artifact host locking the
+// canvas while a workflow-builder agent is mutating the workflow). Adapters
+// provide it; default `null` means no external lock.
+const externalReadOnly = inject(EditorExternalReadOnlyKey, null);
+
 const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
@@ -294,7 +310,8 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		(workflowDocumentStore?.value?.isArchived ?? false) ||
-		(builderStore.streaming && !builderStore.isHelpStreaming)
+		(builderStore.streaming && !builderStore.isHelpStreaming) ||
+		(externalReadOnly?.value ?? false)
 	);
 });
 
@@ -304,6 +321,7 @@ const canExecuteOnCanvas = computed(() => {
 	}
 	if (workflowDocumentStore?.value?.isArchived) return false;
 	if (builderStore.streaming) return false;
+	if (externalReadOnly?.value) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
 
@@ -314,7 +332,7 @@ const isWriterAnotherTab = computed(() => {
 const showFallbackNodes = computed(() => triggerNodes.value.length === 0);
 
 const keyBindingsEnabled = computed(() => {
-	return !ndvStore.activeNode && uiStore.activeModals.length === 0;
+	return !ndvStore.value.activeNode && uiStore.activeModals.length === 0;
 });
 
 const isLogsPanelOpen = computed(() => logsStore.isOpen);
@@ -326,10 +344,7 @@ const isLogsPanelOpen = computed(() => logsStore.isOpen);
 function initializeRoute() {
 	// Open node panel if the route has a corresponding action
 	if (route.query.action === 'addEvaluationTrigger') {
-		nodeCreatorStore.openNodeCreatorForTriggerNodes(
-			workflowId.value,
-			NODE_CREATOR_OPEN_SOURCES.ADD_EVALUATION_TRIGGER_BUTTON,
-		);
+		void addEvaluationTriggerNodeFromRoute();
 	} else if (route.query.action === 'addEvaluationNode') {
 		nodeCreatorStore.openNodeCreatorForActions(
 			workflowId.value,
@@ -340,6 +355,11 @@ function initializeRoute() {
 		if (evaluationTriggerNode.value) {
 			void runEntireWorkflow('node', evaluationTriggerNode.value.name);
 		}
+	} else if (
+		route.query.action === 'openEvaluationsWizard' &&
+		isEvaluationsWizardSidepanelEnabled.value
+	) {
+		evaluationsWizardSidepanelStore.open(0);
 	}
 
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)
@@ -417,7 +437,8 @@ const selectableTriggerNodes = computed(() =>
 );
 const isRunButtonSplit = computed(() => {
 	return (
-		selectableTriggerNodes.value.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined
+		selectableTriggerNodes.value.length > 1 &&
+		workflowExecutionState.value.selectedTriggerNodeName !== undefined
 	);
 });
 
@@ -624,8 +645,8 @@ async function onSaveWorkflow() {
 }
 
 function onRenameNode(name: string) {
-	if (ndvStore.activeNode?.name) {
-		void renameNode(ndvStore.activeNode.name, name);
+	if (ndvStore.value.activeNode?.name) {
+		void renameNode(ndvStore.value.activeNode.name, name);
 	}
 }
 
@@ -1051,8 +1072,10 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isWorkflowRunning = computed(() => workflowExecutionState.value.isWorkflowRunning);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionState.value.executionWaitingForWebhook,
+);
 
 const isExecutionDisabled = computed(() => {
 	if (
@@ -1151,7 +1174,7 @@ function trackRunWorkflowToNode(node: INodeUi) {
 		node_type: node.type,
 		workflow_id: workflowId.value,
 		source: 'canvas',
-		push_ref: ndvStore.pushRef,
+		push_ref: ndvStore.value.pushRef,
 	};
 
 	telemetry.track('User clicked execute node button', telemetryPayload);
@@ -1309,6 +1332,56 @@ const evaluationTriggerNode = computed(() => {
 		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 	);
 });
+
+const isHandlingEvaluationTriggerRouteAction = ref(false);
+
+async function addEvaluationTriggerNodeFromRoute() {
+	if (isHandlingEvaluationTriggerRouteAction.value) return;
+
+	isHandlingEvaluationTriggerRouteAction.value = true;
+
+	try {
+		if (!canvasRef.value) {
+			await new Promise<void>((resolve) => {
+				const stop = watch(canvasRef, (val) => {
+					if (val) {
+						stop();
+						resolve();
+					}
+				});
+			});
+		}
+
+		if (!checkIfEditingIsAllowed()) return;
+
+		if (evaluationTriggerNode.value) {
+			setNodeActiveByName(evaluationTriggerNode.value.name, 'other');
+			canvasRef.value?.ensureNodesAreVisible([evaluationTriggerNode.value.id]);
+			return;
+		}
+
+		const { addedNodes } = await addNodesAndConnections(
+			[{ type: EVALUATION_TRIGGER_NODE_TYPE, openDetail: true }],
+			[],
+			{
+				viewport: viewportBoundaries.value,
+				telemetry: true,
+			},
+		);
+
+		if (addedNodes.length > 0) {
+			const addedNode = addedNodes[addedNodes.length - 1];
+			await nextTick();
+			canvasRef.value?.ensureNodesAreVisible([addedNode.id]);
+		}
+	} finally {
+		try {
+			await router.replace({ query: { ...route.query, action: undefined } });
+		} finally {
+			isHandlingEvaluationTriggerRouteAction.value = false;
+		}
+	}
+}
 
 /**
  * History events
@@ -1544,7 +1617,7 @@ function registerCustomActions() {
 	registerCustomAction({
 		key: 'showNodeCreator',
 		action: () => {
-			ndvStore.unsetActiveNodeName();
+			ndvStore.value.unsetActiveNodeName();
 
 			void nextTick(() => {
 				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_SHORTCUT);
@@ -1646,7 +1719,7 @@ watch(
 watch(
 	() => route.params.nodeId,
 	async (newId) => {
-		if (typeof newId !== 'string' || newId === '') ndvStore.unsetActiveNodeName();
+		if (typeof newId !== 'string' || newId === '') ndvStore.value.unsetActiveNodeName();
 		else {
 			updateNodeRoute(newId);
 		}
@@ -1655,7 +1728,7 @@ watch(
 
 // This keeps URL in sync if the activeNode is changed
 watch(
-	() => ndvStore.activeNode,
+	() => ndvStore.value.activeNode,
 	async (val) => {
 		// This is just out of caution
 		if (!([VIEWS.WORKFLOW] as string[]).includes(String(route.name))) return;
@@ -1725,15 +1798,17 @@ watch(
 	[selectableTriggerNodes, workflowExecutionTriggerNodeName],
 	([newSelectable, currentTrigger], [oldSelectable]) => {
 		if (currentTrigger !== undefined) {
-			workflowsStore.setSelectedTriggerNodeName(currentTrigger);
+			workflowExecutionState.value.setSelectedTriggerNodeName(currentTrigger);
 			return;
 		}
 
 		if (
-			workflowsStore.selectedTriggerNodeName === undefined ||
-			newSelectable.every((node) => node.name !== workflowsStore.selectedTriggerNodeName)
+			workflowExecutionState.value.selectedTriggerNodeName === undefined ||
+			newSelectable.every(
+				(node) => node.name !== workflowExecutionState.value.selectedTriggerNodeName,
+			)
 		) {
-			workflowsStore.setSelectedTriggerNodeName(
+			workflowExecutionState.value.setSelectedTriggerNodeName(
 				findTriggerNodeToAutoSelect(selectableTriggerNodes.value, nodeTypesStore.getNodeType)?.name,
 			);
 			return;
@@ -1745,7 +1820,7 @@ watch(
 
 		if (newTrigger !== undefined) {
 			// Select newly added node
-			workflowsStore.setSelectedTriggerNodeName(newTrigger.name);
+			workflowExecutionState.value.setSelectedTriggerNodeName(newTrigger.name);
 		}
 	},
 	{ immediate: true },
@@ -1937,12 +2012,12 @@ onBeforeUnmount(() => {
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionState.selectedTriggerNodeName"
 					:embedded="isDemoRoute"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="workflowExecutionState.setSelectedTriggerNodeName"
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton

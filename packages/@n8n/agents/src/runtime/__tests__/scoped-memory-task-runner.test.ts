@@ -18,7 +18,7 @@ function lockStore(
 ): BuiltObservationLogTaskLockStore {
 	return {
 		acquireObservationLogTaskLock: acquire,
-		releaseObservationLogTaskLock: jest.fn().mockResolvedValue(undefined),
+		releaseObservationLogTaskLock: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
@@ -71,9 +71,9 @@ describe('ScopedMemoryTaskRunner', () => {
 	});
 
 	it('skips a task when the store lock is already held', async () => {
-		const acquire = jest.fn().mockResolvedValue(null);
+		const acquire = vi.fn().mockResolvedValue(null);
 		const runner = new ScopedMemoryTaskRunner({ lockStore: lockStore(acquire) });
-		const task = jest.fn().mockResolvedValue(undefined);
+		const task = vi.fn().mockResolvedValue(undefined);
 
 		const handle = runner.schedule({ taskKind: 'observer', observationScopeId: 'thread-1' }, task);
 
@@ -135,7 +135,7 @@ describe('ScopedMemoryTaskRunner', () => {
 
 	it('captures onEvent failures without failing the task lifecycle', async () => {
 		const eventError = new Error('event sink failed');
-		const task = jest.fn(async () => await Promise.resolve('done'));
+		const task = vi.fn(async () => await Promise.resolve('done'));
 		const runner = new ScopedMemoryTaskRunner({
 			onEvent: () => {
 				throw eventError;
@@ -167,9 +167,10 @@ describe('ScopedMemoryTaskRunner', () => {
 	});
 
 	it('acquires and releases a store lock around the task', async () => {
-		const acquire = jest.fn<
-			ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>,
-			Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+		const acquire = vi.fn<
+			(
+				...args: Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+			) => ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
 		>(
 			async (observationScopeId, taskKind, opts) =>
 				await Promise.resolve(lockHandle(observationScopeId, taskKind, opts.holderId)),
