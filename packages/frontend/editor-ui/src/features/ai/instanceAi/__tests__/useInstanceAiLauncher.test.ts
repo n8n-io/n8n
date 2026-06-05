@@ -1,13 +1,12 @@
 import { setActivePinia, createPinia } from 'pinia';
 
 const syncThread = vi.fn().mockResolvedValue(undefined);
-const setPendingPrefill = vi.fn();
-const setPendingAutoSend = vi.fn();
+const setPendingLaunch = vi.fn();
 const track = vi.fn();
 const push = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../instanceAi.store', () => ({
-	useInstanceAiStore: () => ({ syncThread, setPendingPrefill, setPendingAutoSend }),
+	useInstanceAiStore: () => ({ syncThread, setPendingLaunch }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'push-ref', instanceId: 'instance-1' }),
@@ -31,8 +30,7 @@ describe('useInstanceAiLauncher', () => {
 			expect.any(String),
 			expect.objectContaining({ source: 'template-view', origin: 'internal' }),
 		);
-		expect(setPendingAutoSend).toHaveBeenCalledWith(expect.any(String), 'hi');
-		expect(setPendingPrefill).not.toHaveBeenCalled();
+		expect(setPendingLaunch).toHaveBeenCalledWith(expect.any(String), 'hi', true);
 		expect(track).toHaveBeenCalledWith(
 			'User launched Instance AI thread',
 			expect.objectContaining({ source: 'template-view', origin: 'internal', auto_send: true }),
@@ -43,8 +41,7 @@ describe('useInstanceAiLauncher', () => {
 		const { launch } = useInstanceAiLauncher();
 		await launch({ message: 'hi', source: 'external-link', origin: 'external', autoSend: true });
 
-		expect(setPendingAutoSend).not.toHaveBeenCalled();
-		expect(setPendingPrefill).toHaveBeenCalledWith(expect.any(String), 'hi');
+		expect(setPendingLaunch).toHaveBeenCalledWith(expect.any(String), 'hi', false);
 		expect(track).toHaveBeenCalledWith(
 			'User launched Instance AI thread',
 			expect.objectContaining({ origin: 'external', auto_send: false }),

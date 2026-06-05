@@ -6,10 +6,11 @@ import type {
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiThreadOrigin,
+	InstanceAiThreadSource,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
-	source?: string;
+	source?: InstanceAiThreadSource;
 	origin?: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
 }

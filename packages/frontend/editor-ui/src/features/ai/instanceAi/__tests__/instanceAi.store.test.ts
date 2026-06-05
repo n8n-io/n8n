@@ -166,14 +166,14 @@ describe('useInstanceAiStore - runtime registry', () => {
 	});
 });
 
-describe('instanceAi store pending prefill', () => {
+describe('instanceAi store pending launch', () => {
 	beforeEach(() => setActivePinia(createPinia()));
 
-	it('stores and consumes a pending prefill exactly once', () => {
+	it('stores and consumes a pending launch exactly once', () => {
 		const store = useInstanceAiStore();
-		store.setPendingPrefill('thread-1', 'hello world');
-		expect(store.consumePendingPrefill('thread-1')).toBe('hello world');
-		expect(store.consumePendingPrefill('thread-1')).toBeUndefined();
+		store.setPendingLaunch('thread-1', 'hello world', true);
+		expect(store.consumePendingLaunch('thread-1')).toEqual({ text: 'hello world', autoSend: true });
+		expect(store.consumePendingLaunch('thread-1')).toBeUndefined();
 	});
 });
 

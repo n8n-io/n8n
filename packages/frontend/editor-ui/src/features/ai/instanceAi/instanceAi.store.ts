@@ -26,41 +26,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const persistedThreadIds = new Set<string>();
-	const pendingPrefills = new Map<string, string>();
-	// Messages a launcher wants auto-sent once the thread view has mounted,
-	// hydrated and connected its SSE. Deferring the send to the view (rather than
-	// sending from the launcher before navigation) ensures the message is sent on
-	// the view's own runtime, after history hydration, so it isn't clobbered.
-	const pendingAutoSends = new Map<string, string>();
+	// First message a launcher wants the thread view to handle once it has
+	// mounted: `autoSend` true dispatches it, false prefills the input. Deferring
+	// to the view (rather than the launcher) ensures it acts on the view's own
+	// runtime after hydration, so it isn't clobbered.
+	const pendingLaunches = new Map<string, { text: string; autoSend: boolean }>();
 
-	function setPendingPrefill(threadId: string, text: string): void {
-		pendingPrefills.set(threadId, text);
+	function setPendingLaunch(threadId: string, text: string, autoSend: boolean): void {
+		pendingLaunches.set(threadId, { text, autoSend });
 	}
 
-	function consumePendingPrefill(threadId: string): string | undefined {
-		const text = pendingPrefills.get(threadId);
-		pendingPrefills.delete(threadId);
-		return text;
-	}
-
-	function setPendingAutoSend(threadId: string, message: string): void {
-		pendingAutoSends.set(threadId, message);
-	}
-
-	function consumePendingAutoSend(threadId: string): string | undefined {
-		const message = pendingAutoSends.get(threadId);
-		pendingAutoSends.delete(threadId);
-		return message;
-	}
-
-	/**
-	 * Whether a launcher has queued a prefill or auto-send for this thread but the
-	 * thread view hasn't consumed it yet. Used to keep a freshly launched thread
-	 * from being treated as "unknown" before its first message lands and it shows
-	 * up in the server-side thread list.
-	 */
-	function hasPendingLaunch(threadId: string): boolean {
-		return pendingAutoSends.has(threadId) || pendingPrefills.has(threadId);
+	function consumePendingLaunch(threadId: string): { text: string; autoSend: boolean } | undefined {
+		const pending = pendingLaunches.get(threadId);
+		pendingLaunches.delete(threadId);
+		return pending;
 	}
 
 	// --- Instance-level state ---
@@ -305,11 +284,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		disposeRuntime,
 		disposeRuntimes,
 		syncThread,
-		setPendingPrefill,
-		consumePendingPrefill,
-		setPendingAutoSend,
-		consumePendingAutoSend,
-		hasPendingLaunch,
+		setPendingLaunch,
+		consumePendingLaunch,
 	};
 });
 

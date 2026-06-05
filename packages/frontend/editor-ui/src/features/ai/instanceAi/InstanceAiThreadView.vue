@@ -479,25 +479,25 @@ async function syncRouteToStore(wasLaunched: boolean) {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 
-	// Mirror the empty view's working sequence for a freshly launched thread:
-	// send first so sendMessage connects SSE (sseState leaves 'disconnected') and
-	// pushes the optimistic message, THEN run syncRouteToStore. Because SSE is no
-	// longer 'disconnected', syncRouteToStore skips the history-hydration/reconnect
-	// path, so the optimistic message is preserved and rendered immediately instead
-	// of only after navigating away and back.
-	const pendingAutoSend = store.consumePendingAutoSend(props.threadId);
-	const wasLaunched = pendingAutoSend !== undefined || store.hasPendingLaunch(props.threadId);
-	if (pendingAutoSend) {
-		void thread.sendMessage(pendingAutoSend, undefined, rootStore.pushRef);
+	// A launcher may have queued a first message. For auto-send, mirror the empty
+	// view's working sequence: send first so sendMessage connects SSE (sseState
+	// leaves 'disconnected') and pushes the optimistic message, THEN run
+	// syncRouteToStore — which, seeing SSE no longer 'disconnected', skips the
+	// history-hydration/reconnect path, so the message is preserved and rendered
+	// immediately instead of only after navigating away and back. For prefill we
+	// just seed the input. Either way the thread counts as "launched" so
+	// syncRouteToStore won't bail before it appears in the server thread list.
+	const pendingLaunch = store.consumePendingLaunch(props.threadId);
+	if (pendingLaunch?.autoSend) {
+		void thread.sendMessage(pendingLaunch.text, undefined, rootStore.pushRef);
 	}
-	void syncRouteToStore(wasLaunched);
+	void syncRouteToStore(pendingLaunch !== undefined);
 
 	void nextTick(focusChatInputIfFocusIsIdle);
 
-	const prefill = store.consumePendingPrefill(props.threadId);
-	if (prefill) {
+	if (pendingLaunch && !pendingLaunch.autoSend) {
 		void nextTick(() => {
-			chatInputRef.value?.setText(prefill);
+			chatInputRef.value?.setText(pendingLaunch.text);
 		});
 	}
 });
