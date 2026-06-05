@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Tool } from '@langchain/core/tools';
+import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
 	CloseFunction,
@@ -404,7 +404,7 @@ export class EphemeralNodeExecutor {
 	private async withSupplyDataTool<T>(
 		tool: EphemeralWorkflowToolLike,
 		inputItems: INodeExecutionData[],
-		onTool: (response: Tool | StructuredToolkit) => Promise<T> | T,
+		onTool: (response: LangChainToolType | StructuredToolkit) => Promise<T> | T,
 	): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
 		const parts = await this.buildEphemeralContextParts(tool, inputItems);
 		const closeFunctions: CloseFunction[] = [];
@@ -430,7 +430,10 @@ export class EphemeralNodeExecutor {
 
 		try {
 			const supplyDataResult = await nodeType.supplyData.call(context, 0);
-			const response = supplyDataResult.response as Tool | StructuredToolkit | undefined;
+			const response = supplyDataResult.response as
+				| LangChainToolType
+				| StructuredToolkit
+				| undefined;
 
 			if (response instanceof StructuredToolkit) {
 				return { ok: true, value: await onTool(response) };
@@ -522,6 +525,7 @@ export class EphemeralNodeExecutor {
 			// through to its `{ input: string }` default; proper per-method
 			// introspection ships with multi-tool expansion.
 			if (response instanceof StructuredToolkit) return null;
+			if (response instanceof LangChainTool) return null;
 			const maybeSchema = (response as unknown as { schema?: unknown }).schema;
 			return maybeSchema ?? null;
 		});
