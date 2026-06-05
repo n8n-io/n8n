@@ -1255,7 +1255,7 @@ defineExpose({
 		<template #node-canvas-node-group="nodeProps">
 			<CanvasNodeGroupTitleBar
 				v-bind="nodeProps"
-				:data="groupNodeDataById[nodeProps.id]"
+				:data="nodeProps.data ?? groupNodeDataById[nodeProps.id]"
 				:autofocus-group-id="nodeGroupIdToAutofocusTitle"
 				:read-only="readOnly || suppressInteraction"
 				@update:name="onCanvasGroupNameUpdate"
