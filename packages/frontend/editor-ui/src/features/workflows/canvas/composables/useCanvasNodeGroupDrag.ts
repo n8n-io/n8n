@@ -169,8 +169,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			return;
 		}
 		const node = event.node;
-		if (!isCanvasNodeGroup(node)) return;
 		reset();
+		if (!isCanvasNodeGroup(node)) return;
 		snapshotGroup(node);
 	}
 

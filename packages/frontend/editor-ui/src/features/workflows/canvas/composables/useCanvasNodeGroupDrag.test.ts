@@ -172,6 +172,19 @@ describe('useCanvasNodeGroupDrag', () => {
 		]);
 	});
 
+	it('clears an abandoned group snapshot when a normal node drag starts', () => {
+		const { drag } = setup();
+		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+		const regularNode = makeRegularGraphNode('c', 1, 2);
+
+		drag.onNodeDragStart(makeEvent(groupNode));
+		drag.onNodeDragStart(makeEvent(regularNode));
+
+		expect(drag.processSelectionDragStop(makeSelectionEvent(regularNode))).toEqual([
+			{ id: 'c', position: { x: 1, y: 2 } },
+		]);
+	});
+
 	it('emits moves when drag has zero delta', () => {
 		// VueFlow fires drag-stop for click-without-drag — emit unchanged
 		// positions for consistency with single-node behaviour.
