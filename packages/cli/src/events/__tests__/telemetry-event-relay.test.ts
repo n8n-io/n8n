@@ -2716,6 +2716,11 @@ describe('TelemetryEventRelay', () => {
 				runData,
 			};
 
+			// The handler `await import('psl')`s before tracking. Pre-warm the
+			// module cache so that import resolves on a microtask and the single
+			// `flushPromises()` below is enough to observe the tracked event.
+			await import('psl');
+
 			eventService.emit('workflow-post-execute', event);
 
 			await flushPromises();
