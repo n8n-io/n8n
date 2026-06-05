@@ -447,8 +447,9 @@ describe('ImportPipeline workflow conflict policy', () => {
 				workflowConflictPolicy: 'fail',
 			}),
 		).rejects.toMatchObject({
-			message: 'WORKFLOW_CONFLICT',
+			message: expect.stringContaining('already exist in the target project'),
 			meta: {
+				code: 'WORKFLOW_CONFLICT',
 				conflicts: [
 					{
 						sourceWorkflowId: 'wf-existing',
@@ -479,8 +480,9 @@ describe('ImportPipeline workflow conflict policy', () => {
 				workflowConflictPolicy: 'skip',
 			}),
 		).rejects.toMatchObject({
-			message: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
+			message: expect.stringContaining('matched multiple workflows in the target project'),
 			meta: {
+				code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
 				ambiguous: [
 					{
 						sourceWorkflowId: 'wf-ambiguous',

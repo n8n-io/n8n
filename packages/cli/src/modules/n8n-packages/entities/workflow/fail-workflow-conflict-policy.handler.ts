@@ -20,7 +20,12 @@ export class FailWorkflowConflictPolicyHandler extends WorkflowConflictPolicyHan
 	preFlight(conflicts: WorkflowConflict[]): void {
 		if (conflicts.length === 0) return;
 
-		throw new ConflictError('WORKFLOW_CONFLICT', undefined, {
+		const names = conflicts.map(({ name }) => `"${name}"`).join(', ');
+		const message =
+			`Import blocked: ${conflicts.length} workflow(s) already exist in the target project ` +
+			`(${names}). Use a different workflowConflictPolicy (e.g. "new-version" or "skip") to resolve.`;
+
+		throw new ConflictError(message, undefined, {
 			code: 'WORKFLOW_CONFLICT',
 			conflicts,
 		});

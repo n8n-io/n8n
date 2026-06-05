@@ -68,7 +68,12 @@ export class WorkflowImportMatchService {
 			}),
 		);
 
-		throw new ConflictError('AMBIGUOUS_SOURCE_WORKFLOW_ID', undefined, {
+		const sourceIds = ambiguous.map(({ sourceWorkflowId }) => `"${sourceWorkflowId}"`).join(', ');
+		const message =
+			`Import blocked: source workflow id(s) ${sourceIds} matched multiple workflows in the ` +
+			'target project. Resolve the duplicate workflows before importing.';
+
+		throw new ConflictError(message, undefined, {
 			code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
 			ambiguous,
 		});

@@ -4,6 +4,7 @@ import {
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
 import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnexpectedError, UserError } from 'n8n-workflow';
@@ -69,6 +70,58 @@ describe('http-error-serializers', () => {
 						usedByWorkflows: ['wf-1'],
 					},
 				],
+			},
+		});
+	});
+
+	it('serializePublicApiError: exposes workflow conflict metadata', () => {
+		const conflicts = [
+			{ sourceWorkflowId: 'wf-1', existingWorkflowId: 'local-1', name: 'Existing' },
+		];
+		const descriptor = classifyHttpError(
+			new ConflictError(
+				'Import blocked: 1 workflow(s) already exist in the target project',
+				undefined,
+				{
+					code: 'WORKFLOW_CONFLICT',
+					conflicts,
+				},
+			),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: 'Import blocked: 1 workflow(s) already exist in the target project',
+				meta: {
+					code: 'WORKFLOW_CONFLICT',
+					conflicts,
+				},
+			},
+		});
+	});
+
+	it('serializePublicApiError: exposes ambiguous source workflow metadata', () => {
+		const ambiguous = [{ sourceWorkflowId: 'wf-dup', matches: [{ id: 'local-1', name: 'First' }] }];
+		const descriptor = classifyHttpError(
+			new ConflictError(
+				'Import blocked: source workflow id(s) matched multiple workflows',
+				undefined,
+				{
+					code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
+					ambiguous,
+				},
+			),
+		);
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: 'Import blocked: source workflow id(s) matched multiple workflows',
+				meta: {
+					code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
+					ambiguous,
+				},
 			},
 		});
 	});

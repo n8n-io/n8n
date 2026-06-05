@@ -73,7 +73,7 @@ describe('WorkflowImportMatchService', () => {
 		const { service } = makeService([first, second]);
 
 		await expect(service.findBySourceWorkflowIds('project-1', ['wf-dup'])).rejects.toMatchObject({
-			message: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
+			message: expect.stringContaining('matched multiple workflows in the target project'),
 			meta: {
 				code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
 				ambiguous: [
