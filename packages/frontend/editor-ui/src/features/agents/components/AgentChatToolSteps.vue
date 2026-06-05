@@ -8,6 +8,7 @@ import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/to
 import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
 import {
+	countIncompleteTodos,
 	isWriteTodosTool,
 	parseWriteTodosOutput,
 	writeTodosLabel,
@@ -63,7 +64,7 @@ function toolStepLabel(tc: ToolCall): string {
 function toolStepSummary(tc: ToolCall): string | undefined {
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
-		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todos.length);
+		if (parsed) return writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos));
 	}
 	if (tc.displaySummary) return tc.displaySummary;
 	return undefined;
@@ -143,8 +144,9 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 						<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
 							{{ view.label }}
 						</span>
+						<span v-if="view.summary" :class="$style.separator" aria-hidden="true">·</span>
 						<span v-if="view.summary" :class="$style.summary" data-testid="tool-step-summary">
-							· {{ view.summary }}
+							{{ view.summary }}
 						</span>
 						<N8nIcon
 							v-if="view.expandable"
@@ -254,7 +256,7 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 .stepRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: 0;
 }
 
 .stepRowButton {
@@ -275,6 +277,13 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 	line-height: var(--line-height--sm);
 }
 
+.separator {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--sm);
+	margin: 0 0.35em;
+}
+
 .summary {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--xs);
@@ -288,6 +297,7 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 .chevron {
 	color: var(--text-color--subtler);
 	flex-shrink: 0;
+	margin-left: var(--spacing--2xs);
 }
 
 .answer {

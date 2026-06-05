@@ -226,6 +226,7 @@ export type {
 	DelegateSubAgentRunner,
 	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,
+	InlineSubAgentProviderToolsResolver,
 	SubAgentTaskDifficulty,
 } from './runtime/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';

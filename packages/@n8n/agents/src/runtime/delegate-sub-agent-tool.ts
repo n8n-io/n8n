@@ -18,7 +18,7 @@ import type {
 	TokenUsage,
 } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
-import type { BuiltTool, ToolContext } from '../types/sdk/tool';
+import type { BuiltProviderTool, BuiltTool, ToolContext } from '../types/sdk/tool';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
@@ -65,6 +65,7 @@ const delegateSubAgentOutputSchema = z.object({
 	taskPath: z.string().optional(),
 	runId: z.string().optional(),
 	threadId: z.string().optional(),
+	model: z.string().optional(),
 	answer: z.string(),
 	structuredOutput: z.unknown().optional(),
 	usage: z
@@ -147,6 +148,8 @@ export interface DelegateSubAgentToolOutput {
 	 * re-supply it to continue the same thread on a later delegation.
 	 */
 	threadId?: string;
+	/** Effective child model id used for this delegation (e.g. `anthropic/claude-haiku-4-5`). */
+	model?: string;
 	/** The child's answer — the main payload the parent acts on. */
 	answer: string;
 	structuredOutput?: unknown;
@@ -173,9 +176,13 @@ export interface DelegateSubAgentToolOutput {
  * `subAgentId: "inline"` while reusing the SDK inline child runner implementation.
  */
 export interface DelegateSubAgentRunnerHelpers {
-	/** Run a one-off inline child using the parent agent's inherited tool set. */
+	/** Run a one-off inline child using the parent agent's inherited local/deferred tool set. */
 	runInlineSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
 }
+
+export type InlineSubAgentProviderToolsResolver = (
+	modelConfig: ModelConfig,
+) => BuiltProviderTool[] | Promise<BuiltProviderTool[]>;
 
 export type DelegateSubAgentRunner = (
 	request: DelegateSubAgentRequest,
@@ -197,6 +204,11 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * to runtime {@link ModelConfig} values before registering the delegate tool.
 	 */
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+	/**
+	 * Resolve provider-defined tools for an inline child after its model has been chosen.
+	 * Inline children do not inherit parent provider tools.
+	 */
+	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 	/**
 	 * Run the child for this delegation and return its result. When provided, the
 	 * host receives every `subAgentId` (including `"inline"`) and may call
@@ -262,13 +274,13 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		)
 		.systemInstruction(
 			[
-				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your available tools after safety filtering. The child cannot see this conversation or your memory, so everything it needs must be in the call.',
+				'delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Provider-defined tools are loaded for the inline child\'s selected model provider. The child cannot see this conversation or your memory, so everything it needs must be in the call.',
 				'Use a configured subagent ID only when one is listed and its name/description fits the subtask better than a generic inline child.',
 				...formatAvailableSubAgents(resolvedOptions.availableSubAgents),
 				...formatDelegationPolicyInstructions(resolvedOptions.policy),
 				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
 				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
-				'HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your available tools after safety filtering; you cannot change their tool set per delegation.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.',
+				"HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering; provider-defined tools are loaded for the inline child's selected model provider.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.",
 			].join('\n'),
 		)
 		.input(delegateSubAgentInputSchema)
@@ -294,6 +306,12 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...(resolvedOptions.inlineSubAgentModelsByDifficulty !== undefined
 					? {
 							inlineSubAgentModelsByDifficulty: resolvedOptions.inlineSubAgentModelsByDifficulty,
+						}
+					: {}),
+				...(resolvedOptions.resolveInlineSubAgentProviderTools !== undefined
+					? {
+							resolveInlineSubAgentProviderTools:
+								resolvedOptions.resolveInlineSubAgentProviderTools,
 						}
 					: {}),
 				...(resolvedOptions.runSubAgent !== undefined
@@ -449,6 +467,7 @@ function emitSubAgentCompleted(
 		...(output.threadId !== undefined ? { threadId: output.threadId } : {}),
 		...(output.usage !== undefined ? { usage: output.usage } : {}),
 		...(output.finishReason !== undefined ? { finishReason: output.finishReason } : {}),
+		...(output.model !== undefined ? { model: output.model } : {}),
 		...(output.error !== undefined ? { error: output.error } : {}),
 	});
 }
@@ -542,12 +561,14 @@ function resolveDelegateSubAgentStatus(
 /** Failed delegate output when a child run suspends for user input (not yet resumable). */
 export function failedDelegatedChildSuspendOutput(
 	taskPath: SubAgentTaskPath,
+	model?: string,
 ): DelegateSubAgentToolOutput {
 	return {
 		status: 'failed',
 		taskPath,
 		answer: '',
 		error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+		...(model !== undefined ? { model } : {}),
 	};
 }
 
@@ -563,6 +584,7 @@ export function generateResultToDelegateSubAgentOutput(
 		taskPath,
 		runId: result.runId,
 		...(threadId !== undefined ? { threadId } : {}),
+		...(result.model !== undefined ? { model: result.model } : {}),
 		answer: lastText(result.messages),
 		...(result.structuredOutput !== undefined ? { structuredOutput: result.structuredOutput } : {}),
 		...(result.usage !== undefined

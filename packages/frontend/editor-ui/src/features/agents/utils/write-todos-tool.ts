@@ -55,6 +55,12 @@ const STATUS_I18N_KEY: Record<TodoStatus, BaseTextKey> = {
 
 const STATUS_ORDER: TodoStatus[] = ['in_progress', 'pending', 'completed', 'blocked', 'cancelled'];
 
+const DIFFICULTY_I18N_KEY: Record<TodoDifficulty, BaseTextKey> = {
+	low: 'agents.chat.writeTodos.difficulty.low',
+	medium: 'agents.chat.writeTodos.difficulty.medium',
+	high: 'agents.chat.writeTodos.difficulty.high',
+};
+
 export function isWriteTodosTool(toolName: string | undefined): boolean {
 	return toolName === WRITE_TODOS_TOOL_NAME;
 }
@@ -88,16 +94,30 @@ export function writeTodosLabel(i18n: WriteTodosI18n): string {
 	return i18n.baseText('agents.chat.writeTodos.label');
 }
 
-export function writeTodosSummaryLabel(i18n: WriteTodosI18n, todoCount: number): string {
+export function countIncompleteTodos(todos: TodoItem[]): number {
+	return todos.filter((todo) => todo.status !== 'completed').length;
+}
+
+export function writeTodosSummaryLabel(i18n: WriteTodosI18n, incompleteTodoCount: number): string {
+	if (incompleteTodoCount === 0) {
+		return i18n.baseText('agents.chat.writeTodos.summary.done');
+	}
+
 	const key =
-		todoCount === 1 ? 'agents.chat.writeTodos.summary.one' : 'agents.chat.writeTodos.summary.other';
+		incompleteTodoCount === 1
+			? 'agents.chat.writeTodos.summary.one'
+			: 'agents.chat.writeTodos.summary.other';
 	return i18n.baseText(key, {
-		interpolate: { count: String(todoCount) },
+		interpolate: { count: String(incompleteTodoCount) },
 	});
 }
 
 function writeTodosStatusLabel(i18n: WriteTodosI18n, status: TodoStatus): string {
 	return i18n.baseText(STATUS_I18N_KEY[status]);
+}
+
+function writeTodosDifficultyLabel(i18n: WriteTodosI18n, difficulty: TodoDifficulty): string {
+	return i18n.baseText(DIFFICULTY_I18N_KEY[difficulty]);
 }
 
 function formatTodoItem(
@@ -106,6 +126,9 @@ function formatTodoItem(
 	subAgentNameById?: Map<string, string>,
 ): string {
 	const hints: string[] = [];
+	hints.push(
+		`${i18n.baseText('agents.chat.writeTodos.hint.difficulty')}: ${writeTodosDifficultyLabel(i18n, todo.difficulty)}`,
+	);
 	if (todo.delegateHint?.subAgentId) {
 		const displayName = resolveSubAgentIdForDisplay(
 			todo.delegateHint.subAgentId,

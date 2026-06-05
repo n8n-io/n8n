@@ -66,6 +66,22 @@ describe('createN8nDelegateSubAgentTool', () => {
 		credentialProvider = mock<CredentialProvider>();
 	});
 
+	it('forwards resolveInlineSubAgentProviderTools into delegate tool metadata', () => {
+		const resolveInlineSubAgentProviderTools = jest.fn().mockReturnValue([]);
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			userId,
+			credentialProvider,
+			resolveInlineSubAgentProviderTools,
+		});
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.resolveInlineSubAgentProviderTools).toBe(
+			resolveInlineSubAgentProviderTools,
+		);
+	});
+
 	it('forwards inlineSubAgentModelsByDifficulty into delegate tool metadata', () => {
 		const inlineSubAgentModelsByDifficulty: Partial<
 			Record<'low' | 'medium' | 'high', ModelConfig>

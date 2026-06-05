@@ -7,7 +7,7 @@ import {
 	RunnableAgentJsonConfigSchema,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { buildFromJson } from '../json-config/from-json-config';
+import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
 type EmbeddingProviderOpts = {
@@ -550,6 +550,49 @@ describe('buildFromJson()', () => {
 
 		expect(snap.thinking).not.toBeNull();
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+	});
+
+	it('builds native provider tools for an inline child model, not the parent model', () => {
+		const config = makeConfig({
+			model: 'openai/gpt-4o',
+			config: { webSearch: { enabled: true } },
+		});
+
+		const anthropicTools = buildProviderToolsForModel(config, 'anthropic/claude-sonnet-4-6');
+		expect(anthropicTools.map((tool) => tool.name)).toEqual(['anthropic.web_search_20250305']);
+		expect(anthropicTools.map((tool) => tool.name)).not.toContain('openai.web_search');
+	});
+
+	it('preserves explicit provider-specific child args when building provider tools for a model', () => {
+		const config = makeConfig({
+			model: 'openai/gpt-4o',
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'anthropic.web_search': { maxUses: 3 },
+				'openai.web_search': { searchContextSize: 'medium' },
+			},
+		});
+
+		const anthropicTools = buildProviderToolsForModel(config, 'anthropic/claude-sonnet-4-6');
+		expect(anthropicTools).toEqual([
+			{ name: 'anthropic.web_search_20250305', args: { maxUses: 3 } },
+		]);
+	});
+
+	it('filters non-current-provider provider tools for inline children', () => {
+		const config = makeConfig({
+			model: 'openai/gpt-4o',
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'openai.image_generation': {},
+			},
+		});
+
+		const anthropicTools = buildProviderToolsForModel(config, 'anthropic/claude-sonnet-4-6');
+		expect(anthropicTools.map((tool) => tool.name)).not.toContain('openai.image_generation');
+
+		const openaiTools = buildProviderToolsForModel(config, 'openai/gpt-4o');
+		expect(openaiTools.map((tool) => tool.name)).toContain('openai.image_generation');
 	});
 
 	it.each([

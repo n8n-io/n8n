@@ -48,6 +48,7 @@ import { createGetEnvironmentTool } from './tools/environment-tool';
 import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import {
 	buildFromJson,
+	buildProviderToolsForModel,
 	type MemoryFactory,
 	type ToolResolver,
 } from './json-config/from-json-config';
@@ -457,6 +458,8 @@ export class AgentRuntimeReconstructionService {
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
 					: {}),
+				resolveInlineSubAgentProviderTools: (modelConfig) =>
+					buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });

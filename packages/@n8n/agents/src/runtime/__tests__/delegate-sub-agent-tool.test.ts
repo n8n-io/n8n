@@ -88,6 +88,23 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
+	it('preserves resolveInlineSubAgentProviderTools in delegate tool metadata', () => {
+		const resolveInlineSubAgentProviderTools = async () => [];
+		const tool = createDelegateSubAgentTool({
+			resolveInlineSubAgentProviderTools,
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(getInlineDelegateSubAgentToolOptions(tool)?.resolveInlineSubAgentProviderTools).toBe(
+			resolveInlineSubAgentProviderTools,
+		);
+	});
+
 	it('can be created without a host runner for SDK inline execution', async () => {
 		const tool = createDelegateSubAgentTool();
 
@@ -464,6 +481,7 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 				},
 			],
 			finishReason: 'stop',
+			model: 'anthropic/claude-haiku-4-5',
 			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
 			getState: () => ({
 				status: 'success',
@@ -480,6 +498,7 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			runId: 'child-run-1',
 			threadId: 'child-thread-1',
 			answer: 'preamble\nanswer',
+			model: 'anthropic/claude-haiku-4-5',
 			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
 			finishReason: 'stop',
 		});
@@ -513,6 +532,13 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			taskPath: '/root/x_0',
 			answer: '',
 			error: 'agents.chat.delegate.childSuspendUnsupported',
+		});
+		expect(failedDelegatedChildSuspendOutput('/root/x_0', 'anthropic/claude-haiku-4-5')).toEqual({
+			status: 'failed',
+			taskPath: '/root/x_0',
+			answer: '',
+			error: 'agents.chat.delegate.childSuspendUnsupported',
+			model: 'anthropic/claude-haiku-4-5',
 		});
 	});
 

@@ -20,6 +20,7 @@ export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
 const delegateInputSchema = z.object({
 	subAgentId: z.string().min(1),
 	taskName: z.string().optional(),
+	difficulty: z.enum(['low', 'medium', 'high']).optional(),
 });
 
 const delegateOutputSchema = z.object({
@@ -29,10 +30,18 @@ const delegateOutputSchema = z.object({
 	status: z.enum(['completed', 'failed', 'suspended']).optional(),
 	answer: z.string().optional(),
 	error: z.string().optional(),
+	model: z.string().optional(),
 });
 
 export type DelegateInput = z.infer<typeof delegateInputSchema>;
 export type DelegateOutput = z.infer<typeof delegateOutputSchema>;
+export type DelegateDifficulty = NonNullable<DelegateInput['difficulty']>;
+
+const DELEGATE_DIFFICULTY_LABEL: Record<DelegateDifficulty, string> = {
+	low: 'Low',
+	medium: 'Medium',
+	high: 'High',
+};
 
 export function isDelegateSubAgentTool(toolName: string | undefined): boolean {
 	return toolName === DELEGATE_SUB_AGENT_TOOL_NAME;
@@ -51,6 +60,12 @@ export function parseDelegateInput(input: unknown): DelegateInput | undefined {
 export function parseDelegateOutput(output: unknown): DelegateOutput | undefined {
 	const result = delegateOutputSchema.safeParse(output);
 	return result.success ? result.data : undefined;
+}
+
+/** One-line difficulty label for a delegate tool call. */
+export function getDelegateDifficultySummary(input: unknown): string | undefined {
+	const difficulty = parseDelegateInput(input)?.difficulty;
+	return difficulty ? DELEGATE_DIFFICULTY_LABEL[difficulty] : undefined;
 }
 
 /** Localize a delegate tool error when it is a known i18n key. */

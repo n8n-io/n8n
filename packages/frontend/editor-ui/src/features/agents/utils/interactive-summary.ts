@@ -8,6 +8,8 @@ import {
 	type AskQuestionResume,
 } from '@n8n/api-types';
 
+import { DELEGATE_SUB_AGENT_TOOL_NAME, getDelegateDifficultySummary } from './delegate-tool';
+
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
  * Used by `AgentChatToolSteps` to show the user's answer beside the tool name
@@ -61,5 +63,8 @@ export function summariseToolCall(
 	output?: unknown,
 	input?: unknown,
 ): string | undefined {
+	if (toolName === DELEGATE_SUB_AGENT_TOOL_NAME) {
+		return getDelegateDifficultySummary(input);
+	}
 	return summariseInteractiveOutput(toolName, output, input);
 }

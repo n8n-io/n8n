@@ -269,6 +269,32 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
 	});
+
+	it('sets displaySummary from delegate input difficulty on reload', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d3',
+						input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+						state: 'resolved',
+						output: {
+							status: 'completed',
+							answer: 'all good',
+							model: 'anthropic/claude-haiku-4-5',
+						},
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].displaySummary).toBe('High');
+	});
 });
 
 describe('isGroupable', () => {

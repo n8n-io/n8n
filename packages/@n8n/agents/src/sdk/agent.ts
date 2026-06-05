@@ -19,6 +19,7 @@ import {
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
+	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
 } from '../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
@@ -931,7 +932,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
-			providerTools: this.providerTools,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -983,7 +983,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
-			providerTools: BuiltProviderTool[];
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -998,6 +997,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				tools,
 				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
 				inlineSubAgentModelsByDifficulty: delegateOptions.inlineSubAgentModelsByDifficulty,
+				resolveInlineSubAgentProviderTools: delegateOptions.resolveInlineSubAgentProviderTools,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
@@ -1029,13 +1029,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
-		providerTools: BuiltProviderTool[];
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
 		tools: BuiltTool[];
 		inlineSubAgentBlockedTools?: string[];
 		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
 		return async (request) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
@@ -1043,11 +1043,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				options.deferredTools,
 				options.inlineSubAgentBlockedTools,
 			);
-			const providerTools = filterInlineSubAgentTools(
-				options.providerTools,
-				options.inlineSubAgentBlockedTools,
-			);
 			const childModelConfig = resolveInlineSubAgentModelConfig(request, options);
+			const providerTools = options.resolveInlineSubAgentProviderTools
+				? filterInlineSubAgentTools(
+						await options.resolveInlineSubAgentProviderTools(childModelConfig),
+						options.inlineSubAgentBlockedTools,
+					)
+				: [];
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: childModelConfig,
@@ -1077,7 +1079,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						: {}),
 				});
 				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
-					return failedDelegatedChildSuspendOutput(request.taskPath);
+					return failedDelegatedChildSuspendOutput(request.taskPath, result.model);
 				}
 				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
 			} finally {

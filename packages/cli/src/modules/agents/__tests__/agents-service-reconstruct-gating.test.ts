@@ -37,9 +37,15 @@ const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint injection branch
 
 const buildFromJsonMock = jest.fn().mockImplementation(async () => builtAgent);
-jest.mock('../json-config/from-json-config', () => ({
-	buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
-}));
+jest.mock('../json-config/from-json-config', () => {
+	const actual = jest.requireActual<typeof import('../json-config/from-json-config')>(
+		'../json-config/from-json-config',
+	);
+	return {
+		...actual,
+		buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
+	};
+});
 
 const buildMcpClientForServerMock = jest
 	.fn()
@@ -317,6 +323,18 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		return undefined;
 	}
 
+	function getInjectedResolveInlineSubAgentProviderTools() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
+					return getInlineDelegateSubAgentToolOptions(tool)?.resolveInlineSubAgentProviderTools;
+				}
+			}
+		}
+		return undefined;
+	}
+
 	it('uses the SDK default maxChildren when config does not override it', async () => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
@@ -380,6 +398,42 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				apiKey: 'high-key',
 			},
 		});
+	});
+
+	it('resolves inline child provider tools for the child model provider', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
+			if (credentialId === 'high-cred') {
+				return { apiKey: 'high-key' };
+			}
+			throw new Error(`unexpected credential ${credentialId}`);
+		});
+		const service = makeReconstructionService(agentsToolsService, []);
+		const entity = makeAgentEntity(
+			{ webSearch: { enabled: true } },
+			{
+				model: 'openai/gpt-4o',
+				subAgents: {
+					modelsByDifficulty: {
+						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					},
+				},
+			},
+		);
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		const resolveInlineSubAgentProviderTools = getInjectedResolveInlineSubAgentProviderTools();
+		expect(resolveInlineSubAgentProviderTools).toBeDefined();
+
+		const highModel = getInjectedInlineSubAgentModelsByDifficulty()?.high;
+		expect(highModel).toBeDefined();
+
+		const providerTools = await resolveInlineSubAgentProviderTools?.(highModel!);
+		expect(providerTools?.map((tool) => tool.name)).toEqual(['anthropic.web_search_20250305']);
+		expect(providerTools?.map((tool) => tool.name)).not.toContain('openai.web_search');
 	});
 
 	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {

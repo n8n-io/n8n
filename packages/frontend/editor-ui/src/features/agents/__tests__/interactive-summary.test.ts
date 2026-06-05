@@ -5,6 +5,7 @@ import {
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
 import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
+import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 describe('summariseInteractiveOutput', () => {
@@ -69,6 +70,16 @@ describe('summariseInteractiveOutput', () => {
 });
 
 describe('summariseToolCall', () => {
+	it('returns the delegate difficulty label from input', () => {
+		expect(
+			summariseToolCall(
+				DELEGATE_SUB_AGENT_TOOL_NAME,
+				{ status: 'completed', answer: 'Done', model: 'anthropic/claude-haiku-4-5' },
+				{ subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+			),
+		).toBe('High');
+	});
+
 	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {
 		expect(
 			summariseToolCall(WRITE_TODOS_TOOL_NAME, {

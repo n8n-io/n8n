@@ -16,6 +16,10 @@ const writeTodosI18n: WriteTodosI18n = {
 			'agents.chat.writeTodos.status.completed': 'Completed',
 			'agents.chat.writeTodos.status.blocked': 'Blocked',
 			'agents.chat.writeTodos.status.cancelled': 'Cancelled',
+			'agents.chat.writeTodos.difficulty.low': 'Low',
+			'agents.chat.writeTodos.difficulty.medium': 'Medium',
+			'agents.chat.writeTodos.difficulty.high': 'High',
+			'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
 		};
@@ -150,7 +154,7 @@ describe('tool-call-details', () => {
 				writeTodosI18n,
 				nameById,
 			);
-			expect(details).toContain('_(Sub-agent: Helper agent)_');
+			expect(details).toContain('_(Difficulty: High; Sub-agent: Helper agent)_');
 		});
 
 		it('returns undefined for write_todos without i18n', () => {

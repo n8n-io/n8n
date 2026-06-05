@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import type * as AgentRuntimeModule from '../../runtime/agent-runtime';
-import type { DelegateSubAgentRequest } from '../../runtime/delegate-sub-agent-tool';
+import type {
+	DelegateSubAgentRequest,
+	InlineSubAgentProviderToolsResolver,
+} from '../../runtime/delegate-sub-agent-tool';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -67,25 +70,35 @@ type AgentWithInlineRunner = {
 	createInlineSubAgentRunner: (options: {
 		deferredTools: BuiltTool[];
 		modelConfig: string;
-		providerTools: BuiltProviderTool[];
 		tools: BuiltTool[];
 		inlineSubAgentBlockedTools?: string[];
+		inlineSubAgentModelsByDifficulty?: Partial<Record<'low' | 'medium' | 'high', string>>;
+		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 	}) => (request: DelegateSubAgentRequest) => Promise<unknown>;
 };
 
 function createInlineRunner(options: {
-	providerTools: BuiltProviderTool[];
 	tools?: BuiltTool[];
 	inlineSubAgentBlockedTools?: string[];
+	inlineSubAgentModelsByDifficulty?: Partial<Record<'low' | 'medium' | 'high', string>>;
+	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 }) {
 	const agent = new Agent('parent');
 	return (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
 		deferredTools: [],
 		modelConfig: 'openai/gpt-4o-mini',
 		tools: options.tools ?? [makeTool('lookup')],
-		providerTools: options.providerTools,
 		inlineSubAgentBlockedTools: options.inlineSubAgentBlockedTools,
+		inlineSubAgentModelsByDifficulty: options.inlineSubAgentModelsByDifficulty,
+		resolveInlineSubAgentProviderTools: options.resolveInlineSubAgentProviderTools,
 	});
+}
+
+function providerToolNames(runtimeConfig: Record<string, unknown> | undefined): string[] {
+	return (
+		(runtimeConfig?.providerTools as BuiltProviderTool[] | undefined)?.map((tool) => tool.name) ??
+		[]
+	);
 }
 
 describe('inline sub-agent tool filtering', () => {
@@ -118,17 +131,16 @@ describe('inline sub-agent tool filtering', () => {
 		);
 	});
 
-	it('inherits all provider tools when not blocked', () => {
-		expect(
-			filterInlineSubAgentTools([openaiWebSearchProviderTool, anthropicWebSearchProviderTool]).map(
-				(tool) => tool.name,
-			),
-		).toEqual(['openai.web_search_preview', 'anthropic.web_search_20250305']);
-	});
+	it('does not pass parent provider tools to inline child runtimes without a resolver', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.providerTool(openaiWebSearchProviderTool)
+			.tool(makeTool('lookup'));
 
-	it('passes all provider tools to inline child runtimes by default', async () => {
-		const runner = createInlineRunner({
-			providerTools: [openaiWebSearchProviderTool, anthropicWebSearchProviderTool],
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
 		});
 
 		await runner({
@@ -140,13 +152,76 @@ describe('inline sub-agent tool filtering', () => {
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
-		expect(
-			(runtimeConfigs[0]?.providerTools as BuiltProviderTool[] | undefined)?.map(
-				(tool) => tool.name,
-			),
-		).toEqual(['openai.web_search_preview', 'anthropic.web_search_20250305']);
+		expect(runtimeConfigs[0]?.providerTools).toBeUndefined();
+	});
+
+	it('loads provider tools from the inline provider-tool resolver', async () => {
+		const runner = createInlineRunner({
+			resolveInlineSubAgentProviderTools: async () => [openaiWebSearchProviderTool],
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(providerToolNames(runtimeConfigs[0])).toEqual(['openai.web_search_preview']);
 		expect((runtimeConfigs[0]?.tools as BuiltTool[] | undefined)?.map((tool) => tool.name)).toEqual(
 			['lookup'],
 		);
+	});
+
+	it('loads provider tools after difficulty changes the inline child model', async () => {
+		const resolveInlineSubAgentProviderTools = vi
+			.fn<InlineSubAgentProviderToolsResolver>()
+			.mockImplementation(async (modelConfig) => {
+				if (typeof modelConfig === 'string' && modelConfig.startsWith('anthropic/')) {
+					return [anthropicWebSearchProviderTool];
+				}
+				return [openaiWebSearchProviderTool];
+			});
+
+		const runner = createInlineRunner({
+			inlineSubAgentModelsByDifficulty: { medium: 'anthropic/claude-sonnet-4-6' },
+			resolveInlineSubAgentProviderTools,
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'medium',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-6');
+		expect(providerToolNames(runtimeConfigs[0])).toEqual(['anthropic.web_search_20250305']);
+		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-6');
+	});
+
+	it('omits resolver provider tools when the matching provider tool is blocked', async () => {
+		const runner = createInlineRunner({
+			inlineSubAgentBlockedTools: ['anthropic.web_search_20250305'],
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+			resolveInlineSubAgentProviderTools: async () => [anthropicWebSearchProviderTool],
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.providerTools).toBeUndefined();
 	});
 });
