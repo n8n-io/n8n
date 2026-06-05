@@ -687,14 +687,17 @@ export type InstanceAiThreadSourcePersisted =
 export const INSTANCE_AI_THREAD_ORIGINS = ['internal', 'external'] as const;
 export type InstanceAiThreadOrigin = (typeof INSTANCE_AI_THREAD_ORIGINS)[number];
 
+function isInstanceAiThreadSource(value: string): value is InstanceAiThreadSource {
+	return (INSTANCE_AI_THREAD_SOURCES as readonly string[]).includes(value);
+}
+
 /** Normalize an untrusted source string to a known value, falling back otherwise. */
 export function normalizeInstanceAiThreadSource(
 	value: string | undefined,
 ): InstanceAiThreadSourcePersisted {
-	if (value !== undefined && (INSTANCE_AI_THREAD_SOURCES as readonly string[]).includes(value)) {
-		return value as InstanceAiThreadSource;
-	}
-	return INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+	return value !== undefined && isInstanceAiThreadSource(value)
+		? value
+		: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
 }
 
 const instanceAiSourceContextSchema = z
