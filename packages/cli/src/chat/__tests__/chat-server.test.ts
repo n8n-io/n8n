@@ -8,7 +8,10 @@ import { ChatServer } from '../chat-server';
 import type { ChatService } from '../chat-service';
 import type { ChatRequest } from '../chat-service.types';
 
-vi.mock('ws');
+vi.mock('ws', () => ({
+	Server: vi.fn(function () {}),
+	WebSocketServer: vi.fn(function () {}),
+}));
 
 describe('ChatServer', () => {
 	const mockChatService = mock<ChatService>();

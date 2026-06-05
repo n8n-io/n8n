@@ -22,10 +22,12 @@ const mockDestroy = vi.fn<() => Promise<void>>();
 
 vi.mock('pdf-parse', async () => ({
 	__esModule: true,
-	PDFParse: vi.fn().mockImplementation(() => ({
-		getText: mockGetText,
-		destroy: mockDestroy,
-	})),
+	PDFParse: vi.fn(function () {
+		return {
+			getText: mockGetText,
+			destroy: mockDestroy,
+		};
+	}),
 }));
 
 vi.mock('@n8n/utils', async () => ({

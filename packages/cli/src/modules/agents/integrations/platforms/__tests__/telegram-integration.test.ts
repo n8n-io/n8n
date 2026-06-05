@@ -86,11 +86,11 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 	});
 
 	it('passes through when no other agent uses the credential', async () => {
-		vi.spyOn(agentRepository, 'findByIntegrationCredential').mockResolvedValue([]);
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
 
 		await expect(integration.onBeforeConnect(makeContext())).resolves.toBeUndefined();
 
-		expect(vi.spyOn(agentRepository, 'findByIntegrationCredential')).toHaveBeenCalledWith(
+		expect(agentRepository.findByIntegrationCredential).toHaveBeenCalledWith(
 			'telegram',
 			'cred-1',
 			'proj-1',
@@ -103,7 +103,7 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 	});
 
 	it('throws ConflictError naming the owning agent when DB has another claimant', async () => {
-		vi.spyOn(agentRepository, 'findByIntegrationCredential').mockResolvedValue([
+		agentRepository.findByIntegrationCredential.mockResolvedValue([
 			makeAgent('agent-other', 'Agent Other', [{ type: 'telegram', credentialId: 'cred-1' }]),
 		]);
 
@@ -116,7 +116,7 @@ describe('TelegramIntegration.onBeforeConnect', () => {
 	});
 
 	it('names the first conflicting agent when multiple agents share the credential', async () => {
-		vi.spyOn(agentRepository, 'findByIntegrationCredential').mockResolvedValue([
+		agentRepository.findByIntegrationCredential.mockResolvedValue([
 			makeAgent('agent-a', 'Alpha', [{ type: 'telegram', credentialId: 'cred-1' }]),
 			makeAgent('agent-b', 'Beta', [{ type: 'telegram', credentialId: 'cred-1' }]),
 		]);

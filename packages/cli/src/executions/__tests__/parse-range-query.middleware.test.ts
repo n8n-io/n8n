@@ -7,7 +7,7 @@ import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
 describe('`parseRangeQuery` middleware', () => {
 	const res = mock<express.Response>({
-		status: () => mock<express.Response>({ json: vi.fn() }),
+		status: vi.fn(() => mock<express.Response>({ json: vi.fn() })),
 	});
 
 	const nextFn: NextFunction = vi.fn();
