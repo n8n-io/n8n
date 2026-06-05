@@ -1,9 +1,11 @@
 import { REDACTION_FLOOR_DEFAULT, type RedactionFloor } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
@@ -20,6 +22,22 @@ describe('InstanceRedactionEnforcementService', () => {
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();
 	const logger = mock<Logger>();
+	const publisher = mock<Publisher>();
+	const globalConfig = mock<GlobalConfig>();
+
+	const enableMultiMain = () => {
+		Object.defineProperty(globalConfig, 'multiMainSetup', {
+			value: { enabled: true },
+			configurable: true,
+		});
+	};
+
+	const disableMultiMain = () => {
+		Object.defineProperty(globalConfig, 'multiMainSetup', {
+			value: { enabled: false },
+			configurable: true,
+		});
+	};
 
 	const enableFlag = () => {
 		process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = 'true';
@@ -49,7 +67,16 @@ describe('InstanceRedactionEnforcementService', () => {
 		upsert = jest.fn();
 		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
 
-		service = new InstanceRedactionEnforcementService(settingsRepository, cacheService, logger);
+		disableMultiMain();
+		publisher.publishCommand.mockResolvedValue(undefined);
+
+		service = new InstanceRedactionEnforcementService(
+			settingsRepository,
+			cacheService,
+			logger,
+			publisher,
+			globalConfig,
+		);
 	});
 
 	afterEach(() => {
@@ -176,6 +203,69 @@ describe('InstanceRedactionEnforcementService', () => {
 				expect(upsert).not.toHaveBeenCalled();
 				expect(cacheService.set).not.toHaveBeenCalled();
 			});
+
+			it('publishes redaction-floor-changed when multi-main is enabled', async () => {
+				enableMultiMain();
+
+				await service.set('production');
+
+				expect(publisher.publishCommand).toHaveBeenCalledWith({
+					command: 'redaction-floor-changed',
+				});
+			});
+
+			it('does not broadcast when multi-main is disabled', async () => {
+				disableMultiMain();
+
+				await service.set('production');
+
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			it('swallows publisher failures so the update keeps succeeding, and logs a warning', async () => {
+				enableMultiMain();
+				publisher.publishCommand.mockRejectedValueOnce(new Error('redis is down'));
+
+				await expect(service.set('production')).resolves.toBeUndefined();
+				// Allow the fire-and-forget catch handler to run.
+				await Promise.resolve();
+				expect(logger.warn).toHaveBeenCalledWith(
+					'[InstanceRedactionEnforcementService] Failed to publish redaction-floor-changed',
+					expect.objectContaining({ error: 'redis is down' }),
+				);
+			});
+		});
+	});
+
+	describe('handleRedactionFloorChanged', () => {
+		it('deletes the local cache key without re-publishing — no broadcast loop', async () => {
+			enableMultiMain();
+
+			await service.handleRedactionFloorChanged();
+
+			expect(cacheService.delete).toHaveBeenCalledWith(KEY);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('re-reads the floor from the DB on the next get after the key is dropped', async () => {
+			enableFlag();
+			const stored: RedactionFloor = 'all';
+
+			await service.handleRedactionFloorChanged();
+			expect(cacheService.delete).toHaveBeenCalledWith(KEY);
+
+			simulateCacheMiss();
+			findByKey.mockResolvedValueOnce(
+				mock<Settings>({
+					key: KEY,
+					value: JSON.stringify(stored),
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.get()).resolves.toBe(stored);
+			expect(findByKey).toHaveBeenCalledWith(KEY);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(stored));
 		});
 	});
 });
