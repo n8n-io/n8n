@@ -1303,6 +1303,7 @@ describe('TelemetryEventRelay', () => {
 				workflow: mock<IWorkflowBase>({
 					id: 'workflow123',
 					name: 'Test Workflow',
+					connections: {},
 					settings: {
 						customTelemetryTags: [{ key: 'env', value: 'production' }],
 					},
@@ -1430,7 +1431,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: true,
 				source: 'api',
 			};
@@ -1455,7 +1461,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: false,
 			};
 
@@ -1479,7 +1490,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: true,
 				deactivatedVersionId: 'version-abc-123',
 				source: 'n8n-mcp',
@@ -1506,7 +1522,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: false,
 				deactivatedVersionId: null,
 			};
@@ -1623,7 +1644,12 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: false,
 			};
 
@@ -1666,6 +1692,7 @@ describe('TelemetryEventRelay', () => {
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
 					name: 'Test Workflow',
+					connections: {},
 					settings: {
 						customTelemetryTags: [
 							{ key: 'env', value: 'production' },
@@ -1738,6 +1765,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
+					connections: {},
 					settings: { credentialResolverId: 'resolver-123', redactionPolicy: undefined },
 				}),
 				publicApi: false,
@@ -1792,6 +1820,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
+					connections: {},
 					settings: { credentialResolverId: undefined, redactionPolicy: undefined },
 				}),
 				publicApi: false,
@@ -1828,6 +1857,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
+					connections: {},
 					settings: { redactionPolicy: 'all' },
 				}),
 				publicApi: false,
