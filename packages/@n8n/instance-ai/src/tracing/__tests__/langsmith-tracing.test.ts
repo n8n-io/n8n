@@ -1,16 +1,33 @@
+/* eslint-disable import-x/order */
 import { createRuntimeSkillRegistry, type BuiltTool } from '@n8n/agents';
 import type { Context, ContextManager } from '@opentelemetry/api';
+import * as langsmithModule from 'langsmith';
 import { jsonParse } from 'n8n-workflow';
 import type * as AsyncHooks from 'node:async_hooks';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../tool-registry';
+import { createAskUserTool } from '../../tools/shared/ask-user.tool';
+import {
+	buildAgentTraceInputs,
+	createDetachedSubAgentTraceContext,
+	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
+	createTraceReplayOnlyContext,
+	continueInstanceAiTraceContext,
+	mergeTraceRunInputs,
+	redactLangSmithTelemetrySpan,
+	releaseTraceClient,
+	submitLangsmithUserFeedback,
+	withCurrentTraceSpan,
+} from '../langsmith-tracing';
 import { TraceWriter, type TraceToolCall, type TraceToolSuspend } from '../trace-replay';
 
-jest.mock('@n8n/agents', () => {
-	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
-	const { AsyncLocalStorage } = jest.requireActual<typeof AsyncHooks>('node:async_hooks');
-	const { ROOT_CONTEXT, context, trace } = jest.requireActual<{
+vi.mock('@n8n/agents', async () => {
+	const actual = await vi.importActual<Record<string, unknown>>('@n8n/agents');
+	const { AsyncLocalStorage } = await vi.importActual<typeof AsyncHooks>('node:async_hooks');
+	const { ROOT_CONTEXT, context, trace } = await vi.importActual<{
 		ROOT_CONTEXT: Context;
 		context: {
 			active(): Context;
@@ -118,8 +135,8 @@ jest.mock('@n8n/agents', () => {
 	};
 
 	const provider = {
-		forceFlush: jest.fn(async () => await Promise.resolve()),
-		shutdown: jest.fn(async () => await Promise.resolve()),
+		forceFlush: vi.fn(async () => await Promise.resolve()),
+		shutdown: vi.fn(async () => await Promise.resolve()),
 	};
 
 	class MockLangSmithTelemetry {
@@ -198,7 +215,7 @@ jest.mock('@n8n/agents', () => {
 	};
 });
 
-jest.mock('langsmith', () => {
+vi.mock('langsmith', () => {
 	const createFeedbackCalls: Array<{
 		runId: string;
 		key: string;
@@ -243,7 +260,7 @@ jest.mock('langsmith', () => {
 	};
 });
 
-jest.mock('langsmith/traceable', () => {
+vi.mock('langsmith/traceable', () => {
 	return {
 		traceable: () => {
 			throw new Error('Instance AI tracing must use OTel spans, not langsmith/traceable');
@@ -284,8 +301,8 @@ type AgentsMockModule = {
 			ended: boolean;
 		}>;
 		getProvider: () => {
-			forceFlush: jest.Mock<Promise<void>, []>;
-			shutdown: jest.Mock<Promise<void>, []>;
+			forceFlush: Mock<(...args: []) => Promise<void>>;
+			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
 	};
 };
@@ -300,22 +317,6 @@ function isExecutableTool(
 		typeof value.handler === 'function'
 	);
 }
-
-const {
-	buildAgentTraceInputs,
-	createDetachedSubAgentTraceContext,
-	createInstanceAiTraceContext,
-	createInternalOperationTraceContext,
-	createTraceReplayOnlyContext,
-	continueInstanceAiTraceContext,
-	mergeTraceRunInputs,
-	redactLangSmithTelemetrySpan,
-	releaseTraceClient,
-	submitLangsmithUserFeedback,
-	withCurrentTraceSpan,
-} =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../langsmith-tracing') as typeof import('../langsmith-tracing');
 
 async function startForegroundActor(
 	tracing: NonNullable<Awaited<ReturnType<typeof createInstanceAiTraceContext>>>,
@@ -335,15 +336,11 @@ async function startForegroundActor(
 	tracing.orchestratorRun = actorRun;
 	return actorRun;
 }
-const { createAskUserTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../../tools/shared/ask-user.tool') as typeof import('../../tools/shared/ask-user.tool');
-const { __mock: langsmithMock } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('langsmith') as LangSmithMockModule;
-const { __mock: agentsMock } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@n8n/agents') as AgentsMockModule;
+
+import * as agentsModule from '@n8n/agents';
+
+const { __mock: langsmithMock } = langsmithModule as unknown as LangSmithMockModule;
+const { __mock: agentsMock } = agentsModule as unknown as AgentsMockModule;
 
 describe('createInstanceAiTraceContext', () => {
 	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
@@ -1506,13 +1503,74 @@ describe('createInstanceAiTraceContext', () => {
 		);
 
 		expect(result).toEqual({ denied: true, payload: suspendPayload });
-		const suspend = writer.getEvents()[1] as TraceToolSuspend;
+		const events = writer.getEvents();
+		expect(events).toHaveLength(2);
+		const suspend = events[1] as TraceToolSuspend;
 		expect(suspend).toEqual({
 			kind: 'tool-suspend',
 			stepId: 1,
 			agentRole: 'workflow-builder',
 			toolName: 'approval-tool',
 			input: { operation: 'write-file' },
+			output: {},
+			suspendPayload,
+		});
+	});
+
+	it('records suspend calls before the native suspend interrupts execution', async () => {
+		const writer = new TraceWriter('record-interrupted-suspend');
+		const tracing = createTraceReplayOnlyContext();
+		tracing.replayMode = 'record';
+		tracing.traceWriter = writer;
+
+		const suspendPayload = {
+			requestId: 'request-1',
+			inputType: 'plan-review',
+			message: 'Review the plan',
+		};
+		const interruptibleTool: BuiltTool = {
+			name: 'plan-tool',
+			description: 'Requests approval.',
+			suspendSchema: {},
+			handler: async (_input, context) => {
+				if (!('suspend' in context) || typeof context.suspend !== 'function') {
+					throw new Error('Expected interruptible tool context');
+				}
+				return await context.suspend(suspendPayload);
+			},
+		};
+
+		const wrappedTools = tracing.wrapTools(createToolRegistry([['plan-tool', interruptibleTool]]), {
+			agentRole: 'planner',
+		});
+		const wrappedTool = wrappedTools.get('plan-tool');
+		if (!isExecutableTool(wrappedTool)) {
+			throw new Error('Wrapped plan-tool is not executable');
+		}
+
+		await expect(
+			executeTool(
+				wrappedTool,
+				{ action: 'submit-plan' },
+				{
+					resumeData: undefined,
+					suspend: async (): Promise<never> => {
+						await Promise.resolve();
+						throw new Error('native suspend interrupted');
+					},
+				},
+			),
+		).rejects.toThrow('native suspend interrupted');
+
+		const events = writer.getEvents();
+		expect(events).toHaveLength(2);
+		const suspend = events[1] as TraceToolSuspend;
+		expect(suspend).toEqual({
+			kind: 'tool-suspend',
+			stepId: 1,
+			agentRole: 'planner',
+			toolName: 'plan-tool',
+			input: { action: 'submit-plan' },
 			output: {},
 			suspendPayload,
 		});
@@ -1575,12 +1633,12 @@ describe('createInstanceAiTraceContext', () => {
 		const regularTool = {
 			name: 'templates',
 			description: 'Search templates',
-			handler: jest.fn(),
+			handler: vi.fn(),
 		};
 		const workspaceTool = {
 			name: 'workspace_execute_command',
 			description: 'Run a workspace command',
-			handler: jest.fn(),
+			handler: vi.fn(),
 		};
 
 		const wrappedTools = tracing!.wrapTools(
@@ -1928,7 +1986,7 @@ describe('createInstanceAiTraceContext', () => {
 					{
 						name: 'workspace_write_file',
 						description: 'Write a file in the workspace.',
-						handler: jest.fn(async () => await Promise.resolve({ written: true })),
+						handler: vi.fn(async () => await Promise.resolve({ written: true })),
 					} as never,
 				],
 			]),
@@ -2115,7 +2173,7 @@ describe('submitLangsmithUserFeedback', () => {
 	});
 
 	it('routes through the proxy client when proxyConfig is provided', async () => {
-		const getAuthHeaders = jest.fn().mockResolvedValue({ Authorization: 'Bearer token' });
+		const getAuthHeaders = vi.fn().mockResolvedValue({ Authorization: 'Bearer token' });
 		await submitLangsmithUserFeedback({
 			langsmithRunId: 'ls-run-3',
 			langsmithTraceId: 'ls-trace-3',

@@ -1,7 +1,7 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
 import { z } from 'zod';
 
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
 export type IntegrationMessageTarget =
@@ -52,7 +52,7 @@ export interface IntegrationSubjectPerson {
 
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
-	integration: AgentCredentialIntegrationConfig;
+	integration: AgentIntegrationConfig;
 	integrationConnectionId: string;
 	contextToolName: string;
 	actionToolName: string;
@@ -786,9 +786,9 @@ const actionSuspendSchema = z.object({
 const actionResumeSchema = z.record(z.string(), z.unknown());
 
 export function getIntegrationToolConnectionDescriptors(
-	integrations: AgentCredentialIntegrationConfig[],
+	integrations: AgentIntegrationConfig[],
 	agentId?: string,
-	capabilitiesFor?: (integration: AgentCredentialIntegrationConfig) => {
+	capabilitiesFor?: (integration: AgentIntegrationConfig) => {
 		contextQueries?: IntegrationContextQuery[];
 		actions?: IntegrationAction[];
 	},
@@ -822,7 +822,7 @@ export function getIntegrationToolConnectionDescriptors(
 }
 
 export function buildIntegrationConnectionId(
-	integration: Pick<AgentCredentialIntegrationConfig, 'type' | 'credentialId'>,
+	integration: Pick<AgentIntegrationConfig, 'type' | 'credentialId'>,
 ): string {
 	return `${integration.type}:${integration.credentialId}`;
 }

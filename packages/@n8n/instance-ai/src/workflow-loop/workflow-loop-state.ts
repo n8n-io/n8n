@@ -41,6 +41,7 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
+	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
@@ -71,6 +72,7 @@ export const attemptRecordSchema = z.object({
 	workflowId: z.string().optional(),
 	executionId: z.string().optional(),
 	failureSignature: z.string().optional(),
+	workflowInspection: z.string().optional(),
 	diagnosis: z.string().optional(),
 	fixApplied: z.string().optional(),
 	remediationCategory: remediationCategorySchema.optional(),
@@ -165,7 +167,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	/**
 	 * Trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
-	 * to pick a `verify-built-workflow` `inputData` shape for bypassPlan builds.
+	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
 	 */
 	triggerNodes: z.array(triggerNodeDescriptorSchema).optional(),
 	needsUserInput: z.boolean(),
@@ -222,6 +224,7 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
+	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
 	failedNodeName: z.string().optional(),
 	diagnosis: z.string().optional(),

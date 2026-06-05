@@ -1,10 +1,11 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import { type AgentIntegrationStatusEntry, isAgentScheduleIntegration } from '@n8n/api-types';
+import { type AgentIntegrationStatusEntry } from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
 	skillIdentifiersFromConfig,
+	taskIdentifiersFromConfig,
 	toolIdentifiersFromConfig,
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
@@ -80,17 +81,7 @@ function integrationStatusEntriesFromConfig(
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
-
-		if (isAgentScheduleIntegration(integration)) {
-			if (integration.cronExpression.trim() !== '') {
-				entries.push({ type: integration.type });
-			}
-			continue;
-		}
-
-		if (!isAgentScheduleIntegration(integration)) {
-			entries.push({ type: integration.type, credentialId: integration.credentialId });
-		}
+		entries.push({ type: integration.type, credentialId: integration.credentialId });
 	}
 
 	return entries;
@@ -117,6 +108,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	// Same idea, parallel for skills.
 	let previousSkills: string[] = [];
+
+	// Same idea, parallel for tasks.
+	let previousTasks: string[] = [];
 
 	function snapshot(): EditSnapshot {
 		return {
@@ -257,6 +251,42 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		});
 	}
 
+	function captureTasksBaseline() {
+		previousTasks = taskIdentifiersFromConfig(deps.savedConfig.value);
+	}
+
+	function trackTasksChanged() {
+		const current = taskIdentifiersFromConfig(deps.savedConfig.value);
+		const added = current.filter((taskId) => !previousTasks.includes(taskId));
+		const removed = previousTasks.filter((taskId) => !current.includes(taskId));
+		previousTasks = current;
+		if (added.length === 0 && removed.length === 0) return;
+		const s = snapshot();
+		// Task diffs are computed from saved config after save/refetch, so the
+		// config_version must match the persisted task list. `s.config` reads
+		// localConfig, which can still be the pre-save snapshot when onSaved runs.
+		withFingerprint(deps.savedConfig.value, s.connectedTriggers, (configVersion) => {
+			for (const taskAdded of added) {
+				agentTelemetry.trackAddedTasks({
+					agentId: s.agentId,
+					taskAdded,
+					tasks: current,
+					configVersion,
+					status: s.status,
+				});
+			}
+			for (const taskRemoved of removed) {
+				agentTelemetry.trackRemovedTasks({
+					agentId: s.agentId,
+					taskRemoved,
+					tasks: current,
+					configVersion,
+					status: s.status,
+				});
+			}
+		});
+	}
+
 	/**
 	 * Eagerly derive connected trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
@@ -287,6 +317,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		triggersBaseline.value = [];
 		previousTools = [];
 		previousSkills = [];
+		previousTasks = [];
 	}
 
 	function trackOpenedToolFromList(toolType: string) {
@@ -308,8 +339,10 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		trackTriggerAdded,
 		trackToolsAdded,
 		trackSkillsAdded,
+		trackTasksChanged,
 		captureToolsBaseline,
 		captureSkillsBaseline,
+		captureTasksBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,
 		trackOpenedToolFromList,

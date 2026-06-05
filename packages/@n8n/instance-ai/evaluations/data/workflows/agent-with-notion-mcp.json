@@ -1,0 +1,18 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow with a chat-triggered AI agent that can search my Notion workspace to answer questions about ongoing projects. The agent should use the Notion connection from n8n's built-in service connections (the one optimized for agent tool use), not the standard Notion action node. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "agent", "ai-tool", "mcp-registry", "notion"],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "User asks about a project; agent uses the Notion MCP registry node to find the answer",
+			"dataSetup": "User asks 'what's the status of the Phoenix project?'. The Notion MCP server responds to a notion-search call with one matching page summarized as: title 'Phoenix', status 'in progress', owner 'Mira', last updated '3 days ago'.",
+			"successCriteria": "The workflow contains a chat trigger, an Agent node, and a Notion MCP registry node (the node provided by the @n8n/mcp-registry package — its node type is 'notion' and its credential type is 'notionMcpOAuth2Api', NOT the native 'n8n-nodes-base.notion' node with 'notionApi' credentials). The Notion MCP node is wired to the Agent as an ai_tool connection. When executed, the Agent's final response references 'Phoenix', 'in progress', and 'Mira'."
+		}
+	]
+}

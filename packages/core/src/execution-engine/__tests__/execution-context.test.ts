@@ -1038,7 +1038,7 @@ describe('establishExecutionContext', () => {
 	});
 
 	describe('redaction policy on resume', () => {
-		it('should preserve existing redaction setting on webhook resume', async () => {
+		it('should preserve an existing V1 redaction setting on webhook resume', async () => {
 			const existingContext: IExecutionContext = {
 				version: 1,
 				establishedAt: 1234567890,
@@ -1064,6 +1064,36 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
 				version: 1,
 				policy: 'all',
+			});
+		});
+
+		it('should preserve an existing V2 redaction setting on webhook resume', async () => {
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1234567890,
+				source: 'webhook',
+				redaction: { version: 2, production: true, manual: false },
+			};
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: existingContext,
+				},
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
+
+			expect(runExecutionData.executionData!.runtimeData!.redaction).toEqual({
+				version: 2,
+				production: true,
+				manual: false,
 			});
 		});
 	});
