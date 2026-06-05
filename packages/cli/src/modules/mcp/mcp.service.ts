@@ -151,9 +151,20 @@ export class McpService {
 	 * config requests go through the instance telemetry proxy.
 	 */
 	private buildMcpAppTelemetryConfig(): McpAppTelemetryResolution {
+		const { enabled, frontendConfig } = this.globalConfig.diagnostics;
+		const disabledTelemetry: McpAppTelemetryConfig = {
+			enabled: false,
+			writeKey: '',
+			dataPlaneUrl: '',
+			configUrl: '',
+			instanceId: this.instanceSettings.instanceId,
+			versionCli: N8N_VERSION,
+		};
+
+		if (!enabled) return { telemetry: disabledTelemetry };
+
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
-		const { enabled, frontendConfig } = this.globalConfig.diagnostics;
 		const [writeKey] = frontendConfig.split(';');
 
 		const telemetry: McpAppTelemetryConfig = {
@@ -173,13 +184,7 @@ export class McpService {
 			});
 
 			return {
-				telemetry: {
-					...telemetry,
-					enabled: false,
-					writeKey: '',
-					dataPlaneUrl: '',
-					configUrl: '',
-				},
+				telemetry: disabledTelemetry,
 			};
 		}
 	}

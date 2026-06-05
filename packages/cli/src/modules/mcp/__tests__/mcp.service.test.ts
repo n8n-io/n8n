@@ -489,6 +489,7 @@ describe('McpService', () => {
 			// the boolean and focus on `getServer`'s tool-registration behavior.
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
+				diagnosticsEnabled?: boolean;
 				instanceBaseUrl?: string;
 				postHogClient?: jest.Mocked<PostHogClient>;
 				telemetry?: jest.Mocked<Telemetry>;
@@ -496,6 +497,7 @@ describe('McpService', () => {
 
 			const buildService = ({
 				builderEnabled = true,
+				diagnosticsEnabled = true,
 				instanceBaseUrl = 'https://n8n.test',
 				postHogClient = mockInstance(PostHogClient),
 				telemetry = mockInstance(Telemetry),
@@ -520,7 +522,7 @@ describe('McpService', () => {
 							mcpBuilderEnabled: builderEnabled,
 						},
 						diagnostics: {
-							enabled: true,
+							enabled: diagnosticsEnabled,
 							frontendConfig: 'test-key;https://telemetry.n8n.io',
 						},
 					}),
@@ -591,6 +593,35 @@ describe('McpService', () => {
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('does not inject write key or telemetry URLs when diagnostics are disabled', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const service = buildService({ diagnosticsEnabled: false });
+
+				await service.getServer(user, true);
+
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin?: string;
+						telemetry: {
+							enabled: boolean;
+							writeKey: string;
+							dataPlaneUrl: string;
+							configUrl: string;
+						};
+					},
+				];
+				expect(appOptions.instanceOrigin).toBeUndefined();
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: false,
+						writeKey: '',
+						dataPlaneUrl: '',
+						configUrl: '',
+					}),
+				);
 			});
 
 			it('disables app telemetry when the telemetry proxy URL is invalid', async () => {
