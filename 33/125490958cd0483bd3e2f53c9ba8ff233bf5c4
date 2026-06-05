@@ -1,0 +1,37 @@
+packages/@n8n/api-types/src/redaction-enforcement-floor.ts
+  s_eb9295e8672673::t_6c9026afea8c23 1-5
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_eb9295e8672673::t_cb50a503e6db78 18,23-28
+  s_eb9295e8672673::t_0d661fab95ea18 42-46
+  s_eb9295e8672673::t_dfa1747695a4fd 8-9
+  s_eb9295e8672673::t_e4a1375e55744a 224-392
+packages/@n8n/api-types/src/dto/security-settings/security-settings.dto.ts
+  s_eb9295e8672673::t_a803aa2d2b76eb 3,6-9,17,23
+packages/cli/src/controllers/security-settings.controller.ts
+  s_eb9295e8672673::t_7569f33c545970 13-14,17
+  s_eb9295e8672673::t_a265466b0082be 25,43-47,54
+  s_eb9295e8672673::t_3d062bb30a8bc2 72
+  s_eb9295e8672673::t_8a0722720fb1b5 112-118
+packages/@n8n/api-types/src/index.ts
+  s_eb9295e8672673::t_3970846353159c 14
+packages/cli/src/controllers/redaction-enforcement-mapper.ts
+  s_eb9295e8672673::t_d0c7f698ae1980 1-21
+packages/cli/src/controllers/__tests__/redaction-enforcement-mapper.test.ts
+  s_eb9295e8672673::t_ae78be283b9551 1-31,34-42,44-48,50-57,59-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "33125490958cd0483bd3e2f53c9ba8ff233bf5c4",
+  "prompts": {},
+  "sessions": {
+    "s_eb9295e8672673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a13f8c-0337-46bf-976e-7e6f21af25ec",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
