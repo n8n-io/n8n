@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AgentDbMessage } from '@n8n/instance-ai';
 import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
@@ -55,6 +56,11 @@ function createMemory(deps: {
 	};
 }
 
+function getToolInputs(message: AgentDbMessage | undefined): unknown[] {
+	if (!message || !('content' in message)) return [];
+	return message.content.filter((part) => part.type === 'tool-call').map((part) => part.input);
+}
+
 describe('TypeORMAgentMemory', () => {
 	it('logs and skips invalid native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
@@ -71,6 +77,80 @@ describe('TypeORMAgentMemory', () => {
 				resourceId: 'user-1',
 			}),
 		);
+	});
+
+	it('normalizes persisted tool-call input when reading native message rows', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.find.mockResolvedValueOnce([
+			makeMessageRow({
+				content: JSON.stringify({
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-json',
+							toolName: 'nodes',
+							input: '{"action":"search"}',
+							state: 'resolved',
+							output: {},
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-array',
+							toolName: 'batch',
+							input: ['a', 'b'],
+							state: 'resolved',
+							output: {},
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-null',
+							toolName: 'noop',
+							input: null,
+							state: 'resolved',
+							output: {},
+						},
+					],
+				}),
+			}),
+		]);
+		const { memory } = createMemory({ messageRepo });
+
+		const [message] = await memory.getMessages('thread-1');
+		expect(getToolInputs(message)).toEqual([{ action: 'search' }, { value: ['a', 'b'] }, {}]);
+	});
+
+	it('normalizes tool-call input before saving native message rows', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.create.mockImplementation((entity) => entity as InstanceAiMessage);
+		const { memory } = createMemory({ messageRepo });
+		const message: AgentDbMessage = {
+			id: 'message-1',
+			createdAt: new Date('2026-06-04T09:00:00.000Z'),
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-string',
+					toolName: 'legacy',
+					input: 'plain-text',
+					state: 'resolved',
+					output: {},
+				},
+			],
+		};
+
+		await memory.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message],
+		});
+
+		const [createdEntity] = messageRepo.create.mock.calls[0] as Array<{ content?: string }>;
+		const persisted = JSON.parse(createdEntity.content ?? '{}') as AgentDbMessage;
+		expect(getToolInputs(persisted)[0]).toEqual({
+			value: 'plain-text',
+		});
 	});
 
 	it('deletes hidden sub-agent threads and associated working-memory resources by resource prefix', async () => {

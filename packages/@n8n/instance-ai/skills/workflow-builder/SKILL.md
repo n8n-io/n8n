@@ -26,10 +26,12 @@ Use the orchestrator tools already available in the current turn. If a relevant
 orchestrator or MCP tool is available through tool search, use it when it helps
 complete the build.
 
-For normal new-workflow requests, call `plan` first so the user can approve the
-build plan. Use this skill to create new workflows only during an approved
-`<planned-task-follow-up type="build-workflow">` turn. If this skill was loaded
-for a normal new-workflow request, stop discovery and call `plan` immediately.
+For clear single-workflow requests, build directly with `build-workflow`. For
+plan-worthy work that needs architecture or dependency coordination, load the
+`planning` skill first and submit the dependency-aware graph with
+`create-tasks`. Use this skill during an approved
+`<planned-task-follow-up type="build-workflow">` turn, or for direct
+single-workflow builds and edits.
 
 Do not call `delegate` to build, patch, fix, verify, or update workflows. The
 builder work happens here with the workflow-builder guidance and the
@@ -154,6 +156,9 @@ Assistant panel so the user can fill placeholder values.
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Build complete TypeScript SDK code and call `build-workflow`.
+   For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
+   pass `isSupportingWorkflow: true`; that saved supporting workflow is the
+   task's final deliverable.
 7. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
@@ -356,8 +361,18 @@ column names.
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
   field.
+- For unresolved resource-locator fields (values shaped like `{ __rl: true,
+  mode, value }`, such as Slack channel selectors), use the resource-locator
+  object shape instead of a raw `placeholder()` string. If no credential exists
+  to resolve a real channel, prefer id mode with an empty value and a cached
+  result name, for example `{ __rl: true, mode: 'id', value: '',
+  cachedResultName: 'Select support channel to monitor' }`.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
+- Whenever a node declares mock `output` for verification, include every field
+  later referenced by `$json` expressions, including optional trigger fields
+  used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
+  `channel`). Missing optional fields make expression-path validation fail.
 
 Use this import shape unless the task needs fewer symbols:
 

@@ -19,7 +19,12 @@ RUN apk add --no-cache python3 make g++ && \
     cd node_modules/isolated-vm && \
     npx --yes node-gyp rebuild --release -j max
 
-FROM n8nio/base:${NODE_VERSION}
+# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
+# base change, so a base rebuild does not reach this image until the digest is
+# manually re-pinned here. Bump the digest together with the tag whenever the base
+# image is intentionally updated.
+FROM n8nio/base:24.15.0@sha256:dade45d8a974e72bccbf57c13bc684b5dbb2f73e0ca7c837739e439de7b91aa9
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev

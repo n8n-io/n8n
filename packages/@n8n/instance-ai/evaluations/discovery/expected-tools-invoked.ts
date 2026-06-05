@@ -11,9 +11,9 @@
 //   - the rule names `spawn_sub_agent:<role>` and a sub-agent with that role
 //     was spawned.
 //
-// The asymmetry (sub-agent existence counts as discovery) lets planner and
-// builder dispatch checks assert that a specialized background agent was
-// reached even before it emits its own tool calls.
+// The asymmetry (sub-agent existence counts as discovery) lets dispatch checks
+// assert that a specialized background agent was reached even before it emits
+// its own tool calls.
 // ---------------------------------------------------------------------------
 
 import type { EventOutcome } from '../types';

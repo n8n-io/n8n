@@ -261,28 +261,17 @@ describe('InstanceAiController', () => {
 					textContent: '',
 					reasoning: '',
 					toolCalls: [],
-					children: [
+					children: [],
+					timeline: [],
+					planItems: [
 						{
-							agentId: 'agent-planner-1',
-							role: 'planner',
-							status: 'active',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							children: [],
-							timeline: [],
-							planItems: [
-								{
-									id: 'task-1',
-									title: 'Build workflow',
-									kind: 'build-workflow',
-									spec: 'Create the workflow',
-									deps: [],
-								},
-							],
+							id: 'task-1',
+							title: 'Build workflow',
+							kind: 'build-workflow',
+							spec: 'Create the workflow',
+							deps: [],
 						},
 					],
-					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
 				},
 			});
 
@@ -311,7 +300,7 @@ describe('InstanceAiController', () => {
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
 
-			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
 		});
 

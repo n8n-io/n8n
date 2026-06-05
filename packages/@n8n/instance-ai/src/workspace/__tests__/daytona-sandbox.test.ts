@@ -32,6 +32,7 @@ interface DaytonaClientLog {
 const {
 	clientLog,
 	queuedGetErrors,
+	queuedGetResults,
 	queuedCreateResults,
 	makeMockSandbox,
 	Daytona,
@@ -43,6 +44,7 @@ const {
 	let nextClientId = 1;
 	let nextSandboxId = 1;
 	const queuedGetErrors: Error[] = [];
+	const queuedGetResults: MockSandbox[] = [];
 	const queuedCreateResults: Array<MockSandbox | Error> = [];
 
 	function makeMockSandbox(id: string, state = 'started'): MockSandbox {
@@ -85,6 +87,10 @@ const {
 				const queued = queuedGetErrors.shift();
 				if (queued !== undefined) {
 					return await Promise.reject(queued);
+				}
+				const queuedResult = queuedGetResults.shift();
+				if (queuedResult !== undefined) {
+					return await Promise.resolve(queuedResult);
 				}
 				return await Promise.resolve(makeMockSandbox(`sb-${id}-${nextSandboxId++}`));
 			});
@@ -137,12 +143,14 @@ const {
 		nextClientId = 1;
 		nextSandboxId = 1;
 		queuedGetErrors.length = 0;
+		queuedGetResults.length = 0;
 		queuedCreateResults.length = 0;
 	}
 
 	return {
 		clientLog,
 		queuedGetErrors,
+		queuedGetResults,
 		queuedCreateResults,
 		makeMockSandbox,
 		Daytona,
@@ -157,6 +165,7 @@ vi.mock('../lazy-daytona', () => ({
 }));
 
 import type { ErrorReporter, Logger } from '../../logger';
+import { DaytonaFilesystem } from '../daytona-filesystem';
 import { DaytonaSandbox } from '../daytona-sandbox';
 
 function base64url(input: string): string {
@@ -431,8 +440,157 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 		await expect(sandbox.destroy()).resolves.toBeUndefined();
 	});
 
-	it('executeCommand() propagates NotFound rather than NPE-ing on a silently-cleared cache', async () => {
+	it('executeCommand() recovers by recreating the sandbox when the remote was deleted', async () => {
 		const sandbox = await startAndStageRemoteGone();
-		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/not found/i);
+		// The remote stays gone: the recovery's findExistingSandbox() lookup also 404s, so
+		// it falls through to creating a fresh sandbox.
+		queueNotFound();
+
+		// The staged refetch throws NotFound (a 404 short-circuits as recoverable); recovery
+		// resets the handle and re-runs start() → findExistingSandbox() → create.
+		const result = await sandbox.executeCommand('echo', ['hi']);
+
+		expect(result.success).toBe(true);
+		expect(result.stdout).toBe('ok');
+		expect(clientLog.some((c) => c.create.mock.calls.length > 0)).toBe(true);
+	});
+
+	it('executeCommand() recovers a stopped remote from its state, even on a 403', async () => {
+		// Direct mode (static key) — no JWT rotation, so recovery cannot rely on the
+		// getDaytona refetch; it must come from the state probe in recoverAndRetry.
+		const failing = makeMockSandbox('sb-stale', 'started');
+		// A stopped/unreachable container surfaces as "Endpoint not allowed; 403" (which also
+		// looks like an auth error). Recovery must be driven by the probed remote state, not
+		// by the error code — otherwise this 403 is misread as auth and never recovers.
+		failing.process.executeCommand = vi
+			.fn()
+			.mockRejectedValue(new DaytonaError('Endpoint not allowed', 403));
+		const probeStopped = makeMockSandbox('sb-probe', 'stopped');
+		const resumed = makeMockSandbox('sb-resumed', 'stopped');
+		// get order: start() → failing; isRecoverable probe → stopped; retry start() → resumed.
+		queuedGetResults.push(failing, probeStopped, resumed);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const result = await sandbox.executeCommand('echo', ['resumed']);
+
+		expect(result.success).toBe(true);
+		expect(resumed.start).toHaveBeenCalled();
+	});
+
+	it('executeCommand() does not recover when auth is genuinely failing', async () => {
+		vi.useFakeTimers().setSystemTime(new Date(1_700_000_000_000));
+		const getAuthToken = vi.fn<(...args: []) => Promise<string>>().mockImplementation(async () => {
+			await Promise.resolve();
+			return makeJwt(Date.now() + HOUR_MS);
+		});
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', getAuthToken });
+		await sandbox.start();
+
+		vi.setSystemTime(new Date(Date.now() + HOUR_MS - SKEW_MS + 1));
+		// Both the op's refetch and the recovery probe fail auth — the probe can't confirm a
+		// not-running state, so the original error propagates and nothing is recreated.
+		queuedGetErrors.push(
+			new DaytonaError('unauthorized', 401),
+			new DaytonaError('unauthorized', 401),
+		);
+
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/unauthorized/i);
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('executeCommand() propagates when the remote is still running (no false recovery)', async () => {
+		// op fails but the probe finds the sandbox healthy → original error must surface.
+		const healthy = makeMockSandbox('sb-healthy', 'started');
+		healthy.process.executeCommand = vi
+			.fn()
+			.mockRejectedValue(new Error('genuine command failure'));
+		const probeStarted = makeMockSandbox('sb-probe', 'started');
+		queuedGetResults.push(healthy, probeStarted);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(
+			/genuine command failure/i,
+		);
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('executeCommand() does not recover from a failed (error) state', async () => {
+		// A non-running but non-recoverable state (error/build_failed/transient) must not
+		// trigger a resume/recreate — only stopped/archived/gone are recoverable.
+		const failing = makeMockSandbox('sb-stale', 'started');
+		failing.process.executeCommand = vi.fn().mockRejectedValue(new Error('boom'));
+		const probeError = makeMockSandbox('sb-probe', 'error');
+		queuedGetResults.push(failing, probeError);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/boom/i);
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('executeCommand() retries recovery at most once', async () => {
+		const sandbox = await startAndStageRemoteGone();
+
+		// The recovery retry also fails: findExistingSandbox() get → NotFound (→ create) and
+		// the create rejects. The second failure propagates instead of looping.
+		queueNotFound();
+		queuedCreateResults.push(new Error('create failed'));
+
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/create failed/i);
+	});
+
+	it('DaytonaFilesystem reuses the same recovery when the remote was deleted', async () => {
+		const sandbox = await startAndStageRemoteGone();
+		// findExistingSandbox() lookup also 404s during recovery → create a fresh sandbox.
+		queueNotFound();
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		// readFile() → withFilesystem() → recoverAndRetry: the staged NotFound triggers a
+		// reset + recreate, then the op runs against the fresh fs handle.
+		await expect(filesystem.readFile('/workspace/file.txt')).resolves.toBeUndefined();
+		expect(clientLog.some((c) => c.create.mock.calls.length > 0)).toBe(true);
+	});
+
+	it('DaytonaFilesystem.exists() recovers a stopped sandbox instead of reporting missing', async () => {
+		// getFileDetails on a stopped sandbox fails with a non-404 — it must bubble to
+		// recovery, not be swallowed as "file does not exist".
+		const failing = makeMockSandbox('sb-stale', 'started');
+		failing.fs.getFileDetails = vi
+			.fn()
+			.mockRejectedValue(new DaytonaError('Endpoint not allowed', 403));
+		const probeStopped = makeMockSandbox('sb-probe', 'stopped');
+		const resumed = makeMockSandbox('sb-resumed', 'stopped');
+		queuedGetResults.push(failing, probeStopped, resumed);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await expect(filesystem.exists('/workspace/marker')).resolves.toBe(true);
+		expect(resumed.start).toHaveBeenCalled();
+	});
+
+	it('DaytonaFilesystem.exists() returns false for a genuine 404 without recovering', async () => {
+		const handle = makeMockSandbox('sb-1', 'started');
+		handle.fs.getFileDetails = vi.fn().mockRejectedValue(new DaytonaError('file not found', 404));
+		queuedGetResults.push(handle);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await expect(filesystem.exists('/workspace/missing')).resolves.toBe(false);
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('DaytonaFilesystem.appendFile() treats a genuine 404 as an empty file', async () => {
+		const handle = makeMockSandbox('sb-1', 'started');
+		handle.fs.downloadFile = vi.fn().mockRejectedValue(new DaytonaError('file not found', 404));
+		queuedGetResults.push(handle);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await filesystem.appendFile('/workspace/log.txt', 'entry');
+		expect(handle.fs.uploadFile).toHaveBeenCalled();
 	});
 });
