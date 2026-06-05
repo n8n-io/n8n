@@ -53,12 +53,14 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
+const mockProvisioningStore = {
+	provisioningConfig: undefined as { scopesUseExpressionMapping?: boolean } | undefined,
+	getProvisioningConfig: vi.fn().mockResolvedValue({}),
+	saveProvisioningConfig: vi.fn().mockResolvedValue({}),
+};
+
 vi.mock('../provisioning/composables/userRoleProvisioning.store', () => ({
-	useUserRoleProvisioningStore: vi.fn(() => ({
-		provisioningConfig: undefined,
-		getProvisioningConfig: vi.fn().mockResolvedValue({}),
-		saveProvisioningConfig: vi.fn().mockResolvedValue({}),
-	})),
+	useUserRoleProvisioningStore: vi.fn(() => mockProvisioningStore),
 }));
 
 vi.mock('@n8n/rest-api-client/api/roleMappingRule', () => ({
@@ -87,6 +89,8 @@ describe('SettingsSso View', () => {
 		telemetryTrack.mockReset();
 		confirmMessage.mockReset();
 		showError.mockReset();
+		mockProvisioningStore.provisioningConfig = undefined;
+		mockProvisioningStore.getProvisioningConfig.mockResolvedValue({});
 	});
 
 	describe('SAML', () => {
@@ -577,11 +581,11 @@ describe('SettingsSso View', () => {
 	});
 
 	describe('Env-managed readonly mode', () => {
-		it('should hide save button but keep test button when SAML is managed by env', async () => {
+		it('should hide save button but keep test button when SAML is managed by env and mapping method is not rules_in_n8n', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.ssoManagedByEnv = true;
-
+			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: false };
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
 			const { queryByTestId } = renderView();
@@ -589,6 +593,51 @@ describe('SettingsSso View', () => {
 			await waitFor(() => {
 				expect(queryByTestId('sso-save')).not.toBeInTheDocument();
 				expect(queryByTestId('sso-test')).toBeInTheDocument();
+			});
+		});
+
+		it('should show save button when SAML is managed by env and mapping method is rules_in_n8n', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: true };
+			mockProvisioningStore.getProvisioningConfig.mockResolvedValue({
+				scopesUseExpressionMapping: true,
+			});
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(queryByTestId('sso-save')).toBeInTheDocument();
+				expect(queryByTestId('sso-test')).toBeInTheDocument();
+			});
+		});
+
+		it('should show updated banner text when mapping method is rules_in_n8n', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: true };
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByText } = renderView();
+
+			await waitFor(() => {
+				expect(getByText(/Role mapping rules can still be edited below/)).toBeInTheDocument();
+			});
+		});
+
+		it('should show default banner text when mapping method is not rules_in_n8n', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: false };
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByText, queryByText } = renderView();
+
+			await waitFor(() => {
+				expect(getByText(/To modify, update the environment variables/)).toBeInTheDocument();
+				expect(queryByText(/Role mapping rules can still be edited below/)).not.toBeInTheDocument();
 			});
 		});
 	});
