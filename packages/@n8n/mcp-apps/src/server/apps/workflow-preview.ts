@@ -10,7 +10,7 @@ import {
 
 export interface RegisterWorkflowPreviewAppOptions {
 	/** Origin allowed for telemetry egress via CSP `connect-src`. */
-	instanceOrigin: string;
+	instanceOrigin?: string;
 	/** Front-end telemetry runtime config injected into the app HTML. */
 	telemetry: McpAppTelemetryConfig;
 	/** Called when the host reads the app HTML to render it. */
@@ -22,6 +22,12 @@ export function registerWorkflowPreviewApp(
 	options: RegisterWorkflowPreviewAppOptions,
 ): void {
 	const { instanceOrigin, telemetry, onResourceRead } = options;
+	const telemetryCsp = instanceOrigin
+		? {
+				resourceDomains: [RUDDERSTACK_CDN_ORIGIN],
+				connectDomains: [instanceOrigin],
+			}
+		: { resourceDomains: [], connectDomains: [] };
 
 	server.resource(
 		'workflow-preview',
@@ -47,10 +53,7 @@ export function registerWorkflowPreviewApp(
 						text: injectTelemetryConfig(html, telemetry),
 						_meta: {
 							ui: {
-								csp: {
-									resourceDomains: [RUDDERSTACK_CDN_ORIGIN],
-									connectDomains: [instanceOrigin],
-								},
+								csp: telemetryCsp,
 							},
 						},
 					},

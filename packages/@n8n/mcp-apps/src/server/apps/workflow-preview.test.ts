@@ -100,6 +100,29 @@ describe('registerWorkflowPreviewApp', () => {
 		expect(csp?.connectDomains).toEqual([instanceOrigin]);
 	});
 
+	it('omits telemetry CSP domains when no instance origin is provided', async () => {
+		registerWorkflowPreviewApp(
+			{
+				resource: (
+					name: string,
+					uri: string,
+					metadata: Record<string, unknown>,
+					callback: ResourceCallback,
+				) => {
+					captured = { name, uri, metadata, callback };
+					return undefined as never;
+				},
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			} as any,
+			{ telemetry },
+		);
+
+		const { _meta } = (await captured.callback()).contents[0];
+		const csp = _meta?.ui?.csp;
+		expect(csp?.resourceDomains).toEqual([]);
+		expect(csp?.connectDomains).toEqual([]);
+	});
+
 	it('injects the telemetry runtime config into the HTML', async () => {
 		const { text } = (await captured.callback()).contents[0];
 		expect(text).toContain(`window.${MCP_APP_TELEMETRY_GLOBAL}=`);

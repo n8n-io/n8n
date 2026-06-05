@@ -489,17 +489,19 @@ describe('McpService', () => {
 			// the boolean and focus on `getServer`'s tool-registration behavior.
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
+				instanceBaseUrl?: string;
 				postHogClient?: jest.Mocked<PostHogClient>;
 				telemetry?: jest.Mocked<Telemetry>;
 			};
 
 			const buildService = ({
 				builderEnabled = true,
+				instanceBaseUrl = 'https://n8n.test',
 				postHogClient = mockInstance(PostHogClient),
 				telemetry = mockInstance(Telemetry),
 			}: BuildServiceOpts = {}) => {
 				const urlService = mockInstance(UrlService);
-				(urlService.getInstanceBaseUrl as jest.Mock).mockReturnValue('https://n8n.test');
+				(urlService.getInstanceBaseUrl as jest.Mock).mockReturnValue(instanceBaseUrl);
 
 				return new McpService(
 					mockLogger(),
@@ -589,6 +591,35 @@ describe('McpService', () => {
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('disables app telemetry when the telemetry proxy URL is invalid', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const service = buildService({ instanceBaseUrl: 'not-a-url' });
+
+				await expect(service.getServer(user, true)).resolves.toBeDefined();
+
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin?: string;
+						telemetry: {
+							enabled: boolean;
+							writeKey: string;
+							dataPlaneUrl: string;
+							configUrl: string;
+						};
+					},
+				];
+				expect(appOptions.instanceOrigin).toBeUndefined();
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: false,
+						writeKey: '',
+						dataPlaneUrl: '',
+						configUrl: '',
+					}),
+				);
 			});
 
 			it('tracks render requested when the preview resource is read', async () => {

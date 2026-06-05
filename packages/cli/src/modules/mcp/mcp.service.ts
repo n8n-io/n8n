@@ -91,6 +91,11 @@ export type McpAppsResolution = {
 	variant: McpAppsTelemetryVariant;
 };
 
+type McpAppTelemetryResolution = {
+	telemetry: McpAppTelemetryConfig;
+	instanceOrigin?: string;
+};
+
 @Service()
 export class McpService {
 	/**
@@ -145,13 +150,13 @@ export class McpService {
 	 * Mirrors the front-end telemetry settings: RudderStack data plane and source
 	 * config requests go through the instance telemetry proxy.
 	 */
-	private buildMcpAppTelemetryConfig(): McpAppTelemetryConfig {
+	private buildMcpAppTelemetryConfig(): McpAppTelemetryResolution {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 		const { enabled, frontendConfig } = this.globalConfig.diagnostics;
 		const [writeKey] = frontendConfig.split(';');
 
-		return {
+		const telemetry: McpAppTelemetryConfig = {
 			enabled,
 			writeKey: writeKey ?? '',
 			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
@@ -159,6 +164,24 @@ export class McpService {
 			instanceId: this.instanceSettings.instanceId,
 			versionCli: N8N_VERSION,
 		};
+
+		try {
+			return { telemetry, instanceOrigin: new URL(telemetry.dataPlaneUrl).origin };
+		} catch {
+			this.logger.warn('Disabling MCP app telemetry because telemetry proxy URL is invalid', {
+				dataPlaneUrl: telemetry.dataPlaneUrl,
+			});
+
+			return {
+				telemetry: {
+					...telemetry,
+					enabled: false,
+					writeKey: '',
+					dataPlaneUrl: '',
+					configUrl: '',
+				},
+			};
+		}
 	}
 
 	async getServer(user: User, mcpAppsEnabled: boolean) {
@@ -418,8 +441,8 @@ export class McpService {
 		if (mcpAppsEnabled) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
 			registerWorkflowPreviewApp(server, {
-				instanceOrigin: new URL(appTelemetry.dataPlaneUrl).origin,
-				telemetry: appTelemetry,
+				instanceOrigin: appTelemetry.instanceOrigin,
+				telemetry: appTelemetry.telemetry,
 				onResourceRead: () => {
 					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, { user_id: user.id });
 				},
