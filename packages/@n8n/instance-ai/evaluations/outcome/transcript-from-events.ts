@@ -153,6 +153,7 @@ function interpretToolCall(
 	return {
 		kind: 'tool-call',
 		toolName,
+		toolCallId: callId,
 		args: Object.keys(args).length > 0 ? args : undefined,
 		result,
 		error: outcome?.error,
@@ -198,7 +199,12 @@ function interpretConfirmationRequest(
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
-		message: getString(payload, 'message') ?? getString(payload, 'introMessage'),
+		// Plan-review prompts are boilerplate and the plan is rendered separately;
+		// keep the message only for confirm types where it's specific.
+		message:
+			payload.inputType === 'plan-review'
+				? undefined
+				: (getString(payload, 'message') ?? getString(payload, 'introMessage')),
 		feedback: inferFeedback(response),
 	};
 }

@@ -267,6 +267,7 @@ export type ToolInteraction =
 	| {
 			kind: 'tool-call';
 			toolName: string;
+			toolCallId?: string;
 			args?: Record<string, unknown>;
 			/** Tool output (success) or error message — paired to the call by toolCallId. */
 			result?: unknown;
