@@ -75,7 +75,7 @@ export async function initializeCore() {
 	ssoStore.initialize({
 		authenticationMethod: settingsStore.userManagement
 			.authenticationMethod as UserManagementAuthenticationMethod,
-		managedByEnv: settingsStore.settings.sso.managedByEnv,
+		managedByEnv: settingsStore.settings.sso?.managedByEnv,
 		config: settingsStore.settings.sso,
 		features: {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
@@ -249,7 +249,7 @@ function registerAuthenticationHooks() {
 		ssoStore.initialize({
 			authenticationMethod: settingsStore.userManagement
 				.authenticationMethod as UserManagementAuthenticationMethod,
-			managedByEnv: settingsStore.settings.sso.managedByEnv,
+			managedByEnv: settingsStore.settings.sso?.managedByEnv,
 			config: settingsStore.settings.sso,
 			features: {
 				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],

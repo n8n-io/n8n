@@ -169,6 +169,25 @@ describe('Init', () => {
 			});
 		});
 
+		it('should not throw when settings.sso is undefined after a failed settings load', async () => {
+			vi.spyOn(settingsStore, 'initialize').mockImplementation(() => {
+				throw new Error('Settings initialization failed');
+			});
+
+			// Simulate settings store state when initial settings request fails:
+			// `sso` is not yet populated.
+			settingsStore.settings.sso = undefined as unknown as (typeof settingsStore.settings)['sso'];
+
+			await expect(initializeCore()).resolves.not.toThrow();
+
+			expect(ssoStore.initialize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					managedByEnv: undefined,
+					config: undefined,
+				}),
+			);
+		});
+
 		it('should initialize ssoStore with settings SSO configuration', async () => {
 			const saml = { loginEnabled: true, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
