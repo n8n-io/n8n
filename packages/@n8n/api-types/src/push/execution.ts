@@ -4,6 +4,7 @@ import type {
 	ITaskStartedData,
 	NodeConnectionType,
 	WorkflowExecuteMode,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 export type ExecutionStarted = {
@@ -11,6 +12,11 @@ export type ExecutionStarted = {
 	data: {
 		executionId: string;
 		mode: WorkflowExecuteMode;
+		/**
+		 * Who initiated the run. Absent for ordinary user runs; `'instance_ai'`
+		 * when the AI assistant ran the workflow on the user's behalf.
+		 */
+		source?: WorkflowExecutionSource;
 		startedAt: Date;
 		workflowId: string;
 		workflowName?: string;
@@ -23,6 +29,7 @@ export type ExecutionWaiting = {
 	type: 'executionWaiting';
 	data: {
 		executionId: string;
+		source?: WorkflowExecutionSource;
 	};
 };
 
@@ -32,6 +39,11 @@ export type ExecutionFinished = {
 		executionId: string;
 		workflowId: string;
 		status: ExecutionStatus;
+		/**
+		 * Who initiated the run. Absent for ordinary user runs; `'instance_ai'`
+		 * when the AI assistant ran the workflow on the user's behalf.
+		 */
+		source?: WorkflowExecutionSource;
 	};
 };
 

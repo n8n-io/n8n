@@ -56,6 +56,8 @@ const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
+const SENTRY_MAX_VALUE_LENGTH = 500;
+
 const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
 const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
 
@@ -226,6 +228,7 @@ export class ErrorReporter {
 			release,
 			environment,
 			serverName,
+			maxValueLength: SENTRY_MAX_VALUE_LENGTH,
 			...(isTracingEnabled ? { tracesSampleRate } : {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],

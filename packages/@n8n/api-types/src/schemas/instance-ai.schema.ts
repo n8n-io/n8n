@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
@@ -993,13 +994,20 @@ export function applyBranchReadOnlyOverrides(
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
 
+export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
+export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
+
+export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {
+	return instanceAiSandboxProviderSchema.safeParse(value).success;
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
-	sandboxProvider: string;
+	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
@@ -1014,7 +1022,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
-	sandboxProvider: z.string().optional(),
+	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
@@ -1048,10 +1056,32 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
+// ---------------------------------------------------------------------------
+// MCP registry connections — per-user
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiMcpConnectionResponse {
+	id: string;
+	serverSlug: string;
+	/** Display title from the registry server (e.g. "Notion"). Falls back to `serverSlug` if the server is no longer in the registry. */
+	serverTitle: string;
+	/**
+	 * Icons for the registry server, with optional `theme` tagging so the FE
+	 * can pick a light- or dark-mode variant. Empty if the server is no longer
+	 * in the registry.
+	 */
+	serverIcons: McpRegistryServerIconResponse[];
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'plan') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
@@ -1167,41 +1197,3 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 */
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
-
-// ---------------------------------------------------------------------------
-// Sub-agent evaluation endpoint
-// ---------------------------------------------------------------------------
-
-export class InstanceAiEvalSubAgentRequest extends Z.class({
-	/** Role name from the server's sub-agent registry (currently: "builder"). */
-	role: z.string().min(1).max(64),
-	/** The task the sub-agent should perform. */
-	prompt: z.string().min(1).max(10_000),
-	/** Optional model override. Defaults to the server's configured Instance AI model. */
-	modelId: z.string().min(1).optional(),
-	/** Max agent steps. Defaults to 40. */
-	maxSteps: z.number().int().positive().max(200).optional(),
-	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
-	timeoutMs: z.number().int().positive().max(600_000).optional(),
-}) {}
-
-export interface InstanceAiEvalToolCall {
-	toolName: string;
-	args: unknown;
-}
-
-export interface InstanceAiEvalToolResult {
-	toolName: string;
-	result: unknown;
-	isError: boolean;
-}
-
-export interface InstanceAiEvalSubAgentResponse {
-	text: string;
-	toolCalls: InstanceAiEvalToolCall[];
-	toolResults: InstanceAiEvalToolResult[];
-	capturedWorkflowIds: string[];
-	durationMs: number;
-	stopReason?: string;
-	error?: string;
-}

@@ -1,7 +1,9 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
 
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
@@ -54,6 +56,65 @@ describe('ExecutionPersistence', () => {
 				settings: workflow.settings,
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
+		});
+	});
+
+	describe('updateExistingExecution (db overwrite path)', () => {
+		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: { ...workflow, versionId: 'v-original' },
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const updatedData = createEmptyRunExecutionData();
+			updatedData.resultData.lastNodeExecuted = 'NodeX';
+
+			await executionPersistence.updateExistingExecution(executionId, {
+				data: updatedData,
+				workflowData: { ...workflow, versionId: 'v-different' },
+				status: 'success',
+			});
+
+			const executionData = await executionDataRepository.findOneBy({ executionId });
+			expect(executionData?.workflowVersionId).toEqual('v-original');
+			expect(executionData?.data).toContain('NodeX');
+		});
+
+		it('should roll back the status change when the data row is missing during an overwrite', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepo = Container.get(ExecutionRepository);
+			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			await executionDataRepository.delete({ executionId });
+
+			await expect(
+				executionPersistence.updateExistingExecution(executionId, {
+					data: createEmptyRunExecutionData(),
+					workflowData: workflow,
+					status: 'success',
+				}),
+			).rejects.toThrow(MissingExecutionDataError);
+
+			const executionEntity = await executionRepo.findOneBy({ id: executionId });
+			expect(executionEntity?.status).toEqual('new');
 		});
 	});
 });

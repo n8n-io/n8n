@@ -6,7 +6,6 @@ import { render } from '@testing-library/vue';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -139,7 +138,7 @@ function renderWithComposable(
 ) {
 	const TestComponent = defineComponent({
 		setup() {
-			const init = useWorkflowInitialization({} as unknown as WorkflowState);
+			const init = useWorkflowInitialization();
 			callback(init);
 			return () => h('div');
 		},

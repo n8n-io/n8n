@@ -252,6 +252,8 @@ export interface BuildResult {
 	createdDataTableIds: string[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
+	/** Captured SSE events from the build run. */
+	events?: CapturedEvent[];
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
 	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
@@ -278,6 +280,8 @@ export interface BuildWorkflowConfig {
 	logger: EvalLogger;
 	/** Optional " [lane N/M]" suffix appended to the build log line. */
 	laneTag?: string;
+	/** Let callers that own their own scoring avoid duplicate binary checks. */
+	skipWorkflowChecks?: boolean;
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -311,6 +315,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		logger.info(
 			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
+
+		await client.ensureThread(threadId);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
@@ -423,6 +429,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdWorkflowIds: [],
 				createdDataTableIds: outcome.dataTablesCreated,
 				conversationMetrics,
+				events,
 				threadId,
 				proxyDecisionStats,
 				transcript,
@@ -435,12 +442,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
 		);
 
-		const workflowChecks = await runWorkflowChecks({
-			workflow: outcome.workflowJsons[0],
-			prompt: userTurnsAsText(transcript),
-			agentText: outcome.finalText,
-			logger,
-		});
+		const workflowChecks = config.skipWorkflowChecks
+			? undefined
+			: await runWorkflowChecks({
+					workflow: outcome.workflowJsons[0],
+					prompt: userTurnsAsText(transcript),
+					agentText: outcome.finalText,
+					logger,
+				});
 
 		return {
 			success: true,
@@ -449,6 +458,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: outcome.dataTablesCreated,
 			conversationMetrics,
+			events,
 			threadId,
 			proxyDecisionStats,
 			transcript,
@@ -465,6 +475,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdWorkflowIds: [],
 			createdDataTableIds: [],
 			conversationMetrics,
+			events,
 			threadId,
 		};
 	}

@@ -1,19 +1,18 @@
+import type { Mock } from 'vitest';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { PlanValidationError } from '../../../planned-tasks/planned-task-service';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, PlannedTaskService, TaskStorage } from '../../../types';
-
-const { createPlanTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../plan.tool') as typeof import('../plan.tool');
+import { createPlanTool } from '../plan.tool';
 
 function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): PlannedTaskService {
 	return {
-		createPlan: jest.fn().mockResolvedValue(undefined),
-		getGraph: jest.fn().mockResolvedValue(null),
-		approvePlan: jest.fn().mockResolvedValue(undefined),
-		denyPlan: jest.fn().mockResolvedValue(undefined),
-		clear: jest.fn().mockResolvedValue(undefined),
+		createPlan: vi.fn().mockResolvedValue(undefined),
+		getGraph: vi.fn().mockResolvedValue(null),
+		approvePlan: vi.fn().mockResolvedValue(undefined),
+		denyPlan: vi.fn().mockResolvedValue(undefined),
+		clear: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as PlannedTaskService;
 }
@@ -27,22 +26,22 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		modelId: 'test-model' as OrchestrationContext['modelId'],
 		subAgentMaxSteps: 5,
 		eventBus: {
-			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
+			publish: vi.fn(),
+			subscribe: vi.fn(),
+			getEventsAfter: vi.fn(),
+			getNextEventId: vi.fn(),
+			getEventsForRun: vi.fn().mockReturnValue([]),
+			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
-		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
-			get: jest.fn(),
-			save: jest.fn(),
+			get: vi.fn(),
+			save: vi.fn(),
 		} as TaskStorage,
 		plannedTaskService: makePlannedTaskService(),
-		schedulePlannedTasks: jest.fn().mockResolvedValue(undefined),
+		schedulePlannedTasks: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	};
 }
@@ -93,7 +92,7 @@ describe('createPlanTool — replan-only guard', () => {
 			currentUserMessage: 'Create a data table for users',
 		});
 		const tool = createPlanTool(context);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 
 		const out = await executeTool(
 			tool,
@@ -107,7 +106,9 @@ describe('createPlanTool — replan-only guard', () => {
 
 		// Reaches native suspend path.
 		expect(out).toBeUndefined();
-		const warnMock = context.logger.warn as jest.Mock<void, [string, Record<string, unknown>?]>;
+		const warnMock = context.logger.warn as Mock<
+			(...args: [string, Record<string, unknown>?]) => void
+		>;
 		const bypassCall = warnMock.mock.calls.find(
 			(call) => call[0] === 'create-tasks bypassing planner with skipPlannerDiscovery=true',
 		);
@@ -131,7 +132,7 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({
 			currentUserMessage: 'revise the plan',
 			plannedTaskService: makePlannedTaskService({
-				getGraph: jest.fn().mockResolvedValue({
+				getGraph: vi.fn().mockResolvedValue({
 					threadId: 'test-thread',
 					status: 'active',
 					tasks: [],
@@ -139,7 +140,7 @@ describe('createPlanTool — replan-only guard', () => {
 			}),
 		});
 		const tool = createPlanTool(context);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 
 		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
@@ -154,7 +155,7 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({
 			currentUserMessage: 'Build me a new, unrelated workflow',
 			plannedTaskService: makePlannedTaskService({
-				getGraph: jest.fn().mockResolvedValue({
+				getGraph: vi.fn().mockResolvedValue({
 					threadId: 'test-thread',
 					status: 'completed',
 					tasks: [],
@@ -163,7 +164,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context);
 
-		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: vi.fn() });
 
 		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -175,7 +176,7 @@ describe('createPlanTool — replan-only guard', () => {
 			isReplanFollowUp: true,
 		});
 		const tool = createPlanTool(context);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 
 		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
@@ -203,7 +204,7 @@ describe('createPlanTool — replan-only guard', () => {
 		process.env.N8N_INSTANCE_AI_ENFORCE_CREATE_TASKS_REPLAN = 'false';
 		const context = createMockContext({ currentUserMessage: 'ordinary initial request' });
 		const tool = createPlanTool(context);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 
 		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
@@ -244,8 +245,8 @@ describe('createPlanTool — replan-only guard', () => {
 		const context = createMockContext({
 			currentUserMessage: 'ordinary message',
 			taskStorage: {
-				get: jest.fn(),
-				save: jest.fn().mockRejectedValue(new Error('storage flake')),
+				get: vi.fn(),
+				save: vi.fn().mockRejectedValue(new Error('storage flake')),
 			} as TaskStorage,
 		});
 		const tool = createPlanTool(context);
@@ -322,7 +323,7 @@ describe('createPlanTool — replan-only guard', () => {
 			currentUserMessage: 'revise the plan',
 			runId: 'run-1',
 			plannedTaskService: makePlannedTaskService({
-				getGraph: jest.fn().mockResolvedValue({
+				getGraph: vi.fn().mockResolvedValue({
 					threadId: 'test-thread',
 					status: 'awaiting_approval',
 					planRunId: 'run-1',
@@ -331,7 +332,7 @@ describe('createPlanTool — replan-only guard', () => {
 			}),
 		});
 		const tool = createPlanTool(context);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 
 		const out = await executeTool(tool, { tasks: validTasks() }, { suspend });
 
@@ -344,7 +345,7 @@ describe('createPlanTool — replan-only guard', () => {
 			currentUserMessage: 'try again',
 			messageGroupId: 'mg-1',
 			plannedTaskService: makePlannedTaskService({
-				getGraph: jest.fn().mockResolvedValue({
+				getGraph: vi.fn().mockResolvedValue({
 					threadId: 'test-thread',
 					status: 'cancelled',
 					planRunId: 'run-prev',
@@ -355,7 +356,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context);
 
-		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: vi.fn() });
 
 		expect(out.taskCount).toBe(0);
 		expect(out.result).toMatch(/denied a plan earlier in this turn/i);
@@ -367,7 +368,7 @@ describe('createPlanTool — replan-only guard', () => {
 			currentUserMessage: 'new user message',
 			messageGroupId: 'mg-2',
 			plannedTaskService: makePlannedTaskService({
-				getGraph: jest.fn().mockResolvedValue({
+				getGraph: vi.fn().mockResolvedValue({
 					threadId: 'test-thread',
 					status: 'cancelled',
 					planRunId: 'run-prev',
@@ -378,7 +379,7 @@ describe('createPlanTool — replan-only guard', () => {
 			isReplanFollowUp: true,
 		});
 		const tool = createPlanTool(context);
-		const suspend = jest.fn().mockResolvedValue(undefined);
+		const suspend = vi.fn().mockResolvedValue(undefined);
 
 		await executeTool(tool, { tasks: validTasks() }, { suspend });
 
@@ -393,7 +394,7 @@ describe('createPlanTool — replan-only guard', () => {
 			currentUserMessage: 'unrelated new request',
 			runId: 'run-2',
 			plannedTaskService: makePlannedTaskService({
-				getGraph: jest.fn().mockResolvedValue({
+				getGraph: vi.fn().mockResolvedValue({
 					threadId: 'test-thread',
 					status: 'awaiting_approval',
 					planRunId: 'run-1',
@@ -403,7 +404,7 @@ describe('createPlanTool — replan-only guard', () => {
 		});
 		const tool = createPlanTool(context);
 
-		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: jest.fn() });
+		const out = await executeTool(tool, { tasks: validTasks() }, { suspend: vi.fn() });
 
 		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
 		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
@@ -418,11 +419,11 @@ describe('createPlanTool — createPlan validation failures', () => {
 		const context = createMockContext({
 			currentUserMessage: 'replan after failure',
 			plannedTaskService: makePlannedTaskService({
-				createPlan: jest.fn().mockRejectedValue(validatorError),
+				createPlan: vi.fn().mockRejectedValue(validatorError),
 			}),
 		});
 		const tool = createPlanTool(context);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 
 		const out = await executeTool(
 			tool,
@@ -449,7 +450,7 @@ describe('createPlanTool — createPlan validation failures', () => {
 		const context = createMockContext({
 			currentUserMessage: 'replan',
 			plannedTaskService: makePlannedTaskService({
-				createPlan: jest.fn().mockRejectedValue(storageError),
+				createPlan: vi.fn().mockRejectedValue(storageError),
 			}),
 		});
 		const tool = createPlanTool(context);
@@ -459,7 +460,7 @@ describe('createPlanTool — createPlan validation failures', () => {
 				tool,
 				{ tasks: validTasks(), skipPlannerDiscovery: true, reason: 'bypass' },
 				{
-					suspend: jest.fn(),
+					suspend: vi.fn(),
 				},
 			),
 		).rejects.toBe(storageError);

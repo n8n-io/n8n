@@ -37,7 +37,7 @@ export class ApiKeysController {
 	/**
 	 * Create an API Key
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
 	async createApiKey(
 		req: AuthenticatedRequest,
@@ -61,24 +61,27 @@ export class ApiKeysController {
 	}
 
 	/**
-	 * Get API keys
+	 * Get API keys. The service returns every key on the instance for callers
+	 * with `apiKey:manage` (owners and admins) and the caller's own keys for
+	 * everyone else.
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: PaginationDto) {
-		return await this.publicApiKeyService.getRedactedApiKeysForUser(req.user, {
+		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
 			take: query.take,
 			skip: query.skip,
 		});
 	}
 
 	/**
-	 * Delete an API Key
+	 * Delete an API Key. Callers can always delete their own keys; admins
+	 * (holders of `apiKey:manage`) can also revoke other users' keys.
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKeyForUser(req.user, apiKeyId);
+		await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
@@ -86,9 +89,10 @@ export class ApiKeysController {
 	}
 
 	/**
-	 * Patch an API Key
+	 * Patch an API Key. Owner-only — admins cannot edit another user's
+	 * label or scopes.
 	 */
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async updateApiKey(
 		req: AuthenticatedRequest,
@@ -105,7 +109,7 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
-	@GlobalScope('apiKey:manage')
+	@GlobalScope('apiKey:list')
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
