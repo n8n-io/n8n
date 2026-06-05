@@ -1,0 +1,22 @@
+packages/@n8n/agents/src/workspace/sandbox/base-sandbox.ts
+  s_34c21ad3772d0b::t_14ef6718434cfc 110-114
+packages/@n8n/instance-ai/src/workspace/daytona-sandbox.ts
+  s_34c21ad3772d0b::t_a9cc610ce54787 111
+  s_34c21ad3772d0b::t_fdda9139416cc4 334,339-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df53cc5d87f040826e6fd0e1224193525368c04e",
+  "prompts": {},
+  "sessions": {
+    "s_34c21ad3772d0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7973ca20-f411-407e-87ab-44db53deb1c6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
