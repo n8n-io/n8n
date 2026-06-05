@@ -197,7 +197,7 @@ export function useChatState(
 			}
 
 			// Clear any existing execution to allow fresh webhook registration
-			workflowExecutionState.value.setActiveExecution(null);
+			workflowExecutionState.value.setWorkflowExecutionData(null);
 			workflowExecutionState.value.setActiveExecutionId(undefined);
 
 			// Use the useRunWorkflow composable to properly register the webhook
@@ -329,7 +329,7 @@ export function useChatState(
 	);
 
 	function refreshSession() {
-		workflowExecutionState.value.setActiveExecution(null);
+		workflowExecutionState.value.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();

@@ -107,13 +107,14 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	function resetExecutionData() {
 		state.value = undefined;
-		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setWorkflowExecutionData(
+			null,
 		);
-		workflowExecutionStateStore.setActiveExecution(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowExecutionStateStore.setChatPartialExecutionDestinationNode(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 

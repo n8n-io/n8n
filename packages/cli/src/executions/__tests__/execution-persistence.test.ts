@@ -3,6 +3,7 @@
 
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
+	ExecutionData,
 	ExecutionEntity,
 	type CreateExecutionPayload,
 	type EntityManager,
@@ -15,8 +16,10 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import type { EventService } from '@/events/event.service';
 import type { DbStore } from '@/executions/execution-data/db-store';
 import type { FsStore } from '@/executions/execution-data/fs-store';
+import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -26,6 +29,7 @@ describe('ExecutionPersistence', () => {
 	const fsStore = mock<FsStore>();
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
+	const eventService = mock<EventService>();
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -72,6 +76,7 @@ describe('ExecutionPersistence', () => {
 			executionsConfig,
 			mock<DatabaseConfig>({ type: dbType }),
 			errorReporter,
+			eventService,
 		);
 
 	describe('create', () => {
@@ -407,10 +412,9 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('data updates on db-mode executions', () => {
-			it('should update entity in a transaction and write a fresh bundle via dbStore', async () => {
-				const executionPersistence = createPersistenceService('fs'); // current mode is irrelevant for routing
+			it('should update data and workflowData directly without reading the existing bundle first', async () => {
+				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
-				dbStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -433,9 +437,10 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
-				expect(dbStore.write).toHaveBeenCalledWith(
-					{ workflowId, executionId },
-					expect.objectContaining({
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionData,
+					{ executionId },
+					{
 						data: expect.any(String) as string,
 						workflowData: {
 							id: workflowData.id,
@@ -444,11 +449,33 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'v-original',
-					}),
-					mockTx,
+					},
 				);
+				expect(dbStore.read).not.toHaveBeenCalled();
+				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should throw MissingExecutionDataError when the data row no longer exists during a full overwrite', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+
+				const mockTx = createMockTransaction();
+				mockTx.update
+					.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} })
+					.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await expect(
+					executionPersistence.updateExistingExecution(executionId, {
+						data: runData,
+						workflowData,
+						status: 'success',
+					}),
+				).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+				expect(dbStore.read).not.toHaveBeenCalled();
+				expect(dbStore.write).not.toHaveBeenCalled();
 			});
 
 			it('should preserve fields not supplied in a partial payload', async () => {
@@ -645,7 +672,7 @@ describe('ExecutionPersistence', () => {
 				mockEntity('fs');
 
 				const mockTx = createMockTransaction();
-				mockTx.count.mockResolvedValue(0);
+				mockTx.findOne.mockResolvedValue(null);
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				const result = await executionPersistence.updateExistingExecution(
@@ -655,12 +682,52 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(result).toBe(false);
-				expect(mockTx.count).toHaveBeenCalledWith(ExecutionEntity, {
-					where: { id: executionId, finished: false },
-				});
 				expect(mockTx.update).not.toHaveBeenCalled();
 				expect(fsStore.read).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should take a pessimistic row lock to re-verify conditions on the data-only path (postgres)', async () => {
+				const executionPersistence = createPersistenceService('fs', 'postgresdb');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue({ id: executionId });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+					select: ['id'],
+					lock: { mode: 'pessimistic_write' },
+				});
+			});
+
+			it('should not take a lock on the data-only path under sqlite', async () => {
+				const executionPersistence = createPersistenceService('fs', 'sqlite');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				mockTx.findOne.mockResolvedValue({ id: executionId });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(
+					executionId,
+					{ data: runData },
+					{ requireNotFinished: true },
+				);
+
+				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
+					where: { id: executionId, finished: false },
+					select: ['id'],
+				});
 			});
 
 			it('should perform the fs write on a data-only update when conditions match', async () => {
@@ -669,7 +736,7 @@ describe('ExecutionPersistence', () => {
 				fsStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
-				mockTx.count.mockResolvedValue(1);
+				mockTx.findOne.mockResolvedValue({ id: executionId });
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				const result = await executionPersistence.updateExistingExecution(
@@ -679,7 +746,7 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(result).toBe(true);
-				expect(mockTx.count).toHaveBeenCalled();
+				expect(mockTx.findOne).toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
 			});
 
@@ -1083,7 +1150,8 @@ describe('ExecutionPersistence', () => {
 
 			const result = await executionPersistence.findMultipleExecutions({}, { includeData: true });
 
-			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([dbB, fsC]);
+			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([dbB]);
+			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([fsC]);
 			expect(result.map((e) => e.id)).toEqual(['a']);
 		});
 
@@ -1291,6 +1359,279 @@ describe('ExecutionPersistence', () => {
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 			expect(executionRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('execution data metrics events', () => {
+		const createPayload: CreateExecutionPayload = {
+			data: runData,
+			workflowData,
+			mode: 'manual',
+			finished: false,
+			status: 'new',
+			workflowId: 'workflow-123',
+		};
+
+		const readBundle = {
+			data: '[{"resultData":"1"},{}]',
+			workflowData: { id: 'wf-1', name: 's', nodes: [], connections: {}, settings: undefined },
+			workflowVersionId: 'v-1',
+			version: 1 as const,
+		};
+
+		const entity = (storedAt: 'db' | 'fs', id = 'exec-1') =>
+			({
+				id,
+				workflowId: 'wf-1',
+				storedAt,
+				metadata: [],
+				annotation: undefined,
+				status: 'success',
+			}) as unknown as ExecutionEntity;
+
+		it('emits a successful write event on create', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.manager.transaction = createMockTx(createMockTransaction());
+
+			await executionPersistence.create(createPayload);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-write',
+				expect.objectContaining({ mode: 'db', success: true, durationMs: expect.any(Number) }),
+			);
+		});
+
+		it('emits a failed write event when the store write throws', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.manager.transaction = createMockTx(createMockTransaction());
+			dbStore.write.mockRejectedValueOnce(new Error('disk full'));
+
+			await expect(executionPersistence.create(createPayload)).rejects.toThrow('disk full');
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-write',
+				expect.objectContaining({ mode: 'db', success: false }),
+			);
+		});
+
+		it('emits a successful read event when a single bundle is found', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			dbStore.read.mockResolvedValue(readBundle);
+
+			await executionPersistence.findSingleExecution('exec-1', { includeData: true });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: true, unreadableBundles: 0 }),
+			);
+		});
+
+		it('emits a failed read with one unreadable bundle when a single bundle is missing', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			dbStore.read.mockResolvedValue(null);
+
+			await executionPersistence.findSingleExecution('exec-1', { includeData: true });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
+			);
+		});
+
+		it('emits a read failure and no write when the read-merge bundle is missing', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			executionRepository.manager.transaction = createMockTx(createMockTransaction());
+			dbStore.read.mockResolvedValue(null);
+
+			await expect(
+				executionPersistence.updateExistingExecution('exec-1', { data: runData }),
+			).rejects.toBeInstanceOf(MissingExecutionDataError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
+			);
+			expect(eventService.emit).not.toHaveBeenCalledWith('execution-data-write', expect.anything());
+		});
+
+		it('counts dropped bundles from a partial batch read as unreadable', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.find.mockResolvedValue([entity('db', 'exec-1'), entity('db', 'exec-2')]);
+			dbStore.readMany.mockResolvedValue(new Map([['exec-1', readBundle]]));
+
+			await executionPersistence.findMultipleExecutions({}, { includeData: true });
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: true, unreadableBundles: 1 }),
+			);
+		});
+
+		it('emits a failed read with zero unreadable bundles when the store read throws', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			dbStore.read.mockRejectedValueOnce(new Error('db connection lost'));
+
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', { includeData: true }),
+			).rejects.toThrow('db connection lost');
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 0 }),
+			);
+		});
+
+		it('emits a failed read with one unreadable bundle when a fetched bundle fails to deserialize', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			dbStore.read.mockResolvedValue({ ...readBundle, data: 'not-valid-flatted' });
+
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', {
+					includeData: true,
+					unflattenData: true,
+				}),
+			).rejects.toBeInstanceOf(CorruptedExecutionDataError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
+			);
+		});
+
+		it('emits a failed read with one unreadable bundle when the store read reports corruption', async () => {
+			const executionPersistence = createPersistenceService('fs');
+			executionRepository.findOne.mockResolvedValue(entity('fs'));
+			fsStore.read.mockRejectedValueOnce(
+				new CorruptedExecutionDataError(
+					{ workflowId: 'wf-1', executionId: 'exec-1' },
+					new Error('x'),
+				),
+			);
+
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', { includeData: true }),
+			).rejects.toBeInstanceOf(CorruptedExecutionDataError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'fs', success: false, unreadableBundles: 1 }),
+			);
+		});
+
+		it('emits a read failure with one unreadable bundle when the read-merge read reports corruption', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			executionRepository.manager.transaction = createMockTx(createMockTransaction());
+			dbStore.read.mockRejectedValueOnce(
+				new CorruptedExecutionDataError(
+					{ workflowId: 'wf-1', executionId: 'exec-1' },
+					new Error('x'),
+				),
+			);
+
+			await expect(
+				executionPersistence.updateExistingExecution('exec-1', { data: runData }),
+			).rejects.toBeInstanceOf(CorruptedExecutionDataError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
+			);
+		});
+
+		it('counts a corrupt bundle in a batch as unreadable, reports it, and returns the rest', async () => {
+			const executionPersistence = createPersistenceService('db');
+			const good = entity('db', 'exec-1');
+			const corrupt = entity('db', 'exec-2');
+			executionRepository.find.mockResolvedValue([good, corrupt]);
+			dbStore.readMany.mockResolvedValue(
+				new Map([
+					['exec-1', readBundle],
+					['exec-2', { ...readBundle, data: 'not-valid-flatted' }],
+				]),
+			);
+
+			const result = await executionPersistence.findMultipleExecutions(
+				{},
+				{ includeData: true, unflattenData: true },
+			);
+
+			expect(result.map((e) => e.id)).toEqual(['exec-1']);
+			expect(executionRepository.reportInvalidExecutions).toHaveBeenCalledWith([corrupt]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: true, unreadableBundles: 1 }),
+			);
+		});
+
+		it('fails the batch when an assembly error is not a corrupt bundle', async () => {
+			const executionPersistence = createPersistenceService('db');
+			// `metadata: undefined` makes assembly throw a plain `TypeError`, not a corruption error.
+			const broken = {
+				id: 'exec-1',
+				workflowId: 'wf-1',
+				storedAt: 'db',
+				metadata: undefined,
+				annotation: undefined,
+				status: 'success',
+			} as unknown as ExecutionEntity;
+			executionRepository.find.mockResolvedValue([broken]);
+			dbStore.readMany.mockResolvedValue(new Map([['exec-1', readBundle]]));
+
+			await expect(
+				executionPersistence.findMultipleExecutions({}, { includeData: true }),
+			).rejects.toThrow();
+
+			expect(executionRepository.reportInvalidExecutions).not.toHaveBeenCalled();
+		});
+
+		it('treats an unsupported execution-data version as a corrupt bundle', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(entity('db'));
+			// Parses fine, but carries a version the migration step does not support.
+			dbStore.read.mockResolvedValue({ ...readBundle, data: '[{"version":99}]' });
+
+			await expect(
+				executionPersistence.findSingleExecution('exec-1', {
+					includeData: true,
+					unflattenData: true,
+				}),
+			).rejects.toBeInstanceOf(CorruptedExecutionDataError);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
+			);
+		});
+
+		it('keeps the missing-bundle count when an unexpected error fails the batch', async () => {
+			const executionPersistence = createPersistenceService('db');
+			const missing = entity('db', 'exec-1');
+			// `metadata: undefined` makes assembly throw a plain `TypeError`, not a corruption error.
+			const broken = {
+				id: 'exec-2',
+				workflowId: 'wf-1',
+				storedAt: 'db',
+				metadata: undefined,
+				annotation: undefined,
+				status: 'success',
+			} as unknown as ExecutionEntity;
+			executionRepository.find.mockResolvedValue([missing, broken]);
+			dbStore.readMany.mockResolvedValue(new Map([['exec-2', readBundle]]));
+
+			await expect(
+				executionPersistence.findMultipleExecutions({}, { includeData: true }),
+			).rejects.toThrow();
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-read',
+				expect.objectContaining({ mode: 'db', success: false, unreadableBundles: 1 }),
+			);
 		});
 	});
 });

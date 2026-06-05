@@ -51,9 +51,6 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
-const workflowExecutionStateStore = computed(() =>
-	useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-);
 const workflowHelpers = useWorkflowHelpers();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -224,12 +221,16 @@ onMounted(async () => {
 	// hook already restored the previous execution data — installing the synth
 	// payload now would clobber the real workflow's state.
 	if (unmounted) return;
-	workflowExecutionStateStore.value.setActiveExecution(synthExecution.value);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setWorkflowExecutionData(synthExecution.value);
 });
 
 onBeforeUnmount(() => {
 	unmounted = true;
-	workflowExecutionStateStore.value.setActiveExecution(previousWorkflowExecutionData);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>
 

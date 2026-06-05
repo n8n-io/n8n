@@ -1,18 +1,17 @@
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import type { PushHandlerOptions } from './types';
 
 /**
  * Handles the 'testWebhookReceived' push message, which is sent when a test webhook is received.
  */
-export async function testWebhookReceived({ data }: TestWebhookReceived) {
-	const workflowsStore = useWorkflowsStore();
+export async function testWebhookReceived(
+	{ data }: TestWebhookReceived,
+	{ documentId }: PushHandlerOptions,
+) {
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
-	if (data.workflowId === workflowsStore.workflowId) {
-		const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
+	if (data.workflowId === workflowExecutionStateStore.workflowId) {
 		workflowExecutionStateStore.setExecutionWaitingForWebhook(false);
 		workflowExecutionStateStore.setActiveExecutionId(data.executionId ?? null);
 	}

@@ -79,9 +79,11 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	}
 
 	if (runData) {
+		// The component reads run data via `workflowsStore.getWorkflowExecution`, which
+		// resolves through the execution-state store keyed by `workflowsStore.workflowId`.
 		useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setActiveExecution({
+		).setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',

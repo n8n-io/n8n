@@ -13,8 +13,6 @@ import { nextTick, shallowRef } from 'vue';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -134,10 +132,7 @@ describe('FromAiParametersModal', () => {
 				},
 			},
 		});
-		const workflowsStore = useWorkflowsStore();
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setActiveExecution(mockExecutionResponse);
+		useWorkflowsStore().setWorkflowExecutionData(mockExecutionResponse);
 
 		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {

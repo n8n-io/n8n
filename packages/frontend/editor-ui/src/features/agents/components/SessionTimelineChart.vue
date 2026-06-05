@@ -6,8 +6,13 @@ import { N8nHoverCard } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
-import { chartBlockStyle } from '../session-timeline.styles';
+import {
+	builtinToolLabelKey,
+	formatDuration,
+	isSubAgentTimelineItem,
+	itemFilterKey,
+} from '../session-timeline.utils';
+import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
@@ -69,7 +74,7 @@ function cellStyle(seg: Segment): Record<string, string> {
 }
 
 function eventStyle(item: TimelineItem): CSSProperties {
-	const style: CSSProperties = chartBlockStyle(item.kind);
+	const style: CSSProperties = chartBlockStyleForItem(item);
 	if (isDimmed(item)) {
 		style.opacity = '0.15';
 		style.pointerEvents = 'none';
@@ -77,7 +82,12 @@ function eventStyle(item: TimelineItem): CSSProperties {
 	return style;
 }
 
+function popoverPillKind(item: TimelineItem) {
+	return isSubAgentTimelineItem(item) ? 'subagent' : item.kind;
+}
+
 function popoverLabel(item: TimelineItem): string {
+	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
@@ -97,6 +107,9 @@ function popoverLabel(item: TimelineItem): string {
 }
 
 function popoverName(item: TimelineItem): string {
+	if (isSubAgentTimelineItem(item)) {
+		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
+	}
 	switch (item.kind) {
 		case 'user':
 		case 'agent':
@@ -250,7 +263,7 @@ onBeforeUnmount(clearShowPopoverTimer);
 				</div>
 				<div v-else-if="activePopover" :class="$style.popoverInner">
 					<SessionTimelinePill
-						:kind="activePopover.segment.item.kind"
+						:kind="popoverPillKind(activePopover.segment.item)"
 						:label="popoverLabel(activePopover.segment.item)"
 						show-label
 					/>

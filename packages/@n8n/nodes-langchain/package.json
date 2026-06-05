@@ -29,6 +29,7 @@
     "typecheck": "tsc --noEmit",
     "copy-nodes-json": "node ../../nodes-base/scripts/copy-nodes-json.js .",
     "build": "tsc --build tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata && pnpm n8n-generate-node-defs",
+    "build:unchecked": "tsc --build tsconfig.build.json --noCheck && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata && pnpm n8n-generate-node-defs",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint nodes credentials utils --quiet",
@@ -225,7 +226,9 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "3.938.0",
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@aws-sdk/credential-providers": "3.808.0",
     "@azure/identity": "catalog:",
     "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.6",
@@ -273,6 +276,7 @@
     "@oracle/langchain-oracledb": "0.2.0",
     "@pinecone-database/pinecone": "^5.0.2",
     "@qdrant/js-client-rest": "^1.16.2",
+    "@smithy/node-http-handler": "4.5.0",
     "@supabase/supabase-js": "catalog:",
     "@xata.io/client": "0.28.4",
     "@zilliz/milvus2-sdk-node": "^2.5.7",

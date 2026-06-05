@@ -99,7 +99,7 @@ export const useExecutionDebugging = () => {
 
 		// Set execution data
 		workflowDocumentStore.value.resetAllNodesIssues();
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setActiveExecution(
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setWorkflowExecutionData(
 			execution,
 		);
 

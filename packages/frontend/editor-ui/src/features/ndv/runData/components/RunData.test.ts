@@ -34,7 +34,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
@@ -1459,9 +1458,7 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setActiveExecution(
+		workflowsStore.setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({
 				mode: 'trigger',
 				status: executionStatus ?? 'success',

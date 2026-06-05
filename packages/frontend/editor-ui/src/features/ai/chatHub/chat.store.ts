@@ -568,9 +568,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setActiveExecution({
+		workflowsStore.setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',

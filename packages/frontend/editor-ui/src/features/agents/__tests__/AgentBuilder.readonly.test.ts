@@ -2,10 +2,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 	i18n: { baseText: (key: string) => key },
+}));
+
+vi.mock('../composables/useProjectAgentsList', () => ({
+	useProjectAgentsList: () => ({
+		list: { value: [] },
+		ensureLoaded: vi.fn().mockResolvedValue([]),
+	}),
 }));
 
 // First mount of these SFCs eats the Vite transform cost; give them headroom.
@@ -36,11 +44,20 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				executionsDescription: '',
 			},
 			global: {
+				plugins: [createTestingPinia({ createSpy: vi.fn })],
 				stubs: {
 					N8nCard: { template: '<div><slot /></div>' },
 					N8nHeading: { template: '<div><slot /></div>' },
+					N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+					N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+					N8nIconButton: { template: '<button />' },
+					N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
 					N8nRadioButtons: { template: '<div />' },
+					N8nScrollArea: { template: '<div><slot /></div>' },
+					N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled'] },
+					N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 					N8nText: { template: '<span><slot /></span>' },
+					N8nTooltip: { template: '<div><slot /></div>' },
 					AgentIdentityHeader: {
 						name: 'AgentIdentityHeader',
 						template: '<div data-testid="stub-identity" />',
@@ -127,6 +144,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				executionsDescription: '',
 			},
 			global: {
+				plugins: [createTestingPinia({ createSpy: vi.fn })],
 				stubs: {
 					N8nCard: { template: '<div><slot /></div>' },
 					N8nHeading: { template: '<div><slot /></div>' },

@@ -19,18 +19,16 @@ import { buildExecutionResponseFromSchema } from '@/features/execution/execution
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 interface PostMessageHandlerDeps {
-	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
@@ -103,9 +101,9 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			const documentId = currentWorkflowDocumentStore.value?.documentId;
-			if (documentId) {
-				useWorkflowExecutionStateStore(documentId).setActiveExecutionId(null);
+			const workflowDocumentStore = currentWorkflowDocumentStore.value;
+			if (workflowDocumentStore) {
+				useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setActiveExecutionId(null);
 			}
 		}
 
@@ -202,11 +200,13 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 
 		await importWorkflowExact(json);
 
-		const documentId = currentWorkflowDocumentStore.value?.documentId;
-		if (documentId) {
-			useWorkflowExecutionStateStore(documentId).setActiveExecution(data);
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+		if (workflowDocumentStore) {
+			useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setWorkflowExecutionData(
+				data,
+			);
+			workflowDocumentStore.setPinData({});
 		}
-		currentWorkflowDocumentStore.value?.setPinData({});
 
 		canvasStore.stopLoading();
 

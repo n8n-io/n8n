@@ -632,7 +632,7 @@ const tags = computed(
 					>
 						<span :class="$style.dynamicBadgeText">
 							<N8nIcon icon="key-round" size="medium" />
-							{{ locale.baseText('credentials.dynamic.badge') }}
+							{{ locale.baseText('credentials.private.badge') }}
 						</span>
 					</N8nBadge>
 				</N8nTooltip>

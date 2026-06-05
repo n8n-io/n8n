@@ -64,9 +64,7 @@ const renderNodeSettings = (runData?: IRunData) => {
 	ndvStore.activeNodeName = httpNode.name;
 
 	if (runData) {
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setActiveExecution({
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
 			id: 'exec-1',
 			workflowData: {
 				...workflow,

@@ -8,7 +8,22 @@ export const packageCredentialRequirementSchema = z.object({
 });
 
 export const packageRequirementsSchema = z.object({
-	credentials: z.array(packageCredentialRequirementSchema).optional(),
+	credentials: z
+		.array(packageCredentialRequirementSchema)
+		.optional()
+		.superRefine((credentials, ctx) => {
+			if (!credentials) return;
+			const seen = new Set<string>();
+			for (const credential of credentials) {
+				if (seen.has(credential.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate credential id: ${credential.id}`,
+					});
+				}
+				seen.add(credential.id);
+			}
+		}),
 });
 
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
