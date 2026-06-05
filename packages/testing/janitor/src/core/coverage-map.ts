@@ -219,15 +219,20 @@ function buildImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
 export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
 	const index = new Map<string, number>();
 	const specs: string[] = [];
-	const idOf = (s: string): number => {
+	const internSpec = (s: string): number => {
 		let i = index.get(s);
 		if (i === undefined) index.set(s, (i = specs.push(s) - 1));
 		return i;
 	};
 	// Pass 1: intern every spec so the bitmask width (specs.length) is known
 	// before any entry is encoded.
-	for (const file of Object.keys(map))
-		for (const line of Object.keys(map[file])) for (const s of map[file][line]) idOf(s);
+	for (const file of Object.keys(map)) {
+		for (const line of Object.keys(map[file])) {
+			for (const s of map[file][line]) {
+				internSpec(s);
+			}
+		}
+	}
 	// Pass 2: store each entry as the cheaper of an index list or a bitmask.
 	const files: InternedImpactMap['files'] = {};
 	for (const file of Object.keys(map)) {

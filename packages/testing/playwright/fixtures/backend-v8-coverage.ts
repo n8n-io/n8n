@@ -36,6 +36,15 @@ export const backendV8CoverageFixtures: Fixtures<
 	BackendCoverageTestFixtures,
 	BackendCoverageWorkerFixtures
 > = {
+	// Playwright fixture contract: the async function receives `use`, runs setup,
+	// calls `await use(value)` to hand the value to the test (and pause until the
+	// test finishes), then runs teardown. The fixture's value is the `undefined`
+	// passed to `use` — the test never reads `backendCoverage`; this is purely a
+	// side-effecting auto fixture that brackets a coverage window around the test.
+	// All three `use(undefined)` call sites mark "hand control to the test now":
+	//   - early returns when coverage is off (no setup, no teardown);
+	//   - the main path between `/coverage/start` (setup) and `/coverage/take`
+	//     (teardown that writes the raw V8 file).
 	backendCoverage: [
 		async ({ n8nUrl, mainUrls }, use, testInfo) => {
 			// Target the main directly via n8nUrl (always set for a container run);
@@ -59,6 +68,7 @@ export const backendV8CoverageFixtures: Fixtures<
 				// Hook unreachable — fall through; teardown take will no-op.
 			}
 
+			// Run the test inside the start→take coverage window.
 			await use(undefined);
 
 			try {
