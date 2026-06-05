@@ -22,10 +22,27 @@ import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 
 const SANDBOX_STATE_STARTED = 'started';
+const SANDBOX_STATE_STOPPED = 'stopped';
+const SANDBOX_STATE_ARCHIVED = 'archived';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
 const SANDBOX_STATE_ERROR = 'error';
 const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
+
+/**
+ * States a failed operation may recover from by resuming the sandbox: an idle sandbox that
+ * Daytona auto-stopped, or one that was auto-archived. `start()` brings both back to
+ * 'started'. Deliberately narrow — it excludes:
+ *  - transient states (creating/starting/stopping/resizing/pending_build): a reset+restart
+ *    would race the in-flight transition;
+ *  - failed states (error/build_failed): those can be silently deleted and recreated, which
+ *    we don't want to trigger off an unrelated operation failure.
+ * Deletion is handled separately as a `DaytonaNotFoundError` fast-path.
+ */
+const RECOVERABLE_SANDBOX_STATES: ReadonlySet<string> = new Set([
+	SANDBOX_STATE_STOPPED,
+	SANDBOX_STATE_ARCHIVED,
+]);
 
 export interface DaytonaSandboxOptions {
 	id?: string;
@@ -302,8 +319,10 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * isn't a reliable signal: a stopped container returns a 400 from the toolbox, a deleted
 	 * one is 404, auth is 401/403, and transport/proxy conditions vary. Instead we consult
 	 * the authoritative state via the management API — which responds even when the container
-	 * is stopped — and recover only when the sandbox is genuinely gone or not `started`.
-	 * Otherwise we propagate the original error so real failures aren't masked.
+	 * is stopped — and recover only when the sandbox is gone, or in an explicitly recoverable
+	 * state ({@link RECOVERABLE_SANDBOX_STATES}: stopped/archived). Any other state (running,
+	 * a transient transition, or a failed build) propagates the original error so we neither
+	 * mask real failures nor recreate a sandbox off an unrelated error.
 	 *
 	 * A genuine auth failure is handled implicitly: the probe's own `get()` fails too (it
 	 * uses the same credentials), so we fall through to `false` and never recreate.
@@ -313,7 +332,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		try {
 			const client = await this.auth.getClient();
 			const remote = await client.get(this.sandboxName);
-			return Boolean(remote.state) && remote.state !== SANDBOX_STATE_STARTED;
+			return remote.state !== undefined && RECOVERABLE_SANDBOX_STATES.has(remote.state);
 		} catch (probeError) {
 			// Gone entirely → recreate; anything else (incl. auth) → don't mask the original.
 			return isSandboxGone(probeError);

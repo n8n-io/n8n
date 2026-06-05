@@ -515,6 +515,20 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
 	});
 
+	it('executeCommand() does not recover from a failed (error) state', async () => {
+		// A non-running but non-recoverable state (error/build_failed/transient) must not
+		// trigger a resume/recreate — only stopped/archived/gone are recoverable.
+		const failing = makeMockSandbox('sb-stale', 'started');
+		failing.process.executeCommand = vi.fn().mockRejectedValue(new Error('boom'));
+		const probeError = makeMockSandbox('sb-probe', 'error');
+		queuedGetResults.push(failing, probeError);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/boom/i);
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
 	it('executeCommand() retries recovery at most once', async () => {
 		const sandbox = await startAndStageRemoteGone();
 
