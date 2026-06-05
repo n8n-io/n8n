@@ -343,10 +343,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentExecutionStateStore.value.setActiveExecutionRunData(workflowResultData);
 	}
 
-	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
-		currentExecutionStateStore.value.setActiveExecution(execution);
-	}
-
 	function clearExecutionStartedData(): void {
 		currentExecutionStateStore.value.clearActiveExecutionStartedData();
 	}
@@ -678,7 +674,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setWorkflowExecutionData,
 		clearExecutionStartedData,
 		setLastSuccessfulExecution,
 		clearCurrentWorkflowExecutions,

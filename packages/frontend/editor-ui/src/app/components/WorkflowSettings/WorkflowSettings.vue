@@ -712,6 +712,14 @@ const saveSettings = async () => {
 	}
 	delete data.settings.maxExecutionTimeout;
 
+	// `credentialResolverId` is `undefined` in-memory when the n8n system resolver is
+	// selected. The backend merges settings for partial updates, so an absent key keeps
+	// the previously-saved id. Send an explicit empty string so the merge clears it
+	// (the backend drops the falsy value before persisting).
+	if (isCredentialResolverEnabled.value && !data.settings.credentialResolverId) {
+		data.settings.credentialResolverId = '';
+	}
+
 	isLoading.value = true;
 	data.versionId = workflowDocumentStore.value.versionId;
 	data.expectedChecksum = workflowDocumentStore.value.checksum;
@@ -1708,7 +1716,7 @@ onBeforeUnmount(() => {
 					</ElCol>
 				</ElRow>
 				<WorkflowCustomTelemetryTags
-					v-if="settingsStore.isOtelEnabled"
+					v-if="settingsStore.isOtelCustomSpanAttributesEnabled"
 					v-model="workflowSettings.customTelemetryTags"
 					:is-read-only="isWorkflowSettingsReadOnly"
 					:save-tags="saveCustomTelemetryTags"

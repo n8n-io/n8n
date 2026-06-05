@@ -811,6 +811,46 @@ describe('PlannedTaskCoordinator', () => {
 			}
 		});
 
+		it('routes pending workflow verification before synthesis without completing the graph', async () => {
+			const task = makeTaskRecord({ id: 'wf-1', kind: 'build-workflow', status: 'succeeded' });
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({ tasks: [task] });
+				return await Promise.resolve(updater(graph));
+			});
+
+			const pendingWorkflowVerification = {
+				task,
+				outcome: {
+					workItemId: 'wi-1',
+					taskId: 'wf-1',
+					workflowId: 'workflow-1',
+					submitted: true,
+					triggerType: 'manual_or_testable' as const,
+					needsUserInput: false,
+					summary: 'Submitted.',
+				},
+				obligation: {
+					workItemId: 'wi-1',
+					threadId: 'thread-1',
+					taskId: 'wf-1',
+					plannedTaskId: 'wf-1',
+					workflowId: 'workflow-1',
+					source: 'planned' as const,
+					policy: 'required' as const,
+					status: 'ready_to_verify' as const,
+					updatedAt: '2026-01-01T00:00:00.000Z',
+				},
+			};
+
+			const action = await coordinator.tick('thread-1', { pendingWorkflowVerification });
+
+			expect(action.type).toBe('orchestrate-workflow-verification');
+			if (action.type === 'orchestrate-workflow-verification') {
+				expect(action.graph.status).toBe('active');
+				expect(action.verification).toBe(pendingWorkflowVerification);
+			}
+		});
+
 		it('respects availableSlots limit', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({

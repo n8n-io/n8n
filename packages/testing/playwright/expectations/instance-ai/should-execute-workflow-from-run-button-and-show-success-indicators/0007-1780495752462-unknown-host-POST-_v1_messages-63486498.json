@@ -1,0 +1,108 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Workflow Planner — you design solution architectures\\. You do NOT[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,1500}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,2000}Added: Verify 'Full Execution Test' workflow runs without errors \\(2 items total\\)[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-54b36c61894bbe25bcfecab29c956437-c86af5f1a2393607-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=Z0WzD8m1Jj5Tr21JWNRBW8jifmeQy_AWnFyvPVyzTnU-1780495725.895457-1.0.1.1-zvPE4BHmiKeUA_1voB7YCrFMRpmCd8cqTtiz7fS_WTc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CbgTYDcJnnL8embyKHQwt"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-06-03T14:08:46Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17985000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-06-03T14:08:46Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-06-03T14:08:46Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-06-03T14:08:46Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14985000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 03 Jun 2026 14:08:47 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a05f458ede436f37-PRG"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "Z0WzD8m1Jj5Tr21JWNRBW8jifmeQy_AWnFyvPVyzTnU-1780495725.895457-1.0.1.1-zvPE4BHmiKeUA_1voB7YCrFMRpmCd8cqTtiz7fS_WTc"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01GoTCwn2WFx255GfomcZYYq\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":190,\"cache_read_input_tokens\":13180,\"cache_creation\":{\"ephemeral_5m_input_tokens\":190,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":36,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}            }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_018wH3h4EGWcJKBU6cW5FkRj\",\"name\":\"submit-plan\",\"input\":{},\"caller\":{\"type\":\"direct\"}}         }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}             }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0               }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":190,\"cache_read_input_tokens\":13180,\"output_tokens\":36}    }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"      }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxR29UQ3duMldGeDI1NUdmb21jWllZcSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MTkwLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTMxODAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjE5MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjM2LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTh3SDNoNEVHV2NKS0JVNmNXNUZrUmoiLCJuYW1lIjoic3VibWl0LXBsYW4iLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19ICAgICAgICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiJ9ICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0b3AKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdG9wIiwiaW5kZXgiOjAgICAgICAgICAgICAgICB9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjoxOTAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxMzE4MCwib3V0cHV0X3Rva2VucyI6MzZ9ICAgIH0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIiAgICAgIH0KCg==",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0007-1780495752462-unknown-host-POST-_v1_messages-63486498.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

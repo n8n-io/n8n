@@ -7,7 +7,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import type { FixWithAiError } from '../fixWithAi';
+import { IS_FIX_WITH_AI_OFFER_ENABLED, type FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
 export interface WorkflowFailuresReport {
@@ -70,6 +70,10 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
 	if (event.data.status === 'success') return;
+	// Only offer "Fix with AI" for human-initiated runs. When the agent ran the
+	// workflow itself (source 'instance_ai'), it already sees the errors in its
+	// tool result and fixes them on its own.
+	if (event.data.source === 'instance_ai') return;
 
 	const execStore = useExecutionDataStore(createExecutionDataId(event.data.executionId));
 	const runData = execStore.executionRunData;
@@ -86,6 +90,7 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 		});
 	}
 	if (errors.length === 0) return;
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 
 	emit('workflow-failures', {
 		workflowId: event.data.workflowId,

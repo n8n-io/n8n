@@ -1,0 +1,108 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Workflow Planner — you design solution architectures\\. You do NOT[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-a17d4fca3fd6ac33de42d476fe48a116-be641180be18c5f1-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=KbcKFzRS554OC6se8mVrs4nSRedAmgOnIhL_ghiXFzU-1780493321.2966182-1.0.1.1-Q.bN_yOC.3A39XoYJIue_bXwmbU86xZzxoLvDTuHl5g; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CbgQUxuLYSewt1JALhPau"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-06-03T13:28:41Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17985000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-06-03T13:28:41Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-06-03T13:28:41Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-06-03T13:28:41Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14985000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 03 Jun 2026 13:28:42 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a05f0ada1da72c45-PRG"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "KbcKFzRS554OC6se8mVrs4nSRedAmgOnIhL_ghiXFzU-1780493321.2966182-1.0.1.1-Q.bN_yOC.3A39XoYJIue_bXwmbU86xZzxoLvDTuHl5g"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01BwvRhCRR7s9ihw3SAcXgQs\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3,\"cache_creation_input_tokens\":445,\"cache_read_input_tokens\":12472,\"cache_creation\":{\"ephemeral_5m_input_tokens\":445,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":38,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}             }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01E5ctfbgFYPPAHfduBwCaE5\",\"name\":\"add-plan-item\",\"input\":{},\"caller\":{\"type\":\"direct\"}}        }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"item\\\": {\\n  \\\"id\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\": \\\"wf-run-button-test\\\",\\n  \\\"kind\\\": \\\"workflow\\\",\\n  \\\"name\\\": \\\"run button visibility test\\\",\\n  \\\"purpose\\\": \\\"A\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" minimal workflow with a Manual Trigger and a single Set node named 'run button visibility test'. Used to test\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" run button visibility. No external services or credentials required.\\\",\\n  \\\"triggerDescription\\\": \\\"Manual trigger\\\",\\n  \\\"integ\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"rations\\\": [],\\n  \\\"dependsOn\\\": []\\n}\"}     }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\", \\\"summary\\\": \\\"Build a simple two-node workflow named\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" 'run button visibility test' with a Manual Trigger and a Set node.\"}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"assumptions\\\": [\\\"Set node will\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" be named 'run button visibility test' as requested\\\", \\\"No fields configured on the\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" Set node — kept minimal\\\"]\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"}\"}             }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":3,\"cache_creation_input_tokens\":445,\"cache_read_input_tokens\":12472,\"output_tokens\":242}     }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"   }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxQnd2UmhDUlI3czlpaHczU0FjWGdRcyIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NDQ1LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTI0NzIsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjQ0NSwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjM4LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0gICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RhcnQKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdGFydCIsImluZGV4IjowLCJjb250ZW50X2Jsb2NrIjp7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFFNWN0ZmJnRllQUEFIZmR1QndDYUU1IiwibmFtZSI6ImFkZC1wbGFuLWl0ZW0iLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19ICAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wiaXRlbVwiOiB7XG4gIFwiaWQifSAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJcIjogXCJ3Zi1ydW4tYnV0dG9uLXRlc3RcIixcbiAgXCJraW5kXCI6IFwid29ya2Zsb3dcIixcbiAgXCJuYW1lXCI6IFwicnVuIGJ1dHRvbiB2aXNpYmlsaXR5IHRlc3RcIixcbiAgXCJwdXJwb3NlXCI6IFwiQSJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIG1pbmltYWwgd29ya2Zsb3cgd2l0aCBhIE1hbnVhbCBUcmlnZ2VyIGFuZCBhIHNpbmdsZSBTZXQgbm9kZSBuYW1lZCAncnVuIGJ1dHRvbiB2aXNpYmlsaXR5IHRlc3QnLiBVc2VkIHRvIHRlc3QifSAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiBydW4gYnV0dG9uIHZpc2liaWxpdHkuIE5vIGV4dGVybmFsIHNlcnZpY2VzIG9yIGNyZWRlbnRpYWxzIHJlcXVpcmVkLlwiLFxuICBcInRyaWdnZXJEZXNjcmlwdGlvblwiOiBcIk1hbnVhbCB0cmlnZ2VyXCIsXG4gIFwiaW50ZWcifSAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJyYXRpb25zXCI6IFtdLFxuICBcImRlcGVuZHNPblwiOiBbXVxufSJ9ICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiLCBcInN1bW1hcnlcIjogXCJCdWlsZCBhIHNpbXBsZSB0d28tbm9kZSB3b3JrZmxvdyBuYW1lZCJ9ICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiICdydW4gYnV0dG9uIHZpc2liaWxpdHkgdGVzdCcgd2l0aCBhIE1hbnVhbCBUcmlnZ2VyIGFuZCBhIFNldCBub2RlLiJ9ICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJcIiwgXCJhc3N1bXB0aW9uc1wiOiBbXCJTZXQgbm9kZSB3aWxsIn19CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIGJlIG5hbWVkICdydW4gYnV0dG9uIHZpc2liaWxpdHkgdGVzdCcgYXMgcmVxdWVzdGVkXCIsIFwiTm8gZmllbGRzIGNvbmZpZ3VyZWQgb24gdGhlIn0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIFNldCBub2RlIOKAlCBrZXB0IG1pbmltYWxcIl0ifSAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJ9In0gICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjozLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjQ0NSwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjEyNDcyLCJvdXRwdXRfdG9rZW5zIjoyNDJ9ICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCIgICB9Cgo=",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0003-1780493351468-unknown-host-POST-_v1_messages-74d1411b.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

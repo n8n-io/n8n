@@ -29,8 +29,6 @@ export interface CliOptions {
 	files?: string[];
 	json: boolean;
 	verbose: boolean;
-	fix: boolean;
-	write: boolean;
 	help: boolean;
 	list: boolean;
 	// TCR-specific options
@@ -71,6 +69,8 @@ export interface CliOptions {
 	outMap?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
+	/** Path to a newline-separated allowlist of spec paths (orchestrate). */
+	includeSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -109,12 +109,6 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	},
 	'-v': (opts) => {
 		opts.verbose = true;
-	},
-	'--fix': (opts) => {
-		opts.fix = true;
-	},
-	'--write': (opts) => {
-		opts.write = true;
 	},
 	'--list': (opts) => {
 		opts.list = true;
@@ -232,6 +226,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--all-specs=': (opts, value) => {
 		opts.allSpecsFile = value;
 	},
+	'--include-specs-file=': (opts, value) => {
+		opts.includeSpecsFile = value;
+	},
 };
 
 function createDefaultOptions(): CliOptions {
@@ -242,8 +239,6 @@ function createDefaultOptions(): CliOptions {
 		files: [],
 		json: false,
 		verbose: false,
-		fix: false,
-		write: false,
 		help: false,
 		list: false,
 		execute: false,

@@ -9,7 +9,12 @@ on:
         type: string
         default: 'master'
       filter:
-        description: 'Filter test cases by name (e.g. "contact-form")'
+        description: 'Filter test cases by filename substring (e.g. "contact-form")'
+        required: false
+        type: string
+        default: ''
+      tier:
+        description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         type: string
         default: ''
@@ -18,6 +23,16 @@ on:
         required: false
         type: string
         default: 'n8n-sandbox'
+      iterations:
+        description: 'Iterations per test case'
+        required: false
+        type: string
+        default: '3'
+      experiment-name:
+        description: 'LangSmith experiment name (instance-ai-baseline refreshes the baseline)'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -25,24 +40,34 @@ on:
         required: false
         default: 'master'
       filter:
-        description: 'Filter test cases by name (e.g. "contact-form")'
+        description: 'Filter test cases by filename substring (e.g. "contact-form")'
+        required: false
+        default: ''
+      tier:
+        description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         default: ''
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
         default: 'n8n-sandbox'
+      iterations:
+        description: 'Iterations per test case (use 10 for a baseline)'
+        required: false
+        default: '3'
+      experiment-name:
+        description: 'LangSmith experiment name (instance-ai-baseline refreshes the baseline)'
+        required: false
+        default: ''
 
 jobs:
   run-evals:
     name: 'Run Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       # Each port hosts an independent n8n container. The eval CLI's
       # work-stealing allocator dispatches builds across them, capped per-lane.
-      # 11 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient;
-      # bump back to 8vcpu if contention shows up.
       LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686,5687,5688'
     permissions:
       contents: read
@@ -207,6 +232,9 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
+          TIER: ${{ inputs.tier }}
+          ITERATIONS: ${{ inputs.iterations }}
+          EXPERIMENT_NAME: ${{ inputs.experiment-name }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
@@ -214,20 +242,11 @@ jobs:
             URLS+=("http://localhost:$port")
           done
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
-          if [ -n "$FILTER" ]; then
-            pnpm eval:instance-ai \
-              --base-url "$BASE_URLS" \
-              --concurrency 32 \
-              --verbose \
-              --iterations 3 \
-              --filter "$FILTER"
-          else
-            pnpm eval:instance-ai \
-              --base-url "$BASE_URLS" \
-              --concurrency 32 \
-              --verbose \
-              --iterations 3
-          fi
+          ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
+          [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
+          [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
+          [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
+          pnpm eval:instance-ai "${ARGS[@]}"
 
       # Captures sandbox/builder diagnostic signals that surface during the
       # eval (after migrations finish). Two layers of secret-leak defense:

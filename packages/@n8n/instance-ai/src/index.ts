@@ -35,6 +35,7 @@ import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
 import type * as SandboxSetupMod from './workspace/sandbox-setup';
+import type * as ScopedWorkspaceMod from './workspace/scoped-workspace';
 import type * as SnapshotManagerMod from './workspace/snapshot-manager';
 
 type LazyFunction = (...args: never[]) => unknown;
@@ -129,6 +130,9 @@ const loadLazyRuntimeWorkspace = lazyModule(
 );
 const loadSandboxSetup = lazyModule(
 	() => require('./workspace/sandbox-setup') as typeof SandboxSetupMod,
+);
+const loadScopedWorkspace = lazyModule(
+	() => require('./workspace/scoped-workspace') as typeof ScopedWorkspaceMod,
 );
 const loadSnapshotManager = lazyModule(
 	() => require('./workspace/snapshot-manager') as typeof SnapshotManagerMod,
@@ -325,6 +329,7 @@ export type {
 	PatchableThreadMemory,
 	ThreadPatch,
 	TerminalOutcome,
+	WorkflowSetupRoutingClaim,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export const truncateToTitle: typeof TitleUtilsMod.truncateToTitle = lazyFunction(
@@ -395,6 +400,10 @@ defineLazyExport(
 	() => loadLivenessPolicy().INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
 );
 defineLazyExport('workflowBuildOutcomeSchema', () => loadWorkflowLoop().workflowBuildOutcomeSchema);
+defineLazyExport(
+	'workflowVerificationEvidenceSchema',
+	() => loadWorkflowLoop().workflowVerificationEvidenceSchema,
+);
 defineLazyExport('attemptRecordSchema', () => loadWorkflowLoop().attemptRecordSchema);
 defineLazyExport('workflowLoopStateSchema', () => loadWorkflowLoop().workflowLoopStateSchema);
 defineLazyExport('verificationResultSchema', () => loadWorkflowLoop().verificationResultSchema);
@@ -416,12 +425,16 @@ export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspac
 export const getWorkspaceRoot: typeof SandboxSetupMod.getWorkspaceRoot = lazyFunction(
 	() => loadSandboxSetup().getWorkspaceRoot,
 );
+export const getPromptWorkspaceRoot: typeof SandboxSetupMod.getPromptWorkspaceRoot = lazyFunction(
+	() => loadSandboxSetup().getPromptWorkspaceRoot,
+);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
 export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
-export { createScopedWorkspace } from './workspace/scoped-workspace';
-export { getPromptWorkspaceRoot } from './workspace/sandbox-setup';
+export const createScopedWorkspace: typeof ScopedWorkspaceMod.createScopedWorkspace = lazyFunction(
+	() => loadScopedWorkspace().createScopedWorkspace,
+);
 export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
 	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
 export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
@@ -528,16 +541,33 @@ export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
 );
+export const deriveWorkflowVerificationObligation: typeof WorkflowLoopMod.deriveWorkflowVerificationObligation =
+	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligation);
+export const deriveWorkflowVerificationObligationFromOutcome: typeof WorkflowLoopMod.deriveWorkflowVerificationObligationFromOutcome =
+	lazyFunction(() => loadWorkflowLoop().deriveWorkflowVerificationObligationFromOutcome);
+export const isWorkflowVerificationObligationUnsettled: typeof WorkflowLoopMod.isWorkflowVerificationObligationUnsettled =
+	lazyFunction(() => loadWorkflowLoop().isWorkflowVerificationObligationUnsettled);
+export const resolveWorkflowBuildOwner: typeof WorkflowLoopMod.resolveWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().resolveWorkflowBuildOwner);
+export const plannedTaskIdFromWorkflowBuildOwner: typeof WorkflowLoopMod.plannedTaskIdFromWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().plannedTaskIdFromWorkflowBuildOwner);
+export const isPlannedWorkflowBuildOwner: typeof WorkflowLoopMod.isPlannedWorkflowBuildOwner =
+	lazyFunction(() => loadWorkflowLoop().isPlannedWorkflowBuildOwner);
 export declare const workflowBuildOutcomeSchema: typeof WorkflowLoopMod.workflowBuildOutcomeSchema;
+export declare const workflowVerificationEvidenceSchema: typeof WorkflowLoopMod.workflowVerificationEvidenceSchema;
 export declare const attemptRecordSchema: typeof WorkflowLoopMod.attemptRecordSchema;
 export declare const workflowLoopStateSchema: typeof WorkflowLoopMod.workflowLoopStateSchema;
 export declare const verificationResultSchema: typeof WorkflowLoopMod.verificationResultSchema;
 export type {
 	WorkflowLoopState,
 	WorkflowLoopAction,
+	WorkflowBuildOwner,
 	WorkflowBuildOutcome,
 	VerificationResult,
 	AttemptRecord,
+	WorkflowVerificationEvidence,
+	WorkflowVerificationObligation,
+	WorkflowVerificationObligationSource,
 } from './workflow-loop';
 export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
@@ -571,6 +601,7 @@ export type {
 	PlannedTaskRecord,
 	PlannedTaskGraph,
 	PlannedTaskGraphStatus,
+	PlannedWorkflowVerification,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
