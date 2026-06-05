@@ -9,7 +9,7 @@ import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
-import type { ComponentMapper } from './component-mapper';
+import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import {
 	buildIntegrationConnectionId,
@@ -265,9 +265,7 @@ export class AgentChatBridge {
 	 * Returns a callback shortener function for platforms with short callback
 	 * data limits (Telegram). Returns undefined for other platforms.
 	 */
-	private getShortenCallback():
-		| ((actionId: string, value: string) => Promise<{ id: string; value: string }>)
-		| undefined {
+	getShortenCallback(): ShortenCallback | undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
 		return async (actionId: string, value: string) => {

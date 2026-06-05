@@ -58,6 +58,11 @@ export const INTERACTIVE_CARD_RESUME_JSON_SCHEMA = {
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
+export type ShortenCallback = (
+	actionId: string,
+	value: string,
+) => Promise<{ id: string; value: string }>;
+
 /** Shared state threaded through per-component render helpers. */
 interface ComponentRenderContext {
 	component: SuspendComponent;
@@ -92,7 +97,7 @@ export class ComponentMapper {
 		runId: string,
 		toolCallId: string,
 		resumeSchema?: unknown,
-		shortenCallback?: (actionId: string, value: string) => Promise<{ id: string; value: string }>,
+		shortenCallback?: ShortenCallback,
 		platform?: string,
 	): Promise<CardElement> {
 		const sdk = await loadChatSdk();

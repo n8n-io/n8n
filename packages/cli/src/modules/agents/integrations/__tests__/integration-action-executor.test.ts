@@ -32,7 +32,11 @@ import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { ChatIntegrationRegistry } from '../agent-chat-integration';
+import {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+	type AgentChatIntegrationContext,
+} from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
@@ -49,6 +53,29 @@ const linear: AgentIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-linear',
 };
+
+const telegram: AgentIntegrationConfig = {
+	type: 'telegram',
+	credentialId: 'cred-telegram',
+};
+
+class ShortCallbackTelegramIntegration extends AgentChatIntegration {
+	readonly type = 'telegram';
+
+	readonly credentialTypes = ['telegramApi'];
+
+	readonly displayLabel = 'Telegram';
+
+	readonly displayIcon = 'telegram';
+
+	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+
+	readonly needsShortCallbackData = true;
+
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
 
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
@@ -244,6 +271,77 @@ describe('ChatIntegrationActionExecutor', () => {
 			'Reject',
 			'Revise',
 		]);
+	});
+
+	it('shortens Telegram action card callback payloads before posting', async () => {
+		const sentMessage = {
+			id: 'telegram-message-1',
+			threadId: 'telegram-thread-1',
+		};
+		const thread = {
+			post: jest.fn().mockResolvedValue(sentMessage),
+		};
+		const chat = mock<ChatInstance>();
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const shortenCallback = jest.fn(async (_actionId: string, _value: string) => ({
+			id: 'short1234',
+			value: '',
+		}));
+		Object.assign(chatIntegrationService, {
+			getShortenCallback: jest.fn().mockReturnValue(shortenCallback),
+		});
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Telegram callback repro',
+					card: {
+						components: [
+							{ type: 'section', text: 'Click Approve to continue.' },
+							{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+						],
+					},
+				},
+			},
+			awaitResponse: true,
+			runId: 'run-1234567890',
+			toolCallId: 'tool-call-1234567890',
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: {
+					type: 'thread',
+					threadId: 'telegram-thread-1',
+				},
+				messageId: 'telegram-message-0',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(expect.objectContaining({ ok: true }));
+		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith('agent-1', {
+			type: 'telegram',
+			credentialId: 'cred-telegram',
+		});
+		expect(shortenCallback).toHaveBeenCalledWith(
+			'resume:run-1234567890:tool-call-1234567890:0',
+			JSON.stringify({ type: 'button', value: 'approve' }),
+		);
+		expect(mockButton).toHaveBeenLastCalledWith({
+			id: 'short1234',
+			label: 'Approve',
+			style: 'primary',
+			value: '',
+		});
 	});
 
 	it('adds Slack reactions to the current message context', async () => {

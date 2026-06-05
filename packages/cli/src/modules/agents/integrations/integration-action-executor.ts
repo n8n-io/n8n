@@ -4,7 +4,11 @@ import { z } from 'zod';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
-import { ComponentMapper, INTERACTIVE_CARD_RESUME_JSON_SCHEMA } from './component-mapper';
+import {
+	ComponentMapper,
+	INTERACTIVE_CARD_RESUME_JSON_SCHEMA,
+	type ShortenCallback,
+} from './component-mapper';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
 	connectionUnavailable,
@@ -204,11 +208,22 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			params.runId ?? '',
 			params.toolCallId ?? '',
 			INTERACTIVE_CARD_RESUME_JSON_SCHEMA,
-			undefined,
+			this.getShortenCallback(descriptor),
 			descriptor.integration.type,
 		);
 
 		return { card };
+	}
+
+	private getShortenCallback(
+		descriptor: IntegrationToolConnectionDescriptor,
+	): ShortenCallback | undefined {
+		const { agentId, integration } = descriptor;
+		if (!agentId) return undefined;
+		return this.chatIntegrationService.getShortenCallback(agentId, {
+			type: integration.type,
+			credentialId: integration.credentialId,
+		});
 	}
 }
 
