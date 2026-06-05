@@ -150,7 +150,7 @@ describe('AddScopeColumnToOAuthTables Migration', () => {
 	}
 
 	describe('up', () => {
-		it('should add a nullable scope column to both OAuth tables', async () => {
+		it('should add a NOT NULL scope column to both OAuth tables', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);
 
@@ -158,16 +158,16 @@ describe('AddScopeColumnToOAuthTables Migration', () => {
 				const col = await getColumnMeta(context, table, 'scope');
 				expect(col).toBeDefined();
 				if (context.isSqlite) {
-					expect((col as SqliteColumnInfo).notnull).toBe(0);
+					expect((col as SqliteColumnInfo).notnull).toBe(1);
 				} else {
-					expect((col as PgColumnInfo).is_nullable).toBe('YES');
+					expect((col as PgColumnInfo).is_nullable).toBe('NO');
 				}
 			}
 
 			await context.queryRunner.release();
 		});
 
-		it('should backfill existing authorization codes with the default scopes', async () => {
+		it('should apply the default scopes to existing authorization codes', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const userId = randomUUID();
 			const clientId = nanoid(16);
@@ -190,7 +190,7 @@ describe('AddScopeColumnToOAuthTables Migration', () => {
 			await postContext.queryRunner.release();
 		});
 
-		it('should backfill existing refresh tokens with the default scopes', async () => {
+		it('should apply the default scopes to existing refresh tokens', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const userId = randomUUID();
 			const clientId = nanoid(16);
