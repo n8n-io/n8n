@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import type { SubAgentTaskDifficulty } from '@n8n/api-types';
+import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentTaskDifficulty } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import {
 	N8nCard,
@@ -35,12 +35,6 @@ import { parseModelString, sanitizeModelId } from '../utils/model-string';
 const SUB_AGENT_MAX_CHILDREN_MIN = 1;
 const SUB_AGENT_MAX_CHILDREN_MAX = 20;
 const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
-
-const SUB_AGENT_TASK_DIFFICULTIES = [
-	'low',
-	'medium',
-	'high',
-] as const satisfies readonly SubAgentTaskDifficulty[];
 
 const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
 	low: 'agents.builder.subAgents.modelsByDifficulty.low.label',
@@ -148,6 +142,8 @@ function emitSubAgentsAgents(agents: typeof selectedSubAgentRefs.value) {
 }
 
 function onMaxChildrenChange(n: number) {
+	if (props.disabled) return;
+
 	const subAgents = { ...(props.config?.subAgents ?? {}) };
 	if (isNaN(n)) {
 		delete subAgents.maxChildren;
@@ -229,6 +225,8 @@ function onDifficultyModelChange(
 	difficulty: SubAgentTaskDifficulty,
 	selection: AgentModelSelection,
 ) {
+	if (props.disabled) return;
+
 	const credentialId = credentialsForDifficulty(difficulty)?.[selection.provider];
 	if (!credentialId) {
 		toast.showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
@@ -244,6 +242,8 @@ function onDifficultySelectCredential(
 	provider: AgentModelProvider,
 	credentialId: string | null,
 ) {
+	if (props.disabled) return;
+
 	selectCredential(provider, credentialId);
 
 	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
@@ -256,6 +256,8 @@ function onDifficultySelectCredential(
 }
 
 function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
+	if (props.disabled) return;
+
 	emitModelsByDifficulty(difficulty, undefined);
 }
 
@@ -291,6 +293,8 @@ async function onOpenAddSubAgentsModal() {
 }
 
 function onRemoveSubAgent(agentId: string) {
+	if (props.disabled) return;
+
 	emitSubAgentsAgents(
 		selectedSubAgentRefs.value.filter((subAgent) => subAgent.agentId !== agentId),
 	);
@@ -298,7 +302,7 @@ function onRemoveSubAgent(agentId: string) {
 </script>
 
 <template>
-	<div :class="[$style.subAgentsPanel, disabled && $style.disabled]">
+	<div :class="[$style.subAgentsPanel, disabled && $style.disabled]" :aria-disabled="disabled">
 		<div :class="$style.subAgentsHeader">
 			<div :class="$style.subAgentsText">
 				<N8nText tag="h3" :bold="true">
@@ -378,6 +382,7 @@ function onRemoveSubAgent(agentId: string) {
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"
+							:disabled="disabled"
 							horizontal
 							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
 							@change="(selection) => onDifficultyModelChange(difficulty, selection)"
@@ -478,8 +483,7 @@ function onRemoveSubAgent(agentId: string) {
 	width: 100%;
 }
 
-.subAgentsPanel.disabled > :not(.subAgentsHeader) {
-	pointer-events: none;
+.subAgentsPanel.disabled {
 	opacity: 0.6;
 }
 
@@ -568,12 +572,12 @@ function onRemoveSubAgent(agentId: string) {
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-	min-width: 260px;
+	min-width: calc(var(--spacing--5xl) + var(--spacing--2xs));
 }
 
 .difficultyControls > :first-child {
 	flex: 1;
-	min-width: 220px;
+	min-width: calc(var(--spacing--5xl) - var(--spacing--xl));
 }
 
 .divider {

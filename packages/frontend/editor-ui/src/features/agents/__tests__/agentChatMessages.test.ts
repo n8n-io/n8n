@@ -270,7 +270,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(tc?.state).toBe('done');
 	});
 
-	it('sets displaySummary from delegate input difficulty on reload', () => {
+	it('leaves delegate difficulty summary for render-time i18n on reload', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
 				id: 'm1',
@@ -293,7 +293,12 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		];
 
 		const chat = convertDbMessages(dbMessages);
-		expect(chat[0].toolCalls?.[0].displaySummary).toBe('High');
+		expect(chat[0].toolCalls?.[0].displaySummary).toBeUndefined();
+		expect(chat[0].toolCalls?.[0].input).toEqual({
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			difficulty: 'high',
+		});
 	});
 });
 

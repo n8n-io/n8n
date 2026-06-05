@@ -5,7 +5,12 @@ import { reactive, toRef } from 'vue';
 import type { ToolCall } from '../composables/agentChatMessages';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
-import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
+import {
+	delegateLabel,
+	getDelegateDifficultySummary,
+	isDelegateSubAgentTool,
+	resolveSubAgentName,
+} from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
 import {
 	countIncompleteTodos,
@@ -62,6 +67,9 @@ function toolStepLabel(tc: ToolCall): string {
 }
 
 function toolStepSummary(tc: ToolCall): string | undefined {
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return getDelegateDifficultySummary(tc.input, i18n);
+	}
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
 		if (parsed) return writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos));
@@ -256,7 +264,7 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 .stepRow {
 	display: flex;
 	align-items: center;
-	gap: 0;
+	gap: var(--spacing--2xs);
 }
 
 .stepRowButton {
@@ -281,7 +289,6 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--sm);
-	margin: 0 0.35em;
 }
 
 .summary {

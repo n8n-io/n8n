@@ -127,9 +127,10 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'projectId',
 			'warnMissingCredentials',
 			'horizontal',
+			'disabled',
 		],
 		emits: ['change', 'selectCredential'],
-		template: '<div data-testid="agent-model-selector-stub" />',
+		template: '<div data-testid="agent-model-selector-stub" :data-disabled="disabled" />',
 		mounted(this: { $attrs: Record<string, unknown>; $emit: (...args: unknown[]) => void }) {
 			const testId = String(this.$attrs['data-testid'] ?? '');
 			agentModelSelectorChangeHandlers.set(testId, (selection) => this.$emit('change', selection));
@@ -424,6 +425,20 @@ describe('AgentSubAgentsPanel', () => {
 		const clearButton = wrapper.find('[data-testid="agent-sub-agents-difficulty-low-clear"]');
 		expect(clearButton.exists()).toBe(true);
 		expect(clearButton.attributes('disabled')).toBeDefined();
+		expect(wrapper.findComponent({ name: 'AgentModelSelector' }).props('disabled')).toBe(true);
+
+		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
+			provider: 'openai',
+			model: 'gpt-4o-mini',
+		});
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'openai',
+			'openai-cred-2',
+		);
+
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+		expect(selectCredentialMock).not.toHaveBeenCalled();
 	});
 
 	it('opens the sub-agents modal after project agents load successfully', async () => {

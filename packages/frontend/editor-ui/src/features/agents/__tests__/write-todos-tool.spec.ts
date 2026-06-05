@@ -257,8 +257,8 @@ describe('write-todos-tool', () => {
 			expect(writeTodosLabel(i18n)).toBe('agents.chat.writeTodos.label');
 		});
 
-		it('uses the finished summary key when no tasks remain incomplete', () => {
-			expect(writeTodosSummaryLabel(i18n, 0)).toBe('agents.chat.writeTodos.summary.finished');
+		it('uses the done summary key when no tasks remain incomplete', () => {
+			expect(writeTodosSummaryLabel(i18n, 0)).toBe('agents.chat.writeTodos.summary.done');
 		});
 
 		it('uses the singular summary key for one task', () => {

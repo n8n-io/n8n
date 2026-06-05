@@ -44,6 +44,7 @@ const {
 	projectId,
 	horizontal = false,
 	warnMissingCredentials = false,
+	disabled = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -52,6 +53,7 @@ const {
 	projectId?: string;
 	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -302,12 +304,14 @@ const filteredMenu = computed(() => {
 });
 
 function openNewCredential(credentialType: string) {
-	if (canCreateCredentials.value) {
+	if (!disabled && canCreateCredentials.value) {
 		uiStore.openNewCredential(credentialType, false, false, createCredentialProjectId.value);
 	}
 }
 
 function onSelect(id: string) {
+	if (disabled) return;
+
 	const [providerId, action, rawValue] = id.split('::');
 	if (!isAgentModelProvider(providerId) || !rawValue) return;
 
@@ -328,11 +332,14 @@ function onSelect(id: string) {
 }
 
 function handleSearch(query: string) {
+	if (disabled) return;
 	searchQuery.value = query;
 }
 
 defineExpose({
-	open: () => dropdownRef.value?.open(),
+	open: () => {
+		if (!disabled) dropdownRef.value?.open();
+	},
 });
 </script>
 
@@ -346,6 +353,7 @@ defineExpose({
 		:credentials-missing-label="i18n.baseText('agents.modelSelector.credentialsMissing')"
 		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
 		:horizontal="horizontal"
+		:disabled="disabled"
 		data-test-id="agent-model-selector"
 		credential-data-test-id="agent-model-selector-credential"
 		:max-selected-name-chars="MAX_SELECTED_NAME_CHARS"

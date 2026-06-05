@@ -5,22 +5,23 @@ import {
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
-	SubAgentTaskDifficulty,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentSkill,
-	SubAgentRunPolicy,
-	SubAgentSource,
+import {
+	isNodeToolsEnabled,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentSkill,
+	type SubAgentRunPolicy,
+	type SubAgentSource,
+	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
-import { isNodeToolsEnabled } from '@n8n/api-types';
 import { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -473,7 +474,7 @@ export class AgentRuntimeReconstructionService {
 		if (!mappings) return undefined;
 
 		const resolved: Partial<Record<SubAgentTaskDifficulty, ModelConfig>> = {};
-		for (const difficulty of ['low', 'medium', 'high'] as const) {
+		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
 			const mapping = mappings[difficulty];
 			if (!mapping) continue;
 			resolved[difficulty] = await resolveCredentialAwareModelConfig(

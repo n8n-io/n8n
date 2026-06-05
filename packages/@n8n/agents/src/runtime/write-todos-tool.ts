@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { SUB_AGENT_TASK_DIFFICULTIES } from './delegate-sub-agent-tool';
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types/sdk/tool';
@@ -8,7 +9,7 @@ export const WRITE_TODOS_TOOL_NAME = 'write_todos';
 
 const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
 
-const todoDifficultySchema = z.enum(['low', 'medium', 'high']);
+const todoDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 
 const todoDelegateHintSchema = z
 	.object({

@@ -1,4 +1,5 @@
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
+import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { resolveSubAgentIdForDisplay } from './delegate-tool';
@@ -11,7 +12,7 @@ export const WRITE_TODOS_TOOL_NAME = 'write_todos';
 
 const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
 
-const todoDifficultySchema = z.enum(['low', 'medium', 'high']);
+const todoDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 
 const todoItemSchema = z.object({
 	id: z.string().min(1),

@@ -70,14 +70,14 @@ describe('summariseInteractiveOutput', () => {
 });
 
 describe('summariseToolCall', () => {
-	it('returns the delegate difficulty label from input', () => {
+	it('does not summarise delegate_subagent; AgentChatToolSteps owns the i18n summary', () => {
 		expect(
 			summariseToolCall(
 				DELEGATE_SUB_AGENT_TOOL_NAME,
 				{ status: 'completed', answer: 'Done', model: 'anthropic/claude-haiku-4-5' },
 				{ subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
 			),
-		).toBe('High');
+		).toBeUndefined();
 	});
 
 	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {

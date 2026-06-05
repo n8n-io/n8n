@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	AgentModelSchema,
@@ -66,6 +67,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { getProviderPrefix } from './json-config/model-id';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -1046,7 +1048,7 @@ export class AgentsService {
 		try {
 			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
 			if (modelsByDifficulty) {
-				for (const difficulty of ['low', 'medium', 'high'] as const) {
+				for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
 					await this.validateMemoryWorkerModel(
 						modelsByDifficulty[difficulty],
 						`subAgents.modelsByDifficulty.${difficulty}`,
@@ -2132,11 +2134,6 @@ export class AgentsService {
 			integrationType,
 		);
 	}
-}
-
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

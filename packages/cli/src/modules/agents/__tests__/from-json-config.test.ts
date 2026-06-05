@@ -5,6 +5,7 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
@@ -40,6 +41,12 @@ jest.mock('@ai-sdk/openai', () => ({
 // ---------------------------------------------------------------------------
 // buildFromJson() tests
 // ---------------------------------------------------------------------------
+
+describe('sub-agent difficulty contract', () => {
+	it('keeps persisted config difficulties aligned with the agents SDK', () => {
+		expect(SUB_AGENT_TASK_DIFFICULTIES).toEqual(AgentsRuntime.SUB_AGENT_TASK_DIFFICULTIES);
+	});
+});
 
 describe('buildFromJson()', () => {
 	afterEach(() => {

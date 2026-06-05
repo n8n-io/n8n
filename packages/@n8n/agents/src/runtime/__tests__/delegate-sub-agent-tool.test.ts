@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
@@ -360,6 +360,25 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
 		expect(tool.systemInstruction).toContain('Up to 2 child sub-agent runs');
 		expect(tool.systemInstruction).toContain('limits parallelism, not the total number');
+	});
+
+	it('does not promise inline provider tools when no resolver is configured', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.systemInstruction).toContain(
+			'Inline children do not inherit provider-defined tools.',
+		);
+		expect(tool.systemInstruction).not.toContain('Provider-defined tools are loaded');
+	});
+
+	it('describes inline provider tools when a resolver is configured', () => {
+		const tool = createDelegateSubAgentTool({
+			resolveInlineSubAgentProviderTools: async () => await Promise.resolve([]),
+		});
+
+		expect(tool.systemInstruction).toContain(
+			"Provider-defined tools are loaded for the inline child's selected model provider.",
+		);
 	});
 
 	it('assigns distinct task paths for repeated delegations in the same parent run', async () => {

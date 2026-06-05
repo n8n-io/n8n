@@ -146,19 +146,28 @@ describe('delegate-tool', () => {
 	});
 
 	describe('getDelegateDifficultySummary', () => {
-		it('returns the display label for delegate input difficulty', () => {
+		const i18n = {
+			baseText: (key: string) => key,
+		} as unknown as Parameters<typeof getDelegateDifficultySummary>[1];
+
+		it('returns the localized label for delegate input difficulty', () => {
 			expect(
-				getDelegateDifficultySummary({
-					subAgentId: INLINE_SUB_AGENT_ID,
-					taskName: 'research_api',
-					difficulty: 'high',
-				}),
-			).toBe('High');
+				getDelegateDifficultySummary(
+					{
+						subAgentId: INLINE_SUB_AGENT_ID,
+						taskName: 'research_api',
+						difficulty: 'high',
+					},
+					i18n,
+				),
+			).toBe('agents.chat.delegate.difficulty.high');
 		});
 
 		it('returns undefined when difficulty is missing or input is malformed', () => {
-			expect(getDelegateDifficultySummary({ subAgentId: INLINE_SUB_AGENT_ID })).toBeUndefined();
-			expect(getDelegateDifficultySummary('boom')).toBeUndefined();
+			expect(
+				getDelegateDifficultySummary({ subAgentId: INLINE_SUB_AGENT_ID }, i18n),
+			).toBeUndefined();
+			expect(getDelegateDifficultySummary('boom', i18n)).toBeUndefined();
 		});
 	});
 

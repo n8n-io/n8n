@@ -33,6 +33,9 @@ vi.mock('@n8n/i18n', () => ({
 			}
 			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
 			const statusLabels: Record<string, string> = {
+				'agents.chat.delegate.difficulty.low': 'Low',
+				'agents.chat.delegate.difficulty.medium': 'Medium',
+				'agents.chat.delegate.difficulty.high': 'High',
 				'agents.chat.writeTodos.status.inProgress': 'In progress',
 				'agents.chat.writeTodos.status.pending': 'Pending',
 				'agents.chat.writeTodos.status.completed': 'Completed',
@@ -104,7 +107,7 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
 	});
 
-	it('shows finished summary when all write_todos tasks are completed', async () => {
+	it('shows done summary when all write_todos tasks are completed', async () => {
 		const wrapper = mountSteps([
 			{
 				tool: WRITE_TODOS_TOOL_NAME,
@@ -123,7 +126,7 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Task list');
 		expect(wrapper.text()).toContain('·');
-		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('finished');
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('done');
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toContain('Research APIs');
@@ -142,7 +145,6 @@ describe('AgentChatToolSteps', () => {
 					answer: 'Child answer',
 					model: 'anthropic/claude-haiku-4-5',
 				},
-				displaySummary: 'High',
 			},
 		]);
 

@@ -68,7 +68,8 @@ const SubAgentConfigSchema = z.object({
 	agentId: z.string().trim().min(1),
 });
 
-const SubAgentTaskDifficultySchema = z.enum(['low', 'medium', 'high']);
+export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
+const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 
 const SubAgentDifficultyModelConfigSchema = z
 	.object({
@@ -325,8 +326,6 @@ export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
-export type AgentJsonSubAgentsConfig = z.infer<typeof SubAgentsConfigSchema>;
-export type SubAgentDifficultyModelConfig = z.infer<typeof SubAgentDifficultyModelConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;

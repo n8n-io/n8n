@@ -40,6 +40,26 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(fp.triggers).toEqual(['slack', 'telegram']);
 	});
 
+	it('returns sub-agent model mappings in difficulty order', async () => {
+		const fp = await buildAgentConfigFingerprint(
+			{
+				...baseConfig,
+				subAgents: {
+					modelsByDifficulty: {
+						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+						low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
+					},
+				},
+			},
+			[],
+		);
+
+		expect(fp.subAgentModelsByDifficulty).toEqual([
+			{ difficulty: 'low', model: 'openai/gpt-4o-mini' },
+			{ difficulty: 'high', model: 'anthropic/claude-sonnet-4-5' },
+		]);
+	});
+
 	it('returns the same config_version for trigger inputs in different orders', async () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, ['slack', 'telegram']);
 		const b = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
@@ -92,6 +112,45 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(a.config_version).not.toBe(b.config_version);
 	});
 
+	it('changes config_version when a sub-agent model mapping changes', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withMapping: AgentJsonConfig = {
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		};
+
+		expect((await buildAgentConfigFingerprint(withMapping, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
+	it('changes config_version when a sub-agent model credential changes', async () => {
+		const withCredentialA: AgentJsonConfig = {
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'credential-a' },
+				},
+			},
+		};
+		const withCredentialB: AgentJsonConfig = {
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'credential-b' },
+				},
+			},
+		};
+
+		expect((await buildAgentConfigFingerprint(withCredentialA, [])).config_version).not.toBe(
+			(await buildAgentConfigFingerprint(withCredentialB, [])).config_version,
+		);
+	});
+
 	it('returns null memory when config.memory is undefined', async () => {
 		const fp = await buildAgentConfigFingerprint({ ...baseConfig, memory: undefined }, []);
 		expect(fp.memory).toBeNull();
@@ -103,6 +162,7 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(fp.tools).toEqual([]);
 		expect(fp.skills).toEqual([]);
 		expect(fp.model).toBeNull();
+		expect(fp.subAgentModelsByDifficulty).toEqual([]);
 	});
 });
 

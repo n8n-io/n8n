@@ -40,6 +40,7 @@ describe('useAgentTelemetry', () => {
 			triggers: [],
 			memory: null,
 			model: 'gpt-4',
+			subAgentModelsByDifficulty: [],
 			config_version: 'v1',
 		};
 		useAgentTelemetry().trackSubmittedMessage({

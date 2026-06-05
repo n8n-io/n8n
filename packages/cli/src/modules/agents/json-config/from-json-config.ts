@@ -23,7 +23,8 @@ import type {
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
-import { getProviderPrefix, resolveCredentialAwareModelConfig } from './model-config';
+import { resolveCredentialAwareModelConfig } from './model-config';
+import { getProviderPrefix } from './model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
