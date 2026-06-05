@@ -30,6 +30,7 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 		},
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 	};
 }
 

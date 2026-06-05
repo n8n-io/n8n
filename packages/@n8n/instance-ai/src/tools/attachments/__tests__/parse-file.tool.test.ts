@@ -62,6 +62,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateRows: vi.fn(),
 			deleteRows: vi.fn(),
 		},
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 		...overrides,
 	};
 }

@@ -14,6 +14,7 @@ function makeContext(
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
 	};
 }
 

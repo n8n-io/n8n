@@ -702,6 +702,14 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── Workflow template service ────────────────────────────────────────────────
+
+export interface InstanceAiWorkflowTemplateService {
+	getTemplate(
+		templateId: string,
+	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
+}
+
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
@@ -730,6 +738,7 @@ export interface InstanceAiContext {
 	 */
 	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
+	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
 	 */
