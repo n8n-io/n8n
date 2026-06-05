@@ -57,6 +57,8 @@ export class WorkflowPublicationOutboxConsumer {
 		this.stopPolling();
 	}
 
+	// We will rely on the `workflow-publish-wake-up` event in the future, but
+	// will keep the poller as a fallback since pubsub delivery is not ensured.
 	private schedulePollCycle() {
 		this.pollTimeout = setTimeout(async () => {
 			await this.pollCycle();
