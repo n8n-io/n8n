@@ -84,7 +84,7 @@ describe('InteractiveCard', () => {
 		});
 
 		expect(wrapper.text()).toContain('project status');
-		expect(wrapper.text()).toContain('[redacted]');
+		expect(wrapper.text()).toContain('[REDACTED]');
 		expect(wrapper.text()).not.toContain('super-secret-password');
 		expect(wrapper.text()).not.toContain('api-key-value');
 		expect(wrapper.text()).not.toContain('token-value');

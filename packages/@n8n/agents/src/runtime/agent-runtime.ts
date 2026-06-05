@@ -1,5 +1,4 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { scrubSecrets } from '@n8n/utils';
 import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
@@ -95,6 +94,7 @@ import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
+import { scrubToolInputForEvent } from '../utils/scrub-tool-input';
 import { isZodSchema } from '../utils/zod';
 
 interface TelemetrySpan {
@@ -2258,7 +2258,7 @@ export class AgentRuntime {
 				type: AgentEvent.ToolExecutionStart,
 				toolCallId,
 				toolName,
-				args: scrubSecrets(toolInput),
+				args: scrubToolInputForEvent(toolInput),
 			});
 		}
 

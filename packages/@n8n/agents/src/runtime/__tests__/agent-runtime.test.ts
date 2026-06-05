@@ -2762,8 +2762,8 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 		);
 		expect(startEvents[0]?.args).toEqual({
 			id: 'public',
-			password: '[redacted]',
-			nested: { apiKey: '[redacted]' },
+			password: '[REDACTED]',
+			nested: { apiKey: '[REDACTED]' },
 		});
 		expect(chunks.map((c) => c.type)).toContain('tool-execution-start');
 		expect(chunks.map((c) => c.type)).toContain('tool-execution-end');

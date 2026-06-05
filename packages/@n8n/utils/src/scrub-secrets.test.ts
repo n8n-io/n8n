@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { scrubSecrets, scrubSecretsInText } from './scrub-secrets';
+import { scrubSecretsInText } from './scrub-secrets';
 
 // Build token-shaped strings at runtime so the source file never contains a
 // literal that matches GitHub / vendor secret-scanning fingerprints (the
@@ -111,58 +111,5 @@ describe('scrubSecretsInText', () => {
 	it('returns the input unchanged when no patterns match', () => {
 		const input = 'this is a normal sentence with no secrets in it';
 		expect(scrubSecretsInText(input)).toBe(input);
-	});
-});
-
-describe('scrubSecrets', () => {
-	it('redacts secret-shaped object keys while preserving object shape', () => {
-		expect(
-			scrubSecrets({
-				query: 'project status',
-				password: 'plain-secret-password',
-				clientSecret: 'client-secret-value',
-				nested: {
-					apiKey: 'secret-api-key',
-					authorization: 'Bearer secret-token-value',
-					privateKey: 'private-key-value',
-					sessionCookie: 'session-cookie-value',
-				},
-			}),
-		).toEqual({
-			query: 'project status',
-			password: '[redacted]',
-			clientSecret: '[redacted]',
-			nested: {
-				apiKey: '[redacted]',
-				authorization: '[redacted]',
-				privateKey: '[redacted]',
-				sessionCookie: '[redacted]',
-			},
-		});
-	});
-
-	it('redacts secret assignments in strings nested inside non-secret keys', () => {
-		expect(scrubSecrets({ message: 'password=hunter2 and value=visible' })).toEqual({
-			message: '[REDACTED] and value=visible',
-		});
-	});
-
-	it('does not mark reused objects as circular references', () => {
-		const shared = { value: 'visible' };
-
-		expect(scrubSecrets({ first: shared, second: shared })).toEqual({
-			first: { value: 'visible' },
-			second: { value: 'visible' },
-		});
-	});
-
-	it('replaces circular references with a placeholder', () => {
-		const circular: Record<string, unknown> = { value: 'visible' };
-		circular.self = circular;
-
-		expect(scrubSecrets(circular)).toEqual({
-			value: 'visible',
-			self: '[Circular]',
-		});
 	});
 });

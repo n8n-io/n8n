@@ -1,4 +1,3 @@
-import { scrubSecrets } from '@n8n/utils';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
@@ -7,6 +6,7 @@ import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
+import { scrubToolInputForEvent } from '../utils/scrub-tool-input';
 import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
@@ -45,7 +45,7 @@ function emitToolExecutionStart(
 		type: AgentEvent.ToolExecutionStart,
 		toolCallId: ctx.toolCallId,
 		toolName: tool.name,
-		args: scrubSecrets(input),
+		args: scrubToolInputForEvent(input),
 	});
 }
 

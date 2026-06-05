@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import { z } from 'zod';
 
 import type { BuiltTelemetry, BuiltTool, InterruptibleToolContext, ToolContext } from '../../types';
+import { AgentEvent } from '../../types/runtime/event';
 import { Tool, wrapToolForApproval } from '../tool';
 
 // ---------------------------------------------------------------------------
@@ -248,6 +249,41 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 
 		expect(suspendMock).not.toHaveBeenCalled();
 		expect(result).toEqual({ result: 'public' });
+	});
+
+	it('emits tool execution start with structured redacted args when approval is not needed', async () => {
+		const baseTool = makeBuiltTool({
+			inputSchema: z.object({
+				id: z.string(),
+				password: z.string(),
+				nested: z.object({ apiKey: z.string() }),
+			}),
+		});
+		const wrapped = wrapToolForApproval(baseTool, {
+			needsApprovalFn: async () => await Promise.resolve(false),
+		});
+		const { ctx } = makeCtx();
+		const emitEvent = vi.fn();
+		ctx.toolCallId = 'tool-call-1';
+		ctx.emitEvent = emitEvent;
+		const input = {
+			id: 'public',
+			password: 'plain-secret-password',
+			nested: { apiKey: 'secret-api-key' },
+		};
+
+		await wrapped.handler!(input, ctx);
+
+		expect(emitEvent).toHaveBeenCalledWith({
+			type: AgentEvent.ToolExecutionStart,
+			toolCallId: 'tool-call-1',
+			toolName: 'testTool',
+			args: {
+				id: 'public',
+				password: '[REDACTED]',
+				nested: { apiKey: '[REDACTED]' },
+			},
+		});
 	});
 });
 
