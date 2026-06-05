@@ -31,6 +31,7 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+.agent-setup/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml
