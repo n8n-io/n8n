@@ -4,7 +4,8 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { summariseInteractiveOutput } from '../utils/interactive-summary';
+import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
+import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 describe('summariseInteractiveOutput', () => {
 	it('returns undefined for non-interactive tool names', () => {
@@ -46,9 +47,9 @@ describe('summariseInteractiveOutput', () => {
 		expect(
 			summariseInteractiveOutput(ASK_CREDENTIAL_TOOL_NAME, {
 				credentialId: 'c1',
-				credentialName: 'My Slack OAuth',
+				credentialName: 'My Slack',
 			}),
-		).toBe('My Slack OAuth');
+		).toBe('My Slack');
 	});
 
 	it('renders ask_credential skip', () => {
@@ -64,5 +65,17 @@ describe('summariseInteractiveOutput', () => {
 				credentialName: 'My Anthropic',
 			}),
 		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
+	});
+});
+
+describe('summariseToolCall', () => {
+	it('does not summarise write_todos; AgentChatToolSteps owns the i18n summary', () => {
+		expect(
+			summariseToolCall(WRITE_TODOS_TOOL_NAME, {
+				status: 'ok',
+				todoCount: 2,
+				todos: [],
+			}),
+		).toBeUndefined();
 	});
 });

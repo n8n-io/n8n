@@ -19,19 +19,18 @@ import {
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
-let mockAllNodes: INodeUi[] = [];
-let mockWorkflowTriggerNodes: INodeUi[] = [];
+const mockDocumentStoreState = vi.hoisted(() => ({
+	allNodes: [] as INodeUi[],
+	workflowTriggerNodes: [] as INodeUi[],
+	aiNodes: [] as INodeUi[],
+	name: '',
+	settings: {},
+	getPinDataSnapshot: () => ({}),
+}));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	useWorkflowDocumentStore: () => ({
-		allNodes: mockAllNodes,
-		get workflowTriggerNodes() {
-			return mockWorkflowTriggerNodes;
-		},
-		name: '',
-		settings: {},
-		getPinDataSnapshot: () => ({}),
-	}),
+	useWorkflowDocumentStore: () => mockDocumentStoreState,
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+	injectWorkflowDocumentStore: () => ({ value: mockDocumentStoreState }),
 }));
 
 describe('useActions', () => {
@@ -41,14 +40,14 @@ describe('useActions', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		mockAllNodes = [];
+		mockDocumentStoreState.allNodes = [];
 	});
 
 	describe('getAddedNodesAndConnections', () => {
 		test('should insert a manual trigger node when there are no triggers', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 
-			mockWorkflowTriggerNodes = [];
+			mockDocumentStoreState.workflowTriggerNodes = [];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -68,7 +67,7 @@ describe('useActions', () => {
 		test('should not insert a manual trigger node when there is a trigger in the workflow', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 
-			mockWorkflowTriggerNodes = [{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -83,8 +82,8 @@ describe('useActions', () => {
 		});
 
 		test('should insert a ChatTrigger node when an AI Agent is added on an empty canvas', () => {
-			mockWorkflowTriggerNodes = [];
-			mockAllNodes = [];
+			mockDocumentStoreState.workflowTriggerNodes = [];
+			mockDocumentStoreState.allNodes = [];
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -107,8 +106,8 @@ describe('useActions', () => {
 		});
 
 		test('should insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
-			mockWorkflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
-			mockAllNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.allNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -131,8 +130,8 @@ describe('useActions', () => {
 		});
 
 		test('should not insert a ChatTrigger node when an AI Agent is added with a non-trigger node prseent', () => {
-			mockWorkflowTriggerNodes = [{ type: GITHUB_TRIGGER_NODE_TYPE } as never];
-			mockAllNodes = [
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: GITHUB_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.allNodes = [
 				{ type: GITHUB_TRIGGER_NODE_TYPE } as INodeUi,
 				{ type: HTTP_REQUEST_NODE_TYPE } as INodeUi,
 			];
@@ -146,8 +145,8 @@ describe('useActions', () => {
 		});
 
 		test('should not insert a ChatTrigger node when an AI Agent is added with a Chat Trigger already present', () => {
-			mockWorkflowTriggerNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as never];
-			mockAllNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as INodeUi];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.allNodes = [{ type: CHAT_TRIGGER_NODE_TYPE } as INodeUi];
 
 			const { getAddedNodesAndConnections } = useActions();
 
@@ -160,7 +159,7 @@ describe('useActions', () => {
 		test('should insert a No Op node when a Loop Over Items Node is added', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 
-			mockWorkflowTriggerNodes = [];
+			mockDocumentStoreState.workflowTriggerNodes = [];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -192,7 +191,7 @@ describe('useActions', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 			const nodeTypesStore = useNodeTypesStore();
 
-			mockWorkflowTriggerNodes = [{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -229,7 +228,7 @@ describe('useActions', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 			const nodeTypesStore = useNodeTypesStore();
 
-			mockWorkflowTriggerNodes = [{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -335,7 +334,7 @@ describe('useActions', () => {
 		test('should preserve actionName in nodes array', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 
-			mockWorkflowTriggerNodes = [];
+			mockDocumentStoreState.workflowTriggerNodes = [];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -359,7 +358,7 @@ describe('useActions', () => {
 		test('should preserve actionName when no trigger is prepended', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 
-			mockWorkflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
@@ -380,7 +379,7 @@ describe('useActions', () => {
 		test('should work with multiple nodes having actionNames', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
 
-			mockWorkflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);

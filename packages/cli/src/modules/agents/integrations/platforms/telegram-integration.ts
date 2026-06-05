@@ -1,6 +1,10 @@
+import { AgentIntegrationConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Thread } from 'chat';
+import type { Thread, Author } from 'chat';
+import { createHmac } from 'crypto';
+import { InstanceSettings } from 'n8n-core';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
@@ -9,6 +13,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
+import type { IntegrationAction } from '../integration-tools';
 
 /**
  * Telegram platform integration.
@@ -35,7 +40,26 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'telegram';
 
+	readonly builderGuidance = {
+		capabilities: [
+			'Receive Telegram messages as agent triggers.',
+			'Respond in Telegram conversations and send direct Telegram messages.',
+			'Render Telegram-compatible rich interaction cards with buttons.',
+		],
+		useIntegrationWhen: [
+			'The agent should be chatted with from Telegram or act as a Telegram bot.',
+			'The agent needs to reply to Telegram users in the same conversation context.',
+			'The agent should send Telegram messages as the connected Telegram bot.',
+		],
+		useNodeToolWhen: [
+			'Telegram is only a backend API step and the agent does not need to be connected as a Telegram chat surface.',
+			'The request is a one-off Telegram operation from another trigger without ongoing Telegram conversation context.',
+		],
+	};
+
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+
+	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
 
 	readonly needsShortCallbackData = true;
 
@@ -63,6 +87,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
 		private readonly agentRepository: AgentRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		super();
 	}
@@ -70,19 +95,25 @@ export class TelegramIntegration extends AgentChatIntegration {
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const mode = this.getMode();
+		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
 		const { createTelegramAdapter } = await loadTelegramAdapter();
-		return createTelegramAdapter({ botToken, mode });
+		return createTelegramAdapter({ botToken, mode, secretToken });
 	}
 
 	/**
-	 * Block the connect flow if this Telegram credential is already claimed — either
-	 * by another agent in our DB, or by an unrelated webhook registered directly on
-	 * Telegram (stale state, different n8n instance, or a Telegram-trigger workflow).
-	 *
-	 * The DB check is the primary signal (gives us the owning agent's name); the
-	 * Telegram `getWebhookInfo` probe catches leftover webhooks no agent claims.
-	 * The probe fails open — if Telegram's API is flaky, we log a warning and
-	 * proceed rather than blocking a legitimate connect.
+	 * In polling mode the Chat SDK adapter long-polls Telegram, which must be
+	 * done by exactly one main — otherwise multiple instances race for the same
+	 * updates. Webhook mode is safe on every main.
+	 */
+	override requiresLeader(): boolean {
+		return this.getMode() === 'polling';
+	}
+
+	/**
+	 * Block the connect flow if this Telegram credential is already claimed by
+	 * another agent in our DB. We deliberately don't probe Telegram for an
+	 * existing webhook here — `onAfterConnect` overwrites whatever URL Telegram
+	 * has on file, so a stale webhook from elsewhere isn't a connect blocker.
 	 */
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		const others = await this.agentRepository.findByIntegrationCredential(
@@ -96,50 +127,63 @@ export class TelegramIntegration extends AgentChatIntegration {
 				`Telegram credential is already connected to agent "${others[0].name}"`,
 			);
 		}
-
-		// Only probe Telegram when we'd actually register a webhook (public URL).
-		if (this.getMode() !== 'webhook') return;
-
-		const botToken =
-			typeof ctx.credential.accessToken === 'string' ? ctx.credential.accessToken : '';
-		if (!botToken) return;
-
-		let info: { url: string };
-		try {
-			const resp = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`, {
-				method: 'POST',
-			});
-			if (!resp.ok) throw new Error(await resp.text());
-			const body = (await resp.json()) as { result?: { url?: string } };
-			info = { url: body.result?.url ?? '' };
-		} catch (error) {
-			this.logger.warn(
-				`[TelegramIntegration] getWebhookInfo probe failed, proceeding: ${error instanceof Error ? error.message : String(error)}`,
-			);
-			return;
-		}
-
-		const ourUrl = ctx.webhookUrlFor(this.type);
-		if (info.url && info.url !== ourUrl) {
-			throw new ConflictError(
-				`Telegram bot already has a webhook registered elsewhere: ${info.url}`,
-			);
-		}
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		if (this.getMode() !== 'webhook') return;
-		const botToken = this.extractBotToken(ctx.credential);
 		const webhookUrl = ctx.webhookUrlFor('telegram');
-		const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
+		const resp = await fetch(this.botApiUrl(ctx.credential, 'setWebhook'), {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ url: webhookUrl }),
+			body: JSON.stringify({ url: webhookUrl, secret_token: secretToken }),
 		});
 		if (!resp.ok) {
 			throw new Error(`Failed to register Telegram webhook: ${await resp.text()}`);
 		}
 		this.logger.info(`[TelegramIntegration] Webhook registered: ${webhookUrl}`);
+	}
+
+	/**
+	 * Mirror of `onAfterConnect`: clear the webhook we registered on Telegram so
+	 * the bot is free for another agent or another application. Polling-mode
+	 * connections never registered a webhook with Telegram, so skip.
+	 */
+	async onBeforeDisconnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		if (this.getMode() !== 'webhook') return;
+		const resp = await fetch(this.botApiUrl(ctx.credential, 'deleteWebhook'), {
+			method: 'POST',
+		});
+		if (!resp.ok) {
+			throw new Error(`Failed to deregister Telegram webhook: ${await resp.text()}`);
+		}
+		this.logger.info(
+			`[TelegramIntegration] Webhook deregistered for agent ${ctx.agentId}, credential ${ctx.credentialId}`,
+		);
+	}
+
+	/**
+	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
+	 * without saved settings) accepts every Telegram user; Private mode only
+	 * accepts senders whose numeric user ID or username appears in `allowedUsers`.
+	 * Stored values may carry a leading "@" (saved verbatim from user input), so
+	 * they are normalized by stripping "@" before comparison. The SDK delivers
+	 * both userId and userName without "@".
+	 */
+	isUserAllowed(author: Author, integration: AgentIntegrationConfig | undefined): boolean {
+		if (!integration) return true;
+		if (integration?.type !== 'telegram') {
+			throw new UnexpectedError(
+				`TelegramIntegration received settings with type "${integration?.type}"`,
+			);
+		}
+		if (!integration.settings) return true;
+
+		if (integration.settings.accessMode === 'public') return true;
+		return integration.settings.allowedUsers.some((allowed) => {
+			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
+			return normalized === author.userId || normalized === author.userName;
+		});
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
@@ -173,6 +217,19 @@ export class TelegramIntegration extends AgentChatIntegration {
 		return isPublic ? 'webhook' : 'polling';
 	}
 
+	/**
+	 * Per-integration webhook secret derived deterministically from the cluster
+	 * encryption key. In multi-main mode the webhook is registered exactly once by the
+	 * leader, but every main must verify incoming POSTs. HMAC over an
+	 * `(agentId, credentialId)` lets every main reach the identical secret with
+	 * zero coordination.
+	 */
+	private deriveSecretToken(agentId: string, credentialId: string): string {
+		return createHmac('sha256', this.instanceSettings.encryptionKey)
+			.update(`telegram:${agentId}:${credentialId}`)
+			.digest('hex');
+	}
+
 	private extractBotToken(credential: Record<string, unknown>): string {
 		const token = credential.accessToken;
 		if (typeof token === 'string' && token) {
@@ -182,5 +239,20 @@ export class TelegramIntegration extends AgentChatIntegration {
 			'Could not extract a bot token from the Telegram credential. ' +
 				'Please ensure the credential has a valid access token from BotFather.',
 		);
+	}
+
+	/**
+	 * Build a Bot API URL honoring the credential's `baseUrl` (defaults to
+	 * `https://api.telegram.org`). Lets users on a self-hosted Bot API server
+	 * register/deregister webhooks against their own endpoint.
+	 */
+	private botApiUrl(credential: Record<string, unknown>, method: string): string {
+		const botToken = this.extractBotToken(credential);
+		const raw = credential.baseUrl;
+		const baseUrl =
+			typeof raw === 'string' && raw.trim()
+				? raw.trim().replace(/\/+$/, '')
+				: 'https://api.telegram.org';
+		return `${baseUrl}/bot${botToken}/${method}`;
 	}
 }

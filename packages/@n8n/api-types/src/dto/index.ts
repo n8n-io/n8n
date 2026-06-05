@@ -33,6 +33,8 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
+export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -44,6 +46,7 @@ export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
+export { ListCredentialResolversQueryDto } from './credential-resolver/list-credential-resolvers-query.dto';
 
 export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto';
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
@@ -97,6 +100,7 @@ export { UpdateVariableRequestDto } from './variables/update-variable-request.dt
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
+export type { CredentialConnectionStatus } from './credentials/credential-connection-status';
 
 export {
 	MAX_PINNED_DATA_SIZE,
@@ -138,7 +142,7 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 
-export { PaginationDto } from './pagination/pagination.dto';
+export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -199,6 +203,14 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
+export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
+export {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from './packages/import-package-request.dto';
+
+export * from './evaluations';
+
 export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
@@ -235,20 +247,6 @@ export {
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
-
-export { CreateAgentDto } from './agents/create-agent.dto';
-export { UpdateAgentDto } from './agents/update-agent.dto';
-export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
-export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
-export {
-	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-	CreateAgentSkillDto,
-	agentSkillSchema,
-} from './agents/create-agent-skill.dto';
-export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
-export { AgentIntegrationDto } from './agents/agent-integration.dto';
-export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
-export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
 export {

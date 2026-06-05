@@ -1,9 +1,31 @@
 {
-	"prompt": "Every day, get the posts made in the past day on 3 different Slack channels: #general (C04GENERAL01), #engineering (C04ENGINEER1), and #product (C04PRODUCT01). Summarize them using AI, and post the summary on #daily-digest (C04DAILYDG01). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day, fetch the last day of messages from a few Slack channels, summarize them with an LLM, and post the summary to another Slack channel."
+		},
+		{
+			"role": "assistant",
+			"text": "Which channels should I read from, and where should the summary go?"
+		},
+		{
+			"role": "user",
+			"text": "Read from #general (C04GENERAL01), #engineering (C04ENGINEER1), and #product (C04PRODUCT01). Post the summary to #daily-digest (C04DAILYDG01)."
+		},
+		{
+			"role": "assistant",
+			"text": "Any preference on what time of day the digest goes out?"
+		},
+		{
+			"role": "user",
+			"text": "Morning is fine."
+		}
+	],
+	"messageBudget": 6,
 	"complexity": "medium",
 	"tags": ["build", "slack", "ai", "schedule"],
 	"triggerType": "schedule",
-	"scenarios": [
+	"executionScenarios": [
 		{
 			"name": "happy-path",
 			"description": "All 3 channels return messages, AI summarizes, posts to channel",

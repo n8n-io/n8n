@@ -14,11 +14,9 @@ export type {
 
 // Code builder utilities for MCP integration
 export {
-	NodeTypeParser,
 	ParseValidateHandler,
 	WorkflowCodeParseError,
 	createCodeBuilderSearchTool,
-	type CodeBuilderSearchToolOptions,
 	createCodeBuilderGetTool,
 	createGetSuggestedNodesTool,
 	stripImportStatements,
@@ -31,13 +29,14 @@ export {
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	CODE_BUILDER_VALIDATE_TOOL,
+	CODE_BUILDER_VALIDATE_NODE_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
+	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
 } from './code-builder';
-export type {
-	CodeBuilderGetToolOptions,
-	ParseAndValidateResult,
-	ValidationWarning,
-} from './code-builder';
+export type { ParseAndValidateResult, ValidationWarning } from './code-builder';
+
+// SSRF guard contract for the web_fetch tool (cli injects its SsrfProtectionService here)
+export { type SsrfGuard, createPassthroughSsrfGuard } from './tools/utils/ssrf-guard';

@@ -11,6 +11,82 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	describe('per-tool execution timing', () => {
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		it('records distinct per-tool end times from tool-execution-end for concurrent tools', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			// Two concurrent tool calls emitted together by the model.
+			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
+			recorder.record(makeToolCallChunk('b', {}, 'tc-2'));
+
+			// Both start executing together (server-stamped on the chunk).
+			recorder.record({
+				type: 'tool-execution-start',
+				toolCallId: 'tc-1',
+				toolName: 'a',
+				startTime: 1_100,
+			});
+			recorder.record({
+				type: 'tool-execution-start',
+				toolCallId: 'tc-2',
+				toolName: 'b',
+				startTime: 1_100,
+			});
+
+			// They finish at different real times (server-stamped on the chunk).
+			recorder.record({
+				type: 'tool-execution-end',
+				toolCallId: 'tc-1',
+				toolName: 'a',
+				isError: false,
+				endTime: 1_500,
+			});
+			recorder.record({
+				type: 'tool-execution-end',
+				toolCallId: 'tc-2',
+				toolName: 'b',
+				isError: false,
+				endTime: 3_000,
+			});
+
+			// The batched tool-results arrive together, after the slowest finished.
+			jest.setSystemTime(3_001);
+			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
+			recorder.record(makeToolResultChunk('b', 'rb', 'tc-2'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const { timeline } = recorder.getMessageRecord();
+			const a = timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-1');
+			const b = timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-2');
+
+			// startTime from tool-execution-start, endTime from tool-execution-end —
+			// NOT the shared batched tool-result timestamp (3001).
+			expect(a).toMatchObject({ startTime: 1_100, endTime: 1_500, output: 'ra', success: true });
+			expect(b).toMatchObject({ startTime: 1_100, endTime: 3_000, output: 'rb', success: true });
+		});
+
+		it('falls back to the tool-result time when tool-execution-end is absent', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(1_000);
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('a', {}, 'tc-1'));
+			jest.setSystemTime(2_000);
+			recorder.record(makeToolResultChunk('a', 'ra', 'tc-1'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const { timeline } = recorder.getMessageRecord();
+			const a = timeline.find((e) => e.type === 'tool-call' && e.toolCallId === 'tc-1');
+			expect(a).toMatchObject({ endTime: 2_000, output: 'ra', success: true });
+		});
+	});
+
 	describe('timeline ordering', () => {
 		it('captures text → tool call → text in order', () => {
 			const recorder = new ExecutionRecorder();
@@ -77,54 +153,6 @@ describe('ExecutionRecorder', () => {
 			const record = recorder.getMessageRecord();
 			const textEvents = record.timeline.filter((e) => e.type === 'text');
 			expect(textEvents).toHaveLength(0);
-		});
-	});
-
-	describe('working memory capture', () => {
-		it('captures the working-memory tool call as a timeline event', () => {
-			const recorder = new ExecutionRecorder();
-
-			recorder.record({ type: 'text-delta', id: 't1', delta: 'Hello' });
-			recorder.record({
-				type: 'tool-call',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-				input: { memory: '# Name: Alice' },
-			} as StreamChunk);
-			recorder.record({
-				type: 'tool-result',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-				output: { success: true },
-			} as StreamChunk);
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			expect(record.workingMemory).toBe('# Name: Alice');
-			expect(record.toolCalls).toEqual([]);
-			expect(record.timeline.some((e) => e.type === 'working-memory')).toBe(true);
-		});
-
-		it('keeps last working memory when multiple updates occur', () => {
-			const recorder = new ExecutionRecorder();
-
-			recorder.record({
-				type: 'tool-call',
-				toolCallId: 'wm-1',
-				toolName: 'update_working_memory',
-				input: { memory: 'first' },
-			} as StreamChunk);
-			recorder.record({
-				type: 'tool-call',
-				toolCallId: 'wm-2',
-				toolName: 'update_working_memory',
-				input: { memory: 'second' },
-			} as StreamChunk);
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-			expect(record.workingMemory).toBe('second');
 		});
 	});
 
@@ -197,6 +225,31 @@ describe('ExecutionRecorder', () => {
 				input: { x: 1 },
 				output: { y: 2 },
 			});
+		});
+
+		it('pairs same-name flat tool calls by toolCallId when results arrive out of order', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('search_knowledge', { file: 'first.md' }, 'call-1'));
+			recorder.record(makeToolCallChunk('search_knowledge', { file: 'second.md' }, 'call-2'));
+			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'second.md' }, 'call-2'));
+			recorder.record(makeToolResultChunk('search_knowledge', { fileName: 'first.md' }, 'call-1'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			expect(record.toolCalls).toEqual([
+				{
+					name: 'search_knowledge',
+					input: { file: 'first.md' },
+					output: { fileName: 'first.md' },
+				},
+				{
+					name: 'search_knowledge',
+					input: { file: 'second.md' },
+					output: { fileName: 'second.md' },
+				},
+			]);
 		});
 
 		it('still concatenates assistantResponse from all text deltas', () => {
@@ -470,5 +523,211 @@ describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect(tc.workflowExecutionId).toBeUndefined();
 		expect(tc.success).toBe(false);
+	});
+});
+
+describe('ExecutionRecorder — tool-result error normalization', () => {
+	it('captures the Error message when a tool throws (instead of storing a non-serializable Error)', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'send_telegram_message',
+			input: { chatId: '1', text: 'hi' },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'send_telegram_message',
+			output: new Error('Credential "Telegram acc" is not accessible or does not exist.'),
+			isError: true,
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.success).toBe(false);
+		// `tc.output` must be a plain enumerable object — a raw Error would serialize
+		// to "{}" via TypeORM's JSON column, losing the diagnostic the UI needs.
+		expect(tc.output).toEqual({
+			error: 'Credential "Telegram acc" is not accessible or does not exist.',
+		});
+	});
+
+	it('wraps a string error output in { error } so the shape stays consistent', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'x', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'x',
+			output: 'boom',
+			isError: true,
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.output).toEqual({ error: 'boom' });
+	});
+
+	it('preserves an already-enumerable error object', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'x', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'x',
+			output: { error: 'already shaped', code: 'E_BAD' },
+			isError: true,
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.output).toEqual({ error: 'already shaped', code: 'E_BAD' });
+	});
+
+	it('normalises Error in the synthesised entry path too', () => {
+		// HITL/approval resume path: tool-result arrives without a preceding
+		// tool-call chunk, so the recorder synthesises a timeline entry. That
+		// path must apply the same normalisation.
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't-resume',
+			toolName: 'x',
+			output: new Error('still bad'),
+			isError: true,
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.success).toBe(false);
+		expect(tc.output).toEqual({ error: 'still bad' });
+	});
+
+	it('leaves a successful tool result untouched', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'x', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'x',
+			output: { status: 'ok', data: [1, 2, 3] },
+			isError: false,
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.success).toBe(true);
+		expect(tc.output).toEqual({ status: 'ok', data: [1, 2, 3] });
+	});
+});
+
+describe('ExecutionRecorder — node-tool {{$json.x}} resolution', () => {
+	it('resolves a full-string {{$json.path}} expression using the LLM args', () => {
+		const registry = buildToolRegistry([
+			nodeTool('send_message', 'n8n-nodes-base.telegramTool', {
+				resource: 'message',
+				operation: 'sendMessage',
+				chatId: '={{$json.chat_id}}',
+				text: '={{ $json.text }}',
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'send_message',
+			input: { chat_id: '12345', text: 'hello there' },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'send_message',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.nodeParameters).toEqual({
+			resource: 'message',
+			operation: 'sendMessage',
+			chatId: '12345',
+			text: 'hello there',
+		});
+	});
+
+	it('resolves a nested {{$json.path.sub}} lookup', () => {
+		const registry = buildToolRegistry([
+			nodeTool('post', 'n8n-nodes-base.http', {
+				url: '={{ $json.target.url }}',
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'post',
+			input: { target: { url: 'https://example.com/api' } },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'post',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect((tc.nodeParameters as Record<string, unknown>).url).toBe('https://example.com/api');
+	});
+
+	it('leaves the raw template in place when the path is missing', () => {
+		const registry = buildToolRegistry([
+			nodeTool('post', 'n8n-nodes-base.http', {
+				url: '={{ $json.target.url }}',
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'post',
+			input: { target: {} },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'post',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect((tc.nodeParameters as Record<string, unknown>).url).toBe('={{ $json.target.url }}');
+	});
+
+	it('still resolves $fromAI calls when both styles are mixed', () => {
+		const registry = buildToolRegistry([
+			nodeTool('post', 'n8n-nodes-base.http', {
+				url: "={{ $fromAI('endpoint', 'API endpoint', 'string') }}",
+				body: '={{ $json.payload }}',
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'post',
+			input: { endpoint: 'https://api/x', payload: 'hi' },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'post',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.nodeParameters).toEqual({
+			url: 'https://api/x',
+			body: 'hi',
+		});
 	});
 });

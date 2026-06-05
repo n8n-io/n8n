@@ -6,6 +6,7 @@ import {
 	normalizeColumnNames,
 	inferColumnType,
 	isStructuredAttachment,
+	isParseableAttachment,
 	MAX_DECODED_SIZE_BYTES,
 	MAX_COLUMNS,
 	MAX_CELLS_PER_CALL,
@@ -52,18 +53,61 @@ describe('detectFormat', () => {
 
 	it('detects format from MIME type when extension is unknown', () => {
 		expect(detectFormat('file.dat', 'text/csv')).toBe('csv');
+		expect(detectFormat('file.dat', 'application/csv')).toBe('csv');
 		expect(detectFormat('file.dat', 'text/tab-separated-values')).toBe('tsv');
 		expect(detectFormat('file.dat', 'application/json')).toBe('json');
 	});
 
 	it('returns undefined for unsupported formats', () => {
 		expect(detectFormat('image.png', 'image/png')).toBeUndefined();
-		expect(detectFormat('file.xlsx', 'application/vnd.openxmlformats')).toBeUndefined();
+		expect(detectFormat('archive.zip', 'application/zip')).toBeUndefined();
+		expect(detectFormat('file.bin', 'application/octet-stream')).toBeUndefined();
 	});
 
 	it('is case-insensitive for extensions', () => {
 		expect(detectFormat('DATA.CSV', 'application/octet-stream')).toBe('csv');
 		expect(detectFormat('FILE.JSON', 'text/plain')).toBe('json');
+	});
+
+	it('detects xlsx from extension and MIME type', () => {
+		expect(detectFormat('sheet.xlsx', 'application/octet-stream')).toBe('xlsx');
+		expect(
+			detectFormat('file.dat', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+		).toBe('xlsx');
+	});
+
+	it('detects text format from .txt extension and text/plain MIME', () => {
+		expect(detectFormat('notes.txt', 'application/octet-stream')).toBe('text');
+		expect(detectFormat('file.dat', 'text/plain')).toBe('text');
+	});
+
+	it('detects markdown from .md/.markdown extensions and MIME types', () => {
+		expect(detectFormat('readme.md', 'application/octet-stream')).toBe('markdown');
+		expect(detectFormat('readme.markdown', 'application/octet-stream')).toBe('markdown');
+		expect(detectFormat('file.dat', 'text/markdown')).toBe('markdown');
+		expect(detectFormat('file.dat', 'text/x-markdown')).toBe('markdown');
+	});
+
+	it('detects html from .html/.htm extensions and MIME types', () => {
+		expect(detectFormat('page.html', 'application/octet-stream')).toBe('html');
+		expect(detectFormat('page.htm', 'application/octet-stream')).toBe('html');
+		expect(detectFormat('file.dat', 'text/html')).toBe('html');
+		expect(detectFormat('file.dat', 'application/xhtml+xml')).toBe('html');
+	});
+
+	it('detects pdf from extension and MIME type', () => {
+		expect(detectFormat('doc.pdf', 'application/octet-stream')).toBe('pdf');
+		expect(detectFormat('file.dat', 'application/pdf')).toBe('pdf');
+	});
+
+	it('detects docx from extension and MIME type', () => {
+		expect(detectFormat('letter.docx', 'application/octet-stream')).toBe('docx');
+		expect(
+			detectFormat(
+				'file.dat',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			),
+		).toBe('docx');
 	});
 });
 
@@ -522,13 +566,29 @@ describe('isStructuredAttachment', () => {
 		).toBe(true);
 	});
 
-	it('returns false for non-structured types', () => {
+	it('returns true for xlsx (tabular)', () => {
+		expect(
+			isStructuredAttachment({
+				data: '',
+				mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				fileName: 'data.xlsx',
+			}),
+		).toBe(true);
+	});
+
+	it('returns false for text-like and unknown types', () => {
 		expect(isStructuredAttachment({ data: '', mimeType: 'image/png', fileName: 'a.png' })).toBe(
 			false,
 		);
 		expect(
 			isStructuredAttachment({ data: '', mimeType: 'application/pdf', fileName: 'a.pdf' }),
 		).toBe(false);
+		expect(isStructuredAttachment({ data: '', mimeType: 'text/html', fileName: 'a.html' })).toBe(
+			false,
+		);
+		expect(isStructuredAttachment({ data: '', mimeType: 'text/plain', fileName: 'a.txt' })).toBe(
+			false,
+		);
 	});
 
 	it('detects by extension even with generic MIME type', () => {
@@ -539,5 +599,31 @@ describe('isStructuredAttachment', () => {
 				fileName: 'data.csv',
 			}),
 		).toBe(true);
+	});
+});
+
+describe('isParseableAttachment', () => {
+	it.each([
+		['CSV', 'text/csv', 'a.csv'],
+		['TSV', 'text/tab-separated-values', 'a.tsv'],
+		['JSON', 'application/json', 'a.json'],
+		['XLSX', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'a.xlsx'],
+		['plain text', 'text/plain', 'notes.txt'],
+		['markdown', 'text/markdown', 'readme.md'],
+		['HTML', 'text/html', 'page.html'],
+		['PDF', 'application/pdf', 'doc.pdf'],
+		['DOCX', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'a.docx'],
+	])('returns true for %s', (_name, mimeType, fileName) => {
+		expect(isParseableAttachment({ data: '', mimeType, fileName })).toBe(true);
+	});
+
+	it.each([
+		['image/png', 'a.png'],
+		['image/jpeg', 'a.jpg'],
+		['application/zip', 'a.zip'],
+		['application/octet-stream', 'a.bin'],
+		['video/mp4', 'a.mp4'],
+	])('returns false for %s', (mimeType, fileName) => {
+		expect(isParseableAttachment({ data: '', mimeType, fileName })).toBe(false);
 	});
 });

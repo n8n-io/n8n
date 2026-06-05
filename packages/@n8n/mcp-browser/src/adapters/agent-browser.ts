@@ -12,6 +12,7 @@ import {
 	type ConnectionLostReason,
 } from '../errors';
 import { createLogger } from '../logger';
+import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	Adapter,
 	ClickOptions,
@@ -23,6 +24,7 @@ import type {
 	NavigateResult,
 	NetworkEntry,
 	PageInfo,
+	HtmlProbeResult,
 	ResolvedConfig,
 	ScreenshotOptions,
 	ScrollOptions,
@@ -57,6 +59,7 @@ export class AgentBrowserAdapter implements Adapter {
 
 	private resolvedConfig: ResolvedConfig;
 	private relay?: CDPRelayServer;
+	private relayPort?: number;
 	private cdpEndpoint?: string;
 	private urlCache = new Map<string, string>();
 	private tabCache: TabData[] = [];
@@ -181,32 +184,44 @@ export class AgentBrowserAdapter implements Adapter {
 		if (!chromePath) throw new BrowserExecutableNotFoundError(config.browser);
 		log.debug('launch: browser executable:', chromePath);
 
-		this.relay = new CDPRelayServer();
-		log.debug('launch: starting relay');
-		const port = await this.relay.listen();
-		log.debug('launch: relay listening on port', port);
-		const extensionEndpoint = this.relay.extensionEndpoint(port);
+		if (!this.relay) {
+			this.relay = new CDPRelayServer();
+			this.relayPort = await this.relay.listen();
+			log.debug('launch: relay listening on port', this.relayPort);
+		} else {
+			log.debug('launch: reusing existing relay on port', this.relayPort);
+		}
 
-		const connectUrl =
-			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
-		log.debug('launch: opening browser at', connectUrl);
+		if (!this.relay.isExtensionConnected()) {
+			const extensionEndpoint = this.relay.extensionEndpoint(this.relayPort!);
+			// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` mirrors the playwright adapter — see
+			// `playwright.ts` for the full justification. The extension only honors
+			// the flag when the relay URL is localhost, which it always is here.
+			const autoConnect = process.env.N8N_EVAL_AUTO_BROWSER_CONNECT === '1';
+			const connectUrl =
+				`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
+				`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}` +
+				(autoConnect ? '&autoConnect=1' : '');
+			log.debug('launch: opening browser at', connectUrl);
 
-		await new Promise<void>((resolve, reject) => {
-			const child = execFile(chromePath, [connectUrl]);
-			const earlyFailTimer = setTimeout(() => resolve(), 2_000);
-			child.on('error', (error: Error) => {
-				clearTimeout(earlyFailTimer);
-				reject(new BrowserExecutableNotFoundError(`${config.browser} (${error.message})`));
+			await new Promise<void>((resolve, reject) => {
+				const child = execFile(chromePath, [connectUrl]);
+				const earlyFailTimer = setTimeout(() => resolve(), 2_000);
+				child.on('error', (error: Error) => {
+					clearTimeout(earlyFailTimer);
+					reject(new BrowserExecutableNotFoundError(`${config.browser} (${error.message})`));
+				});
 			});
-		});
-		log.debug('launch: browser launched (2 s early-fail window passed)');
+			log.debug('launch: browser launched (2 s early-fail window passed)');
 
-		log.debug('launch: waiting for extension to connect');
-		await this.relay.waitForExtension({ browserWasLaunched: true });
-		log.debug('launch: extension connected');
+			log.debug('launch: waiting for extension to connect');
+			await this.relay.waitForExtension({ browserWasLaunched: true });
+			log.debug('launch: extension connected');
+		} else {
+			log.debug('launch: extension already connected to existing relay');
+		}
 
-		this.cdpEndpoint = this.relay.cdpEndpoint(port);
+		this.cdpEndpoint = this.relay.cdpEndpoint(this.relayPort!);
 		log.debug('launch: cdp endpoint:', this.cdpEndpoint);
 
 		this.relay.onExtensionDisconnect = (reason) => {
@@ -224,6 +239,7 @@ export class AgentBrowserAdapter implements Adapter {
 			this.relay.stop();
 			this.relay = undefined;
 		}
+		this.relayPort = undefined;
 		this.cdpEndpoint = undefined;
 		try {
 			await this.killSession();
@@ -428,6 +444,20 @@ export class AgentBrowserAdapter implements Adapter {
 		return { tree: tree || '(empty page)', refCount };
 	}
 
+	async probePageHtml(pageId: string): Promise<HtmlProbeResult> {
+		try {
+			await this.switchToTab(pageId);
+			const resp = await this.run(['eval', HTML_PROBE_SCRIPT]);
+			const raw =
+				resp.data && typeof resp.data === 'object' && 'result' in resp.data
+					? (resp.data as { result: unknown }).result
+					: resp.data;
+			return parseHtmlProbeResult(raw);
+		} catch (error) {
+			return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		}
+	}
+
 	async screenshot(
 		pageId: string,
 		_target?: ElementTarget,
@@ -596,5 +626,15 @@ export class AgentBrowserAdapter implements Adapter {
 
 	getPageUrl(pageId: string): string | undefined {
 		return this.urlCache.get(pageId);
+	}
+
+	async getElementValue(pageId: string, target: ElementTarget): Promise<string> {
+		await this.switchToTab(pageId);
+		const ref = this.resolveTarget(target);
+		const valueResp = await this.run(['get', 'value', ref]);
+		const value = (valueResp.data as { value?: string } | undefined)?.value ?? '';
+		if (value !== '') return value;
+		const textResp = await this.run(['get', 'text', ref]);
+		return (textResp.data as { text?: string } | undefined)?.text ?? '';
 	}
 }

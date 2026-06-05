@@ -2,6 +2,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiSendMessageRequest,
@@ -13,12 +14,11 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import {
 	RestController,
 	GlobalScope,
@@ -34,14 +34,15 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
-import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -93,11 +94,12 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
-		private readonly subAgentEvalService: SubAgentEvalService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
+		private readonly userRepository: UserRepository,
+		private readonly credentialsService: CredentialsService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -137,6 +139,21 @@ export class InstanceAiController {
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
+		if (payload.attachments && payload.attachments.length > 0) {
+			try {
+				validateAttachmentMimeTypes(payload.attachments);
+			} catch (error) {
+				if (error instanceof UnsupportedAttachmentError) {
+					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
+					throw new BadRequestError(
+						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
+							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				throw error;
+			}
+		}
+
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {
 			throw new ConflictError('A run is already active for this thread');
@@ -146,7 +163,6 @@ export class InstanceAiController {
 			req.user,
 			threadId,
 			payload.message,
-			payload.researchMode,
 			payload.attachments,
 			payload.timeZone,
 			payload.pushRef,
@@ -563,7 +579,7 @@ export class InstanceAiController {
 		}
 
 		// Exclude snapshots for active/suspended runs — they have no matching
-		// assistant message in Mastra memory yet and would misalign the
+		// assistant message in native memory yet and would misalign the
 		// positional snapshot-to-message matching in parseStoredMessages.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
@@ -609,19 +625,6 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
-	}
-
-	@Post('/eval/run-sub-agent')
-	@GlobalScope('instanceAi:message')
-	async runSubAgentEval(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalSubAgentRequest,
-	) {
-		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
-			throw new ForbiddenError('Sub-agent evaluation is not enabled');
-		}
-		return await this.subAgentEvalService.run(req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
@@ -772,6 +775,18 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/gateway/credentials', { skipAuth: true })
+	async gatewayCreateCredential(
+		req: Request,
+		_res: Response,
+		@Body payload: InstanceAiGatewayCreateCredentialDto,
+	) {
+		const user = await this.resolveGatewayUser(this.getGatewayKeyHeader(req));
+		await this.assertGatewayEnabled(user.id);
+		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
+		return { credentialId: credential.id };
+	}
+
 	@Get('/gateway/status')
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
@@ -864,6 +879,23 @@ export class InstanceAiController {
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
+	}
+
+	/**
+	 * Resolve a gateway API key to its associated User. Requires a user-scoped
+	 * key — the static env-var key (which has no associated DB user) is rejected.
+	 */
+	private async resolveGatewayUser(key: string | undefined): Promise<User> {
+		const userId = this.validateGatewayApiKey(key);
+		if (userId === 'env-gateway') {
+			throw new ForbiddenError('Credential creation requires a user-scoped gateway key');
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['role', 'role.scopes'],
+		});
+		if (!user) throw new ForbiddenError('Invalid API key');
+		return user;
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {

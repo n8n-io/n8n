@@ -1,4 +1,4 @@
-import { ref, computed, triggerRef } from 'vue';
+import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -35,6 +35,12 @@ import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceA
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
+export interface PlanEditContext {
+	requestId: string;
+	inputThreadId?: string;
+	taskCount: number;
+}
+
 export interface PendingConfirmationItem {
 	toolCall: InstanceAiToolCallState & { confirmation: InstanceAiConfirmation };
 	agentNode: InstanceAiAgentNode;
@@ -53,21 +59,17 @@ const MAX_DEBUG_EVENTS = 1000;
  * side effects reach back into store-owned state without a circular import.
  */
 export interface ThreadRuntimeHooks {
-	/** Read at `sendMessage` time — the instance-level UI pref. */
-	getResearchMode: () => boolean;
 	/** SSE delivered a `thread-title-updated` event for the active thread. */
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
-	/** Promote a not-yet-persisted thread to server-side. Called on first send. */
-	syncThread: (threadId: string) => Promise<void>;
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -77,6 +79,11 @@ function collectPendingConfirmations(
 			tc.confirmationStatus !== 'approved' &&
 			tc.confirmationStatus !== 'denied' &&
 			!resolved.has(tc.confirmation.requestId) &&
+			// Expired cards render as a terminal "this action has expired" state
+			// in their inline slot; surfacing them in the floating/inline panel
+			// would block the chat input on a confirmation the user can no
+			// longer act on.
+			!tc.confirmation.expired &&
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
@@ -226,46 +233,45 @@ export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
 export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
 
 /**
- * Owns per-thread state (messages, SSE, reducer state, hydration) for the
- * currently active thread. The store creates one of these and re-exports
- * its surface, so consumers continue to read `store.messages` etc.
- *
- * `switchTo(newThreadId)` resets state and updates `currentThreadId` in place
- * — refs keep their identity, so consumer watchers continue working.
+ * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
+ * feedback and resource registries.
  */
-export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntimeHooks) {
+export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 
 	// --- Reactive state ---
-	const currentThreadId = ref<string>(initialThreadId);
 	const messages = ref<InstanceAiMessage[]>([]);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
+	const resolvedConfirmationIds = reactive(
+		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
+	);
 	const pendingMessageCount = ref(0);
-	const hydratingThreadId = ref<string | null>(null);
+	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
-	const lastEventIdByThread = ref<Record<string, number>>({});
+	const lastEventId = ref<number | undefined>(undefined);
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const activePlanEdit = ref<PlanEditContext | null>(null);
+	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// --- Non-reactive runtime state ---
 	let runStateByGroupId: Record<string, AgentRunState> = {};
 	let groupIdByRunId: Record<string, string> = {};
 	let eventSource: EventSource | null = null;
 	let sseGeneration = 0;
-	let hydrationRequestSequence = 0;
-	let activeHydrationRequestToken: number | null = null;
+	let hydrationGeneration = 0;
+	let hydrationPromise: Promise<HistoricalHydrationStatus> | null = null;
 
 	// --- Computeds ---
 	const isStreaming = computed(() => activeRunId.value !== null);
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
-	const isHydratingThread = computed(() => hydratingThreadId.value === currentThreadId.value);
+	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
 
 	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
@@ -276,7 +282,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({
 			messages,
-			currentThreadId,
+			threadId,
 			telemetry,
 			postFeedback: async (tid, responseId, payload) =>
 				await postFeedback(rootStore.restApiContext, tid, responseId, payload),
@@ -307,11 +313,6 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 				: 'Add error handling to the workflow';
 		}
 
-		const dataChild = tree.children.find((c) => c.role === 'data-table-manager');
-		if (dataChild) {
-			return 'Query the data table to show recent entries';
-		}
-
 		return null;
 	});
 
@@ -320,7 +321,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		const items: PendingConfirmationItem[] = [];
 		for (const msg of messages.value) {
 			if (msg.role !== 'assistant' || !msg.agentTree) continue;
-			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
+			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds, items);
 		}
 		return items;
 	});
@@ -330,11 +331,9 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'denied' | 'deferred',
+		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
 	): void {
-		const next = new Map(resolvedConfirmationIds.value);
-		next.set(requestId, action);
-		resolvedConfirmationIds.value = next;
+		resolvedConfirmationIds.set(requestId, action);
 	}
 
 	/** Find a tool call by its confirmation requestId across all messages. */
@@ -347,12 +346,92 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		return undefined;
 	}
 
+	// --- Session "Always allow" ---
+	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
+	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
+	// for most tools; `submit-workflow` is keyed on `workflowId` presence so a
+	// create grant doesn't silently auto-approve later updates (the backend
+	// distinguishes createWorkflow vs updateWorkflow by that field).
+	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
+
+	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+		if (toolName === 'submit-workflow') {
+			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
+			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
+		}
+		const action = typeof args.action === 'string' ? args.action : '';
+		return `${toolName}:${action}`;
+	}
+
+	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+		const next = new Set(sessionAlwaysAllowKeys.value);
+		next.add(buildAlwaysAllowKey(toolName, args));
+		sessionAlwaysAllowKeys.value = next;
+	}
+
+	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
+		const conf = item.toolCall.confirmation;
+		if (conf.severity === 'destructive') return false;
+		if (conf.domainAccess) return false;
+		if (conf.inputType) return false;
+		if (conf.setupRequests?.length) return false;
+		if (conf.credentialRequests?.length) return false;
+		if (conf.questions?.length) return false;
+		return true;
+	}
+
+	// In-flight guard for the auto-approve watcher. We can't rely on
+	// `resolvedConfirmationIds` to skip duplicates here because we only mark
+	// resolved *after* `confirmAction` succeeds — otherwise a failed request
+	// would hide the card while the backend still waits for approval.
+	const autoApproveInFlight = new Set<string>();
+
+	watch(
+		pendingConfirmations,
+		async (items) => {
+			if (sessionAlwaysAllowKeys.value.size === 0) return;
+			for (const item of items) {
+				const conf = item.toolCall.confirmation;
+				if (resolvedConfirmationIds.has(conf.requestId)) continue;
+				if (autoApproveInFlight.has(conf.requestId)) continue;
+				if (!isGenericApprovalEligible(item)) continue;
+				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+
+				autoApproveInFlight.add(conf.requestId);
+				try {
+					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
+					if (!ok) continue;
+					resolveConfirmation(conf.requestId, 'approved');
+					telemetry.track('User finished providing input', {
+						thread_id: threadId,
+						input_thread_id: conf.inputThreadId ?? '',
+						instance_id: rootStore.instanceId,
+						type: 'approval',
+						provided_inputs: [
+							{
+								label: conf.message,
+								options: ['approve', 'deny', 'approve_always'],
+								option_chosen: 'approve_auto',
+							},
+						],
+						skipped_inputs: [],
+						auto_resolved: true,
+					});
+				} finally {
+					autoApproveInFlight.delete(conf.requestId);
+				}
+			}
+		},
+		{ deep: true },
+	);
+
 	// --- SSE lifecycle ---
 
 	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Track last event ID per thread (for reconnection)
+		// Track last event ID for this thread (for reconnection)
 		if (sseEvent.lastEventId) {
-			lastEventIdByThread.value[currentThreadId.value] = Number(sseEvent.lastEventId);
+			lastEventId.value = Number(sseEvent.lastEventId);
 		}
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
@@ -382,7 +461,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 				latestTasks.value = parsed.data.payload.tasks;
 			}
 			if (parsed.data.type === 'thread-title-updated') {
-				hooks.onTitleUpdated(currentThreadId.value, parsed.data.payload.title);
+				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
 			if (parsed.data.type === 'run-finish') {
 				const ids = parsed.data.payload.archivedWorkflowIds;
@@ -496,8 +575,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		}
 	}
 
-	function connectSSE(threadId?: string): void {
-		const tid = threadId ?? currentThreadId.value;
+	function connectSSE(): void {
 		if (eventSource) {
 			closeSSE();
 		}
@@ -505,14 +583,13 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 
 		// Increment generation — stale EventSource handlers will check this
 		const gen = ++sseGeneration;
-		const capturedThreadId = tid;
 
-		const lastEventId = lastEventIdByThread.value[tid];
+		const cursor = lastEventId.value;
 		const baseUrl = rootStore.restApiContext.baseUrl;
 		const url =
-			lastEventId !== null && lastEventId !== undefined
-				? `${baseUrl}/instance-ai/events/${tid}?lastEventId=${String(lastEventId)}`
-				: `${baseUrl}/instance-ai/events/${tid}`;
+			cursor !== null && cursor !== undefined
+				? `${baseUrl}/instance-ai/events/${threadId}?lastEventId=${String(cursor)}`
+				: `${baseUrl}/instance-ai/events/${threadId}`;
 
 		eventSource = new EventSource(url, { withCredentials: true });
 
@@ -522,16 +599,14 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		};
 
 		eventSource.onmessage = (ev: MessageEvent) => {
-			// Guard: discard events from stale connections or wrong threads
-			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) {
-				return;
-			}
+			// Guard: discard events from stale connections.
+			if (gen !== sseGeneration) return;
 			onSSEMessage(ev);
 		};
 
 		// Listen for run-sync control frames (named SSE event, no id: field)
 		eventSource.addEventListener('run-sync', (ev: MessageEvent) => {
-			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
+			if (gen !== sseGeneration) return;
 			onRunSync(ev);
 		});
 
@@ -555,92 +630,82 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		sseState.value = 'disconnected';
 	}
 
-	/**
-	 * Reset all per-thread state. `nextHydratingThreadId` becomes the new
-	 * `hydratingThreadId` value (used by `isHydratingThread` to decide whether
-	 * to render the spinner).
-	 */
-	function resetState(nextHydratingThreadId: string | null): void {
-		hydratingThreadId.value = nextHydratingThreadId;
+	/** Reset all state owned by this runtime. */
+	function resetState(): void {
+		hydrationGeneration += 1;
+		hydrationPromise = null;
+		hydrationStatus.value = 'idle';
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
-		resolvedConfirmationIds.value = new Map();
+		resolvedConfirmationIds.clear();
+		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
-		activeHydrationRequestToken = null;
+		lastEventId.value = undefined;
 	}
 
-	/**
-	 * Switch to another thread: close SSE, reset state, drop the SSE cursor,
-	 * and update `currentThreadId`. Caller is responsible for kicking off
-	 * `loadHistoricalMessages` and `connectSSE` afterwards (the store sequences
-	 * these so SSE only opens after history is hydrated).
-	 *
-	 * The cursor delete forces a full SSE replay if `loadHistoricalMessages`
-	 * doesn't return a `nextEventId` (preserving prior store behavior).
-	 */
-	function switchTo(threadId: string): void {
+	function dispose(): void {
 		closeSSE();
-		resetState(threadId);
-		delete lastEventIdByThread.value[threadId];
-		currentThreadId.value = threadId;
+		resetState();
 	}
 
-	async function loadHistoricalMessages(
-		threadId?: string,
-		hydrationRequestToken?: number,
-	): Promise<HistoricalHydrationStatus> {
-		const tid = threadId ?? currentThreadId.value;
-		hydratingThreadId.value = tid;
-		const effectiveHydrationRequestToken = hydrationRequestToken ?? ++hydrationRequestSequence;
-		if (hydrationRequestToken === undefined) {
-			activeHydrationRequestToken = effectiveHydrationRequestToken;
-		}
-		const isCurrentHydrationRequest = () =>
-			activeHydrationRequestToken === effectiveHydrationRequestToken;
+	async function loadHistoricalMessages(): Promise<HistoricalHydrationStatus> {
+		if (hydrationPromise) return await hydrationPromise;
 
-		try {
-			const result = await fetchThreadMessagesApi(rootStore.restApiContext, tid, 100);
-			if (!isCurrentHydrationRequest()) return 'stale';
-			// Only hydrate if we're still on the same thread and SSE hasn't delivered messages
-			if (currentThreadId.value !== tid || messages.value.length > 0) return 'skipped';
-			// Backend now returns InstanceAiMessage[] directly — no conversion needed
-			if (result.messages.length > 0) {
-				messages.value = result.messages;
-				latestTasks.value = findLatestTasksFromMessages(result.messages);
-
-				// Rebuild reducer routing state from historical messages so SSE
-				// replay events (which arrive before run-sync) can reduce into
-				// existing run states instead of being dropped or creating phantoms.
-				const routing = buildRoutingFromMessages(result.messages);
-				Object.assign(runStateByGroupId, routing.runStateByGroupId);
-				Object.assign(groupIdByRunId, routing.groupIdByRunId);
-			}
-			// Set SSE cursor to skip past events already covered by historical messages.
-			// This prevents duplicate messages when SSE replays in-memory events.
-			if (result.nextEventId !== null && result.nextEventId !== undefined) {
-				lastEventIdByThread.value[tid] = result.nextEventId - 1;
-			}
-			return 'applied';
-		} catch {
-			// Silently ignore — messages will appear if SSE delivers them
-			return isCurrentHydrationRequest() ? 'applied' : 'stale';
-		} finally {
-			if (isCurrentHydrationRequest() && hydratingThreadId.value === tid) {
-				hydratingThreadId.value = null;
-			}
+		if (messages.value.length > 0 || hydrationStatus.value === 'ready') {
+			hydrationStatus.value = 'ready';
+			return 'skipped';
 		}
+
+		const capturedHydrationGeneration = ++hydrationGeneration;
+		hydrationStatus.value = 'hydrating';
+
+		const promise = (async (): Promise<HistoricalHydrationStatus> => {
+			try {
+				const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
+				if (capturedHydrationGeneration !== hydrationGeneration) return 'stale';
+				// Only hydrate if SSE hasn't delivered messages while the request was in flight.
+				if (messages.value.length > 0) return 'skipped';
+				// Backend now returns InstanceAiMessage[] directly — no conversion needed.
+				if (result.messages.length > 0) {
+					messages.value = result.messages;
+					latestTasks.value = findLatestTasksFromMessages(result.messages);
+
+					// Rebuild reducer routing state from historical messages so SSE
+					// replay events (which arrive before run-sync) can reduce into
+					// existing run states instead of being dropped or creating phantoms.
+					const routing = buildRoutingFromMessages(result.messages);
+					Object.assign(runStateByGroupId, routing.runStateByGroupId);
+					Object.assign(groupIdByRunId, routing.groupIdByRunId);
+				}
+				// Set SSE cursor to skip past events already covered by historical messages.
+				// This prevents duplicate messages when SSE replays in-memory events.
+				if (result.nextEventId !== null && result.nextEventId !== undefined) {
+					lastEventId.value = result.nextEventId - 1;
+				}
+				return 'applied';
+			} catch {
+				// Silently ignore — messages will appear if SSE delivers them.
+				return capturedHydrationGeneration === hydrationGeneration ? 'applied' : 'stale';
+			} finally {
+				if (capturedHydrationGeneration === hydrationGeneration) {
+					hydrationStatus.value = 'ready';
+					hydrationPromise = null;
+				}
+			}
+		})();
+
+		hydrationPromise = promise;
+		return await promise;
 	}
 
-	async function loadThreadStatus(threadId?: string): Promise<void> {
-		const tid = threadId ?? currentThreadId.value;
+	async function loadThreadStatus(): Promise<void> {
 		try {
-			const status = await fetchThreadStatusApi(rootStore.restApiContext, tid);
-			if (currentThreadId.value !== tid) return;
+			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 
 			const hasActivity =
 				status.hasActiveRun || status.isSuspended || status.backgroundTasks.length > 0;
@@ -661,31 +726,23 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		}
 	}
 
-	function nextHydrationToken(): number {
-		const token = ++hydrationRequestSequence;
-		activeHydrationRequestToken = token;
-		return token;
-	}
-
 	// --- Send / cancel / amend ---
 
-	async function sendMessage(
-		message: string,
-		attachments?: InstanceAiAttachment[],
-		pushRef?: string,
-	): Promise<void> {
-		// Clear amend context on new message
-		amendContext.value = null;
-		pendingMessageCount.value += 1;
-
-		// Ensure SSE is connected before sending. Vue's Suspense boundary can
-		// unmount → remount InstanceAiView during layout transitions, which closes
-		// the SSE connection via onUnmounted. If the user sends a message before
-		// the remounted component's async connectSSE() fires, the response events
-		// would be lost. Re-establish the connection here as a safety net.
+	function ensureSSEConnected(): void {
+		// Vue's Suspense boundary can unmount → remount InstanceAiView during
+		// layout transitions, which closes the SSE connection via onUnmounted.
+		// If the user sends a message before the remounted component's async
+		// connectSSE() fires, the response events would be lost. Re-establish
+		// the connection here as a safety net.
 		if (sseState.value === 'disconnected') {
 			connectSSE();
 		}
+	}
+
+	function pushOptimisticUserMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+	): InstanceAiMessage {
 		const userMessage: InstanceAiMessage = {
 			id: uuidv4(),
 			role: 'user',
@@ -696,39 +753,43 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
 		};
 		messages.value.push(userMessage);
+		return userMessage;
+	}
 
-		try {
-			await hooks.syncThread(currentThreadId.value);
-		} catch {
-			const idx = messages.value.indexOf(userMessage);
-			if (idx !== -1) {
-				messages.value.splice(idx, 1);
-			}
-			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
-			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
-			return;
+	function removeOptimisticMessage(message: InstanceAiMessage): void {
+		const idx = messages.value.indexOf(message);
+		if (idx !== -1) {
+			messages.value.splice(idx, 1);
 		}
+	}
 
-		const isFirstMessage = messages.value.filter((m) => m.role === 'user').length === 1;
+	function trackUserMessageSent(isFirstMessage: boolean): void {
 		telemetry.track('User sent builder message', {
-			thread_id: currentThreadId.value,
+			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
 		});
+	}
 
-		// 2. POST to backend — returns { runId }
-		// Thread title is generated by Mastra asynchronously after the agent responds.
-		// activeRunId is set by the run-start event arriving over SSE, NOT by the POST response.
+	async function dispatchUserMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		pushRef?: string,
+	): Promise<boolean> {
 		try {
-			await postMessage(
+			const { runId } = await postMessage(
 				rootStore.restApiContext,
-				currentThreadId.value,
+				threadId,
 				message,
-				hooks.getResearchMode() || undefined,
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 			);
+
+			if (runId) {
+				activeRunId.value = runId;
+			}
+			return true;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
 			if (status === 409) {
@@ -737,14 +798,33 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 					'Cannot send message',
 				);
 			} else if (status === 400) {
-				toast.showError(new Error('Message cannot be empty'), 'Invalid message');
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The request was rejected. Please try again.'),
+					'Could not send message',
+				);
 			} else {
 				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
 			}
-			// Remove the optimistic user message on failure
-			const idx = messages.value.indexOf(userMessage);
-			if (idx !== -1) {
-				messages.value.splice(idx, 1);
+			return false;
+		}
+	}
+
+	async function sendMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		pushRef?: string,
+	): Promise<void> {
+		amendContext.value = null;
+		pendingMessageCount.value += 1;
+		try {
+			ensureSSEConnected();
+			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
+			const optimistic = pushOptimisticUserMessage(message, attachments);
+			trackUserMessageSent(isFirstMessage);
+
+			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
+				removeOptimisticMessage(optimistic);
 			}
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
@@ -754,7 +834,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 	async function cancelRun(): Promise<void> {
 		if (!activeRunId.value) return;
 		try {
-			await postCancel(rootStore.restApiContext, currentThreadId.value);
+			await postCancel(rootStore.restApiContext, threadId);
 			// Don't clear activeRunId here — wait for the run-finish event via SSE
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
@@ -764,7 +844,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 	/** Cancel a specific background task. */
 	async function cancelBackgroundTask(taskId: string): Promise<void> {
 		try {
-			await postCancelTask(rootStore.restApiContext, currentThreadId.value, taskId);
+			await postCancelTask(rootStore.restApiContext, threadId, taskId);
 		} catch {
 			toast.showError(new Error('Failed to cancel task. Try again.'), 'Cancel failed');
 		}
@@ -780,6 +860,32 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		amendContext.value = { agentId, role };
 	}
 
+	// --- Plan edit mode ---
+
+	function startPlanEdit(context: PlanEditContext): void {
+		activePlanEdit.value = context;
+	}
+
+	function cancelPlanEdit(): void {
+		activePlanEdit.value = null;
+	}
+
+	function markPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.add(requestId);
+	}
+
+	function clearPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.delete(requestId);
+	}
+
+	// Defensive cleanup: if a stream ends without a matching clear, drop the
+	// pending markers so we don't leave a card stuck in "Updating plan…".
+	watch(isStreaming, (streaming) => {
+		if (!streaming && updatingPlanRequestIds.size > 0) {
+			updatingPlanRequestIds.clear();
+		}
+	});
+
 	// --- Confirmations ---
 
 	async function confirmAction(
@@ -789,8 +895,25 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		try {
 			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
-		} catch {
-			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+		} catch (error: unknown) {
+			// Surface the server's UserError text when present (e.g. "This
+			// confirmation was lost when the assistant restarted") so the user
+			// sees the actual reason instead of a generic "Try again". UserError
+			// from `n8n-workflow` is mapped to a 400 with the message in the
+			// response body — `ResponseError.message` exposes that here.
+			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+			if (status === 400) {
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The confirmation could not be processed.'),
+					'Confirmation failed',
+				);
+			} else {
+				toast.showError(
+					new Error('Failed to send confirmation. Try again.'),
+					'Confirmation failed',
+				);
+			}
 			return false;
 		}
 	}
@@ -808,7 +931,7 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 	function copyFullTrace(): string {
 		return JSON.stringify(
 			{
-				threadId: currentThreadId.value,
+				threadId,
 				exportedAt: new Date().toISOString(),
 				messages: messages.value,
 				events: collapseDeltaEvents(debugEvents.value),
@@ -818,20 +941,24 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		);
 	}
 
-	return {
+	return reactive({
+		id: threadId,
+
 		// state refs
-		currentThreadId,
 		messages,
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,
 		debugEvents,
 		resolvedConfirmationIds,
+		sessionAlwaysAllowKeys,
 		pendingMessageCount,
-		hydratingThreadId,
+		hydrationStatus,
 		sseState,
-		lastEventIdByThread,
+		lastEventId,
 		amendContext,
+		activePlanEdit,
+		updatingPlanRequestIds,
 
 		// computeds
 		isStreaming,
@@ -848,9 +975,8 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		isAwaitingConfirmation,
 
 		// actions
-		switchTo,
 		resetState,
-		nextHydrationToken,
+		dispose,
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,
@@ -859,11 +985,16 @@ export function createThreadRuntime(initialThreadId: string, hooks: ThreadRuntim
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
+		startPlanEdit,
+		cancelPlanEdit,
+		markPlanUpdatePending,
+		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		addAlwaysAllowKey,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,
-	};
+	});
 }

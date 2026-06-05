@@ -26,7 +26,7 @@ vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 
 function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialNode', 'existingToolNames'],
+		props: ['initialNode', 'existingToolNames', 'projectId'],
 		emits: ['update:valid', 'update:node-name'],
 		setup(props, { emit, expose }) {
 			// Expose what the modal reads from ref(...). The stub carries through
@@ -50,7 +50,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			});
 			return {};
 		},
-		template: '<div data-test-id="node-tool-settings-content" />',
+		template: '<div data-test-id="node-tool-settings-content" :data-project-id="projectId" />',
 	});
 }
 
@@ -104,7 +104,9 @@ const ElDialogStub = {
 
 const MODAL_NAME = 'AgentToolConfigModal';
 
-function toolRef(overrides: Partial<AgentJsonToolRef['node']> = {}): AgentJsonToolRef {
+function toolRef(
+	overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>> = {},
+): Extract<AgentJsonToolRef, { type: 'node' }> {
 	return {
 		type: 'node',
 		name: 'Slack',
@@ -124,11 +126,15 @@ function renderModal({
 	onConfirm = vi.fn(),
 	ref = toolRef(),
 	customTool,
+	projectId,
+	agentId,
 }: {
 	valid?: boolean;
 	onConfirm?: (updated: AgentJsonToolRef) => void;
 	ref?: AgentJsonToolRef;
 	customTool?: CustomToolEntry;
+	projectId?: string;
+	agentId?: string;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
@@ -147,7 +153,7 @@ function renderModal({
 	return renderComponent({
 		props: {
 			modalName: MODAL_NAME,
-			data: { toolRef: ref, customTool, existingToolNames: [], onConfirm },
+			data: { toolRef: ref, customTool, existingToolNames: [], projectId, agentId, onConfirm },
 		},
 	});
 }
@@ -166,6 +172,13 @@ describe('AgentToolConfigModal', () => {
 	it('renders the shared node-tool settings content', () => {
 		const { getByTestId } = renderModal();
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
+	});
+
+	it('passes agent project context to the node-tool settings content', () => {
+		const { getByTestId } = renderModal({ projectId: 'project-1', agentId: 'agent-1' });
+
+		const settings = getByTestId('node-tool-settings-content');
+		expect(settings.getAttribute('data-project-id')).toBe('project-1');
 	});
 
 	it('does not render the removed Configure / Permissions outer tabs', () => {

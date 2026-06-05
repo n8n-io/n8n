@@ -1,10 +1,8 @@
-import { EVAL_PARALLEL_EXECUTION_FLAG } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
 
 import { LOCAL_STORAGE_PARALLEL_EVAL_BY_WORKFLOW } from '@/app/constants/localStorage';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 // Sentinel used for workflows that haven't been saved yet (no id assigned).
@@ -31,9 +29,13 @@ const buildDefaultState = (): PerWorkflowState => ({
 });
 
 /**
- * Per-workflow UI state for the parallel-execution rollout. Visibility of the
- * UI is gated on the `080_eval_parallel_execution` PostHog flag (FE primary gate).
- * Backend has its own safety net that coerces flag-off requests to sequential.
+ * Per-workflow UI state for the parallel-execution feature.
+ *
+ * Visibility is derived from `maxConcurrency`: when the effective evaluation
+ * concurrency limit resolves to 1 (Community/Pro tier, or an explicit
+ * `N8N_CONCURRENCY_EVALUATION_LIMIT=1` override), `isConcurrencyAvailable`
+ * is `false` and the surrounding UI must hide every control — the header
+ * collapses to a plain Run Test button, byte-identical to the legacy flow.
  *
  * State shape: `{ [workflowId]: { parallelEnabled, concurrencyValue } }`.
  * Workflow id `'new'` is a sentinel for unsaved workflows; the entry becomes
@@ -41,7 +43,6 @@ const buildDefaultState = (): PerWorkflowState => ({
  * harmless and self-cleaning across sessions.
  */
 export const useParallelEvalStore = defineStore('parallelEval', () => {
-	const postHog = usePostHog();
 	const settingsStore = useSettingsStore();
 	const storage = useLocalStorage<StoredState>(
 		LOCAL_STORAGE_PARALLEL_EVAL_BY_WORKFLOW,
@@ -50,22 +51,23 @@ export const useParallelEvalStore = defineStore('parallelEval', () => {
 		{ deep: true, flush: 'sync' },
 	);
 
-	// Coerce `boolean | undefined` (PostHog's return shape) to a clean boolean.
-	const isFeatureEnabled = computed(
-		() => postHog.isFeatureEnabled(EVAL_PARALLEL_EXECUTION_FLAG) === true,
-	);
-
-	// Effective slider ceiling: the BE's `N8N_CONCURRENCY_EVALUATION_LIMIT`
-	// (`evaluationConcurrencyLimit`) further constrains the 1–10 UX range.
-	// `<= 0` means unlimited per BE convention. Mirrors the runtime clamp in
-	// `test-runner.service.ee.ts:runTest` so the slider can only offer values
-	// the BE will actually accept.
+	// Effective slider ceiling: the BE's `evaluationConcurrencyLimit`
+	// (resolved from env override or license-tier default) further constrains
+	// the 1–10 UX range. `<= 0` means unlimited per BE convention. Mirrors
+	// the runtime clamp in `test-runner.service.ee.ts:startTestRun` so the
+	// slider can only offer values the BE will actually accept.
 	const maxConcurrency = computed(() => {
 		const limit = settingsStore.settings?.evaluationConcurrencyLimit;
 		return typeof limit === 'number' && limit > 0
 			? Math.min(SLIDER_HARD_MAX, Math.floor(limit))
 			: SLIDER_HARD_MAX;
 	});
+
+	// Drives header-level UI gating. When the effective limit is 1, hide the
+	// caret, the popover, and any label — the Run Test split-button collapses
+	// to a single solid button. This is the AC for Community/Pro tiers and
+	// for self-hosters who set `N8N_CONCURRENCY_EVALUATION_LIMIT=1`.
+	const isConcurrencyAvailable = computed(() => maxConcurrency.value > 1);
 
 	const resolveKey = (workflowId: string | undefined): string =>
 		workflowId && workflowId.length > 0 ? workflowId : NEW_WORKFLOW_SENTINEL;
@@ -109,11 +111,11 @@ export const useParallelEvalStore = defineStore('parallelEval', () => {
 
 	/**
 	 * The numeric concurrency the FE should send for a run. Returns `1` when
-	 * the parallel checkbox is unchecked (sequential), the slider value when
-	 * checked. Caller is responsible for skipping the field entirely when
-	 * the feature flag is off.
+	 * the parallel toggle is off (sequential) or when concurrency is not
+	 * available on this instance, the slider value otherwise.
 	 */
 	const effectiveConcurrency = (workflowId: string | undefined): number => {
+		if (!isConcurrencyAvailable.value) return 1;
 		const state = ensureEntry(resolveKey(workflowId));
 		// Use the read-side clamped value so what we send matches what the
 		// slider shows when the admin cap is below the stored preference.
@@ -121,7 +123,7 @@ export const useParallelEvalStore = defineStore('parallelEval', () => {
 	};
 
 	return {
-		isFeatureEnabled,
+		isConcurrencyAvailable,
 		maxConcurrency,
 		isParallel,
 		concurrencyValue,

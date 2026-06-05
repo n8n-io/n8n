@@ -12,7 +12,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { Workflow } from 'n8n-workflow';
 
@@ -55,14 +55,7 @@ const mockDocumentStore = vi.hoisted(() => ({
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
-}));
-
-// Mock useWorkflowState - using hoisted for proper initialization
-const mockWorkflowState = vi.hoisted(() => ({
-	touchParametersLastUpdatedAt: vi.fn(),
-}));
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => mockWorkflowState),
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
 }));
 
 // Mock useCanvasOperations - using hoisted for proper initialization
@@ -114,13 +107,6 @@ describe('useWorkflowUpdate', () => {
 		vi.mocked(mockDocumentStore.getNodeByName).mockReturnValue(null);
 		vi.mocked(mockDocumentStore.setNodeIssue).mockClear();
 		vi.mocked(mockDocumentStore.updateNodeProperties).mockClear();
-		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.workflow = {
-			id: 'test-workflow',
-			name: DEFAULT_NEW_WORKFLOW_NAME,
-			nodes: [],
-			connections: {},
-		} as Partial<IWorkflowDb> as IWorkflowDb;
 		workflowsStore.workflowId = 'test-workflow';
 		vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue({
 			nodes: {},

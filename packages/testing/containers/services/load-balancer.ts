@@ -2,11 +2,14 @@ import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
-import type { Service, ServiceResult } from './types';
+import type { LoadBalancerPolicy, Service, ServiceResult } from './types';
 
 export interface LoadBalancerConfig {
 	mainCount: number;
+	/** When > 0, Caddy path-routes `WEBHOOK_PROC_PATHS` to webhook procs. */
+	webhookCount: number;
 	hostPort?: number;
+	policy: LoadBalancerPolicy;
 }
 
 export interface LoadBalancerMeta {
@@ -16,14 +19,19 @@ export interface LoadBalancerMeta {
 
 export type LoadBalancerResult = ServiceResult<LoadBalancerMeta>;
 
-function buildCaddyConfig(upstreamServers: string[]): string {
-	const backends = upstreamServers.join(' ');
-	return `
-:80 {
-  # Reverse proxy with load balancing
-  reverse_proxy ${backends} {
-    # Use first available backend for simpler debugging
-    lb_policy first
+// Production paths the `n8n webhook` proc serves. Test/waiting/form-test paths
+// stay on main, per `packages/cli/src/commands/webhook.ts`.
+const WEBHOOK_PROC_PATHS = ['/webhook/*', '/form/*'] as const;
+
+function buildCaddyConfig(
+	mainUpstreams: string[],
+	webhookUpstreams: string[],
+	policy: LoadBalancerPolicy,
+): string {
+	const mainBackends = mainUpstreams.join(' ');
+	const webhookBackends = webhookUpstreams.join(' ');
+
+	const sharedReverseProxyBlock = `    lb_policy ${policy}
 
     # Health check
     health_uri /healthz
@@ -34,12 +42,41 @@ function buildCaddyConfig(upstreamServers: string[]): string {
       dial_timeout 60s
       read_timeout 60s
       write_timeout 60s
-    }
+    }`;
+
+	if (webhookUpstreams.length === 0) {
+		return `
+:80 {
+  # Reverse proxy with load balancing
+  reverse_proxy ${mainBackends} {
+${sharedReverseProxyBlock}
   }
 
   # Set max request body size
   request_body {
     max_size 50MB
+  }
+}`;
+	}
+
+	const webhookMatcher = WEBHOOK_PROC_PATHS.join(' ');
+	return `
+:80 {
+  request_body {
+    max_size 50MB
+  }
+
+  @webhooks path ${webhookMatcher}
+  handle @webhooks {
+    reverse_proxy ${webhookBackends} {
+${sharedReverseProxyBlock}
+    }
+  }
+
+  handle {
+    reverse_proxy ${mainBackends} {
+${sharedReverseProxyBlock}
+    }
   }
 }`;
 }
@@ -51,7 +88,9 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 	getOptions(ctx) {
 		return {
 			mainCount: ctx.mains,
+			webhookCount: ctx.webhooks,
 			hostPort: ctx.allocatedPorts.loadBalancer,
+			policy: ctx.config.lbPolicy ?? 'first',
 		} as LoadBalancerConfig;
 	},
 
@@ -63,16 +102,19 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 	},
 
 	async start(network, projectName, config?: unknown): Promise<LoadBalancerResult> {
-		const { mainCount, hostPort } = config as LoadBalancerConfig;
+		const { mainCount, webhookCount, hostPort, policy } = config as LoadBalancerConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
-		// Generate upstream server addresses
-		const upstreamServers = Array.from(
-			{ length: mainCount },
-			(_, index) => `${projectName}-n8n-main-${index + 1}:5678`,
+		// Single-main containers are named `${projectName}-n8n`, not `-n8n-main-1`.
+		const mainHostname = (index: number): string =>
+			mainCount > 1 ? `${projectName}-n8n-main-${index}:5678` : `${projectName}-n8n:5678`;
+		const mainUpstreams = Array.from({ length: mainCount }, (_, index) => mainHostname(index + 1));
+		const webhookUpstreams = Array.from(
+			{ length: webhookCount },
+			(_, index) => `${projectName}-n8n-webhook-${index + 1}:5678`,
 		);
 
-		const caddyConfig = buildCaddyConfig(upstreamServers);
+		const caddyConfig = buildCaddyConfig(mainUpstreams, webhookUpstreams, policy);
 
 		try {
 			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.caddy)

@@ -17,6 +17,7 @@ import {
 	formatBlocks,
 	getPageId,
 	notionApiRequest,
+	notionApiRequestAllItems,
 } from '../shared/GenericFunctions';
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
@@ -429,5 +430,121 @@ describe('Test Notion, notionApiRequest', () => {
 			'notionApi',
 			expect.objectContaining({ method: 'GET' }),
 		);
+	});
+});
+
+describe('Test Notion, notionApiRequestAllItems', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+		mockExecuteFunctions.helpers = {
+			requestWithAuthentication: jest.fn(),
+		} as any;
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should extract limit from query, remove it, and stop pagination early', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'resource') return 'block';
+			if (name === 'authentication') return 'apiKey';
+			return undefined;
+		});
+
+		const page1 = {
+			results: [{ id: '1' }, { id: '2' }],
+			has_more: true,
+			next_cursor: 'cursor-2',
+		};
+		const page2 = {
+			results: [{ id: '3' }, { id: '4' }],
+			has_more: false,
+		};
+
+		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+			.mockResolvedValueOnce(page1)
+			.mockResolvedValueOnce(page2);
+
+		const query = { page_size: 2, limit: 3 };
+		const result = await notionApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'results',
+			'GET',
+			'/blocks/test-block/children',
+			{},
+			query,
+		);
+
+		expect(query).not.toHaveProperty('limit');
+		expect(result).toHaveLength(3);
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('should paginate through all pages for non-block resources', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'resource') return 'database';
+			if (name === 'authentication') return 'apiKey';
+			return undefined;
+		});
+
+		const page1 = {
+			results: [{ id: '1' }],
+			has_more: true,
+			next_cursor: 'cursor-2',
+		};
+		const page2 = {
+			results: [{ id: '2' }],
+			has_more: false,
+			next_cursor: null,
+		};
+
+		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock)
+			.mockResolvedValueOnce(page1)
+			.mockResolvedValueOnce(page2);
+
+		const result = await notionApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'results',
+			'POST',
+			'/search',
+			{},
+			{ limit: 5 },
+		);
+
+		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('should return all items without slicing when no limit is provided', async () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'resource') return 'database';
+			if (name === 'authentication') return 'apiKey';
+			return undefined;
+		});
+
+		const page1 = {
+			results: [{ id: '1' }, { id: '2' }],
+			has_more: false,
+			next_cursor: null,
+		};
+
+		(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValueOnce(
+			page1,
+		);
+
+		const result = await notionApiRequestAllItems.call(
+			mockExecuteFunctions,
+			'results',
+			'POST',
+			'/search',
+			{},
+		);
+
+		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });

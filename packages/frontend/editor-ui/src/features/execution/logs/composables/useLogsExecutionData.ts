@@ -2,9 +2,10 @@ import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
-	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -19,7 +20,6 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { CHAT_TRIGGER_NODE_TYPE, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -35,10 +35,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
-	const workflowState = injectWorkflowState();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const toast = useToast();
 
 	const state = ref<
@@ -110,10 +107,14 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	function resetExecutionData() {
 		state.value = undefined;
-		workflowState.setWorkflowExecutionData(null);
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setWorkflowExecutionData(
+			null,
+		);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.setChatPartialExecutionDestinationNode(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 

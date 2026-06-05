@@ -3,6 +3,7 @@ import { createComponentRenderer, type RenderOptions } from '@/__tests__/render'
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -158,7 +159,7 @@ describe('FilterConditions.vue', () => {
 	});
 
 	it('renders parameter issues', async () => {
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(''));
 		vi.spyOn(ndvStore, 'activeNode', 'get').mockReturnValue({
 			...DEFAULT_SETUP.props.node,
 			issues: { parameters: { 'conditions.1': ['not a number sir'] } },

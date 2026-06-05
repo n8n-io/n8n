@@ -19,7 +19,6 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
 	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
-	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
 	TEMPLATES_CALLOUT: 'templates_callout',
 	'': '',
 };
@@ -63,4 +62,4 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 export const RECOMMENDED_NODES: string[] = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 export const BETA_NODES: string[] = ['@n8n/n8n-nodes-langchain.microsoftAgent365Trigger'];
 
-export const NEW_TOOL_CATEGORIES: string[] = [AI_CATEGORY_HUMAN_IN_THE_LOOP];
+export const NEW_TOOL_CATEGORIES: string[] = [AI_CATEGORY_MCP_NODES];

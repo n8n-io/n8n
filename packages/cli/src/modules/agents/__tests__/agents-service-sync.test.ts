@@ -1,18 +1,10 @@
 /* eslint-disable @typescript-eslint/require-await -- mock implementations kept async for future-proofing */
 import type { Logger } from '@n8n/backend-common';
-import type {
-	ExecutionRepository,
-	ProjectRelationRepository,
-	UserRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import type { AgentsConfig } from '@n8n/config';
+import type { ProjectRelationRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentSkillsService } from '../agent-skills.service';
@@ -20,9 +12,9 @@ import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -59,21 +51,20 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<Logger>(),
 			agentRepository,
 			mock<ProjectRelationRepository>(),
-			mock<WorkflowRunner>(),
-			mock<ActiveExecutions>(),
-			mock<ExecutionRepository>(),
-			mock<WorkflowRepository>(),
-			mock<UserRepository>(),
-			mock<WorkflowFinderService>(),
-			mock<UrlService>(),
 			mock<N8NCheckpointStorage>(),
-			mock<AgentSecureRuntime>(),
-			mock<EphemeralNodeExecutor>(),
-			mock(), // AgentsToolsService
 			mock<N8nMemory>(),
 			mock<AgentExecutionService>(),
 			mock(),
 			mock<AgentSkillsService>(),
+			mock(), // AgentTaskRepository
+			mock(), // AgentTaskSnapshotRepository
+			mock(),
+			{ modules: [] } as unknown as AgentsConfig,
+			mock(),
+			mock<Telemetry>(),
+			mock<ChatIntegrationService>(),
+			mock(),
+			mock(),
 		);
 	});
 

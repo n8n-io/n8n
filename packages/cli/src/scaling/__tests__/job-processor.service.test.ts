@@ -8,6 +8,7 @@ import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
+	type IRun,
 	type ITaskData,
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -24,11 +25,13 @@ import type { NodeTypes } from '@/node-types';
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 mockInstance(WorkflowPublishHistoryRepository);
@@ -40,6 +43,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
+mockInstance(WorkflowHookContextService);
 mockInstance(DataTableProxyService);
 mockInstance(OwnershipService, {
 	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
@@ -70,12 +74,14 @@ const executionsConfig = mock<ExecutionsConfig>({
 describe('JobProcessor', () => {
 	it('should refrain from processing a crashed execution', async () => {
 		const executionRepository = mock<ExecutionRepository>();
-		executionRepository.findSingleExecution.mockResolvedValue(
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({ status: 'crashed' }),
 		);
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
+			executionPersistence,
 			mock(),
 			mock(),
 			mock(),
@@ -93,7 +99,8 @@ describe('JobProcessor', () => {
 		'should use manualExecutionService to process a job in %p mode',
 		async (mode) => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValue(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
 					mode,
 					workflowData: { nodes: [] },
@@ -107,6 +114,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				mock(),
 				mock(),
@@ -132,8 +140,9 @@ describe('JobProcessor', () => {
 
 	it('should send job-finished with success=false when execution has errors', async () => {
 		const executionRepository = mock<ExecutionRepository>();
+		const executionPersistence = mock<ExecutionPersistence>();
 		// First call: initial execution fetch (no error yet)
-		executionRepository.findSingleExecution.mockResolvedValueOnce(
+		executionPersistence.findSingleExecution.mockResolvedValueOnce(
 			mock<IExecutionResponse>({
 				mode: 'manual',
 				workflowData: { nodes: [] },
@@ -143,7 +152,7 @@ describe('JobProcessor', () => {
 			}),
 		);
 		// Second call: after execution completes, fetch again to check for errors
-		executionRepository.findSingleExecution.mockResolvedValueOnce(
+		executionPersistence.findSingleExecution.mockResolvedValueOnce(
 			mock<IExecutionResponse>({
 				status: 'error',
 				data: {
@@ -158,6 +167,7 @@ describe('JobProcessor', () => {
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
+			executionPersistence,
 			mock(),
 			mock(),
 			mock(),
@@ -195,7 +205,8 @@ describe('JobProcessor', () => {
 				executionData: undefined,
 			}),
 		});
-		executionRepository.findSingleExecution.mockResolvedValue(execution);
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
@@ -204,6 +215,7 @@ describe('JobProcessor', () => {
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
+			executionPersistence,
 			mock(),
 			mock(),
 			mock(),
@@ -242,7 +254,8 @@ describe('JobProcessor', () => {
 				executionData: undefined,
 			}),
 		});
-		executionRepository.findSingleExecution.mockResolvedValue(execution);
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
@@ -251,6 +264,7 @@ describe('JobProcessor', () => {
 		const jobProcessor = new JobProcessor(
 			logger,
 			executionRepository,
+			executionPersistence,
 			mock(),
 			mock(),
 			mock(),
@@ -289,7 +303,8 @@ describe('JobProcessor', () => {
 					],
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
 					mode,
 					workflowData: { nodes: [] },
@@ -304,6 +319,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				mock(),
 				mock(),
@@ -323,7 +339,8 @@ describe('JobProcessor', () => {
 	describe('MCP execution support', () => {
 		it('should send mcp-response message for MCP executions after job completion', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -333,7 +350,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 			// Second call for checking errors
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -349,6 +366,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(), // workflowRepository
 				mock(), // nodeTypes
 				mcpInstanceSettings, // instanceSettings
@@ -385,7 +403,8 @@ describe('JobProcessor', () => {
 
 		it('should not send mcp-response for non-MCP executions', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -394,7 +413,7 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -406,6 +425,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				mock(),
 				mock(),
@@ -434,7 +454,8 @@ describe('JobProcessor', () => {
 
 		it('should include success=false in mcp-response when execution has errors', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -444,7 +465,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 			// Second call shows error
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'error',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -465,6 +486,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(), // workflowRepository
 				mock(), // nodeTypes
 				mcpInstanceSettings, // instanceSettings
@@ -498,7 +520,8 @@ describe('JobProcessor', () => {
 
 		it('should send mcp-response for MCP Trigger executions without tool call', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'trigger',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -508,7 +531,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 			// Second call for fetching result
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -524,6 +547,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(), // workflowRepository
 				mock(), // nodeTypes
 				mcpInstanceSettings,
@@ -561,8 +585,9 @@ describe('JobProcessor', () => {
 
 		it('should execute tool node and send result for MCP Trigger with tool call', async () => {
 			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = { name: 'tool-node', type: 'n8n-nodes-base.tool' };
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'trigger',
 					workflowData: {
@@ -576,7 +601,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 			// Second call for fetching result
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
@@ -609,6 +634,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(), // workflowRepository
 				mock(), // nodeTypes
 				mcpInstanceSettings,
@@ -652,7 +678,8 @@ describe('JobProcessor', () => {
 
 		it('should handle tool execution errors gracefully', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'trigger',
 					workflowData: {
@@ -665,7 +692,7 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
@@ -681,6 +708,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				mock(),
 				mcpInstanceSettings,
@@ -731,6 +759,7 @@ describe('JobProcessor', () => {
 
 		it('should invoke tool via execute for tool wrapper nodes without supplyData', async () => {
 			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = {
 				name: 'HTTP Request',
 				type: 'n8n-nodes-base.httpRequestTool',
@@ -738,7 +767,7 @@ describe('JobProcessor', () => {
 				parameters: {},
 				position: [0, 0] as [number, number],
 			};
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'trigger',
 					workflowData: {
@@ -751,7 +780,7 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
@@ -781,6 +810,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				nodeTypes,
 				mcpInstanceSettings,
@@ -830,6 +860,7 @@ describe('JobProcessor', () => {
 
 		it('should invoke tool via supplyData for nodes with supplyData method', async () => {
 			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = {
 				name: 'Tool HTTP Request',
 				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
@@ -837,7 +868,7 @@ describe('JobProcessor', () => {
 				parameters: {},
 				position: [0, 0] as [number, number],
 			};
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'trigger',
 					workflowData: {
@@ -850,7 +881,7 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
@@ -880,6 +911,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				nodeTypes,
 				mcpInstanceSettings,
@@ -922,13 +954,116 @@ describe('JobProcessor', () => {
 		});
 	});
 
+	describe('waitTill propagation', () => {
+		it('carries waitTill on JobFinishedProps from the worker run (lightweight path)', () => {
+			const waitTill = new Date(Date.now() + 60_000);
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+			const run = mock<IRun>({
+				status: 'waiting',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			// set Date field after construction, else jest-mock-extended serializes them otherwise.
+			run.waitTill = waitTill;
+
+			const props = jobProcessor['deriveJobFinishedProps'](run, new Date());
+
+			expect(props.waitTill).toBe(waitTill);
+			expect(props.status).toBe('waiting');
+		});
+
+		it('carries waitTill on JobFinishedProps from the persisted execution (DB-fetch path)', async () => {
+			const waitTill = new Date(Date.now() + 60_000);
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const persisted = mock<IExecutionResponse>({
+				status: 'waiting',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			persisted.waitTill = waitTill;
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(persisted);
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+
+			const props = await jobProcessor['fetchJobFinishedResult']('exec-1');
+
+			expect(props.waitTill).toBe(waitTill);
+			expect(props.status).toBe('waiting');
+		});
+
+		it('defaults waitTill to null on JobFinishedProps when the run is not waiting', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+			const run = mock<IRun>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			run.waitTill = undefined;
+			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
+
+			const persisted = mock<IExecutionResponse>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			persisted.waitTill = null;
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(persisted);
+			expect((await jobProcessor['fetchJobFinishedResult']('exec-1')).waitTill).toBeNull();
+		});
+	});
+
 	describe('project info in log metadata', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
 		});
 		it('should include project info in log metadata when present in job data', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
 					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
@@ -938,7 +1073,7 @@ describe('JobProcessor', () => {
 				}),
 			);
 			// Second call for checking errors
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
@@ -949,6 +1084,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				mock(),
 				mock(),
@@ -993,7 +1129,8 @@ describe('JobProcessor', () => {
 
 		it('should not include project info in log metadata when absent from job data', async () => {
 			const executionRepository = mock<ExecutionRepository>();
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					mode: 'manual',
 					workflowData: { id: 'wf-1', name: 'Test Workflow', nodes: [] },
@@ -1002,7 +1139,7 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-			executionRepository.findSingleExecution.mockResolvedValueOnce(
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
 				mock<IExecutionResponse>({
 					status: 'success',
 					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
@@ -1013,6 +1150,7 @@ describe('JobProcessor', () => {
 			const jobProcessor = new JobProcessor(
 				logger,
 				executionRepository,
+				executionPersistence,
 				mock(),
 				mock(),
 				mock(),

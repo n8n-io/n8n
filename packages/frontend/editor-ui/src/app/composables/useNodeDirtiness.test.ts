@@ -18,20 +18,12 @@ import {
 } from 'n8n-workflow';
 import { defineComponent, provide, shallowRef } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
-import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
 
 describe(useNodeDirtiness, () => {
 	let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
@@ -40,7 +32,6 @@ describe(useNodeDirtiness, () => {
 	let historyHelper: ReturnType<typeof useHistoryHelper>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let uiStore: ReturnType<typeof useUIStore>;
-	let workflowState: WorkflowState;
 
 	const NODE_RUN_AT = new Date('2025-01-01T00:00:01');
 	const WORKFLOW_UPDATED_AT = new Date('2025-01-01T00:00:10');
@@ -54,10 +45,8 @@ describe(useNodeDirtiness, () => {
 			setup() {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
-				workflowsStore.workflow.id = TEST_WORKFLOW_ID;
+				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
-				workflowState = useWorkflowState();
-				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 				workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(TEST_WORKFLOW_ID),
@@ -162,13 +151,14 @@ describe(useNodeDirtiness, () => {
 
 			const runAt = new Date(+WORKFLOW_UPDATED_AT + 1000);
 
-			const workflowState = useWorkflowState();
-			workflowState.setWorkflowExecutionData({
-				id: workflowsStore.workflow.id,
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({
+				id: workflowsStore.workflowId,
 				finished: true,
 				mode: 'manual',
 				status: 'success',
-				workflowData: workflowsStore.workflow,
+				workflowData: workflowDocumentStore.getSnapshot(),
 				startedAt: runAt,
 				createdAt: runAt,
 				data: createRunExecutionData({
@@ -326,7 +316,7 @@ describe(useNodeDirtiness, () => {
 
 			// Simulate updating pinned data for node 'b' (set metadata timestamp as usePinnedData.setData would)
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
+				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
 			workflowDocumentStore.touchPinnedDataLastUpdatedAt('b');
 
@@ -488,7 +478,7 @@ describe(useNodeDirtiness, () => {
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflow.id),
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setNodes(workflow.nodes);
 		workflowDocumentStore.setConnections(workflow.connections);
@@ -497,8 +487,9 @@ describe(useNodeDirtiness, () => {
 			workflowDocumentStore.pinNodeData(name, [{ json: {} }]);
 		}
 
-		const workflowState = useWorkflowState();
-		workflowState.setWorkflowExecutionData({
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
 			id: workflow.id,
 			finished: true,
 			mode: 'manual',

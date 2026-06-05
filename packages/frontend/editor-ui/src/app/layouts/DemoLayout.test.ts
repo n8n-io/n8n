@@ -11,7 +11,6 @@ const demoLayoutMocks = vi.hoisted(() => ({
 	setupPostMessages: vi.fn(),
 	cleanupPostMessages: vi.fn(),
 	currentWorkflowDocumentStore: { value: {} as object | null, __v_isRef: true as const },
-	currentNDVStore: { value: {} as object | null, __v_isRef: true as const },
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -31,24 +30,11 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
-	const actual = (await importOriginal()) as object;
-	return {
-		...actual,
-		useWorkflowState: vi.fn(() => ({
-			getNewWorkflowDataAndMakeShareable: vi.fn(),
-			setActiveExecutionId: vi.fn(),
-			resetState: vi.fn(),
-		})),
-	};
-});
-
 vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
 		isLoading: ref(false),
 		workflowId: computed(() => 'demo'),
 		currentWorkflowDocumentStore: demoLayoutMocks.currentWorkflowDocumentStore,
-		currentNDVStore: demoLayoutMocks.currentNDVStore,
 		initializeData: demoLayoutMocks.initializeData,
 		initializeWorkflow: demoLayoutMocks.initializeWorkflow,
 		cleanup: demoLayoutMocks.cleanupInitialization,
@@ -94,7 +80,6 @@ describe('DemoLayout', () => {
 		demoLayoutMocks.initializeData.mockResolvedValue(undefined);
 		demoLayoutMocks.initializeWorkflow.mockResolvedValue(undefined);
 		demoLayoutMocks.currentWorkflowDocumentStore.value = {};
-		demoLayoutMocks.currentNDVStore.value = {};
 	});
 
 	it('should render the layout without throwing', () => {
@@ -126,7 +111,7 @@ describe('DemoLayout', () => {
 		expect(getByText('Demo Layout Content')).toBeInTheDocument();
 	});
 
-	it('should not render RouterView content until both scoped stores exist', () => {
+	it('should not render RouterView content until the scoped document store exists', () => {
 		demoLayoutMocks.currentWorkflowDocumentStore.value = null;
 
 		const { queryByText } = renderComponent({

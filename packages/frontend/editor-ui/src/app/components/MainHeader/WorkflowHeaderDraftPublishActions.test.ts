@@ -131,11 +131,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
-	const setupEnabledPublishButton = (overrides: Record<string, unknown> = {}) => {
-		Object.assign(workflowsStore, overrides);
-		if (!workflowsStore.workflow.nodes.length) {
-			workflowsStore.workflow.nodes = [triggerNode];
-		}
+	const setupEnabledPublishButton = () => {
+		workflowDocumentStore.setNodes([triggerNode]);
 	};
 
 	beforeEach(() => {
@@ -144,19 +141,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		collaborationStore = mockedStore(useCollaborationStore);
 		projectsStore = mockedStore(useProjectsStore);
 
-		workflowsStore.workflow = {
-			id: '1',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			activeVersion: null,
-			versionId: 'version-1',
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			nodes: [],
-			connections: {},
-		};
 		const nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.setNodeTypes([
 			mockNodeTypeDescription({
@@ -164,6 +148,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				group: ['trigger'],
 			}),
 		]);
+
+		workflowsStore.setWorkflowId('1');
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
 		workflowDocumentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
@@ -347,12 +333,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		it('should open publish modal when clicked and workflow is saved', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			uiStore.markStateClean();
-			setupEnabledPublishButton({
-				workflow: {
-					...workflowsStore.workflow,
-					versionId: 'version-1',
-				},
-			});
+			setupEnabledPublishButton();
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -433,8 +414,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 	describe('Publish button state', () => {
 		it('should show publish button disabled when there are no trigger nodes', () => {
-			workflowsStore.workflow.nodes = [];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -447,8 +428,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button disabled when trigger node is disabled', () => {
-			workflowsStore.workflow.nodes = [{ ...triggerNode, disabled: true }];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([{ ...triggerNode, disabled: true }]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -461,8 +442,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -475,8 +456,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when state is dirty', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -489,8 +470,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button disabled when versions match and state is not dirty', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -503,8 +484,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should keep the version menu enabled when workflow is published with no changes', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -518,8 +499,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should keep the version menu enabled when workflow is published with no changes and unpublish is unavailable', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -541,8 +522,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when workflow has never been published (no active version)', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 			uiStore.markStateClean();
 
@@ -634,11 +615,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.NamedVersions]: true,
 			});
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				versionId: 'version-1',
-				updatedAt: Date.now(),
-			};
 			workflowDocumentStore.setVersionData({
 				versionId: 'version-1',
 				name: 'Test Version',
@@ -724,7 +700,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.NamedVersions]: true,
 			});
-			workflowsStore.workflow.versionId = 'version-1';
 
 			const { container } = renderComponent();
 			expect(container).toBeInTheDocument();

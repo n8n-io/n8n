@@ -7,7 +7,7 @@ import type { LogStreamingInstanceSettingsLoader } from '../loaders/log-streamin
 import type { McpSettingsLoader } from '../loaders/mcp-settings.loader';
 import type { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader';
 import type { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader';
-import type { SsoInstanceSettingsLoader } from '../loaders/sso.instance-settings-loader';
+import type { SsoInstanceSettingsLoader } from '../loaders/sso/sso.instance-settings-loader';
 
 describe('InstanceSettingsLoaderService', () => {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });

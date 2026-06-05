@@ -513,6 +513,30 @@ describe('InsightsService (Integration)', () => {
 			expect(byWorkflow.data[0].workflowId).toEqual(workflow2.id);
 		});
 
+		test('returns total count when page is past the end', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2, workflow3]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				startDate,
+				endDate: today,
+				skip: 10,
+				take: 10,
+			});
+
+			expect(byWorkflow.count).toEqual(3);
+			expect(byWorkflow.data).toHaveLength(0);
+		});
+
 		test('compacted data are grouped by workflow correctly with projectId filter', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
@@ -970,12 +994,13 @@ describe('InsightsService (Integration)', () => {
 			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
 			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() =>
+			const execution = () =>
 				insightsService.validateDateFiltersLicense({
 					startDate: startDate.toJSDate(),
 					endDate: endDate.toJSDate(),
-				}),
-			).toThrowError(new UserError('Hourly data is not available with your current license'));
+				});
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow('Hourly data is not available with your current license');
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
@@ -1001,10 +1026,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = today.minus({ days: 8 }).toJSDate();
 			const endDate = today.toJSDate();
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError(
-					'The selected date range exceeds the maximum history allowed by your license',
-				),
+			const execution = () => insightsService.validateDateFiltersLicense({ startDate, endDate });
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow(
+				'The selected date range exceeds the maximum history allowed by your license',
 			);
 		});
 

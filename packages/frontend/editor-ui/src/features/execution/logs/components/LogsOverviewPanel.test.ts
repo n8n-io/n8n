@@ -44,7 +44,7 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 			getParentNodesByDepth: vi.fn().mockReturnValue([]),
 		}),
 		connectionsBySourceNode: {},
-		pinData: {},
+		pinnedDataByNodeName: {},
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		settings: {},
@@ -108,7 +108,7 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.setWorkflowId('test-workflow-id');
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;

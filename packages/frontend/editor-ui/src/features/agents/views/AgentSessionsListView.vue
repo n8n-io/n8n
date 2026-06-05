@@ -7,11 +7,13 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
@@ -66,9 +68,32 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
-const deleteActions = [
-	{ id: 'delete', label: i18n.baseText('generic.delete'), icon: 'trash-2' as const },
-];
+function originLabel(thread: AgentExecutionThread): string {
+	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
+	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
+	return i18n.baseText('agentSessions.origin.agent');
+}
+
+function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
+	const actions: Array<ActionDropdownItem<string>> = [];
+
+	if (thread.parentThreadId && thread.parentAgentId) {
+		actions.push({
+			id: 'goToParentRun',
+			label: i18n.baseText('agentSessions.goToParentRun'),
+			icon: 'arrow-up-right',
+		});
+	}
+
+	actions.push({
+		id: 'delete',
+		label: i18n.baseText('generic.delete'),
+		icon: 'trash-2',
+		divided: actions.length > 0,
+	});
+
+	return actions;
+}
 
 function onRowClick(threadId: string) {
 	void router.push({
@@ -77,7 +102,20 @@ function onRowClick(threadId: string) {
 	});
 }
 
-async function onAction(actionId: string, threadId: string) {
+async function onAction(actionId: string, thread: AgentExecutionThread) {
+	if (actionId === 'goToParentRun') {
+		if (!thread.parentAgentId || !thread.parentThreadId) return;
+		void router.push({
+			name: AGENT_SESSION_DETAIL_VIEW,
+			params: {
+				projectId: projectId.value,
+				agentId: thread.parentAgentId,
+				threadId: thread.parentThreadId,
+			},
+		});
+		return;
+	}
+
 	if (actionId !== 'delete') return;
 
 	const confirmed = await message.confirm(
@@ -93,7 +131,7 @@ async function onAction(actionId: string, threadId: string) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await sessionsStore.deleteThread(projectId.value, threadId);
+		await sessionsStore.deleteThread(projectId.value, thread.id);
 		toast.showMessage({
 			title: i18n.baseText('agentSessions.showMessage.deleted'),
 			type: 'success',
@@ -123,6 +161,7 @@ async function loadMore() {
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
 						<th>{{ i18n.baseText('agentSessions.tokenUsage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.sessionId') }}</th>
+						<th>{{ i18n.baseText('agentSessions.origin') }}</th>
 						<th style="width: 50px"></th>
 					</tr>
 				</thead>
@@ -139,42 +178,46 @@ async function loadMore() {
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
 						<td>{{ thread.sessionNumber }}</td>
+						<td data-test-id="agent-session-origin">{{ originLabel(thread) }}</td>
 						<td @click.stop>
 							<N8nActionDropdown
-								:items="deleteActions"
+								:items="rowActions(thread)"
 								activator-icon="ellipsis"
 								data-test-id="agent-session-actions"
-								@select="onAction($event, thread.id)"
+								@select="onAction($event, thread)"
 							/>
 						</td>
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 6" :key="col">
+							<td v-for="col in 7" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
 					</template>
-					<tr>
-						<td colspan="6" style="text-align: center">
+					<tr
+						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
+						:class="$style.lastRow"
+					>
+						<td :colspan="7" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
 								</span>
 							</template>
-							<template v-else-if="sessionsStore.nextCursor">
-								<N8nButton
-									icon="refresh-cw"
-									:title="i18n.baseText('agentSessions.loadMore')"
-									:label="i18n.baseText('agentSessions.loadMore')"
-									:loading="sessionsStore.loading"
-									data-test-id="agent-sessions-load-more"
-									@click="loadMore()"
-								/>
-							</template>
-							<template v-else-if="sessionsStore.threads.length">
-								{{ i18n.baseText('agentSessions.loadedAll') }}
-							</template>
+						</td>
+					</tr>
+					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
+						<td colspan="7">
+							<N8nButton
+								icon="refresh-cw"
+								variant="ghost"
+								:title="i18n.baseText('agentSessions.loadMore')"
+								:label="i18n.baseText('agentSessions.loadMore')"
+								:loading="sessionsStore.loading"
+								data-test-id="agent-sessions-load-more"
+								@click="loadMore()"
+							/>
 						</td>
 					</tr>
 				</tbody>
@@ -192,11 +235,15 @@ async function loadMore() {
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .tableContainer {
 	width: 100%;
 	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .clickableRow {
@@ -204,6 +251,20 @@ async function loadMore() {
 
 	&:hover {
 		background-color: var(--background--hover);
+	}
+}
+
+.lastRow {
+	td {
+		text-align: center;
+	}
+
+	td button {
+		margin: 0 auto;
+	}
+
+	&:hover {
+		background-color: var(--background--surface) !important;
 	}
 }
 </style>

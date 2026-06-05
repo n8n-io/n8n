@@ -290,7 +290,11 @@ const reloadExecution = () => {
 	loadExecution();
 };
 
-defineExpose({ iframeRef, reloadExecution });
+const requestFitView = () => {
+	iframeRef.value?.contentWindow?.postMessage?.(JSON.stringify({ command: 'fitView' }), '*');
+};
+
+defineExpose({ iframeRef, reloadExecution, requestFitView });
 </script>
 
 <template>

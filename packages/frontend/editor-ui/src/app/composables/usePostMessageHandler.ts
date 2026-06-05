@@ -19,27 +19,20 @@ import { buildExecutionResponseFromSchema } from '@/features/execution/execution
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
-	type useWorkflowDocumentStore,
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 interface PostMessageHandlerDeps {
-	workflowState: WorkflowState;
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
-	currentNDVStore: ShallowRef<ReturnType<typeof useNDVStore> | null>;
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
-export function usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-	currentNDVStore,
-}: PostMessageHandlerDeps) {
+export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -55,7 +48,7 @@ export function usePostMessageHandler({
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
-	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore, currentNDVStore);
+	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
 
 	function emitPostMessageReady() {
 		if (window.parent) {
@@ -108,7 +101,10 @@ export function usePostMessageHandler({
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			workflowState.setActiveExecutionId(null);
+			const workflowDocumentStore = currentWorkflowDocumentStore.value;
+			if (workflowDocumentStore) {
+				useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setActiveExecutionId(null);
+			}
 		}
 
 		if (json.tidyUp === true) {
@@ -143,7 +139,6 @@ export function usePostMessageHandler({
 		if (wfId) {
 			const workflowDocumentId = createWorkflowDocumentId(wfId);
 			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(workflowDocumentId);
-			currentNDVStore.value = useNDVStore(workflowDocumentId);
 		}
 
 		void nextTick(() => {
@@ -205,8 +200,13 @@ export function usePostMessageHandler({
 
 		await importWorkflowExact(json);
 
-		workflowState.setWorkflowExecutionData(data);
-		currentWorkflowDocumentStore.value?.setPinData({});
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+		if (workflowDocumentStore) {
+			useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setWorkflowExecutionData(
+				data,
+			);
+			workflowDocumentStore.setPinData({});
+		}
 
 		canvasStore.stopLoading();
 
@@ -258,6 +258,8 @@ export function usePostMessageHandler({
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
 				)) as ExecutionSummary;
+			} else if (json?.command === 'fitView') {
+				canvasEventBus.emit('fitView');
 			} else if (json?.command === 'executionEvent') {
 				// Relay execution push events from parent into the iframe's push pipeline.
 				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch

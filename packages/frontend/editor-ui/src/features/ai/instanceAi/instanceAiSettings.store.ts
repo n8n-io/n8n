@@ -93,6 +93,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isCloudManaged = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.cloudManaged === true,
 	);
+	const isSandboxEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxEnabled === true,
+	);
+	const isWorkflowBuilderAvailable = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
+	);
+	const sandboxUnavailableReason = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxUnavailableReason ?? null,
+	);
 
 	const isDirty = computed(() => {
 		if (!settings.value && !preferences.value) return false;
@@ -108,8 +117,14 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			proxyEnabled: prev?.proxyEnabled ?? false,
-			optinModalDismissed: adminRes.optinModalDismissed,
 			cloudManaged: prev?.cloudManaged ?? false,
+			sandboxEnabled: adminRes.sandboxEnabled,
+			workflowBuilderAvailable: adminRes.sandboxEnabled
+				? (prev?.workflowBuilderAvailable ?? true)
+				: false,
+			sandboxUnavailableReason: adminRes.sandboxEnabled
+				? (prev?.sandboxUnavailableReason ?? null)
+				: null,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -195,16 +210,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} finally {
 			isSaving.value = false;
 		}
-	}
-
-	async function persistOptinModalDismissed(): Promise<void> {
-		try {
-			const result = await updateSettings(rootStore.restApiContext, {
-				optinModalDismissed: true,
-			});
-			settings.value = result;
-			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-		} catch (error) {}
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
@@ -525,7 +530,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		save,
 		persistEnabled,
 		persistLocalGatewayPreference,
-		persistOptinModalDismissed,
 		ensurePreferencesLoaded,
 		setField,
 		setPreferenceField,
@@ -549,6 +553,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
 		isProxyEnabled,
+		isSandboxEnabled,
+		isWorkflowBuilderAvailable,
+		sandboxUnavailableReason,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,

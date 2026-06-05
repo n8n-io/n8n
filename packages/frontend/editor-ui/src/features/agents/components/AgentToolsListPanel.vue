@@ -125,8 +125,7 @@ const customRows = computed<CustomRow[]>(() =>
 		.filter((item): item is { ref: CustomToolRef; index: number } => item.ref.type === 'custom')
 		.map(({ ref, index }) => ({
 			index,
-			label: ref.name?.trim() || ref.id || `Custom tool ${index + 1}`,
-			description: ref.description,
+			label: ref.id || `Custom tool ${index + 1}`,
 		})),
 );
 
@@ -323,6 +322,8 @@ const totalCount = computed(() => props.tools.length);
 	padding: var(--spacing--lg);
 	height: 100%;
 	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .toggleRow {

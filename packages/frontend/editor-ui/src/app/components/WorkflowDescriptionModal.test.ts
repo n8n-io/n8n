@@ -85,18 +85,7 @@ describe('WorkflowDescriptionModal', () => {
 			description: '',
 			versionId: '2',
 		} as IWorkflowDb);
-		workflowsStore.workflow = {
-			id: 'test-workflow-id',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			versionId: '1',
-			nodes: [],
-			connections: {},
-		};
+		workflowsStore.workflowId = 'test-workflow-id';
 		uiStore.markStateClean();
 	});
 

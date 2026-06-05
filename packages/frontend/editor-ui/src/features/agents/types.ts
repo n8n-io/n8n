@@ -1,5 +1,5 @@
 import type { BaseResource } from '@/Interface';
-import type { AgentJsonToolRef as ApiAgentJsonToolRef, AgentSkill } from '@n8n/api-types';
+import type { AgentJsonToolConfig, AgentSkill } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill };
@@ -72,12 +72,6 @@ export interface ProviderToolSchema {
 export interface MemorySchema {
 	source: string | null;
 	storage: 'memory' | 'custom';
-	lastMessages: number | null;
-	semanticRecall: {
-		topK: number;
-		messageRange: { before: number; after: number } | null;
-		embedder: string | null;
-	} | null;
 	workingMemory: {
 		type: 'structured' | 'freeform';
 		schema?: Record<string, unknown>;
@@ -119,12 +113,14 @@ export interface ThinkingSchema {
 	reasoningEffort?: string;
 }
 
-export type WorkflowToolRef = ApiAgentJsonToolRef & { type: 'workflow' };
+export type WorkflowToolRef = AgentJsonToolConfig & { type: 'workflow' };
 
 export type {
 	NodeToolConfig,
-	AgentJsonToolRef,
-	AgentJsonSkillRef,
-	AgentJsonConfigRef,
+	AgentJsonToolConfig,
+	AgentJsonToolConfig as AgentJsonToolRef,
+	AgentJsonSkillConfig as AgentJsonSkillRef,
+	AgentJsonConfig as AgentJsonConfigRef,
+	AgentJsonMcpServerConfig,
 	AgentJsonConfig,
 } from '@n8n/api-types';
