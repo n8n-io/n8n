@@ -1,0 +1,248 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "n8n" [ref=e6]
+        - generic [ref=e7]: Security Hub
+      - navigation [ref=e8]:
+        - generic [ref=e9]:
+          - button "Plain Reports" [ref=e10] [cursor=pointer]:
+            - img "Plain" [ref=e11]
+            - generic [ref=e14]: Reports
+            - img [ref=e15]
+          - generic [ref=e17]:
+            - link "All Reports" [ref=e18] [cursor=pointer]:
+              - /url: /reports
+            - link "My Open Reports" [ref=e19] [cursor=pointer]:
+              - /url: /reports?assignee=me&status=new%2Ctriaging%2Caccepted
+            - link "New Unassigned" [ref=e20] [cursor=pointer]:
+              - /url: /reports?status=new&assignee=unassigned&sortBy=severity%2Csla_triage_deadline&sortAsc=true%2Ctrue
+            - link "Needs Finding" [ref=e21] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=none
+            - link "Needs Closure" [ref=e22] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=completed
+            - link "Finding Cancelled" [ref=e23] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=canceled
+            - link "Bounties — Needs Rating" [ref=e24] [cursor=pointer]:
+              - /url: /reports?bounty_requested=yes&bounty_ratings=incomplete
+            - link "Bounties — Ready to Notify" [ref=e25] [cursor=pointer]:
+              - /url: /reports?bounty_eligible=eligible&bounty_status=pending&finding=completed
+            - link "Bounties — Due 2026-06" [ref=e26] [cursor=pointer]:
+              - /url: /reports?bounty_eligible=eligible&bounty_requested=yes&bounty_payment_month=2026-06
+        - link "Linear Findings" [ref=e27] [cursor=pointer]:
+          - /url: /findings
+          - img "Linear" [ref=e28]
+          - text: Findings
+        - link "GitHub Advisories" [ref=e30] [cursor=pointer]:
+          - /url: /advisories
+          - img "GitHub" [ref=e31]
+          - text: Advisories
+        - link "Publications" [ref=e33] [cursor=pointer]:
+          - /url: /batches
+          - img [ref=e34]
+          - text: Publications
+        - button "Dashboards" [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e41]: Dashboards
+          - img [ref=e42]
+      - generic [ref=e44]:
+        - generic [ref=e46]: DC
+        - paragraph [ref=e48]: Declan Carroll
+        - button [ref=e49] [cursor=pointer]:
+          - img
+    - main [ref=e50]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e81]:
+            - generic [ref=e82]:
+              - link "Back to Reports" [ref=e83] [cursor=pointer]:
+                - /url: /reports
+                - img [ref=e84]
+                - text: Back to Reports
+              - generic [ref=e87]:
+                - button "Copy link to report" [ref=e88] [cursor=pointer]:
+                  - img
+                - button "Copy report ID" [ref=e89] [cursor=pointer]:
+                  - img
+                - button "Copy Plain thread ID" [ref=e90] [cursor=pointer]:
+                  - img "Plain"
+            - generic [ref=e91]:
+              - 'heading "Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1)" [level=1] [ref=e92]'
+              - generic [ref=e93]:
+                - link "Plain thread" [ref=e94] [cursor=pointer]:
+                  - /url: https://app.plain.com/workspace/w_01K4QHF5AA1PSFM3ZXWF8BATY3/thread/th_01KT45BXEWHMZEKQ5XPY7G4KWK
+                  - text: Plain thread
+                  - img [ref=e95]
+                - generic [ref=e99]: Reported by Haider Vargas
+                - generic [ref=e100]: · 2026-06-02
+          - generic [ref=e101]:
+            - button "Expand pipeline" [ref=e103] [cursor=pointer]:
+              - generic [ref=e105]: Reports
+              - generic [ref=e106]:
+                - generic [ref=e107]: →
+                - generic [ref=e108]: 0 Findings
+              - generic [ref=e109]:
+                - generic [ref=e110]: →
+                - generic [ref=e111]: 0 Advisories
+              - generic [ref=e112]:
+                - generic [ref=e113]: →
+                - generic [ref=e114]: 0 Batches
+              - img [ref=e116]
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - button "Suggested Related Findings (4) Refresh suggestions" [ref=e120] [cursor=pointer]:
+                  - generic [ref=e121]:
+                    - img [ref=e122]
+                    - heading "Suggested Related Findings (4)" [level=3] [ref=e124]
+                  - button "Refresh suggestions" [ref=e125]:
+                    - img
+                - generic [ref=e126]:
+                  - generic [ref=e127]:
+                    - generic [ref=e128]:
+                      - generic [ref=e129]:
+                        - link "Minor upgrade for vm2 - n8n" [ref=e130] [cursor=pointer]:
+                          - /url: /findings/5c354274-da05-49ee-b600-66e798ad8257
+                        - generic [ref=e131]: 40% match
+                      - paragraph [ref=e132]: "This finding covers a vulnerable bundled npm package (vm2) located at the same path pattern inside the n8nio/n8n container (`/usr/local/lib/node_modules/n8n/node_modules/.pnpm/`), affecting the same Docker image. The vulnerability class is the same — a known-CVE transitive dependency bundled in the official n8n Docker image requiring a package version upgrade. However, the affected package (vm2 vs. ollama) and the specific CVE are entirely different."
+                    - generic [ref=e133]:
+                      - link "Open in Linear" [ref=e134] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/SEC-637/minor-upgrade-for-vm2-n8n
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e135] [cursor=pointer]
+                      - button "Dismiss" [ref=e136] [cursor=pointer]:
+                        - img
+                  - generic [ref=e137]:
+                    - generic [ref=e138]:
+                      - generic [ref=e139]:
+                        - link "Minor upgrade for vm2 - n8n" [ref=e140] [cursor=pointer]:
+                          - /url: /findings/00c3fb28-c449-40a2-9067-62c6a1a0a78e
+                        - generic [ref=e141]: 40% match
+                      - paragraph [ref=e142]: Same as above — another vm2 vulnerable bundled dependency finding for the n8nio/n8n:nightly container, sharing the same vulnerability class (CVE-affected transitive npm dependency in the official Docker image at the same pnpm node_modules path). Different package and CVE from the reported ollama issue.
+                    - generic [ref=e143]:
+                      - link "Open in Linear" [ref=e144] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/SEC-632/minor-upgrade-for-vm2-n8n
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e145] [cursor=pointer]
+                      - button "Dismiss" [ref=e146] [cursor=pointer]:
+                        - img
+                  - generic [ref=e147]:
+                    - generic [ref=e148]:
+                      - generic [ref=e149]:
+                        - link "Small upgrade for @xmldom/xmldom - n8nio/n8n" [ref=e150] [cursor=pointer]:
+                          - /url: /findings/111a0a20-d44e-4a78-af48-89148a78f024
+                        - generic [ref=e151]: 35% match
+                      - paragraph [ref=e152]: This finding covers a vulnerable bundled npm package (@xmldom/xmldom) in the n8nio/n8n:nightly Docker image, which is the same vulnerability class (CVE-affected transitive dependency in the official n8n Docker image). The affected package and CVE differ from the reported ollama issue, but the remediation pattern (update the pinned/locked package version in the Docker image) is identical.
+                    - generic [ref=e153]:
+                      - link "Open in Linear" [ref=e154] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/SEC-624/small-upgrade-for-xmldomxmldom-n8nion8n
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e155] [cursor=pointer]
+                      - button "Dismiss" [ref=e156] [cursor=pointer]:
+                        - img
+                  - generic [ref=e157]:
+                    - generic [ref=e158]:
+                      - generic [ref=e159]:
+                        - link "Small upgrade for openssl - n8nio/n8n" [ref=e160] [cursor=pointer]:
+                          - /url: /findings/1b8edc8c-3029-4bca-97e0-f7736e05cda0
+                        - generic [ref=e161]: 33% match
+                      - paragraph [ref=e162]: "This finding covers a vulnerable openssl package in the n8nio/n8n:1 Docker image, representing the same general category of issue: a CVE-affected dependency bundled in the official n8n Docker image requiring a rebuild/upgrade. The affected component (openssl OS package vs. ollama npm package) and CVE are entirely different, but the remediation approach and affected asset (n8nio/n8n Docker image) overlap."
+                    - generic [ref=e163]:
+                      - link "Open in Linear" [ref=e164] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/SEC-600/small-upgrade-for-openssl-n8nion8n
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e165] [cursor=pointer]
+                      - button "Dismiss" [ref=e166] [cursor=pointer]:
+                        - img
+              - generic [ref=e167]:
+                - generic [ref=e168]:
+                  - heading "Linked Findings" [level=2] [ref=e169]
+                  - generic [ref=e170]:
+                    - button [ref=e171] [cursor=pointer]:
+                      - img
+                    - button [ref=e172] [cursor=pointer]:
+                      - img
+                - paragraph [ref=e173]: No linked findings yet.
+              - generic [ref=e174]:
+                - heading "Report" [level=2] [ref=e175]
+                - generic [ref=e177]:
+                  - paragraph [ref=e178]: Reporter severity
+                  - paragraph [ref=e179]: critical
+                - generic [ref=e180]:
+                  - paragraph [ref=e181]: "###Summary The official n8n Docker image n8nio/n8n:stable bundles ollama version 0.6.3 as a transitive dependency. This version is affected by CVE-2026-7482 (\"Bleeding Llama\"), a critical heap out-of-bounds read in the GGUF model loader (fixed in ollama 0.17.1). I am reporting this so n8n can update the pinned/locked version shipped in the official image."
+                  - paragraph [ref=e182]: "###Affected asset Product: n8n (self-hosted) Docker image: n8nio/n8n:stable (pulled from Docker Hub) n8n version observed inside the image: 2.22.4 (please verify this against your release metadata) Vulnerable package path inside the container: /usr/local/lib/node_modules/n8n/node_modules/.pnpm/ollama@0.6.3/node_modules/ollama/package.json Vulnerable package & version: ollama 0.6.3 Fixed in: ollama 0.17.1"
+                  - paragraph [ref=e183]: "###Vulnerability details (CVE-2026-7482) CVE ID: CVE-2026-7482 CVSS v3.1: 9.1 (Critical) — AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H Published: 2026-05-04 Description (per CNA): Ollama before 0.17.1 contains a heap out-of-bounds read in the GGUF model loader. The /api/create endpoint accepts an attacker-supplied GGUF file whose declared tensor offset and size exceed the file's actual length; during quantization in fs/ggml/gguf.go and server/quantization.go (WriteTo()), the server reads past the allocated heap buffer. The leaked memory may include environment variables, API keys, system prompts, and concurrent users' conversation data. A public exploit reportedly exists."
+                  - paragraph [ref=e184]: "###How it was discovered Detected on a self-hosted n8n deployment running the n8nio/n8n:stable image by Orca Security's vulnerability scanner, which flagged the bundled ollama@0.6.3 package inside the n8n node_modules tree of the container filesystem."
+                  - paragraph [ref=e185]: "###Steps to reproduce (dependency presence in the official image) Pull the official image: docker pull n8nio/n8n:stable Run a shell inside the container: docker run --rm -it --entrypoint sh n8nio/n8n:stable Inspect the bundled ollama package version: cat /usr/local/lib/node_modules/n8n/node_modules/.pnpm/ollama@0.6.3/node_modules/ollama/package.json | grep '\"version\"' Observe \"version\": \"0.6.3\", which is below the patched 0.17.1."
+              - generic [ref=e186]:
+                - heading "Communication Log" [level=2] [ref=e187]
+                - generic [ref=e188]:
+                  - generic [ref=e191]:
+                    - text: changed status from TODO to TODO
+                    - generic [ref=e192]: · 3 days ago
+                  - generic [ref=e195]:
+                    - generic [ref=e196]:
+                      - generic [ref=e197]: Security Hub
+                      - generic [ref=e198]: · 3 days ago
+                    - generic [ref=e199]: "Subject: n8n Vulnerability Report: Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1)"
+                    - generic [ref=e200]:
+                      - generic [ref=e201]:
+                        - paragraph [ref=e202]: Hello Haider Vargas,
+                        - paragraph [ref=e203]: Thank you for submitting a vulnerability report to n8n. We have received your report and our security team will review it and be in touch.
+                        - paragraph [ref=e204]: "This report is subject to our Vulnerability Disclosure Program policy, which you can find here: https://n8n.notion.site/n8n-vulnerability-disclosure-program"
+                        - paragraph [ref=e205]: If you have any questions in the meantime, feel free to reply to this email or reach us directly at security@n8n.io.
+                        - paragraph [ref=e206]: Best regards, n8n Security Team
+                        - separator [ref=e207]
+                        - paragraph [ref=e208]: "Below is a copy of your submission for your records:"
+                        - paragraph [ref=e209]: "Title: Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1) Severity: critical Affected Version: >=9.1 GitHub: @haidervargas"
+                        - paragraph [ref=e210]: "###Summary The official n8n Docker image n8nio/n8n:stable bundles ollama version 0.6.3 as a transitive dependency. This version is affected by CVE-2026-7482 (\"Bleeding Llama\"), a critical heap out-of-bounds read in the GGUF model loader (fixed in ollama 0.17.1). I am reporting this so n8n can update the pinned/locked version shipped in the official image."
+                        - paragraph [ref=e211]: "###Affected asset Product: n8n (self-hosted) Docker image: n8nio/n8n:stable (pulled from Docker Hub) n8n version observed inside the image: 2.22.4 (please verify this against your release metadata) Vulnerable package path inside the container: /usr/local/lib/node_modules/n8n/node_modules/.pnpm/ollama@0.6.3/node_modules/ollama/package.json Vulnerable package & version: ollama 0.6.3 Fixed in: ollama 0.17.1"
+                        - paragraph [ref=e212]: "###Vulnerability details (CVE-2026-7482) CVE ID: CVE-2026-7482 CVSS v3.1: 9.1 (Critical) — AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H Published: 2026-05-04 Description (per CNA): Ollama before 0.17.1 contains a heap out-of-bounds read in the GGUF model loader. The /api/create endpoint accepts an attacker-supplied GGUF file whose declared tensor offset and size exceed the file's actual length; during quantization in fs/ggml/gguf.go and server/quantization.go (WriteTo()), the server reads past the allocated heap buffer. The leaked memory may include environment variables, API keys, system prompts, and concurrent users' conversation data. A public exploit reportedly exists."
+                        - paragraph [ref=e213]: "###How it was discovered Detected on a self-hosted n8n deployment running the n8nio/n8n:stable image by Orca Security's vulnerability scanner, which flagged the bundled ollama@0.6.3 package inside the n8n node_modules tree of the container filesystem."
+                        - paragraph [ref=e214]: "###Steps to reproduce (dependency presence in the official image) Pull the official image: docker pull n8nio/n8n:stable Run a shell inside the container: docker run --rm -it --entrypoint sh n8nio/n8n:stable Inspect the bundled ollama package version: cat /usr/local/lib/node_modules/n8n/node_modules/.pnpm/ollama@0.6.3/node_modules/ollama/package.json | grep '\"version\"' Observe \"version\": \"0.6.3\", which is below the patched 0.17.1."
+                      - button "Show more" [ref=e215] [cursor=pointer]
+              - generic [ref=e216]:
+                - textbox "Write a reply to the reporter…" [ref=e217]
+                - generic [ref=e218]:
+                  - button "Send reply" [disabled]:
+                    - img
+                    - text: Send reply
+        - complementary [ref=e219]:
+          - generic [ref=e220]:
+            - heading "Metadata" [level=3] [ref=e221]
+            - generic [ref=e222]:
+              - paragraph [ref=e223]: Reporter
+              - paragraph [ref=e224]: Haider Vargas
+              - link "haider.vargas@appgate.com" [ref=e225] [cursor=pointer]:
+                - /url: mailto:haider.vargas@appgate.com
+                - img [ref=e226]
+                - text: haider.vargas@appgate.com
+            - generic [ref=e229]:
+              - paragraph [ref=e230]: Triage SLA
+              - generic "6/5/2026, 1:36:35 PM" [ref=e231]:
+                - img [ref=e232]
+                - text: 4 hours
+          - generic [ref=e235]:
+            - heading "Fields" [level=3] [ref=e236]
+            - generic [ref=e237]:
+              - paragraph [ref=e238]: Assignee
+              - combobox [ref=e239] [cursor=pointer]:
+                - generic: Unassigned
+                - img [ref=e240]
+            - generic [ref=e242]:
+              - paragraph [ref=e243]: Severity
+              - combobox [ref=e244] [cursor=pointer]:
+                - generic: Critical
+                - img [ref=e245]
+            - generic [ref=e247]:
+              - paragraph [ref=e248]: Status
+              - combobox [ref=e249] [cursor=pointer]:
+                - generic [ref=e250]: New
+                - img [ref=e251]
+              - generic [ref=e253]:
+                - generic [ref=e254]: "Plain Status:"
+                - generic [ref=e255]: TODO

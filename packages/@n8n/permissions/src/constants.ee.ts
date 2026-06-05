@@ -67,6 +67,7 @@ export const RESOURCES = {
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
+	agenticUser: ['create', 'read', 'update', 'delete', 'list', 'execute', 'receive'] as const,
 	breakingChanges: ['list'] as const,
 	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
 	encryptionKey: ['manage'] as const,
@@ -93,6 +94,7 @@ export const API_KEY_RESOURCES = {
 	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
 	insights: ['read'] as const,
+	agenticUser: ['read', 'execute', 'receive'] as const,
 } as const;
 
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';

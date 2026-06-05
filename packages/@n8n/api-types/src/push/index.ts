@@ -1,3 +1,4 @@
+import type { AgentTaskPushMessage } from './agentic-users';
 import type { BuilderCreditsPushMessage } from './builder-credits';
 import type { ChatHubPushMessage } from './chat-hub';
 import type { CollaborationPushMessage } from './collaboration';
@@ -19,7 +20,8 @@ export type PushMessage =
 	| DebugPushMessage
 	| BuilderCreditsPushMessage
 	| ChatHubPushMessage
-	| InstanceAiPushMessage;
+	| InstanceAiPushMessage
+	| AgentTaskPushMessage;
 
 export type PushType = PushMessage['type'];
 

@@ -46,8 +46,14 @@ tags:
     description: Operations about folders
   - name: N8nPackage
     description: Beta — operations about n8n packages. Disabled by default; enable with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`.
+  - name: AgenticUser
+    description: Agentic user agent-to-agent (A2A) communication
 
 paths:
+  /agentic-users/{id}/card:
+    $ref: './handlers/agentic-users/spec/paths/agents.id.card.yml'
+  /agentic-users/{id}/task:
+    $ref: './handlers/agentic-users/spec/paths/agents.id.task.yml'
   /audit:
     $ref: './handlers/audit/spec/paths/audit.yml'
   /credentials:

@@ -229,6 +229,14 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to agentic users page
+	 * URL: /agentic-users
+	 */
+	async toAgenticUsers() {
+		await this.page.goto('/agentic-users');
+	}
+
+	/**
 	 * Navigate to ChatHub chat page
 	 * URL: /home/chat
 	 */

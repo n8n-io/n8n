@@ -11,6 +11,7 @@ export type CredentialResolveMetadata = {
 	type: string;
 	resolverId?: string;
 	isResolvable: boolean;
+	resolvableAllowFallback?: boolean;
 };
 
 export type CredentialResolutionResult = {

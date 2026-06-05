@@ -29,6 +29,7 @@ export const userBaseSchema = z.object({
 	lastName: z.string().nullable().optional(),
 	email: z.string().email().nullable().optional(),
 	role: roleSchema.optional(),
+	avatar: z.string().nullable().optional(),
 });
 
 export const userDetailSchema = userBaseSchema.extend({

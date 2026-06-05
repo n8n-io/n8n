@@ -44,6 +44,7 @@ describe('permissions', () => {
 			role: {},
 			chatHub: {},
 			chatHubAgent: {},
+			agenticUser: {},
 			breakingChanges: {},
 			apiKey: {},
 			encryptionKey: {},
@@ -96,6 +97,7 @@ describe('permissions', () => {
 			banner: {},
 			community: {},
 			communityPackage: {},
+			agenticUser: {},
 			credential: {
 				create: true,
 				delete: true,

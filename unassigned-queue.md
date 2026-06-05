@@ -1,0 +1,749 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "n8n" [ref=e6]
+        - generic [ref=e7]: Security Hub
+      - navigation [ref=e8]:
+        - generic [ref=e9]:
+          - button "Plain Reports" [ref=e10] [cursor=pointer]:
+            - img "Plain" [ref=e11]
+            - generic [ref=e14]: Reports
+            - img [ref=e15]
+          - generic [ref=e17]:
+            - link "All Reports" [ref=e18] [cursor=pointer]:
+              - /url: /reports
+            - link "My Open Reports" [ref=e19] [cursor=pointer]:
+              - /url: /reports?assignee=me&status=new%2Ctriaging%2Caccepted
+            - link "New Unassigned" [ref=e20] [cursor=pointer]:
+              - /url: /reports?status=new&assignee=unassigned&sortBy=severity%2Csla_triage_deadline&sortAsc=true%2Ctrue
+            - link "Needs Finding" [ref=e21] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=none
+            - link "Needs Closure" [ref=e22] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=completed
+            - link "Finding Cancelled" [ref=e23] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=canceled
+            - link "Bounties — Needs Rating" [ref=e24] [cursor=pointer]:
+              - /url: /reports?bounty_requested=yes&bounty_ratings=incomplete
+            - link "Bounties — Ready to Notify" [ref=e25] [cursor=pointer]:
+              - /url: /reports?bounty_eligible=eligible&bounty_status=pending&finding=completed
+            - link "Bounties — Due 2026-06" [ref=e26] [cursor=pointer]:
+              - /url: /reports?bounty_eligible=eligible&bounty_requested=yes&bounty_payment_month=2026-06
+        - link "Linear Findings" [ref=e27] [cursor=pointer]:
+          - /url: /findings
+          - img "Linear" [ref=e28]
+          - text: Findings
+        - link "GitHub Advisories" [ref=e30] [cursor=pointer]:
+          - /url: /advisories
+          - img "GitHub" [ref=e31]
+          - text: Advisories
+        - link "Publications" [ref=e33] [cursor=pointer]:
+          - /url: /batches
+          - img [ref=e34]
+          - text: Publications
+        - button "Dashboards" [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e41]: Dashboards
+          - img [ref=e42]
+      - generic [ref=e44]:
+        - generic [ref=e46]: DC
+        - paragraph [ref=e48]: Declan Carroll
+        - button [ref=e49] [cursor=pointer]:
+          - img
+    - main [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - heading "Reports" [level=1] [ref=e54]
+            - generic [ref=e55]:
+              - generic [ref=e56]:
+                - img [ref=e57]
+                - textbox "Search reports..." [ref=e60]
+              - link "New Report" [ref=e61] [cursor=pointer]:
+                - /url: /report
+                - img
+                - text: New Report
+          - generic [ref=e62]:
+            - generic [ref=e63]:
+              - 'button "Status: New" [ref=e64] [cursor=pointer]':
+                - generic [ref=e65]: "Status:"
+                - text: New
+              - button "Remove Status filter" [ref=e66] [cursor=pointer]:
+                - img [ref=e67]
+            - generic [ref=e70]:
+              - 'button "Assignee: Unassigned" [ref=e71] [cursor=pointer]':
+                - generic [ref=e72]: "Assignee:"
+                - text: Unassigned
+              - button "Remove Assignee filter" [ref=e73] [cursor=pointer]:
+                - img [ref=e74]
+            - button "Filter f" [ref=e77] [cursor=pointer]:
+              - img
+              - text: Filter
+              - generic: f
+            - generic [ref=e189]: 144 reports
+        - generic [ref=e78]:
+          - table [ref=e81]:
+            - rowgroup [ref=e82]:
+              - row "Title Reporter Assignee Severity Duplication Status SLA Created" [ref=e83]:
+                - columnheader "Title" [ref=e84]
+                - columnheader "Reporter" [ref=e85]
+                - columnheader "Assignee" [ref=e86]
+                - columnheader "Severity" [ref=e87]:
+                  - button "Severity" [ref=e88] [cursor=pointer]:
+                    - text: Severity
+                    - img [ref=e89]
+                - columnheader "Duplication" [ref=e91]
+                - columnheader "Status" [ref=e92]
+                - columnheader "SLA" [ref=e93]:
+                  - button "SLA" [ref=e94] [cursor=pointer]:
+                    - text: SLA
+                    - img [ref=e95]
+                - columnheader "Created" [ref=e98]:
+                  - button "Created" [ref=e99] [cursor=pointer]:
+                    - text: Created
+                    - img [ref=e100]
+            - rowgroup [ref=e103]:
+              - row "Snowflake SDK RCE via VARIANT Column Data Poisoning Vipin Chaudhary Unassigned CRITICAL 75% match New Overdue 8 days 2026-05-25" [ref=e190] [cursor=pointer]:
+                - cell "Snowflake SDK RCE via VARIANT Column Data Poisoning" [ref=e191]:
+                  - link "Snowflake SDK RCE via VARIANT Column Data Poisoning" [ref=e192]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                    - generic [ref=e194]: Snowflake SDK RCE via VARIANT Column Data Poisoning
+                - cell "Vipin Chaudhary" [ref=e195]:
+                  - link "Vipin Chaudhary" [ref=e196]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                - cell "Unassigned" [ref=e197]:
+                  - link "Unassigned" [ref=e198]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                - cell "CRITICAL" [ref=e199]:
+                  - link "CRITICAL" [ref=e200]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                    - generic [ref=e201]: CRITICAL
+                - cell "75% match" [ref=e202]:
+                  - link "75% match" [ref=e203]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                    - generic [ref=e204]: 75% match
+                - cell "New" [ref=e205]:
+                  - link "New" [ref=e206]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                    - generic [ref=e207]: New
+                - cell "Overdue 8 days" [ref=e208]:
+                  - link "Overdue 8 days" [ref=e209]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+                    - generic "5/28/2026, 8:04:43 PM" [ref=e210]:
+                      - img [ref=e211]
+                      - text: Overdue 8 days
+                - cell "2026-05-25" [ref=e213]:
+                  - link "2026-05-25" [ref=e214]:
+                    - /url: /reports/e5d28072-98dd-4d26-8989-2eadb1a611cb
+              - row "Persistent Native Object Mutation in Expression Engine Enables Cross-Workflow Credential Theft Vipin Chaudhary Unassigned CRITICAL 85% match New Overdue 8 days 2026-05-25" [ref=e215] [cursor=pointer]:
+                - cell "Persistent Native Object Mutation in Expression Engine Enables Cross-Workflow Credential Theft" [ref=e216]:
+                  - link "Persistent Native Object Mutation in Expression Engine Enables Cross-Workflow Credential Theft" [ref=e217]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                    - generic [ref=e219]: Persistent Native Object Mutation in Expression Engine Enables Cross-Workflow Credential Theft
+                - cell "Vipin Chaudhary" [ref=e220]:
+                  - link "Vipin Chaudhary" [ref=e221]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                - cell "Unassigned" [ref=e222]:
+                  - link "Unassigned" [ref=e223]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                - cell "CRITICAL" [ref=e224]:
+                  - link "CRITICAL" [ref=e225]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                    - generic [ref=e226]: CRITICAL
+                - cell "85% match" [ref=e227]:
+                  - link "85% match" [ref=e228]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                    - generic [ref=e229]: 85% match
+                - cell "New" [ref=e230]:
+                  - link "New" [ref=e231]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                    - generic [ref=e232]: New
+                - cell "Overdue 8 days" [ref=e233]:
+                  - link "Overdue 8 days" [ref=e234]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+                    - generic "5/28/2026, 8:13:57 PM" [ref=e235]:
+                      - img [ref=e236]
+                      - text: Overdue 8 days
+                - cell "2026-05-25" [ref=e238]:
+                  - link "2026-05-25" [ref=e239]:
+                    - /url: /reports/51c5f935-b452-4ff0-9357-0eb8ae570615
+              - row "Expression Sanitizer Bypass via Set.prototype.has Mutation Enables Full RCE Vipin Chaudhary Unassigned CRITICAL 85% match New Overdue 8 days 2026-05-25" [ref=e240] [cursor=pointer]:
+                - cell "Expression Sanitizer Bypass via Set.prototype.has Mutation Enables Full RCE" [ref=e241]:
+                  - link "Expression Sanitizer Bypass via Set.prototype.has Mutation Enables Full RCE" [ref=e242]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                    - generic [ref=e244]: Expression Sanitizer Bypass via Set.prototype.has Mutation Enables Full RCE
+                - cell "Vipin Chaudhary" [ref=e245]:
+                  - link "Vipin Chaudhary" [ref=e246]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                - cell "Unassigned" [ref=e247]:
+                  - link "Unassigned" [ref=e248]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                - cell "CRITICAL" [ref=e249]:
+                  - link "CRITICAL" [ref=e250]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                    - generic [ref=e251]: CRITICAL
+                - cell "85% match" [ref=e252]:
+                  - link "85% match" [ref=e253]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                    - generic [ref=e254]: 85% match
+                - cell "New" [ref=e255]:
+                  - link "New" [ref=e256]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                    - generic [ref=e257]: New
+                - cell "Overdue 8 days" [ref=e258]:
+                  - link "Overdue 8 days" [ref=e259]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+                    - generic "5/28/2026, 8:25:23 PM" [ref=e260]:
+                      - img [ref=e261]
+                      - text: Overdue 8 days
+                - cell "2026-05-25" [ref=e263]:
+                  - link "2026-05-25" [ref=e264]:
+                    - /url: /reports/72bdfcd4-8f63-49ea-97fd-46f027405fea
+              - row "SSRF to AWS Cloud Metadata (IMDS) via Unauthenticated MCP OAuth Registration - Distinct from CVE-2026-42230 Turak Unassigned CRITICAL 85% match New Overdue 5 days 2026-05-28" [ref=e265] [cursor=pointer]:
+                - cell "SSRF to AWS Cloud Metadata (IMDS) via Unauthenticated MCP OAuth Registration - Distinct from CVE-2026-42230" [ref=e266]:
+                  - link "SSRF to AWS Cloud Metadata (IMDS) via Unauthenticated MCP OAuth Registration - Distinct from CVE-2026-42230" [ref=e267]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                    - generic [ref=e269]: SSRF to AWS Cloud Metadata (IMDS) via Unauthenticated MCP OAuth Registration - Distinct from CVE-2026-42230
+                - cell "Turak" [ref=e270]:
+                  - link "Turak" [ref=e271]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                - cell "Unassigned" [ref=e272]:
+                  - link "Unassigned" [ref=e273]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                - cell "CRITICAL" [ref=e274]:
+                  - link "CRITICAL" [ref=e275]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                    - generic [ref=e276]: CRITICAL
+                - cell "85% match" [ref=e277]:
+                  - link "85% match" [ref=e278]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                    - generic [ref=e279]: 85% match
+                - cell "New" [ref=e280]:
+                  - link "New" [ref=e281]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                    - generic [ref=e282]: New
+                - cell "Overdue 5 days" [ref=e283]:
+                  - link "Overdue 5 days" [ref=e284]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+                    - generic "5/31/2026, 7:41:26 PM" [ref=e285]:
+                      - img [ref=e286]
+                      - text: Overdue 5 days
+                - cell "2026-05-28" [ref=e288]:
+                  - link "2026-05-28" [ref=e289]:
+                    - /url: /reports/7c9686b4-9923-4d3a-ab6d-7e8f572fedb7
+              - row "Race Condition in Git Clone node leads to RCE Théo Lelasseux Unassigned CRITICAL 85% match New Overdue 4 days 2026-05-29" [ref=e290] [cursor=pointer]:
+                - cell "Race Condition in Git Clone node leads to RCE" [ref=e291]:
+                  - link "Race Condition in Git Clone node leads to RCE" [ref=e292]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                    - generic [ref=e294]: Race Condition in Git Clone node leads to RCE
+                - cell "Théo Lelasseux" [ref=e295]:
+                  - link "Théo Lelasseux" [ref=e296]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                - cell "Unassigned" [ref=e297]:
+                  - link "Unassigned" [ref=e298]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                - cell "CRITICAL" [ref=e299]:
+                  - link "CRITICAL" [ref=e300]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                    - generic [ref=e301]: CRITICAL
+                - cell "85% match" [ref=e302]:
+                  - link "85% match" [ref=e303]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                    - generic [ref=e304]: 85% match
+                - cell "New" [ref=e305]:
+                  - link "New" [ref=e306]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                    - generic [ref=e307]: New
+                - cell "Overdue 4 days" [ref=e308]:
+                  - link "Overdue 4 days" [ref=e309]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+                    - generic "6/1/2026, 12:31:18 AM" [ref=e310]:
+                      - img [ref=e311]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e313]:
+                  - link "2026-05-29" [ref=e314]:
+                    - /url: /reports/eff8dd2d-5fe4-4f03-a272-e889b8b7084f
+              - row "Race Condition in Write File node leads to RCE Théo Lelasseux Unassigned CRITICAL 75% match New Overdue 4 days 2026-05-29" [ref=e315] [cursor=pointer]:
+                - cell "Race Condition in Write File node leads to RCE" [ref=e316]:
+                  - link "Race Condition in Write File node leads to RCE" [ref=e317]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                    - generic [ref=e319]: Race Condition in Write File node leads to RCE
+                - cell "Théo Lelasseux" [ref=e320]:
+                  - link "Théo Lelasseux" [ref=e321]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                - cell "Unassigned" [ref=e322]:
+                  - link "Unassigned" [ref=e323]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                - cell "CRITICAL" [ref=e324]:
+                  - link "CRITICAL" [ref=e325]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                    - generic [ref=e326]: CRITICAL
+                - cell "75% match" [ref=e327]:
+                  - link "75% match" [ref=e328]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                    - generic [ref=e329]: 75% match
+                - cell "New" [ref=e330]:
+                  - link "New" [ref=e331]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                    - generic [ref=e332]: New
+                - cell "Overdue 4 days" [ref=e333]:
+                  - link "Overdue 4 days" [ref=e334]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+                    - generic "6/1/2026, 12:39:05 AM" [ref=e335]:
+                      - img [ref=e336]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e338]:
+                  - link "2026-05-29" [ref=e339]:
+                    - /url: /reports/ff7e01c9-990a-4ed4-8c95-7290706a42ce
+              - row "Race Condition in Read File leads to 0-Click ATO Théo Lelasseux Unassigned CRITICAL 85% match New Overdue 4 days 2026-05-29" [ref=e340] [cursor=pointer]:
+                - cell "Race Condition in Read File leads to 0-Click ATO" [ref=e341]:
+                  - link "Race Condition in Read File leads to 0-Click ATO" [ref=e342]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                    - generic [ref=e344]: Race Condition in Read File leads to 0-Click ATO
+                - cell "Théo Lelasseux" [ref=e345]:
+                  - link "Théo Lelasseux" [ref=e346]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                - cell "Unassigned" [ref=e347]:
+                  - link "Unassigned" [ref=e348]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                - cell "CRITICAL" [ref=e349]:
+                  - link "CRITICAL" [ref=e350]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                    - generic [ref=e351]: CRITICAL
+                - cell "85% match" [ref=e352]:
+                  - link "85% match" [ref=e353]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                    - generic [ref=e354]: 85% match
+                - cell "New" [ref=e355]:
+                  - link "New" [ref=e356]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                    - generic [ref=e357]: New
+                - cell "Overdue 4 days" [ref=e358]:
+                  - link "Overdue 4 days" [ref=e359]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+                    - generic "6/1/2026, 12:52:01 AM" [ref=e360]:
+                      - img [ref=e361]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e363]:
+                  - link "2026-05-29" [ref=e364]:
+                    - /url: /reports/5e4af59f-2992-4660-83b2-6e5ff9c74241
+              - row "Code Node Sandbox Escape → Persistent Cross-Execution IPC Wiretap of the Shared Task Runner (via Reflect.defineProperty + require.constructor chain) Vipin Chaudhary Unassigned CRITICAL 92% match New Overdue 4 days 2026-05-29" [ref=e365] [cursor=pointer]:
+                - cell "Code Node Sandbox Escape → Persistent Cross-Execution IPC Wiretap of the Shared Task Runner (via Reflect.defineProperty + require.constructor chain)" [ref=e366]:
+                  - link "Code Node Sandbox Escape → Persistent Cross-Execution IPC Wiretap of the Shared Task Runner (via Reflect.defineProperty + require.constructor chain)" [ref=e367]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                    - generic [ref=e369]: Code Node Sandbox Escape → Persistent Cross-Execution IPC Wiretap of the Shared Task Runner (via Reflect.defineProperty + require.constructor chain)
+                - cell "Vipin Chaudhary" [ref=e370]:
+                  - link "Vipin Chaudhary" [ref=e371]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                - cell "Unassigned" [ref=e372]:
+                  - link "Unassigned" [ref=e373]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                - cell "CRITICAL" [ref=e374]:
+                  - link "CRITICAL" [ref=e375]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                    - generic [ref=e376]: CRITICAL
+                - cell "92% match" [ref=e377]:
+                  - link "92% match" [ref=e378]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                    - generic [ref=e379]: 92% match
+                - cell "New" [ref=e380]:
+                  - link "New" [ref=e381]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                    - generic [ref=e382]: New
+                - cell "Overdue 4 days" [ref=e383]:
+                  - link "Overdue 4 days" [ref=e384]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+                    - generic "6/1/2026, 11:02:24 AM" [ref=e385]:
+                      - img [ref=e386]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e388]:
+                  - link "2026-05-29" [ref=e389]:
+                    - /url: /reports/53cfff4f-140a-4cec-9f16-4a3b2ba4f10d
+              - 'row "MCP OAuth: anonymous DCR + consent screen hides scopes + scopes not enforced → bearer-token phishing → full owner takeover Sajda Kabir Unassigned CRITICAL 85% match New Overdue 4 days 2026-05-29" [ref=e390] [cursor=pointer]':
+                - 'cell "MCP OAuth: anonymous DCR + consent screen hides scopes + scopes not enforced → bearer-token phishing → full owner takeover" [ref=e391]':
+                  - 'link "MCP OAuth: anonymous DCR + consent screen hides scopes + scopes not enforced → bearer-token phishing → full owner takeover" [ref=e392]':
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                    - generic [ref=e394]: "MCP OAuth: anonymous DCR + consent screen hides scopes + scopes not enforced → bearer-token phishing → full owner takeover"
+                - cell "Sajda Kabir" [ref=e395]:
+                  - link "Sajda Kabir" [ref=e396]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                - cell "Unassigned" [ref=e397]:
+                  - link "Unassigned" [ref=e398]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                - cell "CRITICAL" [ref=e399]:
+                  - link "CRITICAL" [ref=e400]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                    - generic [ref=e401]: CRITICAL
+                - cell "85% match" [ref=e402]:
+                  - link "85% match" [ref=e403]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                    - generic [ref=e404]: 85% match
+                - cell "New" [ref=e405]:
+                  - link "New" [ref=e406]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                    - generic [ref=e407]: New
+                - cell "Overdue 4 days" [ref=e408]:
+                  - link "Overdue 4 days" [ref=e409]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+                    - generic "6/1/2026, 12:11:20 PM" [ref=e410]:
+                      - img [ref=e411]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e413]:
+                  - link "2026-05-29" [ref=e414]:
+                    - /url: /reports/7cd84fe0-48d8-4704-b608-e601e4413535
+              - row "Script Injection in loadClassInIsolation allows RCE via malicious community package directory name Vipin Chaudhary Unassigned CRITICAL 55% match New Overdue 4 days 2026-05-29" [ref=e415] [cursor=pointer]:
+                - cell "Script Injection in loadClassInIsolation allows RCE via malicious community package directory name" [ref=e416]:
+                  - link "Script Injection in loadClassInIsolation allows RCE via malicious community package directory name" [ref=e417]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                    - generic [ref=e419]: Script Injection in loadClassInIsolation allows RCE via malicious community package directory name
+                - cell "Vipin Chaudhary" [ref=e420]:
+                  - link "Vipin Chaudhary" [ref=e421]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                - cell "Unassigned" [ref=e422]:
+                  - link "Unassigned" [ref=e423]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                - cell "CRITICAL" [ref=e424]:
+                  - link "CRITICAL" [ref=e425]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                    - generic [ref=e426]: CRITICAL
+                - cell "55% match" [ref=e427]:
+                  - link "55% match" [ref=e428]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                    - generic [ref=e429]: 55% match
+                - cell "New" [ref=e430]:
+                  - link "New" [ref=e431]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                    - generic [ref=e432]: New
+                - cell "Overdue 4 days" [ref=e433]:
+                  - link "Overdue 4 days" [ref=e434]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+                    - generic "6/1/2026, 12:18:26 PM" [ref=e435]:
+                      - img [ref=e436]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e438]:
+                  - link "2026-05-29" [ref=e439]:
+                    - /url: /reports/20c1cfcb-651c-4ae5-b191-af1f37e95e90
+              - row "Exposure of AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY / misconfiguration Umanhonlen Gabriel Unassigned CRITICAL 35% match New Overdue 4 days 2026-05-29" [ref=e440] [cursor=pointer]:
+                - cell "Exposure of AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY / misconfiguration" [ref=e441]:
+                  - link "Exposure of AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY / misconfiguration" [ref=e442]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                    - generic [ref=e444]: Exposure of AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY / misconfiguration
+                - cell "Umanhonlen Gabriel" [ref=e445]:
+                  - link "Umanhonlen Gabriel" [ref=e446]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                - cell "Unassigned" [ref=e447]:
+                  - link "Unassigned" [ref=e448]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                - cell "CRITICAL" [ref=e449]:
+                  - link "CRITICAL" [ref=e450]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                    - generic [ref=e451]: CRITICAL
+                - cell "35% match" [ref=e452]:
+                  - link "35% match" [ref=e453]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                    - generic [ref=e454]: 35% match
+                - cell "New" [ref=e455]:
+                  - link "New" [ref=e456]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                    - generic [ref=e457]: New
+                - cell "Overdue 4 days" [ref=e458]:
+                  - link "Overdue 4 days" [ref=e459]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+                    - generic "6/1/2026, 7:07:02 PM" [ref=e460]:
+                      - img [ref=e461]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e463]:
+                  - link "2026-05-29" [ref=e464]:
+                    - /url: /reports/7ae07b6b-8c15-4a31-9af6-1cd0b36f8712
+              - row "Local File Inclusion (LFI) leading to arbitrary file read in workflow automation endpoint Umanhonlen Gabriel Unassigned CRITICAL 85% match New Overdue 4 days 2026-05-29" [ref=e465] [cursor=pointer]:
+                - cell "Local File Inclusion (LFI) leading to arbitrary file read in workflow automation endpoint" [ref=e466]:
+                  - link "Local File Inclusion (LFI) leading to arbitrary file read in workflow automation endpoint" [ref=e467]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                    - generic [ref=e469]: Local File Inclusion (LFI) leading to arbitrary file read in workflow automation endpoint
+                - cell "Umanhonlen Gabriel" [ref=e470]:
+                  - link "Umanhonlen Gabriel" [ref=e471]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                - cell "Unassigned" [ref=e472]:
+                  - link "Unassigned" [ref=e473]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                - cell "CRITICAL" [ref=e474]:
+                  - link "CRITICAL" [ref=e475]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                    - generic [ref=e476]: CRITICAL
+                - cell "85% match" [ref=e477]:
+                  - link "85% match" [ref=e478]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                    - generic [ref=e479]: 85% match
+                - cell "New" [ref=e480]:
+                  - link "New" [ref=e481]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                    - generic [ref=e482]: New
+                - cell "Overdue 4 days" [ref=e483]:
+                  - link "Overdue 4 days" [ref=e484]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+                    - generic "6/1/2026, 7:08:33 PM" [ref=e485]:
+                      - img [ref=e486]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e488]:
+                  - link "2026-05-29" [ref=e489]:
+                    - /url: /reports/bc77922a-0353-4ad7-b387-708ba2b90697
+              - row "Misconfigured / exposed admin endpoint disclosing internal admin interfaces and application framework data Umanhonlen Gabriel Unassigned CRITICAL 42% match New Overdue 4 days 2026-05-29" [ref=e490] [cursor=pointer]:
+                - cell "Misconfigured / exposed admin endpoint disclosing internal admin interfaces and application framework data" [ref=e491]:
+                  - link "Misconfigured / exposed admin endpoint disclosing internal admin interfaces and application framework data" [ref=e492]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                    - generic [ref=e494]: Misconfigured / exposed admin endpoint disclosing internal admin interfaces and application framework data
+                - cell "Umanhonlen Gabriel" [ref=e495]:
+                  - link "Umanhonlen Gabriel" [ref=e496]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                - cell "Unassigned" [ref=e497]:
+                  - link "Unassigned" [ref=e498]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                - cell "CRITICAL" [ref=e499]:
+                  - link "CRITICAL" [ref=e500]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                    - generic [ref=e501]: CRITICAL
+                - cell "42% match" [ref=e502]:
+                  - link "42% match" [ref=e503]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                    - generic [ref=e504]: 42% match
+                - cell "New" [ref=e505]:
+                  - link "New" [ref=e506]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                    - generic [ref=e507]: New
+                - cell "Overdue 4 days" [ref=e508]:
+                  - link "Overdue 4 days" [ref=e509]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+                    - generic "6/1/2026, 7:14:42 PM" [ref=e510]:
+                      - img [ref=e511]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e513]:
+                  - link "2026-05-29" [ref=e514]:
+                    - /url: /reports/c7f5cee3-cf3a-4aa3-bbf6-0c0d4fb8c417
+              - row "Authentication bypass on admin endpoint allowing potential default credential acces Umanhonlen Gabriel Unassigned CRITICAL No matches New Overdue 4 days 2026-05-29" [ref=e515] [cursor=pointer]:
+                - cell "Authentication bypass on admin endpoint allowing potential default credential acces" [ref=e516]:
+                  - link "Authentication bypass on admin endpoint allowing potential default credential acces" [ref=e517]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                    - generic [ref=e519]: Authentication bypass on admin endpoint allowing potential default credential acces
+                - cell "Umanhonlen Gabriel" [ref=e520]:
+                  - link "Umanhonlen Gabriel" [ref=e521]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                - cell "Unassigned" [ref=e522]:
+                  - link "Unassigned" [ref=e523]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                - cell "CRITICAL" [ref=e524]:
+                  - link "CRITICAL" [ref=e525]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                    - generic [ref=e526]: CRITICAL
+                - cell "No matches" [ref=e527]:
+                  - link "No matches" [ref=e528]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                - cell "New" [ref=e529]:
+                  - link "New" [ref=e530]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                    - generic [ref=e531]: New
+                - cell "Overdue 4 days" [ref=e532]:
+                  - link "Overdue 4 days" [ref=e533]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+                    - generic "6/1/2026, 7:24:04 PM" [ref=e534]:
+                      - img [ref=e535]
+                      - text: Overdue 4 days
+                - cell "2026-05-29" [ref=e537]:
+                  - link "2026-05-29" [ref=e538]:
+                    - /url: /reports/e559c273-bad8-49d2-a2f7-fe28a365515c
+              - 'row "VM Expression Engine `__sanitize` Type Confusion Bypass → RCE via `$evaluateExpression` Bridge Vipin Chaudhary Unassigned CRITICAL 100% match New Overdue 3 days 2026-05-30" [ref=e539] [cursor=pointer]':
+                - 'cell "VM Expression Engine `__sanitize` Type Confusion Bypass → RCE via `$evaluateExpression` Bridge" [ref=e540]':
+                  - 'link "VM Expression Engine `__sanitize` Type Confusion Bypass → RCE via `$evaluateExpression` Bridge" [ref=e541]':
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                    - generic [ref=e543]: "VM Expression Engine `__sanitize` Type Confusion Bypass → RCE via `$evaluateExpression` Bridge"
+                - cell "Vipin Chaudhary" [ref=e544]:
+                  - link "Vipin Chaudhary" [ref=e545]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                - cell "Unassigned" [ref=e546]:
+                  - link "Unassigned" [ref=e547]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                - cell "CRITICAL" [ref=e548]:
+                  - link "CRITICAL" [ref=e549]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                    - generic [ref=e550]: CRITICAL
+                - cell "100% match" [ref=e551]:
+                  - link "100% match" [ref=e552]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                    - generic [ref=e553]: 100% match
+                - cell "New" [ref=e554]:
+                  - link "New" [ref=e555]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                    - generic [ref=e556]: New
+                - cell "Overdue 3 days" [ref=e557]:
+                  - link "Overdue 3 days" [ref=e558]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+                    - generic "6/2/2026, 1:00:07 PM" [ref=e559]:
+                      - img [ref=e560]
+                      - text: Overdue 3 days
+                - cell "2026-05-30" [ref=e562]:
+                  - link "2026-05-30" [ref=e563]:
+                    - /url: /reports/77caf347-8d62-43ba-9410-2fdf40144560
+              - 'row "Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1) Haider Vargas Unassigned CRITICAL 40% match New 3 hours 2026-06-02" [ref=e564] [cursor=pointer]':
+                - 'cell "Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1)" [ref=e565]':
+                  - 'link "Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1)" [ref=e566]':
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                    - generic [ref=e568]: "Vulnerable bundled dependency: ollama@0.6.3 in n8nio/n8n:stable Docker image is affected by CVE-2026-7482 (Critical, CVSS 9.1)"
+                - cell "Haider Vargas" [ref=e569]:
+                  - link "Haider Vargas" [ref=e570]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                - cell "Unassigned" [ref=e571]:
+                  - link "Unassigned" [ref=e572]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                - cell "CRITICAL" [ref=e573]:
+                  - link "CRITICAL" [ref=e574]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                    - generic [ref=e575]: CRITICAL
+                - cell "40% match" [ref=e576]:
+                  - link "40% match" [ref=e577]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                    - generic [ref=e578]: 40% match
+                - cell "New" [ref=e579]:
+                  - link "New" [ref=e580]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                    - generic [ref=e581]: New
+                - cell "3 hours" [ref=e582]:
+                  - link "3 hours" [ref=e583]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+                    - generic "6/5/2026, 1:36:35 PM" [ref=e584]:
+                      - img [ref=e585]
+                      - text: 3 hours
+                - cell "2026-06-02" [ref=e588]:
+                  - link "2026-06-02" [ref=e589]:
+                    - /url: /reports/e5525daa-f4ce-4762-ae0a-5cb79550fa88
+              - 'row "Sandbox Escape in `@n8n/task-runner-python` via Transitive Module Introspection Erichen Unassigned CRITICAL 85% match New 2 days 2026-06-04" [ref=e590] [cursor=pointer]':
+                - 'cell "Sandbox Escape in `@n8n/task-runner-python` via Transitive Module Introspection" [ref=e591]':
+                  - 'link "Sandbox Escape in `@n8n/task-runner-python` via Transitive Module Introspection" [ref=e592]':
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                    - generic [ref=e594]: "Sandbox Escape in `@n8n/task-runner-python` via Transitive Module Introspection"
+                - cell "Erichen" [ref=e595]:
+                  - link "Erichen" [ref=e596]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                - cell "Unassigned" [ref=e597]:
+                  - link "Unassigned" [ref=e598]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                - cell "CRITICAL" [ref=e599]:
+                  - link "CRITICAL" [ref=e600]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                    - generic [ref=e601]: CRITICAL
+                - cell "85% match" [ref=e602]:
+                  - link "85% match" [ref=e603]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                    - generic [ref=e604]: 85% match
+                - cell "New" [ref=e605]:
+                  - link "New" [ref=e606]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                    - generic [ref=e607]: New
+                - cell "2 days" [ref=e608]:
+                  - link "2 days" [ref=e609]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+                    - generic "6/7/2026, 4:43:54 AM" [ref=e610]:
+                      - img [ref=e611]
+                      - text: 2 days
+                - cell "2026-06-04" [ref=e614]:
+                  - link "2026-06-04" [ref=e615]:
+                    - /url: /reports/66f4411b-c815-4af0-ad81-46af59a9deff
+              - 'row "MySQL v1 `executeQuery` resolves expressions into raw SQL and executes them without parameterization Shmulik Cohen Unassigned HIGH 85% match New Overdue 1 month 2026-05-01" [ref=e616] [cursor=pointer]':
+                - 'cell "MySQL v1 `executeQuery` resolves expressions into raw SQL and executes them without parameterization" [ref=e617]':
+                  - 'link "MySQL v1 `executeQuery` resolves expressions into raw SQL and executes them without parameterization" [ref=e618]':
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                    - generic [ref=e620]: "MySQL v1 `executeQuery` resolves expressions into raw SQL and executes them without parameterization"
+                - cell "Shmulik Cohen" [ref=e621]:
+                  - link "Shmulik Cohen" [ref=e622]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                - cell "Unassigned" [ref=e623]:
+                  - link "Unassigned" [ref=e624]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                - cell "HIGH" [ref=e625]:
+                  - link "HIGH" [ref=e626]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                    - generic [ref=e627]: HIGH
+                - cell "85% match" [ref=e628]:
+                  - link "85% match" [ref=e629]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                    - generic [ref=e630]: 85% match
+                - cell "New" [ref=e631]:
+                  - link "New" [ref=e632]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                    - generic [ref=e633]: New
+                - cell "Overdue 1 month" [ref=e634]:
+                  - link "Overdue 1 month" [ref=e635]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+                    - generic "5/4/2026, 11:47:12 AM" [ref=e636]:
+                      - img [ref=e637]
+                      - text: Overdue 1 month
+                - cell "2026-05-01" [ref=e639]:
+                  - link "2026-05-01" [ref=e640]:
+                    - /url: /reports/e1420b56-0f9a-4e4a-be86-c1e038e993c5
+              - row "Unauthenticated Exposure of Login Credentials via Public Webhook Endpoint Din Cox Unassigned HIGH 75% match New Overdue 30 days 2026-05-03" [ref=e641] [cursor=pointer]:
+                - cell "Unauthenticated Exposure of Login Credentials via Public Webhook Endpoint" [ref=e642]:
+                  - link "Unauthenticated Exposure of Login Credentials via Public Webhook Endpoint" [ref=e643]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                    - generic [ref=e645]: Unauthenticated Exposure of Login Credentials via Public Webhook Endpoint
+                - cell "Din Cox" [ref=e646]:
+                  - link "Din Cox" [ref=e647]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                - cell "Unassigned" [ref=e648]:
+                  - link "Unassigned" [ref=e649]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                - cell "HIGH" [ref=e650]:
+                  - link "HIGH" [ref=e651]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                    - generic [ref=e652]: HIGH
+                - cell "75% match" [ref=e653]:
+                  - link "75% match" [ref=e654]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                    - generic [ref=e655]: 75% match
+                - cell "New" [ref=e656]:
+                  - link "New" [ref=e657]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                    - generic [ref=e658]: New
+                - cell "Overdue 30 days" [ref=e659]:
+                  - link "Overdue 30 days" [ref=e660]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+                    - generic "5/6/2026, 6:59:15 PM" [ref=e661]:
+                      - img [ref=e662]
+                      - text: Overdue 30 days
+                - cell "2026-05-03" [ref=e664]:
+                  - link "2026-05-03" [ref=e665]:
+                    - /url: /reports/f2c4c64f-c534-477d-bea6-931d62fd4fb8
+              - row "IP-Based Rate Limiting Ineffective Due to Session Reuse After Cross-IP Authentication Mehedi Hasan Unassigned HIGH — New Overdue 27 days 2026-05-06" [ref=e666] [cursor=pointer]:
+                - cell "IP-Based Rate Limiting Ineffective Due to Session Reuse After Cross-IP Authentication" [ref=e667]:
+                  - link "IP-Based Rate Limiting Ineffective Due to Session Reuse After Cross-IP Authentication" [ref=e668]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                    - generic [ref=e670]: IP-Based Rate Limiting Ineffective Due to Session Reuse After Cross-IP Authentication
+                - cell "Mehedi Hasan" [ref=e671]:
+                  - link "Mehedi Hasan" [ref=e672]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                - cell "Unassigned" [ref=e673]:
+                  - link "Unassigned" [ref=e674]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                - cell "HIGH" [ref=e675]:
+                  - link "HIGH" [ref=e676]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                    - generic [ref=e677]: HIGH
+                - cell "—" [ref=e678]:
+                  - link "—" [ref=e679]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                - cell "New" [ref=e680]:
+                  - link "New" [ref=e681]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                    - generic [ref=e682]: New
+                - cell "Overdue 27 days" [ref=e683]:
+                  - link "Overdue 27 days" [ref=e684]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+                    - generic "5/9/2026, 7:40:32 AM" [ref=e685]:
+                      - img [ref=e686]
+                      - text: Overdue 27 days
+                - cell "2026-05-06" [ref=e688]:
+                  - link "2026-05-06" [ref=e689]:
+                    - /url: /reports/ea326182-0959-4d95-8ea7-9cbf462ccfda
+          - generic [ref=e690]:
+            - paragraph [ref=e691]: Page 1 of 8
+            - generic [ref=e692]:
+              - button "Previous" [disabled]
+              - button "Next" [ref=e693] [cursor=pointer]

@@ -1,12 +1,14 @@
 import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
+import type { NextFunction, Request, Response } from 'express';
+import { TokenExpiredError } from 'jsonwebtoken';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -24,6 +26,18 @@ export class PublicApiKeyService {
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 	) {}
+
+	private async getUserForApiKey(apiKey: string) {
+		return await Container.get(UserRepository).findOne({
+			where: {
+				apiKeys: {
+					apiKey,
+					audience: API_KEY_AUDIENCE,
+				},
+			},
+			relations: ['role'],
+		});
+	}
 
 	/**
 	 * Creates a new public API key for the specified user.
@@ -164,6 +178,44 @@ export class PublicApiKeyService {
 		if (!apiKeyData) return false;
 
 		return apiKeyData.scopes.includes(endpointScope);
+	}
+
+	getApiKeyScopeMiddleware(endpointScope: ApiKeyScope) {
+		return async (req: Request, res: Response, next: NextFunction) => {
+			const apiKey = req.headers['x-n8n-api-key'];
+
+			if (apiKey === undefined || typeof apiKey !== 'string') {
+				res.status(401).json({ message: 'Unauthorized' });
+				return;
+			}
+
+			const valid = await this.apiKeyHasValidScopes(apiKey, endpointScope);
+
+			if (!valid) {
+				res.status(403).json({ message: 'Forbidden' });
+				return;
+			}
+			next();
+		};
+	}
+
+	async resolveUserFromApiKey(apiKey: string): Promise<User | null> {
+		const user = await this.getUserForApiKey(apiKey);
+		if (!user || user.disabled) return null;
+
+		if (!apiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
+			try {
+				this.jwtService.verify(apiKey, {
+					issuer: API_KEY_ISSUER,
+					audience: API_KEY_AUDIENCE,
+				});
+			} catch (e) {
+				if (e instanceof TokenExpiredError) return null;
+				throw e;
+			}
+		}
+
+		return user;
 	}
 
 	async removeOwnerOnlyScopesFromApiKeys(user: User, tx?: EntityManager) {

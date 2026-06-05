@@ -20,6 +20,7 @@ export {
 export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
+export { ExternalAgentRegistrationRepository } from './external-agent-registration.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,

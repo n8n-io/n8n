@@ -1,0 +1,41 @@
+type: object
+properties:
+  status:
+    type: string
+    description: Task completion status.
+    enum:
+      - completed
+      - error
+    example: completed
+  summary:
+    type: string
+    description: Human-readable summary of what was accomplished.
+    example: Executed the data processing workflow successfully.
+  message:
+    type: string
+    description: Error message (only present when status is error).
+  steps:
+    type: array
+    description: List of actions taken during task execution.
+    items:
+      type: object
+      properties:
+        action:
+          type: string
+          description: The type of action taken.
+          enum:
+            - execute_workflow
+            - send_message
+        workflowName:
+          type: string
+          description: Name of the executed workflow (for execute_workflow actions).
+        toAgent:
+          type: string
+          description: Name of the target agent (for send_message actions).
+        result:
+          type: string
+          description: Outcome of the action.
+          enum:
+            - success
+            - failed
+            - error

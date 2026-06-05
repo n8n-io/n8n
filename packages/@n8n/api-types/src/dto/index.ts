@@ -255,3 +255,11 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { CreateAgenticUserDto } from './agentic-users/create-agent.dto';
+export { UpdateAgenticUserDto } from './agentic-users/update-agent.dto';
+export { DispatchTaskDto } from './agentic-users/dispatch-task.dto';
+export { DiscoverAgentDto } from './agentic-users/discover-agent.dto';
+export { ExternalTaskDto } from './agentic-users/external-task.dto';
+export { RegisterExternalAgentDto } from './agentic-users/register-external-agent.dto';
+export { UpdateExternalAgentMappingsDto } from './agentic-users/update-external-agent-mappings.dto';

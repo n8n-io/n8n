@@ -131,6 +131,14 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		},
 	},
 	{
+		id: 'agentic-users',
+		icon: 'robot',
+		label: 'Agentic Users',
+		position: 'bottom',
+		route: { to: { name: VIEWS.AGENTIC_USERS } },
+		available: true,
+	},
+	{
 		id: 'insights',
 		icon: 'chart-column-decreasing',
 		label: 'Insights',

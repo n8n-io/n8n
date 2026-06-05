@@ -19,6 +19,7 @@ import type { ZodClass } from '@n8n/api-types';
 import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
+import { PublicApiKeyService } from './services/public-api-key.service';
 import { RateLimitService } from './services/rate-limit.service';
 
 import { AuthService } from '@/auth/auth.service';
@@ -29,6 +30,7 @@ import { send } from '@/response-helper';
 import { CorsService } from './services/cors-service';
 import { inProduction } from '@n8n/backend-common';
 import { isAuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
 
 @Service()
 export class ControllerRegistry {
@@ -39,6 +41,7 @@ export class ControllerRegistry {
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly rateLimitService: RateLimitService,
+		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
 	activate(app: Application) {
@@ -145,6 +148,7 @@ export class ControllerRegistry {
 			allowSkipMFA?: boolean;
 			allowSkipPreviewAuth?: boolean;
 			allowUnauthenticated?: boolean;
+			apiKeyAuth?: boolean;
 			ipRateLimit?: boolean | RateLimiterLimits;
 			keyedRateLimit?: KeyedRateLimiterConfig;
 			licenseFeature?: BooleanLicenseFeature;
@@ -174,6 +178,13 @@ export class ControllerRegistry {
 					route.keyedRateLimit,
 				),
 			);
+		}
+
+		// API key auth: resolve user from x-n8n-api-key header before cookie auth.
+		// If valid, sets req.user so cookie auth short-circuits. If absent/invalid,
+		// falls through to cookie auth as normal.
+		if (route.apiKeyAuth) {
+			middlewares.push(this.createApiKeyAuthMiddleware());
 		}
 
 		if (!route.skipAuth) {
@@ -224,6 +235,21 @@ export class ControllerRegistry {
 			if (!this.license.isLicensed(feature)) {
 				res.status(403).json({ status: 'error', message: 'Plan lacks license for this feature' });
 				return;
+			}
+			next();
+		};
+	}
+
+	private createApiKeyAuthMiddleware(): RequestHandler {
+		return async (req: AuthenticatedRequest, _res, next) => {
+			const apiKey = req.headers['x-n8n-api-key'];
+			if (typeof apiKey === 'string') {
+				try {
+					const user = await this.publicApiKeyService.resolveUserFromApiKey(apiKey);
+					if (user) req.user = user;
+				} catch {
+					// Invalid/malformed API key — fall through to cookie auth
+				}
 			}
 			next();
 		};

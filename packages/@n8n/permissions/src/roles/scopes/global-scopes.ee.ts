@@ -134,6 +134,11 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'chatHubAgent:update',
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
+	'agenticUser:create',
+	'agenticUser:read',
+	'agenticUser:update',
+	'agenticUser:delete',
+	'agenticUser:list',
 	'breakingChanges:list',
 	'execution:reveal',
 	'apiKey:manage',
@@ -179,10 +184,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'mcpApiKey:create',
 	'mcpApiKey:rotate',
 	'chatHub:message',
-	'chatHubAgent:create',
 	'chatHubAgent:read',
-	'chatHubAgent:update',
-	'chatHubAgent:delete',
 	'chatHubAgent:list',
 	'apiKey:list',
 	'apiKey:create',
@@ -191,6 +193,8 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'credentialResolver:list',
 	'instanceAi:message',
 	'instanceAi:gateway',
+	'agenticUser:read',
+	'agenticUser:list',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

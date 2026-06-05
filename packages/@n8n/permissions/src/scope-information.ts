@@ -96,4 +96,32 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
 	},
+	'agenticUser:create': {
+		displayName: 'Create Agentic User',
+		description: 'Allows creating new agentic users.',
+	},
+	'agenticUser:read': {
+		displayName: 'Read Agentic User Card',
+		description: 'Allows reading agentic user cards for A2A discovery.',
+	},
+	'agenticUser:update': {
+		displayName: 'Update Agentic User',
+		description: 'Allows updating agentic user settings.',
+	},
+	'agenticUser:delete': {
+		displayName: 'Delete Agentic User',
+		description: 'Allows deleting agentic users.',
+	},
+	'agenticUser:list': {
+		displayName: 'List Agentic Users',
+		description: 'Allows listing visible agentic users.',
+	},
+	'agenticUser:execute': {
+		displayName: 'Execute Agentic User Task',
+		description: 'Allows dispatching tasks to agentic users.',
+	},
+	'agenticUser:receive': {
+		displayName: 'Receive Agentic User Task',
+		description: 'Allows receiving tasks from other agentic users.',
+	},
 };

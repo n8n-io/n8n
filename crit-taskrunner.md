@@ -1,0 +1,551 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img "n8n" [ref=e6]
+        - generic [ref=e7]: Security Hub
+      - navigation [ref=e8]:
+        - generic [ref=e9]:
+          - button "Plain Reports" [ref=e10] [cursor=pointer]:
+            - img "Plain" [ref=e11]
+            - generic [ref=e14]: Reports
+            - img [ref=e15]
+          - generic [ref=e17]:
+            - link "All Reports" [ref=e18] [cursor=pointer]:
+              - /url: /reports
+            - link "My Open Reports" [ref=e19] [cursor=pointer]:
+              - /url: /reports?assignee=me&status=new%2Ctriaging%2Caccepted
+            - link "New Unassigned" [ref=e20] [cursor=pointer]:
+              - /url: /reports?status=new&assignee=unassigned&sortBy=severity%2Csla_triage_deadline&sortAsc=true%2Ctrue
+            - link "Needs Finding" [ref=e21] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=none
+            - link "Needs Closure" [ref=e22] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=completed
+            - link "Finding Cancelled" [ref=e23] [cursor=pointer]:
+              - /url: /reports?status=accepted&finding=canceled
+            - link "Bounties — Needs Rating" [ref=e24] [cursor=pointer]:
+              - /url: /reports?bounty_requested=yes&bounty_ratings=incomplete
+            - link "Bounties — Ready to Notify" [ref=e25] [cursor=pointer]:
+              - /url: /reports?bounty_eligible=eligible&bounty_status=pending&finding=completed
+            - link "Bounties — Due 2026-06" [ref=e26] [cursor=pointer]:
+              - /url: /reports?bounty_eligible=eligible&bounty_requested=yes&bounty_payment_month=2026-06
+        - link "Linear Findings" [ref=e27] [cursor=pointer]:
+          - /url: /findings
+          - img "Linear" [ref=e28]
+          - text: Findings
+        - link "GitHub Advisories" [ref=e30] [cursor=pointer]:
+          - /url: /advisories
+          - img "GitHub" [ref=e31]
+          - text: Advisories
+        - link "Publications" [ref=e33] [cursor=pointer]:
+          - /url: /batches
+          - img [ref=e34]
+          - text: Publications
+        - button "Dashboards" [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e41]: Dashboards
+          - img [ref=e42]
+      - generic [ref=e44]:
+        - generic [ref=e46]: DC
+        - paragraph [ref=e48]: Declan Carroll
+        - button [ref=e49] [cursor=pointer]:
+          - img
+    - main [ref=e50]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e81]:
+            - generic [ref=e82]:
+              - link "Back to Reports" [ref=e83] [cursor=pointer]:
+                - /url: /reports
+                - img [ref=e84]
+                - text: Back to Reports
+              - generic [ref=e87]:
+                - button "Copy link to report" [ref=e88] [cursor=pointer]:
+                  - img
+                - button "Copy report ID" [ref=e89] [cursor=pointer]:
+                  - img
+                - button "Copy Plain thread ID" [ref=e90] [cursor=pointer]:
+                  - img "Plain"
+            - generic [ref=e91]:
+              - 'heading "Sandbox Escape in `@n8n/task-runner-python` via Transitive Module Introspection" [level=1] [ref=e92]'
+              - generic [ref=e93]:
+                - link "Plain thread" [ref=e94] [cursor=pointer]:
+                  - /url: https://app.plain.com/workspace/w_01K4QHF5AA1PSFM3ZXWF8BATY3/thread/th_01KT8BNYZATE53PWKKSMQZYPN3
+                  - text: Plain thread
+                  - img [ref=e95]
+                - generic [ref=e99]: Reported by Erichen
+                - generic [ref=e100]: · 2026-06-04
+          - generic [ref=e101]:
+            - button "Expand pipeline" [ref=e103] [cursor=pointer]:
+              - generic [ref=e105]: Reports
+              - generic [ref=e106]:
+                - generic [ref=e107]: →
+                - generic [ref=e108]: 0 Findings
+              - generic [ref=e109]:
+                - generic [ref=e110]: →
+                - generic [ref=e111]: 0 Advisories
+              - generic [ref=e112]:
+                - generic [ref=e113]: →
+                - generic [ref=e114]: 0 Batches
+              - img [ref=e116]
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - button "Suggested Related Findings (6) Refresh suggestions" [ref=e120] [cursor=pointer]:
+                  - generic [ref=e121]:
+                    - img [ref=e122]
+                    - heading "Suggested Related Findings (6)" [level=3] [ref=e124]
+                  - button "Refresh suggestions" [ref=e125]:
+                    - img
+                - generic [ref=e126]:
+                  - generic [ref=e127]:
+                    - generic [ref=e128]:
+                      - generic [ref=e129]:
+                        - link "\"Sandbox\" escape in Python task runner" [ref=e130] [cursor=pointer]:
+                          - /url: /findings/9fdb3c99-1c2c-41d2-a438-47eccd2a9007
+                        - generic [ref=e131]: 85% match
+                      - paragraph [ref=e132]: This finding is titled 'Sandbox escape in Python task runner' and directly describes a sandbox escape in the same component (@n8n/task-runner-python). It appears to be an early/brief report of a Python task runner sandbox escape with minimal detail. The new report is a distinct bypass technique (transitive module introspection via json.codecs.sys.modules['builtins']) but targets the exact same component and vulnerability class. Highly related — potentially a duplicate or a variant tracked under the same umbrella.
+                    - generic [ref=e133]:
+                      - link "Open in Linear" [ref=e134] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/CAT-1572/sandbox-escape-in-python-task-runner
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e135] [cursor=pointer]
+                      - button "Dismiss" [ref=e136] [cursor=pointer]:
+                        - img
+                  - generic [ref=e137]:
+                    - generic [ref=e138]:
+                      - generic [ref=e139]:
+                        - link "Python Sandbox issues" [ref=e140] [cursor=pointer]:
+                          - /url: /findings/dda3a75e-d87c-48ed-9b23-32e66113a6a2
+                        - generic [ref=e141]: 80% match
+                      - paragraph [ref=e142]: This finding is titled 'Python Sandbox issues' and explicitly groups multiple Python sandbox security issues together. The new report describes yet another Python sandbox escape technique (transitive module introspection) in the same @n8n/task-runner-python package. It is very likely that this grouping issue is the parent tracker for all Python sandbox bypass variants, making the new report a strong candidate for inclusion under this umbrella finding.
+                    - generic [ref=e143]:
+                      - link "Open in Linear" [ref=e144] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/CAT-2813/python-sandbox-issues
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e145] [cursor=pointer]
+                      - button "Dismiss" [ref=e146] [cursor=pointer]:
+                        - img
+                  - generic [ref=e147]:
+                    - generic [ref=e148]:
+                      - generic [ref=e149]:
+                        - link "n8n Python Task Runner Sandbox Escape via MatchClass Positional Pattern Bypass (RCE)" [ref=e150] [cursor=pointer]:
+                          - /url: /findings/90d3375a-341b-4bd1-85dc-696927b689dd
+                        - generic [ref=e151]: 78% match
+                      - paragraph [ref=e152]: This finding covers a critical sandbox escape in @n8n/task-runner-python via MatchClass positional pattern bypass, chained with __builtins__ overwrite and __reduce__-based object recovery to achieve full RCE. The new report targets the same package (task_analyzer.py, task_executor.py), the same sandbox architecture (AST + runtime restrictions), and achieves the same end result (recover native builtins → import os → RCE). The bypass technique differs (MatchClass positional patterns vs. transitive module attribute traversal via json.codecs.sys.modules), making this highly related but not a definite duplicate.
+                    - generic [ref=e153]:
+                      - link "Open in Linear" [ref=e154] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/CAT-2718/n8n-python-task-runner-sandbox-escape-via-matchclass-positional
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e155] [cursor=pointer]
+                      - button "Dismiss" [ref=e156] [cursor=pointer]:
+                        - img
+                  - generic [ref=e157]:
+                    - generic [ref=e158]:
+                      - generic [ref=e159]:
+                        - link "Python Sandbox AST Security Bypass via Dynamic Format Strings" [ref=e160] [cursor=pointer]:
+                          - /url: /findings/c1523466-c353-4b0b-bbc3-1e16ded450f3
+                        - generic [ref=e161]: 75% match
+                      - paragraph [ref=e162]: "This finding covers a Python sandbox AST bypass via dynamic format strings (str.format() with runtime-constructed attribute names like __globals__, __builtins__) in the same @n8n/task-runner-python package. It also targets task_analyzer.py and task_executor.py, and similarly recovers access to sys, os, and original builtins. The new report uses a different bypass path (transitive module attribute chain: json.codecs.sys.modules['builtins'] rather than str.format() gadgets), but the root cause category — AST validator failing to block runtime-accessible interpreter internals — is the same. Highly related, different technique."
+                    - generic [ref=e163]:
+                      - link "Open in Linear" [ref=e164] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/CAT-2790/python-sandbox-ast-security-bypass-via-dynamic-format-strings
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e165] [cursor=pointer]
+                      - button "Dismiss" [ref=e166] [cursor=pointer]:
+                        - img
+                  - generic [ref=e167]:
+                    - generic [ref=e168]:
+                      - generic [ref=e169]:
+                        - link "AST Validator Bypass via Runtime String Concatenation in Python Code Node Leaks Executor Module Namespace" [ref=e170] [cursor=pointer]:
+                          - /url: /findings/47787e60-defb-4604-8c82-7fefca8c7a67
+                        - generic [ref=e171]: 72% match
+                      - paragraph [ref=e172]: "This finding covers an AST validator bypass via runtime string concatenation in the Python Code Node that leaks the executor module namespace (custom_print.__globals__ → task_executor.py namespace → os, sys, original builtins). Same package, same files (task_analyzer.py, task_executor.py), same general weakness (static AST analysis cannot block runtime attribute traversal). The new report's technique (transitive module introspection via allowed stdlib imports) is distinct from the custom_print.__globals__ closure leak, but both exploit the same fundamental gap: permitted objects retain live references to restricted interpreter internals."
+                    - generic [ref=e173]:
+                      - link "Open in Linear" [ref=e174] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/CAT-2812/ast-validator-bypass-via-runtime-string-concatenation-in-python-code
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e175] [cursor=pointer]
+                      - button "Dismiss" [ref=e176] [cursor=pointer]:
+                        - img
+                  - generic [ref=e177]:
+                    - generic [ref=e178]:
+                      - generic [ref=e179]:
+                        - link "JavaScript Task Runner VM Sandbox Escape to RCE via EventEmitter.prototype Pollution" [ref=e180] [cursor=pointer]:
+                          - /url: /findings/0dd454f0-c3ca-4d79-8799-f0512e4adfaa
+                        - generic [ref=e181]: 40% match
+                      - paragraph [ref=e182]: This finding covers a JavaScript Task Runner VM sandbox escape to RCE via EventEmitter.prototype pollution — a different language (JavaScript/Node.js) and different component (JS task runner, not Python task runner). However, it shares the same high-level vulnerability class (task runner sandbox escape leading to full RCE by an authenticated user), the same n8n platform context, and similar impact profile. Included as somewhat related due to the shared vulnerability class and platform, but the component and technique are entirely different.
+                    - generic [ref=e183]:
+                      - link "Open in Linear" [ref=e184] [cursor=pointer]:
+                        - /url: https://linear.app/n8n/issue/CAT-3288/javascript-task-runner-vm-sandbox-escape-to-rce-via
+                        - img
+                        - text: Open in Linear
+                      - button "Choose as Duplicate" [ref=e185] [cursor=pointer]
+                      - button "Dismiss" [ref=e186] [cursor=pointer]:
+                        - img
+              - generic [ref=e187]:
+                - generic [ref=e188]:
+                  - heading "Linked Findings" [level=2] [ref=e189]
+                  - generic [ref=e190]:
+                    - button [ref=e191] [cursor=pointer]:
+                      - img
+                    - button [ref=e192] [cursor=pointer]:
+                      - img
+                - paragraph [ref=e193]: No linked findings yet.
+              - generic [ref=e194]:
+                - heading "Report" [level=2] [ref=e195]
+                - generic [ref=e197]:
+                  - paragraph [ref=e198]: Reporter severity
+                  - paragraph [ref=e199]: critical
+                - generic [ref=e200]:
+                  - heading "Summary" [level=2] [ref=e201]
+                  - paragraph [ref=e202]:
+                    - text: A security sandbox escape vulnerability exists in n8n's Python Task Runner (
+                    - code [ref=e203]: "`@n8n/task-runner-python`"
+                    - text: ). The package is intended to execute user-supplied Python code in an isolated subprocess environment, using static AST validation and runtime restrictions. However, the sandbox fails to restrict transitive module access inside permitted standard library imports. An authenticated user with workflow editing permissions can obtain the original unfiltered native
+                    - code [ref=e204]: "`builtins`"
+                    - text: module via transitive module introspection, dynamically import forbidden modules such as
+                    - code [ref=e205]: "`os`"
+                    - text: ", and execute arbitrary system shell commands on the host."
+                  - heading "Vulnerable Asset / Code Location" [level=2] [ref=e206]
+                  - list [ref=e207]:
+                    - listitem [ref=e208]:
+                      - text: "Package:"
+                      - code [ref=e209]: "`@n8n/task-runner-python`"
+                    - listitem [ref=e210]:
+                      - text: "Static validator:"
+                      - code [ref=e211]: "`packages/@n8n/task-runner-python/src/task_analyzer.py`"
+                    - listitem [ref=e212]:
+                      - text: "Runtime executor:"
+                      - code [ref=e213]: "`packages/@n8n/task-runner-python/src/task_executor.py`"
+                    - listitem [ref=e214]:
+                      - text: "Vulnerable access chain described in the report:"
+                      - list [ref=e215]:
+                        - listitem [ref=e216]:
+                          - code [ref=e217]: "`import json`"
+                        - listitem [ref=e218]:
+                          - code [ref=e219]: "`json.codecs.sys.modules['builtins']`"
+                    - listitem [ref=e220]:
+                      - text: "Root issue: allowed standard-library modules retain transitive references to internal modules such as"
+                      - code [ref=e221]: "`sys`"
+                      - text: ", which exposes the global module cache"
+                      - code [ref=e222]: "`sys.modules`"
+                    - listitem [ref=e223]:
+                      - text: "Resulting abuse path: recover native"
+                      - code [ref=e224]: "`builtins`"
+                      - text: "-> resolve original"
+                      - code [ref=e225]: "`__import__`"
+                      - text: "-> import"
+                      - code [ref=e226]: "`os`"
+                      - text: "-> execute shell commands"
+                  - heading "Reproduction Environment" [level=2] [ref=e227]
+                  - list [ref=e228]:
+                    - listitem [ref=e229]:
+                      - text: "n8n version: affected range reported as"
+                      - code [ref=e230]: "`<= 2.22.2`"
+                    - listitem [ref=e231]: "Target component: Python Task Runner"
+                    - listitem [ref=e232]:
+                      - text: "Deployment requirement: Linux target with"
+                      - code [ref=e233]: "`uv`"
+                      - text: installed
+                    - listitem [ref=e234]:
+                      - text: "Working directory:"
+                      - code [ref=e235]: "`packages/@n8n/task-runner-python`"
+                    - listitem [ref=e236]: "Required permission: authenticated user able to edit workflows or otherwise execute Python code tasks"
+                  - heading "Steps to Reproduce / PoC" [level=2] [ref=e237]
+                  - list [ref=e238]:
+                    - listitem [ref=e239]:
+                      - text: "Navigate to the package directory and sync dependencies:"
+                      - list [ref=e240]:
+                        - listitem [ref=e241]:
+                          - code [ref=e242]: "`cd packages/@n8n/task-runner-python`"
+                        - listitem [ref=e243]:
+                          - code [ref=e244]: "`uv sync --all-extras --group dev`"
+                    - listitem [ref=e245]:
+                      - text: "Download the PoC verification script from:"
+                      - link "verification_test_21263.py" [ref=e246] [cursor=pointer]:
+                        - /url: https://gist.github.com/YLChen-007/f963276cf751496af72d7c65821231fa
+                    - listitem [ref=e247]:
+                      - text: "Run the PoC verification script:"
+                      - list [ref=e248]:
+                        - listitem [ref=e249]:
+                          - code [ref=e250]: "`uv run python verification_test_21263.py`"
+                    - listitem [ref=e251]:
+                      - text: Observe that the payload bypasses
+                      - code [ref=e252]: "`TaskAnalyzer`"
+                      - text: validation and successfully executes inside the sandboxed subprocess.
+                    - listitem [ref=e253]:
+                      - text: "Download the control script from:"
+                      - link "control-normal_behavior.py" [ref=e254] [cursor=pointer]:
+                        - /url: https://gist.github.com/YLChen-007/bb378dd95329f73ed5233024f66aebc1
+                    - listitem [ref=e255]:
+                      - text: "Run the control script:"
+                      - list [ref=e256]:
+                        - listitem [ref=e257]:
+                          - code [ref=e258]: "`uv run python control-normal_behavior.py`"
+                    - listitem [ref=e259]: Confirm that direct forbidden behavior is still blocked in normal cases, while the crafted transitive-introspection payload bypasses the sandbox restrictions.
+                  - heading "Observed Result" [level=2] [ref=e260]
+                  - paragraph [ref=e261]:
+                    - text: The verification script output shows that the exploit payload successfully bypasses
+                    - code [ref=e262]: "`TaskAnalyzer`"
+                    - text: validation and achieves sandbox escape. The evidence includes successful arbitrary privileged code execution and process creation on the host. The report specifically notes that the payload obtains native
+                    - code [ref=e263]: "`builtins`"
+                    - text: ", dynamically imports forbidden modules, and executes shell commands."
+                  - paragraph [ref=e264]:
+                    - text: The control script demonstrates that direct forbidden imports are normally blocked and benign
+                    - code [ref=e265]: "`json`"
+                    - text: usage still works, confirming this is a bypass of the intended sandbox architecture rather than a broken test environment.
+                  - heading "Expected Result" [level=2] [ref=e266]
+                  - paragraph [ref=e267]:
+                    - text: Permitted standard-library imports should not allow recovery of unrestricted interpreter primitives or transitive access to internal module state that re-enables forbidden imports. The sandbox should block access paths that recover native
+                    - code [ref=e268]: "`builtins`"
+                    - text: ","
+                    - code [ref=e269]: "`sys.modules`"
+                    - text: ", or equivalent primitives capable of defeating AST and runtime restrictions."
+                  - heading "Impact" [level=2] [ref=e270]
+                  - list [ref=e271]:
+                    - listitem [ref=e272]:
+                      - text: "CWE:"
+                      - code [ref=e273]: "`CWE-265`"
+                    - listitem [ref=e274]: "Type: Remote Code Execution / Sandbox Escape"
+                    - listitem [ref=e275]: "Who can exploit: authenticated users with workflow editing or Python task execution capability"
+                    - listitem [ref=e276]:
+                      - text: "Exposed / compromised assets:"
+                      - list [ref=e277]:
+                        - listitem [ref=e278]: full host command execution with the Python Task Runner process privileges
+                        - listitem [ref=e279]: environment variables
+                        - listitem [ref=e280]: internal configuration files
+                        - listitem [ref=e281]: database credentials
+                        - listitem [ref=e282]: third-party API keys and cloud credentials
+                    - listitem [ref=e283]: "Real risk: complete host compromise and lateral movement from workflow-level access to operating-system-level execution"
+                    - listitem [ref=e284]: "Severity rationale: Critical is appropriate because low-privilege authenticated users can turn Python task execution into arbitrary host command execution with confidentiality, integrity, and availability impact across system boundaries"
+                  - heading "Suggested Remediation" [level=2] [ref=e285]
+                  - list [ref=e286]:
+                    - listitem [ref=e287]:
+                      - text: Harden
+                      - code [ref=e288]: "`TaskAnalyzer`"
+                      - text: and runtime restrictions against transitive module introspection paths
+                    - listitem [ref=e289]:
+                      - text: Prevent access to module chains that expose
+                      - code [ref=e290]: "`sys`"
+                      - text: ","
+                      - code [ref=e291]: "`sys.modules`"
+                      - text: ", native"
+                      - code [ref=e292]: "`builtins`"
+                      - text: ", or equivalent interpreter internals through allowed modules"
+                    - listitem [ref=e293]: Consider executing user code inside a stronger isolation boundary than in-process interpreter hardening alone
+                    - listitem [ref=e294]:
+                      - text: Add regression tests for transitive import abuse paths such as
+                      - code [ref=e295]: "`json.codecs.sys.modules['builtins']`"
+                      - text: and similar gadget chains
+              - generic [ref=e296]:
+                - heading "Communication Log" [level=2] [ref=e297]
+                - generic [ref=e298]:
+                  - generic [ref=e301]:
+                    - text: changed status from TODO to TODO
+                    - generic [ref=e302]: · 1 day ago
+                  - generic [ref=e305]:
+                    - generic [ref=e306]:
+                      - generic [ref=e307]: Security Hub
+                      - generic [ref=e308]: · 1 day ago
+                    - generic [ref=e309]: "Subject: n8n Vulnerability Report: Sandbox Escape in `@n8n/task-runner-python` via Transitive Module Introspection"
+                    - generic [ref=e310]:
+                      - generic [ref=e311]:
+                        - paragraph [ref=e312]: Hello Erichen,
+                        - paragraph [ref=e313]: Thank you for submitting a vulnerability report to n8n. We have received your report and our security team will review it and be in touch.
+                        - paragraph [ref=e314]: "This report is subject to our Vulnerability Disclosure Program policy, which you can find here: https://n8n.notion.site/n8n-vulnerability-disclosure-program"
+                        - paragraph [ref=e315]: If you have any questions in the meantime, feel free to reply to this email or reach us directly at security@n8n.io.
+                        - paragraph [ref=e316]: Best regards, n8n Security Team
+                        - separator [ref=e317]
+                        - paragraph [ref=e318]: "Below is a copy of your submission for your records:"
+                        - paragraph [ref=e319]:
+                          - text: "Title: Sandbox Escape in"
+                          - code [ref=e320]: "`@n8n/task-runner-python`"
+                          - text: "via Transitive Module Introspection Severity: critical Affected Version: <= 2.22.2 GitHub: @YLChen-007"
+                        - heading "Summary" [level=2] [ref=e321]
+                        - paragraph [ref=e322]:
+                          - text: A security sandbox escape vulnerability exists in n8n's Python Task Runner (
+                          - code [ref=e323]: "`@n8n/task-runner-python`"
+                          - text: ). The package is intended to execute user-supplied Python code in an isolated subprocess environment, using static AST validation and runtime restrictions. However, the sandbox fails to restrict transitive module access inside permitted standard library imports. An authenticated user with workflow editing permissions can obtain the original unfiltered native
+                          - code [ref=e324]: "`builtins`"
+                          - text: module via transitive module introspection, dynamically import forbidden modules such as
+                          - code [ref=e325]: "`os`"
+                          - text: ", and execute arbitrary system shell commands on the host."
+                        - heading "Vulnerable Asset / Code Location" [level=2] [ref=e326]
+                        - list [ref=e327]:
+                          - listitem [ref=e328]:
+                            - text: "Package:"
+                            - code [ref=e329]: "`@n8n/task-runner-python`"
+                          - listitem [ref=e330]:
+                            - text: "Static validator:"
+                            - code [ref=e331]: "`packages/@n8n/task-runner-python/src/task_analyzer.py`"
+                          - listitem [ref=e332]:
+                            - text: "Runtime executor:"
+                            - code [ref=e333]: "`packages/@n8n/task-runner-python/src/task_executor.py`"
+                          - listitem [ref=e334]:
+                            - text: "Vulnerable access chain described in the report:"
+                            - list [ref=e335]:
+                              - listitem [ref=e336]:
+                                - code [ref=e337]: "`import json`"
+                              - listitem [ref=e338]:
+                                - code [ref=e339]: "`json.codecs.sys.modules['builtins']`"
+                          - listitem [ref=e340]:
+                            - text: "Root issue: allowed standard-library modules retain transitive references to internal modules such as"
+                            - code [ref=e341]: "`sys`"
+                            - text: ", which exposes the global module cache"
+                            - code [ref=e342]: "`sys.modules`"
+                          - listitem [ref=e343]:
+                            - text: "Resulting abuse path: recover native"
+                            - code [ref=e344]: "`builtins`"
+                            - text: "-> resolve original"
+                            - code [ref=e345]: "`__import__`"
+                            - text: "-> import"
+                            - code [ref=e346]: "`os`"
+                            - text: "-> execute shell commands"
+                        - heading "Reproduction Environment" [level=2] [ref=e347]
+                        - list [ref=e348]:
+                          - listitem [ref=e349]:
+                            - text: "n8n version: affected range reported as"
+                            - code [ref=e350]: "`<= 2.22.2`"
+                          - listitem [ref=e351]: "Target component: Python Task Runner"
+                          - listitem [ref=e352]:
+                            - text: "Deployment requirement: Linux target with"
+                            - code [ref=e353]: "`uv`"
+                            - text: installed
+                          - listitem [ref=e354]:
+                            - text: "Working directory:"
+                            - code [ref=e355]: "`packages/@n8n/task-runner-python`"
+                          - listitem [ref=e356]: "Required permission: authenticated user able to edit workflows or otherwise execute Python code tasks"
+                        - heading "Steps to Reproduce / PoC" [level=2] [ref=e357]
+                        - list [ref=e358]:
+                          - listitem [ref=e359]:
+                            - text: "Navigate to the package directory and sync dependencies:"
+                            - list [ref=e360]:
+                              - listitem [ref=e361]:
+                                - code [ref=e362]: "`cd packages/@n8n/task-runner-python`"
+                              - listitem [ref=e363]:
+                                - code [ref=e364]: "`uv sync --all-extras --group dev`"
+                          - listitem [ref=e365]:
+                            - text: "Download the PoC verification script from:"
+                            - link "verification_test_21263.py" [ref=e366] [cursor=pointer]:
+                              - /url: https://gist.github.com/YLChen-007/f963276cf751496af72d7c65821231fa
+                          - listitem [ref=e367]:
+                            - text: "Run the PoC verification script:"
+                            - list [ref=e368]:
+                              - listitem [ref=e369]:
+                                - code [ref=e370]: "`uv run python verification_test_21263.py`"
+                          - listitem [ref=e371]:
+                            - text: Observe that the payload bypasses
+                            - code [ref=e372]: "`TaskAnalyzer`"
+                            - text: validation and successfully executes inside the sandboxed subprocess.
+                          - listitem [ref=e373]:
+                            - text: "Download the control script from:"
+                            - link "control-normal_behavior.py" [ref=e374] [cursor=pointer]:
+                              - /url: https://gist.github.com/YLChen-007/bb378dd95329f73ed5233024f66aebc1
+                          - listitem [ref=e375]:
+                            - text: "Run the control script:"
+                            - list [ref=e376]:
+                              - listitem [ref=e377]:
+                                - code [ref=e378]: "`uv run python control-normal_behavior.py`"
+                          - listitem [ref=e379]: Confirm that direct forbidden behavior is still blocked in normal cases, while the crafted transitive-introspection payload bypasses the sandbox restrictions.
+                        - heading "Observed Result" [level=2] [ref=e380]
+                        - paragraph [ref=e381]:
+                          - text: The verification script output shows that the exploit payload successfully bypasses
+                          - code [ref=e382]: "`TaskAnalyzer`"
+                          - text: validation and achieves sandbox escape. The evidence includes successful arbitrary privileged code execution and process creation on the host. The report specifically notes that the payload obtains native
+                          - code [ref=e383]: "`builtins`"
+                          - text: ", dynamically imports forbidden modules, and executes shell commands."
+                        - paragraph [ref=e384]:
+                          - text: The control script demonstrates that direct forbidden imports are normally blocked and benign
+                          - code [ref=e385]: "`json`"
+                          - text: usage still works, confirming this is a bypass of the intended sandbox architecture rather than a broken test environment.
+                        - heading "Expected Result" [level=2] [ref=e386]
+                        - paragraph [ref=e387]:
+                          - text: Permitted standard-library imports should not allow recovery of unrestricted interpreter primitives or transitive access to internal module state that re-enables forbidden imports. The sandbox should block access paths that recover native
+                          - code [ref=e388]: "`builtins`"
+                          - text: ","
+                          - code [ref=e389]: "`sys.modules`"
+                          - text: ", or equivalent primitives capable of defeating AST and runtime restrictions."
+                        - heading "Impact" [level=2] [ref=e390]
+                        - list [ref=e391]:
+                          - listitem [ref=e392]:
+                            - text: "CWE:"
+                            - code [ref=e393]: "`CWE-265`"
+                          - listitem [ref=e394]: "Type: Remote Code Execution / Sandbox Escape"
+                          - listitem [ref=e395]: "Who can exploit: authenticated users with workflow editing or Python task execution capability"
+                          - listitem [ref=e396]:
+                            - text: "Exposed / compromised assets:"
+                            - list [ref=e397]:
+                              - listitem [ref=e398]: full host command execution with the Python Task Runner process privileges
+                              - listitem [ref=e399]: environment variables
+                              - listitem [ref=e400]: internal configuration files
+                              - listitem [ref=e401]: database credentials
+                              - listitem [ref=e402]: third-party API keys and cloud credentials
+                          - listitem [ref=e403]: "Real risk: complete host compromise and lateral movement from workflow-level access to operating-system-level execution"
+                          - listitem [ref=e404]: "Severity rationale: Critical is appropriate because low-privilege authenticated users can turn Python task execution into arbitrary host command execution with confidentiality, integrity, and availability impact across system boundaries"
+                        - heading "Suggested Remediation" [level=2] [ref=e405]
+                        - list [ref=e406]:
+                          - listitem [ref=e407]:
+                            - text: Harden
+                            - code [ref=e408]: "`TaskAnalyzer`"
+                            - text: and runtime restrictions against transitive module introspection paths
+                          - listitem [ref=e409]:
+                            - text: Prevent access to module chains that expose
+                            - code [ref=e410]: "`sys`"
+                            - text: ","
+                            - code [ref=e411]: "`sys.modules`"
+                            - text: ", native"
+                            - code [ref=e412]: "`builtins`"
+                            - text: ", or equivalent interpreter internals through allowed modules"
+                          - listitem [ref=e413]: Consider executing user code inside a stronger isolation boundary than in-process interpreter hardening alone
+                          - listitem [ref=e414]:
+                            - text: Add regression tests for transitive import abuse paths such as
+                            - code [ref=e415]: "`json.codecs.sys.modules['builtins']`"
+                            - text: and similar gadget chains
+                      - button "Show more" [ref=e416] [cursor=pointer]
+              - generic [ref=e417]:
+                - textbox "Write a reply to the reporter…" [ref=e418]
+                - generic [ref=e419]:
+                  - button "Send reply" [disabled]:
+                    - img
+                    - text: Send reply
+        - complementary [ref=e420]:
+          - generic [ref=e421]:
+            - heading "Metadata" [level=3] [ref=e422]
+            - generic [ref=e423]:
+              - paragraph [ref=e424]: Reporter
+              - paragraph [ref=e425]: Erichen
+              - link "chenyoulong20g@ict.ac.cn" [ref=e426] [cursor=pointer]:
+                - /url: mailto:chenyoulong20g@ict.ac.cn
+                - img [ref=e427]
+                - text: chenyoulong20g@ict.ac.cn
+            - generic [ref=e430]:
+              - paragraph [ref=e431]: Triage SLA
+              - generic "6/7/2026, 4:43:54 AM" [ref=e432]:
+                - img [ref=e433]
+                - text: 2 days
+          - generic [ref=e436]:
+            - heading "Fields" [level=3] [ref=e437]
+            - generic [ref=e438]:
+              - paragraph [ref=e439]: Assignee
+              - combobox [ref=e440] [cursor=pointer]:
+                - generic: Unassigned
+                - img [ref=e441]
+            - generic [ref=e443]:
+              - paragraph [ref=e444]: Severity
+              - combobox [ref=e445] [cursor=pointer]:
+                - generic: Critical
+                - img [ref=e446]
+            - generic [ref=e448]:
+              - paragraph [ref=e449]: Status
+              - combobox [ref=e450] [cursor=pointer]:
+                - generic [ref=e451]: New
+                - img [ref=e452]
+              - generic [ref=e454]:
+                - generic [ref=e455]: "Plain Status:"
+                - generic [ref=e456]: TODO
