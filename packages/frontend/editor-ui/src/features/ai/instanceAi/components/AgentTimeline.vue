@@ -175,6 +175,7 @@ function handlePlanApprove(tc: InstanceAiToolCallState) {
 		],
 		skipped_inputs: [],
 		num_tasks: getPlanTasks(tc).length,
+		plan_feedback_type: 'accept',
 	});
 
 	thread.resolveConfirmation(requestId, 'approved');
@@ -214,6 +215,7 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 		],
 		skipped_inputs: [],
 		num_tasks: numTasks,
+		plan_feedback_type: 'deny',
 	});
 
 	if (thread.activePlanEdit?.requestId === requestId) {
