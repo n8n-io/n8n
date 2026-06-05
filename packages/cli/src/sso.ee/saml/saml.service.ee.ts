@@ -10,7 +10,11 @@ import type express from 'express';
 import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	PostBindingContext,
+	ESamlHttpRequest,
+} from 'samlify/types/src/entity';
 
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
@@ -492,7 +496,7 @@ export class SamlService {
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				this.getIdentityProviderInstance(),
 				binding,
-				req,
+				req as unknown as ESamlHttpRequest,
 			);
 		} catch (error) {
 			// throw error;
