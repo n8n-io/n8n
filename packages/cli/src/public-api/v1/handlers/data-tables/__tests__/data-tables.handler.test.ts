@@ -19,8 +19,8 @@ vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 vi.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
 vi.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
-const mainHandler = require('../data-tables.handler');
-const handler = require('../data-tables.rows.handler');
+const mainHandler = await import('../data-tables.handler');
+const handler = await import('../data-tables.rows.handler');
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: Mocked<DataTableService>;

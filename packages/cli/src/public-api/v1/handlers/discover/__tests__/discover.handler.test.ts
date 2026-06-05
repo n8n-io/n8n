@@ -8,8 +8,7 @@ import type { Mocked } from 'vitest';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import * as discoverService from '../discover.service';
-
-const handler = require('../discover.handler');
+import * as handler from '../discover.handler';
 
 describe('Discover Handler', () => {
 	let mockApiKeyRepository: Mocked<ApiKeyRepository>;

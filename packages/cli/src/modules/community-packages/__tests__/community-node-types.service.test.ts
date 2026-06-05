@@ -1,7 +1,7 @@
 import { inProduction } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 
-import { getCommunityNodeTypes } from '../community-node-types-utils';
+import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
 import { CommunityNodeTypesService } from '../community-node-types.service';
 
 vi.mock('@n8n/backend-common', async () => ({
@@ -48,8 +48,6 @@ describe('CommunityNodeTypesService', () => {
 	});
 
 	describe('fetchNodeTypes', () => {
-		const { getCommunityNodeTypes } = require('../community-node-types-utils');
-
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
@@ -714,8 +712,6 @@ describe('CommunityNodeTypesService', () => {
 	});
 
 	describe('detectUpdates', () => {
-		const { getCommunityNodesMetadata } = require('../community-node-types-utils');
-
 		beforeEach(() => {
 			const mockNodeTypes = [
 				{

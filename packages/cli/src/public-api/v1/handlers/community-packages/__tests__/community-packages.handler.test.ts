@@ -18,7 +18,7 @@ const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown)
 ) as unknown as middlewares.ScopeTaggedMiddleware;
 vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 
-const handler = require('../community-packages.handler');
+const handler = await import('../community-packages.handler');
 
 describe('CommunityPackages Handler', () => {
 	let mockLifecycle: Mocked<CommunityPackagesLifecycleService>;
