@@ -15,10 +15,10 @@
 	"triggerType": "schedule",
 	"executionScenarios": [
 		{
-			"name": "happy-path-after-change",
-			"description": "After the post-build follow-up, the schedule runs hourly and the summary is posted",
+			"name": "applies-followup-change",
+			"description": "The user's follow-up modification is reflected in the final workflow: the schedule runs hourly (changed from the original daily-9am request) and the incident summary still posts to Slack.",
 			"dataSetup": "The schedule trigger fires. The HTTP request to https://status.example.com/api/incidents returns a list of 3 open incidents — e.g. { \"id\": \"INC-1\", \"title\": \"API latency elevated\", \"severity\": \"high\" }, { \"id\": \"INC-2\", \"title\": \"Login errors in EU region\", \"severity\": \"critical\" }, { \"id\": \"INC-3\", \"title\": \"Delayed webhook delivery\", \"severity\": \"low\" }. The Slack post-message node returns a success response.",
-			"successCriteria": "The final workflow reflects the post-build change: the schedule trigger runs hourly, NOT daily at 9am. The workflow still fetches incidents from the status API and posts a summary to Slack #ops (C04OPS00001). The workflow executes without errors."
+			"successCriteria": "The schedule trigger runs hourly, NOT daily at 9am. Because the opening request asked for daily at 9am, an hourly schedule is only reachable if the user's follow-up modification was delivered and incorporated into the build — so an hourly schedule is what proves the change was applied. The workflow still fetches incidents from the status API and posts a summary to Slack #ops (C04OPS00001), and executes without errors."
 		}
 	],
 	"datasets": ["full"]
