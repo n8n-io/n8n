@@ -1170,3 +1170,187 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
 	});
 });
+
+describe('createThreadRuntime - "User viewed new builder workflow" telemetry', () => {
+	let registry: RuntimeRegistry;
+
+	/** A run-sync snapshot whose agent tree contains one successful build-workflow tool call. */
+	function runSyncWithBuild(opts: {
+		runId: string;
+		messageGroupId: string;
+		workflowId: string;
+		toolCallId: string;
+	}) {
+		return {
+			runId: opts.runId,
+			messageGroupId: opts.messageGroupId,
+			runIds: [opts.runId],
+			agentTree: {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: opts.toolCallId,
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						result: { success: true, workflowId: opts.workflowId },
+					},
+				],
+				children: [],
+				timeline: [],
+			},
+			status: 'completed',
+			backgroundTasks: [],
+		};
+	}
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-active';
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.clearAllMocks();
+		mockFetchThreadMessages.mockResolvedValue({
+			threadId: 'thread-1',
+			messages: [],
+			nextEventId: 0,
+		});
+	});
+
+	test('tracks "User viewed new builder workflow" when the builder produces a workflow', () => {
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-123',
+				toolCallId: 'tc-1',
+			}),
+		);
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith('User viewed new builder workflow', {
+			thread_id: 'thread-active',
+			instance_id: 'instance-1',
+			workflow_id: 'wf-123',
+		});
+	});
+
+	test('fires exactly once per workflow even when the same workflow is rebuilt', () => {
+		// First build, then a rebuild of the same workflow with a fresh toolCallId.
+		// The rebuild DOES re-trigger the watcher (toolCallId changes), so a count of
+		// exactly 1 proves the dedup ran — not that nothing fired at all.
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-123',
+				toolCallId: 'tc-1',
+			}),
+		);
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-123',
+				toolCallId: 'tc-2',
+			}),
+		);
+
+		const builderCreatedCalls = mockTelemetryTrack.mock.calls.filter(
+			([event]) => event === 'User viewed new builder workflow',
+		);
+		expect(builderCreatedCalls).toHaveLength(1);
+		expect(builderCreatedCalls[0][1]).toMatchObject({ workflow_id: 'wf-123' });
+	});
+
+	test('tracks again when a different workflow is built later', () => {
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-1',
+				toolCallId: 'tc-1',
+			}),
+		);
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-2',
+				messageGroupId: 'mg-2',
+				workflowId: 'wf-2',
+				toolCallId: 'tc-2',
+			}),
+		);
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.objectContaining({ workflow_id: 'wf-1' }),
+		);
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.objectContaining({ workflow_id: 'wf-2' }),
+		);
+	});
+
+	test('does not track for a workflow that only appears in hydrated history', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-hist',
+					runId: 'run-hist',
+					messageGroupId: 'mg-hist',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-hist',
+								toolName: 'build-workflow',
+								args: {},
+								isLoading: false,
+								result: { success: true, workflowId: 'wf-hist' },
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadHistoricalMessages();
+
+		// The historical build really was hydrated (so "not tracked" is meaningful,
+		// not just an empty no-op hydration).
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
+	});
+});

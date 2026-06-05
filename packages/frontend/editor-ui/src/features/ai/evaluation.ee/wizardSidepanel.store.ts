@@ -7,7 +7,7 @@ import { computed, ref } from 'vue';
 import type { CannedMetricKey } from './evaluation.constants';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 
-export type WizardStep = 0 | 1 | 2;
+export type WizardStep = 0 | 1 | 2 | 3;
 
 // Stored as the chat-hub provider key ('openai'); persistence converts to
 // the langchain node-type form ('@n8n/n8n-nodes-langchain.lmChatOpenAi').
@@ -85,11 +85,15 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 				activeStep.value = 1;
 			} else if (activeStep.value === 1) {
 				activeStep.value = 2;
+			} else if (activeStep.value === 2) {
+				activeStep.value = 3;
 			}
 		}
 
 		function goBack() {
-			if (activeStep.value === 2) {
+			if (activeStep.value === 3) {
+				activeStep.value = 2;
+			} else if (activeStep.value === 2) {
 				activeStep.value = 1;
 			} else if (activeStep.value === 1) {
 				activeStep.value = 0;
