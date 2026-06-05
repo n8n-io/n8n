@@ -655,5 +655,21 @@ describe('ActiveWorkflowManager', () => {
 
 			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-desynced')).toBe(false);
 		});
+
+		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
+			// removeAllNonWebhookTriggerWorkflows is the @OnLeaderStepdown / @OnShutdown
+			// handler. On stepdown the process keeps running as a follower, so a stranded
+			// cron left behind would survive the demotion and resurface on the next takeover.
+			realScheduledTaskManager.registerCron(
+				{ workflowId: 'wf-orphan', nodeId: 'schedule-node', timezone: 'GMT', expression: hourly },
+				jest.fn(),
+			);
+			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(true);
+			expect(realActiveWorkflows.isActive('wf-orphan')).toBe(false);
+
+			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(false);
+		});
 	});
 });

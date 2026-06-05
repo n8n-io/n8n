@@ -56,10 +56,7 @@ describe('ActiveWorkflows', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		// Give the mock a real Map so `cronsByWorkflow.has`/`.keys()` work; registerCron
-		// is mocked (no-op), so it stays empty unless a test populates it explicitly.
-		// @ts-expect-error -- override the readonly mock property for tests
-		scheduledTaskManager.cronsByWorkflow = new Map();
+		scheduledTaskManager.getWorkflowIdsWithCrons.mockReturnValue([]);
 		acquireIsolate = vi.fn().mockResolvedValue(undefined);
 		releaseIsolate = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
@@ -533,9 +530,7 @@ describe('ActiveWorkflows', () => {
 		});
 
 		it('should deregister crons not tracked as active on removeAll', async () => {
-			// removeAll runs on shutdown and on leader stepdown (the process keeps
-			// running as a follower), so it must also stop crons whose workflow is no
-			// longer tracked as active.
+			// removeAll must also stop crons whose workflow is no longer tracked as active.
 			registerStrandedCron('orphan-workflow');
 			expect(activeWorkflowsReal.isActive('orphan-workflow')).toBe(false);
 			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(true);
@@ -577,11 +572,9 @@ describe('ActiveWorkflows', () => {
 
 		it('should leave no registered cron when a later poll node fails activation', async () => {
 			// First poll node registers its cron, second fails its test poll → the
-			// registered cron must be torn down. Align the workflow id with the cron
-			// registration key and give it a valid timezone for the real CronJob.
+			// registered cron must be torn down. The cron is keyed by workflow.id, so it
+			// must match the id passed to add().
 			workflow.id = workflowId;
-			// @ts-expect-error -- override the readonly timezone for the test
-			workflow.timezone = 'GMT';
 			workflow.getTriggerNodes.mockReturnValue([]);
 			workflow.getPollNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
 			getPollFunctions.mockReturnValue(pollFunctions);

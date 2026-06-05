@@ -96,10 +96,8 @@ export class ActiveWorkflows {
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
-				// Activation is all-or-nothing: a failed add() leaves the workflow inactive,
-				// so none of its crons should keep running. An earlier node may already have
-				// registered one (crons have no closeFunction), so deregister all of the
-				// workflow's crons here, for every caller.
+				// Deregister any crons an earlier node already registered, so a failed
+				// activation doesn't leave them running
 				this.scheduledTaskManager.deregisterCrons(workflowId);
 
 				throw new WorkflowActivationError(
@@ -132,9 +130,8 @@ export class ActiveWorkflows {
 					delete this.activeWorkflows[workflowId];
 				}
 
-				// Activation is all-or-nothing: deregister all of the workflow's crons,
-				// including any an earlier trigger or poll node already registered, so a
-				// partial activation failure never leaves an orphan cron behind.
+				// Deregister any crons an earlier node already registered, so a failed
+				// activation doesn't leave them running
 				this.scheduledTaskManager.deregisterCrons(workflowId);
 
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -198,8 +195,7 @@ export class ActiveWorkflows {
 	 */
 	async remove(workflowId: string) {
 		// Ensure crons are deregistered to prevent executions on inactive workflows
-		const hadRegisteredCrons = this.scheduledTaskManager.cronsByWorkflow.has(workflowId);
-		this.scheduledTaskManager.deregisterCrons(workflowId);
+		const hadRegisteredCrons = this.scheduledTaskManager.deregisterCrons(workflowId);
 
 		if (!this.isActive(workflowId)) {
 			if (hadRegisteredCrons) {
@@ -230,7 +226,7 @@ export class ActiveWorkflows {
 		// survive the demotion and resurface/stack on the next leader takeover.
 		const workflowIds = new Set([
 			...Object.keys(this.activeWorkflows),
-			...this.scheduledTaskManager.cronsByWorkflow.keys(),
+			...this.scheduledTaskManager.getWorkflowIdsWithCrons(),
 		]);
 
 		if (workflowIds.size === 0) return;
