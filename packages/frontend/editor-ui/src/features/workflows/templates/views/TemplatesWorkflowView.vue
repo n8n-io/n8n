@@ -8,6 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
+import { useInstanceAiLauncher } from '@/features/ai/instanceAi/useInstanceAiLauncher';
+import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
@@ -24,6 +26,8 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const launcher = useInstanceAiLauncher();
+const instanceAiSettings = useInstanceAiSettingsStore();
 
 const loading = ref(true);
 const showPreview = ref(true);
@@ -48,6 +52,19 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 		telemetry,
 		templatesStore,
 		source: 'template_preview',
+	});
+};
+
+const startWithAi = async () => {
+	if (!template.value) return;
+	await launcher.launch({
+		message: i18n.baseText('template.startWithAi.message', {
+			interpolate: { name: template.value.name, id: templateId.value },
+		}),
+		source: 'template-view',
+		origin: 'internal',
+		autoSend: true,
+		sourceContext: { templateId: templateId.value, templateName: template.value.name },
 	});
 };
 
@@ -163,6 +180,14 @@ const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() 
 									:label="i18n.baseText('template.buttons.tryTemplate')"
 									size="large"
 									@click.stop="openTemplateSetup(templateId, $event)"
+								/>
+								<N8nButton
+									v-if="!instanceAiSettings.isInstanceAiDisabled"
+									data-test-id="start-with-ai-button"
+									:label="i18n.baseText('template.buttons.startWithAi')"
+									type="secondary"
+									size="large"
+									@click.stop="startWithAi"
 								/>
 							</template>
 						</RecommendedTemplateCard>
