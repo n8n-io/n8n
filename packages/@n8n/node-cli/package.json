@@ -18,6 +18,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "copy-templates": "node scripts/copy-templates.mjs",
     "dev": "tsc-watch -p tsconfig.build.json -w --onCompilationComplete \"pnpm copy-templates\"",
     "format": "biome format --write src",

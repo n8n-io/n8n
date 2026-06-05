@@ -5,6 +5,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo compiled",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "build:docker": "pnpm build && rimraf compiled && DOCKER_BUILD=true NODE_ENV=production pnpm --filter . --prod --legacy deploy --no-optional compiled && docker build -f ../../../docker/images/engine/Dockerfile -t n8n-engine:local .",

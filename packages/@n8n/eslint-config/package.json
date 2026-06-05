@@ -28,6 +28,7 @@
     "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "watch": "tsc --watch"
   },
   "devDependencies": {
