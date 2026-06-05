@@ -29,6 +29,7 @@ import {
 
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService } from '../mcp.service';
 import { NodeCatalogService } from '@/node-catalog';
 
@@ -62,6 +63,7 @@ describe('McpService', () => {
 		});
 		instanceSettings = mockInstance(InstanceSettings, {
 			hostId: 'test-host-id',
+			instanceId: 'test-instance-id',
 		});
 		logger = mockLogger();
 
@@ -488,29 +490,39 @@ describe('McpService', () => {
 			type BuildServiceOpts = {
 				builderEnabled?: boolean;
 				postHogClient?: jest.Mocked<PostHogClient>;
+				telemetry?: jest.Mocked<Telemetry>;
 			};
 
 			const buildService = ({
 				builderEnabled = true,
 				postHogClient = mockInstance(PostHogClient),
-			}: BuildServiceOpts = {}) =>
-				new McpService(
+				telemetry = mockInstance(Telemetry),
+			}: BuildServiceOpts = {}) => {
+				const urlService = mockInstance(UrlService);
+				(urlService.getInstanceBaseUrl as jest.Mock).mockReturnValue('https://n8n.test');
+
+				return new McpService(
 					mockLogger(),
 					executionsConfig,
 					instanceSettings,
 					mockInstance(WorkflowFinderService),
 					mockInstance(WorkflowService),
-					mockInstance(UrlService),
+					urlService,
 					mockInstance(CredentialsService),
 					activeExecutions,
 					mockInstance(GlobalConfig, {
 						endpoints: {
 							webhook: '/webhook',
 							webhookTest: '/webhook-test',
+							rest: 'rest',
 							mcpBuilderEnabled: builderEnabled,
 						},
+						diagnostics: {
+							enabled: true,
+							frontendConfig: 'test-key;https://telemetry.n8n.io',
+						},
 					}),
-					mockInstance(Telemetry),
+					telemetry,
 					mockInstance(WorkflowRunner),
 					mockInstance(RoleService),
 					mockInstance(ProjectService),
@@ -526,6 +538,7 @@ describe('McpService', () => {
 					mockInstance(CollaborationService),
 					postHogClient,
 				);
+			};
 
 			beforeEach(() => {
 				(registerWorkflowPreviewApp as jest.Mock).mockClear();
@@ -543,6 +556,32 @@ describe('McpService', () => {
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
 				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{
+						instanceOrigin: string;
+						telemetry: {
+							enabled: boolean;
+							writeKey: string;
+							dataPlaneUrl: string;
+							configUrl: string;
+							instanceId: string;
+							versionCli: string;
+						};
+					},
+				];
+				expect(appOptions.instanceOrigin).toBe('https://n8n.test');
+				expect(appOptions.telemetry).toEqual(
+					expect.objectContaining({
+						enabled: true,
+						writeKey: 'test-key',
+						dataPlaneUrl: 'https://n8n.test/rest/telemetry/proxy',
+						configUrl: 'https://n8n.test/rest/telemetry/rudderstack',
+						instanceId: 'test-instance-id',
+						versionCli: expect.any(String),
+					}),
+				);
+
 				const [, toolName, toolConfig] = (registerMcpAppTool as jest.Mock).mock.calls[0];
 				expect(typeof toolName).toBe('string');
 				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
@@ -550,6 +589,24 @@ describe('McpService', () => {
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			});
+
+			it('tracks render requested when the preview resource is read', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const telemetry = mockInstance(Telemetry);
+
+				const service = buildService({ telemetry });
+				await service.getServer(user, true);
+
+				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
+					unknown,
+					{ onResourceRead: () => void },
+				];
+				appOptions.onResourceRead();
+
+				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+					user_id: 'user-1',
+				});
 			});
 
 			it('does not register MCP apps when `mcpAppsEnabled` is false', async () => {

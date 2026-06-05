@@ -8,6 +8,7 @@ import {
 
 export const USER_CONNECTED_TO_MCP_EVENT = 'User connected to MCP server';
 export const USER_CALLED_MCP_TOOL_EVENT = 'User called mcp tool';
+export const MCP_PREVIEW_RENDER_REQUESTED_EVENT = 'MCP App preview render requested';
 
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
