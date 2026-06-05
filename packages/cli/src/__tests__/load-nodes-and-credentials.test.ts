@@ -1,3 +1,4 @@
+import { Module } from 'node:module';
 import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
@@ -8,11 +9,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 
-vi.mock('lodash/debounce', () => (fn: () => void) => fn);
+vi.mock('lodash/debounce', () => ({ default: (fn: () => void) => fn }));
 
-vi.mock('@parcel/watcher', () => ({
-	subscribe: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('@parcel/watcher', () => {
+	const subscribe = vi.fn().mockResolvedValue(undefined);
+	return { default: { subscribe }, subscribe };
+});
 
 vi.mock('fs/promises');
 
@@ -43,6 +45,9 @@ vi.mock('@/tool-generation', () => ({
  */
 describe('NODE_PATH preservation (issue #24191)', () => {
 	const originalNodePath = process.env.NODE_PATH;
+	// `module` (the CJS wrapper) is not available under Vitest's ESM runtime, so
+	// derive the equivalent node_modules resolution paths the same way Node does.
+	const modulePaths = Module['_nodeModulePaths'](process.cwd());
 
 	afterEach(() => {
 		if (originalNodePath === undefined) {
@@ -58,7 +63,7 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 
 		// This is the exact logic from LoadNodesAndCredentials.init()
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+		process.env.NODE_PATH = [modulePaths.join(delimiter), process.env.NODE_PATH]
 			.filter(Boolean)
 			.join(delimiter);
 
@@ -70,11 +75,11 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 		delete process.env.NODE_PATH;
 
 		const delimiter = process.platform === 'win32' ? ';' : ':';
-		process.env.NODE_PATH = [module.paths.join(delimiter), process.env.NODE_PATH]
+		process.env.NODE_PATH = [modulePaths.join(delimiter), process.env.NODE_PATH]
 			.filter(Boolean)
 			.join(delimiter);
 
-		expect(process.env.NODE_PATH).toBe(module.paths.join(delimiter));
+		expect(process.env.NODE_PATH).toBe(modulePaths.join(delimiter));
 		expect(process.env.NODE_PATH).not.toContain('undefined');
 	});
 });
@@ -477,7 +482,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should subscribe to file changes and reload on changes', async () => {
-			const postProcessSpy = vi.mocked(instance.postProcessLoaders).mockResolvedValue(undefined);
+			const postProcessSpy = vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
 			const subscribe = vi.mocked(watcher.subscribe);
 
 			await instance.setupHotReload();
