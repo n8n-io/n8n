@@ -113,6 +113,33 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(jest.getTimerCount()).toBe(1);
 		});
 
+		test('polling stops scheduling when leadership is lost during a cycle', async () => {
+			outboxRepository.claimNextPendingRecord.mockImplementationOnce(async () => {
+				consumer.stopPolling();
+				return null;
+			});
+			consumer.startPolling();
+
+			await jest.advanceTimersByTimeAsync(60_000);
+
+			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		test('polling reports claim errors and schedules the next cycle', async () => {
+			const error = new Error('claim failed');
+			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
+			consumer.startPolling();
+
+			await jest.advanceTimersByTimeAsync(60_000);
+
+			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
+			expect(jest.getTimerCount()).toBe(1);
+
+			await jest.advanceTimersByTimeAsync(60_000);
+			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(2);
+		});
+
 		test('startPolling does nothing when feature flag is off', () => {
 			consumer = createConsumer(false);
 			consumer.startPolling();

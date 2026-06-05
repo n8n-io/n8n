@@ -31,6 +31,8 @@ const POLL_INTERVAL_MS = 1 * Time.minutes.toMilliseconds;
 export class WorkflowPublicationOutboxConsumer {
 	private pollTimeout: NodeJS.Timeout | undefined;
 
+	private isPolling = false;
+
 	private isShuttingDown = false;
 
 	constructor(
@@ -48,13 +50,17 @@ export class WorkflowPublicationOutboxConsumer {
 	@OnLeaderTakeover()
 	startPolling() {
 		if (!this.workflowsConfig.useWorkflowPublicationService || this.isShuttingDown) return;
+		if (this.isPolling) return;
 
+		this.isPolling = true;
 		this.schedulePollCycle();
 		this.logger.debug('Started outbox polling');
 	}
 
 	@OnLeaderStepdown()
 	stopPolling() {
+		this.isPolling = false;
+
 		if (this.pollTimeout) {
 			clearTimeout(this.pollTimeout);
 			this.pollTimeout = undefined;
@@ -72,17 +78,23 @@ export class WorkflowPublicationOutboxConsumer {
 	// will keep the poller as a fallback since pubsub delivery is not ensured.
 	private schedulePollCycle() {
 		clearTimeout(this.pollTimeout);
+		if (!this.shouldKeepPolling()) return;
 
 		this.pollTimeout = setTimeout(async () => {
-			await this.pollCycle();
-			if (!this.isShuttingDown) this.schedulePollCycle();
+			try {
+				await this.pollCycle();
+			} catch (error) {
+				this.errorReporter.error(error, { shouldBeLogged: true });
+			}
+
+			if (this.shouldKeepPolling()) this.schedulePollCycle();
 		}, POLL_INTERVAL_MS);
 	}
 
 	private async pollCycle() {
 		let processed = 0;
 
-		while (!this.isShuttingDown) {
+		while (this.shouldKeepPolling()) {
 			const record = await this.outboxRepository.claimNextPendingRecord();
 			if (!record) break;
 
@@ -93,6 +105,10 @@ export class WorkflowPublicationOutboxConsumer {
 		if (processed > 0) {
 			this.logger.info(`Processed ${processed} outbox record(s)`);
 		}
+	}
+
+	private shouldKeepPolling() {
+		return this.isPolling && !this.isShuttingDown;
 	}
 
 	private async tryProcessRecord(record: WorkflowPublicationOutbox) {
