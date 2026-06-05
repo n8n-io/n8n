@@ -15,7 +15,6 @@ import type {
 	BoundingBox,
 	CanvasConnection,
 	CanvasConnectionData,
-	CanvasGroupNode,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
 	CanvasNodeChoicePromptRender,
@@ -25,7 +24,6 @@ import type {
 	ExecutionOutputMap,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
-import { mapGroupsToVueFlowNodes } from './useCanvasMapping.groups';
 import {
 	checkOverlap,
 	computeNodeDisplaySize,
@@ -66,16 +64,12 @@ export function useCanvasMapping({
 	connections,
 	workflowObject,
 	renderData,
-	readOnly = ref(false),
-	suppressInteraction = ref(false),
 	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
-	readOnly?: Ref<boolean>;
-	suppressInteraction?: Ref<boolean>;
 	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
@@ -575,9 +569,9 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
-	// Display size by node id, used by `computeNodesRectFromStore` so the group
-	// bounding rect wraps each node's actual rendered size. Sticky notes are
-	// omitted — their own width/height parameters are read there directly.
+	// Display size by node id. WorkflowCanvas uses this for group bounds so
+	// they wrap each node's actual rendered size. Sticky notes are omitted —
+	// their own width/height parameters are read by the group mapper directly.
 	const nodeDimensionsById = computed(() => {
 		const dimensionsById: Record<string, { width: number; height: number }> = {};
 
@@ -594,17 +588,6 @@ export function useCanvasMapping({
 			);
 		}
 		return dimensionsById;
-	});
-
-	const groupVueFlowNodes = computed<CanvasGroupNode[]>(() => {
-		const allGroups = workflowDocumentStore.value.allGroups;
-		if (allGroups.length === 0) return [];
-		return mapGroupsToVueFlowNodes({
-			allGroups,
-			getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
-			getNodeDimensions: (id) => nodeDimensionsById.value[id],
-			readOnly: readOnly.value || suppressInteraction.value,
-		});
 	});
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
@@ -797,6 +780,5 @@ export function useCanvasMapping({
 		nodeDimensionsById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
-		groupNodes: groupVueFlowNodes,
 	};
 }

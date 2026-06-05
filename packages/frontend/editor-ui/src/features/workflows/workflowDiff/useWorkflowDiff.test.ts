@@ -63,7 +63,6 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 		nodeHasIssuesById: computed(() => ({})),
 		nodeDimensionsById: computed(() => ({})),
 		nodes: computed(() => []),
-		groupNodes: computed(() => []),
 		connections: computed(() => []),
 	}),
 }));
@@ -166,7 +165,6 @@ describe('useWorkflowDiff', () => {
 			nodeHasIssuesById: computed(() => ({}) as Record<string, boolean>),
 			nodeDimensionsById: computed(() => ({}) as Record<string, { width: number; height: number }>),
 			nodes: computed(() => nodes as CanvasNode[]),
-			groupNodes: computed(() => []),
 			connections: computed(() => connections as CanvasConnection[]),
 		});
 

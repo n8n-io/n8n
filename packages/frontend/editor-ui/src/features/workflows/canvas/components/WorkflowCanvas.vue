@@ -9,6 +9,7 @@ import { throttledRef } from '@vueuse/core';
 import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -67,7 +68,6 @@ const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(vie
 
 const {
 	nodes: mappedWorkflowNodes,
-	groupNodes: mappedGroupNodes,
 	connections: mappedConnections,
 	nodeDimensionsById,
 } = useCanvasMapping({
@@ -75,10 +75,17 @@ const {
 	connections,
 	workflowObject,
 	renderData,
-	readOnly: readOnlyRef,
-	suppressInteraction: suppressInteractionRef,
 	isExperimentalNdvActive,
 });
+
+const mappedGroupNodes = computed(() =>
+	mapGroupsToVueFlowNodes({
+		allGroups: workflowDocumentStore.value.allGroups,
+		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+		getNodeDimensions: (id) => nodeDimensionsById.value[id],
+		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+	}),
+);
 
 const mappedNodes = computed(() => [...mappedWorkflowNodes.value, ...mappedGroupNodes.value]);
 

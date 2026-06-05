@@ -143,7 +143,6 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 		nodeHasIssuesById: computed(() => ({})),
 		nodeDimensionsById: computed(() => ({})),
 		nodes: computed(() => []),
-		groupNodes: computed(() => []),
 		connections: computed(() => []),
 	}),
 }));
