@@ -28,7 +28,10 @@ import { InstalledPackagesRepository } from '../installed-packages.repository';
 import { executeNpmCommand } from '../npm-utils';
 
 vi.mock('node:fs/promises');
-vi.mock('node:child_process');
+// Use a bare `vi.fn()` rather than the auto-mock: the auto-mock keeps
+// execFile's `util.promisify.custom` symbol, so `promisify(execFile)` in the
+// service resolves to that custom impl and never calls `execFile` itself.
+vi.mock('node:child_process', () => ({ execFile: vi.fn() }));
 vi.mock('axios');
 vi.mock('../community-node-types-utils', async () => ({
 	getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
