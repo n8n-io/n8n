@@ -65,7 +65,13 @@ export interface StartContext {
 	baseUrl?: string;
 }
 
-export type LoadBalancerPolicy = 'first' | 'round_robin' | 'random' | 'least_conn' | 'ip_hash';
+export type LoadBalancerPolicy =
+	| 'first'
+	| 'round_robin'
+	| 'random'
+	| 'least_conn'
+	| 'ip_hash'
+	| 'cookie';
 
 export interface StackConfig {
 	mains?: number;
@@ -89,6 +95,9 @@ export interface StackConfig {
 	 * or `webhooks > 0` (anything that triggers the LB to start).
 	 * Defaults to `'first'` — sticky to main #1, useful for UI debuggability.
 	 * Benchmarks should set `'round_robin'` to actually distribute load.
+	 * Multi-main e2e tests should set `'cookie'` so a single client stays pinned
+	 * to one main across probe flaps (otherwise editor push WebSocket and
+	 * `/webhook-test/...` traffic can flip mid-test).
 	 */
 	lbPolicy?: LoadBalancerPolicy;
 	/**

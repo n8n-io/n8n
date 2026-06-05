@@ -38,7 +38,16 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'queue', config: { workers: 1 } },
 	{
 		name: 'multi-main',
-		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+		config: {
+			mains: 2,
+			workers: 1,
+			services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
+			// Cookie affinity pins a Playwright worker's session (editor push
+			// WebSocket + /webhook-test/... proxy) to one main across LB probe
+			// flaps. Without it, `lb_policy first` flips traffic to main #2 when
+			// main #1 misses a probe, breaking webhook tests mid-run.
+			lbPolicy: 'cookie',
+		},
 	},
 ];
 

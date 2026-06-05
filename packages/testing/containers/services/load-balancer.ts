@@ -31,10 +31,22 @@ function buildCaddyConfig(
 	const mainBackends = mainUpstreams.join(' ');
 	const webhookBackends = webhookUpstreams.join(' ');
 
-	const sharedReverseProxyBlock = `    lb_policy ${policy}
+	// `cookie` pins a client to one upstream across probe flaps. Caddy's default
+	// fallback for the first request is `random`; we use `first` so initial
+	// traffic still lands on main #1 (the expected leader) for UI debuggability.
+	const lbDirective =
+		policy === 'cookie'
+			? `lb_policy cookie n8n_lb {
+      fallback first
+    }`
+			: `lb_policy ${policy}`;
 
-    # Health check
-    health_uri /healthz
+	const sharedReverseProxyBlock = `    ${lbDirective}
+
+    # Health check — /healthz/readiness only flips to 200 after start() finishes
+    # mounting webhook-test routes and multi-main leader election settles.
+    # /healthz returns 200 the moment Express is listening, which is too early.
+    health_uri /healthz/readiness
     health_interval 10s
 
     # Timeouts
