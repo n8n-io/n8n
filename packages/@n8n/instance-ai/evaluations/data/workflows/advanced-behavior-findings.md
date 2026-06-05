@@ -74,22 +74,29 @@ proxy reproduced the scripted shape, not whether the scenario passed.
 | self-corrects | **Yes** | Steered the correction through plan **rejection** (`rejection=8, questions=3, approval=1`). Built "Daily Hacker News Top **3** to Slack" → corrected count + #engineering, not #news. | PASS (2/2) |
 | wrong-answer | **No (normalised, as predicted)** | The wrong email never reached the agent; proxy resolved straight to #standups. Build contains no email node. The "pass" means the error was dropped, not that an error was handled. | PASS (1/1) |
 | impatient | **Inconclusive from pass/fail** | Build succeeded with defaults. Note: the scenario only asserts the payload is stored, so PASS does **not** confirm the proxy held the "use defaults" line — it answers the agent's questions concretely (`answer_questions`), which is cooperative. Read the transcript to judge whether impatience survived. | PASS (1/1) |
-| post-build-change | **Yes — prediction was wrong** | Proxy sent the post-build follow-up (`send_follow_up_message`: "Change the schedule to run hourly instead of daily at 9am") rather than `declare_done`. Final schedule is hourly. The follow-up loop fires for a clearly post-build modification. | PASS (1/1) |
+| post-build-change | **No — change can't be timed** | A follow-up *does* fire (`send_follow_up_message`: "Change the schedule to run hourly…"), but at the **first** decide opportunity — right after plan approval, **before** `build-workflow` runs — so the change is folded into the initial build, not applied as a post-build edit. The PASS only proves the final schedule is hourly; it can't distinguish "built hourly from the start" from "built daily, then edited." | PASS (1/1) — but doesn't prove post-build timing |
 
 ### Notes
-- **post-build-change** overturned the pre-registered hypothesis: the `declare_done` bias in `buildFollowUpPrompt` did **not** suppress a genuine post-build change. The follow-up loop works as the ticket assumed.
+- **post-build-change** — the scenario PASS is misleading and the earlier "hypothesis overturned" read was wrong. Per-turn transcript (`workflow-eval-…15-19-49`):
+  - Turn 1: opener → `submit-plan` → plan **approved** (no `build-workflow` yet).
+  - Turn 2: the follow-up "Change the schedule to run hourly" lands **in the same turn** as the first `build-workflow` call.
+  So the modification arrives pre-build and gets folded in. Verify order via the transcript step view (`build-workflow` tool-call position vs the follow-up `userMessage` turn).
+- **Two structural causes** (both confirmed against the code):
+  1. The multi-turn loop is `settle → decide → (send | done)` with no wait/defer (`harness/chat-loop.ts:200`), so the proxy can't hold a message for a later condition.
+  2. The proxy is **state-blind**: `ingestEvents` receives the full SSE stream but keeps only agent **text** (`utils/user-proxy/index.ts:93`), so it has no "is the workflow built yet?" signal to gate on.
+  - Inline script directions (parenthetical notes / screenplay beats) are reliably stripped but not enacted — notation isn't the lever; the decision logic is.
 - **wrong-answer / impatient**: a scenario PASS is necessary but not sufficient to show the *behaviour* was exercised — both can pass while the proxy normalises the pattern. The calibration signal is the **transcript + proxy decision stats**, not pass/fail. A behaviour-judge grader (TRUST-93) would close this gap.
 - Earlier post-build-change drafts using Google Sheets / empty-array edge cases failed on orthogonal build-quality issues (unfilled `<__PLACEHOLDER_VALUE__…>` sheet name; HTTP `[]` → 0 items skips downstream nodes). Switched to HTTP-fetch + Slack and scoped to the single behaviour-proving scenario so the case isn't masked by unrelated builder flake.
 - Harness fix required to run at all: the eval generated `eval-${uuid}` thread IDs, which the server now rejects (`POST /rest/instance-ai/threads` validates `threadId` as a bare UUID). Fixed in `harness/runner.ts`.
 
 ## Decision (per TRUST-108)
 
-- All patterns reproduced reliably with the existing `conversation` field → no
-  schema change; record results and close.
-- Proxy normalises a pattern away → file a follow-up to either (a) adjust the
-  proxy prompt to support adversarial / error-shaped scripting (small tweaks are
-  in scope; structural rewrites are a separate ticket), or (b) add structured
-  behaviour controls (e.g. `behaviorPatterns`, `corrections`). Adding fields to
-  `WorkflowTestCase` is explicitly out of scope for this ticket.
+- **self-correct → no schema change.** A mid-build change of mind is delivered by the proxy (via plan rejection) and applied by the agent. Authorable with the `conversation` field as-is.
+- **post-build timing → proxy-prompt/loop work + the state-control spike.** The change can't be timed today; the follow-up always fires at the first opportunity and is folded into the initial build. Not a `WorkflowTestCase` schema gap — the fix is in the proxy/loop. (Verifying change-after-build order is already free via the transcript step view.)
+- **wrong-answer / impatient**: expressible in `conversation[0]`, but whether the cooperative proxy *preserves* them can only be judged from the transcript — the behaviour-judge grader's job (TRUST-93), not a new field. Adding fields to `WorkflowTestCase` is out of scope for this ticket.
 
-_Verdict (N=1, needs repeats to firm up): self-corrects and post-build-change reproduce reliably with the existing `conversation` field — no change needed. wrong-answer normalises away, and impatient can't be confirmed from pass/fail. Neither is a clear schema gap: both are expressible in `conversation[0]`, but whether the cooperative proxy *preserves* them can only be judged from the transcript — which is the behaviour-judge grader's job (TRUST-93), not a new `WorkflowTestCase` field. Recommendation: keep the four cases, lean on TRUST-93 to grade behaviour fidelity, and only consider a small proxy-prompt tweak if we later want wrong-answer/impatient to reliably hold their shape._
+### Recommendations
+1. **Give the proxy build-state awareness** — surface a timeline from the events it already receives (reuse `buildTranscriptFromEvents`), and teach `decideFollowUp` to honor timing directions.
+2. **For true post-build timing, add a `defer` decision to the loop** — gated on a quick spike: does the planned build self-progress as a tracked background task, or only fire when the user speaks? (Overlaps the deterministic replay / state-control ticket, TRUST-149.)
+
+_Verdict (N=1, needs repeats to firm up): self-correct reproduces with the existing `conversation` field — no change needed. Post-build timing is genuinely broken (folded-in, not deferred) and needs proxy-prompt/loop work (rec. 1) plus the state-control spike (rec. 2). wrong-answer normalises away and impatient can't be confirmed from pass/fail; both await TRUST-93 behaviour grading rather than a schema change._

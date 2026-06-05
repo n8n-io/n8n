@@ -425,7 +425,11 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 				typeof interaction.approved === 'boolean'
 					? ` <em>(${interaction.approved ? 'approved' : 'rejected'})</em>`
 					: '';
-			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
+			const resume = `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
+			const input = interaction.userInput
+				? `<div class="transcript-answer">👤 ${escapeHtml(interaction.userInput)}</div>`
+				: '';
+			return `${resume}${input}`;
 		}
 		case 'tool-call':
 			return null; // surfaced in the aggregate tool-names line at the bottom
