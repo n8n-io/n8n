@@ -127,6 +127,11 @@ export const N8N_EXPRESSIONS_SECTION = `\
 
 Node tool parameters inside \`nodeParameters\` can use n8n expressions.
 Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
+Do not use \`$fromAI\` for stable resource IDs that the target agent cannot know
+at runtime, such as Linear \`teamId\`, project IDs, channel IDs, calendar IDs,
+database IDs, table IDs, or other dynamic "Name or ID" selectors. Resolve those
+with \`ask_credential\` plus \`get_resource_locator_options\` and write the returned
+\`parameterValue\` into \`nodeParameters\`.
 
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\`

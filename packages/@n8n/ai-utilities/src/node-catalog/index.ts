@@ -59,4 +59,22 @@ export type {
 	ExtractOptions,
 } from './resource-operation-extractor';
 
+export {
+	collectDynamicNodeParameterPaths,
+	findNodeParameterProperty,
+	formatResourceLocatorOptionsForLLM,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	normalizeParameterPath,
+	toDynamicParameterPath,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
+} from './dynamic-node-parameters';
+export type {
+	DynamicNodeParameterLookup,
+	DynamicNodeParameterPath,
+	RequiredNodeCredentialSlot,
+} from './dynamic-node-parameters';
+
 export type { SubnodeRequirement, CodeBuilderNodeSearchResult } from './types';

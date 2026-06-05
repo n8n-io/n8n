@@ -11,6 +11,8 @@ import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { CredentialTypes } from '@/credential-types';
+import type { NodeTypes } from '@/node-types';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -38,6 +40,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
+	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -54,6 +58,8 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		dynamicNodeParametersService,
+		nodeTypes,
 	);
 
 	return { service, agentsService, secureRuntime, agentTaskService, agentRepository };

@@ -18,6 +18,8 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
+import { NodeTypes } from '@/node-types';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
@@ -29,6 +31,7 @@ import {
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
@@ -191,6 +194,8 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	getTools(
@@ -201,7 +206,7 @@ export class AgentsBuilderToolsService {
 	): BuilderTools {
 		return {
 			json: this.getJsonTools(agentId, projectId, credentialProvider, user),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider),
+			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
 
@@ -482,6 +487,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
@@ -695,6 +701,12 @@ export class AgentsBuilderToolsService {
 			createSkillTool,
 			createTaskTool,
 			listWorkflowsTool,
+			buildGetResourceLocatorOptionsTool({
+				dynamicNodeParametersService: this.dynamicNodeParametersService,
+				nodeTypes: this.nodeTypes,
+				user,
+				projectId,
+			}),
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,
 				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
