@@ -195,7 +195,6 @@ type RuntimeSandboxEntry = {
 const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
-const SHORT_RUN_ID_LEN = 8;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
 function slugifySandboxName(value: string, maxLen: number): string {
@@ -218,19 +217,11 @@ function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
-function buildThreadScopedSandboxName(
-	threadId: string,
-	namePrefix: string | undefined,
-	runId: string | undefined,
-): string {
+function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
 	const parts: string[] = [];
 	if (namePrefix) {
 		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
 		if (prefixSlug) parts.push(prefixSlug);
-	}
-	if (runId) {
-		const runSlug = slugifySandboxName(runId, SHORT_RUN_ID_LEN);
-		if (runSlug) parts.push(runSlug);
 	}
 	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
 	if (threadSlug) parts.push(threadSlug);
@@ -242,7 +233,6 @@ function buildThreadScopedSandboxName(
 function buildThreadScopedSandboxLabels(
 	threadId: string,
 	namePrefix: string | undefined,
-	runId: string | undefined,
 ): Record<string, string> {
 	const baseName = getThreadScopedSandboxName(threadId);
 	const labels: Record<string, string> = {
@@ -250,24 +240,19 @@ function buildThreadScopedSandboxLabels(
 		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
 	};
 	if (namePrefix) labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
-	if (runId) labels.run_id = slugifySandboxLabel(runId, SANDBOX_LABEL_MAX_LEN);
 	return labels;
 }
 
-function withThreadScopedSandboxIdentity(
-	config: SandboxConfig,
-	threadId: string,
-	runId?: string,
-): SandboxConfig {
+function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, runId);
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
 	return {
 		...config,
 		id: name,
 		name,
 		labels: {
-			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, runId),
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix),
 			...config.labels,
 		},
 	};
@@ -825,7 +810,6 @@ export class InstanceAiService {
 	private async getOrCreateWorkspaceEntry(
 		threadId: string,
 		user: User,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
 		const existing = this.sandboxes.get(threadId);
 		if (existing) {
@@ -840,7 +824,7 @@ export class InstanceAiService {
 		const pending = this.sandboxCreations.get(threadId);
 		if (pending) return await pending;
 
-		const creation = this.createWorkspaceEntry(threadId, user, runId);
+		const creation = this.createWorkspaceEntry(threadId, user);
 		this.sandboxCreations.set(threadId, creation);
 		try {
 			return await creation;
@@ -854,9 +838,8 @@ export class InstanceAiService {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const entry = await this.getOrCreateWorkspaceEntry(threadId, user, runId);
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
 		if (entry) await this.ensureWorkspaceSetup(entry, context);
 		return entry;
 	}
@@ -881,13 +864,8 @@ export class InstanceAiService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(
-			await this.resolveSandboxConfig(user),
-			threadId,
-			runId,
-		);
+		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config, {
@@ -3158,7 +3136,7 @@ export class InstanceAiService {
 
 				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
 				const getSandboxEntry = async () => {
-					sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
+					sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user).catch(
 						(error: unknown) => {
 							sandboxEntryPromise = undefined;
 							throw error;
@@ -3168,7 +3146,7 @@ export class InstanceAiService {
 					return await sandboxEntryPromise;
 				};
 				const getSetupSandboxEntry = async () => {
-					return await this.getOrCreateWorkspace(threadId, user, context, runId);
+					return await this.getOrCreateWorkspace(threadId, user, context);
 				};
 
 				const scopeWorkspaceForAgent = async (

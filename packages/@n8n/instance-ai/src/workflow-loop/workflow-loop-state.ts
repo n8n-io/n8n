@@ -79,6 +79,7 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
+	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
@@ -121,6 +122,7 @@ export const attemptRecordSchema = z.object({
 	workflowId: z.string().optional(),
 	executionId: z.string().optional(),
 	failureSignature: z.string().optional(),
+	workflowInspection: z.string().optional(),
 	diagnosis: z.string().optional(),
 	fixApplied: z.string().optional(),
 	remediationCategory: remediationCategorySchema.optional(),
@@ -325,6 +327,7 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
+	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
 	failedNodeName: z.string().optional(),
 	diagnosis: z.string().optional(),
