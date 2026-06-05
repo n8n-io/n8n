@@ -1,3 +1,11 @@
+## [1.123.53](https://github.com/n8n-io/n8n/compare/n8n@1.123.52...n8n@1.123.53) (2026-06-05)
+
+
+### Bug Fixes
+
+* Backport bumps ([#31727](https://github.com/n8n-io/n8n/issues/31727)) ([410418a](https://github.com/n8n-io/n8n/commit/410418a741e5b703a61ab968e8beda6f70fc0593))
+
+
 ## [1.123.52](https://github.com/n8n-io/n8n/compare/n8n@1.123.51...n8n@1.123.52) (2026-06-04)
 
 
