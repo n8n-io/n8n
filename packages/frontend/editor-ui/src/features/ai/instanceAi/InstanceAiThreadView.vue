@@ -33,7 +33,7 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -503,7 +503,19 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-	thread.closeSSE();
+	// Don't tear down the event stream on a transient remount of the SAME thread
+	// (entering the module from elsewhere remounts this view); closing SSE
+	// mid-run would interrupt the streaming response. Only close when actually
+	// navigating away from this thread.
+	const current = router.currentRoute.value;
+	const threadIdParam = Array.isArray(current.params.threadId)
+		? current.params.threadId[0]
+		: current.params.threadId;
+	const stillOnThisThread =
+		current.name === INSTANCE_AI_THREAD_VIEW && threadIdParam === props.threadId;
+	if (!stillOnThisThread) {
+		thread.closeSSE();
+	}
 	contentResizeObserver?.disconnect();
 });
 
