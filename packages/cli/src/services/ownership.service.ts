@@ -147,6 +147,19 @@ export class OwnershipService {
 		}
 	}
 
+	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: { projectId, role: 'workflow:owner' },
+			select: ['workflowId'],
+		});
+		await Promise.all(
+			rows.map(
+				async ({ workflowId }) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
+	}
+
 	addOwnedByAndSharedWith(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing,
 	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;

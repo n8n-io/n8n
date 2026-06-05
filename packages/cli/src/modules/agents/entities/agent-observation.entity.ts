@@ -1,21 +1,21 @@
 import { WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index } from '@n8n/typeorm';
 
-export type ObservationScopeKind = 'thread' | 'resource';
 export type ObservationMarker = 'critical' | 'important' | 'info' | 'completion';
 export type ObservationStatus = 'active' | 'superseded' | 'dropped';
 
 @Entity({ name: 'agents_observations' })
-@Index(['scopeKind', 'scopeId', 'status', 'createdAt', 'id'])
-@Index(['scopeKind', 'scopeId', 'createdAt', 'id'])
+@Index(['agentId', 'observationScopeId', 'status', 'createdAt', 'id'])
+@Index(['agentId', 'observationScopeId', 'createdAt', 'id'])
+@Index(['observationScopeId'])
 @Index(['parentId'])
 @Index(['supersededBy'])
 export class AgentObservationEntity extends WithTimestampsAndStringId {
-	@Column({ type: 'varchar', length: 20 })
-	scopeKind: ObservationScopeKind;
+	@Column({ type: 'varchar', length: 36 })
+	agentId: string;
 
 	@Column({ type: 'varchar', length: 255 })
-	scopeId: string;
+	observationScopeId: string;
 
 	@Column({ type: 'varchar', length: 16 })
 	marker: ObservationMarker;

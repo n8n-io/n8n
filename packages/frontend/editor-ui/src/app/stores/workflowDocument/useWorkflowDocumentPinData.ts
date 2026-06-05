@@ -66,27 +66,27 @@ export function getPinDataSize(
 	}, 0);
 }
 
-// TODO: Consider replacing the plain object ref with a reactive Map for per-node
-// reactivity and a more natural fit with CRDT Y.Map when collaborative editing lands.
 export function useWorkflowDocumentPinData() {
-	const pinData = ref<IPinData>({});
+	const pinnedDataByNodeName = ref<IPinData>({});
 
 	const onPinnedDataChange = createEventHook<PinDataChangeEvent>();
 
 	function applyPinData(data: IPinData, action: ChangeAction = CHANGE_ACTION.UPDATE) {
-		pinData.value = data;
+		pinnedDataByNodeName.value = data;
 		void onPinnedDataChange.trigger({ action, payload: { pinData: data } });
 	}
 
 	function applyNodePinData(nodeName: string, data: INodeExecutionData[]) {
-		const action: ChangeAction = pinData.value[nodeName] ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD;
-		pinData.value = { ...pinData.value, [nodeName]: data };
+		const action: ChangeAction = pinnedDataByNodeName.value[nodeName]
+			? CHANGE_ACTION.UPDATE
+			: CHANGE_ACTION.ADD;
+		pinnedDataByNodeName.value = { ...pinnedDataByNodeName.value, [nodeName]: data };
 		void onPinnedDataChange.trigger({ action, payload: { nodeName, data } });
 	}
 
 	function applyUnpin(nodeName: string) {
-		const { [nodeName]: _, ...rest } = pinData.value;
-		pinData.value = rest;
+		const { [nodeName]: _, ...rest } = pinnedDataByNodeName.value;
+		pinnedDataByNodeName.value = rest;
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName, data: undefined },
@@ -94,11 +94,11 @@ export function useWorkflowDocumentPinData() {
 	}
 
 	function applyRenamePinDataNode(oldName: string, newName: string) {
-		if (pinData.value[oldName]) {
-			const { [oldName]: renamed, ...rest } = pinData.value;
-			pinData.value = { ...rest, [newName]: renamed };
+		if (pinnedDataByNodeName.value[oldName]) {
+			const { [oldName]: renamed, ...rest } = pinnedDataByNodeName.value;
+			pinnedDataByNodeName.value = { ...rest, [newName]: renamed };
 		}
-		Object.values(pinData.value)
+		Object.values(pinnedDataByNodeName.value)
 			.flatMap((executionData) =>
 				executionData.flatMap((nodeExecution) =>
 					Array.isArray(nodeExecution.pairedItem)
@@ -113,7 +113,7 @@ export function useWorkflowDocumentPinData() {
 			});
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.UPDATE,
-			payload: { nodeName: newName, data: pinData.value[newName] },
+			payload: { nodeName: newName, data: pinnedDataByNodeName.value[newName] },
 		});
 	}
 
@@ -134,15 +134,15 @@ export function useWorkflowDocumentPinData() {
 	}
 
 	function getPinDataSnapshot(): IPinData {
-		return { ...pinData.value };
+		return { ...pinnedDataByNodeName.value };
 	}
 
 	function getNodePinData(nodeName: string): INodeExecutionData[] | undefined {
-		return pinData.value[nodeName];
+		return pinnedDataByNodeName.value[nodeName];
 	}
 
 	return {
-		pinData: readonly(pinData),
+		pinnedDataByNodeName: readonly(pinnedDataByNodeName),
 		setPinData,
 		pinNodeData,
 		unpinNodeData,

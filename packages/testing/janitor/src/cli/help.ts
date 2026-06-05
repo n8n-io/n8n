@@ -29,8 +29,6 @@ Analysis Options:
   --files=<p1,p2>    Analyze multiple files (comma-separated)
   --json             Output as JSON
   --verbose, -v      Detailed output with suggestions
-  --fix              Preview fixes (dry run)
-  --fix --write      Apply fixes to disk
   --list, -l         List available rules
   --allow-in-expect  Skip selector-purity violations inside expect()
   --ignore-baseline  Show all violations, ignoring .janitor-baseline.json
@@ -41,7 +39,6 @@ Examples:
   playwright-janitor --rule=dead-code        # Run specific rule
   playwright-janitor inventory               # Show codebase structure
   playwright-janitor impact --file=pages/X   # Show what tests are affected
-  playwright-janitor --fix --write           # Apply auto-fixes
 
 For command-specific help:
   playwright-janitor rules --help
@@ -207,6 +204,77 @@ Examples:
   playwright-janitor orchestrate --shards=14 | jq '.shards[0].specs'
   playwright-janitor orchestrate --shards=8 --impact
   playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts
+`);
+}
+
+// --changed-files accepts repo-root-relative paths, newline-separated OR
+// comma-separated. Same format as ci-filter's `changed-files` output.
+// Example: --changed-files="packages/cli/src/x.ts
+// packages/workflow/src/y.ts"
+
+export function showAffectedPackagesHelp(): void {
+	console.log(`
+Affected Packages - List workspace packages affected by changed files
+
+Walks the pnpm workspace dependency graph: directly-affected packages plus
+everything transitively downstream. Outputs one package name per line.
+
+Usage:
+  janitor affected-packages [--changed-files=<list>]
+
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
+
+When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
+(safe default for local dev).
+
+Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json,
+anything under packages/@n8n/db/ (entities and migrations resolved at
+runtime via the DI container by every consuming package's integration tests).
+`);
+}
+
+export function showScopeHelp(): void {
+	console.log(`
+Scope - Per-package jest/vitest scope from changed files
+
+Usage:
+  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
+
+  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
+  --jest-variant:  'integration' widens the bailout set to catch runtime-
+                   coupled changes invisible to jest --findRelatedTests
+                   (entities, repositories, migrations, shared fixtures).
+                   Defaults to 'unit'.
+
+Output (single line on stdout):
+  SKIP        No in-package files changed
+  RUN_FULL    Config file changed, OR no CHANGED_FILES signal (local dev)
+  <files>     Pass to jest --findRelatedTests / vitest related
+`);
+}
+
+export function showTestScopedHelp(): void {
+	console.log(`
+Test-Scoped - Compute scope and spawn jest/vitest with the right flags
+
+Usage:
+  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+
+  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
+  --jest-variant:  'integration' widens the bailout set to catch runtime-
+                   coupled changes invisible to jest --findRelatedTests
+                   (entities, repositories, migrations, shared fixtures).
+                   Defaults to 'unit'.
+
+Local dev (no $CHANGED_FILES set): runs the full suite.
+CI: scopes via jest --findRelatedTests / vitest related --run, or skips
+if the package wasn't touched. Unrecognised flags are forwarded to the
+runner.
 `);
 }
 

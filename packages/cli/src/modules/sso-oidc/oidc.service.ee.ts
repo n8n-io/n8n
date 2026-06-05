@@ -42,11 +42,17 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	loginEnabled: false,
 	prompt: 'select_account',
 	authenticationContextClassReference: [],
+	additionalScopes: '',
 };
 
 type OidcRuntimeConfig = Pick<
 	OidcConfigDto,
-	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt' | 'authenticationContextClassReference'
+	| 'clientId'
+	| 'clientSecret'
+	| 'loginEnabled'
+	| 'prompt'
+	| 'authenticationContextClassReference'
+	| 'additionalScopes'
 > & {
 	discoveryEndpoint: URL;
 };
@@ -207,9 +213,12 @@ export class OidcService {
 			provisioningConfig.scopesProvisionProjectRoles;
 
 		// Include the custom n8n scope if provisioning is enabled
-		const scope = provisioningEnabled
+		const baseScope = provisioningEnabled
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
+
+		const additionalScopes = this.oidcConfig.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
@@ -240,7 +249,18 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			const e = error as {
+				error?: string;
+				error_description?: string;
+				cause?: unknown;
+				message?: string;
+			};
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				oauthError: e.error,
+				oauthErrorDescription: e.error_description,
+				cause: e.cause ? JSON.stringify(e.cause) : undefined,
+				message: e.message,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -372,9 +392,12 @@ export class OidcService {
 			provisioningConfig.scopesProvisionInstanceRole ||
 			provisioningConfig.scopesProvisionProjectRoles;
 
-		const scope = provisioningEnabled
+		const baseScope = provisioningEnabled
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
+
+		const additionalScopes = config.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
@@ -415,7 +438,18 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			const e = error as {
+				error?: string;
+				error_description?: string;
+				cause?: unknown;
+				message?: string;
+			};
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				oauthError: e.error,
+				oauthErrorDescription: e.error_description,
+				cause: e.cause ? JSON.stringify(e.cause) : undefined,
+				message: e.message,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 

@@ -398,7 +398,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 		// Handle Microsoft Graph validation request
 		if (req.query.validationToken) {
-			res.status(200).send(req.query.validationToken);
+			res.status(200).type('text/plain').send(req.query.validationToken);
 			return { noWebhookResponse: true };
 		}
 

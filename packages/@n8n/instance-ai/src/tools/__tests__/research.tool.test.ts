@@ -1,5 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createResearchTool } from '../research.tool';
 
@@ -18,8 +20,8 @@ function createMockContext(
 		nodeService: {} as never,
 		dataTableService: {} as never,
 		webResearchService: {
-			search: jest.fn(),
-			fetchUrl: jest.fn(),
+			search: vi.fn(),
+			fetchUrl: vi.fn(),
 		},
 		domainAccessTracker: undefined,
 		runId: 'test-run',
@@ -28,12 +30,11 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createAgentCtx(opts: { resumeData?: unknown; suspend?: jest.Mock } = {}) {
+function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
+	const suspend = opts.suspend ?? vi.fn();
 	return {
-		agent: {
-			resumeData: opts.resumeData,
-			suspend: opts.suspend ?? jest.fn(),
-		},
+		resumeData: opts.resumeData,
+		suspend,
 	};
 }
 
@@ -51,10 +52,11 @@ describe('research tool', () => {
 				],
 			};
 			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'n8n docs' },
 				createAgentCtx() as never,
 			);
@@ -69,10 +71,11 @@ describe('research tool', () => {
 		it('should pass maxResults and includeDomains to search', async () => {
 			const searchResponse = { query: 'stripe api', results: [] };
 			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'web-search' as const,
 					query: 'stripe api',
@@ -100,10 +103,11 @@ describe('research tool', () => {
 				],
 			};
 			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test' },
 				createAgentCtx() as never,
 			);
@@ -131,10 +135,11 @@ describe('research tool', () => {
 				],
 			};
 			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test' },
 				createAgentCtx() as never,
 			);
@@ -162,10 +167,11 @@ describe('research tool', () => {
 				],
 			};
 			const context = createMockContext({ permissions: { webSearch: 'always_allow' } });
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test' },
 				createAgentCtx() as never,
 			);
@@ -182,7 +188,8 @@ describe('research tool', () => {
 			const context = createMockContext({ webResearchService: undefined });
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test query' },
 				createAgentCtx() as never,
 			);
@@ -192,11 +199,12 @@ describe('research tool', () => {
 
 		it('should return empty results when webResearchService.search is undefined', async () => {
 			const context = createMockContext({
-				webResearchService: { fetchUrl: jest.fn() } as never,
+				webResearchService: { fetchUrl: vi.fn() } as never,
 			});
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'no search' },
 				createAgentCtx() as never,
 			);
@@ -208,10 +216,10 @@ describe('research tool', () => {
 
 		it('should return empty results when permission is blocked', async () => {
 			const context = createMockContext({ permissions: { webSearch: 'blocked' } });
-			context.webResearchService!.search = jest.fn();
+			context.webResearchService!.search = vi.fn();
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await tool.handler!(
 				{ action: 'web-search' as const, query: 'sensitive query' },
 				createAgentCtx() as never,
 			);
@@ -221,24 +229,24 @@ describe('research tool', () => {
 		});
 
 		it('should suspend when web-search is not yet approved', async () => {
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tracker = {
-				isHostAllowed: jest.fn(),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
-				isWebSearchAllowed: jest.fn().mockReturnValue(false),
-				approveWebSearch: jest.fn(),
-				approveWebSearchOnce: jest.fn(),
+				isHostAllowed: vi.fn(),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
+				isWebSearchAllowed: vi.fn().mockReturnValue(false),
+				approveWebSearch: vi.fn(),
+				approveWebSearchOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
 				permissions: {},
 			});
-			context.webResearchService!.search = jest.fn();
+			context.webResearchService!.search = vi.fn();
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await tool.handler!(
 				{ action: 'web-search' as const, query: 'how to deploy n8n' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -256,21 +264,21 @@ describe('research tool', () => {
 
 		it('should skip suspension when web-search is already approved in tracker', async () => {
 			const tracker = {
-				isHostAllowed: jest.fn(),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
-				isWebSearchAllowed: jest.fn().mockReturnValue(true),
-				approveWebSearch: jest.fn(),
-				approveWebSearchOnce: jest.fn(),
+				isHostAllowed: vi.fn(),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
+				isWebSearchAllowed: vi.fn().mockReturnValue(true),
+				approveWebSearch: vi.fn(),
+				approveWebSearchOnce: vi.fn(),
 			};
 			const context = createMockContext({ domainAccessTracker: tracker as never });
 			const searchResponse = { query: 'q', results: [] };
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await tool.handler!(
 				{ action: 'web-search' as const, query: 'q' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -281,20 +289,20 @@ describe('research tool', () => {
 
 		it('should grant transient approval and run search on resume with allow_once', async () => {
 			const tracker = {
-				isHostAllowed: jest.fn(),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
-				isWebSearchAllowed: jest.fn().mockReturnValue(false),
-				approveWebSearch: jest.fn(),
-				approveWebSearchOnce: jest.fn(),
+				isHostAllowed: vi.fn(),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
+				isWebSearchAllowed: vi.fn().mockReturnValue(false),
+				approveWebSearch: vi.fn(),
+				approveWebSearchOnce: vi.fn(),
 			};
 			const context = createMockContext({ domainAccessTracker: tracker as never });
 			const searchResponse = { query: 'q', results: [] };
-			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
+			context.webResearchService!.search = vi.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await tool.handler!(
 				{ action: 'web-search' as const, query: 'q' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_once' },
@@ -308,19 +316,19 @@ describe('research tool', () => {
 
 		it('should grant persistent approval on resume with allow_domain', async () => {
 			const tracker = {
-				isHostAllowed: jest.fn(),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
-				isWebSearchAllowed: jest.fn().mockReturnValue(false),
-				approveWebSearch: jest.fn(),
-				approveWebSearchOnce: jest.fn(),
+				isHostAllowed: vi.fn(),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
+				isWebSearchAllowed: vi.fn().mockReturnValue(false),
+				approveWebSearch: vi.fn(),
+				approveWebSearchOnce: vi.fn(),
 			};
 			const context = createMockContext({ domainAccessTracker: tracker as never });
-			context.webResearchService!.search = jest.fn().mockResolvedValue({ query: 'q', results: [] });
+			context.webResearchService!.search = vi.fn().mockResolvedValue({ query: 'q', results: [] });
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await tool.handler!(
 				{ action: 'web-search' as const, query: 'q' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_domain' },
@@ -333,19 +341,19 @@ describe('research tool', () => {
 
 		it('should return empty results when resumed with denial', async () => {
 			const tracker = {
-				isHostAllowed: jest.fn(),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
-				isWebSearchAllowed: jest.fn().mockReturnValue(false),
-				approveWebSearch: jest.fn(),
-				approveWebSearchOnce: jest.fn(),
+				isHostAllowed: vi.fn(),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
+				isWebSearchAllowed: vi.fn().mockReturnValue(false),
+				approveWebSearch: vi.fn(),
+				approveWebSearchOnce: vi.fn(),
 			};
 			const context = createMockContext({ domainAccessTracker: tracker as never });
-			context.webResearchService!.search = jest.fn();
+			context.webResearchService!.search = vi.fn();
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await tool.handler!(
 				{ action: 'web-search' as const, query: 'q' },
 				createAgentCtx({ resumeData: { approved: false } }) as never,
 			);
@@ -370,10 +378,11 @@ describe('research tool', () => {
 			const context = createMockContext({
 				permissions: { fetchUrl: 'always_allow' },
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -402,10 +411,11 @@ describe('research tool', () => {
 				contentLength: 70,
 			};
 			const context = createMockContext({ permissions: { fetchUrl: 'always_allow' } });
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -423,7 +433,8 @@ describe('research tool', () => {
 			const context = createMockContext({ webResearchService: undefined });
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -439,12 +450,12 @@ describe('research tool', () => {
 		});
 
 		it('should suspend when domain is not allowed and needs approval', async () => {
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tracker = {
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
@@ -452,7 +463,8 @@ describe('research tool', () => {
 			});
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://unknown-site.com/page' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -477,7 +489,8 @@ describe('research tool', () => {
 			});
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -501,10 +514,11 @@ describe('research tool', () => {
 			const context = createMockContext({
 				permissions: { fetchUrl: 'always_allow' },
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -523,18 +537,19 @@ describe('research tool', () => {
 				contentLength: 15,
 			};
 			const tracker = {
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_once' },
@@ -548,17 +563,18 @@ describe('research tool', () => {
 
 		it('should deny access when resumed with denial', async () => {
 			const tracker = {
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
 			});
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: false },
@@ -582,18 +598,19 @@ describe('research tool', () => {
 				contentLength: 7,
 			};
 			const tracker = {
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_domain' },
@@ -613,18 +630,19 @@ describe('research tool', () => {
 				contentLength: 7,
 			};
 			const tracker = {
-				isHostAllowed: jest.fn().mockReturnValue(false),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
+				isHostAllowed: vi.fn().mockReturnValue(false),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_all' },
@@ -644,19 +662,20 @@ describe('research tool', () => {
 				contentLength: 15,
 			};
 			const tracker = {
-				isHostAllowed: jest.fn().mockReturnValue(true),
-				approveDomain: jest.fn(),
-				approveAllDomains: jest.fn(),
-				approveOnce: jest.fn(),
+				isHostAllowed: vi.fn().mockReturnValue(true),
+				approveDomain: vi.fn(),
+				approveAllDomains: vi.fn(),
+				approveOnce: vi.fn(),
 			};
 			const context = createMockContext({
 				domainAccessTracker: tracker as never,
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://trusted.com' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -677,10 +696,11 @@ describe('research tool', () => {
 			const context = createMockContext({
 				permissions: { fetchUrl: 'always_allow' },
 			});
-			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
+			context.webResearchService!.fetchUrl = vi.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'fetch-url' as const,
 					url: 'https://example.com',
@@ -710,24 +730,24 @@ describe('research tool', () => {
 				// keeps the redirect check live, which is what we want to test.
 				const inputHost = new URL(inputUrl).hostname;
 				const tracker = {
-					isHostAllowed: jest.fn((host: string) => host === inputHost),
-					approveDomain: jest.fn(),
-					approveAllDomains: jest.fn(),
-					approveOnce: jest.fn(),
-					clearRun: jest.fn(),
-					setPendingApprovalHost: jest.fn(),
-					consumePendingApprovalHost: jest.fn(),
-					isAllDomainsApproved: jest.fn().mockReturnValue(false),
-					isWebSearchAllowed: jest.fn().mockReturnValue(false),
-					approveWebSearch: jest.fn(),
-					approveWebSearchOnce: jest.fn(),
+					isHostAllowed: vi.fn((host: string) => host === inputHost),
+					approveDomain: vi.fn(),
+					approveAllDomains: vi.fn(),
+					approveOnce: vi.fn(),
+					clearRun: vi.fn(),
+					setPendingApprovalHost: vi.fn(),
+					consumePendingApprovalHost: vi.fn(),
+					isAllDomainsApproved: vi.fn().mockReturnValue(false),
+					isWebSearchAllowed: vi.fn().mockReturnValue(false),
+					approveWebSearch: vi.fn(),
+					approveWebSearchOnce: vi.fn(),
 				};
 				let captured: AuthorizeUrl | undefined;
 				const context = createMockContext({
 					domainAccessTracker: tracker as never,
 					permissions: {},
 				});
-				context.webResearchService!.fetchUrl = jest.fn(
+				context.webResearchService!.fetchUrl = vi.fn(
 					async (_url: string, options?: { authorizeUrl?: AuthorizeUrl }) => {
 						await Promise.resolve();
 						captured = options?.authorizeUrl;
@@ -743,7 +763,7 @@ describe('research tool', () => {
 				) as never;
 
 				const tool = createResearchTool(context);
-				await tool.execute!(
+				await tool.handler!(
 					{ action: 'fetch-url' as const, url: inputUrl },
 					createAgentCtx() as never,
 				);

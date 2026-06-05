@@ -105,6 +105,9 @@ export function resolveReleaseTagForTrack(track) {
  * release-candidate/<major>.<minor>.x branch, based on the n8n@<x.y.z> tag
  * pointing at the same commit.
  *
+ * Queries tags via `git ls-remote` so it works with shallow checkouts where
+ * the tags aren't present locally.
+ *
  * Returns null if the track tag or release tag is missing.
  *
  * @param { ReleaseTrack } track
@@ -114,15 +117,18 @@ export function resolveRcBranchForTrack(track) {
 		return '1.x';
 	}
 
-	const commit = getCommitForRef(track);
-	if (!commit) return null;
+	const tagToSha = listRemoteTagsWithCommits();
+	const trackSha = tagToSha.get(track);
+	if (!trackSha) return null;
 
-	const tagsAtCommit = listTagsPointingAt(commit);
+	const tagsAtCommit = [...tagToSha]
+		.filter(([, sha]) => sha === trackSha)
+		.map(([tag]) => tag);
+
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
 
-	const version = stripReleasePrefixes(releaseTag);
-	const parsed = semver.parse(version);
+	const parsed = semver.parse(stripReleasePrefixes(releaseTag));
 	if (!parsed) return null;
 
 	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
@@ -264,6 +270,34 @@ export function writeGithubOutput(obj) {
 export function getCommitForRef(ref) {
 	const res = trySh('git', ['rev-parse', `${ref}^{}`]);
 	return res.ok && res.out ? res.out : null;
+}
+
+/**
+ * List every tag on `origin` together with the commit SHA it resolves to.
+ * Uses `git ls-remote --tags`, so it works without a deep local clone.
+ *
+ * Annotated tags appear twice in ls-remote output: once as the tag-object
+ * SHA, then again with a `^{}` suffix and the underlying commit SHA. We
+ * prefer the peeled `^{}` value so the map always points at commits.
+ *
+ * @returns { Map<string, string> } tag name → commit SHA
+ */
+export function listRemoteTagsWithCommits() {
+	const res = trySh('git', ['ls-remote', '--tags', 'origin']);
+	if (!res.ok || !res.out) return new Map();
+
+	const tagToSha = new Map();
+	for (const line of res.out.split('\n')) {
+		const match = line.match(/^([0-9a-f]+)\s+refs\/tags\/(.+)$/);
+		if (!match) continue;
+		const [, sha, ref] = match;
+		if (ref.endsWith('^{}')) {
+			tagToSha.set(ref.slice(0, -3), sha);
+		} else if (!tagToSha.has(ref)) {
+			tagToSha.set(ref, sha);
+		}
+	}
+	return tagToSha;
 }
 
 /**

@@ -27,6 +27,8 @@ const mockDocumentStore = vi.hoisted(() => ({
 	render: {
 		nodeInputsByNodeId: new Map(),
 		nodeOutputsByNodeId: new Map(),
+		pinnedDataByNodeName: {},
+		executionIssuesByNodeName: new Map(),
 	},
 	$id: 'test-store',
 	$dispose: vi.fn(),
@@ -36,6 +38,12 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
 	disposeWorkflowDocumentStore: vi.fn(),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
+		activeExecutionIssuesByNodeName: new Map(),
+	}),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({

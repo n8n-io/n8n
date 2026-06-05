@@ -57,7 +57,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
 	name: string,
-	value: NodeParameterValue,
+	value: NodeParameterValueType,
 ) {
 	const nameParts = name.split('.');
 	let lastNamePart: string | undefined = nameParts.pop();
@@ -458,7 +458,7 @@ export function shouldSkipParamValidation(
 export function createCommonNodeSettings(
 	isToolOrModelNode: boolean,
 	t: (key: BaseTextKey) => string,
-	isOtelEnabled = false,
+	canUseOtelCustomSpanAttributes = false,
 ) {
 	const ret: INodeProperties[] = [];
 
@@ -580,7 +580,7 @@ export function createCommonNodeSettings(
 		},
 	);
 
-	if (isOtelEnabled) {
+	if (canUseOtelCustomSpanAttributes) {
 		ret.push({
 			displayName: t('nodeSettings.customTelemetryTags.displayName'),
 			name: 'customTelemetryTags',

@@ -1,8 +1,14 @@
-import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
-import type { ToolsInput } from '@mastra/core/agent';
-import type { MastraCompositeStore } from '@mastra/core/storage';
-import type { Workspace } from '@mastra/core/workspace';
-import type { Memory } from '@mastra/memory';
+import type {
+	AttributeValue,
+	BuiltTelemetry,
+	BuiltMemory,
+	BuiltTool,
+	CheckpointStore,
+	RuntimeSkillSource,
+	ModelConfig as NativeModelConfig,
+	Telemetry,
+	Workspace,
+} from '@n8n/agents';
 import type {
 	TaskList,
 	InstanceAiAttachment,
@@ -12,7 +18,13 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GenericValue, INodeTypes } from 'n8n-workflow';
+import type {
+	GenericValue,
+	INodeInputConfiguration,
+	INodeTypes,
+	ITaskData,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -21,7 +33,6 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
-import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -30,9 +41,11 @@ import type {
 	WorkflowLoopAction,
 	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
+import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
+
+export type InstanceAiToolRegistry = Map<string, BuiltTool>;
 
 export interface WorkflowSummary {
 	id: string;
@@ -75,12 +88,89 @@ export interface NodeOutputResult {
 	returned: { from: number; to: number };
 }
 
+export interface ResolvedExpressionFailure {
+	/** Dot-path into the parameters tree, e.g. "headers.parameters[0].value". */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** Error message from the expression engine. */
+	error: string;
+	/**
+	 * `unreconstructable-context` flags failures stemming from expression contexts that
+	 * only exist during a live execution (e.g. `$ai`, `$response`, `$request`,
+	 * `$pageCount`, `$secrets`). These are expected and not real expression bugs.
+	 */
+	reason?: 'expression-error' | 'unreconstructable-context';
+}
+
+export interface EmptyExpressionResolution {
+	/** Dot-path into the parameters tree. */
+	path: string;
+	/** The raw expression as authored in the node parameters (incl. leading `=`). */
+	raw: string;
+	/** The resolved value — one of `null`, `undefined`, or `""`. */
+	resolved: null | undefined | '';
+	/** Set when the expression references a non-reconstructed context var (`$vars`, `$secrets`, `$ai`, `$response`, `$request`, `$pageCount`) */
+	reason?: 'unreconstructable-context';
+}
+
+export interface ResolvedNodeParametersResult {
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	/**
+	 * The node's parameters straight from the execution's workflow snapshot, with
+	 * `{{ ... }}` expressions intact. Pair with `resolved` to see which value came
+	 * from which expression. `null` when resolution was refused — see `suppressed`.
+	 */
+	parameters: Record<string, unknown> | null;
+	/**
+	 * Mirror of `parameters` with each expression leaf replaced by its resolved
+	 * value (or `null` if it threw). Oversized leaves are replaced with a
+	 * `{ _truncated, preview, originalLength }` marker.
+	 *
+	 * Returned as a JSON-stringified blob inside `<untrusted_data>` markers —
+	 * resolved values can echo content from upstream nodes (webhook bodies,
+	 * HTTP responses, etc.) and must be treated as untrusted by the agent.
+	 *
+	 * `null` when resolution was refused — see `suppressed`.
+	 */
+	resolved: string | null;
+	/** Flat list of expressions that failed to resolve. Empty when all resolved cleanly. */
+	failedExpressions: ResolvedExpressionFailure[];
+	/**
+	 * Expressions that resolved to `null`, `undefined`, or `""` — common cause of
+	 * "this node ran but a parameter looked empty". Often the root cause for missing
+	 * fields downstream when the runtime did not throw.
+	 */
+	emptyResolutions: EmptyExpressionResolution[];
+	/** Present only when the resolution was refused (e.g. parameter-values gate is off). */
+	suppressed?: 'parameter-values-disabled';
+}
+
+/**
+ * Resolved-parameter bundle attached to a debug failedNode.
+ * Same payload as `ResolvedNodeParametersResult` minus `nodeName` (redundant —
+ * `failedNode.name` already carries it).
+ */
+export type ResolvedParametersDebugBundle = Omit<
+	ResolvedNodeParametersResult,
+	'nodeName' | 'suppressed'
+>;
+
 export interface ExecutionDebugInfo extends ExecutionResult {
 	failedNode?: {
 		name: string;
 		type: string;
 		error: string;
 		inputData?: Record<string, unknown> | string;
+		/**
+		 * Re-resolved parameters for the failed node (parameters tree with expressions
+		 * intact + the same tree with expressions substituted + failed/empty expression
+		 * lists). Omitted when parameter values are gated off, when resolution itself
+		 * errors (debug must not fail), or when the snapshot lacks node-type info.
+		 */
+		resolvedParameters?: ResolvedParametersDebugBundle;
 	};
 	nodeTrace: Array<{
 		name: string;
@@ -161,6 +251,16 @@ export interface InstanceAiWorkflowService {
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Cheap version-only lookup. The adapter projects just `versionId` and
+	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
+	 *  Use to validate per-session caches when the body isn't needed. */
+	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Single fetch returning the SDK WorkflowJSON together with the version it
+	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
+	 *  versionId you'll pin to it land in one round-trip. */
+	getWorkflowSnapshot(
+		workflowId: string,
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
@@ -206,6 +306,11 @@ export interface InstanceAiWorkflowService {
 		versionId: string,
 		data: { name?: string | null; description?: string | null },
 	): Promise<void>;
+	/** Per-node `ITaskData[]` of the workflow's most recent execution.
+	 *  Equivalent to `workflowsStore.getWorkflowRunData` on the canvas — used by
+	 *  workflow validation to detect previously-failed nodes. Returns `null`
+	 *  when the workflow has no execution history or the caller has no access. */
+	getLatestRunData?(workflowId: string): Promise<Record<string, ITaskData[]> | null>;
 }
 
 export interface ExecutionSummary {
@@ -243,6 +348,17 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+	/**
+	 * Re-resolve a node's parameter expressions against a saved execution's data.
+	 * Server-side replay of the editor's resolved-parameter view, so the agent can
+	 * see exactly what each parameter resolved to (and which expressions failed)
+	 * for a given item in a past run.
+	 */
+	getResolvedNodeParameters(
+		executionId: string,
+		nodeName: string,
+		options?: { itemIndex?: number; runIndex?: number },
+	): Promise<ResolvedNodeParametersResult>;
 }
 
 export interface CredentialTypeSearchResult {
@@ -349,6 +465,15 @@ export interface InstanceAiNodeService {
 		parameters: Record<string, unknown>,
 		existingCredentials?: Record<string, unknown>,
 	): Promise<string[]>;
+	/** Resolve a node's input definitions in the context of a full workflow so
+	 *  expression-based dynamic inputs evaluate against current parameter values.
+	 *  Mirrors NodeHelpers.getNodeInputs. Returns the same post-evaluation shape
+	 *  as INodeTypeDescription['inputs']. Used by workflow validation to detect
+	 *  required-but-unconnected inputs (e.g. AI Agent missing language model). */
+	getResolvedNodeInputs?(
+		workflow: WorkflowJSON,
+		nodeName: string,
+	): Promise<Array<NodeConnectionType | INodeInputConfiguration>>;
 }
 
 /** Richer node type shape that includes inputs, outputs, codex, and builderHint.
@@ -377,6 +502,12 @@ export interface DataTableSummary {
 	columns: Array<{ id: string; name: string; type: string }>;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface DataTableReference {
+	id: string;
+	name: string;
+	projectId: string;
 }
 
 export interface DataTableColumnInfo {
@@ -409,6 +540,8 @@ export interface DataTableIdOptions {
 	projectId?: string;
 }
 
+export type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -417,6 +550,10 @@ export interface InstanceAiDataTableService {
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
 	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
+	resolveTableReference?(
+		dataTableId: string,
+		options?: DataTableIdOptions & { permission?: DataTableReferencePermission },
+	): Promise<DataTableReference>;
 	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
@@ -586,6 +723,8 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
+	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
+	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
 	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
@@ -599,8 +738,16 @@ export interface InstanceAiContext {
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
+	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
+	allowedRunWorkflowNames?: ReadonlySet<string>;
+	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	requireRunWorkflowApproval?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
+	 *  — e.g. raw execution-error text) to the LLM. Defaults to `true` when
+	 *  absent so package-only / test contexts behave unchanged. */
+	allowSendingParameterValues?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
@@ -631,6 +778,25 @@ export interface InstanceAiContext {
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * reports build outcomes here so planned build follow-ups and verification
+	 * tools can share the same work item without a detached builder sub-agent.
+	 */
+	workflowBuildContext?: {
+		threadId: string;
+		runId: string;
+		taskId: string;
+		workItemId: string;
+		/**
+		 * True for replan/checkpoint follow-ups where an approved plan already
+		 * exists and the builder may retry directly without creating a new plan.
+		 */
+		allowPostPlanWorkflowCreate?: boolean;
+		plannedTaskService?: PlannedTaskService;
+		workflowTaskService?: WorkflowTaskService;
+		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
+	};
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -642,12 +808,9 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind =
-	| 'delegate'
-	| 'build-workflow'
-	| 'manage-data-tables'
-	| 'research'
-	| 'checkpoint';
+export const PLANNED_TASK_KINDS = ['delegate', 'build-workflow', 'checkpoint'] as const;
+export const STORED_PLANNED_TASK_KINDS = PLANNED_TASK_KINDS;
+export type PlannedTaskKind = (typeof STORED_PLANNED_TASK_KINDS)[number];
 
 export interface PlannedTask {
 	id: string;
@@ -683,6 +846,7 @@ export type PlannedTaskGraphStatus =
 export interface PlannedTaskGraph {
 	planRunId: string;
 	messageGroupId?: string;
+	postBuildRunApprovalRequired?: boolean;
 	status: PlannedTaskGraphStatus;
 	tasks: PlannedTaskRecord[];
 }
@@ -690,6 +854,7 @@ export interface PlannedTaskGraph {
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
@@ -698,7 +863,11 @@ export interface PlannedTaskService {
 	createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph>;
 	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
 	markRunning(
@@ -741,6 +910,9 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
+	/** Rewind a running build-workflow task after a scheduling race prevented
+	 *  its orchestrator follow-up from starting. */
+	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },
@@ -749,6 +921,9 @@ export interface PlannedTaskService {
 	/** Transition an `awaiting_approval` graph → `active` after the user
 	 *  approves the plan. No-op on any other status. */
 	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Transition an `awaiting_approval` graph → `cancelled` after the user
+	 *  denies the plan outright. No-op on any other status. */
+	denyPlan(threadId: string): Promise<PlannedTaskGraph | null>;
 	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
 	 *  the service when a replan or synthesize follow-up couldn't start. */
 	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
@@ -772,36 +947,45 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	storage: MastraCompositeStore;
-	embedderModel?: string;
-	lastMessages?: number;
-	semanticRecallTopK?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
+	observationalMemory?: {
+		observerThresholdTokens: number;
+		reflectorThresholdTokens: number;
+	};
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
+type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersion: string }>;
+
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
- *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *  or a pre-built LanguageModel instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists because Mastra's model router forces all object configs
- *  with a `url` field through `createOpenAICompatible`, which calls `/chat/completions`.
- *  When routing through a proxy that forwards to Vertex AI (which only supports the native
- *  Anthropic Messages API at `/v1/messages`), we must use `@ai-sdk/anthropic` directly to
- *  produce a model instance that speaks the correct protocol. */
+ *  The LanguageModel variant exists for proxy routes that need a provider-native transport.
+ *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
+ *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
+ *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
-	| LanguageModelV2;
+	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
@@ -826,6 +1010,8 @@ export interface InstanceAiTraceRun {
 	startTime: number;
 	endTime?: number;
 	traceId: string;
+	otelTraceId?: string;
+	otelSpanId?: string;
 	dottedOrder: string;
 	executionOrder: number;
 	childExecutionOrder: number;
@@ -839,6 +1025,7 @@ export interface InstanceAiTraceRun {
 
 export interface InstanceAiTraceRunInit {
 	name: string;
+	canonicalName?: string;
 	runType?: string;
 	tags?: string[];
 	metadata?: Record<string, unknown>;
@@ -859,9 +1046,22 @@ export interface InstanceAiToolTraceOptions {
 
 export type TraceReplayMode = 'record' | 'replay' | 'off';
 
+export interface InstanceAiTelemetryOptions {
+	agentRole: string;
+	functionId?: string;
+	executionMode?: 'foreground' | 'background' | 'background_subagent' | 'resume' | 'internal';
+	metadata?: Record<string, AttributeValue | undefined>;
+}
+
 export interface InstanceAiTraceContext {
 	projectName: string;
-	traceKind: 'message_turn' | 'detached_subagent';
+	traceKind:
+		| 'message_turn'
+		| 'orchestrator_resume'
+		| 'background_subagent'
+		| 'detached_subagent'
+		| 'internal_operation';
+	proxyConfig?: ServiceProxyConfig;
 	rootRun: InstanceAiTraceRun;
 	actorRun: InstanceAiTraceRun;
 	/** Compatibility alias for existing foreground-trace call sites. */
@@ -873,14 +1073,19 @@ export interface InstanceAiTraceContext {
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
 	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
+	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
+	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
 	finishRun: (run: InstanceAiTraceRun, options?: InstanceAiTraceRunFinishOptions) => Promise<void>;
 	failRun: (
 		run: InstanceAiTraceRun,
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	) => Promise<void>;
-	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
-	wrapTools: (tools: ToolsInput, options?: InstanceAiToolTraceOptions) => ToolsInput;
+	wrapTools: (
+		tools: InstanceAiToolRegistry,
+		options?: InstanceAiToolTraceOptions,
+	) => InstanceAiToolRegistry;
+	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -906,7 +1111,10 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	/** Existing trace context for legacy callers. Prefer createTraceContext for new background tasks. */
 	traceContext?: InstanceAiTraceContext;
+	/** Lazily creates the background trace only after the task is accepted and starts executing. */
+	createTraceContext?: () => Promise<InstanceAiTraceContext | undefined>;
 	/** When set, links the background task back to a planned task in the scheduler. */
 	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
@@ -937,6 +1145,7 @@ export interface SpawnBackgroundTaskOptions {
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
+		taskContext: { traceContext?: InstanceAiTraceContext },
 	) => Promise<string | BackgroundTaskResult>;
 }
 
@@ -973,12 +1182,12 @@ export interface OrchestrationContext {
 	userId: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	storage: MastraCompositeStore;
+	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
-	domainTools: ToolsInput;
+	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
@@ -997,13 +1206,20 @@ export interface OrchestrationContext {
 			skipped?: boolean;
 		}>;
 	}>;
-	/** Chrome DevTools MCP config — only present when browser automation is enabled */
-	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
-	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	/** Local MCP server (Computer Use daemon) for filesystem, shell, browser, and related tools. */
 	localMcpServer?: LocalMcpServer;
-	/** MCP tools loaded from external servers — available for delegation to sub-agents */
-	mcpTools?: ToolsInput;
+	/** Safe MCP tools loaded from external servers and the local Computer Use gateway. */
+	mcpTools?: InstanceAiToolRegistry;
+	/**
+	 * Runtime-loadable skills available to the agent. Workspace-backed agents may
+	 * replace this with a workspace-materialized source before attaching it.
+	 */
+	runtimeSkills?: RuntimeSkillSource;
+	/**
+	 * Raw bundled runtime skill source. Use this when materializing skills for a
+	 * concrete workspace target so already-materialized paths are not copied.
+	 */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
@@ -1018,17 +1234,15 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
-	/** Sandbox workspace — when present, enables sandbox-based workflow building */
+	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
-	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
-	builderSandboxFactory?: BuilderSandboxFactory;
-	/** Process-local registry for retaining recently finished builder sandboxes. */
-	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
-	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
-	memory?: Memory;
-	/** The current user message being processed — needed because memory.recall() only
+	/** Native memory store — used to retrieve thread message history for sub-agents. */
+	memory?: BuiltMemory;
+	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
@@ -1050,6 +1264,34 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/**
+	 * Resume info for a suspended sub-agent of this thread, looked up from the
+	 * persisted checkpoint store by the deterministic sub-agent resourceId
+	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
+	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
+	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
+	 * + the persistence the planner was running under, so the resume path
+	 * can rebuild the sub-agent with the same persistence and call
+	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
+	 * without stashing anything across its own suspend/resume cycle.
+	 */
+	findSubAgentResumeInfo?: (agentKind: string) => Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	>;
+	/**
+	 * Persist the current user message to thread memory immediately, so it
+	 * survives a restart that happens while the orchestrator is suspended on
+	 * an inline HITL tool call. The SDK only flushes the turn delta on a clean
+	 * loop completion, which a suspended run never reaches — without this the
+	 * user's bubble is invisible on reload until the turn eventually completes.
+	 * Idempotent: safe to call multiple times within a run.
+	 */
+	persistInFlightUserMessage?: () => Promise<void>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */
@@ -1076,16 +1318,14 @@ export interface CreateInstanceAgentOptions {
 	/** Owns MCP client connections + tool listing caches; the service passes its singleton in. */
 	mcpManager: McpClientManager;
 	memoryConfig: InstanceAiMemoryConfig;
-	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
-	memory?: Memory;
+	/** Pre-built native Memory instance. When provided, `memoryConfig` controls options only. */
+	memory?: BuiltMemory;
+	/** Native checkpoint store for HITL/suspend state. */
+	checkpointStore?: CheckpointStore;
 	/**
-	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * `mastra_workspace_*` tools on the orchestrator, which the LLM abused as a `sleep` primitive
-	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
-	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
+	 * Eager-load all orchestrator tools instead of exposing most tools through search/load.
+	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
-	workspace?: Workspace;
-	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;

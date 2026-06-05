@@ -21,6 +21,10 @@ on:
       - 'scripts/smoke-n8n-image.mjs'
   workflow_dispatch:
 
+concurrency:
+  group: docker-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   docker-smoke-test:
     name: 'Docker Build (no cache)'

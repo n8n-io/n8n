@@ -32,10 +32,13 @@ function getApiKey(): string {
 // Agent factory
 // ---------------------------------------------------------------------------
 
+/** Anthropic `providerOptions` payload that marks the preceding block as an ephemeral cache breakpoint. */
+export const EPHEMERAL_CACHE = {
+	anthropic: { cacheControl: { type: 'ephemeral' as const } },
+};
+
 const CACHE_PROVIDER_OPTS = {
-	providerOptions: {
-		anthropic: { cacheControl: { type: 'ephemeral' as const } },
-	},
+	providerOptions: EPHEMERAL_CACHE,
 };
 
 export function createEvalAgent(
@@ -44,12 +47,6 @@ export function createEvalAgent(
 		model?: string;
 		instructions: string;
 		cache?: boolean;
-		/**
-		 * Extended-thinking config:
-		 * - 'adaptive' (default): model decides per request.
-		 * - 'off': no thinking.
-		 * - { budgetTokens: N }: fixed budget mode.
-		 */
 		thinking?: 'adaptive' | 'off' | { budgetTokens: number };
 	},
 ): Agent {
@@ -64,7 +61,7 @@ export function createEvalAgent(
 		agent.instructions(options.instructions);
 	}
 
-	const thinking = options.thinking ?? 'adaptive';
+	const thinking = options.thinking ?? 'off';
 	if (thinking === 'adaptive') {
 		agent.thinking('anthropic', { mode: 'adaptive' });
 	} else if (typeof thinking === 'object') {

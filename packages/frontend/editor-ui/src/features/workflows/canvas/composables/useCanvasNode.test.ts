@@ -27,12 +27,9 @@ describe('useCanvasNode', () => {
 		});
 		expect(result.isDisabled.value).toBe(false);
 		expect(result.isSelected.value).toBeUndefined();
-		expect(result.pinnedDataCount.value).toBe(0);
-		expect(result.hasPinnedData.value).toBe(false);
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(0);
 		expect(result.hasRunData.value).toBe(false);
-		expect(result.issues.value).toEqual([]);
 		expect(result.hasIssues.value).toBe(false);
 		expect(result.executionStatus.value).toBeUndefined();
 		expect(result.executionWaiting.value).toBeUndefined();
@@ -54,13 +51,11 @@ describe('useCanvasNode', () => {
 					[CanvasConnectionMode.Output]: {},
 				},
 				issues: {
-					execution: ['execution_error1'],
 					validation: ['validation_error1'],
 					visible: true,
 				},
 				execution: { status: 'running', waiting: 'waiting', running: true },
 				runData: { outputMap: {}, iterations: 1, visible: true },
-				pinnedData: { count: 1, visible: true },
 				render: {
 					type: CanvasNodeRenderType.Default,
 					options: {
@@ -87,12 +82,10 @@ describe('useCanvasNode', () => {
 		});
 		expect(result.isDisabled.value).toBe(true);
 		expect(result.isSelected.value).toBe(true);
-		expect(result.pinnedDataCount.value).toBe(1);
-		expect(result.hasPinnedData.value).toBe(true);
 		expect(result.runDataOutputMap.value).toEqual({});
 		expect(result.runDataIterations.value).toBe(1);
 		expect(result.hasRunData.value).toBe(true);
-		expect(result.issues.value).toEqual(['execution_error1', 'validation_error1']);
+		expect(result.validationErrors.value).toEqual(['validation_error1']);
 		expect(result.hasIssues.value).toBe(true);
 		expect(result.executionStatus.value).toBe('running');
 		expect(result.executionWaiting.value).toBe('waiting');

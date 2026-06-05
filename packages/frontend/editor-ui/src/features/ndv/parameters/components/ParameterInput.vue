@@ -76,7 +76,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -174,7 +173,6 @@ const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
@@ -239,7 +237,7 @@ const node = computed(() => {
 	const contextNode =
 		expressionLocalResolveCtx?.value &&
 		workflowDocumentStore.value.getNodeByName(expressionLocalResolveCtx.value.nodeName);
-	return contextNode ?? ndvStore.activeNode ?? undefined;
+	return contextNode ?? ndvStore.value.activeNode ?? undefined;
 });
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
@@ -315,7 +313,7 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
+	return getParameterDisplayableOptions(safeOptions, ndvStore.value.activeNode);
 });
 
 const modelValueString = computed<string>(() => {
@@ -479,7 +477,7 @@ const expressionDisplayValue = computed(() => {
 
 const dependentParametersValues = computedAsync(async () => {
 	// Reference dependencies to ensure reactivity tracking
-	void ndvStore.activeNode?.parameters;
+	void ndvStore.value.activeNode?.parameters;
 	void props.parameter;
 	void props.path;
 
@@ -717,7 +715,7 @@ const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 
-const isInputDataEmpty = computed(() => ndvStore.isInputPanelEmpty);
+const isInputDataEmpty = computed(() => ndvStore.value.isInputPanelEmpty);
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
@@ -731,9 +729,9 @@ const showDragnDropTip = computed(
 		(isInputTypeString.value || isInputTypeNumber.value) &&
 		!isModelValueExpression.value &&
 		!isDropDisabled.value &&
-		(!ndvStore.hasInputData || !isInputDataEmpty.value) &&
-		!ndvStore.isMappingOnboarded &&
-		ndvStore.isInputParentOfActiveNode &&
+		(!ndvStore.value.hasInputData || !isInputDataEmpty.value) &&
+		!ndvStore.value.isMappingOnboarded &&
+		ndvStore.value.isInputParentOfActiveNode &&
 		!props.isForCredential,
 );
 
@@ -777,14 +775,14 @@ function getPlaceholder(): string {
 
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).placeholder(props.parameter)
-		: i18n.nodeText(ndvStore.activeNode?.type).placeholder(props.parameter, props.path);
+		: i18n.nodeText(ndvStore.value.activeNode?.type).placeholder(props.parameter, props.path);
 }
 
 function getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).optionsOptionDisplayName(props.parameter, option)
 		: i18n
-				.nodeText(ndvStore.activeNode?.type)
+				.nodeText(ndvStore.value.activeNode?.type)
 				.optionsOptionDisplayName(props.parameter, option, props.path);
 }
 
@@ -792,7 +790,7 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 	return props.isForCredential
 		? i18n.credText(uiStore.activeCredentialType).optionsOptionDescription(props.parameter, option)
 		: i18n
-				.nodeText(ndvStore.activeNode?.type)
+				.nodeText(ndvStore.value.activeNode?.type)
 				.optionsOptionDescription(props.parameter, option, props.path);
 }
 
@@ -833,7 +831,7 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -873,8 +871,8 @@ function trackExpressionEditOpen() {
 			parameter_name: props.parameter.displayName,
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
-			workflow_id: workflowsStore.workflowId,
-			push_ref: ndvStore.pushRef,
+			workflow_id: workflowDocumentStore.value.workflowId,
+			push_ref: ndvStore.value.pushRef,
 			source: props.eventSource ?? 'ndv',
 		});
 	}
@@ -1006,7 +1004,7 @@ function trackWorkflowInputModeEvent(value: string) {
 	};
 	telemetry.track('User chose input data mode', {
 		option: telemetryValuesMap[value],
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_id: node.value?.id,
 	});
 }
@@ -1079,11 +1077,11 @@ function valueChanged(untypedValue: unknown) {
 
 	if (props.parameter.name === 'operation' || props.parameter.name === 'mode') {
 		telemetry.track('User set node operation or mode', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			node_type: node.value?.type,
 			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
-			push_ref: ndvStore.pushRef,
+			push_ref: ndvStore.value.pushRef,
 			parameter: props.parameter.name,
 			value: value as string,
 		});

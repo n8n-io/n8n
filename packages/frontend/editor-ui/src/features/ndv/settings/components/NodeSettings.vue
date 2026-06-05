@@ -44,7 +44,6 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {
@@ -123,7 +122,6 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
@@ -162,7 +160,7 @@ const settingsStore = useSettingsStore();
 const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(() =>
-	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
+	workflowsListStore.getWorkflowById(workflowDocumentStore.value.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -171,7 +169,7 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => props.activeNode ?? ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -278,7 +276,7 @@ const showNoParametersNotice = computed(
 		(parametersByTab.value.params ?? []).filter((item) => item.type !== 'notice').length === 0,
 );
 
-const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
@@ -505,7 +503,7 @@ const nodeSettings = computed(() =>
 	createCommonNodeSettings(
 		isToolNode.value || isModelNode.value,
 		i18n.baseText.bind(i18n),
-		settingsStore.isOtelEnabled,
+		settingsStore.isOtelCustomSpanAttributesEnabled,
 	),
 );
 
@@ -584,7 +582,7 @@ const onFeatureRequestClick = () => {
 	if (node.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: node.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			push_ref: props.pushRef,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',

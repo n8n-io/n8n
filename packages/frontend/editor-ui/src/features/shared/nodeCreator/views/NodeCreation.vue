@@ -27,6 +27,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type Props = {
 	nodeViewScale: number;
@@ -57,6 +58,7 @@ const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const workflowId = useWorkflowId();
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -125,6 +127,7 @@ async function onAskAssistantButtonClick() {
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
+			workflowId: workflowId.value,
 		});
 	}
 }
