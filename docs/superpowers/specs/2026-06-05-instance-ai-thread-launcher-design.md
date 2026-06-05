@@ -143,9 +143,11 @@ experiment cohorts stay clean and spoofed values can't pollute a real source.
   login round-trip.
 - **Feature off:** if Instance AI is unavailable for this instance/user,
   redirect to home (with i18n fallback messaging where relevant).
-- **Source namespacing:** forces `origin: 'external'`; constrains/namespaces the
-  incoming `source` so an external link cannot masquerade as a trusted internal
-  source. Unknown → fallback value.
+- **Source attribution:** forces `origin: 'external'` **and** forces
+  `source: 'external-link'` regardless of the query `source` param — an external
+  link cannot name a trusted internal source (e.g. `template-view`). If external
+  sub-sourcing is ever needed, add an external-only allowlist; for now the single
+  external value is forced. (`origin` is the real experiment guard regardless.)
 - Calls `launch({ origin: 'external', autoSend: false })`. (The route survives
   login automatically: the `authenticated` middleware captures the full
   `pathname + search` as the `redirect` query and the signin flow round-trips it,
