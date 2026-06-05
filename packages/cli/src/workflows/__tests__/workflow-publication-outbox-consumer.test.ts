@@ -132,14 +132,15 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			const callOrder: string[] = [];
 			activeWorkflowManager.remove.mockImplementation(async () => {
 				callOrder.push('remove');
+				return await Promise.resolve();
 			});
 			workflowRepository.update.mockImplementation(async () => {
 				callOrder.push('update');
-				return {} as never;
+				return await Promise.resolve({} as never);
 			});
 			activeWorkflowManager.add.mockImplementation(async () => {
 				callOrder.push('add');
-				return { webhooks: true, triggersAndPollers: true };
+				return await Promise.resolve({ webhooks: true, triggersAndPollers: true });
 			});
 
 			await consumer.processRecord(record);

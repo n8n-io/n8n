@@ -62,6 +62,8 @@ export class WorkflowPublicationOutboxConsumer {
 	// We will rely on the `workflow-publish-wake-up` event in the future, but
 	// will keep the poller as a fallback since pubsub delivery is not ensured.
 	private schedulePollCycle() {
+		if (this.pollTimeout) return;
+
 		this.pollTimeout = setTimeout(async () => {
 			await this.pollCycle();
 			if (!this.isShuttingDown) this.schedulePollCycle();
@@ -104,7 +106,6 @@ export class WorkflowPublicationOutboxConsumer {
 		const { workflowId, publishedVersionId } = record;
 
 		const workflow = await this.workflowRepository.findById(workflowId);
-
 		if (!workflow) {
 			this.logger.warn('Workflow not found, marking outbox record as completed', {
 				workflowId,
