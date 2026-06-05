@@ -213,7 +213,7 @@ describe('SourceControlGitService', () => {
 				git.branch.mockResolvedValue({ current: 'main' } as never);
 				gitService.git = git;
 
-				const fetchSpy = gitService.fetch;
+				const fetchSpy = vi.spyOn(gitService, 'fetch');
 				const checkoutSpy = git.checkout;
 
 				// Call private method using type assertion
