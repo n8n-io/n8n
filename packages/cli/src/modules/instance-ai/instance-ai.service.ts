@@ -2432,21 +2432,6 @@ export class InstanceAiService {
 		};
 	}
 
-	private async ensureThreadExists(
-		memory: BuiltMemory,
-		threadId: string,
-		resourceId: string,
-	): Promise<void> {
-		const existingThread = await memory.getThread(threadId);
-		if (existingThread) return;
-
-		await memory.saveThread({
-			id: threadId,
-			resourceId,
-			title: '',
-		});
-	}
-
 	private createWorkflowTaskServiceWithUiSync(
 		threadId: string,
 		runId: string,
