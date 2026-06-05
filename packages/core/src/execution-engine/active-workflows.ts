@@ -96,6 +96,12 @@ export class ActiveWorkflows {
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
+				// Activation is all-or-nothing: a failed add() leaves the workflow inactive,
+				// so none of its crons should keep running. An earlier node may already have
+				// registered one (crons have no closeFunction), so deregister all of the
+				// workflow's crons here, for every caller.
+				this.scheduledTaskManager.deregisterCrons(workflowId);
+
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
 					{ cause: error, node: triggerNode },
@@ -125,6 +131,11 @@ export class ActiveWorkflows {
 				if (triggerResponses.length === 0) {
 					delete this.activeWorkflows[workflowId];
 				}
+
+				// Activation is all-or-nothing: deregister all of the workflow's crons,
+				// including any an earlier trigger or poll node already registered, so a
+				// partial activation failure never leaves an orphan cron behind.
+				this.scheduledTaskManager.deregisterCrons(workflowId);
 
 				const error = e instanceof Error ? e : new Error(`${e}`);
 

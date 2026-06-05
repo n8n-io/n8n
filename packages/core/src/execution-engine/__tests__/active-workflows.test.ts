@@ -544,5 +544,67 @@ describe('ActiveWorkflows', () => {
 
 			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(false);
 		});
+
+		it('should leave no registered cron when a later trigger node fails activation', async () => {
+			// First trigger registers a cron, second throws → activation fails and the
+			// already-registered cron must not be left behind.
+			workflow.getTriggerNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction
+				.mockImplementationOnce(async () => {
+					realScheduledTaskManager.registerCron(
+						{ workflowId, nodeId: 'trigger-node', timezone: 'GMT', expression: hourly },
+						vi.fn(),
+					);
+					return triggerResponse;
+				})
+				.mockRejectedValueOnce(new Error('Trigger activation failed'));
+
+			await expect(
+				activeWorkflowsReal.add(
+					workflowId,
+					workflow,
+					additionalData,
+					mode,
+					activation,
+					getTriggerFunctions,
+					getPollFunctions,
+				),
+			).rejects.toThrow(WorkflowActivationError);
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+		});
+
+		it('should leave no registered cron when a later poll node fails activation', async () => {
+			// First poll node registers its cron, second fails its test poll → the
+			// registered cron must be torn down. Align the workflow id with the cron
+			// registration key and give it a valid timezone for the real CronJob.
+			workflow.id = workflowId;
+			// @ts-expect-error -- override the readonly timezone for the test
+			workflow.timezone = 'GMT';
+			workflow.getTriggerNodes.mockReturnValue([]);
+			workflow.getPollNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
+			getPollFunctions.mockReturnValue(pollFunctions);
+			pollFunctions.getNodeParameter
+				.calledWith('pollTimes')
+				.mockReturnValue({ item: [{ mode: 'everyMinute' }] });
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null)
+				.mockRejectedValueOnce(new Error('Failed to activate poll trigger'));
+
+			await expect(
+				activeWorkflowsReal.add(
+					workflowId,
+					workflow,
+					additionalData,
+					mode,
+					activation,
+					getTriggerFunctions,
+					getPollFunctions,
+				),
+			).rejects.toThrow(WorkflowActivationError);
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+		});
 	});
 });
