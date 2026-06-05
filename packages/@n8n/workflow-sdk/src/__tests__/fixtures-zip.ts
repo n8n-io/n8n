@@ -24,6 +24,23 @@ interface Manifest {
 	workflows: ManifestEntry[];
 }
 
+function readManifest(): Manifest {
+	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Manifest is controlled fixture file
+	return JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as Manifest;
+}
+
+function findMissingWorkflows(manifest: Manifest): string[] {
+	const missing: string[] = [];
+	for (const entry of manifest.workflows) {
+		if (!entry.success) continue;
+		const filePath = path.join(REAL_WORKFLOWS_DIR, `${entry.id}.json`);
+		if (!fs.existsSync(filePath)) {
+			missing.push(`${entry.id}.json (${entry.name})`);
+		}
+	}
+	return missing;
+}
+
 /**
  * Check if the zip file exists
  */
@@ -43,18 +60,7 @@ export function needsExtraction(): boolean {
 		return true; // Zip exists but no manifest - need extraction
 	}
 
-	// Check if any workflow files are missing
-	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Manifest is controlled fixture file
-	const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as Manifest;
-	for (const entry of manifest.workflows) {
-		if (!entry.success) continue;
-		const filePath = path.join(REAL_WORKFLOWS_DIR, `${entry.id}.json`);
-		if (!fs.existsSync(filePath)) {
-			return true;
-		}
-	}
-
-	return false;
+	return findMissingWorkflows(readManifest()).length > 0;
 }
 
 /**
@@ -101,17 +107,7 @@ export function validateAllWorkflowsExist(): void {
 		throw new Error(`Manifest not found: ${MANIFEST_PATH}. Run extraction first.`);
 	}
 
-	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Manifest is controlled fixture file
-	const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as Manifest;
-	const missing: string[] = [];
-
-	for (const entry of manifest.workflows) {
-		if (!entry.success) continue;
-		const filePath = path.join(REAL_WORKFLOWS_DIR, `${entry.id}.json`);
-		if (!fs.existsSync(filePath)) {
-			missing.push(`${entry.id}.json (${entry.name})`);
-		}
-	}
+	const missing = findMissingWorkflows(readManifest());
 
 	if (missing.length > 0) {
 		throw new Error(
