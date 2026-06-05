@@ -1,0 +1,59 @@
+packages/nodes-base/nodes/Supabase/v2/actions/row/Row.resource.ts
+  63764b5a78f7df15 1-226,233-408
+packages/nodes-base/nodes/Supabase/v1/SupabaseV1.node.ts
+  63764b5a78f7df15 1-511
+packages/nodes-base/nodes/Supabase/v2/actions/row/delete.operation.ts
+  63764b5a78f7df15 1-67
+packages/nodes-base/nodes/Supabase/tests/SupabaseV2.node.test.ts
+  63764b5a78f7df15 1-40,43,46-47,54-90,92-150,152-421,495-533,535-555
+packages/nodes-base/nodes/Supabase/v2/actions/row/get.operation.ts
+  63764b5a78f7df15 1-53
+packages/nodes-base/nodes/Supabase/v2/actions/row/update.operation.ts
+  63764b5a78f7df15 1-102
+packages/nodes-base/nodes/Supabase/v2/actions/row/upsert.operation.ts
+  63764b5a78f7df15 1-130
+packages/nodes-base/package.json
+  63764b5a78f7df15 356-357
+packages/nodes-base/nodes/Supabase/v2/SupabaseV2.node.ts
+  63764b5a78f7df15 1-27,29-30,32-36,38-39
+packages/nodes-base/nodes/Supabase/v2/actions/row/getMany.operation.ts
+  63764b5a78f7df15 1-87
+packages/nodes-base/credentials/SupabaseManagementApi.credentials.ts
+  63764b5a78f7df15 1-51
+packages/nodes-base/nodes/Supabase/Supabase.node.ts
+  63764b5a78f7df15 1-2,4-5,7-9,13-23
+packages/nodes-base/nodes/Supabase/tests/Supabase.node.test.ts
+  63764b5a78f7df15 13,16-23
+packages/nodes-base/nodes/Supabase/v2/actions/row/create.operation.ts
+  63764b5a78f7df15 1-98
+packages/nodes-base/nodes/Supabase/v2/actions/router.ts
+  63764b5a78f7df15 1-49
+packages/nodes-base/credentials/SupabaseManagementOAuth2Api.credentials.ts
+  63764b5a78f7df15 1-61
+packages/nodes-base/nodes/Supabase/v2/actions/versionDescription.ts
+  63764b5a78f7df15 2-84
+packages/nodes-base/nodes/Supabase/v2/methods/loadOptions.ts
+  63764b5a78f7df15 1-48
+packages/nodes-base/nodes/Supabase/v2/helpers.ts
+  63764b5a78f7df15 1-3,5-145,149-156,158-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "eaa6b5a467595ca74f910b2616abeabefc5d51dd",
+  "prompts": {
+    "63764b5a78f7df15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9ad3df8-9907-4070-9c21-5067d9ef1975",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 3846,
+      "total_deletions": 1419,
+      "accepted_lines": 2558,
+      "overriden_lines": 12
+    }
+  }
+}
