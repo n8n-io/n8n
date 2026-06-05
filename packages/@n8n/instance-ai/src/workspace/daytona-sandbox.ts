@@ -340,10 +340,15 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	/**
-	 * Run a sandbox operation, recovering once if the remote was stopped/deleted out from
-	 * under us. On a recoverable failure the local handle is reset and the operation is
-	 * retried through the normal start path (resume stopped / recreate gone). Retries at
-	 * most once to avoid loops; a second failure propagates.
+	 * Run a sandbox operation, recovering once if the remote was stopped/archived/deleted out
+	 * from under us. On a recoverable failure the sandbox is resumed (or recreated if gone) and
+	 * the operation is retried exactly once; a second failure propagates.
+	 *
+	 * Replaying the operation is safe because recovery only triggers when the probe confirms
+	 * the remote was NOT running (stopped/archived/gone — see {@link isRecoverable}). In those
+	 * states the toolbox/exec request never reached a live container, so it could not have
+	 * partially executed. Operations on a running sandbox are never retried — their error
+	 * propagates untouched.
 	 */
 	private async recoverAndRetry<T>(op: () => Promise<T>): Promise<T> {
 		try {
