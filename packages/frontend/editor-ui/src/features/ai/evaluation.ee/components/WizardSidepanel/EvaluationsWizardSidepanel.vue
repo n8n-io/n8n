@@ -418,7 +418,7 @@ async function handleRunAgain() {
 }
 
 function handleViewResults() {
-	const runId = wizardStore.activeRunId;
+	const runId = wizardStore.activeRunId ?? latestRun.value?.id;
 	const workflowId = workflowDocumentStore.value?.workflowId;
 	if (runId && workflowId) {
 		void router.push({
