@@ -347,6 +347,46 @@ describe('OtelLifecycleHandler', () => {
 				}),
 			);
 		});
+
+		it('should extract tags from a { tag: [...] } object shape', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: { tag: [{ key: 'env', value: 'prod' }] } as unknown as [],
+					},
+				},
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: expect.objectContaining({ customAttributes: { env: 'prod' } }),
+				}),
+			);
+		});
+
+		it('should return undefined when { tag } is not an array', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart({
+				...baseCtx,
+				workflow: {
+					...baseCtx.workflow,
+					settings: {
+						customTelemetryTags: { tag: 'not-an-array' } as unknown as [],
+					},
+				},
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflow: expect.objectContaining({ customAttributes: undefined }),
+				}),
+			);
+		});
 	});
 
 	describe('onWorkflowResume', () => {
@@ -871,6 +911,38 @@ describe('productionExecutionsOnly filter', () => {
 		await handler.onWorkflowStart(makeWorkflowStartCtx(workflowWithVersionId));
 
 		expect(tracer.startWorkflow).toHaveBeenCalled();
+	});
+});
+
+describe('onReloadOtelConfig', () => {
+	const tracer = mock<ExecutionLevelTracer>();
+	const otelService = mock<OtelService>();
+	const licenseState = mock<LicenseState>();
+
+	function makeHandler() {
+		return new OtelLifecycleHandler(
+			tracer,
+			mock<TraceContextService>(),
+			otelService,
+			makeOtelSettingsService(),
+			mock<OwnershipService>(),
+			mock<Logger>(),
+			licenseState,
+		);
+	}
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('restarts the OTel SDK and refreshes the tracer', async () => {
+		const handler = makeHandler();
+		otelService.restart.mockResolvedValue(undefined);
+
+		await handler.onReloadOtelConfig();
+
+		expect(otelService.restart).toHaveBeenCalledTimes(1);
+		expect(tracer.refreshTracer).toHaveBeenCalledTimes(1);
 	});
 });
 

@@ -27,6 +27,16 @@ describe('OtelSettingsService', () => {
 		process.env = originalEnv;
 	});
 
+	describe('getPersistedSettings', () => {
+		it('returns undefined when row exists but value is empty', async () => {
+			settingsRepository.findByKey.mockResolvedValue({ value: '' } as Settings);
+
+			const result = await service.getPersistedSettings();
+
+			expect(result).toBeUndefined();
+		});
+	});
+
 	describe('loadEffective', () => {
 		it('returns defaults when DB row is absent and no env vars are set', async () => {
 			settingsRepository.findByKey.mockResolvedValue(null);
