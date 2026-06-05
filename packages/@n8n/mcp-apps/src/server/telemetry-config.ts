@@ -11,7 +11,10 @@ export {
  * `<` is escaped in serialized JSON so values cannot break out of the script.
  */
 export function injectTelemetryConfig(html: string, config: McpAppTelemetryConfig): string {
-	const serialized = JSON.stringify(config).replace(/</g, '\\u003c');
+	const serialized = JSON.stringify(config)
+		.replace(/</g, '\\u003c')
+		.replace(/\u2028/g, '\\u2028')
+		.replace(/\u2029/g, '\\u2029');
 	const tag = `<script>window.${MCP_APP_TELEMETRY_GLOBAL}=${serialized};</script>`;
 
 	const headMatch = /<head[^>]*>/i.exec(html);

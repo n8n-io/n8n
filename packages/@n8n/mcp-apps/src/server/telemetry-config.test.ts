@@ -35,6 +35,16 @@ describe('injectTelemetryConfig', () => {
 		expect(out).toContain('\\u003c/script>');
 	});
 
+	it('escapes JavaScript line and paragraph separators in string values', () => {
+		const out = injectTelemetryConfig('<head></head>', {
+			...config,
+			instanceId: 'line\u2028paragraph\u2029separator',
+		});
+
+		expect(out).toContain('line\\u2028paragraph\\u2029separator');
+		expect(out).not.toContain('line\u2028paragraph\u2029separator');
+	});
+
 	it('falls back to prepending when there is no <head>', () => {
 		const out = injectTelemetryConfig('<body>no head</body>', config);
 		expect(out.startsWith(`<script>window.${MCP_APP_TELEMETRY_GLOBAL}=`)).toBe(true);
