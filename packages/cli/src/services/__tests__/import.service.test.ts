@@ -1,6 +1,7 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
 import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
+import { existsSync } from 'fs';
 import { readdir, readFile } from 'fs/promises';
 import type { Cipher } from 'n8n-core';
 import type { Mock } from 'vitest';
@@ -10,25 +11,27 @@ import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.se
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import { decompressFolder } from '@/utils/compression.util';
+
 import { ImportService } from '../import.service';
 
 // Mock fs/promises
 vi.mock('fs/promises');
+vi.mock('fs');
 
 vi.mock('@/utils/compression.util');
 
-vi.mock('@n8n/backend-common', () => ({
+vi.mock('@n8n/backend-common', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-common')>()),
 	safeJoinPath: vi.fn(),
 }));
 
-// Mock @n8n/db
-vi.mock('@n8n/db', () => ({
-	CredentialsRepository: mock<CredentialsRepository>(),
-	TagRepository: mock<TagRepository>(),
-	DataSource: mock<DataSource>(),
-	// `DataTableColumn` (transitively imported by import.service) extends
-	// `WithTimestampsAndStringId`; provide a no-op so the class evaluates.
-	WithTimestampsAndStringId: class {},
+// Use the real `@n8n/db` exports (entities/repositories are referenced as DI
+// tokens and type metadata throughout the transitive import graph); the test
+// injects mock repositories via the constructor, so the real classes are never
+// instantiated.
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
 }));
 
 describe('ImportService', () => {
@@ -988,17 +991,8 @@ describe('ImportService', () => {
 			const inputDir = '/test/input';
 			const entitiesZipPath = '/test/input/entities.zip';
 
-			// Mock fs module
-			const mockExistsSync = vi.fn().mockReturnValue(true);
-			vi.mock('fs', () => ({
-				existsSync: mockExistsSync,
-			}));
-
-			// Mock decompressFolder
-			const mockDecompressFolder = vi.fn().mockResolvedValue(undefined);
-			vi.mock('@/utils/compression.util', () => ({
-				decompressFolder: mockDecompressFolder,
-			}));
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(decompressFolder).mockResolvedValue(undefined);
 
 			vi.mocked(safeJoinPath).mockReturnValue(entitiesZipPath);
 

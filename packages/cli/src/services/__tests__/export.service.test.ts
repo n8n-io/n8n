@@ -3,7 +3,8 @@ import { type DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-import type * as JestMockExtended from 'vitest-mock-extended';
+
+import { compressFolder } from '@/utils/compression.util';
 
 import { ExportService } from '../export.service';
 
@@ -27,16 +28,11 @@ vi.mock('@/utils/validate-database-type', () => ({
 }));
 
 // Mock @n8n/db
-vi.mock('@n8n/db', () => {
-	// `mock` from vitest-mock-extended is not yet initialised when this hoisted
-	// factory runs, so resolve it lazily via require.
-	const jestMockExtended = require('vitest-mock-extended') as typeof JestMockExtended;
-	return {
-		DataSource: jestMockExtended.mock<DataSource>(),
-		// `sql-utils` imports `DslColumn`; provide a no-op so the import resolves.
-		DslColumn: class {},
-	};
-});
+// Use the real `@n8n/db` exports; the test injects a mock DataSource via the
+// constructor, so the real classes are never instantiated.
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
+}));
 
 describe('ExportService', () => {
 	let exportService: ExportService;
@@ -98,7 +94,6 @@ describe('ExportService', () => {
 		vi.mocked(appendFile).mockResolvedValue(undefined);
 
 		// Mock the compression utility
-		const { compressFolder } = require('@/utils/compression.util');
 		vi.mocked(compressFolder).mockResolvedValue(undefined);
 
 		exportService = new ExportService(mockLogger, mockDataSource, mockCipher);
