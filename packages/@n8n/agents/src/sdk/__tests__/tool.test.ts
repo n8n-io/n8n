@@ -176,6 +176,24 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		});
 	});
 
+	it('includes display metadata from the wrapped tool object when suspending', async () => {
+		const baseTool = makeBuiltTool();
+		const wrapped = {
+			...wrapToolForApproval(baseTool, { requireApproval: true }),
+			metadata: { displayName: 'Display test tool' },
+		};
+		const { ctx, suspendMock } = makeCtx();
+
+		await wrapped.handler!({ id: '1' }, ctx);
+
+		expect(suspendMock).toHaveBeenCalledWith({
+			type: 'approval',
+			toolName: 'testTool',
+			displayName: 'Display test tool',
+			args: { id: '1' },
+		});
+	});
+
 	it('executes original handler when approved on resume', async () => {
 		const baseTool = makeBuiltTool();
 		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });

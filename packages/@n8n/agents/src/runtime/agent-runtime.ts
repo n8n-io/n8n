@@ -81,7 +81,6 @@ import {
 } from './tool-adapter';
 import { isCancellation } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
-import { getToolApprovalDisplayName } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
 import type {
@@ -167,10 +166,6 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 	if (!tool.approval.required && tool.approval.conditional !== true) return true;
 	if (resumeData === undefined) return false;
 	return !isDeniedApprovalResumeData(resumeData);
-}
-
-function shouldSuspendForRequiredApproval(tool: BuiltTool, resumeData: unknown): boolean {
-	return tool.approval?.required === true && resumeData === undefined;
 }
 
 function getToolResumeJsonSchema(tool: BuiltTool): JsonSchema7Type | undefined {
@@ -2227,24 +2222,6 @@ export class AgentRuntime {
 				return makeToolError(new Error(`Invalid tool input: ${result.error}`));
 			}
 			toolInput = result.data as JSONValue;
-		}
-
-		if (shouldSuspendForRequiredApproval(builtTool, resumeData)) {
-			const resumeSchema = getToolResumeJsonSchema(builtTool);
-			if (!resumeSchema) {
-				return makeToolError(new Error(`Tool ${toolName} has no resume schema`));
-			}
-			const displayName = getToolApprovalDisplayName(builtTool);
-			return {
-				outcome: 'suspended',
-				payload: {
-					type: 'approval',
-					toolName,
-					...(displayName ? { displayName } : {}),
-					args: toolInput,
-				},
-				resumeSchema,
-			};
 		}
 
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
