@@ -175,20 +175,22 @@ const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() 
 					<div :class="$style.templateCard">
 						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
 							<template #belowContent>
-								<N8nButton
-									data-test-id="use-template-button"
-									:label="i18n.baseText('template.buttons.tryTemplate')"
-									size="large"
-									@click.stop="openTemplateSetup(templateId, $event)"
-								/>
-								<N8nButton
-									v-if="!instanceAiSettings.isInstanceAiDisabled"
-									data-test-id="start-with-ai-button"
-									:label="i18n.baseText('template.buttons.startWithAi')"
-									type="secondary"
-									size="large"
-									@click.stop="startWithAi"
-								/>
+								<div :class="$style.templateActions">
+									<N8nButton
+										data-test-id="use-template-button"
+										:label="i18n.baseText('template.buttons.tryTemplate')"
+										size="large"
+										@click.stop="openTemplateSetup(templateId, $event)"
+									/>
+									<N8nButton
+										v-if="!instanceAiSettings.isInstanceAiDisabled"
+										data-test-id="start-with-ai-button"
+										:label="i18n.baseText('template.buttons.startWithAi')"
+										type="secondary"
+										size="large"
+										@click.stop="startWithAi"
+									/>
+								</div>
 							</template>
 						</RecommendedTemplateCard>
 					</div>
@@ -246,6 +248,13 @@ const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() 
 	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
+}
+
+.templateActions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .templateCard {
