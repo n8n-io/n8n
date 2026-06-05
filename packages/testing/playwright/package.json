@@ -39,6 +39,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "janitor": "tsx ../janitor/src/cli.ts",
     "janitor:fix": "tsx ../janitor/src/cli.ts --fix --write"
   },

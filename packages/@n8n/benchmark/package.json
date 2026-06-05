@@ -14,6 +14,7 @@
     "start": "./bin/n8n-benchmark",
     "test": "echo \"WARNING: no test specified\" && exit 0",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "benchmark": "zx scripts/run.mjs",
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
     "benchmark-locally": "pnpm benchmark --env local",

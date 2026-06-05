@@ -61,6 +61,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run watch",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && tsc-alias -p tsconfig.build.esm.json && tsc-alias -p tsconfig.build.cjs.json && pnpm copy-tokenizer-json dist/cjs && pnpm copy-tokenizer-json dist/esm",
     "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && tsc-alias -p tsconfig.build.esm.json && tsc-alias -p tsconfig.build.cjs.json && pnpm copy-tokenizer-json dist/cjs && pnpm copy-tokenizer-json dist/esm",

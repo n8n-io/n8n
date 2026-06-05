@@ -32,6 +32,7 @@
     "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",

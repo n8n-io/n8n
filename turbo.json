@@ -24,6 +24,9 @@
 		"typecheck": {
 			"dependsOn": ["^typecheck", "^build"]
 		},
+		"typecheck:tsgo": {
+			"dependsOn": ["^typecheck:tsgo", "^build"]
+		},
 		"format": {},
 		"format:check": {},
 		"lint": {

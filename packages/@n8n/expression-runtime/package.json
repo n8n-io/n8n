@@ -21,7 +21,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --watch --silent false",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit"
   },
   "keywords": [
     "n8n",

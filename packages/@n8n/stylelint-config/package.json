@@ -24,6 +24,7 @@
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "watch": "tsc --watch"
   },
   "dependencies": {
