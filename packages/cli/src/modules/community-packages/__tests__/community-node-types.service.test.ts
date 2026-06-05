@@ -100,7 +100,7 @@ describe('CommunityNodeTypesService', () => {
 				npmVersion: '1.0.0',
 			});
 
-			getCommunityNodeTypes.mockResolvedValue([
+			(getCommunityNodeTypes as unknown as Mock).mockResolvedValue([
 				{ name: 'node-1', packageName: 'package-1', npmVersion: '1.1.0' },
 			]);
 
@@ -125,7 +125,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const ids = Array.from({ length: 250 }, (_, i) => i + 1);
 
-			getCommunityNodeTypes.mockResolvedValue([]);
+			(getCommunityNodeTypes as unknown as Mock).mockResolvedValue([]);
 
 			vi.spyOn(service as any, 'detectUpdates').mockResolvedValue({ typesToUpdate: ids });
 
@@ -134,9 +134,12 @@ describe('CommunityNodeTypesService', () => {
 			// 250 IDs should result in 3 batches
 			expect(getCommunityNodeTypes).toHaveBeenCalledTimes(3);
 
-			const firstCallFilters = getCommunityNodeTypes.mock.calls[0][1].filters.id.$in;
-			const secondCallFilters = getCommunityNodeTypes.mock.calls[1][1].filters.id.$in;
-			const thirdCallFilters = getCommunityNodeTypes.mock.calls[2][1].filters.id.$in;
+			const firstCallFilters = (getCommunityNodeTypes as unknown as Mock).mock.calls[0][1].filters
+				.id.$in;
+			const secondCallFilters = (getCommunityNodeTypes as unknown as Mock).mock.calls[1][1].filters
+				.id.$in;
+			const thirdCallFilters = (getCommunityNodeTypes as unknown as Mock).mock.calls[2][1].filters
+				.id.$in;
 
 			expect(firstCallFilters).toHaveLength(100);
 			expect(secondCallFilters).toHaveLength(100);
@@ -731,7 +734,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should detect new nodes', async () => {
-			getCommunityNodesMetadata.mockResolvedValue([
+			(getCommunityNodesMetadata as unknown as Mock).mockResolvedValue([
 				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
 				{ id: 3, name: 'node-3', npmVersion: '3.0.0', updatedAt: '2024-01-03' },
 			]);
@@ -745,7 +748,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should detect npm version changes', async () => {
-			getCommunityNodesMetadata.mockResolvedValue([
+			(getCommunityNodesMetadata as unknown as Mock).mockResolvedValue([
 				{ id: 1, name: 'node-1', npmVersion: '1.1.0', updatedAt: '2024-01-01' },
 			]);
 
@@ -756,7 +759,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should detect timestamp changes', async () => {
-			getCommunityNodesMetadata.mockResolvedValue([
+			(getCommunityNodesMetadata as unknown as Mock).mockResolvedValue([
 				{ id: 2, name: 'node-2', npmVersion: '2.0.0', updatedAt: '2024-01-05' },
 			]);
 
@@ -769,7 +772,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should return empty typesToUpdate when all nodes are current', async () => {
-			getCommunityNodesMetadata.mockResolvedValue([
+			(getCommunityNodesMetadata as unknown as Mock).mockResolvedValue([
 				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
 				{ id: 2, name: 'node-2', npmVersion: '2.0.0', updatedAt: '2024-01-02' },
 			]);
@@ -781,7 +784,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should detect and remove deleted node types from cache', async () => {
-			getCommunityNodesMetadata.mockResolvedValue([
+			(getCommunityNodesMetadata as unknown as Mock).mockResolvedValue([
 				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
 				// node-2 is missing from metadata, should be removed
 			]);
@@ -797,7 +800,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should return scheduleRetry when getCommunityNodesMetadata throws error', async () => {
-			getCommunityNodesMetadata.mockRejectedValue(new Error('API error'));
+			(getCommunityNodesMetadata as unknown as Mock).mockRejectedValue(new Error('API error'));
 
 			const result = await (service as any).detectUpdates('production');
 
@@ -809,7 +812,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should handle both updates and deletions in same call', async () => {
-			getCommunityNodesMetadata.mockResolvedValue([
+			(getCommunityNodesMetadata as unknown as Mock).mockResolvedValue([
 				{ id: 1, name: 'node-1', npmVersion: '1.1.0', updatedAt: '2024-01-01' }, // updated
 				// node-2 is missing, should be removed
 			]);

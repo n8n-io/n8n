@@ -21,11 +21,15 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 // the controller must be loaded dynamically afterwards.
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
-import type { FlushableResponse } from '../mcp.controller';
+import type { FlushableResponse, McpController as McpControllerType } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
 
-const { McpController } = await import('../mcp.controller');
+let McpController: typeof import('../mcp.controller').McpController;
+
+beforeAll(async () => {
+	({ McpController } = await import('../mcp.controller'));
+});
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
@@ -67,7 +71,7 @@ const createRes = (): FlushableResponse => {
 };
 
 describe('McpController', () => {
-	let controller: McpController;
+	let controller: McpControllerType;
 	const logger = mock<Logger>();
 	const telemetry = { track: vi.fn() } as unknown as Telemetry;
 	const mcpService = {

@@ -19,8 +19,15 @@ vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 vi.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
 vi.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
-const mainHandler = await import('../data-tables.handler');
-const handler = await import('../data-tables.rows.handler');
+// Loaded after the middleware spies above are installed; typed loosely so the
+// suite can invoke individual route entries by index.
+let mainHandler: Record<string, Array<(...args: unknown[]) => unknown>>;
+let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
+
+beforeAll(async () => {
+	mainHandler = (await import('../data-tables.handler')) as unknown as typeof mainHandler;
+	handler = (await import('../data-tables.rows.handler')) as unknown as typeof handler;
+});
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: Mocked<DataTableService>;

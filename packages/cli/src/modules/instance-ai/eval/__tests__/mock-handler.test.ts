@@ -324,7 +324,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		extractNodeConfig.mockReturnValue('{"resource":"message"}');
+		vi.mocked(extractNodeConfig).mockReturnValue('{"resource":"message"}');
 
 		llmSubmits({ type: 'json', body: { ok: true } });
 		llmSubmits({ type: 'json', body: { ok: true } });
@@ -337,7 +337,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		extractNodeConfig.mockReturnValue('{}');
+		vi.mocked(extractNodeConfig).mockReturnValue('{}');
 
 		llmSubmits({ type: 'json', body: {} });
 		llmSubmits({ type: 'json', body: {} });

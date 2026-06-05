@@ -8,7 +8,14 @@ import type { Mocked } from 'vitest';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import * as discoverService from '../discover.service';
-import * as handler from '../discover.handler';
+
+// Loaded dynamically (handler routes are arrays of middleware + handler) and
+// typed loosely so the suite can invoke individual entries by index.
+let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
+
+beforeAll(async () => {
+	handler = (await import('../discover.handler')) as unknown as typeof handler;
+});
 
 describe('Discover Handler', () => {
 	let mockApiKeyRepository: Mocked<ApiKeyRepository>;

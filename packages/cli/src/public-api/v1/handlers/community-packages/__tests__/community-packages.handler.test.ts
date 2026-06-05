@@ -18,7 +18,13 @@ const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown)
 ) as unknown as middlewares.ScopeTaggedMiddleware;
 vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 
-const handler = await import('../community-packages.handler');
+// Loaded after the middleware spies above are installed (the handler captures
+// middleware at module-evaluation time). Typed loosely to invoke route entries.
+let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
+
+beforeAll(async () => {
+	handler = (await import('../community-packages.handler')) as unknown as typeof handler;
+});
 
 describe('CommunityPackages Handler', () => {
 	let mockLifecycle: Mocked<CommunityPackagesLifecycleService>;

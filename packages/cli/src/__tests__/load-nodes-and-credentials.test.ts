@@ -47,7 +47,9 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 	const originalNodePath = process.env.NODE_PATH;
 	// `module` (the CJS wrapper) is not available under Vitest's ESM runtime, so
 	// derive the equivalent node_modules resolution paths the same way Node does.
-	const modulePaths = Module['_nodeModulePaths'](process.cwd());
+	const modulePaths = (
+		Module as unknown as { _nodeModulePaths: (p: string) => string[] }
+	)._nodeModulePaths(process.cwd());
 
 	afterEach(() => {
 		if (originalNodePath === undefined) {

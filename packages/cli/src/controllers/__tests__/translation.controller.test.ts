@@ -30,7 +30,7 @@ vi.mock('@n8n/backend-common', async (importOriginal) => {
 		safeJoinPath: vi.fn((...args: string[]) =>
 			args.some((a) => a.endsWith('credential-type.json'))
 				? fixturePath
-				: actual.safeJoinPath(...args),
+				: (actual.safeJoinPath as (...a: string[]) => string)(...args),
 		),
 	};
 });
