@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
-import { isZodSchema } from '../../utils/zod';
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
+import { isZodSchema } from '../../utils/zod';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
