@@ -100,9 +100,11 @@ test.describe(
 					await n8n.page.goto(`/workflow/${workflowId}`);
 					await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
 
-					// Read the actual V8 heap limit once per page to verify the launch arg
-					// took effect (default ~2 GB, with our flag we expect ~4 GB capped by
-					// Chromium pointer compression). Surfaced in the final report.
+					// Read the actual V8 heap limit once per page. We run at Chromium's
+					// default launch (no heap flag); the reported limit is ~4 GB — V8's
+					// pointer-compression cage, the same ceiling that bounds desktop
+					// Chrome. Surfaced in the final report so a future flag or Chromium
+					// change is visible.
 					v8HeapLimitGb = firstDefined(await readHeapLimitOnce(n8n.page), v8HeapLimitGb);
 
 					const execSamples = await withWarmup(ITERATIONS, async () => {

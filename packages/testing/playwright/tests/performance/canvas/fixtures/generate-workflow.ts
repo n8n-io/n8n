@@ -8,10 +8,12 @@ import { buildPinDataForWorkflow, type PinScenario } from './pinned-payloads';
 export type Tier = 'S' | 'M' | 'L';
 
 // Tiers are intentionally conservative. We started with S/M/L/XL = 40/150/400/800
-// but canvas-execution at 400+ nodes crashes the Chromium renderer (V8 capped at
-// 4 GB by pointer compression, non-V8 memory pressure from run-data fan-out
-// compounds it). Until the frontend optimization that lifts that ceiling lands,
-// L = 200 is the largest workflow every spec can run on without skips.
+// but canvas-execution at 400+ nodes crashes the Chromium renderer — run-data
+// fan-out across hundreds of executing nodes drives non-V8 renderer memory
+// pressure that raising the V8 heap doesn't fix (the reported jsHeapSizeLimit is
+// already ~4 GB, V8's pointer-compression cage; we run at the default, no launch
+// flag). Until the frontend optimization that lifts that ceiling lands, L = 200
+// is the largest tier the suite runs.
 export const TIER_CONFIG: Record<Tier, { nodes: number; stickyNotes: number }> = {
 	S: { nodes: 30, stickyNotes: 2 },
 	M: { nodes: 80, stickyNotes: 4 },

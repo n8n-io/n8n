@@ -238,12 +238,14 @@ regression and want fast feedback before pushing.
 | L    |   200 |            8 | Power-user / orchestration |
 
 Tier sizes are intentionally conservative. We started with S/M/L/XL = 40/150/400/800
-but found that canvas-execution at 400+ nodes crashes the Chromium renderer
-(V8 heap is hard-capped at 4 GB by pointer compression, and non-V8 memory pressure
-from run-data fan-out across hundreds of executing nodes compounds it).
-canvas-execution.spec.ts logs `[V8 <tier>] jsHeapSizeLimit: 4.00 GB` on each run
-to make this visible — if a future Chromium release lifts the cap, the log will
-surface it and we can revisit the ladder.
+but found that canvas-execution at 400+ nodes crashes the Chromium renderer —
+non-V8 renderer memory pressure from run-data fan-out across hundreds of executing
+nodes, which raising the V8 heap doesn't fix. The browser runs at Chromium's
+default launch with no heap flag, so the numbers stay representative of a real
+user's browser. The reported `jsHeapSizeLimit` is ~4 GB — V8's pointer-compression
+cage, which a prior `--max-old-space-size=8192` flag couldn't exceed anyway — and
+canvas-execution.spec.ts logs it each run, so if a future Chromium release shifts
+that ceiling the log surfaces it and we can revisit the ladder.
 
 The real fix lives in the n8n frontend (per-node DOM cost reduction, Vue Flow
 virtualization, chunked / debounced run-data application). When that lands, raise
@@ -321,11 +323,13 @@ safely under the 12 MB `MAX_PINNED_DATA_SIZE` server ceiling (L heavy ≈ 6 MB).
 
 Practical safeguards baked into the suite:
 
-- **Chromium V8 heap launch arg** (`playwright-projects.ts`):
-  `--js-flags=--max-old-space-size=8192` + `--memory-pressure-off`. V8 is
-  hard-capped at 4 GB by pointer compression regardless of the value passed,
-  but the flag is logged by `canvas-execution.spec.ts` (`[V8 <tier>]
-jsHeapSizeLimit: 4.00 GB`) so any future Chromium change is visible.
+- **Default browser launch** (`playwright-projects.ts`): no V8 heap flag, memory
+  pressure enabled — matching a real user's browser. The reported `jsHeapSizeLimit`
+  is ~4 GB (V8's pointer-compression cage; the old `--max-old-space-size=8192`
+  couldn't exceed it, so that flag was a no-op for the ceiling). The mount-once and
+  GC-pulse safeguards below keep the tab within that envelope, and
+  `canvas-execution.spec.ts` logs the actual limit so an accidental flag or future
+  Chromium change is visible.
 - **Mount-once per scenario** (canvas-execution): re-navigating between every
   iteration accumulated DOM / Pinia state and crashed the tab on L. The spec
   now mounts the canvas once per scenario and runs both iterations against it.

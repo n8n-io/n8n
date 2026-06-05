@@ -75,11 +75,11 @@ const loggedHeapLimitFor = new WeakSet<Page>();
 /**
  * Read Chromium's actual V8 jsHeapSizeLimit once per page, in gigabytes.
  * Returns the value the first time it's called for a given page and null on
- * subsequent calls. Used to verify that the `--js-flags=--max-old-space-size=N`
- * launch arg from playwright-projects.ts actually took effect — default
- * Chromium reports ~2 GB, with the flag set we expect ~4 GB (Chromium
- * pointer-compression cap). A 2 GB reading means the flag is being silently
- * ignored.
+ * subsequent calls. Surfaced in the execution report to confirm the benchmark
+ * runs at Chromium's default launch — the reported limit is ~4 GB (V8's
+ * pointer-compression cage, the ceiling that bounds desktop Chrome). If a future
+ * change moves it (a launch flag, or a Chromium bump), the report makes that
+ * visible instead of the numbers silently shifting.
  */
 export async function readHeapLimitOnce(page: Page): Promise<number | null> {
 	if (loggedHeapLimitFor.has(page)) return null;
