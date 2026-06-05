@@ -970,6 +970,59 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		streamText.mockReset();
 	});
 
+	it('keeps abort signals scoped to overlapping generate runs', async () => {
+		let firstModelSignal: AbortSignal | undefined;
+		let secondModelSignal: AbortSignal | undefined;
+		let firstToolSignal: AbortSignal | undefined;
+		let resolveFirstModel!: (value: unknown) => void;
+		const firstModel = new Promise((resolve) => {
+			resolveFirstModel = resolve;
+		});
+		let firstModelCalled!: () => void;
+		const waitForFirstModelCall = new Promise<void>((resolve) => {
+			firstModelCalled = resolve;
+		});
+
+		const signalTool: BuiltTool = {
+			name: 'signal_tool',
+			description: 'Captures the run signal',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async (_input, ctx) => {
+				firstToolSignal = (ctx as ToolContext).abortSignal;
+				return await Promise.resolve({ done: true });
+			},
+		};
+		const { runtime } = createRuntimeWithTools([signalTool], 1);
+
+		generateText
+			.mockImplementationOnce(async (options: { abortSignal?: AbortSignal }) => {
+				firstModelSignal = options.abortSignal;
+				firstModelCalled();
+				return await firstModel;
+			})
+			.mockImplementationOnce(async (options: { abortSignal?: AbortSignal }) => {
+				secondModelSignal = options.abortSignal;
+				return await Promise.resolve(makeGenerateSuccess('second done'));
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('first done'));
+
+		const firstRun = runtime.generate('first');
+		await waitForFirstModelCall;
+
+		const secondRun = runtime.generate('second');
+		await secondRun;
+
+		resolveFirstModel(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'signal_tool', args: { value: 'first' } },
+			]),
+		);
+		await firstRun;
+
+		expect(firstToolSignal).toBe(firstModelSignal);
+		expect(firstToolSignal).not.toBe(secondModelSignal);
+	});
+
 	it('runs tools concurrently when concurrency > 1', async () => {
 		let peakConcurrency = 0;
 		let activeConcurrency = 0;
@@ -2676,6 +2729,29 @@ describe('external abort signal', () => {
 		external.abort();
 		const result = await resultPromise;
 		expect(result.finishReason).toBe('error');
+	});
+
+	it('removes external abort listener after a stream completes', async () => {
+		const external = new AbortController();
+		const removeListener = vi.spyOn(external.signal, 'removeEventListener');
+		streamText.mockReturnValue(makeStreamSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+		});
+
+		const result = await runtime.stream('hello', {
+			persistence: { resourceId: 'user1', threadId: 'thread1' },
+			abortSignal: external.signal,
+		});
+		await collectChunks(result.stream);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(removeListener).toHaveBeenCalledTimes(1);
+		external.abort();
+		expect(runtime.getState().status).toBe('success');
 	});
 });
 
