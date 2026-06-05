@@ -37,6 +37,7 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 				name: server.name,
 				url: server.url,
 				transport: server.transport,
+				toolFilter: server.toolFilter,
 				fetch: server.fetch,
 			});
 		} else if (server.command) {
@@ -45,6 +46,7 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 				command: server.command,
 				args: server.args,
 				env: server.env,
+				toolFilter: server.toolFilter,
 			});
 		}
 	}

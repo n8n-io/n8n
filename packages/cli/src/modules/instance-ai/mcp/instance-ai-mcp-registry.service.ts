@@ -1,4 +1,5 @@
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
@@ -19,7 +20,10 @@ import type {
 import { OauthService } from '@/oauth/oauth.service';
 import { createAuthFetch } from '@/utils/auth-fetch';
 
-import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
+import type {
+	InstanceAiMcpRegistryConnection,
+	InstanceAiMcpToolFilter,
+} from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryConnectionRepository } from '../repositories/instance-ai-mcp-registry-connection.repository';
 
 type Transport = 'sse' | 'streamableHttp';
@@ -82,6 +86,33 @@ function buildServerName(serverSlug: string, sequence: number): string {
 	const suffix = `_${sequence}`;
 	const maxBaseLength = Math.max(0, MAX_MCP_SERVER_NAME_LENGTH - suffix.length);
 	return `${baseName.slice(0, maxBaseLength)}${suffix}`;
+}
+
+function normalizeTools(tools: string[] | undefined): string[] {
+	if (!tools) {
+		return [];
+	}
+
+	return [...new Set(tools.filter((tool) => tool.length > 0))];
+}
+
+function resolveToolFilter(
+	payload: InstanceAiMcpUpdateConnectionRequestDto,
+	current: InstanceAiMcpToolFilter | null,
+): InstanceAiMcpToolFilter | null {
+	if (payload.inclusionMode === undefined) {
+		return current;
+	}
+
+	if (payload.inclusionMode === 'all') {
+		return null;
+	}
+
+	if (payload.inclusionMode === 'selected') {
+		return { mode: 'allow', tools: normalizeTools(payload.selectedTools) };
+	}
+
+	return { mode: 'exclude', tools: normalizeTools(payload.excludedTools) };
 }
 
 @Service()
@@ -177,6 +208,20 @@ export class InstanceAiMcpRegistryService {
 		});
 	}
 
+	async updateConnection(
+		user: User,
+		id: string,
+		payload: InstanceAiMcpUpdateConnectionRequestDto,
+	): Promise<InstanceAiMcpRegistryConnection> {
+		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		if (!connection) {
+			throw new NotFoundError('MCP registry connection not found');
+		}
+
+		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
+		return await this.connectionRepository.save(connection);
+	}
+
 	async getRegistryMcpServers(user: User): Promise<McpServerConfig[]> {
 		const connections = await this.connectionRepository.findBy({ userId: user.id });
 		if (connections.length === 0) {
@@ -219,6 +264,7 @@ export class InstanceAiMcpRegistryService {
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
 				cacheKey: `registry-connection:${connection.id}`,
+				toolFilter: connection.toolFilter ?? undefined,
 			};
 
 			if (resolvedServer.authType === 'oauth2') {
