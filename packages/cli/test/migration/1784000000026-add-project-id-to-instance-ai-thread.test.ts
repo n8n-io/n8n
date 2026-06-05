@@ -118,6 +118,40 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 		);
 	}
 
+	async function insertObservation(
+		context: TestMigrationContext,
+		data: { id: string; scopeId: string },
+	): Promise<void> {
+		const tableName = context.escape.tableName('instance_ai_observations');
+		await context.runQuery(
+			`INSERT INTO ${tableName} ("id", "observationScopeId", "marker", "text", "tokenCount", "status", "createdAt", "updatedAt")
+			 VALUES (:id, :scopeId, :marker, :text, :tokenCount, :status, :createdAt, :updatedAt)`,
+			{
+				id: data.id,
+				scopeId: data.scopeId,
+				marker: 'info',
+				text: 'seed observation',
+				tokenCount: 0,
+				status: 'active',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		);
+	}
+
+	async function rowExists(
+		context: TestMigrationContext,
+		table: string,
+		id: string,
+	): Promise<boolean> {
+		const tableName = context.escape.tableName(table);
+		const rows = await context.runQuery<Array<{ id: string }>>(
+			`SELECT "id" FROM ${tableName} WHERE "id" = :id`,
+			{ id },
+		);
+		return rows.length > 0;
+	}
+
 	async function getThreadProjectId(
 		context: TestMigrationContext,
 		threadId: string,
@@ -216,6 +250,56 @@ describe('AddProjectIdToInstanceAiThread Migration', () => {
 				const ownerProjectId = await getInstanceOwnerPersonalProjectId(context);
 				expect(ownerProjectId).toBeTruthy();
 				expect(await getThreadProjectId(context, orphanThreadId)).toBe(ownerProjectId);
+			});
+		});
+
+		it('deletes a thread that cannot be scoped to any project when no instance owner exists', async () => {
+			const orphanThreadId = randomUUID();
+
+			await withContext(async (context) => {
+				// Simulate a corrupted/half-set-up database with no instance owner: remove
+				// every personal-owner relation so the instance-owner backfill finds no
+				// project to fall back to.
+				await context.runQuery(
+					`DELETE FROM ${context.escape.tableName('project_relation')} WHERE "role" = :role`,
+					{ role: PERSONAL_OWNER_ROLE },
+				);
+				await insertThread(context, { id: orphanThreadId, resourceId: randomUUID() });
+			});
+
+			await runSingleMigration(MIGRATION_NAME);
+			dataSource = Container.get(DataSource);
+
+			await withContext(async (context) => {
+				// The unmappable orphan is dropped so the NOT NULL constraint can apply;
+				// runSingleMigration completing without throwing proves addNotNull succeeded.
+				expect(await rowExists(context, 'instance_ai_threads', orphanThreadId)).toBe(false);
+			});
+		});
+
+		it('preserves child observation rows when the threads table is recreated', async () => {
+			const userId = randomUUID();
+			const personalProjectId = randomUUID();
+			const threadId = randomUUID();
+			const observationId = randomUUID();
+
+			await withContext(async (context) => {
+				await insertUser(context, userId);
+				await insertProject(context, personalProjectId);
+				await insertPersonalOwnerRelation(context, userId, personalProjectId);
+				await insertThread(context, { id: threadId, resourceId: userId });
+				await insertObservation(context, { id: observationId, scopeId: threadId });
+			});
+
+			await runSingleMigration(MIGRATION_NAME);
+			dataSource = Container.get(DataSource);
+
+			await withContext(async (context) => {
+				// The thread is scoped and survives; its CASCADE-linked observation must
+				// survive the threads-table recreation on SQLite rather than being wiped
+				// through the incoming CASCADE foreign key.
+				expect(await getThreadProjectId(context, threadId)).toBe(personalProjectId);
+				expect(await rowExists(context, 'instance_ai_observations', observationId)).toBe(true);
 			});
 		});
 	});

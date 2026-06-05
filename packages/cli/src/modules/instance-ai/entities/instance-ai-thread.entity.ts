@@ -15,7 +15,7 @@ export class InstanceAiThread extends WithTimestamps {
 	project: Project;
 
 	@Index()
-	@Column({ type: 'varchar', length: 255 })
+	@Column({ type: 'varchar', length: 36 })
 	projectId: string;
 
 	@Column({ type: 'text', default: '' })

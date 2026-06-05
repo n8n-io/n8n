@@ -5,7 +5,10 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * are backfilled so none is left unscoped: user threads take their owner's
  * personal project, sub-agent threads inherit their parent thread's project, and
  * any remaining thread (deleted user/parent) falls back to the instance owner's
- * personal project. No rows are deleted, so the migration is reversible.
+ * personal project. A final safety net deletes any thread still unscoped after
+ * the backfills — only reachable when no instance owner exists (e.g. a corrupted
+ * or half-set-up database) — so the NOT NULL constraint can always be applied.
+ * The schema change is reversible via `down()`.
  */
 const FK_NAME = 'FK_instance_ai_threads_projectId';
 const THREADS_TABLE = 'instance_ai_threads';
@@ -18,16 +21,19 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 			schemaBuilder: { addColumns, column, addForeignKey, createIndex, addNotNull },
 		} = ctx;
 
-		await addColumns(THREADS_TABLE, [
-			column(PROJECT_ID_COLUMN).varchar(255).comment('Project this thread is scoped to'),
-		]);
+		await addColumns(
+			THREADS_TABLE,
+			[column(PROJECT_ID_COLUMN).varchar(36).comment('Project this thread is scoped to')],
+			{ recreatesOnSqlite: true },
+		);
 
-		// Backfill every row before the column becomes NOT NULL.
+		// Scope every existing row before the column becomes NOT NULL.
 		await this.backfillUserThreads(ctx);
 		await this.backfillSubAgentThreads(ctx);
 		await this.backfillRemainingToInstanceOwner(ctx);
+		await this.deleteUnmappableThreads(ctx);
 
-		await addNotNull(THREADS_TABLE, PROJECT_ID_COLUMN);
+		await addNotNull(THREADS_TABLE, PROJECT_ID_COLUMN, { recreatesOnSqlite: true });
 		await addForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME, 'CASCADE');
 		await createIndex(THREADS_TABLE, [PROJECT_ID_COLUMN]);
 	}
@@ -39,7 +45,7 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 
 		await dropIndex(THREADS_TABLE, [PROJECT_ID_COLUMN]);
 		await dropForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME);
-		await dropColumns(THREADS_TABLE, [PROJECT_ID_COLUMN]);
+		await dropColumns(THREADS_TABLE, [PROJECT_ID_COLUMN], { recreatesOnSqlite: true });
 	}
 
 	/**
@@ -126,5 +132,33 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 			 )
 			 WHERE ${projectId} IS NULL`,
 		);
+	}
+
+	/**
+	 * Final safety net: drop any thread still unscoped after every backfill so the
+	 * NOT NULL constraint can always be applied. This only matches rows when no
+	 * instance owner exists (e.g. a half-set-up or hand-edited database); in normal
+	 * operation the instance-owner backfill catches everything and this is a no-op.
+	 * The alternative — letting NOT NULL fail — would brick startup, and these rows
+	 * are unmappable orphans whose owning user and parent thread are already gone.
+	 */
+	private async deleteUnmappableThreads({
+		runQuery,
+		escape,
+		logger,
+		migrationName,
+	}: MigrationContext) {
+		const threads = escape.tableName(THREADS_TABLE);
+		const projectId = escape.columnName(PROJECT_ID_COLUMN);
+
+		const [{ unmappable }] = await runQuery<Array<{ unmappable: number }>>(
+			`SELECT COUNT(*) AS unmappable FROM ${threads} WHERE ${projectId} IS NULL`,
+		);
+		if (Number(unmappable) === 0) return;
+
+		logger.warn(
+			`[${migrationName}] Deleting ${unmappable} Instance AI thread(s) that could not be scoped to any project (no owning user, parent thread, or instance owner); their NOT NULL projectId cannot be satisfied.`,
+		);
+		await runQuery(`DELETE FROM ${threads} WHERE ${projectId} IS NULL`);
 	}
 }
