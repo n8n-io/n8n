@@ -8,20 +8,28 @@ const DEFAULT_SCOPE = `'${JSON.stringify(LEGACY_SCOPES)}'`;
 
 export class AddScopeColumnToOAuthTables1784000000026 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
-		await addColumns('oauth_authorization_codes', [
-			column('scope')
-				.json.notNull.default(DEFAULT_SCOPE)
-				.comment('OAuth scopes granted for this authorization code'),
-		]);
-		await addColumns('oauth_refresh_tokens', [
-			column('scope')
-				.json.notNull.default(DEFAULT_SCOPE)
-				.comment('OAuth scopes granted for this refresh token'),
-		]);
+		await addColumns(
+			'oauth_authorization_codes',
+			[
+				column('scope')
+					.json.notNull.default(DEFAULT_SCOPE)
+					.comment('OAuth scopes granted for this authorization code'),
+			],
+			{ recreatesOnSqlite: true },
+		);
+		await addColumns(
+			'oauth_refresh_tokens',
+			[
+				column('scope')
+					.json.notNull.default(DEFAULT_SCOPE)
+					.comment('OAuth scopes granted for this refresh token'),
+			],
+			{ recreatesOnSqlite: true },
+		);
 	}
 
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
-		await dropColumns('oauth_refresh_tokens', ['scope']);
-		await dropColumns('oauth_authorization_codes', ['scope']);
+		await dropColumns('oauth_refresh_tokens', ['scope'], { recreatesOnSqlite: true });
+		await dropColumns('oauth_authorization_codes', ['scope'], { recreatesOnSqlite: true });
 	}
 }
