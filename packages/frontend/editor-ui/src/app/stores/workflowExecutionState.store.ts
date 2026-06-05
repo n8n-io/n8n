@@ -254,57 +254,36 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
 		});
 
-		// Active/displayed fallback for the per-node-id execution data projections.
-		// Same shape as `activeExecutionIssuesByNodeName`: resolve the relevant
-		// per-execution data store and re-expose its by-id map; fall back to an
-		// empty Map sentinel when no execution is being tracked.
+		// Active/displayed/pending fallback for the per-node-id execution data
+		// projections. Resolves the backing execution id via
+		// `getResolvedActiveExecutionId()` (string id → that execution, pending
+		// `null` → IN_PROGRESS scaffold, else displayed id) so these stay
+		// consistent with `activeExecutionRunData`; falls back to an empty Map
+		// sentinel only when no execution is being tracked.
 
 		const activeExecutionStatusByNodeId = computed(() => {
-			if (typeof activeExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-					.executionStatusByNodeId;
-			}
-			if (typeof displayedExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
-					.executionStatusByNodeId;
-			}
-			return EMPTY_EXECUTION_STATUS_BY_NODE_ID;
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_STATUS_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionStatusByNodeId;
 		});
 
 		const activeExecutionRunDataByNodeId = computed(() => {
-			if (typeof activeExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-					.executionRunDataByNodeId;
-			}
-			if (typeof displayedExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
-					.executionRunDataByNodeId;
-			}
-			return EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID;
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionRunDataByNodeId;
 		});
 
 		const activeExecutionRunDataOutputMapByNodeId = computed(() => {
-			if (typeof activeExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-					.executionRunDataOutputMapByNodeId;
-			}
-			if (typeof displayedExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
-					.executionRunDataOutputMapByNodeId;
-			}
-			return EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID;
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId))
+				.executionRunDataOutputMapByNodeId;
 		});
 
 		const activeExecutionWaitingByNodeId = computed(() => {
-			if (typeof activeExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(activeExecutionId.value))
-					.executionWaitingByNodeId;
-			}
-			if (typeof displayedExecutionId.value === 'string') {
-				return useExecutionDataStore(createExecutionDataId(displayedExecutionId.value))
-					.executionWaitingByNodeId;
-			}
-			return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionWaitingByNodeId;
 		});
 
 		const lastSuccessfulExecution = computed(() => {
