@@ -26,22 +26,34 @@ function getStructuredOutputSchema(
 	) as boolean;
 	if (!useStructuredOutput) return undefined;
 
-	const rawSchema = ctx.getNodeParameter('outputSchema', itemIndex, '') as string;
-	if (!rawSchema.trim()) {
-		throw new NodeOperationError(
-			ctx.getNode(),
-			'Output schema is empty. Provide a JSON Schema or turn off "Require Specific Output Format".',
-			{ itemIndex },
-		);
-	}
+	const rawSchema = ctx.getNodeParameter('outputSchema', itemIndex, '') as unknown;
 
 	let parsed: JSONSchema7;
-	try {
-		parsed = jsonParse<JSONSchema7>(rawSchema);
-	} catch (error) {
+
+	if (typeof rawSchema === 'object') {
+		parsed = rawSchema as JSONSchema7;
+	} else if (typeof rawSchema === 'string') {
+		if (!rawSchema.trim()) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Output schema is empty. Provide a JSON Schema or turn off "Require Specific Output Format".',
+				{ itemIndex },
+			);
+		}
+
+		try {
+			parsed = jsonParse<JSONSchema7>(rawSchema);
+		} catch (error) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Output schema is not valid JSON: ${(error as Error).message}`,
+				{ itemIndex },
+			);
+		}
+	} else {
 		throw new NodeOperationError(
 			ctx.getNode(),
-			`Output schema is not valid JSON: ${(error as Error).message}`,
+			'Output schema is not valid JSON. Provide a JSON Schema or turn off "Require Specific Output Format".',
 			{ itemIndex },
 		);
 	}
