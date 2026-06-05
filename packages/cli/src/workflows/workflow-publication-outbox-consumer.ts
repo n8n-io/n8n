@@ -14,14 +14,15 @@ import { ensureError } from 'n8n-workflow';
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
-const POLL_INTERVAL_MS = 1 * Time.seconds.toMilliseconds;
-const MAX_RECORDS_PER_CYCLE = 50;
+const POLL_INTERVAL_MS = 1 * Time.minutes.toMilliseconds;
 
 @Service()
 export class WorkflowPublicationOutboxConsumer {
 	private pollInterval: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
+
+	private isProcessing = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -59,34 +60,37 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async pollCycle() {
-		let processed = 0;
+		if (this.isProcessing) return;
 
-		while (processed < MAX_RECORDS_PER_CYCLE && !this.isShuttingDown) {
-			const record = await this.outboxRepository.claimNextPendingRecord();
-			if (!record) break;
+		this.isProcessing = true;
+		try {
+			while (!this.isShuttingDown) {
+				const record = await this.outboxRepository.claimNextPendingRecord();
+				if (!record) break;
 
-			try {
-				await this.processRecord(record);
-			} catch (error) {
-				this.logger.error('Unexpected error processing outbox record', {
-					outboxId: record.id,
-					workflowId: record.workflowId,
-					error: ensureError(error).message,
-				});
 				try {
-					await this.outboxRepository.markFailed(
-						record.id,
-						`Unexpected: ${ensureError(error).message}`,
-					);
-				} catch (markError) {
-					this.logger.error('Failed to mark outbox record as failed', {
+					await this.processRecord(record);
+				} catch (error) {
+					this.logger.error('Unexpected error processing outbox record', {
 						outboxId: record.id,
-						error: ensureError(markError).message,
+						workflowId: record.workflowId,
+						error: ensureError(error).message,
 					});
+					try {
+						await this.outboxRepository.markFailed(
+							record.id,
+							`Unexpected: ${ensureError(error).message}`,
+						);
+					} catch (markError) {
+						this.logger.error('Failed to mark outbox record as failed', {
+							outboxId: record.id,
+							error: ensureError(markError).message,
+						});
+					}
 				}
 			}
-
-			processed++;
+		} finally {
+			this.isProcessing = false;
 		}
 	}
 
