@@ -30,6 +30,7 @@ import {
 	Workflow,
 	UnexpectedError,
 	createRunExecutionData,
+	sleep,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -51,6 +52,9 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+
+const MAX_EXECUTION_LOOKUP_ATTEMPTS = 5;
+const EXECUTION_LOOKUP_RETRY_DELAY_MS = 100;
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -75,10 +79,7 @@ export class JobProcessor {
 	async processJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		const execution = await this.findQueuedExecution(executionId, job.id);
 
 		if (!execution) {
 			throw new UnexpectedError(
@@ -385,6 +386,36 @@ export class JobProcessor {
 		 */
 
 		return { success: true };
+	}
+
+	private async findQueuedExecution(executionId: string, jobId: JobId) {
+		for (let attempt = 1; attempt <= MAX_EXECUTION_LOOKUP_ATTEMPTS; attempt++) {
+			const execution = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			if (execution) {
+				if (attempt > 1) {
+					this.logger.warn(
+						`Worker found data for execution ${executionId} after ${attempt} attempts (job ${jobId})`,
+						{
+							executionId,
+							jobId,
+							attempts: attempt,
+						},
+					);
+				}
+
+				return execution;
+			}
+
+			if (attempt < MAX_EXECUTION_LOOKUP_ATTEMPTS) {
+				await sleep(EXECUTION_LOOKUP_RETRY_DELAY_MS);
+			}
+		}
+
+		return undefined;
 	}
 
 	private deriveJobFinishedProps(run: IRun, startedAt: Date): JobFinishedProps {
