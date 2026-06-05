@@ -24,6 +24,7 @@ import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
+import { verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
 import {
 	compareBuckets,
@@ -59,6 +60,7 @@ import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
+	BuildExpectationResult,
 	MultiRunEvaluation,
 	ExecutionScenarioResult,
 	ExecutionScenario,
@@ -296,17 +298,25 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
 	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
+	// Build-expectation verdicts, judged once per build and merged the same way —
+	// fired during getOrBuild, awaited before reshapeLangSmithRuns.
+	const buildExpectationsByThreadId = new Map<string, Promise<BuildExpectationResult[]>>();
 
-	// LangSmith dataset rows carry only per-scenario fields. The conversation
-	// for the build is sourced locally, keyed by fileSlug.
+	// LangSmith dataset rows carry only per-scenario fields. The conversation and
+	// build expectations for the build are sourced locally, keyed by fileSlug.
 	const conversationByFileSlug = new Map<
 		string,
-		{ conversation: WorkflowTestCase['conversation']; messageBudget?: number }
+		{
+			conversation: WorkflowTestCase['conversation'];
+			messageBudget?: number;
+			buildExpectations?: string[];
+		}
 	>();
 	for (const { testCase, fileSlug } of testCasesWithFiles) {
 		conversationByFileSlug.set(fileSlug, {
 			conversation: testCase.conversation,
 			messageBudget: testCase.messageBudget,
+			buildExpectations: testCase.buildExpectations,
 		});
 	}
 
@@ -414,6 +424,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
+				stashBuildExpectations(fileSlug, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode — checks run with empty prompt context.
 					build.workflowChecks = await runWorkflowChecks({
@@ -439,6 +450,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
+				stashBuildExpectations(fileSlug, build);
 				return { build, lane, buildDurationMs };
 			} finally {
 				allocator.release(lane, fileSlug);
@@ -452,6 +464,23 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
+	}
+
+	// Judge build expectations once per build (off the scenario critical path);
+	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
+	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
+		const expectations = conversationByFileSlug.get(fileSlug)?.buildExpectations;
+		if (!build.threadId || !build.success || !expectations?.length || !build.transcript?.length) {
+			return;
+		}
+		buildExpectationsByThreadId.set(
+			build.threadId,
+			verifyBuildExpectations(expectations, {
+				transcript: build.transcript,
+				workflowJson: build.workflowJsons[0],
+				metrics: build.conversationMetrics,
+			}).catch(() => []),
+		);
 	}
 
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
@@ -651,11 +680,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		logger.info(`Experiment: ${experimentResults.experimentName}`);
 		await lsClient.awaitPendingTraceBatches();
 
+		const buildExpectationsResolved = new Map<string, BuildExpectationResult[]>();
+		for (const [threadId, verdictsPromise] of buildExpectationsByThreadId) {
+			buildExpectationsResolved.set(threadId, await verdictsPromise);
+		}
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
 			args.iterations,
 			transcriptByThreadId,
+			buildExpectationsResolved,
 			lanes[0]?.baseUrl,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
@@ -859,6 +893,7 @@ function reshapeLangSmithRuns(
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
+	buildExpectationsByThreadId: Map<string, BuildExpectationResult[]>,
 	n8nBaseUrl: string | undefined,
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
@@ -911,6 +946,9 @@ function reshapeLangSmithRuns(
 			}
 
 			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
+			const buildExpectationResults = threadId
+				? buildExpectationsByThreadId.get(threadId)
+				: undefined;
 			runResults.push({
 				testCase,
 				workflowBuildSuccess,
@@ -919,6 +957,7 @@ function reshapeLangSmithRuns(
 				buildError,
 				threadId,
 				transcript,
+				buildExpectationResults,
 				workflowChecks,
 				n8nBaseUrl,
 			});
@@ -1131,6 +1170,7 @@ function writeEvalResults(
 			workflowChecksPerRun: tc.runs.map((run) =>
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,
 			),
+			buildExpectationResultsPerRun: tc.runs.map((run) => run.buildExpectationResults ?? null),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
