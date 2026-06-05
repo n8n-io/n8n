@@ -21,7 +21,7 @@ const uiStore = useUIStore();
 const { store, getString, getNumber, getBool } = useSettingsField();
 
 const provider = computed(() => {
-	return store.draft.sandboxProvider ?? store.settings?.sandboxProvider ?? 'daytona';
+	return store.draft.sandboxProvider ?? store.settings?.sandboxProvider ?? 'n8n-sandbox';
 });
 
 const showDaytonaFields = computed(() => {
@@ -35,6 +35,12 @@ const showN8nSandboxFields = computed(() => {
 const showImageField = computed(() => {
 	return provider.value === 'daytona';
 });
+
+function handleProviderChange(value: string | number | boolean | null) {
+	if (value === 'n8n-sandbox' || value === 'daytona') {
+		store.setField('sandboxProvider', value);
+	}
+}
 
 const daytonaCredentials = computed(() =>
 	store.serviceCredentials.filter((c) => c.type === 'daytonaApi'),
@@ -128,14 +134,9 @@ watch(
 			:bold="false"
 			size="small"
 		>
-			<N8nSelect
-				:model-value="provider"
-				size="small"
-				@update:model-value="store.setField('sandboxProvider', String($event))"
-			>
-				<N8nOption value="daytona" label="Daytona" />
+			<N8nSelect :model-value="provider" size="small" @update:model-value="handleProviderChange">
 				<N8nOption value="n8n-sandbox" label="n8n Sandbox Service" />
-				<N8nOption value="local" label="Local" />
+				<N8nOption value="daytona" label="Daytona" />
 			</N8nSelect>
 		</N8nInputLabel>
 
@@ -190,6 +191,9 @@ watch(
 						:label="i18n.baseText('instanceAi.settings.credential.createNew')"
 					/>
 				</N8nSelect>
+				<p :class="$style.hint">
+					{{ i18n.baseText('instanceAi.settings.n8nSandbox.serviceUrlHint' as BaseTextKey) }}
+				</p>
 			</N8nInputLabel>
 		</template>
 
@@ -243,6 +247,13 @@ watch(
 
 .switchLabel {
 	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.hint {
+	margin: var(--spacing--4xs) 0 0;
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
 	color: var(--color--text--tint-1);
 }
 </style>

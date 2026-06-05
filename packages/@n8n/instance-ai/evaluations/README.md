@@ -5,7 +5,7 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 Four harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
-- **`eval:subagent`** — compatibility corpus that drives the live orchestrator build path, scored by binary checks
+- **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 

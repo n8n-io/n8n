@@ -1436,7 +1436,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new WorkflowHasIssuesError();
+			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
 	}
 
