@@ -365,11 +365,12 @@ describe('AgentRuntime — execution counters', () => {
 			name: DELEGATE_SUB_AGENT_TOOL_NAME,
 			description: 'Delegate work',
 			inputSchema: z.object({ value: z.string().optional() }),
-			handler: async () => ({
-				status: 'completed',
-				answer: 'child answer',
-				usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
-			}),
+			handler: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					answer: 'child answer',
+					usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
+				}),
 		};
 		const counter = makeExecutionCounter();
 		const { runtime } = createRuntimeWithTools([delegateTool], 1);
@@ -408,9 +409,10 @@ describe('AgentRuntime — execution counters', () => {
 			name: 'normal_tool',
 			description: 'Normal tool',
 			inputSchema: z.object({ value: z.string().optional() }),
-			handler: async () => ({
-				usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7 },
-			}),
+			handler: async () =>
+				await Promise.resolve({
+					usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7 },
+				}),
 		};
 		const { runtime } = createRuntimeWithTools([normalTool], 1);
 
@@ -436,11 +438,12 @@ describe('AgentRuntime — execution counters', () => {
 			name: DELEGATE_SUB_AGENT_TOOL_NAME,
 			description: 'Delegate work',
 			inputSchema: z.object({ value: z.string().optional() }),
-			handler: async () => ({
-				status: 'completed',
-				answer: 'child answer',
-				usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
-			}),
+			handler: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					answer: 'child answer',
+					usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
+				}),
 		};
 		const { runtime } = createRuntimeWithTools([delegateTool], 1);
 
