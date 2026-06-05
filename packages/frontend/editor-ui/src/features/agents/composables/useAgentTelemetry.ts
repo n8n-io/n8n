@@ -191,6 +191,13 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackClickedTemplate(params: { templateName: string }) {
+		safeTrack('User clicked agent template', {
+			template_name: params.templateName,
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -205,5 +212,6 @@ export function useAgentTelemetry() {
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackClickedTemplate,
 	};
 }

@@ -263,8 +263,8 @@ function onBuildDone() {
 
 function selectSuggestion(suggestion: SuggestionTemplate) {
 	inputText.value = buildPromptWithSkills(suggestion);
-	telemetry.track('User selected agent suggestion', {
-		suggestion_name: suggestion.name,
+	agentTelemetry.trackClickedTemplate({
+		templateName: suggestion.name,
 	});
 }
 </script>
