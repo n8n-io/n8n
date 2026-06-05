@@ -168,8 +168,8 @@ describe('buildTranscriptFromEvents', () => {
 		});
 	});
 
-	describe('plain tool-call dedupe', () => {
-		it('collapses repeat invocations of the same tool name within a turn', () => {
+	describe('plain tool-calls', () => {
+		it('renders every invocation of a repeated tool (no de-duping)', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
@@ -179,7 +179,34 @@ describe('buildTranscriptFromEvents', () => {
 				],
 			});
 			const calls = turns[0].steps.filter((i) => i.kind === 'tool-call');
+			expect(calls).toHaveLength(3);
+		});
+
+		it('renders an empty plan as a visible tool-call instead of dropping it', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', { payload: { toolName: 'plan', args: { tasks: [] } } }),
+				],
+			});
+			const calls = turns[0].steps.filter((i) => i.kind === 'tool-call');
 			expect(calls).toHaveLength(1);
+			expect(calls[0]).toMatchObject({ kind: 'tool-call', toolName: 'plan' });
+		});
+
+		it('keeps narration on either side of a tool call as separate blocks', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('text-delta', { text: 'here is my plan' }),
+					evt('tool-call', { payload: { toolName: 'plan', args: { tasks: [] } } }),
+					evt('text-delta', { text: 'planner returned nothing, building directly' }),
+				],
+			});
+			const texts = turns[0].steps
+				.filter((s) => s.kind === 'agent-text')
+				.map((s) => (s.kind === 'agent-text' ? s.text : ''));
+			expect(texts).toEqual(['here is my plan', 'planner returned nothing, building directly']);
 		});
 	});
 

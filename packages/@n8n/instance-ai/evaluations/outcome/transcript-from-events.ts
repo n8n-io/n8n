@@ -65,7 +65,6 @@ function buildTurn(
 	proxyResponses: ProxyResponses | undefined,
 ): TranscriptTurn {
 	const steps: TranscriptStep[] = [];
-	const seenPlainTools = new Set<string>();
 	const outcomeByCallId = collectToolOutcomes(events);
 	let textBuffer = '';
 
@@ -85,19 +84,22 @@ function buildTurn(
 		}
 
 		let interaction: ToolInteraction | null = null;
+		// A tool call or confirmation is an action boundary: flush the narration
+		// before it even when the action itself doesn't render a step, so distinct
+		// thoughts never fuse across a dropped/empty interaction.
+		let isActionBoundary = false;
 		if (event.type === 'tool-call') {
-			interaction = interpretToolCall(event, seenPlainTools, outcomeByCallId);
+			interaction = interpretToolCall(event, outcomeByCallId);
+			isActionBoundary = true;
 		} else if (event.type === 'tool-result') {
 			interaction = interpretToolResult(event);
 		} else if (event.type === 'confirmation-request') {
 			interaction = interpretConfirmationRequest(event, proxyResponses);
+			isActionBoundary = true;
 		}
 
-		// Flush the narration that preceded this action so step order is preserved.
-		if (interaction) {
-			flushText();
-			steps.push(interaction);
-		}
+		if (isActionBoundary || interaction) flushText();
+		if (interaction) steps.push(interaction);
 	}
 
 	flushText();
@@ -128,7 +130,6 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 
 function interpretToolCall(
 	event: CapturedEvent,
-	seenPlainTools: Set<string>,
 	outcomeByCallId: Map<string, ToolOutcome>,
 ): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
@@ -140,12 +141,13 @@ function interpretToolCall(
 
 	if (toolName === 'plan' || toolName === 'add-plan-item') {
 		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
-		return tasks.length > 0 ? { kind: 'plan', tasks } : null;
+		if (tasks.length > 0) return { kind: 'plan', tasks };
+		// Empty plan: fall through and render as a plain tool-call so the call
+		// stays visible (1:1 with what happened) instead of vanishing.
 	}
 
-	// Plain tool-call — collapsed to one entry per tool name within the turn.
-	if (!toolName || seenPlainTools.has(toolName)) return null;
-	seenPlainTools.add(toolName);
+	// Every named call renders — no de-duping, so repeat calls aren't dropped.
+	if (!toolName) return null;
 	const callId = getString(payload, 'toolCallId');
 	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
 	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
