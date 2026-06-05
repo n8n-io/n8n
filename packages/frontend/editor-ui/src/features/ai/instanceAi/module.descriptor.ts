@@ -52,7 +52,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 						}
 
 						const prompt = typeof to.query.prompt === 'string' ? to.query.prompt : '';
-						const sourceParam = typeof to.query.source === 'string' ? to.query.source : undefined;
 						let sourceContext: Record<string, unknown> | undefined;
 						if (typeof to.query.sourceContext === 'string') {
 							try {
@@ -68,7 +67,8 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						try {
 							await store.syncThread(threadId, {
-								source: sourceParam ?? 'external-link',
+								// External links are always attributed to 'external-link'; they cannot name a trusted internal source.
+								source: 'external-link',
 								origin: 'external',
 								sourceContext,
 							});
@@ -82,7 +82,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 						telemetry.track('User launched Instance AI thread', {
 							thread_id: threadId,
 							instance_id: rootStore.instanceId,
-							source: sourceParam ?? 'external-link',
+							source: 'external-link',
 							origin: 'external',
 							auto_send: false,
 						});

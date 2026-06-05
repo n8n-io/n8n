@@ -15,7 +15,8 @@ function makeContext(getTemplate: (id: string) => Promise<unknown>): InstanceAiC
 describe('templates tool', () => {
 	it('returns the template for an id', async () => {
 		const tool = createTemplatesTool(
-			makeContext(async (id) => ({ available: true, template: { id } })),
+			// eslint-disable-next-line @typescript-eslint/require-await
+			makeContext(async (id: string) => ({ available: true, template: { id } })),
 		);
 
 		const result = await executeTool(tool, { templateId: '7' });
@@ -24,7 +25,10 @@ describe('templates tool', () => {
 	});
 
 	it('surfaces unavailable templates', async () => {
-		const tool = createTemplatesTool(makeContext(async () => ({ available: false })));
+		const tool = createTemplatesTool(
+			// eslint-disable-next-line @typescript-eslint/require-await
+			makeContext(async () => ({ available: false as const })),
+		);
 
 		const result = await executeTool(tool, { templateId: '7' });
 

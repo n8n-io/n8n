@@ -68,7 +68,10 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			updateRows: vi.fn(),
 			deleteRows: vi.fn(),
 		},
-		workflowTemplateService: { getTemplate: async () => ({ available: false as const }) },
+		workflowTemplateService: {
+			// eslint-disable-next-line @typescript-eslint/require-await
+			getTemplate: async () => ({ available: false as const }),
+		},
 		...overrides,
 	};
 }
