@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import type { SubAgentTaskDifficulty } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import {
-	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nIconButton,
@@ -356,22 +355,12 @@ function onRemoveSubAgent(agentId: string) {
 				:class="$style.difficultyRow"
 				:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
 			>
-				<div :class="$style.difficultyRowHeader">
+				<div :class="$style.difficultyLabel">
 					<N8nText size="small" :bold="true">
 						{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
 					</N8nText>
-					<N8nButton
-						v-if="hasDifficultyMapping(difficulty)"
-						type="secondary"
-						size="small"
-						:disabled="disabled"
-						:data-testid="`agent-sub-agents-difficulty-${difficulty}-clear`"
-						@click="clearDifficultyMapping(difficulty)"
-					>
-						{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear') }}
-					</N8nButton>
 				</div>
-				<div :class="$style.difficultyModelSelector">
+				<div :class="$style.difficultyControls">
 					<AgentModelSelector
 						:selected-model="selectedModelForDifficulty(difficulty)"
 						:credentials="credentialsForDifficulty(difficulty)"
@@ -387,6 +376,22 @@ function onRemoveSubAgent(agentId: string) {
 								onDifficultySelectCredential(difficulty, provider, credentialId)
 						"
 					/>
+					<N8nTooltip
+						v-if="hasDifficultyMapping(difficulty)"
+						:content="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
+						placement="top"
+					>
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="mini"
+							icon-size="small"
+							:disabled="disabled"
+							:aria-label="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
+							:data-testid="`agent-sub-agents-difficulty-${difficulty}-clear`"
+							@click="clearDifficultyMapping(difficulty)"
+						/>
+					</N8nTooltip>
 				</div>
 			</div>
 		</div>
@@ -513,7 +518,9 @@ function onRemoveSubAgent(agentId: string) {
 .inlineModelsSection {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
+	border-left: var(--border);
 	width: 100%;
 }
 
@@ -525,21 +532,28 @@ function onRemoveSubAgent(agentId: string) {
 
 .difficultyRow {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.difficultyRowHeader {
-	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	min-height: var(--spacing--xl);
 }
 
-.difficultyModelSelector {
+.difficultyLabel {
+	flex: 1;
+	min-width: 0;
+}
+
+.difficultyControls {
 	display: flex;
+	align-items: center;
 	justify-content: flex-end;
-	width: 100%;
+	gap: var(--spacing--2xs);
+	min-width: 260px;
+}
+
+.difficultyControls > :first-child {
+	flex: 1;
+	min-width: 220px;
 }
 
 .divider {

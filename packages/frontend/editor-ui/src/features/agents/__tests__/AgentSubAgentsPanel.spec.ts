@@ -146,8 +146,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 	N8nIconButton: {
-		template: '<button :disabled="disabled"><slot /></button>',
-		props: ['disabled', 'ariaLabel'],
+		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
+		props: ['disabled', 'ariaLabel', 'icon', 'variant', 'size', 'iconSize'],
 	},
 	N8nInputNumber2: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision'],
