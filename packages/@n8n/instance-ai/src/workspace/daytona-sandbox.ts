@@ -108,6 +108,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	private lastClientGeneration = -1;
 	private sandbox?: Sandbox;
 	private workingDirectory?: string;
+	private recoveryPromise?: Promise<void>;
 
 	constructor(private readonly options: DaytonaSandboxOptions = {}) {
 		super();
@@ -330,9 +331,24 @@ export class DaytonaSandbox extends BaseSandbox {
 			return await op();
 		} catch (error) {
 			if (!(await this.isRecoverable(error))) throw error;
-			this.resetLocalHandle();
+			await this.recover();
 			return await op();
 		}
+	}
+
+	/**
+	 * Reset the stale handle and bring the sandbox back to 'started'. Serialized via
+	 * {@link recoveryPromise} so concurrent failed operations share a single resume/recreate
+	 * rather than racing multiple start flows.
+	 */
+	private async recover(): Promise<void> {
+		this.recoveryPromise ??= (async () => {
+			this.resetLocalHandle();
+			await this.ensureRunning();
+		})().finally(() => {
+			this.recoveryPromise = undefined;
+		});
+		await this.recoveryPromise;
 	}
 
 	private async findExistingSandbox(client: Daytona): Promise<Sandbox | null> {
