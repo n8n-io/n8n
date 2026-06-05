@@ -10,6 +10,9 @@ vi.mock('ioredis', () => {
 	const Redis = require('ioredis-mock');
 
 	return {
+		// Must be a function expression (not method shorthand) so it is
+		// constructable via `new Redis(...)` in the service under test.
+		// eslint-disable-next-line object-shorthand
 		default: function (...args: unknown[]) {
 			return new Redis(args);
 		},
