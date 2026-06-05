@@ -2,6 +2,7 @@ import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
@@ -46,6 +47,23 @@ export class PostHogClient {
 		if (this.postHog) {
 			return await this.postHog.shutdown();
 		}
+	}
+
+	/**
+	 * Registers PostHog's Express request-context middleware on the given app so
+	 * that events captured during a request automatically inherit the session and
+	 * distinct ID from the incoming `x-posthog-session-id` / `x-posthog-distinct-id`
+	 * headers. The frontend SDK attaches these headers via its `tracing_headers`
+	 * config (see the editor-ui PostHog store). This is what lets backend-captured
+	 * events be filtered against session recordings.
+	 *
+	 * No-ops when diagnostics are disabled (PostHog not initialised). Must be
+	 * called after `init()` and before request handlers are registered.
+	 */
+	async setupExpressContext(app: Application): Promise<void> {
+		if (!this.postHog) return;
+		const { setupExpressRequestContext } = await import('posthog-node');
+		setupExpressRequestContext(this.postHog, app);
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {

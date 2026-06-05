@@ -164,6 +164,18 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('configures tracing headers for the instance host', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					tracing_headers: [window.location.hostname],
+				}),
+			);
+		});
+
 		it('should identify user', () => {
 			const posthog = usePostHog();
 			posthog.init();

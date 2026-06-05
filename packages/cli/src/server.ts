@@ -169,6 +169,12 @@ export class Server extends AbstractServer {
 
 		await this.postHogClient.init();
 
+		// Wire PostHog request context so events captured during a request inherit
+		// the frontend session and distinct ID from incoming tracing headers.
+		// Registered here (after init, before ControllerRegistry.activate below) so
+		// it wraps the REST routes the editor-ui calls.
+		await this.postHogClient.setupExpressContext(this.app);
+
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them

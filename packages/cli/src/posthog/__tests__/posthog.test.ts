@@ -1,9 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import type { Application } from 'express';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags } from 'n8n-workflow';
-import { PostHog } from 'posthog-node';
+import { PostHog, setupExpressRequestContext } from 'posthog-node';
 
 import { PostHogClient } from '@/posthog';
 
@@ -100,6 +101,31 @@ describe('PostHog', () => {
 				$group_set: properties,
 			},
 			groups: { company: instanceId },
+		});
+	});
+
+	describe('setupExpressContext', () => {
+		it('registers the Express request context middleware when initialised', async () => {
+			const app = mock<Application>();
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.setupExpressContext(app);
+
+			expect(setupExpressRequestContext).toHaveBeenCalledWith(expect.any(PostHog), app);
+		});
+
+		it('no-ops when diagnostics are disabled', async () => {
+			globalConfig.diagnostics.enabled = false;
+			const app = mock<Application>();
+
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.setupExpressContext(app);
+
+			expect(setupExpressRequestContext).not.toHaveBeenCalled();
 		});
 	});
 
