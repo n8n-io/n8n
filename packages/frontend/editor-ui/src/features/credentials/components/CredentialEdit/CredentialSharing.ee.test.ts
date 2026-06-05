@@ -35,7 +35,7 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.info.personalSpaceRestricted':
 			"You don't have permission to share personal credentials",
 		'credentialEdit.credentialSharing.info.dynamicCredential':
-			"Private credentials can't be shared, since each user connects their own when a workflow runs.",
+			'Sharing of private credentials is not supported.',
 		'credentialEdit.credentialSharing.role.user': 'User',
 		'auth.roles.owner': 'Owner',
 		'contextual.credentials.sharing.unavailable.title': 'Upgrade to collaborate',
@@ -414,7 +414,7 @@ describe('CredentialSharing.ee', () => {
 			});
 
 			// The reason sharing is unavailable is surfaced to the user
-			expect(getByText(/can't be shared/i)).toBeInTheDocument();
+			expect(getByText(/not supported/i)).toBeInTheDocument();
 		});
 
 		it('should still allow removing existing shares for a private credential', () => {
