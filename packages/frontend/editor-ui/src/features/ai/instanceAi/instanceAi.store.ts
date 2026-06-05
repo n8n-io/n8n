@@ -3,7 +3,11 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
-import { ensureThread, getInstanceAiCredits } from './instanceAi.api';
+import {
+	ensureThread,
+	getInstanceAiCredits,
+	type InstanceAiThreadLaunchInput,
+} from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -22,6 +26,17 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const persistedThreadIds = new Set<string>();
+	const pendingPrefills = new Map<string, string>();
+
+	function setPendingPrefill(threadId: string, text: string): void {
+		pendingPrefills.set(threadId, text);
+	}
+
+	function consumePendingPrefill(threadId: string): string | undefined {
+		const text = pendingPrefills.get(threadId);
+		pendingPrefills.delete(threadId);
+		return text;
+	}
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
@@ -164,10 +179,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function syncThread(threadId: string): Promise<void> {
+	async function syncThread(threadId: string, launch?: InstanceAiThreadLaunchInput): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
-		const result = await ensureThread(rootStore.restApiContext, threadId);
+		const result = await ensureThread(rootStore.restApiContext, threadId, launch);
 		persistedThreadIds.add(result.thread.id);
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
@@ -265,6 +280,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		disposeRuntime,
 		disposeRuntimes,
 		syncThread,
+		setPendingPrefill,
+		consumePendingPrefill,
 	};
 });
 

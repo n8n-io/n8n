@@ -166,6 +166,17 @@ describe('useInstanceAiStore - runtime registry', () => {
 	});
 });
 
+describe('instanceAi store pending prefill', () => {
+	beforeEach(() => setActivePinia(createPinia()));
+
+	it('stores and consumes a pending prefill exactly once', () => {
+		const store = useInstanceAiStore();
+		store.setPendingPrefill('thread-1', 'hello world');
+		expect(store.consumePendingPrefill('thread-1')).toBe('hello world');
+		expect(store.consumePendingPrefill('thread-1')).toBeUndefined();
+	});
+});
+
 describe('useInstanceAiStore - credits', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());

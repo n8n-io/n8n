@@ -5,7 +5,14 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
+	InstanceAiThreadOrigin,
 } from '@n8n/api-types';
+
+export interface InstanceAiThreadLaunchInput {
+	source?: string;
+	origin?: InstanceAiThreadOrigin;
+	sourceContext?: Record<string, unknown>;
+}
 
 /**
  * POST /instance-ai/chat/:threadId -> { runId }
@@ -35,6 +42,7 @@ export async function postMessage(
 export async function ensureThread(
 	context: IRestApiContext,
 	threadId?: string,
+	launch?: InstanceAiThreadLaunchInput,
 ): Promise<InstanceAiEnsureThreadResponse> {
 	return await makeRestApiRequest<InstanceAiEnsureThreadResponse>(
 		context,
@@ -42,6 +50,7 @@ export async function ensureThread(
 		'/instance-ai/threads',
 		{
 			...(threadId ? { threadId } : {}),
+			...(launch ?? {}),
 		},
 	);
 }
