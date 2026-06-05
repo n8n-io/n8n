@@ -65,4 +65,26 @@ describe('NvidiaEmbeddings', () => {
 		expect(create.mock.calls[0][0]).toMatchObject({ input_type: 'passage' });
 		expect(create.mock.calls[1][0]).toMatchObject({ input_type: 'query' });
 	});
+
+	it('should bind input_type to each request when passage and query calls run concurrently', async () => {
+		const { embeddings, create } = buildEmbeddings();
+
+		// Both modes are issued against the same instance without awaiting in between. input_type is
+		// carried on each request, so the value must not depend on call ordering or shared state.
+		await Promise.all([
+			embeddings.embedDocuments(['a passage to index']),
+			embeddings.embedQuery('a query to search'),
+		]);
+
+		const requestFor = (text: string) => {
+			const match = create.mock.calls.find((call) => {
+				const { input } = call[0] as { input: string | string[] };
+				return (Array.isArray(input) ? input : [input]).includes(text);
+			});
+			return match?.[0] as { input_type?: 'passage' | 'query' } | undefined;
+		};
+
+		expect(requestFor('a passage to index')).toMatchObject({ input_type: 'passage' });
+		expect(requestFor('a query to search')).toMatchObject({ input_type: 'query' });
+	});
 });
