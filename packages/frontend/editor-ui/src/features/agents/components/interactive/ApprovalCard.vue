@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { scrubSecretsInText } from '@n8n/utils';
 import type { ApprovalInput, ApprovalResume } from '../../composables/agentChatMessages';
 
 const props = defineProps<{
@@ -22,9 +21,9 @@ const toolLabel = computed(() => props.input.displayName ?? props.input.toolName
 const argsText = computed(() => {
 	if (props.input.args === undefined) return '';
 	try {
-		return scrubSecretsInText(JSON.stringify(props.input.args, null, 2) ?? '');
+		return JSON.stringify(props.input.args, null, 2) ?? '';
 	} catch {
-		return scrubSecretsInText(String(props.input.args));
+		return String(props.input.args);
 	}
 });
 

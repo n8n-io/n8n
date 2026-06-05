@@ -68,7 +68,7 @@ describe('InteractiveCard', () => {
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true }]]);
 	});
 
-	it('redacts secret-like approval args before rendering', () => {
+	it('renders approval args as provided by the backend', () => {
 		const wrapper = mountCard({
 			...approvalPayload,
 			input: {
@@ -85,10 +85,9 @@ describe('InteractiveCard', () => {
 		});
 
 		expect(wrapper.text()).toContain('project status');
-		expect(wrapper.text()).toContain('[REDACTED]');
-		expect(wrapper.text()).not.toContain('super-secret-password');
-		expect(wrapper.text()).not.toContain('api-key-value');
-		expect(wrapper.text()).not.toContain('token-value');
+		expect(wrapper.text()).toContain('super-secret-password');
+		expect(wrapper.text()).toContain('api-key-value');
+		expect(wrapper.text()).toContain('token-value');
 	});
 
 	it('emits rejected resume data from the reject action', async () => {

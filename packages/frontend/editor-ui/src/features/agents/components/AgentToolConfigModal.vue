@@ -323,11 +323,12 @@ function handleNodeNameUpdate(name: string) {
 							:existing-tool-names="data.existingToolNames"
 							:project-id="data.projectId"
 							content-test-id="node-tool-settings-content"
-							:show-approval-setting="showApprovalSetting"
-							:approval-required="approvalRequired"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
-							@update:approval-required="approvalRequired = $event"
+						/>
+						<AgentToolConfigApprovalSetting
+							v-if="!isMcpTool && initialNode && showApprovalSetting"
+							v-model="approvalRequired"
 						/>
 					</div>
 				</template>

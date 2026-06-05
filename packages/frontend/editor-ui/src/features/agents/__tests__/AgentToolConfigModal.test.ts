@@ -26,14 +26,8 @@ vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 
 function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
-		props: [
-			'initialNode',
-			'existingToolNames',
-			'projectId',
-			'showApprovalSetting',
-			'approvalRequired',
-		],
-		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
+		props: ['initialNode', 'existingToolNames', 'projectId'],
+		emits: ['update:valid', 'update:node-name'],
 		setup(props, { emit, expose }) {
 			// Expose what the modal reads from ref(...). The stub carries through
 			// the initialNode's credentials so we can assert the round-trip keeps them.
@@ -58,14 +52,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			return {};
 		},
 		template: `
-			<div data-test-id="node-tool-settings-content" :data-project-id="projectId">
-				<button
-					v-if="showApprovalSetting"
-					data-test-id="agent-tool-approval-toggle"
-					:data-checked="approvalRequired"
-					@click="$emit('update:approvalRequired', !approvalRequired)"
-				/>
-			</div>
+			<div data-test-id="node-tool-settings-content" :data-project-id="projectId" />
 		`,
 	});
 }
@@ -269,7 +256,7 @@ describe('AgentToolConfigModal', () => {
 		const settings = getByTestId('node-tool-settings-content');
 		const approvalToggle = getByTestId('agent-tool-approval-toggle');
 
-		expect(settings.contains(approvalToggle)).toBe(true);
+		expect(settings.contains(approvalToggle)).toBe(false);
 		expect(
 			settings.compareDocumentPosition(approvalToggle) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBe(Node.DOCUMENT_POSITION_FOLLOWING);

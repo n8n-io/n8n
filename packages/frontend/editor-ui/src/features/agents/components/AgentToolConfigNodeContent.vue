@@ -3,21 +3,17 @@ import { ref } from 'vue';
 import type { INode } from 'n8n-workflow';
 
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
-import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 
 const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
 	projectId?: string;
 	contentTestId?: string;
-	showApprovalSetting?: boolean;
-	approvalRequired?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:valid': [valid: boolean];
 	'update:node-name': [name: string];
-	'update:approvalRequired': [required: boolean];
 }>();
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
@@ -51,13 +47,5 @@ defineExpose({
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
-	>
-		<template #commonSettings>
-			<AgentToolConfigApprovalSetting
-				v-if="props.showApprovalSetting"
-				:model-value="props.approvalRequired ?? false"
-				@update:model-value="emit('update:approvalRequired', $event)"
-			/>
-		</template>
-	</NodeToolSettingsContent>
+	/>
 </template>
