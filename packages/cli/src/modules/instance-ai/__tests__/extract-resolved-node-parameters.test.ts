@@ -10,7 +10,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeTypes } from '@/node-types';
 
 import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
