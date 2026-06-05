@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	WorkflowPublicationOutbox,
@@ -10,6 +10,7 @@ import {
 } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -25,7 +26,8 @@ export class WorkflowPublicationOutboxConsumer {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
@@ -36,7 +38,7 @@ export class WorkflowPublicationOutboxConsumer {
 
 	@OnLeaderTakeover()
 	startPolling() {
-		if (!this.globalConfig.workflows.useWorkflowPublicationService || this.isShuttingDown) return;
+		if (!this.workflowsConfig.useWorkflowPublicationService || this.isShuttingDown) return;
 
 		this.schedulePollCycle();
 		this.logger.debug('Started outbox polling');
@@ -67,11 +69,18 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async pollCycle() {
+		let processed = 0;
+
 		while (!this.isShuttingDown) {
 			const record = await this.outboxRepository.claimNextPendingRecord();
 			if (!record) break;
 
 			await this.tryProcessRecord(record);
+			processed++;
+		}
+
+		if (processed > 0) {
+			this.logger.debug(`Processed ${processed} outbox record(s)`);
 		}
 	}
 
@@ -79,21 +88,14 @@ export class WorkflowPublicationOutboxConsumer {
 		try {
 			await this.processRecord(record);
 		} catch (error) {
-			this.logger.error('Unexpected error processing outbox record', {
-				outboxId: record.id,
-				workflowId: record.workflowId,
-				error: ensureError(error).message,
-			});
+			this.errorReporter.error(error);
 			try {
 				await this.outboxRepository.markFailed(
 					record.id,
 					`Unexpected: ${ensureError(error).message}`,
 				);
 			} catch (markError) {
-				this.logger.error('Failed to mark outbox record as failed', {
-					outboxId: record.id,
-					error: ensureError(markError).message,
-				});
+				this.errorReporter.error(markError);
 			}
 		}
 	}

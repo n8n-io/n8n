@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { WorkflowsConfig } from '@n8n/config';
 import type {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
@@ -8,6 +8,7 @@ import type {
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -17,6 +18,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
+	const errorReporter = mock<ErrorReporter>();
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
@@ -25,12 +27,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	let consumer: WorkflowPublicationOutboxConsumer;
 
 	function createConsumer(useWorkflowPublicationService = true) {
-		const globalConfig = mock<GlobalConfig>({
-			workflows: { useWorkflowPublicationService },
-		});
+		const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService });
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
-			globalConfig,
+			workflowsConfig,
+			errorReporter,
 			outboxRepository,
 			workflowRepository,
 			activeWorkflowManager,
