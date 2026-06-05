@@ -102,6 +102,8 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code")');
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
+		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
+		expect(loaded?.instructions).toContain('workflows(action="get-json", workflowId)');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
 	});

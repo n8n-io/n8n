@@ -182,6 +182,16 @@ Use the current turn's higher-priority instructions to decide who verifies:
 - Planned build follow-ups that explicitly say to stop after save: stop after a
   successful `build-workflow`. The checkpoint task owns verification.
 
+Build/save success is not workflow-quality evidence. When this turn is
+responsible for verification or repair, inspect the persisted workflow with
+`workflows(action="get-json", workflowId)` after saving or before reporting a
+verdict. Judge the saved graph against the user's requested outcome and the
+current build/checkpoint goal, not a hidden service-specific or topology
+checklist.
+If the saved workflow is only a draft, misses the intended outcome, or has weak
+evidence, patch the same workflow with `build-workflow`, then inspect and verify
+again.
+
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
