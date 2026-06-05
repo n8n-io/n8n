@@ -73,6 +73,12 @@ export type PlannedWorkflowVerificationTracker = {
 	followUpStartAttempted(verification: PlannedWorkflowVerification, started: boolean): void;
 };
 
+export type PlannedWorkflowVerificationGate = {
+	revalidate(
+		verification: PlannedWorkflowVerification,
+	): Promise<PlannedWorkflowVerification | undefined>;
+};
+
 type PlannedTaskActionRunnerDeps = {
 	scope: PlannedTaskRunScope;
 	plannedTaskService: PlannedTaskService;
@@ -81,6 +87,7 @@ type PlannedTaskActionRunnerDeps = {
 	runGate: PlannedTaskRunGate;
 	dispatcher: PlannedTaskDispatcher;
 	followUps: PlannedTaskFollowUpStarter;
+	workflowVerificationGate: PlannedWorkflowVerificationGate;
 	workflowVerificationTracker: PlannedWorkflowVerificationTracker;
 };
 
@@ -128,15 +135,21 @@ export class PlannedTaskActionRunner {
 		const { scope } = this.deps;
 		const { verification } = action;
 		this.deps.workflowVerificationTracker.scheduled(verification);
+		const currentVerification = await this.deps.workflowVerificationGate.revalidate(verification);
+		if (!currentVerification) {
+			this.deps.workflowVerificationTracker.followUpStartAttempted(verification, false);
+			return { type: 'continue-scheduling' };
+		}
+
 		await this.deps.view.sync(scope, action.graph);
 
 		const startedRunId = await this.deps.followUps.startWorkflowVerification({
 			scope,
 			graph: action.graph,
-			verification,
+			verification: currentVerification,
 		});
 		this.deps.workflowVerificationTracker.followUpStartAttempted(
-			verification,
+			currentVerification,
 			startedRunId.length > 0,
 		);
 		return { type: 'done' };

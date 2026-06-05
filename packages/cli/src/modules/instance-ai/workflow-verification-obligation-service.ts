@@ -26,6 +26,10 @@ export function parseWorkflowBuildOutcome(
 export class WorkflowVerificationObligationService {
 	constructor(private readonly agentMemory: TypeORMAgentMemory) {}
 
+	private storage(): WorkflowLoopStorage {
+		return new WorkflowLoopStorage(this.agentMemory);
+	}
+
 	isPlannedRecord(record: WorkflowLoopWorkItemRecord): boolean {
 		return isPlannedWorkflowBuildOwner(
 			resolveWorkflowBuildOwner(record.state, record.lastBuildOutcome),
@@ -37,10 +41,7 @@ export class WorkflowVerificationObligationService {
 		workItemId: string,
 		options: { source: WorkflowVerificationObligationSource; plannedTaskId?: string },
 	): Promise<WorkflowVerificationObligation | undefined> {
-		const record = await new WorkflowLoopStorage(this.agentMemory).getWorkItem(
-			threadId,
-			workItemId,
-		);
+		const record = await this.storage().getWorkItem(threadId, workItemId);
 		if (!record) return undefined;
 		return this.obligationFromRecord(threadId, record, options);
 	}
@@ -60,18 +61,42 @@ export class WorkflowVerificationObligationService {
 		for (const task of graph.tasks) {
 			if (task.kind !== 'build-workflow' || task.status !== 'succeeded') continue;
 
-			const outcome = parseWorkflowBuildOutcome(task.outcome);
-			if (!outcome) continue;
-
-			const options = { source: 'planned', plannedTaskId: task.id } as const;
-			const obligation =
-				(await this.getObligation(threadId, outcome.workItemId, options)) ??
-				deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
-			if (!isWorkflowVerificationObligationUnsettled(obligation)) continue;
-
-			return { task, obligation, outcome };
+			const verification = await this.pendingPlannedWorkflowVerificationFromTask(threadId, task);
+			if (verification) return verification;
 		}
 
 		return undefined;
+	}
+
+	async revalidatePlannedWorkflowVerification(
+		threadId: string,
+		verification: PlannedWorkflowVerification,
+	): Promise<PlannedWorkflowVerification | undefined> {
+		return await this.pendingPlannedWorkflowVerificationFromTask(
+			threadId,
+			verification.task,
+			verification.outcome,
+		);
+	}
+
+	private async pendingPlannedWorkflowVerificationFromTask(
+		threadId: string,
+		task: PlannedTaskGraph['tasks'][number],
+		fallbackOutcome?: WorkflowBuildOutcome,
+	): Promise<PlannedWorkflowVerification | undefined> {
+		const taskOutcome = parseWorkflowBuildOutcome(task.outcome);
+		const baseOutcome = taskOutcome ?? fallbackOutcome;
+		if (!baseOutcome) return undefined;
+
+		const options = { source: 'planned', plannedTaskId: task.id } as const;
+		const record = await this.storage().getWorkItem(threadId, baseOutcome.workItemId);
+		const outcome = record?.lastBuildOutcome ?? baseOutcome;
+		const obligation = record?.lastBuildOutcome
+			? this.obligationFromRecord(threadId, record, options)
+			: deriveWorkflowVerificationObligationFromOutcome(threadId, outcome, options);
+
+		if (!isWorkflowVerificationObligationUnsettled(obligation)) return undefined;
+
+		return { task, obligation, outcome };
 	}
 }

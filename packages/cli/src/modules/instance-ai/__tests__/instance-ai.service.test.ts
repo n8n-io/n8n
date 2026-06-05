@@ -1694,7 +1694,10 @@ type PlannedTaskSchedulerServiceInternals = {
 	cancelRun: jest.Mock;
 	createPlannedTaskState: jest.Mock;
 	syncPlannedTasksToUi: jest.Mock;
-	workflowObligations: { findPendingPlannedWorkflowVerification: jest.Mock };
+	workflowObligations: {
+		findPendingPlannedWorkflowVerification: jest.Mock;
+		revalidatePlannedWorkflowVerification: jest.Mock;
+	};
 	backgroundTasks: { getRunningTasks: jest.Mock };
 	startInternalFollowUpRun: jest.Mock;
 	buildPlannedTaskFollowUpMessage: jest.Mock;
@@ -1739,6 +1742,7 @@ function createPlannedTaskSchedulerService(): {
 	service.syncPlannedTasksToUi = jest.fn(async () => {});
 	service.workflowObligations = {
 		findPendingPlannedWorkflowVerification: jest.fn(async () => undefined),
+		revalidatePlannedWorkflowVerification: jest.fn(async (_threadId, verification) => verification),
 	};
 	service.backgroundTasks = { getRunningTasks: jest.fn(() => []) };
 	service.startInternalFollowUpRun = jest.fn(async () => 'follow-up-run');
@@ -2124,6 +2128,74 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		expect(service.buildPlannedTaskFollowUpMessage).not.toHaveBeenCalledWith(
 			'synthesize',
 			expect.anything(),
+		);
+	});
+
+	it('skips a stale planned workflow verification and continues scheduling', async () => {
+		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const workflowTask = {
+			id: 'build-wf',
+			title: 'Build workflow',
+			kind: 'build-workflow',
+			status: 'succeeded',
+			outcome: { workItemId: 'wi-1', workflowId: 'wf-1' },
+		};
+		const graphWithTask = { ...graph, tasks: [workflowTask] };
+		const pendingVerification = {
+			obligation: {
+				workItemId: 'wi-1',
+				threadId: 'thread-a',
+				workflowId: 'wf-1',
+				source: 'planned',
+				policy: 'required',
+				status: 'ready_to_verify',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			outcome: undefined,
+			task: workflowTask,
+		};
+		plannedTaskService.getGraph.mockResolvedValue(graphWithTask);
+		service.workflowObligations.findPendingPlannedWorkflowVerification
+			.mockResolvedValueOnce(pendingVerification)
+			.mockResolvedValueOnce(undefined);
+		service.workflowObligations.revalidatePlannedWorkflowVerification.mockResolvedValueOnce(
+			undefined,
+		);
+		plannedTaskService.tick
+			.mockResolvedValueOnce({
+				type: 'orchestrate-workflow-verification',
+				graph: graphWithTask,
+				verification: pendingVerification,
+			})
+			.mockResolvedValueOnce({
+				type: 'synthesize',
+				graph: { ...graphWithTask, status: 'completed' },
+			});
+
+		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
+
+		expect(service.workflowObligations.revalidatePlannedWorkflowVerification).toHaveBeenCalledWith(
+			'thread-a',
+			pendingVerification,
+		);
+		expect(plannedTaskService.tick).toHaveBeenCalledTimes(2);
+		expect(service.buildWorkflowVerificationFollowUpMessage).not.toHaveBeenCalled();
+		expect(service.buildPlannedTaskFollowUpMessage).toHaveBeenCalledWith(
+			'synthesize',
+			expect.objectContaining({ status: 'completed' }),
+		);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledTimes(1);
+		expect(service.startInternalFollowUpRun).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'follow-up message',
+			'group-1',
+			false,
+			undefined,
+			'synthesize',
+			undefined,
 		);
 	});
 

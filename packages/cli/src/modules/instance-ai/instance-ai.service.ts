@@ -140,6 +140,7 @@ import {
 	type PlannedTaskRunGate,
 	type PlannedTaskRunScope,
 	type PlannedTaskView,
+	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
@@ -3751,6 +3752,7 @@ export class InstanceAiService {
 			runGate: this.createPlannedTaskRunGate(),
 			dispatcher: this.createPlannedTaskDispatcher(),
 			followUps: this.createPlannedTaskFollowUps(),
+			workflowVerificationGate: this.createPlannedWorkflowVerificationGate(threadId),
 			workflowVerificationTracker: this.createPlannedWorkflowVerificationTracker(),
 		});
 	}
@@ -3851,6 +3853,16 @@ export class InstanceAiService {
 					{ isCheckpointFollowUp: true, checkpointTaskId: task.id },
 					undefined,
 					undefined,
+				),
+		};
+	}
+
+	private createPlannedWorkflowVerificationGate(threadId: string): PlannedWorkflowVerificationGate {
+		return {
+			revalidate: async (verification) =>
+				await this.workflowObligations.revalidatePlannedWorkflowVerification(
+					threadId,
+					verification,
 				),
 		};
 	}

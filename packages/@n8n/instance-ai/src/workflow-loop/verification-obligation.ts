@@ -40,6 +40,25 @@ function hasSuccessfulEvidence(outcome: WorkflowBuildOutcome): boolean {
 	);
 }
 
+function hasFailedEvidence(outcome: WorkflowBuildOutcome): boolean {
+	return outcome.verification?.attempted === true && !outcome.verification.success;
+}
+
+function isNeedsSetupRemediation(remediation: WorkflowBuildOutcome['remediation']): boolean {
+	return remediation?.category === 'needs_setup' && !remediation.shouldEdit;
+}
+
+function hasSetupBlockingEvidence(
+	state: WorkflowLoopState,
+	outcome: WorkflowBuildOutcome,
+): boolean {
+	if (outcome.verificationReadiness?.status === 'needs_setup') return true;
+	if (isNeedsSetupRemediation(outcome.remediation)) return true;
+	if (isNeedsSetupRemediation(state.lastRemediation)) return true;
+
+	return outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome);
+}
+
 function deriveStatus(
 	state: WorkflowLoopState,
 	outcome: WorkflowBuildOutcome | undefined,
@@ -48,6 +67,7 @@ function deriveStatus(
 
 	if (!outcome.submitted) return 'blocked';
 	if (hasSuccessfulEvidence(outcome)) return 'verified';
+	if (hasSetupBlockingEvidence(state, outcome)) return 'needs_setup';
 
 	switch (outcome.verificationReadiness?.status) {
 		case 'already_verified':
@@ -89,6 +109,17 @@ function deriveBlockingReason(
 	}
 	if (outcome.verificationReadiness?.status === 'needs_setup') {
 		return outcome.verificationReadiness.guidance;
+	}
+	const outcomeRemediation = outcome.remediation;
+	if (outcomeRemediation?.category === 'needs_setup' && !outcomeRemediation.shouldEdit) {
+		return outcomeRemediation.guidance;
+	}
+	const lastRemediation = state.lastRemediation;
+	if (lastRemediation?.category === 'needs_setup' && !lastRemediation.shouldEdit) {
+		return lastRemediation.guidance;
+	}
+	if (outcome.setupRequirement?.status === 'required' && hasFailedEvidence(outcome)) {
+		return outcome.setupRequirement.guidance;
 	}
 	if (state.status === 'blocked') {
 		return state.lastRemediation?.guidance ?? outcome.blockingReason ?? outcome.failureSignature;

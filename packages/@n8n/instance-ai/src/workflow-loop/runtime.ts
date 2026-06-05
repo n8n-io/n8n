@@ -58,7 +58,12 @@ export class WorkflowLoopRuntime {
 		} = handleVerificationVerdict(existing.state, existing.attempts, verdict);
 		if (action.type === 'ignored') return action;
 
-		await this.storage.saveWorkItem(threadId, newState, [...existing.attempts, attempt]);
+		await this.storage.saveWorkItem(
+			threadId,
+			newState,
+			[...existing.attempts, attempt],
+			existing.lastBuildOutcome,
+		);
 		return action;
 	}
 }

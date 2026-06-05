@@ -130,6 +130,30 @@ describe('deriveWorkflowVerificationObligation', () => {
 		expect(obligation.blockingReason).toBe('Route through setup.');
 	});
 
+	it('treats failed verification evidence with required setup as needs setup', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState(),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Route through setup.',
+				},
+				verification: {
+					attempted: true,
+					success: false,
+					executionId: 'exec-1',
+					status: 'error',
+					failureSignature: 'Missing credentials',
+				},
+			}),
+		});
+
+		expect(obligation.status).toBe('needs_setup');
+		expect(obligation.blockingReason).toBe('Route through setup.');
+	});
+
 	it('marks missing submit as blocked', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState({ workflowId: undefined }),
@@ -199,5 +223,29 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 
 		expect(obligation.status).toBe('verified');
 		expect(obligation.evidence?.executionId).toBe('exec-1');
+	});
+
+	it('marks setup-blocked failed evidence as needs setup from outcome-only records', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeOutcome({
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Route through setup.',
+				},
+				verification: {
+					attempted: true,
+					success: false,
+					executionId: 'exec-1',
+					status: 'error',
+					failureSignature: 'Missing credentials',
+				},
+			}),
+			{ source: 'planned', plannedTaskId: 'task-1' },
+		);
+
+		expect(obligation.status).toBe('needs_setup');
+		expect(obligation.plannedTaskId).toBe('task-1');
 	});
 });
