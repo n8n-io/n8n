@@ -622,6 +622,7 @@ describe('WebhookService', () => {
 			const nodeWithWebhookId = mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+				webhookId: undefined,
 			});
 
 			const nodeType = mock<INodeType>({
