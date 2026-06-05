@@ -216,6 +216,36 @@ describe('SessionDetailPanel — other kinds', () => {
 		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
 	});
 
+	it('renders plain-text agent messages as markdown', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'Hello there' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+		expect(w.find('pre').exists()).toBe(false);
+	});
+
+	it('pretty-prints an agent message whose content is structured JSON output', () => {
+		const w = mountIt({
+			kind: 'agent',
+			executionId: 'e1',
+			timestamp: 0,
+			content: '{"city":"Tokyo","country":"Japan","population_millions":14.04}',
+		});
+		// JSON output is rendered in a <pre>, not via markdown.
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(false);
+		const pre = w.find('pre');
+		expect(pre.exists()).toBe(true);
+		expect(pre.text()).toContain('city');
+		expect(pre.text()).toContain('Tokyo');
+		expect(pre.text()).toContain('population_millions');
+		// Pretty-printed across multiple lines rather than a single raw string.
+		expect(pre.text().split('\n').length).toBeGreaterThan(1);
+	});
+
+	it('keeps markdown for an agent message that is valid JSON but not an object', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: '42' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+		expect(w.find('pre').exists()).toBe(false);
+	});
+
 	it('emits close when the close button is clicked', async () => {
 		const w = mountIt({ kind: 'user', executionId: 'e1', timestamp: 0, content: 'hi' });
 		await w.find('[data-test-id="detail-close"]').trigger('click');

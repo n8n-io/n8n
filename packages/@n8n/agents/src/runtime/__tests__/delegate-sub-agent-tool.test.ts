@@ -28,6 +28,9 @@ describe('createDelegateSubAgentTool', () => {
 					taskPath: '/root/research_api',
 					runId: 'child-run-1',
 					answer: 'done',
+					getState: () => {
+						throw new Error('not implemented');
+					},
 				}),
 		});
 
@@ -312,6 +315,11 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			],
 			finishReason: 'stop',
 			usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+			getState: () => ({
+				status: 'success',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		};
 
 		expect(
@@ -333,6 +341,11 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 			messages: [],
 			finishReason: 'error',
 			error: new Error('boom'),
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
@@ -373,6 +386,9 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 					suspendPayload: { message: 'Delete file?' },
 				},
 			],
+			getState: () => {
+				throw new Error('getState is not implemented');
+			},
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toEqual({
@@ -400,6 +416,9 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 					suspendPayload: {},
 				},
 			],
+			getState: () => {
+				throw new Error('getState is not implemented');
+			},
 		};
 
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({

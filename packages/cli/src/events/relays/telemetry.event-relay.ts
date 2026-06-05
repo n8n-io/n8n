@@ -63,9 +63,10 @@ function limitNodeGraphStringSize(nodeGraphString: string): string {
 }
 
 function getExecutionTelemetryProperties(
+	source: RelayEventMap['workflow-post-execute']['source'],
 	telemetryMetadata: RelayEventMap['workflow-post-execute']['telemetryMetadata'],
 ): ITelemetryTrackProperties {
-	const executionSource = telemetryMetadata?.source ?? 'user';
+	const executionSource = source ?? 'user';
 
 	if (executionSource !== 'instance_ai') return { execution_source: executionSource };
 
@@ -1042,13 +1043,14 @@ export class TelemetryEventRelay extends EventRelay {
 		workflow,
 		runData,
 		userId,
+		source,
 		telemetryMetadata,
 	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
 		}
 
-		const executionTelemetryProperties = getExecutionTelemetryProperties(telemetryMetadata);
+		const executionTelemetryProperties = getExecutionTelemetryProperties(source, telemetryMetadata);
 
 		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
@@ -1296,6 +1298,8 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+				metrics_category_execution_data:
+					this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
 			},
 		};
 
