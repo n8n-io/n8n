@@ -3,8 +3,6 @@ import { Workspace } from '@n8n/agents';
 import { type SandboxConfig, createSandbox, createWorkspace } from '../create-workspace';
 import { DaytonaFilesystem } from '../daytona-filesystem';
 import { DaytonaSandbox } from '../daytona-sandbox';
-import { LocalFilesystem } from '../local-filesystem';
-import { LocalSandbox } from '../local-sandbox';
 import { N8nSandboxFilesystem } from '../n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from '../n8n-sandbox-sandbox';
 
@@ -15,14 +13,8 @@ function getPrivateOptions(value: unknown): Record<string, unknown> {
 }
 
 describe('createSandbox', () => {
-	const originalEnv = process.env.NODE_ENV;
-
-	afterEach(() => {
-		process.env.NODE_ENV = originalEnv;
-	});
-
 	it('should return undefined when sandbox is disabled', async () => {
-		const config: SandboxConfig = { enabled: false, provider: 'local' };
+		const config: SandboxConfig = { enabled: false, provider: 'n8n-sandbox' };
 
 		const result = await createSandbox(config);
 
@@ -55,7 +47,6 @@ describe('createSandbox', () => {
 				language: 'typescript',
 				timeout: 60_000,
 				createTimeoutSeconds: 900,
-				ephemeral: true,
 			}),
 		);
 	});
@@ -78,7 +69,6 @@ describe('createSandbox', () => {
 		expect(getPrivateOptions(result)).toEqual(
 			expect.objectContaining({
 				createTimeoutSeconds: 300,
-				ephemeral: true,
 				labels: {
 					'n8n-builder': 'instance-ai-thread-thread-1',
 					thread_id: 'thread-1',
@@ -137,26 +127,6 @@ describe('createSandbox', () => {
 		expect(getPrivateOptions(result)).not.toHaveProperty('image');
 	});
 
-	it('should return a LocalSandbox for "local" provider in non-production', async () => {
-		process.env.NODE_ENV = 'development';
-		const config: SandboxConfig = { enabled: true, provider: 'local' };
-
-		const result = await createSandbox(config);
-
-		expect(result).toBeInstanceOf(LocalSandbox);
-		if (!(result instanceof LocalSandbox)) throw new Error('Expected LocalSandbox');
-		expect(result.workingDirectory).toMatch(/workspace$/);
-	});
-
-	it('should throw in production when provider is "local"', async () => {
-		process.env.NODE_ENV = 'production';
-		const config: SandboxConfig = { enabled: true, provider: 'local' };
-
-		await expect(createSandbox(config)).rejects.toThrow(
-			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
-		);
-	});
-
 	it('should return an N8nSandboxServiceSandbox for "n8n-sandbox" provider', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
@@ -182,16 +152,6 @@ describe('createWorkspace', () => {
 		const result = createWorkspace(undefined);
 
 		expect(result).toBeUndefined();
-	});
-
-	it('should wrap LocalSandbox with LocalFilesystem', () => {
-		const sandbox = new LocalSandbox({ workingDirectory: './workspace' });
-
-		const result = createWorkspace(sandbox);
-
-		expect(result).toBeInstanceOf(Workspace);
-		expect(result?.sandbox).toBe(sandbox);
-		expect(result?.filesystem).toBeInstanceOf(LocalFilesystem);
 	});
 
 	it('should wrap DaytonaSandbox with DaytonaFilesystem', () => {

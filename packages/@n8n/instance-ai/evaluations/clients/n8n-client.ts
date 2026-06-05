@@ -48,6 +48,7 @@ export interface WorkflowNodeResponse {
 	type: string;
 	typeVersion?: number;
 	parameters?: Record<string, unknown>;
+	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -133,6 +134,17 @@ export class N8nClient {
 	}
 
 	// -- Instance-AI endpoints -----------------------------------------------
+
+	/**
+	 * Ensure a conversation thread exists before sending chat messages.
+	 * POST /rest/instance-ai/threads body: { threadId }
+	 */
+	async ensureThread(threadId: string): Promise<void> {
+		await this.fetch('/rest/instance-ai/threads', {
+			method: 'POST',
+			body: { threadId },
+		});
+	}
 
 	/**
 	 * Send a chat message to the instance-ai agent.
@@ -421,6 +433,19 @@ export class N8nClient {
 			body: { name, type, data },
 		})) as { data: { id: string } };
 		return { id: result.data.id };
+	}
+
+	/**
+	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
+	 * and trigger a synthetic node-type reload. Requires the server to be running
+	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * POST /rest/mcp-registry/test/seed  body: none
+	 */
+	async seedMcpRegistry(): Promise<{ count: number }> {
+		const result = (await this.fetch('/rest/mcp-registry/test/seed', {
+			method: 'POST',
+		})) as { data: { ok: boolean; count: number } };
+		return { count: result.data.count };
 	}
 
 	/**

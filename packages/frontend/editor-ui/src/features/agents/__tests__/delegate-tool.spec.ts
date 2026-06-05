@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	INLINE_SUB_AGENT_ID,
 	delegateLabel,
 	humanizeTaskName,
 	isDelegateSubAgentTool,
@@ -36,6 +37,10 @@ describe('delegate-tool', () => {
 			expect(parseDelegateInput('nope')).toBeUndefined();
 			expect(parseDelegateInput(undefined)).toBeUndefined();
 			expect(parseDelegateInput(null)).toBeUndefined();
+		});
+
+		it('requires a subAgentId', () => {
+			expect(parseDelegateInput({ taskName: 'compare-pricing' })).toBeUndefined();
 		});
 	});
 
@@ -111,10 +116,13 @@ describe('delegate-tool', () => {
 			).toBe('Research api');
 		});
 
-		it('falls back to the humanized task name when no id is given', () => {
-			expect(resolveSubAgentName({ taskName: 'compare-pricing' }, new Map())).toBe(
-				'Compare pricing',
-			);
+		it('falls back to the humanized task name for inline subagents', () => {
+			expect(
+				resolveSubAgentName(
+					{ subAgentId: INLINE_SUB_AGENT_ID, taskName: 'compare-pricing' },
+					new Map(),
+				),
+			).toBe('Compare pricing');
 		});
 
 		it('ignores a blank resolved name and uses the task name', () => {
@@ -125,7 +133,7 @@ describe('delegate-tool', () => {
 		});
 
 		it('returns empty string when neither id nor task name resolve', () => {
-			expect(resolveSubAgentName({}, new Map())).toBe('');
+			expect(resolveSubAgentName({ subAgentId: INLINE_SUB_AGENT_ID }, new Map())).toBe('');
 			expect(resolveSubAgentName('not-an-object', new Map())).toBe('');
 		});
 	});

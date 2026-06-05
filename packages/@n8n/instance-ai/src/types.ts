@@ -723,11 +723,7 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
-	/**
-	 * Curated workflow-template provider for the sandbox setup. When absent or
-	 * when the service returns an empty bundle, the sandbox is created without
-	 * an `examples/` directory and the agent operates without template hints.
-	 */
+	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
@@ -742,6 +738,8 @@ export interface InstanceAiContext {
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
+	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
+	allowedRunWorkflowNames?: ReadonlySet<string>;
 	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
@@ -1238,6 +1236,8 @@ export interface OrchestrationContext {
 	schedulePlannedTasks?: () => Promise<void>;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */

@@ -265,7 +265,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
 	private parsedNodeTypes!: INodeTypeDescription[];
-	private featureFlags?: BuilderFeatureFlags;
 
 	/** Mutable state for planner web_fetch hooks, updated before each planner invocation */
 	private plannerWebFetchState: MutableWebFetchState = {
@@ -278,11 +277,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 		this.parsedNodeTypes = config.parsedNodeTypes;
-		this.featureFlags = config.featureFlags;
 
 		// Check feature flags
 		const includeExamples = config.featureFlags?.templateExamples === true;
-		const includePlanMode = config.featureFlags?.planMode === true;
 		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
 		// Create security manager factories for web_fetch in each context
@@ -293,16 +290,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const ssrf = config.ssrf ?? createPassthroughSsrfGuard();
 
 		// Create base tools - search_nodes provides all data needed for discovery
-		const baseTools: StructuredTool[] = includePlanMode
-			? [
-					createNodeSearchTool(config.parsedNodeTypes).tool,
-					submitQuestionsTool,
-					createWebFetchTool(discoverySecurityFactory, ssrf).tool,
-				]
-			: [
-					createNodeSearchTool(config.parsedNodeTypes).tool,
-					createWebFetchTool(discoverySecurityFactory, ssrf).tool,
-				];
+		const baseTools: StructuredTool[] = [
+			createNodeSearchTool(config.parsedNodeTypes).tool,
+			submitQuestionsTool,
+			createWebFetchTool(discoverySecurityFactory, ssrf).tool,
+		];
 
 		// Conditionally add introspect tool if feature flag is enabled
 		if (enableIntrospection) {
@@ -330,7 +322,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Generate prompt based on feature flags
 		const discoveryPrompt = buildDiscoveryPrompt({
 			includeExamples,
-			includeQuestions: includePlanMode,
 		});
 
 		// Create agent with tools bound (including submit tool)
@@ -418,7 +409,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		state: typeof DiscoverySubgraphState.State,
 		runnableConfig?: RunnableConfig,
 	) {
-		if (!this.featureFlags?.planMode || state.mode !== 'plan' || state.planOutput) {
+		if (state.mode !== 'plan' || state.planOutput) {
 			return {};
 		}
 
@@ -459,7 +450,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	}
 
 	private shouldPlan(state: typeof DiscoverySubgraphState.State): 'planner' | typeof END {
-		if (!this.featureFlags?.planMode) return END;
 		if (state.mode !== 'plan') return END;
 		return state.planOutput ? END : 'planner';
 	}

@@ -29,8 +29,6 @@ Analysis Options:
   --files=<p1,p2>    Analyze multiple files (comma-separated)
   --json             Output as JSON
   --verbose, -v      Detailed output with suggestions
-  --fix              Preview fixes (dry run)
-  --fix --write      Apply fixes to disk
   --list, -l         List available rules
   --allow-in-expect  Skip selector-purity violations inside expect()
   --ignore-baseline  Show all violations, ignoring .janitor-baseline.json
@@ -41,7 +39,6 @@ Examples:
   playwright-janitor --rule=dead-code        # Run specific rule
   playwright-janitor inventory               # Show codebase structure
   playwright-janitor impact --file=pages/X   # Show what tests are affected
-  playwright-janitor --fix --write           # Apply auto-fixes
 
 For command-specific help:
   playwright-janitor rules --help
