@@ -3995,7 +3995,9 @@ export class InstanceAiService {
 			}
 
 			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = await this.mcpRegistryService.getRegistryMcpServers(user);
+			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+				? await this.mcpRegistryService.getRegistryMcpServers(user)
+				: [];
 			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);

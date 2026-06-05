@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -59,6 +60,13 @@ const renderComponent = createComponentRenderer(SettingsInstanceAiView, {
 			SandboxSection: makeStub('SandboxSection'),
 			SearchSection: makeStub('SearchSection'),
 			AdvancedSection: makeStub('AdvancedSection'),
+			// jsdom can't drive element-plus's ElSwitch (it touches a null input ref),
+			// so stub it with a button that emits the toggled value.
+			ElSwitch: {
+				props: ['modelValue', 'disabled'],
+				template:
+					'<button type="button" role="switch" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
+			},
 		},
 	},
 });
@@ -97,6 +105,7 @@ describe('SettingsInstanceAiView', () => {
 				subAgentMaxSteps: 10,
 				permissions: {},
 				mcpServers: '',
+				mcpAccessEnabled: true,
 				sandboxEnabled: false,
 				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
@@ -242,6 +251,37 @@ describe('SettingsInstanceAiView', () => {
 
 			const { queryByText } = renderComponent();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+	});
+
+	describe('MCP servers settings', () => {
+		it('renders the MCP access toggle for admins', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-mcp-access-toggle')).toBeVisible();
+		});
+
+		it('persists a change to the MCP access toggle', async () => {
+			const setField = vi.spyOn(store, 'setField');
+			const save = vi.spyOn(store, 'save').mockResolvedValue();
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-mcp-access-toggle'));
+
+			expect(setField).toHaveBeenCalledWith('mcpAccessEnabled', false);
+			expect(save).toHaveBeenCalled();
+		});
+
+		it('shows the Execute MCP tools permission when MCP access is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible();
+		});
+
+		it('hides the Execute MCP tools permission when MCP access is disabled', () => {
+			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
 		});
 	});
 });

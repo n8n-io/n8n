@@ -80,6 +80,7 @@ interface PersistedAdminSettings {
 	subAgentMaxSteps?: number;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
+	mcpAccessEnabled?: boolean;
 	sandboxEnabled?: boolean;
 	sandboxProvider?: string;
 	sandboxImage?: string;
@@ -98,6 +99,9 @@ export class InstanceAiSettingsService {
 
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
+
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -177,6 +181,7 @@ export class InstanceAiSettingsService {
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: normalizeSandboxProvider(c.sandboxProvider),
 			sandboxImage: c.sandboxImage,
@@ -207,12 +212,14 @@ export class InstanceAiSettingsService {
 		this.validateAdminSettingsUpdate(update);
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
+		const previousMcpAccessEnabled = this.mcpAccessEnabled;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
 		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
+		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
 		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
 		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
 		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
@@ -228,7 +235,8 @@ export class InstanceAiSettingsService {
 		await this.persistAdminSettings();
 
 		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged: c.mcpServers !== previousMcpServers,
+			mcpSettingsChanged:
+				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
 		});
 
 		return this.getAdminSettings();
@@ -412,6 +420,11 @@ export class InstanceAiSettingsService {
 	/** Return the current HITL permission map. */
 	getPermissions(): InstanceAiPermissions {
 		return { ...this.permissions };
+	}
+
+	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	isMcpAccessEnabled(): boolean {
+		return this.mcpAccessEnabled;
 	}
 
 	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
@@ -624,6 +637,8 @@ export class InstanceAiSettingsService {
 			};
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
+		if (persisted.mcpAccessEnabled !== undefined)
+			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
 		if (persisted.sandboxProvider !== undefined)
 			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
@@ -650,6 +665,7 @@ export class InstanceAiSettingsService {
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
+			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,

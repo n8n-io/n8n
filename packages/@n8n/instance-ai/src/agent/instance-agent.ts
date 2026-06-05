@@ -54,7 +54,12 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
-	const mcpTools = await mcpManager.getRegularTools(mcpServers, context.logger);
+	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
+	const mcpTools = await mcpManager.getRegularTools(
+		mcpServers,
+		requireMcpToolApproval,
+		context.logger,
+	);
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: createToolRegistry();

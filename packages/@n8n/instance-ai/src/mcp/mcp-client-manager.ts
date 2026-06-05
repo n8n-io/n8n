@@ -112,18 +112,30 @@ export class McpClientManager {
 
 	constructor(private readonly ssrfValidator?: SsrfUrlValidator) {}
 
-	async getRegularTools(configs: McpServerConfig[], logger?: Logger): Promise<McpToolRegistry> {
+	async getRegularTools(
+		configs: McpServerConfig[],
+		requireApproval = true,
+		logger?: Logger,
+	): Promise<McpToolRegistry> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
 		if (safeConfigs.length === 0) return createToolRegistry();
 
-		const key = JSON.stringify(safeConfigs);
+		// Approval mode is part of the cache key: the same servers wrapped with vs
+		// without an approval gate are distinct tool sets.
+		const key = JSON.stringify({ configs: safeConfigs, requireApproval });
 		return await this.getOrLoad(
 			this.regularToolsByKey,
 			this.inFlightRegularByKey,
 			key,
 			async () => {
 				await this.validateConfigs(safeConfigs);
-				return await this.connectAndListTools(safeConfigs, key, logger, 'external MCP');
+				return await this.connectAndListTools(
+					safeConfigs,
+					key,
+					requireApproval,
+					logger,
+					'external MCP',
+				);
 			},
 		);
 	}
@@ -193,10 +205,11 @@ export class McpClientManager {
 	private async connectAndListTools(
 		configs: McpServerConfig[],
 		clientKey: string,
+		requireApproval: boolean,
 		logger: Logger | undefined,
 		source: string,
 	): Promise<McpToolRegistry> {
-		const client = new McpClient(buildNativeMcpConfigs(configs), true);
+		const client = new McpClient(buildNativeMcpConfigs(configs), requireApproval);
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

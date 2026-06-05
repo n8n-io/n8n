@@ -117,6 +117,7 @@ describe('McpClientManager', () => {
 					{ name: 'bad name', url: 'https://bad.example.com/mcp' },
 					{ name: 'safe_server', url: 'https://safe.example.com/mcp' },
 				],
+				true,
 				logger as never,
 			);
 
@@ -160,6 +161,7 @@ describe('McpClientManager', () => {
 			const manager = new McpClientManager();
 			await manager.getRegularTools(
 				[{ name: 'safe_server', url: 'https://safe.example.com/mcp' }],
+				true,
 				logger as never,
 			);
 
@@ -356,6 +358,29 @@ describe('McpClientManager', () => {
 			// Cleanup: let the stranded promise settle so the test doesn't hang.
 			deferred.resolve([]);
 			await stranded.catch(() => {});
+		});
+	});
+
+	describe('tool approval', () => {
+		const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+		it('requires approval by default', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs);
+			expect(mockedMcpClient).toHaveBeenCalledWith(expect.anything(), true);
+		});
+
+		it('passes the requireApproval flag through to McpClient', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, false);
+			expect(mockedMcpClient).toHaveBeenCalledWith(expect.anything(), false);
+		});
+
+		it('caches separately per approval mode', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, true);
+			await manager.getRegularTools(configs, false);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
 });
