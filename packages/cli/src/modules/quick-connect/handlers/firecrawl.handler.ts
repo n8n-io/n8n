@@ -1,9 +1,9 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import axios from 'axios';
 
 import { FirecrawlQuickConnect } from '../quick-connect.config';
 import { IQuickConnectHandler } from './handler.interface';
-import axios from 'axios';
 
 const FIRECRAWL_API_BASE_URL = 'https://api.firecrawl.dev';
 

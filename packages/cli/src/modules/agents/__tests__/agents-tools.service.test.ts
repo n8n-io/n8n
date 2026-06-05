@@ -1,10 +1,10 @@
-import { mock } from 'vitest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { mock } from 'vitest-mock-extended';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeCatalogService } from '@/node-catalog';
+import type { EphemeralNodeExecutor } from '@/node-execution';
 
 import {
 	AgentsToolsService,

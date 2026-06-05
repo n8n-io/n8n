@@ -19,6 +19,7 @@ import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentia
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { Telemetry } from '@/telemetry';
+
 import { saveCredential } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';

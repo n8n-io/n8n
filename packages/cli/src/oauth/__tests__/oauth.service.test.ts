@@ -7,11 +7,12 @@ import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } fr
 import { CredentialsRepository } from '@n8n/db';
 import axios from 'axios';
 import type { Request, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -34,7 +35,6 @@ import {
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { Mock } from 'vitest';
 
 vi.mock('@/workflow-execute-additional-data');
 // Explicit factory: auto-mock doesn't reliably turn axios's default-export methods

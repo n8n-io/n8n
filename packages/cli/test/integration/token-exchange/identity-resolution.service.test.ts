@@ -8,8 +8,8 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
 import { IdentityResolutionService } from '@/modules/token-exchange/services/identity-resolution.service';
+import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
 
 import { createOwner, createUser } from '../shared/db/users';
 

@@ -14,16 +14,16 @@ vi.mock(
 	async () => await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk'),
 );
 
-import { createWorkflow } from './mock.utils';
-import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
-import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool';
-
 import { ActiveExecutions } from '@/active-executions';
-import { NodeTypes } from '@/node-types';
 import { McpService } from '@/modules/mcp/mcp.service';
+import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
+import { createWorkflow } from './mock.utils';
+import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool';
 
 // Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([

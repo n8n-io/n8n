@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import type { Mock, Mocked } from 'vitest';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -11,7 +12,6 @@ import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-n
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 import { ProjectService } from '@/services/project.service.ee';
-import type { Mock, Mocked } from 'vitest';
 
 // Mock middleware before requiring handler
 const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;

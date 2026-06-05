@@ -13,6 +13,7 @@ import { LicenseMocker } from '@test-integration/license';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
+import type { ImportPackageRequest } from '../n8n-packages.types';
 import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
@@ -21,7 +22,6 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Omit<

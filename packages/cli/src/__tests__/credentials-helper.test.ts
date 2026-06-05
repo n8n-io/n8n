@@ -6,7 +6,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
 import {
 	type InstanceSettings,
 	Cipher,
@@ -26,6 +25,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -35,7 +36,6 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { MockInstance } from 'vitest';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();

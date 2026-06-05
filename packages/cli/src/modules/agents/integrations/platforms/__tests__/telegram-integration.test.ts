@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Logger } from '@n8n/backend-common';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { MockInstance, Mocked, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
@@ -13,7 +13,6 @@ import type { AgentRepository } from '../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../esm-loader';
 import { TelegramIntegration } from '../telegram-integration';
-import type { MockInstance, Mocked, MockedFunction } from 'vitest';
 
 vi.mock('../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),

@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
-import { mock } from 'vitest-mock-extended';
 import type {
 	ITaskData,
 	IWorkflowBase,
@@ -13,6 +12,8 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -25,7 +26,6 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as AdditionalData from '@/workflow-execute-additional-data';
-import type { Mock, Mocked } from 'vitest';
 
 vi.mock('@/workflow-execute-additional-data');
 

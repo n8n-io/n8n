@@ -1,10 +1,10 @@
 import { Container } from '@n8n/di';
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { CredentialTypes } from '@/credential-types';
 
 import { extractSharedFields } from '../shared-fields';
-import type { Mocked } from 'vitest';
 
 describe('extractSharedFields', () => {
 	describe('with only static fields', () => {

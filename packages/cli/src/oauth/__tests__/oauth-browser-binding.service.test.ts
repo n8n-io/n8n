@@ -1,12 +1,12 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
 	OAUTH_BINDING_COOKIE_NAME,
 	OAuthBrowserBindingService,
 } from '@/oauth/oauth-browser-binding.service';
-import type { Mock } from 'vitest';
 
 const makeConfig = (
 	overrides: Partial<{

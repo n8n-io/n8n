@@ -2,9 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import OpenAI from 'openai';
+import type { Mock } from 'vitest';
 
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
-import type { Mock } from 'vitest';
 
 async function postChatCompletion(url: string, path: string, body: unknown): Promise<Response> {
 	return await fetch(`${url}${path}`, {

@@ -1,20 +1,19 @@
-import { readFileSync } from 'node:fs';
-
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
+import { readFileSync } from 'node:fs';
 import promClient from 'prom-client';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
-import type { Mock } from 'vitest';
 
 const mockMiddleware = (
 	_req: express.Request,

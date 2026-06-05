@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute, InstanceSettings } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
@@ -17,22 +16,23 @@ import {
 	type WorkflowExecuteMode,
 	type ExecutionError,
 } from 'n8n-workflow';
-
-import { JobProcessor } from '../job-processor';
-import type { Job } from '../scaling.types';
-import type { NodeTypes } from '@/node-types';
+import type { Mock, MockedClass } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import type { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import type { Mock, MockedClass } from 'vitest';
+
+import { JobProcessor } from '../job-processor';
+import type { Job } from '../scaling.types';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {

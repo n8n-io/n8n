@@ -138,8 +138,8 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
-import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import {
 	createAllTools,
 	createLazyRuntimeWorkspace,

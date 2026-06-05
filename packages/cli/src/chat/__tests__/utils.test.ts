@@ -1,5 +1,5 @@
-import type { IExecutionResponse } from '@n8n/db';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import type { IExecutionResponse } from '@n8n/db';
 import type { IDataObject, IExecuteData, INode, Workflow } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,

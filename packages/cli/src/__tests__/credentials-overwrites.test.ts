@@ -2,15 +2,15 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import { Cipher, UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { StaticAuthService } from '@/services/static-auth-service';
-import type { Mock, Mocked } from 'vitest';
 
 describe('CredentialsOverwrites', () => {
 	const testCredentialType = mock<ICredentialType>({ name: 'test', extends: ['parent'] });

@@ -4,32 +4,30 @@ import '@/zod-alias-support';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 
-import { BinaryDataConfig } from 'n8n-core';
-
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { JwtService } from '@/services/jwt.service';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { License } from '@/license';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
-import { ErrorReporter } from 'n8n-core';
-import { NodeTypes } from '@/node-types';
-import { ShutdownService } from '@/shutdown/shutdown.service';
+import { mock } from 'vitest-mock-extended';
+
 import type { AbstractServer } from '@/abstract-server';
-import { PostHogClient } from '@/posthog';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { JwtService } from '@/services/jwt.service';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);

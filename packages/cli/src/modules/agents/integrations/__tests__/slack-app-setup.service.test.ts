@@ -1,6 +1,7 @@
 import type { User, UserRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -8,10 +9,9 @@ import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 
 import type { AgentsService } from '../../agents.service';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { SlackAppSetupService } from '../slack-app-setup.service';
-import type { AgentRepository } from '../../repositories/agent.repository';
-import type { Mock, Mocked } from 'vitest';
 
 const agent = {
 	id: 'agent-1',

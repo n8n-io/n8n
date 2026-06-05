@@ -8,6 +8,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { EventService } from '@/events/event.service';
 import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,
@@ -17,8 +18,8 @@ import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { EventService } from '@/events/event.service';
 import { Telemetry } from '@/telemetry';
+
 import { saveCredential } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';

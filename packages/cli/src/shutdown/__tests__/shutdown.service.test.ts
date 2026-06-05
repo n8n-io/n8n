@@ -1,12 +1,12 @@
 import { ShutdownMetadata } from '@n8n/decorators';
 import type { ShutdownServiceClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ShutdownService } from '../shutdown.service';
-import type { MockInstance } from 'vitest';
 
 class MockComponent {
 	onShutdown() {}

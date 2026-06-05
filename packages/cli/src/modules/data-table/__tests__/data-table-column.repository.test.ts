@@ -1,5 +1,6 @@
 import { testModules } from '@n8n/backend-test-utils';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DataTableColumn } from '../data-table-column.entity';
@@ -8,7 +9,6 @@ import type { DataTableDDLService } from '../data-table-ddl.service';
 import { DataTable } from '../data-table.entity';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
-import type { Mock, Mocked } from 'vitest';
 
 describe('DataTableColumnRepository', () => {
 	let repository: DataTableColumnRepository;

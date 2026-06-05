@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
-import type { Mocked } from 'vitest';
 
 let authorizationCodeRepository: Mocked<AuthorizationCodeRepository>;
 let service: McpOAuthAuthorizationCodeService;

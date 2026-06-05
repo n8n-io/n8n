@@ -2,8 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
@@ -13,7 +14,6 @@ import type { RefreshToken } from '../database/entities/oauth-refresh-token.enti
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
-import type { Mocked } from 'vitest';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());

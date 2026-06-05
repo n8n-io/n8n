@@ -8,9 +8,7 @@ import type {
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
@@ -20,9 +18,8 @@ import {
 } from 'n8n-workflow';
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
-
-import { TestRunnerService } from '../test-runner.service.ee';
-import type { WorkflowCompilerService } from '../workflow-compiler.service';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -33,7 +30,10 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { Mock } from 'vitest';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
+
+import { TestRunnerService } from '../test-runner.service.ee';
+import type { WorkflowCompilerService } from '../workflow-compiler.service';
 
 // Tier high enough that the resolver's tier-default branch lifts the cap to
 // 5, which is greater than every concurrency value used in these tests.

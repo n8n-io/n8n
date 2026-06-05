@@ -2,11 +2,11 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CliParser } from '@n8n/backend-common';
 import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CommandRegistry } from '../command-registry';
-import type { Mock, MockInstance } from 'vitest';
 
 vi.mock('fast-glob');
 

@@ -4,6 +4,7 @@ import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import * as permissions from '@n8n/permissions';
 import type { Response } from 'express';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -15,7 +16,6 @@ import type { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlRequest } from '../types/requests';
 import { SourceControlContext } from '../types/source-control-context';
 import type { SourceControlGetStatus } from '../types/source-control-get-status';
-import type { Mock } from 'vitest';
 
 vi.mock('@n8n/permissions', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions');

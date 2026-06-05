@@ -484,7 +484,7 @@ describe('AuthRolesService', () => {
 				publishing: boolean | null,
 				sharing: boolean | null,
 			): void {
-				const rows: { key: string; value: string; loadOnStartup: boolean }[] = [];
+				const rows: Array<{ key: string; value: string; loadOnStartup: boolean }> = [];
 				if (publishing !== null) {
 					rows.push({
 						key: PERSONAL_SPACE_PUBLISHING_SETTING.key,

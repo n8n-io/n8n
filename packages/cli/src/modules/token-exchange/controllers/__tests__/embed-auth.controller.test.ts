@@ -8,9 +8,9 @@ import type { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 
-import { EmbedAuthController } from '../embed-auth.controller';
 import type { TokenExchangeService } from '../../services/token-exchange.service';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
+import { EmbedAuthController } from '../embed-auth.controller';
 
 const config = mock<TokenExchangeConfig>({ embedEnabled: true });
 const tokenExchangeService = mock<TokenExchangeService>();

@@ -4,9 +4,9 @@ import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
-import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { createOwnerWithApiKey } from '@test-integration/db/users';

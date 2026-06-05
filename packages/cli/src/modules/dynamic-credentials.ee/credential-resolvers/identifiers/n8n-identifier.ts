@@ -1,9 +1,11 @@
+import { CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { ICredentialContext } from 'n8n-workflow';
-import { ITokenIdentifier } from './identifier-interface';
-import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
-import { CredentialResolverError } from '@n8n/decorators';
+
+import { AuthService } from '@/auth/auth.service';
+
+import { ITokenIdentifier } from './identifier-interface';
 
 const ManualExecutionMetadataSchema = z.object({
 	source: z.literal('manual-execution'),

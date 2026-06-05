@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/promise-function-async -- vi mocks */
+/* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
 import type { User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { createWorkflow } from '../workflows.service';
-
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+
+import { createWorkflow } from '../workflows.service';
 
 describe('createWorkflow (public API)', () => {
 	const user = mock<User>({ id: 'user-id' });

@@ -2,12 +2,12 @@
 
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';

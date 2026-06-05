@@ -1,8 +1,10 @@
-import { mock } from 'vitest-mock-extended';
 import type { Request } from 'express';
-import type { AuthService } from '@/auth/auth.service';
-import { DynamicCredentialWebService } from '../dynamic-credential-web.service';
 import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { AuthService } from '@/auth/auth.service';
+
+import { DynamicCredentialWebService } from '../dynamic-credential-web.service';
 
 describe('DynamicCredentialWebService', () => {
 	let service: DynamicCredentialWebService;

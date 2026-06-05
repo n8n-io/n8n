@@ -1,12 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags } from 'n8n-workflow';
 import { PostHog } from 'posthog-node';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { PostHogClient } from '@/posthog';
-import type { Mock } from 'vitest';
 
 vi.mock('posthog-node');
 

@@ -16,10 +16,6 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -44,7 +40,7 @@ import assert from 'node:assert';
 import pLimit from 'p-limit';
 
 import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import {
 	getEvaluationConcurrencyLimitSource,
 	resolveEvaluationConcurrencyLimit,
@@ -54,9 +50,12 @@ import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
 } from '@/evaluation.ee/test-runner/utils.ee';
+import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
 import { WorkflowCompilerService } from './workflow-compiler.service';

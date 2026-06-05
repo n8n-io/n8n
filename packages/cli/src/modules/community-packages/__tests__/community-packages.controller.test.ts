@@ -9,8 +9,8 @@ import type { Push } from '@/push';
 import type { NodeRequest } from '@/requests';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';
-import { CommunityPackagesController } from '../community-packages.controller';
 import type { CommunityPackagesConfig } from '../community-packages.config';
+import { CommunityPackagesController } from '../community-packages.controller';
 import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
 import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';

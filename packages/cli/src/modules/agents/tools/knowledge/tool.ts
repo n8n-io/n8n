@@ -1,13 +1,9 @@
 import { Tool } from '@n8n/agents/tool';
 import { createHash } from 'node:crypto';
 
-import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
-import type { AgentKnowledgeService } from '../../agent-knowledge.service';
-
 import { aggregateCsv, distinctCsv, profileCsv, queryCsv } from './csv.operation';
 import { getRequiredFileReferences, type WorkspaceFiles } from './file-references';
 import { runReadOperation } from './read.operation';
-import { runSearchOperation } from './search.operation';
 import {
 	getSearchKnowledgeOperation,
 	parseSearchKnowledgeInput,
@@ -16,6 +12,9 @@ import {
 	type ParsedSearchKnowledgeInput,
 	type SearchKnowledgeOutput,
 } from './schemas';
+import { runSearchOperation } from './search.operation';
+import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 
 export function createSearchKnowledgeTool({
 	agentId,

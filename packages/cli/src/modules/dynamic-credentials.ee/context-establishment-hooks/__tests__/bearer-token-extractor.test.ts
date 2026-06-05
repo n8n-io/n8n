@@ -1,9 +1,9 @@
 import type { ContextEstablishmentResult } from '@n8n/decorators';
+import type { Mocked } from 'vitest';
 
 import { BearerTokenExtractor } from '../bearer-token-extractor';
 import type { HttpHeaderExtractor } from '../http-header-extractor';
 import { createOptions, createTriggerItem } from './utils';
-import type { Mocked } from 'vitest';
 
 describe('BearerTokenExtractor', () => {
 	let bearerTokenExtractor: BearerTokenExtractor;

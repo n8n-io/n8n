@@ -7,6 +7,12 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	type INode,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+
+import { ExecutionService } from '@/executions/execution.service';
+import { NodeTypes } from '@/node-types';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
@@ -14,12 +20,6 @@ import {
 	createPrepareTestPinDataTool,
 	preparePinData,
 } from '../tools/prepare-workflow-pin-data.tool';
-
-import { ExecutionService } from '@/executions/execution.service';
-import { NodeTypes } from '@/node-types';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { Mock } from 'vitest';
 
 // Mock @n8n/workflow-sdk functions — keep real implementations for shared utils
 // (needsPinData, normalizePinData), but mock functions that do file I/O or

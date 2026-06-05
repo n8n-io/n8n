@@ -1,14 +1,14 @@
-import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import { ListProjectsQueryDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import type { Response } from 'express';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { Response } from 'express';
 import { ProjectController } from '@/controllers/project.controller';
+import type { EventService } from '@/events/event.service';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
-import type { Mock } from 'vitest';
 
 describe('ProjectController', () => {
 	const eventService = mock<EventService>();

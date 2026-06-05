@@ -1,6 +1,8 @@
-import { ExportEntitiesCommand } from '../entities';
 import { mockInstance } from '@n8n/backend-test-utils';
+
 import { ExportService } from '@/services/export.service';
+
+import { ExportEntitiesCommand } from '../entities';
 
 vi.mock('fs-extra');
 vi.mock('@/services/export.service');

@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
@@ -8,7 +9,6 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createWorkflow } from './mock.utils';
 import { createUnpublishWorkflowTool } from '../tools/unpublish-workflow.tool';
-import type { Mock } from 'vitest';
 
 describe('unpublish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

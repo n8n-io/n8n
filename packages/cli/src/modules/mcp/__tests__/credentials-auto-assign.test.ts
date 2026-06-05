@@ -7,10 +7,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { autoPopulateNodeCredentials } from '../tools/workflow-builder/credentials-auto-assign';
-
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
+
+import { autoPopulateNodeCredentials } from '../tools/workflow-builder/credentials-auto-assign';
 
 const user = { id: 'user-1' } as User;
 const projectId = 'project-1';

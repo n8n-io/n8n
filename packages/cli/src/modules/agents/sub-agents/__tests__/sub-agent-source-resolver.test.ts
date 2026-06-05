@@ -1,5 +1,6 @@
-import { type AgentJsonConfig } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
+import { type AgentJsonConfig } from '@n8n/api-types';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
@@ -7,7 +8,6 @@ import type { Agent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
-import type { Mocked } from 'vitest';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';

@@ -6,6 +6,7 @@ import {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
@@ -22,7 +23,6 @@ import {
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -43,37 +43,37 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
-import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { generateAgentResourceId } from './utils/agent-resource-id';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -555,7 +555,6 @@ export class AgentsService {
 		// previous=[] makes every persisted integration an addition.
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
-			// eslint-disable-next-line import-x/no-cycle
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 			await Container.get(ChatIntegrationService)
 				.syncToConfig(agent, [], credentialIntegrations)
@@ -605,11 +604,10 @@ export class AgentsService {
 		// Drop any live chat-integration connections so webhook endpoints stop
 		// accepting events immediately — before the 30-minute TTL would have expired.
 		// Lazy import avoids the circular DI dependency (ChatIntegrationService → AgentsService).
-		// eslint-disable-next-line import-x/no-cycle
+
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
 
-		// eslint-disable-next-line import-x/no-cycle
 		const { AgentTaskService } = await import('./agent-task.service');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)
@@ -758,7 +756,6 @@ export class AgentsService {
 		this.clearRuntimes(agentId);
 
 		try {
-			// eslint-disable-next-line import-x/no-cycle
 			const { AgentTaskService } = await import('./agent-task.service');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {

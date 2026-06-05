@@ -1,7 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { BinaryDataConfig } from 'n8n-core';
 import { FileTooLargeError, InvalidSourceTypeError, MissingSourceIdError } from 'n8n-core';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -9,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 

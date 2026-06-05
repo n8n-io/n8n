@@ -1,9 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import type { MockInstance, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import { LinearIntegration } from '../platforms/linear-integration';
-import type { MockInstance, MockedFunction } from 'vitest';
 
 vi.mock('../esm-loader', () => ({
 	loadLinearAdapter: vi.fn(),

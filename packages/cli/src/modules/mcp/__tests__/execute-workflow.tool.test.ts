@@ -9,16 +9,16 @@ import {
 	type IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import { createWorkflow } from './mock.utils';
-import { WorkflowAccessError } from '../mcp.errors';
-import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
+import type { Mock } from 'vitest';
 
 import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { Mock } from 'vitest';
+
+import { createWorkflow } from './mock.utils';
+import { WorkflowAccessError } from '../mcp.errors';
+import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

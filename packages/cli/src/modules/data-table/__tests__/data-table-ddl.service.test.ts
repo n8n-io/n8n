@@ -1,10 +1,10 @@
 import { testModules } from '@n8n/backend-test-utils';
 import type { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DataTableDDLService } from '../data-table-ddl.service';
 import * as sqlUtils from '../utils/sql-utils';
-import type { Mock, Mocked } from 'vitest';
 
 // Mock the sql-utils module
 vi.mock('../utils/sql-utils', async () => ({

@@ -2,9 +2,10 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { Project, User, WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
+import type { IConnections, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IConnections, INode } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -16,12 +17,11 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import type { Mock } from 'vitest';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');

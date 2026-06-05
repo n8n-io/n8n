@@ -1,5 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import type { IDataObject } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import type { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsService } from '../external-secrets.service.ee';
 import type { RedactionService } from '../redaction.service.ee';

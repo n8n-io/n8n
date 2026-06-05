@@ -1,12 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
 
 import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
 import type { OAuth2TokenIntrospectionIdentifier } from '../identifiers/oauth2-introspection-identifier';
 import type { OAuth2UserInfoIdentifier } from '../identifiers/oauth2-userinfo-identifier';
 import { OAuthCredentialResolver } from '../oauth-credential-resolver';
 import type { DynamicCredentialEntryStorage } from '../storage/dynamic-credential-entry-storage';
-import type { Mocked } from 'vitest';
 
 describe('OAuthCredentialResolver', () => {
 	let mockLogger: Mocked<Logger>;

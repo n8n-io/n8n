@@ -9,7 +9,6 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
@@ -31,6 +30,8 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
@@ -44,7 +45,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-import type { MockInstance } from 'vitest';
 
 let owner: User;
 let runner: WorkflowRunner;

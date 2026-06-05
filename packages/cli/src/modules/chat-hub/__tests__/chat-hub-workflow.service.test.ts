@@ -1,9 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
 import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
@@ -14,14 +17,10 @@ import { ChatHubSession } from '../chat-hub-session.entity';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
-import type { ChatHubMessageRepository } from '../chat-message.repository';
-
 import { NODE_NAMES } from '../chat-hub.constants';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { SemanticSearchOptions } from '../chat-hub.types';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { Mock } from 'vitest';
+import type { ChatHubMessageRepository } from '../chat-message.repository';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();

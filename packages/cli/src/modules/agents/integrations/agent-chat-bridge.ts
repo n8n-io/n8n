@@ -1,11 +1,11 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
-import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
@@ -17,7 +17,7 @@ import {
 	type IntegrationMessageSubject,
 } from './integration-tools';
 import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 
 interface PlatformAgentContext {
 	agentUserId?: string;

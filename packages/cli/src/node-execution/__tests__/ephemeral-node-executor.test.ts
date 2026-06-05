@@ -6,7 +6,6 @@ import {
 	type CredentialsEntity,
 	type SharedCredentials,
 } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
@@ -14,6 +13,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
 

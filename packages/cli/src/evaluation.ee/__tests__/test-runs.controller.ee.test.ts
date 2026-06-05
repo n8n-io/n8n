@@ -1,5 +1,6 @@
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 import type express from 'express';
+import type { Mock, Mocked } from 'vitest';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -8,7 +9,6 @@ import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
 import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { Mock, Mocked } from 'vitest';
 
 vi.mock('@/evaluation.ee/test-runner/test-runner.service.ee');
 

@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -15,12 +16,12 @@ import {
 	PROJECT_VIEWER_ROLE_SLUG,
 } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { mockInstance } from '@n8n/backend-test-utils';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+
 import { RoleService } from '../role.service';
-import type { Mock } from 'vitest';
 
 describe('CredentialsFinderService', () => {
 	const roleService = mockInstance(RoleService);
@@ -38,7 +39,7 @@ describe('CredentialsFinderService', () => {
 		vi.clearAllMocks();
 
 		// Setup manager mock for global credentials fetching
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 		// @ts-ignore
 		credentialsRepository.manager = {
 			find: vi.fn().mockResolvedValue([]),

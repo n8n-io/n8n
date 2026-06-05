@@ -1,12 +1,11 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
-import type { EvaluationConfig, EvaluationConfigRepository } from '@n8n/db';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { EvaluationConfig, EvaluationConfigRepository, User, WorkflowEntity } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { EvaluationConfigValidator } from '../evaluation-config-validator';
 import { EvaluationConfigService } from '../evaluation-config.service';
-import type { Mocked } from 'vitest';
 
 function makePayload(over: Partial<UpsertEvaluationConfigDto> = {}): UpsertEvaluationConfigDto {
 	return {

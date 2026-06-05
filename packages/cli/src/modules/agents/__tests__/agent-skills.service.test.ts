@@ -1,11 +1,11 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
+/* eslint-disable @typescript-eslint/require-await -- async mock stubs and unbound-method references are acceptable test idioms */
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Agent } from '../entities/agent.entity';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { Mocked } from 'vitest';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

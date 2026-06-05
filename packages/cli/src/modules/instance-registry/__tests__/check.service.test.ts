@@ -7,8 +7,9 @@ import type {
 	IClusterCheck,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { MockInstance, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { Push } from '@/push';
@@ -16,7 +17,6 @@ import type { Push } from '@/push';
 import { CheckService, computeDiff } from '../checks/check.service';
 import type { InstanceRegistryService } from '../instance-registry.service';
 import { REGISTRY_CONSTANTS } from '../instance-registry.types';
-import type { MockInstance, Mocked } from 'vitest';
 
 const makeLogger = () => {
 	const logger = mock<Logger>();

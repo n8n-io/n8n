@@ -1,12 +1,12 @@
 import { User } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
 
 import type { NodeCatalogService } from '@/node-catalog';
 import type { Telemetry } from '@/telemetry';
-import type { Mocked } from 'vitest';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: {

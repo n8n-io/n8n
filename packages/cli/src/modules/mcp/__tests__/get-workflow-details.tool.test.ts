@@ -1,8 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
-
-import { createWorkflow } from './mock.utils';
-import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
+import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -10,7 +8,8 @@ import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { v4 as uuid } from 'uuid';
+import { createWorkflow } from './mock.utils';
+import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
 
 vi.mock('../tools/webhook-utils', () => ({
 	getTriggerDetails: vi.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),

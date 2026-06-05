@@ -2,8 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { CronJob } from 'cron';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -11,17 +12,16 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentTask } from '../entities/agent-task.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentTask } from '../entities/agent-task.entity';
+import type { Agent } from '../entities/agent.entity';
 import type {
 	AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
 } from '../repositories/agent-task-run-lock.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
-import type { Mock } from 'vitest';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 // Keep cron validation + next-occurrence real; only the live CronJob is mocked.
 vi.mock('cron', async () => {

@@ -2,12 +2,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
-import { mock } from 'vitest-mock-extended';
-import { join as pathJoin } from 'path';
 import type { Transporter } from 'nodemailer';
+import { join as pathJoin } from 'path';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { NodeMailer } from '@/user-management/email/node-mailer';
-import type { Mocked } from 'vitest';
 
 // This suite reads real template files; opt out of the global node:fs/promises mock.
 vi.unmock('node:fs/promises');

@@ -1,8 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
-
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -12,7 +11,8 @@ import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import type { Mock } from 'vitest';
+
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted.
 const { mockAutoPopulateNodeCredentials, mockValidateJSON } = vi.hoisted(() => ({

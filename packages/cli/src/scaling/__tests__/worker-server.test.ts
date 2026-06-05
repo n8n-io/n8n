@@ -2,19 +2,19 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
 import type express from 'express';
-import { mock } from 'vitest-mock-extended';
+import type { NextFunction, Request, Response } from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import type { RedisClientService } from '@/services/redis-client.service';
 
 import { WorkerServer } from '../worker-server';
-import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { NextFunction, Request, Response } from 'express';
 
 const app = mock<express.Application>();
 

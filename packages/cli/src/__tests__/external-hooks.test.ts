@@ -6,10 +6,10 @@ import type {
 	SettingsRepository,
 	UserRepository,
 } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalHooks } from '@/external-hooks';
 

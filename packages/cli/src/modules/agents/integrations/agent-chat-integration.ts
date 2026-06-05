@@ -1,7 +1,7 @@
+import { AgentIntegrationConfig } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
-import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
 import type {

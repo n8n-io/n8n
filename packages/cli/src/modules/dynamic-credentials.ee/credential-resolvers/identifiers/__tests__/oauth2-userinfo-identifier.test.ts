@@ -1,13 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import axios from 'axios';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2UserInfoIdentifier } from '../oauth2-userinfo-identifier';
-import type { Mocked } from 'vitest';
 
 vi.mock('axios');
 const mockedAxios = axios as Mocked<typeof axios>;

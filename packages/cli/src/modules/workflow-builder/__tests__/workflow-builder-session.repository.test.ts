@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { mockClear } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
+
 import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
 
 // Mock the ai-workflow-builder module to avoid import chain issues

@@ -1,7 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -12,6 +10,8 @@ import {
 	type ExecutionError,
 	createRunExecutionData,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';

@@ -6,13 +6,13 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 	verifyIntegrity: vi.fn(),
 }));
 
-import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { CommunityNodeType } from '@n8n/api-types';
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
-import { mock } from 'vitest-mock-extended';
 import path from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';

@@ -7,7 +7,6 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
-import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 import { mockClear } from 'vitest-mock-extended';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -15,6 +14,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);

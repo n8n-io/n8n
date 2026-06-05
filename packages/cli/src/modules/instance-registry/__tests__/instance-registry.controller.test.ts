@@ -1,10 +1,10 @@
 import type { InstanceRegistration } from '@n8n/api-types';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CheckService } from '../checks/check.service';
 import { InstanceRegistryController } from '../instance-registry.controller';
 import type { InstanceRegistryService } from '../instance-registry.service';
-import type { Mocked } from 'vitest';
 
 const makeRegistration = (overrides: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1,

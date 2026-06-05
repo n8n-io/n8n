@@ -1,5 +1,5 @@
-import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import type { Response } from 'express';
+import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

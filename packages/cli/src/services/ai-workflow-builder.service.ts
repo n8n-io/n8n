@@ -7,7 +7,6 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
 import { InstanceSettings } from 'n8n-core';
-import * as path from 'path';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -15,6 +14,7 @@ import type {
 	IUser,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
+import * as path from 'path';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';

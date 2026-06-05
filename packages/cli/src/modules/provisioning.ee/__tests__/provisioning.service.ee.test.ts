@@ -1,7 +1,6 @@
+import { type ProvisioningConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'vitest-mock-extended';
-
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { type GlobalConfig } from '@n8n/config';
 import {
 	type User,
 	type UserRepository,
@@ -13,17 +12,19 @@ import {
 	type ProjectRepository,
 	ProjectRelation,
 } from '@n8n/db';
-import { type GlobalConfig } from '@n8n/config';
-import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
-import { type ProvisioningConfigDto } from '@n8n/api-types';
-import { type Publisher } from '@/scaling/pubsub/publisher.service';
-import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
 import { type EventService } from '@/events/event.service';
-import { type UserService } from '@/services/user.service';
-import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
+import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { type ProjectService } from '@/services/project.service.ee';
+import { type UserService } from '@/services/user.service';
+
+import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsEntityManager = mock<EntityManager>();

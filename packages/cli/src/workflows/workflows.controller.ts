@@ -38,15 +38,8 @@ import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios, { type AxiosRequestConfig } from 'axios';
 import express from 'express';
 import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
-import { CollaborationService } from '../collaboration/collaboration.service';
 
-import { WorkflowCreationService } from './workflow-creation.service';
-import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowRequest } from './workflow.request';
-import { WorkflowService } from './workflow.service';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
-
+import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -56,7 +49,6 @@ import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { AuthService } from '@/auth/auth.service';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -64,6 +56,14 @@ import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+
+import { WorkflowCreationService } from './workflow-creation.service';
+import { WorkflowExecutionService } from './workflow-execution.service';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowRequest } from './workflow.request';
+import { WorkflowService } from './workflow.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { CollaborationService } from '../collaboration/collaboration.service';
 
 @RestController('/workflows')
 export class WorkflowsController {

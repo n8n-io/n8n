@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- vi.mock factory */
 vi.mock('@n8n/backend-common', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common');
 	return {
@@ -6,15 +5,14 @@ vi.mock('@n8n/backend-common', async () => {
 		inProduction: true,
 	};
 });
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return */
 
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';

@@ -1,14 +1,6 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
-import { validateDataTableReferencesForWorkflow } from './data-table-validation';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getSdkReferenceHint } from '../workflow-validation.utils';
-
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
@@ -18,6 +10,14 @@ import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
+import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
 const inputSchema = {
 	code: z

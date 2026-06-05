@@ -1,4 +1,3 @@
-import { mock } from 'vitest-mock-extended';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	LoadedClass,
@@ -6,6 +5,7 @@ import type {
 	IVersionedNodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';

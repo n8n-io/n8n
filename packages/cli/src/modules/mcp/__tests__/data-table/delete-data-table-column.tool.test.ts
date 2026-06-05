@@ -1,8 +1,7 @@
-import { createDeleteDataTableColumnTool } from '../../tools/data-table';
-
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 
 import { createTelemetry, user } from './test-utils';
+import { createDeleteDataTableColumnTool } from '../../tools/data-table';
 
 const createMocks = (overrides?: { error?: Error }) => {
 	const dataTableOps = {

@@ -3,9 +3,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
-import nock from 'nock';
 import { InstanceSettings } from 'n8n-core';
+import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	SYSTEM_RESOLVER_ID,

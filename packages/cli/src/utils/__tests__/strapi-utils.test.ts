@@ -1,5 +1,5 @@
-import nock from 'nock';
 import axios from 'axios';
+import nock from 'nock';
 
 import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
 

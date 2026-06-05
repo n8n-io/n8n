@@ -2,10 +2,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
-
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
+
+import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted.
 const { mockParseAndValidate, mockStripImportStatements } = vi.hoisted(() => ({

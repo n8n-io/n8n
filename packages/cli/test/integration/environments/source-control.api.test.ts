@@ -4,8 +4,8 @@ import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } f
 import { Container } from '@n8n/di';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';

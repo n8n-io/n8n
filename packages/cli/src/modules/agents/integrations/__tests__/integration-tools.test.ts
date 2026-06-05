@@ -1,4 +1,5 @@
 import { zodToJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
@@ -10,7 +11,6 @@ import {
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
 } from '../integration-tools';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slackA: AgentIntegrationConfig = {
 	type: 'slack',

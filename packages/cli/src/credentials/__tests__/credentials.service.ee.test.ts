@@ -1,6 +1,11 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { User, CredentialsEntity, Project } from '@n8n/db';
-import type { SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
+import type {
+	User,
+	CredentialsEntity,
+	Project,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';

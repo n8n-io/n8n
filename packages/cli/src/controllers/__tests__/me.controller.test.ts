@@ -5,8 +5,9 @@ import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, anyObject } from 'vitest-mock-extended';
 import jwt from 'jsonwebtoken';
+import type { Mock } from 'vitest';
+import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
@@ -21,7 +22,6 @@ import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { badPasswords } from '@test/test-data';
-import type { Mock } from 'vitest';
 
 vi.mock('@/sso.ee/sso-helpers', async () => ({
 	...(await vi.importActual<typeof import('@/sso.ee/sso-helpers')>('@/sso.ee/sso-helpers')),

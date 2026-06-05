@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import { promises as dns } from 'node:dns';
+import { mock } from 'vitest-mock-extended';
 
 import { DnsResolver } from '../dns-resolver';
 import type { InMemoryDnsCache } from '../in-memory-dns-cache.service';

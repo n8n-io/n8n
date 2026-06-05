@@ -1,6 +1,6 @@
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 

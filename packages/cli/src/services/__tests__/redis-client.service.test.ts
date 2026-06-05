@@ -2,9 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import Redis from 'ioredis';
+import type { Mock } from 'vitest';
 
 import { RedisClientService } from '@/services/redis-client.service';
-import type { Mock } from 'vitest';
 
 type EventHandler = (...args: unknown[]) => void;
 
@@ -35,7 +35,6 @@ describe('RedisClientService', () => {
 		},
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ioRedis constructor overloads prevent vi.mocked() from typing calls correctly
 	const mockedRedis = Redis as unknown as Mock;
 
 	beforeEach(() => {

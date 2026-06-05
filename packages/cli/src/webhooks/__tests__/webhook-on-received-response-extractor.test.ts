@@ -1,5 +1,5 @@
-import { mock } from 'vitest-mock-extended';
 import type { IWebhookResponseData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
 

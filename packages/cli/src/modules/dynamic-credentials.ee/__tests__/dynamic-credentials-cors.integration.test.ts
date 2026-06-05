@@ -3,8 +3,8 @@ import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';

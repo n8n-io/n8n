@@ -1,5 +1,9 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { AuthenticatedRequest } from '@n8n/db';
+import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
+
+import type { EventService } from '@/events/event.service';
 
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
@@ -7,9 +11,6 @@ import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleService,
 } from '../role-mapping-rule.service.ee';
-import type { Response } from 'express';
-import type { AuthenticatedRequest } from '@n8n/db';
-import type { EventService } from '@/events/event.service';
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();

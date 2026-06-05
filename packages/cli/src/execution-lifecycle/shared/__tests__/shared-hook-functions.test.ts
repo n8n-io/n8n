@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { determineFinalExecutionStatus } from '../shared-hook-functions';
 

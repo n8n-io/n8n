@@ -1,5 +1,6 @@
 import type { ListQueryDb } from '@n8n/db';
 import type { Response, NextFunction } from 'express';
+import type { MockInstance } from 'vitest';
 
 import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
 import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
@@ -8,7 +9,6 @@ import type { ListQuery } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 
 import { sortByQueryMiddleware } from '../sort-by';
-import type { MockInstance } from 'vitest';
 
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;

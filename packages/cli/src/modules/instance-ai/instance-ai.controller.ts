@@ -37,19 +37,20 @@ import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import { EvalExecutionService } from './eval/execution.service';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiService } from './instance-ai.service';
-import { CredentialsService } from '@/credentials/credentials.service';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+
+import { EvalExecutionService } from './eval/execution.service';
+import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiService } from './instance-ai.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 

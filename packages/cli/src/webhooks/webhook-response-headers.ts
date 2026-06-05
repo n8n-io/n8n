@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { validateHeaderName, validateHeaderValue } from 'node:http';
 import { ensureError } from 'n8n-workflow';
+import { validateHeaderName, validateHeaderValue } from 'node:http';
 
 /**
  * The headers object that node's `responseHeaders` property can return

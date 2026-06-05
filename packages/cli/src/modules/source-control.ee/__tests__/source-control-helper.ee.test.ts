@@ -1,10 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { accessSync, constants as fsConstants } from 'fs';
-import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import {

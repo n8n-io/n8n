@@ -1,10 +1,10 @@
 import type { BinaryDataQueryDto, BinaryDataSignedQueryDto } from '@n8n/api-types';
 import type { Request, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import type { BinaryDataService } from 'n8n-core';
 import { FileNotFoundError } from 'n8n-core';
 import type { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import { BinaryDataController } from '../binary-data.controller';
 

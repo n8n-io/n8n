@@ -1,4 +1,5 @@
 import type { ApiKeyRepository, UserRepository, User, TokenGrant } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -6,7 +7,6 @@ import type { JwtService } from '@/services/jwt.service';
 
 import type { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import type { Mocked } from 'vitest';
 
 const makeUser = (id: string): User => ({ ...mock<User>(), id });
 

@@ -7,9 +7,9 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InsightsMetadata } from '../database/entities/insights-metadata';
 import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';

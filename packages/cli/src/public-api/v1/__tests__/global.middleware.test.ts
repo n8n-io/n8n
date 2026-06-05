@@ -1,10 +1,10 @@
 import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { NextFunction, Response } from 'express';
+import type { Mocked, MockedFunction } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as middlewares from '../shared/middlewares/global.middleware';
-import type { Mocked, MockedFunction } from 'vitest';
 
 function buildReq(tokenGrant?: TokenGrant): AuthenticatedRequest {
 	return { headers: {}, query: {}, params: {}, tokenGrant } as unknown as AuthenticatedRequest;

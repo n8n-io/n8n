@@ -1,7 +1,7 @@
 import type { SettingsRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { BannerService } from '@/services/banner.service';
 

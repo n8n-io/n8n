@@ -5,8 +5,8 @@ import type { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig, type GlobalConfig } from '@n8n/config';
 import { EXPRESSION_METRICS } from '@n8n/expression-runtime';
 import { trace } from '@opentelemetry/api';
-import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
+import { mock } from 'vitest-mock-extended';
 
 import { ExpressionObservabilityProvider } from '../expression-observability.provider';
 

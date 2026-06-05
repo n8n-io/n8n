@@ -19,15 +19,15 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { readFile as fsReadFile, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
+import type { MockedFunction } from 'vitest';
 
-import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
 import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
+import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 
 import { createCredentials } from '../shared/db/credentials';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
-import type { MockedFunction } from 'vitest';
 
 // Mock file system operations
 vi.mock('node:fs/promises');

@@ -1,9 +1,10 @@
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
@@ -13,7 +14,6 @@ import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-cod
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { OAuthSessionService } from '../oauth-session.service';
-import type { Mocked } from 'vitest';
 
 let logger: Mocked<Logger>;
 let oauthSessionService: Mocked<OAuthSessionService>;

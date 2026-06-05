@@ -1,7 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -11,7 +12,6 @@ import type { EventDestinationsRepository } from '../database/repositories/event
 import { messageEventBusDestinationFromDb } from '../destinations/message-event-bus-destination-from-db';
 import type { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '../log-streaming-destination.service';
-import type { Mock } from 'vitest';
 
 vi.mock('../destinations/message-event-bus-destination-from-db');
 

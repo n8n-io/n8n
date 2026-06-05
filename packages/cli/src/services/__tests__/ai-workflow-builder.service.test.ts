@@ -2,23 +2,23 @@ import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
+import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import type * as fs from 'node:fs';
 import type * as fsp from 'node:fs/promises';
-import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { Mock, Mocked, MockedClass } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
-import type { Mock, Mocked, MockedClass } from 'vitest';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	AiWorkflowBuilderService: vi.fn(),

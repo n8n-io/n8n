@@ -8,6 +8,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type {
 	CredentialResolutionResult,
@@ -17,6 +18,8 @@ import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
+import { SYSTEM_RESOLVER_TYPE } from '../../constants';
+import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface';
 import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
@@ -24,12 +27,9 @@ import { CredentialResolutionError } from '../../errors/credential-resolution.er
 import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
-import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
-import { SYSTEM_RESOLVER_TYPE } from '../../constants';
-import type { Mocked } from 'vitest';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;

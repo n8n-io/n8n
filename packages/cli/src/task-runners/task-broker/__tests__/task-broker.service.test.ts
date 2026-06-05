@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
-import { mock } from 'vitest-mock-extended';
 import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 

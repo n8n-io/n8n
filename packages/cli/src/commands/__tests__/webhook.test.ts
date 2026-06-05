@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
+import type { Mock, MockInstance } from 'vitest';
 
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -15,7 +16,6 @@ import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from '../base-command';
 import { Webhook } from '../webhook';
-import type { Mock, MockInstance } from 'vitest';
 
 vi.mock('@/scaling/scaling.service', () => ({
 	ScalingService: class {},

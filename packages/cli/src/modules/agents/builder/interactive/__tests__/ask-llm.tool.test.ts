@@ -1,5 +1,6 @@
-import { buildAskLlmTool } from '../ask-llm.tool';
 import type { Mock } from 'vitest';
+
+import { buildAskLlmTool } from '../ask-llm.tool';
 
 interface TestCtx {
 	resumeData?: unknown;

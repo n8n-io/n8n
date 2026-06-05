@@ -8,8 +8,8 @@ import {
 	type GenerateResult,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import { Logger } from '@n8n/backend-common';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';

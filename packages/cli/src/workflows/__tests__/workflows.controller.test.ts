@@ -4,10 +4,9 @@ import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import { createResultError, createResultOk } from 'n8n-workflow';
-
-import { WorkflowsController } from '../workflows.controller';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -15,7 +14,8 @@ import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
 import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
-import type { Mock } from 'vitest';
+
+import { WorkflowsController } from '../workflows.controller';
 
 vi.mock('axios');
 

@@ -1,13 +1,11 @@
 process.env.N8N_ENV_FEAT_TOKEN_EXCHANGE = 'true';
 
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
-
 import { testDb } from '@n8n/backend-test-utils';
 import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
-
 import { InstanceSettings } from 'n8n-core';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';

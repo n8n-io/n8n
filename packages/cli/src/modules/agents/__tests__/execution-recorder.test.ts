@@ -1,5 +1,6 @@
-import { ExecutionRecorder } from '../execution-recorder';
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
+
+import { ExecutionRecorder } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {

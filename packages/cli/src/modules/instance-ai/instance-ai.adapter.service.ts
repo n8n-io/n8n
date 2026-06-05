@@ -1,6 +1,30 @@
-import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
+import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
+
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import {
+	resolveNodeTypeDefinition,
+	resolveBuiltinNodeDefinitionDirs,
+	listNodeDiscriminators,
+} from './node-definition-resolver';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import {
+	AiBuilderTemporaryWorkflowRepository,
+	ExecutionRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+} from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { User, ExecutionSummaries } from '@n8n/db';
+import { Service } from '@n8n/di';
+import {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+	wrapUntrustedData,
+} from '@n8n/instance-ai';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -35,38 +59,10 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
-import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
-import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
-	wrapUntrustedData,
-} from '@n8n/instance-ai';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
-import type { User, ExecutionSummaries } from '@n8n/db';
-
-import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import {
-	resolveNodeTypeDefinition,
-	resolveBuiltinNodeDefinitionDirs,
-	listNodeDiscriminators,
-} from './node-definition-resolver';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
-import {
-	AiBuilderTemporaryWorkflowRepository,
-	ExecutionRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	WorkflowEntity,
-	WorkflowRepository,
-} from '@n8n/db';
-import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
 	type IDataObject,
@@ -98,8 +94,9 @@ import {
 	UnexpectedError,
 	jsonParse,
 } from 'n8n-workflow';
-
-import { InstanceSettings } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -108,12 +105,12 @@ import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FolderService } from '@/services/folder.service';
@@ -121,14 +118,15 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TagService } from '@/services/tag.service';
+import { Telemetry } from '@/telemetry';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { Telemetry } from '@/telemetry';
-import { WorkflowRunner } from '@/workflow-runner';
-import { getBase } from '@/workflow-execute-additional-data';
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 

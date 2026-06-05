@@ -10,9 +10,9 @@ import { UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
 type AgentSkillEntries = Agent['skills'];

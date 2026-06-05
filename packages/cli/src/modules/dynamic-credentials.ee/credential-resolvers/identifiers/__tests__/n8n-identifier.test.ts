@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 
 import { N8NIdentifier } from '../n8n-identifier';
-import type { Mocked } from 'vitest';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;

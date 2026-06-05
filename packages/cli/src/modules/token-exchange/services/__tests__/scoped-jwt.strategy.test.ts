@@ -1,13 +1,13 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ALL_API_KEY_SCOPES, type Scope as ScopeType } from '@n8n/permissions';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 
 import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../../token-exchange.types';
 import { ScopedJwtStrategy } from '../scoped-jwt.strategy';
-import type { Mocked } from 'vitest';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());

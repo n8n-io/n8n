@@ -3,6 +3,7 @@ import { AuthIdentityRepository, ProjectRepository, UserRepository } from '@n8n/
 import { Container } from '@n8n/di';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { InstanceSettings } from 'n8n-core';
 
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
@@ -13,7 +14,6 @@ import {
 	type TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
 import { JwtService } from '@/services/jwt.service';
-import { InstanceSettings } from 'n8n-core';
 
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';

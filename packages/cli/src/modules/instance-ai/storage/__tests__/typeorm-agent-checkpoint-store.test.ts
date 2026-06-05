@@ -1,11 +1,11 @@
 import type { SerializableAgentState } from '@n8n/instance-ai';
-import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
 import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository';
 import { TypeORMAgentCheckpointStore } from '../typeorm-agent-checkpoint-store';
-import type { Mock } from 'vitest';
 
 function makeState(overrides: Partial<SerializableAgentState> = {}): SerializableAgentState {
 	return {

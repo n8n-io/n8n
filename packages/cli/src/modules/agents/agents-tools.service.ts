@@ -7,10 +7,10 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
-
 import { NodeCatalogService } from '@/node-catalog';
 import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
+
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
 type NodeRequest =
 	| string

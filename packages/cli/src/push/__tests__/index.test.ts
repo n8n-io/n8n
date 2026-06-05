@@ -2,9 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Application } from 'express';
-import { captor, mock } from 'vitest-mock-extended';
 import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
+import type { MockInstance } from 'vitest';
+import { captor, mock } from 'vitest-mock-extended';
 import { type WebSocket, Server as WSServer } from 'ws';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -14,7 +15,6 @@ import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/
 import { WebSocketPush } from '@/push/websocket.push';
 
 import type { PushConfig } from '../push.config';
-import type { MockInstance } from 'vitest';
 
 vi.mock('ws', async () => ({
 	Server: vi.fn(),

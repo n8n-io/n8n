@@ -13,13 +13,14 @@ import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository }
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
-import { mock } from 'vitest-mock-extended';
 import { Credentials } from 'n8n-core';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';

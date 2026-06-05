@@ -5,23 +5,23 @@ import {
 	type StreamChunk,
 	type StreamResult,
 } from '@n8n/agents';
-import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
-import type { Mocked } from 'vitest';
 
 const projectId = 'project-1';
 const userId = 'user-1';

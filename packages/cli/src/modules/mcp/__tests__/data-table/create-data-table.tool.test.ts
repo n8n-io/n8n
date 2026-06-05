@@ -1,8 +1,7 @@
-import { createCreateDataTableTool } from '../../tools/data-table';
-
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 
 import { createTelemetry, user } from './test-utils';
+import { createCreateDataTableTool } from '../../tools/data-table';
 
 const createMocks = (overrides?: {
 	createdTable?: { id: string; name: string; projectId: string };

@@ -1,5 +1,4 @@
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type {
 	IConnections,
 	INode,
@@ -8,11 +7,12 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 
 import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
-import type { Mocked } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,8 +1,8 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import {

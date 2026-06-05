@@ -1,7 +1,9 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -11,8 +13,6 @@ import {
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { Mock } from 'vitest';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];
 

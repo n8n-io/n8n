@@ -5,8 +5,8 @@ import { z } from 'zod';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
 import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;

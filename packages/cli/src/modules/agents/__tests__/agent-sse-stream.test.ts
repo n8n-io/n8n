@@ -1,5 +1,5 @@
-import type { AgentSseEvent } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
+import type { AgentSseEvent } from '@n8n/api-types';
 
 import { pumpChunks } from '../agent-sse-stream';
 

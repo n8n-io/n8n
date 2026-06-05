@@ -2,15 +2,15 @@ import { safeJoinPath, type Logger } from '@n8n/backend-common';
 import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { ImportService } from '../import.service';
-import type { Mock } from 'vitest';
 
 // Mock fs/promises
 vi.mock('fs/promises');

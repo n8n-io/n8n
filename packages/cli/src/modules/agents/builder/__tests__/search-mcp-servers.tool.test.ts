@@ -1,6 +1,7 @@
+import { mock } from 'vitest-mock-extended';
+
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { linearMockServer, notionMockServer } from '@/modules/mcp-registry/registry/mock-servers';
-import { mock } from 'vitest-mock-extended';
 
 import { buildSearchMcpServersTool } from '../search-mcp-servers.tool';
 

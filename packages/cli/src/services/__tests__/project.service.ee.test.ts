@@ -17,7 +17,6 @@ import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.ser
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import type { OwnershipService } from '../ownership.service';
-
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 

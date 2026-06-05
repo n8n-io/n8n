@@ -1,36 +1,37 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import type { AgentsConfig, GlobalConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
-import type { CredentialsEntity } from '@n8n/db';
+import type { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type {
+	User,
+	CredentialsEntity,
+	ExecutionRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { Telemetry } from '@/telemetry';
-
+import type { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
-import type { Logger } from '@n8n/backend-common';
-import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
-import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { AgentTaskService } from '../agent-task.service';
-import { AgentsService, chatThreadId } from '../agents.service';
-import type { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -43,14 +44,17 @@ import {
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentSkillsService } from '../agent-skills.service';
+import { AgentsService, chatThreadId } from '../agents.service';
+import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
-import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { Mock, Mocked } from 'vitest';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

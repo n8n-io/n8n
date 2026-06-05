@@ -12,6 +12,7 @@ import type {
 	WorkflowPublishedVersion,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -21,7 +22,6 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 
 import { EvaluationCollectionService } from '../evaluation-collection.service';
 import type { TestRunnerService } from '../test-runner/test-runner.service.ee';
-import type { Mocked } from 'vitest';
 
 function makeConfig(over: Partial<EvaluationConfig> = {}): EvaluationConfig {
 	return {

@@ -1,12 +1,11 @@
-import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
-
 import { resolveFileReference, type WorkspaceFiles } from './file-references';
-import { runInternalCommand } from './search.operation';
 import type {
 	InternalKnowledgeCommandRequest,
 	ParsedSearchKnowledgeInput,
 	SearchKnowledgeOutput,
 } from './schemas';
+import { runInternalCommand } from './search.operation';
+import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 
 type ReadInput = Extract<ParsedSearchKnowledgeInput, { operation: 'read' }>;
 

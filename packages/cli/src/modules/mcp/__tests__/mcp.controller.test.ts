@@ -2,11 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 // eslint-disable-next-line import-x/order
+import { Telemetry } from '@/telemetry';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
-import type { Mock } from 'vitest';
 
 const mockAuthMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => {
 	next();
@@ -20,7 +21,6 @@ Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 import { McpController, type FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);

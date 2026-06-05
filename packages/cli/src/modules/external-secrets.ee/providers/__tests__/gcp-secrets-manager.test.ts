@@ -1,6 +1,6 @@
-import { UserError } from 'n8n-workflow';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import type { google } from '@google-cloud/secret-manager/build/protos/protos';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';

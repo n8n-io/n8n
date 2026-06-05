@@ -1,4 +1,5 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { mockCipher } from '@test/mocking';
@@ -6,7 +7,6 @@ import { mockCipher } from '@test/mocking';
 import { EXTERNAL_SECRETS_DB_KEY } from '../constants';
 import { ExternalSecretsSettingsStore } from '../settings-store.service';
 import type { ExternalSecretsSettings } from '../types';
-import type { Mocked } from 'vitest';
 
 describe('SettingsStore', () => {
 	let store: ExternalSecretsSettingsStore;

@@ -1,9 +1,9 @@
 import type { WorkerStatus } from '@n8n/api-types';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
-import type { Mocked } from 'vitest';
 
 describe('WorkerStatusService', () => {
 	let workerStatusService: WorkerStatusService;

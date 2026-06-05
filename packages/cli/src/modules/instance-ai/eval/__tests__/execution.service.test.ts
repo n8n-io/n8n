@@ -1,7 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
 	INode,
@@ -11,8 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
-
-import { patchNoProxyForLoopback } from '../proxy-loopback';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { NodeTypes } from '@/node-types';
@@ -95,6 +93,7 @@ vi.mock('n8n-workflow', async () => {
 
 import { EvalExecutionService } from '../execution.service';
 import { createLlmMockHandler } from '../mock-handler';
+import { patchNoProxyForLoopback } from '../proxy-loopback';
 import {
 	generateMockHints,
 	identifyNodesForHints,

@@ -1,7 +1,8 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTable as DataTableEntity } from '@/modules/data-table/data-table.entity';
@@ -12,7 +13,6 @@ import {
 	isCoercibleBooleanExpression,
 } from '../evaluation-config-validator';
 import type { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
-import type { Mocked } from 'vitest';
 
 function makeNode(over: Partial<INode> & Pick<INode, 'name'>): INode {
 	return {

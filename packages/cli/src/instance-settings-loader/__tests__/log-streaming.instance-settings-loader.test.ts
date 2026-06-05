@@ -1,14 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
 
 import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader';
-import type { Mock } from 'vitest';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
 

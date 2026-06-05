@@ -2,23 +2,24 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+
+import { SOURCE_CONTROL_DEFAULT_BRANCH_COLOR } from '../constants';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlImportService } from '../source-control-import.service.ee';
-import type { SourceControlContextFactory } from '../source-control-context.factory';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
-import { SOURCE_CONTROL_DEFAULT_BRANCH_COLOR } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
+import type { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportResult } from '../types/export-result';
-import type { Mock } from 'vitest';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {

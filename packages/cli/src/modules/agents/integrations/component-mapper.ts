@@ -1,8 +1,8 @@
 import { Container } from '@n8n/di';
+import type { CardElement } from 'chat';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
-import type { CardElement } from 'chat';
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.

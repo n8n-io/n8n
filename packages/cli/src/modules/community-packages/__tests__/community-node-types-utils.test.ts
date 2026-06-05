@@ -1,6 +1,8 @@
-import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
-import { paginatedRequest } from '@/utils/strapi-utils';
 import type { MockedFunction } from 'vitest';
+
+import { paginatedRequest } from '@/utils/strapi-utils';
+
+import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
 
 vi.mock('@/utils/strapi-utils', () => ({
 	paginatedRequest: vi.fn(),

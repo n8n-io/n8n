@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
-import type { InstanceSettings, Cipher } from 'n8n-core';
 import { readFile, writeFile, access, mkdir } from 'fs/promises';
+import type { InstanceSettings, Cipher } from 'n8n-core';
 import os from 'os';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 

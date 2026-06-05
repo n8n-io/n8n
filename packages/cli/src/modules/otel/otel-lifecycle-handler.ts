@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { OnLifecycleEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -6,7 +7,6 @@ import type {
 	NodeExecuteBeforeContext,
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
-import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
 

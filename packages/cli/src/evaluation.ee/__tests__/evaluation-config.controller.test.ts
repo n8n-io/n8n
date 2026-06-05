@@ -1,4 +1,5 @@
 import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -7,7 +8,6 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { EvaluationApiError } from '../evaluation-api-error';
 import { EvaluationConfigController } from '../evaluation-config.controller';
 import type { EvaluationConfigService } from '../evaluation-config.service';
-import type { Mocked } from 'vitest';
 
 describe('EvaluationConfigController', () => {
 	let controller: EvaluationConfigController;

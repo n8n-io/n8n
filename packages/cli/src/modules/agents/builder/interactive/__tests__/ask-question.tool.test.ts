@@ -1,5 +1,6 @@
-import { buildAskQuestionTool } from '../ask-question.tool';
 import type { Mock } from 'vitest';
+
+import { buildAskQuestionTool } from '../ask-question.tool';
 
 interface TestCtx {
 	resumeData?: unknown;

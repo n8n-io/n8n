@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { generateNanoId, AuthIdentity, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import * as helpers from '../helpers.ee';
-import type { Mock } from 'vitest';
 
 const userRepository = mockInstance(UserRepository);
 

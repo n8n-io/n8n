@@ -1,5 +1,4 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { mock } from 'vitest-mock-extended';
 import * as core from 'n8n-core';
 import { DirectedGraph, recreateNodeExecutionStack, WorkflowExecute } from 'n8n-core';
 import { NodeHelpers, UserError } from 'n8n-workflow';
@@ -19,9 +18,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ManualExecutionService } from '@/manual-execution.service';
-import type { Mock } from 'vitest';
 
 vi.mock('n8n-core');
 

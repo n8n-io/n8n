@@ -1,5 +1,5 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import nock from 'nock';
 
 import { ExternalSecretsConfig } from '../../external-secrets.config';

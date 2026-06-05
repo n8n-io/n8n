@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import type {
 	AgentIntegrationConfig,
 	CreateSlackAgentAppResponse,
@@ -11,6 +9,7 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { randomBytes } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -20,9 +19,9 @@ import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
 import { AgentsService } from '../agents.service';
+import { ChatIntegrationService } from './chat-integration.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
-import { ChatIntegrationService } from './chat-integration.service';
 
 const SLACK_APP_SETUP_CACHE_PREFIX = 'agents:slack-app-setup:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;

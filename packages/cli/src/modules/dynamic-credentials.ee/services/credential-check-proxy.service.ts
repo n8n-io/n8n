@@ -1,5 +1,6 @@
 import { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ExecutionContextService } from 'n8n-core';
 import type {
 	CredentialCheckResult,
 	CredentialCheckStatus,
@@ -10,7 +11,6 @@ import type {
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 
-import { ExecutionContextService } from 'n8n-core';
 import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
 
 @Service()

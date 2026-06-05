@@ -4,10 +4,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
+import type { Mocked } from 'vitest';
 import type WebSocket from 'ws';
 
 import { WebSocketPush } from '@/push/websocket.push';
-import type { Mocked } from 'vitest';
 
 vi.useFakeTimers();
 

@@ -6,9 +6,7 @@ import config from '@/config';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { CacheService } from '@/services/cache/cache.service';
 
-vi.mock('@/config', () => ({
-	set: vi.fn(),
-}));
+vi.mock('@/config', () => ({ default: { set: vi.fn() } }));
 
 describe('AiUsageService', () => {
 	const settingsRepository = mockInstance(SettingsRepository);

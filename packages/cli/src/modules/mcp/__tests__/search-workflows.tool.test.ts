@@ -1,21 +1,19 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
-
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
-
-import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
-import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
+import { v4 as uuid } from 'uuid';
+import type { Mock } from 'vitest';
 
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { v4 as uuid } from 'uuid';
-import type { Mock } from 'vitest';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
+import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

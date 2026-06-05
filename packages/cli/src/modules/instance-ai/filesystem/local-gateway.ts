@@ -1,5 +1,3 @@
-import { EventEmitter } from 'node:events';
-import { nanoid } from 'nanoid';
 import type {
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -7,6 +5,8 @@ import type {
 	InstanceAiGatewayCapabilities,
 	ToolCategory,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 
 const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 

@@ -4,7 +4,6 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -16,6 +15,8 @@ import {
 	type IRun,
 	type IWorkflowBase,
 } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { saveCredential } from '@test-integration/db/credentials';
 import { createAdmin, createMember } from '@test-integration/db/users';
@@ -31,7 +32,6 @@ import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.se
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
-import type { MockInstance } from 'vitest';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);

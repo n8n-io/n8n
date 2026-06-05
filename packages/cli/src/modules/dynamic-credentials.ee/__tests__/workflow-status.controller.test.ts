@@ -1,13 +1,15 @@
-import { mock } from 'vitest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { UrlService } from '@/services/url.service';
+
+import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 import type { DynamicCredentialCorsService } from '../services/dynamic-credential-cors.service';
 import type { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 import { WorkflowStatusController } from '../workflow-status.controller';
-import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
-import type { UrlService } from '@/services/url.service';
-import type { GlobalConfig } from '@n8n/config';
-import type { Mocked } from 'vitest';
 
 vi.mock('../utils', () => ({
 	getDynamicCredentialMiddlewares: vi.fn(() => undefined),

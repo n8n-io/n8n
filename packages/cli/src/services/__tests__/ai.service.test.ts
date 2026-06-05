@@ -5,15 +5,15 @@ import type {
 } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import type { License } from '@/license';
 
 import { AiService } from '../ai.service';
-import type { Mock } from 'vitest';
 
 vi.mock('@n8n_io/ai-assistant-sdk', () => ({
 	AiAssistantClient: vi.fn(),

@@ -3,6 +3,7 @@ import { CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 
@@ -10,7 +11,6 @@ import { DynamicCredentialResolver } from '../../database/entities/credential-re
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
-import type { Mocked } from 'vitest';
 
 const createMockWorkflow = (overrides: Partial<WorkflowEntity> = {}): WorkflowEntity => {
 	const workflow = new WorkflowEntity();

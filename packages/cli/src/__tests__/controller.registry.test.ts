@@ -5,6 +5,7 @@ vi.mock('@n8n/backend-common', async () => {
 	};
 });
 
+import { Z } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
@@ -20,9 +21,8 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express, { json } from 'express';
-import { mock } from 'vitest-mock-extended';
 import { agent as testAgent } from 'supertest';
-import { Z } from '@n8n/api-types';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';

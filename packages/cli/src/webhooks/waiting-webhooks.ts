@@ -13,6 +13,16 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { NodeTypes } from '@/node-types';
+import { applyCors } from '@/utils/cors.util';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { preserveInputOverride } from '@/workflow-helpers';
+
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -20,17 +30,6 @@ import type {
 	IWebhookResponseCallbackData,
 	WaitingWebhookRequest,
 } from './webhook.types';
-
-import { EventService } from '@/events/event.service';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
-import { NodeTypes } from '@/node-types';
-import { applyCors } from '@/utils/cors.util';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { preserveInputOverride } from '@/workflow-helpers';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the

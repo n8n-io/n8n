@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import {
 	BinaryDataConfig,
 	BinaryDataService,
@@ -25,6 +24,7 @@ import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.nod
 import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';

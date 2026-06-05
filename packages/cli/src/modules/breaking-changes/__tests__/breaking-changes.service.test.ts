@@ -1,8 +1,9 @@
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -14,7 +15,6 @@ import { FileAccessRule } from '../rules/v2/file-access.rule';
 import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
 import { WaitNodeSubworkflowRule } from '../rules/v2/wait-node-subworkflow.rule';
-import type { Mocked } from 'vitest';
 
 describe('BreakingChangeService', () => {
 	const logger = mockLogger();

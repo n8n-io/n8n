@@ -1,23 +1,24 @@
-import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+
+import { EventService } from '@/events/event.service';
+import { RoleService } from '@/services/role.service';
 
 import type { DataTableColumn } from '../data-table-column.entity';
-import type { DataTable } from '../data-table.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
+import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
-import { EventService } from '@/events/event.service';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
-import { RoleService } from '@/services/role.service';
-import type { Mocked } from 'vitest';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;

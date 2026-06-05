@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ICredentialResolver } from '@n8n/decorators';
 import type { InstanceSettings, Cipher } from 'n8n-core';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants';
@@ -8,7 +9,6 @@ import { DynamicCredentialResolver } from '../../database/entities/credential-re
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { N8nResolverSeeder } from '../n8n-resolver-seeder.service';
-import type { Mock } from 'vitest';
 
 describe('N8nResolverSeeder', () => {
 	const repository = mock<DynamicCredentialResolverRepository>();

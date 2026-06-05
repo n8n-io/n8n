@@ -1,5 +1,5 @@
-import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
+import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 

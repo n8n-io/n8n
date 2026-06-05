@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User } from '@n8n/db';
 
-import { createSearchProjectsTool } from '../tools/search-projects.tool';
-
 import { Telemetry } from '@/telemetry';
+
+import { createSearchProjectsTool } from '../tools/search-projects.tool';
 
 describe('search-projects MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

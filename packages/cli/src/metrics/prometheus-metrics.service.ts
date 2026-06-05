@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
@@ -10,6 +8,7 @@ import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
+import { readFileSync } from 'node:fs';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 

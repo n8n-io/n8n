@@ -1,9 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { MultiMainMetadata } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { createResultOk, createResultError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { LeaderElectionClient } from '@/scaling/leader-election-client';
 

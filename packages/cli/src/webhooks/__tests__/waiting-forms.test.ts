@@ -1,6 +1,5 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { getHtmlSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import {
@@ -9,10 +8,11 @@ import {
 	type IWorkflowBase,
 	type Workflow,
 } from 'n8n-workflow';
-
-import type { WaitingWebhookRequest } from '../webhook.types';
+import { mock } from 'vitest-mock-extended';
 
 import { WaitingForms } from '@/webhooks/waiting-forms';
+
+import type { WaitingWebhookRequest } from '../webhook.types';
 
 class TestWaitingForms extends WaitingForms {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {

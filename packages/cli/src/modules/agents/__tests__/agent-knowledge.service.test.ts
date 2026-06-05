@@ -1,10 +1,11 @@
-import type { BinaryDataService } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils';
-import { mock } from 'vitest-mock-extended';
+import type { BinaryDataService } from 'n8n-core';
 import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -12,7 +13,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { Mocked } from 'vitest';
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');

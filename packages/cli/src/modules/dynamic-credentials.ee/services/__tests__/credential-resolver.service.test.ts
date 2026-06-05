@@ -8,18 +8,18 @@ import {
 import { Not } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
-import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { SystemResolverModificationError } from '../../errors/system-resolver-modification.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialResolverService } from '../credential-resolver.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
-import type { Mocked } from 'vitest';
 
 describe('DynamicCredentialResolverService', () => {
 	let service: DynamicCredentialResolverService;

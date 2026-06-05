@@ -2,8 +2,8 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { mock } from 'vitest-mock-extended';
 import type * as http from 'node:http';
+import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';

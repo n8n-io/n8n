@@ -6,6 +6,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -16,7 +17,6 @@ import type { DynamicCredentialResolverRepository } from '../../database/reposit
 import { CredentialStorageError } from '../../errors/credential-storage.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialStorageService } from '../dynamic-credential-storage.service';
-import type { Mocked } from 'vitest';
 
 describe('DynamicCredentialStorageService', () => {
 	let service: DynamicCredentialStorageService;

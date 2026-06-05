@@ -2,8 +2,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import { mock } from 'vitest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { UrlService } from '@/services/url.service';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';

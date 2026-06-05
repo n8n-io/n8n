@@ -6,8 +6,8 @@ import {
 	type CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';

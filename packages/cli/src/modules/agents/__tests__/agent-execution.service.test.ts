@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentExecutionService } from '../agent-execution.service';
@@ -8,7 +9,6 @@ import type { MessageRecord } from '../execution-recorder';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
-import type { Mocked } from 'vitest';
 
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 

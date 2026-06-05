@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ChatHubExtractor } from '../chat-hub-extractor';
-import type { Mocked } from 'vitest';
 
 // Helper function to create trigger items
 const createTriggerItem = (data: Record<string, unknown>): INodeExecutionData => ({

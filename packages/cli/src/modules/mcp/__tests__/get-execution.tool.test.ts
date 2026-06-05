@@ -1,13 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetExecutionTool } from '../tools/get-execution.tool';
-import type { Mock } from 'vitest';
 
 describe('get-execution MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -323,7 +323,7 @@ describe('get-execution MCP tool', () => {
 				);
 
 				const data = (result.structuredContent as Record<string, unknown>).data as {
-					resultData: { runData: Record<string, { data: { main: unknown[][] } }[]> };
+					resultData: { runData: Record<string, Array<{ data: { main: unknown[][] } }>> };
 				};
 				expect(data.resultData.runData.Node1[0].data.main[0]).toHaveLength(2);
 			});
@@ -387,7 +387,7 @@ describe('get-execution MCP tool', () => {
 				);
 
 				const data = (result.structuredContent as Record<string, unknown>).data as {
-					resultData: { runData: Record<string, { data: { main: unknown[][] } }[]> };
+					resultData: { runData: Record<string, Array<{ data: { main: unknown[][] } }>> };
 				};
 				expect(Object.keys(data.resultData.runData)).toEqual(['Node1']);
 				expect(data.resultData.runData.Node1[0].data.main[0]).toHaveLength(2);

@@ -8,10 +8,11 @@ import axios from 'axios';
 import type express from 'express';
 import type { HttpProxyAgent } from 'http-proxy-agent';
 import type { HttpsProxyAgent } from 'https-proxy-agent';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -26,7 +27,6 @@ import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error'
 import * as samlHelpers from '../saml-helpers';
 import { SamlValidator } from '../saml-validator';
 import { SamlService } from '../saml.service.ee';
-import type { Mocked } from 'vitest';
 
 vi.mock('axios');
 const mockedAxios = axios as Mocked<typeof axios>;

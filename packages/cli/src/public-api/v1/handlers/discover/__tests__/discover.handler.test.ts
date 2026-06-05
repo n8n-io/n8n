@@ -3,11 +3,11 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ApiKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import type { Mocked } from 'vitest';
 
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import * as discoverService from '../discover.service';
-import type { Mocked } from 'vitest';
 
 const handler = require('../discover.handler');
 

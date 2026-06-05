@@ -3,11 +3,11 @@ import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { LastActiveAtService } from '@/services/last-active-at.service';
-import type { Mock } from 'vitest';
 
 describe('LastActiveAtService', () => {
 	const userData = {

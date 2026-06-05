@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { TaskRunnersConfig } from '@n8n/config';
-import { mock } from 'vitest-mock-extended';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
+import { mock } from 'vitest-mock-extended';
 
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';

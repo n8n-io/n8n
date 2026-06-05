@@ -1,12 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
-import type { MockInstance } from 'vitest';
 
 vi.unmock('@/telemetry');
 vi.mock('@/posthog');

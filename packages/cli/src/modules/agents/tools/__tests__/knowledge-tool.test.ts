@@ -1,9 +1,10 @@
-import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
-import type { AgentKnowledgeService } from '../../agent-knowledge.service';
-import { createSearchKnowledgeTool } from '../knowledge/tool';
-import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mocked } from 'vitest';
+
+import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import type { AgentKnowledgeService } from '../../agent-knowledge.service';
+import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
+import { createSearchKnowledgeTool } from '../knowledge/tool';
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');

@@ -1,15 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { MessageEventBusLogWriter } from '../../message-event-bus-writer/message-event-bus-log-writer';
 import { MessageEventBus } from '../message-event-bus';
-import type { MockInstance } from 'vitest';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 vi.unmock('node:fs');

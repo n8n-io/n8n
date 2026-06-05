@@ -1,13 +1,13 @@
+import { CredentialsEntity } from '@n8n/db';
+import type { ExecutionContextService } from 'n8n-core';
 import type { IExecutionContext, PlaintextExecutionContext } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { OauthService } from '@/oauth/oauth.service';
-import type { ExecutionContextService } from 'n8n-core';
-import { CredentialsEntity } from '@n8n/db';
 
-import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
 import { CredentialCheckProxyService } from '../credential-check-proxy.service';
-import type { Mocked } from 'vitest';
+import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
 
 const createMockCredentialEntity = (
 	overrides: Partial<CredentialsEntity> = {},

@@ -23,6 +23,17 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeCatalogService } from '@/node-catalog';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { ProjectService } from '@/services/project.service.ee';
+
+import { RoleService } from '@/services/role.service';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
@@ -53,26 +64,17 @@ import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-w
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { NodeCatalogService } from '@/node-catalog';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
 import type { McpAppsTelemetryVariant } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
-import { ExecutionService } from '@/executions/execution.service';
 
 /**
  * Pending MCP execution response, used for queue mode support.

@@ -1,6 +1,7 @@
 import type { AiInsightsResponse } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { EvaluationCollection, EvaluationCollectionRepository, TestRun, User } from '@n8n/db';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -9,7 +10,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Telemetry } from '@/telemetry';
 
 import { DETERMINISTIC_MODEL_TAG, EvalInsightsService } from '../eval-insights.service';
-import type { Mocked } from 'vitest';
 
 const user = mock<User>({ id: 'user-1' });
 

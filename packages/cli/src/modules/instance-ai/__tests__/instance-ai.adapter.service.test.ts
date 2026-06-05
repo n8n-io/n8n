@@ -29,7 +29,14 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
+import type { License } from '@/license';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { RoleService } from '@/services/role.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	extractExecutionResult,
@@ -39,6 +46,7 @@ import {
 	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
+	InstanceAiAdapterService,
 } from '../instance-ai.adapter.service';
 
 // ---------------------------------------------------------------------------
@@ -1201,16 +1209,7 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { WorkflowService } from '@/workflows/workflow.service';
-import type { License } from '@/license';
-import type { RoleService } from '@/services/role.service';
-
-import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 

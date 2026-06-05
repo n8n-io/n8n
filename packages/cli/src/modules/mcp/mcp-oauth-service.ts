@@ -1,9 +1,9 @@
 import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import type {
 	OAuthClientInformationFull,

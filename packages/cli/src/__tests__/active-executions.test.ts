@@ -4,7 +4,6 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { Response } from 'express';
-import { captor, mock } from 'vitest-mock-extended';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -20,6 +19,8 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
+import type { Mock } from 'vitest';
+import { captor, mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -27,7 +28,6 @@ import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
-import type { Mock } from 'vitest';
 
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),

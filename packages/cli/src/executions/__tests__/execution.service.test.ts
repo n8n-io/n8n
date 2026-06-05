@@ -6,12 +6,12 @@ import type {
 	ExecutionRepository,
 	User,
 	WorkflowHistoryRepository,
+	WorkflowHistory,
 } from '@n8n/db';
-import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';

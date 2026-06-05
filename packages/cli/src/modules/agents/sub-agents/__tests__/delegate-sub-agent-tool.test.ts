@@ -5,6 +5,7 @@ import {
 	type GenerateResult,
 } from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -15,7 +16,6 @@ import type {
 	SubAgentForegroundResult,
 	SubAgentForegroundRunner,
 } from '../sub-agent-foreground-runner';
-import type { Mocked } from 'vitest';
 
 const projectId = 'project-1';
 const userId = 'user-1';

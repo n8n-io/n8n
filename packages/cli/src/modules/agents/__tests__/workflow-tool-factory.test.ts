@@ -1,12 +1,15 @@
-import { mock } from 'vitest-mock-extended';
-import type { WorkflowRepository, UserRepository } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
+import type {
+	WorkflowRepository,
+	UserRepository,
+	WorkflowEntity,
+	ExecutionRepository,
+} from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowRunner } from '@/workflow-runner';
 import type { ActiveExecutions } from '@/active-executions';
-import type { ExecutionRepository } from '@n8n/db';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	normalizeTriggerInput,

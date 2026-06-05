@@ -1,14 +1,14 @@
 import { REDACTION_FLOOR_DEFAULT, type RedactionFloor } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { Settings, SettingsRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag';
-import type { Mock } from 'vitest';
 
 const KEY = 'redaction.enforcement';
 

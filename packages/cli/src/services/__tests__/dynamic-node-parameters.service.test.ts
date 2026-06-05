@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'vitest-mock-extended';
+import { SharedWorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import {
 	type ILoadOptions,
 	type INodeParameters,
@@ -9,18 +10,17 @@ import {
 	type ResourceMapperFields,
 	Expression,
 } from 'n8n-workflow';
-
-import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
-import { WorkflowLoaderService } from '../workflow-loader.service';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
-import { SharedWorkflowRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
-import type { MockInstance } from 'vitest';
+
+import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
+import { WorkflowLoaderService } from '../workflow-loader.service';
 
 describe('DynamicNodeParametersService', () => {
 	const logger = mockInstance(Logger);

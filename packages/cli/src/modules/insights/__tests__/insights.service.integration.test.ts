@@ -9,11 +9,12 @@ import {
 import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { MockInstance, Mocked } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -21,7 +22,6 @@ import { InsightsCollectionService } from '../insights-collection.service';
 import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
-import type { MockInstance, Mocked } from 'vitest';
 
 describe('InsightsService (Integration)', () => {
 	const today = new Date();

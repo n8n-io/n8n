@@ -1,11 +1,11 @@
-import type * as agents from '@n8n/agents';
 import { DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
+import type * as agents from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
-import type { AgentsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
-
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -15,17 +15,16 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
-import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolExecutor } from '../json-config/from-json-config';
+import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.

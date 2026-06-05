@@ -1,8 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Request, Response, NextFunction } from 'express';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 import { Telemetry } from '@/telemetry';
@@ -10,7 +11,6 @@ import { Telemetry } from '@/telemetry';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
-import type { Mocked } from 'vitest';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
 	const req = mockDeep<Request>();

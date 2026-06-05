@@ -3,15 +3,15 @@ import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PostHogClient } from '@/posthog';
 
-import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
 import type { EvaluationCollectionService } from '../evaluation-collection.service';
-import type { Mocked } from 'vitest';
+import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
 
 describe('EvaluationCollectionsController', () => {
 	let controller: EvaluationCollectionsController;

@@ -4,13 +4,13 @@ import {
 	TechniqueDescription,
 	WorkflowTechnique,
 } from '@n8n/workflow-sdk/prompts/best-practices';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetWorkflowBestPracticesTool } from '../tools/workflow-builder/get-workflow-best-practices.tool';
-import type { Mocked } from 'vitest';
 
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: {

@@ -3,10 +3,9 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
-
-import type { IRun, IWorkflowBase } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';

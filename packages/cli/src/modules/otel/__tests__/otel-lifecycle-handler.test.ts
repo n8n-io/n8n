@@ -5,9 +5,9 @@ import type {
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { OwnershipService } from '@/services/ownership.service';
 

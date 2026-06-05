@@ -2,9 +2,10 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import type { EventService } from '@/events/event.service';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';

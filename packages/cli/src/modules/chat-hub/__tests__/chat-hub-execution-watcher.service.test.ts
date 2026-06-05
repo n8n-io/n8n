@@ -1,16 +1,16 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository, IExecutionResponse } from '@n8n/db';
 import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '@n8n/decorators';
-import { mock } from 'vitest-mock-extended';
 import type { IRun } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
-import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
 import type {
 	ChatHubExecutionStore,
 	ChatHubExecutionContext,
 } from '@/modules/chat-hub/chat-hub-execution-store.service';
+import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
+import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
 import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository';
 import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
 

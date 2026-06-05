@@ -1,10 +1,10 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { SecretsProviderConnectionRepository } from '@n8n/db';
+import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DummyProvider, FailedProvider, MockProviders } from '@test/external-secrets/utils';
-
-import type { SecretsProviderConnectionRepository } from '@n8n/db';
-import type { Cipher } from 'n8n-core';
 
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import type { ExternalSecretsConfig } from '../external-secrets.config';
@@ -14,7 +14,6 @@ import type { ExternalSecretsRetryManager } from '../retry-manager.service';
 import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
 import type { ExternalSecretsSettingsStore } from '../settings-store.service';
 import type { ExternalSecretsSettings, SecretsProvider } from '../types';
-import type { Mocked } from 'vitest';
 
 describe('ExternalSecretsManager', () => {
 	vi.useFakeTimers();

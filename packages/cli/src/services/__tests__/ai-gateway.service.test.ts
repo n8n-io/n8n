@@ -1,17 +1,17 @@
-import type { GlobalConfig } from '@n8n/config';
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'vitest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
-import type { Mock } from 'vitest';
 
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 

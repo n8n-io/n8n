@@ -1,12 +1,12 @@
 import { randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type {
 	INodeListSearchResult,
 	IWorkflowExecuteAdditionalData,
 	ResourceMapperFields,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';

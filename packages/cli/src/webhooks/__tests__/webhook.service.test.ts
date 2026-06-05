@@ -1,6 +1,5 @@
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type {
 	INode,
 	INodeProperties,
@@ -10,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import type { NodeTypes } from '@/node-types';

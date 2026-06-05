@@ -2,9 +2,9 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { createTeamProject, mockLogger, testDb } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
 
 import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';

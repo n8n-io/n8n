@@ -1,7 +1,6 @@
-import { mock } from 'vitest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
-
 import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { OtelConfig } from '../otel.config';
 import { OtelService } from '../otel.service';
@@ -10,10 +9,12 @@ const start = vi.fn();
 const shutdown = vi.fn();
 
 vi.mock('@opentelemetry/sdk-node', () => ({
-	NodeSDK: vi.fn().mockImplementation(() => ({
-		start,
-		shutdown,
-	})),
+	NodeSDK: vi.fn(function () {
+		return {
+			start,
+			shutdown,
+		};
+	}),
 }));
 
 describe('OtelService', () => {

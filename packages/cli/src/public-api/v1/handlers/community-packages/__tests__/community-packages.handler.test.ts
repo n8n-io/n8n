@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -11,7 +12,6 @@ import type { InstalledPackages } from '@/modules/community-packages/installed-p
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
 import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
-import type { Mocked } from 'vitest';
 
 const mockMiddleware = vi.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),

@@ -9,6 +9,7 @@ vi.mock('../node-config', () => ({
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { IConnections, INode, INodeParameters, IWorkflowBase } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import {
 	buildVendorLlmRouting,
@@ -18,7 +19,6 @@ import {
 	identifyNodesForPinData,
 	partitionAiRoots,
 } from '../workflow-analysis';
-import { UserError } from 'n8n-workflow';
 
 const mockedCreateEvalAgent = vi.mocked(createEvalAgent);
 const mockedExtractText = vi.mocked(extractText);

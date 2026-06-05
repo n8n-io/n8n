@@ -5,6 +5,7 @@ import type {
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type {
 	CredentialResolutionResult,
@@ -16,7 +17,6 @@ import type {
 	IDynamicCredentialStorageProvider,
 } from '../dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '../dynamic-credentials-proxy';
-import type { Mocked } from 'vitest';
 
 describe('DynamicCredentialsProxy', () => {
 	let proxy: DynamicCredentialsProxy;

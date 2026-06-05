@@ -1,6 +1,7 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
-import { buildAskCredentialTool } from '../ask-credential.tool';
 import type { Mock } from 'vitest';
+
+import { buildAskCredentialTool } from '../ask-credential.tool';
 
 interface TestCtx {
 	resumeData?: unknown;

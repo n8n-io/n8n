@@ -1,12 +1,12 @@
-import { mock } from 'vitest-mock-extended';
 import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypes } from '@/node-types';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { Mock } from 'vitest';
 
 describe('CredentialsTester', () => {
 	const credentialTypes = mock<CredentialTypes>();

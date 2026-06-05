@@ -1,9 +1,3 @@
-import { mock } from 'vitest-mock-extended';
-
-import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type {
 	Project,
 	ProjectRepository,
@@ -12,6 +6,12 @@ import type {
 	RoleMappingRuleRepository,
 	RoleRepository,
 } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 
 const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
 const roleRepository = mock<RoleRepository>();

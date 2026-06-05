@@ -1,15 +1,15 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SettingsRepository, UserRepository } from '@n8n/db';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { MFA_ENFORCE_SETTING } from '../constants';
 import { MFA_CACHE_KEY, MfaService } from '../mfa.service';
 import type { TOTPService } from '../totp.service';
-import type { Mocked } from 'vitest';
 
 describe('MfaService', () => {
 	let mfaService: MfaService;
