@@ -18,7 +18,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { isNodeToolsEnabled } from '@n8n/api-types';
-import { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -90,7 +90,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentRepository: AgentRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
@@ -299,7 +298,6 @@ export class AgentRuntimeReconstructionService {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: this.workflowRunner,
 					activeExecutions: this.activeExecutions,
-					executionRepository: this.executionRepository,
 					workflowFinderService: this.workflowFinderService,
 					userRepository: this.userRepository,
 					userId,
