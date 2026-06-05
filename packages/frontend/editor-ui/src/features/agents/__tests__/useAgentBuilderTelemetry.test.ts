@@ -86,6 +86,34 @@ describe('useAgentBuilderTelemetry', () => {
 		expect(agentTelemetryMock.trackAddedTasks).not.toHaveBeenCalled();
 	});
 
+	it('trackTasksChanged emits added and removed tasks for the same save', async () => {
+		const { deps, telemetry } = makeTelemetryDeps(configWithTasks('task-1', 'task-2'));
+		telemetry.captureTasksBaseline();
+		deps.savedConfig.value = configWithTasks('task-2', 'task-3');
+		deps.localConfig.value = deps.savedConfig.value;
+
+		telemetry.trackTasksChanged();
+
+		await vi.waitFor(() => {
+			expect(agentTelemetryMock.trackAddedTasks).toHaveBeenCalledOnce();
+			expect(agentTelemetryMock.trackRemovedTasks).toHaveBeenCalledOnce();
+		});
+		expect(agentTelemetryMock.trackAddedTasks).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			taskAdded: 'task-3',
+			tasks: ['task-2', 'task-3'],
+			configVersion: expect.any(String),
+			status: 'draft',
+		});
+		expect(agentTelemetryMock.trackRemovedTasks).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			taskRemoved: 'task-1',
+			tasks: ['task-2', 'task-3'],
+			configVersion: expect.any(String),
+			status: 'draft',
+		});
+	});
+
 	it('trackTasksChanged no-ops when the baseline matches', () => {
 		const { telemetry } = makeTelemetryDeps(configWithTasks('task-1'));
 		telemetry.captureTasksBaseline();
