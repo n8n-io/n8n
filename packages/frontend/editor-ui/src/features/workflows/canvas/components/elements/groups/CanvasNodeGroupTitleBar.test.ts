@@ -1,5 +1,6 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { h } from 'vue';
@@ -41,7 +42,6 @@ function makeData(overrides: Partial<CanvasGroupViewState> = {}): CanvasGroupVie
 	return {
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
-		autofocusTitle: false,
 		...overrides,
 	};
 }
@@ -50,6 +50,8 @@ describe('CanvasNodeGroupTitleBar', () => {
 	function render(
 		props: Partial<{
 			data: CanvasGroupViewState;
+			autofocusGroupId: string | null;
+			dimensions: { width: number; height: number };
 			readOnly: boolean;
 		}> = {},
 	) {
@@ -57,6 +59,8 @@ describe('CanvasNodeGroupTitleBar', () => {
 			pinia: createTestingPinia(),
 			props: {
 				data: props.data ?? makeData(),
+				autofocusGroupId: props.autofocusGroupId ?? null,
+				dimensions: props.dimensions,
 				readOnly: props.readOnly ?? false,
 			},
 		});
@@ -110,9 +114,41 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-toolbar')).toBeNull();
 		});
 
-		it('focuses the title when autofocusTitle is true', async () => {
-			const wrapper = render({ data: makeData({ autofocusTitle: true }) });
+		it('focuses the title when autofocusGroupId matches the group', async () => {
+			const wrapper = render({ autofocusGroupId: 'g1' });
+			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+
 			await waitFor(() => {
+				expect(input).toHaveFocus();
+				expect(input.selectionStart).toBe(0);
+				expect(input.selectionEnd).toBe(input.value.length);
+				expect(wrapper.emitted()['title:focused']).toEqual([['g1']]);
+			});
+		});
+
+		it('waits for VueFlow to initialize node dimensions before focusing the title', async () => {
+			const wrapper = render({
+				autofocusGroupId: 'g1',
+				dimensions: { width: 0, height: 0 },
+			});
+			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+
+			await flushPromises();
+
+			expect(input).not.toHaveFocus();
+			expect(wrapper.emitted()['title:focused']).toBeUndefined();
+
+			await wrapper.rerender({
+				data: makeData(),
+				autofocusGroupId: 'g1',
+				dimensions: { width: 500, height: GROUP_HEADER_HEIGHT },
+				readOnly: false,
+			});
+
+			await waitFor(() => {
+				expect(input).toHaveFocus();
+				expect(input.selectionStart).toBe(0);
+				expect(input.selectionEnd).toBe(input.value.length);
 				expect(wrapper.emitted()['title:focused']).toEqual([['g1']]);
 			});
 		});

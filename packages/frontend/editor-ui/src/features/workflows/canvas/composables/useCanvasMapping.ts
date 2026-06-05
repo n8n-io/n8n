@@ -66,7 +66,6 @@ export function useCanvasMapping({
 	connections,
 	workflowObject,
 	renderData,
-	nodeGroupIdToAutofocusTitle,
 	readOnly = ref(false),
 	suppressInteraction = ref(false),
 	isExperimentalNdvActive = ref(false),
@@ -75,7 +74,6 @@ export function useCanvasMapping({
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
-	nodeGroupIdToAutofocusTitle?: Ref<string | null>;
 	readOnly?: Ref<boolean>;
 	suppressInteraction?: Ref<boolean>;
 	isExperimentalNdvActive?: Ref<boolean>;
@@ -605,7 +603,6 @@ export function useCanvasMapping({
 			allGroups,
 			getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 			getNodeDimensions: (id) => nodeDimensionsById.value[id],
-			autofocusGroupId: nodeGroupIdToAutofocusTitle?.value ?? null,
 			readOnly: readOnly.value || suppressInteraction.value,
 		});
 	});

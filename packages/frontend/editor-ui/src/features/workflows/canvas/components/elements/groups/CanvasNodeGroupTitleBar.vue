@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
@@ -24,9 +24,12 @@ defineOptions({ inheritAttrs: false });
 const props = withDefaults(
 	defineProps<{
 		data: CanvasGroupViewState;
+		autofocusGroupId?: string | null;
+		dimensions?: { width: number; height: number };
 		readOnly?: boolean;
 	}>(),
 	{
+		autofocusGroupId: null,
 		readOnly: false,
 	},
 );
@@ -42,6 +45,9 @@ const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleE
 const titleText = useTemplateRef<HTMLElement>('titleText');
 
 const group = computed(() => props.data.group);
+const isAutofocusReady = computed(
+	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
+);
 
 const frameStyle = computed(() => ({
 	top: `${HEADER_HEIGHT}px`,
@@ -77,18 +83,22 @@ function onUngroupClick() {
 }
 
 async function focusTitleEdit() {
-	if (!props.data.autofocusTitle || props.readOnly) return;
+	if (props.autofocusGroupId !== group.value.id || props.readOnly || !isAutofocusReady.value)
+		return;
 	await nextTick();
 	titleEdit.value?.forceFocus();
 	emit('title:focused', group.value.id);
 }
 
+onMounted(() => {
+	void focusTitleEdit();
+});
+
 watch(
-	() => props.data.autofocusTitle,
+	() => [props.autofocusGroupId === group.value.id, isAutofocusReady.value],
 	() => {
 		void focusTitleEdit();
 	},
-	{ immediate: true },
 );
 
 const { getSelectedNodes, removeSelectedNodes } = useVueFlow();

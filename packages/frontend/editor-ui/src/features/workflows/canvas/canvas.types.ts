@@ -142,7 +142,6 @@ export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 export interface CanvasGroupViewState {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
-	autofocusTitle: boolean;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupViewState>;

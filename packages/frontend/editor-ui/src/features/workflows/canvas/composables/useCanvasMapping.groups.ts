@@ -112,7 +112,6 @@ export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDimensions?: GetNodeDimensions;
-	autofocusGroupId: string | null;
 	readOnly: boolean;
 }
 
@@ -124,7 +123,6 @@ export function mapGroupsToVueFlowNodes({
 	allGroups,
 	getNodeById,
 	getNodeDimensions,
-	autofocusGroupId,
 	readOnly,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
@@ -139,7 +137,6 @@ export function mapGroupsToVueFlowNodes({
 		const data: CanvasGroupViewState = {
 			group,
 			nodesRect,
-			autofocusTitle: autofocusGroupId === group.id,
 		};
 
 		const titleBar = titleBarFromNodesRect(nodesRect);

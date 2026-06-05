@@ -53,7 +53,6 @@ import type { CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
-	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -62,7 +61,6 @@ import {
 	toRef,
 	useCssModule,
 	watch,
-	type Ref,
 } from 'vue';
 import { useViewportAutoAdjust } from '../composables/useViewportAutoAdjust';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
@@ -250,10 +248,7 @@ const selectedNodes = computed(() =>
 );
 
 const isPaneReady = ref(false);
-// Shared with useCanvasMapping in WorkflowCanvas via provide
-// so action callbacks here mutate the same ref
-const injectedAutofocusRef = inject<Ref<string | null> | null>('canvasNodeGroupAutofocus', null);
-const nodeGroupIdToAutofocusTitle = injectedAutofocusRef ?? ref<string | null>(null);
+const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -1261,6 +1256,7 @@ defineExpose({
 			<CanvasNodeGroupTitleBar
 				v-bind="nodeProps"
 				:data="groupNodeDataById[nodeProps.id]"
+				:autofocus-group-id="nodeGroupIdToAutofocusTitle"
 				:read-only="readOnly || suppressInteraction"
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"

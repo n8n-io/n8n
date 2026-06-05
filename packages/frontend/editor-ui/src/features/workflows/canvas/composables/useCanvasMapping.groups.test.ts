@@ -106,7 +106,6 @@ describe('mapGroupsToVueFlowNodes', () => {
 		return mapGroupsToVueFlowNodes({
 			allGroups: [group],
 			getNodeById: getById,
-			autofocusGroupId: null,
 			readOnly: false,
 		});
 	}
@@ -146,7 +145,6 @@ describe('mapGroupsToVueFlowNodes', () => {
 		const out = mapGroupsToVueFlowNodes({
 			allGroups: [{ id: 'gOrphan', name: 'Empty', nodeIds: ['ghost'] }],
 			getNodeById: getById,
-			autofocusGroupId: null,
 			readOnly: false,
 		});
 		expect(out).toHaveLength(0);
@@ -157,7 +155,6 @@ describe('mapGroupsToVueFlowNodes', () => {
 		const out = mapGroupsToVueFlowNodes({
 			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a'] }],
 			getNodeById: getById,
-			autofocusGroupId: null,
 			readOnly: true,
 		});
 		expect(out[0].draggable).toBe(false);
@@ -168,21 +165,9 @@ describe('mapGroupsToVueFlowNodes', () => {
 		const out = mapGroupsToVueFlowNodes({
 			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a', 'b'] }],
 			getNodeById: getById,
-			autofocusGroupId: null,
 			readOnly: false,
 		});
 		expect(Math.abs(out[0].position.x % GRID_SIZE)).toBe(0);
 		expect(Math.abs(out[0].position.y % GRID_SIZE)).toBe(0);
-	});
-
-	it('writes autofocusTitle into data when group id matches autofocusGroupId', () => {
-		const getById = nodeStore(makeNode('a', 0, 0));
-		const out = mapGroupsToVueFlowNodes({
-			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a'] }],
-			getNodeById: getById,
-			autofocusGroupId: 'g1',
-			readOnly: false,
-		});
-		expect(out[0].data?.autofocusTitle).toBe(true);
 	});
 });
