@@ -254,8 +254,17 @@ export type ToolInteraction =
 			skippedNodes: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
-	| { kind: 'confirmation'; toolName: string; resumeReason: string; approved?: boolean }
-	| { kind: 'tool-call'; toolName: string };
+	| {
+			kind: 'confirmation';
+			toolName: string;
+			resumeReason: string;
+			approved?: boolean;
+			/** Prompt the agent showed when requesting confirmation. */
+			message?: string;
+			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			feedback?: string;
+	  }
+	| { kind: 'tool-call'; toolName: string; args?: Record<string, unknown> };
 
 export interface PlanTask {
 	title?: string;

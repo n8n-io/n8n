@@ -122,7 +122,7 @@ function interpretToolCall(
 	// Plain tool-call — collapsed to one entry per tool name within the turn.
 	if (!toolName || seenPlainTools.has(toolName)) return null;
 	seenPlainTools.add(toolName);
-	return { kind: 'tool-call', toolName };
+	return { kind: 'tool-call', toolName, args: Object.keys(args).length > 0 ? args : undefined };
 }
 
 function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
@@ -164,6 +164,8 @@ function interpretConfirmationRequest(
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
+		message: getString(payload, 'message') ?? getString(payload, 'introMessage'),
+		feedback: inferFeedback(response),
 	};
 }
 
@@ -199,7 +201,14 @@ function inferResumeReason(
 function inferApproval(response: InstanceAiConfirmRequest | undefined): boolean | undefined {
 	if (!response) return undefined;
 	if (response.kind === 'approval') return response.approved;
+	if (response.kind === 'planDeny' || response.kind === 'domainAccessDeny') return false;
 	return true;
+}
+
+/** Free-text the user attached to their decision (e.g. plan-review feedback via userInput). */
+function inferFeedback(response: InstanceAiConfirmRequest | undefined): string | undefined {
+	if (response?.kind === 'approval' && response.userInput) return response.userInput;
+	return undefined;
 }
 
 function extractPlanTasks(raw: unknown[]): PlanTask[] {

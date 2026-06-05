@@ -421,11 +421,34 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 				typeof interaction.approved === 'boolean'
 					? ` <span class="transcript-decision ${interaction.approved ? 'pass' : 'fail'}">👤 ${interaction.approved ? 'approved' : 'rejected'}</span>`
 					: '';
-			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
+			const messageHtml = interaction.message
+				? `<div class="transcript-answer">💬 ${escapeHtml(interaction.message)}</div>`
+				: '';
+			const feedbackHtml = interaction.feedback
+				? `<div class="transcript-answer">👤 ${escapeHtml(interaction.feedback)}</div>`
+				: '';
+			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>${messageHtml}${feedbackHtml}`;
 		}
-		case 'tool-call':
+		case 'tool-call': {
+			if (interaction.args && Object.keys(interaction.args).length > 0) {
+				return `<details class="transcript-aside"><summary>🔧 <code>${escapeHtml(interaction.toolName)}</code></summary><pre class="transcript-args">${escapeHtml(formatToolArgs(interaction.args))}</pre></details>`;
+			}
 			return `<div class="transcript-tools">🔧 <code>${escapeHtml(interaction.toolName)}</code></div>`;
+		}
 	}
+}
+
+function formatToolArgs(args: Record<string, unknown>): string {
+	let json: string;
+	try {
+		json = JSON.stringify(args, null, 2);
+	} catch {
+		return '[unserializable args]';
+	}
+	const MAX = 2000;
+	return json.length > MAX
+		? `${json.slice(0, MAX)}\n… (${String(json.length - MAX)} more chars)`
+		: json;
 }
 
 // ---------------------------------------------------------------------------
@@ -812,6 +835,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-aside > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; padding: 2px 0; }
 	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
 	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
+	.transcript-args { margin: 4px 0 4px 26px; padding: 6px 8px; font-size: 11px; font-family: monospace; line-height: 1.45; color: var(--text-secondary); background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
 	.transcript-plan, .transcript-questions { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
 	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
 	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }
