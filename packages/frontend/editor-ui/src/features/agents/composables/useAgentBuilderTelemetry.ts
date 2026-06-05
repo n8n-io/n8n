@@ -262,6 +262,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		previousTasks = current;
 		if (added.length === 0 && removed.length === 0) return;
 		const s = snapshot();
+		// Task diffs are computed from saved config after save/refetch, so the
+		// config_version must match the persisted task list. `s.config` reads
+		// localConfig, which can still be the pre-save snapshot when onSaved runs.
 		withFingerprint(deps.savedConfig.value, s.connectedTriggers, (configVersion) => {
 			for (const taskAdded of added) {
 				agentTelemetry.trackAddedTasks({
