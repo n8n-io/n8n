@@ -23,6 +23,7 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	serverToCredentialDescription,
 	serverToNodeDescription,
+	type IsKnownCredentialType,
 } from './node-description-transform';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
 
@@ -67,7 +68,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
-		const isKnownCredentialType = (name: string): boolean =>
+		const isKnownCredentialType: IsKnownCredentialType = (name) =>
 			Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name);
 
 		for (const server of this.servers) {

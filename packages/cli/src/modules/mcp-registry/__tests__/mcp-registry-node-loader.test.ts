@@ -300,19 +300,6 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.credentials).toHaveLength(0);
 		});
 
-		it('skips extendsCredential servers whose parent credential type is not registered (no overrides)', async () => {
-			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
-				knownCredentialTypes: [],
-			});
-			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
-			loader.setServers([gmailDirectExtendMockServer]);
-
-			await loader.loadAll();
-
-			expect(loader.types.nodes).toHaveLength(0);
-			expect(loader.types.credentials).toHaveLength(0);
-		});
-
 		it('skips servers whose extendsCredential parent type is not registered', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: [],

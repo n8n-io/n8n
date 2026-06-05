@@ -20,6 +20,11 @@ export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
 
 /**
+ * Predicate that tells whether a credential type name is registered in the runtime.
+ */
+export type IsKnownCredentialType = (name: string) => boolean;
+
+/**
  * Get node type name based on server's slug
  */
 function getMcpRegistryNodeTypeName(server: McpRegistryServer): string {
@@ -115,7 +120,7 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
  */
 function getValidatedExtendsCredential(
 	server: McpRegistryServer,
-	isKnownCredentialType?: (name: string) => boolean,
+	isKnownCredentialType: IsKnownCredentialType,
 ) {
 	if (!server.extendsCredential) return null;
 
@@ -123,7 +128,7 @@ function getValidatedExtendsCredential(
 	if (!parseResult.success) return null;
 
 	const { extends: parentType, ...rawOverrides } = parseResult.data;
-	if (isKnownCredentialType && !isKnownCredentialType(parentType)) return null;
+	if (!isKnownCredentialType(parentType)) return null;
 
 	const overrides = Object.fromEntries(
 		Object.entries(rawOverrides).filter(([, value]) => value !== null && value !== undefined),
@@ -140,7 +145,7 @@ function getValidatedExtendsCredential(
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
-	isKnownCredentialType?: (name: string) => boolean,
+	isKnownCredentialType: IsKnownCredentialType,
 ): ICredentialType | null {
 	const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
 	if (!validated) return null;
@@ -169,7 +174,7 @@ function serverToExtendedCredentialDescription(
  */
 function getNodeDescriptionCredentials(
 	server: McpRegistryServer,
-	isKnownCredentialType?: (name: string) => boolean,
+	isKnownCredentialType: IsKnownCredentialType,
 ): INodeCredentialDescription[] {
 	switch (server.authType) {
 		case 'oauth2':
@@ -253,7 +258,7 @@ function withRemoteDefaults(
  */
 export function serverToCredentialDescription(
 	server: McpRegistryServer,
-	isKnownCredentialType?: (name: string) => boolean,
+	isKnownCredentialType: IsKnownCredentialType,
 ): ICredentialType | null {
 	switch (server.authType) {
 		case 'oauth2':
@@ -271,7 +276,7 @@ export function serverToCredentialDescription(
 export function serverToNodeDescription(
 	server: McpRegistryServer,
 	baseDescription: INodeTypeDescription,
-	isKnownCredentialType?: (name: string) => boolean,
+	isKnownCredentialType: IsKnownCredentialType,
 ): INodeTypeDescription | null {
 	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
 

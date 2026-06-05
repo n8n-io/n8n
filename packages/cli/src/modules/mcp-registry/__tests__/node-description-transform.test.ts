@@ -45,9 +45,16 @@ const baseDescription: INodeTypeDescription = {
 	],
 };
 
+// oauth2 servers never consult the predicate; this stub keeps those calls type-correct.
+const isKnownCredentialType = () => true;
+
 describe('serverToNodeDescription', () => {
 	it('returns a description tailored to the Notion mock server', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description).not.toBeNull();
 		expect(description).toMatchObject({
@@ -62,7 +69,11 @@ describe('serverToNodeDescription', () => {
 	});
 
 	it('prefers streamable-http when both remotes are available', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
@@ -77,7 +88,11 @@ describe('serverToNodeDescription', () => {
 			remotes: [{ type: 'sse', url: 'https://mcp.notion.com/sse' }],
 		};
 
-		const description = serverToNodeDescription(sseOnlyServer, baseDescription);
+		const description = serverToNodeDescription(
+			sseOnlyServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
@@ -92,13 +107,19 @@ describe('serverToNodeDescription', () => {
 			remotes: [],
 		};
 
-		expect(serverToNodeDescription(unsupportedServer, baseDescription)).toBeNull();
+		expect(
+			serverToNodeDescription(unsupportedServer, baseDescription, isKnownCredentialType),
+		).toBeNull();
 	});
 
 	it('marks deprecated servers as hidden so the node creator skips them', () => {
 		const deprecatedServer: McpRegistryServer = { ...notionMockServer, status: 'deprecated' };
 
-		const description = serverToNodeDescription(deprecatedServer, baseDescription);
+		const description = serverToNodeDescription(
+			deprecatedServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.hidden).toBe(true);
 	});
@@ -112,7 +133,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(themedServer, baseDescription);
+		const description = serverToNodeDescription(
+			themedServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toEqual({
 			light: 'https://example.com/light.svg',
@@ -126,7 +151,11 @@ describe('serverToNodeDescription', () => {
 			icons: [{ src: 'https://example.com/light.svg', theme: 'light' }],
 		};
 
-		const description = serverToNodeDescription(lightOnlyServer, baseDescription);
+		const description = serverToNodeDescription(
+			lightOnlyServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toBe('https://example.com/light.svg');
 	});
@@ -141,7 +170,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(multiFormatServer, baseDescription);
+		const description = serverToNodeDescription(
+			multiFormatServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toBe('https://example.com/icon.svg');
 	});
@@ -155,7 +188,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(noSvgServer, baseDescription);
+		const description = serverToNodeDescription(
+			noSvgServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toBe('https://example.com/icon.png');
 	});
@@ -171,7 +208,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(themedMultiFormatServer, baseDescription);
+		const description = serverToNodeDescription(
+			themedMultiFormatServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toEqual({
 			light: 'https://example.com/light.svg',
@@ -180,7 +221,11 @@ describe('serverToNodeDescription', () => {
 	});
 
 	it('extends codex.alias with the title and displayName', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.codex?.alias).toEqual([
 			'MCP',
@@ -191,7 +236,11 @@ describe('serverToNodeDescription', () => {
 	});
 
 	it('sets primaryDocumentation when websiteUrl is present', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.codex?.resources).toEqual({
 			primaryDocumentation: [{ url: notionMockServer.websiteUrl }],
@@ -200,19 +249,27 @@ describe('serverToNodeDescription', () => {
 
 	it('does not mutate the input baseDescription', () => {
 		const snapshot = deepCopy(baseDescription);
-		serverToNodeDescription(notionMockServer, baseDescription);
+		serverToNodeDescription(notionMockServer, baseDescription, isKnownCredentialType);
 		expect(baseDescription).toEqual(snapshot);
 	});
 
 	it('leaves properties other than endpointUrl and serverTransport untouched', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		const include = description?.properties.find((p) => p.name === 'include');
 		expect(include).toEqual(baseDescription.properties.find((p) => p.name === 'include'));
 	});
 
 	it('matches inline snapshot for Notion mock server', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description).toMatchInlineSnapshot(`
 {
@@ -285,7 +342,11 @@ describe('serverToNodeDescription', () => {
 
 	describe('with extendsCredential', () => {
 		it('wires the synthetic credential name into the node description when overrides are present', () => {
-			const description = serverToNodeDescription(slackExtendingMockServer, baseDescription);
+			const description = serverToNodeDescription(
+				slackExtendingMockServer,
+				baseDescription,
+				isKnownCredentialType,
+			);
 
 			expect(description).not.toBeNull();
 			expect(description?.credentials).toEqual([{ name: 'slackMcpOAuth2Api', required: true }]);
@@ -316,7 +377,7 @@ describe('serverToNodeDescription', () => {
 
 describe('serverToCredentialDescription', () => {
 	it('returns a description for servers with OAuth2 auth type', () => {
-		const description = serverToCredentialDescription(notionMockServer);
+		const description = serverToCredentialDescription(notionMockServer, isKnownCredentialType);
 
 		expect(description).not.toBeNull();
 		expect(description).toEqual({
@@ -359,7 +420,7 @@ describe('serverToCredentialDescription', () => {
 			authType: 'foo' as never,
 		};
 
-		expect(serverToCredentialDescription(unsupportedServer)).toBeNull();
+		expect(serverToCredentialDescription(unsupportedServer, isKnownCredentialType)).toBeNull();
 	});
 
 	it('returns null when no remote is available', () => {
@@ -368,7 +429,7 @@ describe('serverToCredentialDescription', () => {
 			remotes: [],
 		};
 
-		expect(serverToCredentialDescription(noRemoteServer)).toBeNull();
+		expect(serverToCredentialDescription(noRemoteServer, isKnownCredentialType)).toBeNull();
 	});
 
 	it('returns null when the endpoint URL is not a valid URL', () => {
@@ -377,7 +438,7 @@ describe('serverToCredentialDescription', () => {
 			remotes: [{ type: 'streamable-http', url: 'invalid-url' }],
 		};
 
-		expect(serverToCredentialDescription(invalidUrlServer)).toBeNull();
+		expect(serverToCredentialDescription(invalidUrlServer, isKnownCredentialType)).toBeNull();
 	});
 
 	describe('with extendsCredential', () => {
@@ -498,12 +559,6 @@ describe('serverToCredentialDescription', () => {
 			};
 
 			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
-		});
-
-		it('skips the parent-type registration check when no predicate is provided', () => {
-			const description = serverToCredentialDescription(slackExtendingMockServer);
-
-			expect(description?.extends).toEqual(['slackOAuth2Api']);
 		});
 
 		it('creates a synthetic credential extending the parent even when no overrides are present', () => {
