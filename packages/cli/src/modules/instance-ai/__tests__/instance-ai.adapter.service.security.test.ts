@@ -57,6 +57,7 @@ import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-execute-additional-data', () => ({
@@ -138,6 +139,7 @@ const service = new InstanceAiAdapterService(
 	telemetry,
 	aiBuilderTemporaryWorkflowRepository,
 	mock<SsrfProtectionService>(),
+	mock<WorkflowTemplatesService>(),
 );
 
 const user = mock<User>({

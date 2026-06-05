@@ -9,6 +9,8 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
+	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	FetchedPage,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -29,7 +31,6 @@ import type {
 	SearchableNodeDescription,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
-	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
@@ -48,6 +49,7 @@ import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
@@ -235,6 +237,7 @@ export class InstanceAiAdapterService {
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly workflowTemplatesService: WorkflowTemplatesService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -259,6 +262,7 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
+			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
@@ -275,6 +279,15 @@ export class InstanceAiAdapterService {
 			});
 		}
 		return this.templatesService;
+	}
+
+	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
+		const workflowTemplatesService = this.workflowTemplatesService;
+		return {
+			async getTemplate(templateId: string) {
+				return await workflowTemplatesService.getTemplate(templateId);
+			},
+		};
 	}
 
 	private buildLicenseHints(): string[] {
