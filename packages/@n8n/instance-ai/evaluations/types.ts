@@ -225,7 +225,7 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
-	/** Per-expectation verdicts from the conversation-expectations judge. Not consumed by pass@k. */
+	/** Per-expectation verdicts from the build-expectations judge. Not consumed by pass@k. */
 	buildExpectationResults?: BuildExpectationResult[];
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */

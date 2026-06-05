@@ -67,7 +67,7 @@ export async function verifyBuildExpectations(
 	];
 
 	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
-		const agent = createEvalAgent('eval-conversation-expectations-verifier', {
+		const agent = createEvalAgent('eval-build-expectations-verifier', {
 			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
 			cache: true,
 			model: JUDGE_MODEL,

@@ -8,7 +8,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 }));
 
 import { createEvalAgent } from '../../src/utils/eval-agents';
-import { verifyBuildExpectations } from '../expectations/verifier';
+import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { ConversationMetrics, TranscriptTurn } from '../types';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
