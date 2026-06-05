@@ -113,10 +113,16 @@ export class AuthController {
 	}
 
 	private validateSsoRestrictions(preliminaryUser: User | undefined): void {
+		// No eligible user (unknown email or wrong password) means the password
+		// check already failed. Defer to the password flow so it surfaces a proper
+		// "wrong credentials" error instead of the misleading "log in with SSO"
+		// message - the SSO restriction only applies to a real, authenticated user.
+		if (!preliminaryUser) return;
+
 		const shouldBlockSsoUser =
 			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
-			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug &&
-			!preliminaryUser?.settings?.allowSSOManualLogin;
+			preliminaryUser.role.slug !== GLOBAL_OWNER_ROLE.slug &&
+			!preliminaryUser.settings?.allowSSOManualLogin;
 
 		if (shouldBlockSsoUser) {
 			throw new AuthError('SSO is enabled, please log in with SSO');

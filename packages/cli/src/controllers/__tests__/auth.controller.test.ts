@@ -189,6 +189,33 @@ describe('AuthController', () => {
 			);
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, member, false, '1');
 		});
+
+		it('should return a "wrong credentials" error, not the SSO error, when the password is wrong while SSO is enabled', async () => {
+			const body = mock<LoginRequestDto>({
+				emailOrLdapLoginId: 'user@example.com',
+				password: 'wrong-password',
+			});
+
+			const req = mock<AuthenticatedRequest>({
+				body,
+				browserId: '1',
+			});
+
+			const res = mock<Response>();
+
+			// Wrong password (or unknown user): the email handler resolves to undefined,
+			// so the SSO restriction must not swallow it into the "log in with SSO" message.
+			emailAuthHandler.handleLogin.mockResolvedValue(undefined);
+			config.set('userManagement.authenticationMethod', 'saml');
+
+			// Act & Assert
+
+			await expect(controller.login(req, res, body)).rejects.toThrowError(
+				new AuthError('Wrong username or password. Do you have caps lock on?'),
+			);
+
+			expect(authService.issueCookie).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('resolveSignupToken', () => {
