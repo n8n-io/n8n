@@ -475,6 +475,14 @@ catalogs:
     storybook:
       specifier: ^10.1.11
       version: 10.1.11
+  undici-v6:
+    undici:
+      specifier: ^6.24.0
+      version: 6.24.1
+  undici-v7:
+    undici:
+      specifier: ^7.16.0
+      version: 7.24.6
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -521,7 +529,7 @@ overrides:
   diff: 8.0.3
   undici@5: ^6.24.0
   undici@6: ^6.24.0
-  undici@7: ^7.24.0
+  undici@7: ^7.16.0
   tar: ^7.5.11
   ajv@6: 6.14.0
   ajv@7: 8.18.0
@@ -548,7 +556,8 @@ overrides:
   yaml@<=2.8.3: 2.8.3
   axios: 1.16.1
   fast-xml-parser: 5.7.2
-  hono: 4.12.18
+  hono: 4.12.21
+  postcss@<=8.5.9: 8.5.10
   '@anthropic-ai/sdk@<=0.91.1': 0.91.1
   uuid@<=13.0.1: 13.0.1
   fast-uri: 3.1.2
@@ -861,7 +870,7 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       undici:
-        specifier: ^6.24.0
+        specifier: catalog:undici-v6
         version: 6.24.1
       zod:
         specifier: 3.25.67
@@ -2358,6 +2367,9 @@ importers:
       '@aws-sdk/client-sso-oidc':
         specifier: 3.808.0
         version: 3.808.0
+      '@aws-sdk/credential-providers':
+        specifier: 3.808.0
+        version: 3.808.0
       '@azure/identity':
         specifier: 4.13.0
         version: 4.13.0
@@ -2708,13 +2720,13 @@ importers:
         version: 1.8.0
       postcss-scss:
         specifier: ^4.0.9
-        version: 4.0.9(postcss@8.5.8)
+        version: 4.0.9(postcss@8.5.10)
       stylelint:
         specifier: ^16.23.0
         version: 16.23.0(typescript@6.0.2)
       stylelint-config-standard-scss:
         specifier: ^15.0.1
-        version: 15.0.1(postcss@8.5.8)(stylelint@16.23.0(typescript@6.0.2))
+        version: 15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2))
       stylelint-scss:
         specifier: ^6.12.1
         version: 6.12.1(stylelint@16.23.0(typescript@6.0.2))
@@ -3197,9 +3209,6 @@ importers:
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
-      infisical-node:
-        specifier: 1.3.0
-        version: 1.3.0
       ioredis:
         specifier: 5.3.2
         version: 5.3.2
@@ -3336,7 +3345,7 @@ importers:
         specifier: ^7.5.11
         version: 7.5.11
       undici:
-        specifier: ^7.24.0
+        specifier: catalog:undici-v7
         version: 7.24.6
       uuid:
         specifier: 'catalog:'
@@ -3957,10 +3966,10 @@ importers:
         version: 2.4.6
       autoprefixer:
         specifier: ^10.4.19
-        version: 10.4.19(postcss@8.5.8)
+        version: 10.4.19(postcss@8.5.10)
       postcss:
-        specifier: ^8.4.38
-        version: 8.5.8
+        specifier: 8.5.10
+        version: 8.5.10
       sass:
         specifier: ^1.71.1
         version: 1.98.0
@@ -4861,6 +4870,9 @@ importers:
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
+      proxy-from-env:
+        specifier: ^1.1.0
+        version: 1.1.0
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -4900,6 +4912,9 @@ importers:
       ts-ics:
         specifier: 1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1)(zod@3.25.67)
+      undici:
+        specifier: catalog:undici-v6
+        version: 6.24.1
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -7346,7 +7361,7 @@ packages:
     resolution: {integrity: sha512-TsQLe4i2gvoTtrHje625ngThGBySOgSK3Xo2XRYOdqGN1teR8+I7vchQC46uLJi8OF62YTYA3AhSpumtkhsaKQ==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.12.18
+      hono: 4.12.21
 
   '@huggingface/inference@4.0.5':
     resolution: {integrity: sha512-/Qc45BGrN+FBA3JfdeoHfafxfNShH/dxvOsXbBdcxyxIRIYOyefeiXSlShZGVCaiqYpm+10na28D0YtvjKPTlw==}
@@ -12505,7 +12520,7 @@ packages:
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
-      postcss: ^8.1.0
+      postcss: 8.5.10
 
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
@@ -13864,7 +13879,7 @@ packages:
     resolution: {integrity: sha512-bEOVpHU9picRZux5XnwGsmCN4+8oZo7vSW0O0/Enq/TO5R2pIAP2279NsszpJR7ocnQt4WXU0+nnh/0JuK4KHQ==}
     engines: {node: ^14.0.0 || >=16.0.0}
     peerDependencies:
-      postcss: ^8.4.47
+      postcss: 8.5.10
 
   detective-sass@6.0.1:
     resolution: {integrity: sha512-jSGPO8QDy7K7pztUmGC6aiHkexBQT4GIH+mBAL9ZyBmnUIOFbkfZnO8wPRRJFP/QP83irObgsZHCoDHZ173tRw==}
@@ -15305,8 +15320,8 @@ packages:
     resolution: {integrity: sha512-eSmmWE5bZTK2Nou4g0AI3zZ9rswp7GRKoKXS1BLUkvPviOqs4YTN1djQIqrXy9k5gEtdLPy86JjRwsNM9tnDcA==}
     engines: {node: '>=0.10.0'}
 
-  hono@4.12.18:
-    resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
+  hono@4.12.21:
+    resolution: {integrity: sha512-uV63apnb0kyPtAUwoWgaGh9HyIFcv8lgmzPZSiTBQAFOFGIzka5EZ1dZocmGnn0XdX0+XTqJ6Tqv7selMuGLRQ==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -15530,10 +15545,6 @@ packages:
 
   infer-owner@1.0.4:
     resolution: {integrity: sha512-IClj+Xz94+d7irH5qRyfJonOdfTzuDaifE6ZPWfx0N0+/ATZCbuTPq2prFl526urkQd90WyUKIh1DfBQ2hMz9A==}
-
-  infisical-node@1.3.0:
-    resolution: {integrity: sha512-tTnnExRAO/ZyqiRdnSlBisErNToYWgtunMWh+8opClEt5qjX7l6HC/b4oGo2AuR2Pf41IR+oqo+dzkM1TCvlUA==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   inflected@2.1.0:
     resolution: {integrity: sha512-hAEKNxvHf2Iq3H60oMBHkB4wl5jn3TPF3+fXek/sRwAB5gP9xWs4r7aweSF95f99HFoz69pnZTcu8f0SIHV18w==}
@@ -18466,19 +18477,19 @@ packages:
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
-      postcss: ^8.0.0
+      postcss: 8.5.10
 
   postcss-js@4.0.1:
     resolution: {integrity: sha512-dDLF8pEO191hJMtlHFPRa8xsizHaM82MLfNkUHdUtVEV3tgTp5oj+8qbEqYM57SLfc74KSbw//4SeJma2LRVIw==}
     engines: {node: ^12 || ^14 || >= 16}
     peerDependencies:
-      postcss: ^8.4.21
+      postcss: 8.5.10
 
   postcss-load-config@4.0.2:
     resolution: {integrity: sha512-bSVhyJGL00wMVoPUzAVAnbEoWyqRxkjv64tUl427SKnPrENtq6hJwUojroMz2VB+Q1edmi4IfrAPpami5VVgMQ==}
     engines: {node: '>= 14'}
     peerDependencies:
-      postcss: '>=8.0.9'
+      postcss: 8.5.10
       ts-node: '>=9.0.0'
     peerDependenciesMeta:
       postcss:
@@ -18493,7 +18504,7 @@ packages:
     resolution: {integrity: sha512-mEp4xPMi5bSWiMbsgoPfcP74lsWLHkQbZc3sY+jWYd65CUwXrUaTp0fmNpa01ZcETKlIgUdFN/MpS2xZtqL9dQ==}
     engines: {node: '>=12.0'}
     peerDependencies:
-      postcss: ^8.2.14
+      postcss: 8.5.10
 
   postcss-resolve-nested-selector@0.1.6:
     resolution: {integrity: sha512-0sglIs9Wmkzbr8lQwEyIzlDOOC9bGmfVKcJTaxv3vMmd3uo4o4DerC3En0bnmgceeql9BfC8hRkp7cg0fjdVqw==}
@@ -18502,19 +18513,19 @@ packages:
     resolution: {integrity: sha512-FARHN8pwH+WiS2OPCxJI8FuRJpTVnn6ZNFiqAM2aeW2LwTHWWmWgIyKC6cUo0L8aeKiF/14MNvnpls6R2PBeMQ==}
     engines: {node: '>=12.0'}
     peerDependencies:
-      postcss: ^8.3.3
+      postcss: 8.5.10
 
   postcss-safe-parser@7.0.1:
     resolution: {integrity: sha512-0AioNCJZ2DPYz5ABT6bddIqlhgwhpHZ/l65YAYo0BCIn0xiDpsnTHz0gnoTGk0OXZW0JRs+cDwL8u/teRdz+8A==}
     engines: {node: '>=18.0'}
     peerDependencies:
-      postcss: ^8.4.31
+      postcss: 8.5.10
 
   postcss-scss@4.0.9:
     resolution: {integrity: sha512-AjKOeiwAitL/MXxQW2DliT28EKukvvbEWx3LBmJIRN8KfBGZbRTxNYW0kSqi1COiTZ57nZ9NW06S6ux//N1c9A==}
     engines: {node: '>=12.0'}
     peerDependencies:
-      postcss: ^8.4.29
+      postcss: 8.5.10
 
   postcss-selector-parser@6.1.2:
     resolution: {integrity: sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==}
@@ -18531,14 +18542,10 @@ packages:
     resolution: {integrity: sha512-YLJpK0N1brcNJrs9WatuJFtHaV9q5aAOj+S4DI5S7jgHlRfm0PIbDCAFRYMQD5SHq7Fy6xsDhyutgS0QOAs0qw==}
     engines: {node: '>=10'}
     peerDependencies:
-      postcss: ^8.2.9
+      postcss: 8.5.10
 
-  postcss@8.4.31:
-    resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
-  postcss@8.5.8:
-    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
+  postcss@8.5.10:
+    resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   postgres-array@2.0.0:
@@ -20010,7 +20017,7 @@ packages:
     resolution: {integrity: sha512-V24bxkNkFGggqPVJlP9iXaBabwSGEG7QTz+PyxrRtjPkcF+/NsWtB3tKYvFYEmczRkWiIEfuFMhGpJFj9Fxe6Q==}
     engines: {node: '>=20'}
     peerDependencies:
-      postcss: ^8.3.3
+      postcss: 8.5.10
       stylelint: ^16.16.0
     peerDependenciesMeta:
       postcss:
@@ -20026,7 +20033,7 @@ packages:
     resolution: {integrity: sha512-8pmmfutrMlPHukLp+Th9asmk21tBXMVGxskZCzkRVWt1d8Z0SrXjUUQ3vn9KcBj1bJRd5msk6yfEFM0UYHBRdg==}
     engines: {node: '>=20'}
     peerDependencies:
-      postcss: ^8.3.3
+      postcss: 8.5.10
       stylelint: ^16.18.0
     peerDependenciesMeta:
       postcss:
@@ -20526,14 +20533,8 @@ packages:
   turndown@7.2.2:
     resolution: {integrity: sha512-1F7db8BiExOKxjSMU2b7if62D/XOyQyZbPKq/nUwopfgnHlqXHqQ0lvfUTeUIr1lZJzOPFn43dODyMSIfvWRKQ==}
 
-  tweetnacl-util@0.15.1:
-    resolution: {integrity: sha512-RKJBIj8lySrShN4w6i/BonWp2Z/uxwC3h4y7xsRrpP59ZboCd0GpEVsOnMDYLMmKBpYhb5TgHzZXy7wTfYFBRw==}
-
   tweetnacl@0.14.5:
     resolution: {integrity: sha512-KXXFFdAbFXY4geFIwoyNK+f5Z1b7swfXABfL7HXCmoIWMKU3dmS26672A4EeQtDzLKy7SXmfBu51JolvEKwtGA==}
-
-  tweetnacl@1.0.3:
-    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -25218,9 +25219,9 @@ snapshots:
       protobufjs: 7.5.8
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.13(hono@4.12.18)':
+  '@hono/node-server@1.19.13(hono@4.12.21)':
     dependencies:
-      hono: 4.12.18
+      hono: 4.12.21
 
   '@huggingface/inference@4.0.5':
     dependencies:
@@ -26475,7 +26476,7 @@ snapshots:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.113
       '@microsoft/agents-a365-tooling': 0.1.0-preview.113(zod@3.25.67)
       '@microsoft/agents-hosting': 1.2.3
-      hono: 4.12.18
+      hono: 4.12.21
       langchain: 1.2.30(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(typescript@6.0.2))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod-to-json-schema@3.23.3(zod@3.25.67))
       uuid: 13.0.1
     optionalDependencies:
@@ -26503,7 +26504,7 @@ snapshots:
       '@microsoft/agents-hosting': 1.2.3
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
       express: 5.2.1
-      hono: 4.12.18
+      hono: 4.12.21
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - debug
@@ -26590,7 +26591,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.67)':
     dependencies:
-      '@hono/node-server': 1.19.13(hono@4.12.18)
+      '@hono/node-server': 1.19.13(hono@4.12.21)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -26600,7 +26601,7 @@ snapshots:
       eventsource-parser: 3.0.8
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
-      hono: 4.12.18
+      hono: 4.12.21
       jose: 6.2.2
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
@@ -30585,7 +30586,7 @@ snapshots:
       '@vue/shared': 3.5.26
       estree-walker: 2.0.2
       magic-string: 0.30.21
-      postcss: 8.5.8
+      postcss: 8.5.10
       source-map-js: 1.2.1
 
   '@vue/compiler-ssr@3.5.26':
@@ -31242,14 +31243,14 @@ snapshots:
       semver: 7.7.3
       timestring: 6.0.0
 
-  autoprefixer@10.4.19(postcss@8.5.8):
+  autoprefixer@10.4.19(postcss@8.5.10):
     dependencies:
       browserslist: 4.28.1
       caniuse-lite: 1.0.30001781
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.1.1
-      postcss: 8.5.8
+      postcss: 8.5.10
       postcss-value-parser: 4.2.0
 
   available-typed-arrays@1.0.7:
@@ -32772,11 +32773,11 @@ snapshots:
     dependencies:
       node-source-walk: 7.0.1
 
-  detective-postcss@7.0.1(postcss@8.5.8):
+  detective-postcss@7.0.1(postcss@8.5.10):
     dependencies:
       is-url: 1.2.4
-      postcss: 8.5.8
-      postcss-values-parser: 6.0.2(postcss@8.5.8)
+      postcss: 8.5.10
+      postcss-values-parser: 6.0.2(postcss@8.5.10)
 
   detective-sass@6.0.1:
     dependencies:
@@ -34704,7 +34705,7 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  hono@4.12.18: {}
+  hono@4.12.21: {}
 
   hookable@5.5.3: {}
 
@@ -34997,16 +34998,6 @@ snapshots:
 
   infer-owner@1.0.4:
     optional: true
-
-  infisical-node@1.3.0:
-    dependencies:
-      axios: 1.16.1(debug@4.4.3)
-      dotenv: 16.6.1
-      tweetnacl: 1.0.3
-      tweetnacl-util: 0.15.1
-    transitivePeerDependencies:
-      - debug
-      - supports-color
 
   inflected@2.1.0: {}
 
@@ -38630,49 +38621,49 @@ snapshots:
     dependencies:
       htmlparser2: 8.0.2
       js-tokens: 9.0.1
-      postcss: 8.5.8
-      postcss-safe-parser: 6.0.0(postcss@8.5.8)
+      postcss: 8.5.10
+      postcss-safe-parser: 6.0.0(postcss@8.5.10)
 
-  postcss-import@15.1.0(postcss@8.5.8):
+  postcss-import@15.1.0(postcss@8.5.10):
     dependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
       postcss-value-parser: 4.2.0
       read-cache: 1.0.0
       resolve: 1.22.11
 
-  postcss-js@4.0.1(postcss@8.5.8):
+  postcss-js@4.0.1(postcss@8.5.10):
     dependencies:
       camelcase-css: 2.0.1
-      postcss: 8.5.8
+      postcss: 8.5.10
 
-  postcss-load-config@4.0.2(postcss@8.5.8)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)):
+  postcss-load-config@4.0.2(postcss@8.5.10)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)):
     dependencies:
       lilconfig: 3.1.3
       yaml: 2.8.3
     optionalDependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
       ts-node: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)
 
   postcss-media-query-parser@0.2.3: {}
 
-  postcss-nested@6.0.1(postcss@8.5.8):
+  postcss-nested@6.0.1(postcss@8.5.10):
     dependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
       postcss-selector-parser: 6.1.2
 
   postcss-resolve-nested-selector@0.1.6: {}
 
-  postcss-safe-parser@6.0.0(postcss@8.5.8):
+  postcss-safe-parser@6.0.0(postcss@8.5.10):
     dependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
 
-  postcss-safe-parser@7.0.1(postcss@8.5.8):
+  postcss-safe-parser@7.0.1(postcss@8.5.10):
     dependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
 
-  postcss-scss@4.0.9(postcss@8.5.8):
+  postcss-scss@4.0.9(postcss@8.5.10):
     dependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
 
   postcss-selector-parser@6.1.2:
     dependencies:
@@ -38686,20 +38677,14 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss-values-parser@6.0.2(postcss@8.5.8):
+  postcss-values-parser@6.0.2(postcss@8.5.10):
     dependencies:
       color-name: 1.1.4
       is-url-superb: 4.0.0
-      postcss: 8.5.8
+      postcss: 8.5.10
       quote-unquote: 1.0.0
 
-  postcss@8.4.31:
-    dependencies:
-      nanoid: 3.3.11
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
-  postcss@8.5.8:
+  postcss@8.5.10:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -38748,7 +38733,7 @@ snapshots:
       detective-amd: 6.0.1
       detective-cjs: 6.0.1
       detective-es6: 5.0.1
-      detective-postcss: 7.0.1(postcss@8.5.8)
+      detective-postcss: 7.0.1(postcss@8.5.10)
       detective-sass: 6.0.1
       detective-scss: 5.0.1
       detective-stylus: 5.0.1
@@ -38756,7 +38741,7 @@ snapshots:
       detective-vue2: 2.2.0(typescript@6.0.2)
       module-definition: 6.0.1
       node-source-walk: 7.0.1
-      postcss: 8.5.8
+      postcss: 8.5.10
       typescript: 6.0.2
     transitivePeerDependencies:
       - supports-color
@@ -39778,7 +39763,7 @@ snapshots:
       htmlparser2: 8.0.2
       is-plain-object: 5.0.0
       parse-srcset: 1.0.2
-      postcss: 8.5.8
+      postcss: 8.5.10
 
   sass-embedded-all-unknown@1.98.0:
     dependencies:
@@ -40563,33 +40548,33 @@ snapshots:
       '@types/stylis': 4.2.0
       css-to-react-native: 3.2.0
       csstype: 3.1.2
-      postcss: 8.4.31
+      postcss: 8.5.10
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       shallowequal: 1.1.0
       stylis: 4.3.1
       tslib: 2.8.1
 
-  stylelint-config-recommended-scss@15.0.1(postcss@8.5.8)(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-config-recommended-scss@15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2)):
     dependencies:
-      postcss-scss: 4.0.9(postcss@8.5.8)
+      postcss-scss: 4.0.9(postcss@8.5.10)
       stylelint: 16.23.0(typescript@6.0.2)
       stylelint-config-recommended: 16.0.0(stylelint@16.23.0(typescript@6.0.2))
       stylelint-scss: 6.12.1(stylelint@16.23.0(typescript@6.0.2))
     optionalDependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
 
   stylelint-config-recommended@16.0.0(stylelint@16.23.0(typescript@6.0.2)):
     dependencies:
       stylelint: 16.23.0(typescript@6.0.2)
 
-  stylelint-config-standard-scss@15.0.1(postcss@8.5.8)(stylelint@16.23.0(typescript@6.0.2)):
+  stylelint-config-standard-scss@15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2)):
     dependencies:
       stylelint: 16.23.0(typescript@6.0.2)
-      stylelint-config-recommended-scss: 15.0.1(postcss@8.5.8)(stylelint@16.23.0(typescript@6.0.2))
+      stylelint-config-recommended-scss: 15.0.1(postcss@8.5.10)(stylelint@16.23.0(typescript@6.0.2))
       stylelint-config-standard: 38.0.0(stylelint@16.23.0(typescript@6.0.2))
     optionalDependencies:
-      postcss: 8.5.8
+      postcss: 8.5.10
 
   stylelint-config-standard@38.0.0(stylelint@16.23.0(typescript@6.0.2)):
     dependencies:
@@ -40637,9 +40622,9 @@ snapshots:
       micromatch: 4.0.8
       normalize-path: 3.0.0
       picocolors: 1.1.1
-      postcss: 8.5.8
+      postcss: 8.5.10
       postcss-resolve-nested-selector: 0.1.6
-      postcss-safe-parser: 7.0.1(postcss@8.5.8)
+      postcss-safe-parser: 7.0.1(postcss@8.5.10)
       postcss-selector-parser: 7.1.0
       postcss-value-parser: 4.2.0
       resolve-from: 5.0.0
@@ -40783,11 +40768,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.1.1
-      postcss: 8.5.8
-      postcss-import: 15.1.0(postcss@8.5.8)
-      postcss-js: 4.0.1(postcss@8.5.8)
-      postcss-load-config: 4.0.2(postcss@8.5.8)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2))
-      postcss-nested: 6.0.1(postcss@8.5.8)
+      postcss: 8.5.10
+      postcss-import: 15.1.0(postcss@8.5.10)
+      postcss-js: 4.0.1(postcss@8.5.10)
+      postcss-load-config: 4.0.2(postcss@8.5.10)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2))
+      postcss-nested: 6.0.1(postcss@8.5.10)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.11
       sucrase: 3.35.0
@@ -41236,11 +41221,7 @@ snapshots:
     dependencies:
       '@mixmark-io/domino': 2.2.0
 
-  tweetnacl-util@0.15.1: {}
-
   tweetnacl@0.14.5: {}
-
-  tweetnacl@1.0.3: {}
 
   type-check@0.4.0:
     dependencies:
@@ -41697,7 +41678,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.8
+      postcss: 8.5.10
       rolldown: 1.0.0-rc.11
       tinyglobby: 0.2.15
     optionalDependencies:
@@ -41715,7 +41696,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.8
+      postcss: 8.5.10
       rolldown: 1.0.0-rc.11
       tinyglobby: 0.2.15
     optionalDependencies:

@@ -19,13 +19,13 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import type { FrontendSettings } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -36,7 +36,16 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
+
+const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
+	enabled: true,
+	apiHost: 'host',
+	apiKey: 'key',
+	autocapture: false,
+	disableSessionRecording: true,
+	debug: false,
+	proxy: 'proxy',
+};
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -2227,16 +2236,7 @@ describe('AI Builder store', () => {
 		});
 
 		describe('default plan mode based on canvas nodes', () => {
-			function enablePlanModeExperiment() {
-				vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
-					experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
-						? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
-						: undefined,
-				);
-			}
-
-			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
-				enablePlanModeExperiment();
+			it('should switch to plan mode when nodes become empty', async () => {
 				const builderStore = useBuilderStore();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -2253,7 +2253,6 @@ describe('AI Builder store', () => {
 			});
 
 			it('should switch to build mode when nodes are added', async () => {
-				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -2274,18 +2273,7 @@ describe('AI Builder store', () => {
 				expect(builderStore.builderMode).toBe('build');
 			});
 
-			it('should stay in build mode when plan mode experiment is not enabled', async () => {
-				const builderStore = useBuilderStore();
-
-				// Change workflowId to trigger the watcher (nodes stay empty)
-				workflowsStore.setWorkflowId('different-workflow-id');
-				await nextTick();
-
-				expect(builderStore.builderMode).toBe('build');
-			});
-
 			it('should not change mode when chat has messages', async () => {
-				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -2307,7 +2295,6 @@ describe('AI Builder store', () => {
 			});
 
 			it('should default to plan mode when workflowId changes with empty canvas', async () => {
-				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
 
 				// Simulate navigating to a new empty workflow
@@ -2322,7 +2309,6 @@ describe('AI Builder store', () => {
 			});
 
 			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
-				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -3430,14 +3416,6 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Plan mode telemetry', () => {
-		function enablePlanMode() {
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
-				experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
-					? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
-					: undefined,
-			);
-		}
-
 		function addPlanMessageToChat(builderStore: ReturnType<typeof useBuilderStore>) {
 			builderStore.chatMessages.push({
 				role: 'assistant',
@@ -3452,7 +3430,6 @@ describe('AI Builder store', () => {
 		describe('user_switched_builder_mode', () => {
 			it('tracks journey event when switching to plan mode', () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 
 				track.mockClear();
 				builderStore.setBuilderMode('plan');
@@ -3468,7 +3445,6 @@ describe('AI Builder store', () => {
 
 			it('tracks journey event when switching to build mode', () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				track.mockClear();
@@ -3482,27 +3458,11 @@ describe('AI Builder store', () => {
 					}),
 				);
 			});
-
-			it('does not track when plan mode is unavailable', () => {
-				const builderStore = useBuilderStore();
-				// Do NOT enable plan mode
-
-				track.mockClear();
-				builderStore.setBuilderMode('plan');
-
-				expect(track).not.toHaveBeenCalledWith(
-					'Workflow builder journey',
-					expect.objectContaining({
-						event_type: 'user_switched_builder_mode',
-					}),
-				);
-			});
 		});
 
 		describe('user_clicked_implement_plan', () => {
 			it('tracks journey event when user approves plan', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				// Set up interrupted state with a plan message
@@ -3527,7 +3487,6 @@ describe('AI Builder store', () => {
 		describe('mode in User submitted builder message', () => {
 			it('includes plan mode', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				apiSpy.mockImplementationOnce(() => {});
@@ -3572,7 +3531,6 @@ describe('AI Builder store', () => {
 
 			it('includes plan mode on abort when in plan mode', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				apiSpy.mockImplementationOnce(() => {});
@@ -3589,7 +3547,6 @@ describe('AI Builder store', () => {
 
 			it('includes plan_approved when plan was approved', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				// Set up interrupted state with a plan message

@@ -7,7 +7,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import type { FixWithAiError } from '../fixWithAi';
+import { IS_FIX_WITH_AI_OFFER_ENABLED, type FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
 export interface WorkflowFailuresReport {
@@ -90,6 +90,7 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 		});
 	}
 	if (errors.length === 0) return;
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 
 	emit('workflow-failures', {
 		workflowId: event.data.workflowId,
