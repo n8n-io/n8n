@@ -24,13 +24,14 @@ export async function setup() {
 	}
 
 	const { container } = pgResult;
+	const meta = pgResult.meta as { database: string; username: string; password: string };
 
 	process.env.DB_TYPE = 'postgresdb';
 	process.env.DB_POSTGRESDB_HOST = container.getHost();
 	process.env.DB_POSTGRESDB_PORT = String(container.getMappedPort(5432));
-	process.env.DB_POSTGRESDB_DATABASE = pgResult.meta.database;
-	process.env.DB_POSTGRESDB_USER = pgResult.meta.username;
-	process.env.DB_POSTGRESDB_PASSWORD = pgResult.meta.password;
+	process.env.DB_POSTGRESDB_DATABASE = meta.database;
+	process.env.DB_POSTGRESDB_USER = meta.username;
+	process.env.DB_POSTGRESDB_PASSWORD = meta.password;
 	process.env.DB_POSTGRESDB_SCHEMA = 'alt_schema';
 	process.env.DB_TABLE_PREFIX = 'test_';
 	process.env.DB_POSTGRESDB_POOL_SIZE = '1'; // Detect connection pooling deadlocks

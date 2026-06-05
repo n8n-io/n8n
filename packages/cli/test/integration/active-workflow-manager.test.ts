@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
-import { NodeApiError, Workflow } from 'n8n-workflow';
+import { NodeApiError, validateWorkflowHasTriggerLikeNode, Workflow } from 'n8n-workflow';
 import type * as N8nWorkflow from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -66,7 +66,6 @@ vi.mock('n8n-workflow', async () => {
 	};
 });
 
-const { validateWorkflowHasTriggerLikeNode } = await import('n8n-workflow');
 const validateWorkflowHasTriggerLikeNodeSpy = vi.mocked(validateWorkflowHasTriggerLikeNode);
 
 beforeAll(async () => {

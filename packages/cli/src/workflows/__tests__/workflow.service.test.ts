@@ -806,16 +806,18 @@ describe('WorkflowService', () => {
 			);
 
 			// Bypass validation internals
-			vi.spyOn(workflowService as never, '_detectWebhookConflicts').mockResolvedValue(
+			(
+				vi.spyOn(workflowService as never, '_detectWebhookConflicts') as unknown as Mock
+			).mockResolvedValue(undefined as never);
+			(vi.spyOn(workflowService as never, '_validateNodes') as unknown as Mock).mockReturnValue(
 				undefined as never,
 			);
-			vi.spyOn(workflowService as never, '_validateNodes').mockReturnValue(undefined as never);
-			vi.spyOn(workflowService as never, '_validateDynamicCredentials').mockResolvedValue(
-				undefined as never,
-			);
-			vi.spyOn(workflowService as never, '_validateSubWorkflowReferences').mockResolvedValue(
-				undefined as never,
-			);
+			(
+				vi.spyOn(workflowService as never, '_validateDynamicCredentials') as unknown as Mock
+			).mockResolvedValue(undefined as never);
+			(
+				vi.spyOn(workflowService as never, '_validateSubWorkflowReferences') as unknown as Mock
+			).mockResolvedValue(undefined as never);
 		});
 
 		test('republish blocked by hook leaves previous active version untouched', async () => {
@@ -865,9 +867,9 @@ describe('WorkflowService', () => {
 
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			vi.spyOn(workflowService as never, '_addToActiveWorkflowManager').mockResolvedValue(
-				undefined as never,
-			);
+			(
+				vi.spyOn(workflowService as never, '_addToActiveWorkflowManager') as unknown as Mock
+			).mockResolvedValue(undefined as never);
 
 			const user = mock<User>();
 

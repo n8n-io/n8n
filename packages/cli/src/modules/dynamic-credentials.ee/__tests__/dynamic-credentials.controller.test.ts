@@ -40,7 +40,7 @@ describe('DynamicCredentialsController', () => {
 	const controller = Container.get(DynamicCredentialsController);
 
 	const timestamp = 1706750625678;
-	vi.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ shouldAdvanceTime: true });
 
 	beforeEach(() => {
 		vi.setSystemTime(new Date(timestamp));

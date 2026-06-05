@@ -33,9 +33,7 @@ describe('TranslationController', () => {
 			const req = mock<TranslationRequest.Credential>({ query: { credentialType } });
 			credentialTypes.recognizes.calledWith(credentialType).mockReturnValue(true);
 			const response = { translation: 'string' };
-			vi.mock(`${CREDENTIAL_TRANSLATIONS_DIR}/de/credential-type.json`, () => response, {
-				virtual: true,
-			});
+			vi.mock(`${CREDENTIAL_TRANSLATIONS_DIR}/de/credential-type.json`, () => response);
 
 			expect(await controller.getCredentialTranslation(req)).toEqual(response);
 		});

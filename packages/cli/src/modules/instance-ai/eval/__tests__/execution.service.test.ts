@@ -19,7 +19,6 @@ import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { Mock } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test

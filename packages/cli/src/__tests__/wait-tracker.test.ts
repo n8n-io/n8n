@@ -13,7 +13,7 @@ import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { MockInstance } from 'vitest';
 
-vi.useFakeTimers({ advanceTimers: true });
+vi.useFakeTimers({ shouldAdvanceTime: true });
 
 describe('WaitTracker', () => {
 	const activeExecutions = mock<ActiveExecutions>();

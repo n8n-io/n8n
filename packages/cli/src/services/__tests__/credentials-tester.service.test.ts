@@ -1,4 +1,4 @@
-import mock from 'vitest-mock-extended/lib/Mock';
+import { mock } from 'vitest-mock-extended';
 import type { ICredentialType, INodeType, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';

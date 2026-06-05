@@ -27,7 +27,7 @@ describe('OAuth2CredentialController', () => {
 	const controller = Container.get(OAuth2CredentialController);
 
 	const timestamp = 1706750625678;
-	vi.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ shouldAdvanceTime: true });
 
 	beforeEach(() => {
 		vi.setSystemTime(new Date(timestamp));

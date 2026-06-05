@@ -52,13 +52,9 @@ describe('ExternalHooks', () => {
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
 
-			vi.mock(
-				'/path/to/non-existent-hook.js',
-				() => {
-					throw new Error('File not found');
-				},
-				{ virtual: true },
-			);
+			vi.mock('/path/to/non-existent-hook.js', () => {
+				throw new Error('File not found');
+			});
 
 			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
@@ -71,7 +67,7 @@ describe('ExternalHooks', () => {
 			};
 
 			globalConfig.externalHooks.files = ['/path/to/valid-hook.js'];
-			vi.mock('/path/to/valid-hook.js', () => mockHookFile, { virtual: true });
+			vi.mock('/path/to/valid-hook.js', () => mockHookFile);
 
 			await externalHooks.init();
 

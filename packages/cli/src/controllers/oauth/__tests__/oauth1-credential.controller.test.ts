@@ -20,7 +20,7 @@ describe('OAuth1CredentialController', () => {
 	const controller = Container.get(OAuth1CredentialController);
 
 	const timestamp = 1706750625678;
-	vi.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ shouldAdvanceTime: true });
 
 	const accessTokenData = { oauth_token: 'token', oauth_token_secret: 'secret' };
 

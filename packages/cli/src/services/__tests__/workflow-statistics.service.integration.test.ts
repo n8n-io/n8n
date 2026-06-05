@@ -16,7 +16,6 @@ import {
 	type EntityMetadata,
 } from '@n8n/typeorm';
 import { createUser } from '@test-integration/db/users';
-import { mocked } from 'vi-mock';
 import { mock } from 'vitest-mock-extended';
 import {
 	createEmptyRunExecutionData,
@@ -568,8 +567,8 @@ describe('WorkflowStatisticsService', () => {
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';
-			mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(project);
-			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(user);
+			vi.mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(project);
+			vi.mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(user);
 		});
 
 		afterAll(() => {
@@ -603,7 +602,7 @@ describe('WorkflowStatisticsService', () => {
 
 		test('should emit event with no `userId` if workflow is owned by team project', async () => {
 			const workflowId = '123';
-			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValueOnce(null);
+			vi.mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValueOnce(null);
 			const node = mock<INode>({ id: '123', type: 'n8n-nodes-base.noOp', credentials: {} });
 
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
@@ -648,7 +647,7 @@ describe('WorkflowStatisticsService', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			mocked(entityManager.insert).mockRejectedValueOnce(
+			vi.mocked(entityManager.insert).mockRejectedValueOnce(
 				new QueryFailedError('', undefined, new Error()),
 			);
 			const workflowId = '1';

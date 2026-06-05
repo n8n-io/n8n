@@ -3402,11 +3402,11 @@ describe('OauthService', () => {
 			expect(requestConfig.url).toBe('https://trello.com/1/OAuthGetAccessToken');
 			// The request must carry an OAuth1 signature and the request token in the
 			// Authorization header.
-			expect(requestConfig.headers.Authorization).toMatch(/^OAuth /);
-			expect(requestConfig.headers.Authorization).toContain('oauth_signature');
-			expect(requestConfig.headers.Authorization).toContain('oauth_token');
+			expect(requestConfig.headers!.Authorization).toMatch(/^OAuth /);
+			expect(requestConfig.headers!.Authorization).toContain('oauth_signature');
+			expect(requestConfig.headers!.Authorization).toContain('oauth_token');
 			// The verifier travels in the form-encoded body.
-			expect(requestConfig.headers['content-type']).toBe('application/x-www-form-urlencoded');
+			expect(requestConfig.headers!['content-type']).toBe('application/x-www-form-urlencoded');
 			expect(requestConfig.data).toBe('oauth_verifier=verifier');
 		});
 
