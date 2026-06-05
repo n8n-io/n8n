@@ -19,11 +19,9 @@ const POLL_INTERVAL_MS = 1 * Time.minutes.toMilliseconds;
 
 @Service()
 export class WorkflowPublicationOutboxConsumer {
-	private pollInterval: NodeJS.Timeout | undefined;
+	private pollTimeout: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
-
-	private isProcessing = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -40,15 +38,15 @@ export class WorkflowPublicationOutboxConsumer {
 	startPolling() {
 		if (!this.globalConfig.workflows.useWorkflowPublicationService || this.isShuttingDown) return;
 
-		this.pollInterval = setInterval(async () => await this.pollCycle(), POLL_INTERVAL_MS);
+		this.schedulePollCycle();
 		this.logger.debug('Started outbox polling');
 	}
 
 	@OnLeaderStepdown()
 	stopPolling() {
-		if (this.pollInterval) {
-			clearInterval(this.pollInterval);
-			this.pollInterval = undefined;
+		if (this.pollTimeout) {
+			clearTimeout(this.pollTimeout);
+			this.pollTimeout = undefined;
 			this.logger.debug('Stopped outbox polling');
 		}
 	}
@@ -59,38 +57,38 @@ export class WorkflowPublicationOutboxConsumer {
 		this.stopPolling();
 	}
 
+	private schedulePollCycle() {
+		this.pollTimeout = setTimeout(async () => {
+			await this.pollCycle();
+			if (!this.isShuttingDown) this.schedulePollCycle();
+		}, POLL_INTERVAL_MS);
+	}
+
 	private async pollCycle() {
-		if (this.isProcessing) return;
+		while (!this.isShuttingDown) {
+			const record = await this.outboxRepository.claimNextPendingRecord();
+			if (!record) break;
 
-		this.isProcessing = true;
-		try {
-			while (!this.isShuttingDown) {
-				const record = await this.outboxRepository.claimNextPendingRecord();
-				if (!record) break;
-
+			try {
+				await this.processRecord(record);
+			} catch (error) {
+				this.logger.error('Unexpected error processing outbox record', {
+					outboxId: record.id,
+					workflowId: record.workflowId,
+					error: ensureError(error).message,
+				});
 				try {
-					await this.processRecord(record);
-				} catch (error) {
-					this.logger.error('Unexpected error processing outbox record', {
+					await this.outboxRepository.markFailed(
+						record.id,
+						`Unexpected: ${ensureError(error).message}`,
+					);
+				} catch (markError) {
+					this.logger.error('Failed to mark outbox record as failed', {
 						outboxId: record.id,
-						workflowId: record.workflowId,
-						error: ensureError(error).message,
+						error: ensureError(markError).message,
 					});
-					try {
-						await this.outboxRepository.markFailed(
-							record.id,
-							`Unexpected: ${ensureError(error).message}`,
-						);
-					} catch (markError) {
-						this.logger.error('Failed to mark outbox record as failed', {
-							outboxId: record.id,
-							error: ensureError(markError).message,
-						});
-					}
 				}
 			}
-		} finally {
-			this.isProcessing = false;
 		}
 	}
 
@@ -123,6 +121,8 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		try {
+			// Must happen BEFORE updating activeVersionId because
+			// clearWebhooks() reads activeVersion from DB.
 			await this.tearDownOldTriggers(record);
 
 			await this.workflowRepository.update(workflowId, {
@@ -144,8 +144,6 @@ export class WorkflowPublicationOutboxConsumer {
 		});
 	}
 
-	// Must happen BEFORE updating activeVersionId because
-	// clearWebhooks() reads activeVersion from DB.
 	private async tearDownOldTriggers(record: WorkflowPublicationOutbox) {
 		await this.activeWorkflowManager.remove(record.workflowId);
 	}
