@@ -895,6 +895,85 @@ describe('integration tools', () => {
 		});
 	});
 
+	it('section accessory button sends first, updates message context, then suspends', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue({
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			messageId: '123.456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		});
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+				messageId: '123.789',
+				updatedAt: '2026-05-18T10:01:00.000Z',
+			},
+		});
+		const ctx = makeInterruptibleCtx();
+
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Section button repro',
+						card: {
+							title: 'Section button repro',
+							components: [
+								{
+									type: 'section',
+									text: 'Click the accessory button below.',
+									button: { label: 'Approve', value: 'approve', style: 'primary' },
+								},
+							],
+						},
+					},
+				},
+			},
+			ctx,
+		);
+
+		expect(actionExecutor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'respond',
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				awaitResponse: true,
+			}),
+		);
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				messageId: '123.789',
+			}),
+		);
+		expect(ctx.suspend).toHaveBeenCalledWith({
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'slack:cred-a',
+			messageContext: expect.objectContaining({
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				messageId: '123.789',
+			}),
+		});
+	});
+
 	it('action tool preserves the current subject when updating message context', async () => {
 		const messageContextStore = mock<IntegrationMessageContextStore>();
 		messageContextStore.getLatest.mockResolvedValue({

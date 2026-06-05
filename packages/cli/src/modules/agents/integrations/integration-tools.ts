@@ -1392,14 +1392,20 @@ function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined
 function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
 	const card = message?.card;
 	if (card?.awaitResponse === true) return true;
-	if (
-		card?.components.some((component) =>
-			['button', 'select', 'radio_select'].includes(component.type),
-		)
-	) {
-		return true;
+	return card?.components.some(isInteractiveCardComponent) ?? false;
+}
+
+function isInteractiveCardComponent(component: z.infer<typeof cardComponentSchema>): boolean {
+	switch (component.type) {
+		case 'button':
+		case 'select':
+		case 'radio_select':
+			return true;
+		case 'section':
+			return component.button !== undefined;
+		default:
+			return false;
 	}
-	return false;
 }
 
 function withPreviousSubject(
