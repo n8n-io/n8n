@@ -614,12 +614,13 @@ describe('McpSettingsService', () => {
 			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(seeded.map((w) => w.id));
 
 			// Force the first chunk's transaction to fail; the second runs normally.
-			const originalTransaction = stubs.manager.transaction;
 			stubs.manager.transaction
 				.mockImplementationOnce(async () => {
 					throw new Error('chunk transaction failed');
 				})
-				.mockImplementationOnce(originalTransaction.getMockImplementation()!);
+				.mockImplementationOnce(
+					async (run: (trx: EntityManager) => Promise<unknown>) => await run(stubs.trx),
+				);
 
 			const dto = new UpdateWorkflowsAvailabilityDto({
 				availableInMCP: true,
