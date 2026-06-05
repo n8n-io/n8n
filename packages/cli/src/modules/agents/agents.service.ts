@@ -28,6 +28,7 @@ import { AgentsConfig } from '@n8n/config';
 import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import type { JSONSchema7 } from 'json-schema';
 import {
 	deepCopy,
 	OperationalError,
@@ -44,6 +45,7 @@ import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-def
 import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { describeStructuredOutputError } from './utils/structured-output-error';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
@@ -1170,6 +1172,7 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId: string,
+		outputSchema?: JSONSchema7,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1181,6 +1184,13 @@ export class AgentsService {
 				credentialProvider,
 				userId,
 			);
+			// Apply a per-call structured-output schema (e.g. supplied by a
+			// workflow node) before the builder is cast to its runtime view. The
+			// isolated agent is freshly built and uncached, so this never leaks
+			// into concurrent chat / integration executions.
+			if (outputSchema) {
+				reconstructed.structuredOutput(outputSchema);
+			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {
 			return {
@@ -1215,6 +1225,7 @@ export class AgentsService {
 		projectId: string,
 		telemetryUserId?: string,
 		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1232,7 +1243,12 @@ export class AgentsService {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
 
-		const compiled = await this.compileIsolated(agentData, credentialProvider, userId);
+		const compiled = await this.compileIsolated(
+			agentData,
+			credentialProvider,
+			userId,
+			outputSchema,
+		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
@@ -1302,11 +1318,22 @@ export class AgentsService {
 		}
 
 		if (messageRecord.error) {
+			if (outputSchema) {
+				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
+				if (structuredOutputError) {
+					throw new OperationalError(structuredOutputError);
+				}
+			}
 			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
 		}
 
 		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError('Agent execution finished with an error.');
+			throw new OperationalError(
+				outputSchema
+					? 'Agent execution finished with an error while producing structured output. ' +
+							"The agent's model or provider may not support JSON Schema structured output."
+					: 'Agent execution finished with an error.',
+			);
 		}
 
 		return {

@@ -521,9 +521,16 @@ describe('NodeCredentials', () => {
 			displayName: 'OAuth2 API',
 			properties: [
 				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: false,
+				},
+				{
 					displayName: 'Client ID',
 					name: 'clientId',
 					type: 'string',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
 					default: '',
 					required: true,
 				},
@@ -531,6 +538,7 @@ describe('NodeCredentials', () => {
 					displayName: 'Client Secret',
 					name: 'clientSecret',
 					type: 'string',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
 					default: '',
 					required: true,
 				},
@@ -541,16 +549,8 @@ describe('NodeCredentials', () => {
 			name: 'slackOAuth2Api',
 			extends: ['oAuth2Api'],
 			displayName: 'Slack OAuth2 API',
-			properties: [
-				{
-					displayName: 'Client ID',
-					name: 'clientId',
-					type: 'string',
-					default: '',
-					required: true,
-				},
-			],
-			__overwrittenProperties: ['clientId'],
+			properties: [],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
 		};
 
 		const slackNode: INodeUi = {

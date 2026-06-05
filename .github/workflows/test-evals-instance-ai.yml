@@ -9,7 +9,12 @@ on:
         type: string
         default: 'master'
       filter:
-        description: 'Filter test cases by name (e.g. "contact-form")'
+        description: 'Filter test cases by filename substring (e.g. "contact-form")'
+        required: false
+        type: string
+        default: ''
+      tier:
+        description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         type: string
         default: ''
@@ -35,7 +40,11 @@ on:
         required: false
         default: 'master'
       filter:
-        description: 'Filter test cases by name (e.g. "contact-form")'
+        description: 'Filter test cases by filename substring (e.g. "contact-form")'
+        required: false
+        default: ''
+      tier:
+        description: 'Test-case dataset to run (e.g. "pr", "full"). Empty = no filter.'
         required: false
         default: ''
       sandbox-provider:
@@ -223,6 +232,7 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
+          TIER: ${{ inputs.tier }}
           ITERATIONS: ${{ inputs.iterations }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
         run: |
@@ -234,6 +244,7 @@ jobs:
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           ARGS=(--base-url "$BASE_URLS" --concurrency 32 --verbose --iterations "${ITERATIONS:-3}")
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
+          [ -n "$TIER" ] && ARGS+=(--tier "$TIER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
           pnpm eval:instance-ai "${ARGS[@]}"
 

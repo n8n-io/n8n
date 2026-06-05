@@ -1,4 +1,5 @@
 import * as aiModule from 'ai';
+import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
@@ -49,6 +50,7 @@ vi.mock('ai', async () => {
 		generateText: vi.fn(),
 		streamText: vi.fn(),
 		tool: vi.fn((config: unknown) => config),
+		jsonSchema: vi.fn((schema: unknown) => ({ _type: 'jsonSchema', schema })),
 		Output: {
 			object: vi.fn(({ schema }: { schema: unknown }) => ({ _type: 'object', schema })),
 		},
@@ -58,11 +60,12 @@ vi.mock('ai', async () => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const { embed, embedMany, generateText, streamText } = aiModule as unknown as {
+const { embed, embedMany, generateText, streamText, jsonSchema } = aiModule as unknown as {
 	embed: Mock;
 	embedMany: Mock;
 	generateText: Mock;
 	streamText: Mock;
+	jsonSchema: Mock;
 };
 
 /** Minimal successful generateText response. */
@@ -223,6 +226,12 @@ function createRuntimeWithMemory(memory: InMemoryMemory, eventBus?: AgentEventBu
 
 const testSchema = z.object({ answer: z.string(), score: z.number() });
 
+const testJsonSchema: JSONSchema7 = {
+	type: 'object',
+	properties: { answer: { type: 'string' }, score: { type: 'number' } },
+	required: ['answer', 'score'],
+};
+
 /** Build a runtime configured with structuredOutput. */
 function createStructuredRuntime(options?: { tools?: BuiltTool[]; eventBus?: AgentEventBus }) {
 	const bus = options?.eventBus ?? new AgentEventBus();
@@ -233,6 +242,19 @@ function createStructuredRuntime(options?: { tools?: BuiltTool[]; eventBus?: Age
 		structuredOutput: testSchema,
 		eventBus: bus,
 		...(options?.tools ? { tools: options.tools } : {}),
+	});
+	return { runtime, bus };
+}
+
+/** Build a runtime configured with a raw JSON Schema structuredOutput. */
+function createJsonSchemaStructuredRuntime() {
+	const bus = new AgentEventBus();
+	const runtime = new AgentRuntime({
+		name: 'test-structured-json',
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test assistant.',
+		structuredOutput: testJsonSchema,
+		eventBus: bus,
 	});
 	return { runtime, bus };
 }
@@ -1928,6 +1950,73 @@ describe('AgentRuntime.generate() — structured output', () => {
 			unknown
 		>;
 		expect(callArgs.output).toBeUndefined();
+	});
+
+	it('returns structuredOutput when a raw JSON Schema is configured', async () => {
+		const expected = { answer: 'Paris', score: 0.95 };
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput(expected));
+
+		const { runtime } = createJsonSchemaStructuredRuntime();
+		const result = await runtime.generate('What is the capital of France?');
+
+		expect(result.structuredOutput).toEqual(expected);
+		expect(result.finishReason).toBe('stop');
+	});
+
+	it('wraps a provider-strict JSON Schema output spec via jsonSchema() before passing to generateText', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput({ answer: 'x', score: 1 }));
+
+		const { runtime } = createJsonSchemaStructuredRuntime();
+		await runtime.generate('hello');
+
+		// Raw JSON Schema is made provider-strict (additionalProperties: false) and
+		// wrapped with the AI SDK's jsonSchema() helper, rather than passed through
+		// directly (which is what Zod schemas do).
+		const strictTestJsonSchema = { ...testJsonSchema, additionalProperties: false };
+		expect(jsonSchema).toHaveBeenCalledWith(strictTestJsonSchema);
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		expect(callArgs.output).toEqual(
+			expect.objectContaining({
+				_type: 'object',
+				schema: { _type: 'jsonSchema', schema: strictTestJsonSchema },
+			}),
+		);
+	});
+
+	it('disables strict JSON Schema validation for OpenAI/Groq when a raw JSON Schema is configured', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput({ answer: 'x', score: 1 }));
+
+		const { runtime } = createJsonSchemaStructuredRuntime();
+		await runtime.generate('hello');
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		expect(callArgs.providerOptions).toEqual(
+			expect.objectContaining({
+				openai: { strictJsonSchema: false },
+				groq: { strictJsonSchema: false },
+			}),
+		);
+	});
+
+	it('keeps strict JSON Schema validation (no relaxation) for a Zod schema', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccessWithOutput({ answer: 'x', score: 1 }));
+
+		const { runtime } = createStructuredRuntime();
+		await runtime.generate('hello');
+
+		const callArgs = (generateText.mock.calls[0] as [unknown, unknown])[0] as Record<
+			string,
+			unknown
+		>;
+		// No thinking/provider options configured and Zod output → no strict override.
+		expect(callArgs.providerOptions).toBeUndefined();
 	});
 
 	it('preserves structuredOutput through tool-call iterations', async () => {
