@@ -503,6 +503,54 @@ describe('prepareExecutionData', () => {
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
 	});
 
+	test('should populate manualData.userId for manual executions when userId is provided', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toEqual({ userId: 'user-abc' });
+	});
+
+	test('should not populate manualData when userId is undefined', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			undefined,
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
+	test('should not populate manualData for non-manual execution modes', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
 	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
 		test('should merge nodeExecutionStack when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE and runExecutionData exists', () => {
 			const microsoftAgentNode = mock<INode>({

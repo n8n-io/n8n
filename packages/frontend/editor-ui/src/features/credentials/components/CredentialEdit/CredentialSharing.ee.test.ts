@@ -100,7 +100,7 @@ describe('CredentialSharing.ee', () => {
 		// Mock store methods
 		vi.spyOn(usersStore, 'fetchUsers').mockResolvedValue();
 		vi.spyOn(projectsStore, 'getAllProjects').mockResolvedValue();
-		vi.spyOn(projectsStore, 'searchProjects').mockResolvedValue({
+		vi.spyOn(projectsStore, 'searchShareableProjects').mockResolvedValue({
 			count: testProjects.length,
 			data: testProjects,
 		});
@@ -146,6 +146,7 @@ describe('CredentialSharing.ee', () => {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
 			});
 	});
 

@@ -34,7 +34,6 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -66,7 +65,6 @@ const rootStore = useRootStore();
 const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const workflowHelpers = useWorkflowHelpers();
 const moveWorkflowEventBus = createEventBus<WorkflowListEventMap>();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
@@ -248,7 +246,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) return;
 
 			const workflowDescription =
@@ -280,7 +278,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+			if (!workflowDocumentStore?.value) {
+				throw new Error('Cannot download workflow: workflow document store is unavailable');
+			}
+			const workflowData = workflowDocumentStore.value.serialize();
 			const { tags, ...data } = workflowData;
 			const exportData: IWorkflowToShare = {
 				...data,
@@ -374,7 +375,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
-			const workflowId = getWorkflowId(props.id, route.params.name);
+			const workflowId = getWorkflowId(props.id, route.params.workflowId);
 			if (!workflowId) {
 				return;
 			}

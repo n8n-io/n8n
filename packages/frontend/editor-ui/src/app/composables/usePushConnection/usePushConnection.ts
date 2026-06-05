@@ -21,23 +21,16 @@ import {
 	workflowActivated,
 	workflowDeactivated,
 	workflowAutoDeactivated,
+	workflowSettingsUpdated,
 } from '@/app/composables/usePushConnection/handlers';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
 
-export function usePushConnection({
-	router,
-	workflowState,
-}: {
-	router: ReturnType<typeof useRouter>;
-	workflowState?: WorkflowState;
-}) {
+export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const pushStore = usePushConnectionStore();
-	const options = {
-		router,
-		workflowState: workflowState ?? injectWorkflowState(),
-	};
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const { enqueue } = createEventQueue<PushMessage>(processEvent);
 
@@ -59,6 +52,13 @@ export function usePushConnection({
 	 * Process received push message event by calling the correct handler
 	 */
 	async function processEvent(event: PushMessage) {
+		// Resolve the current workflow document per event so handlers always act on
+		// the workflow the user is currently viewing, even as they navigate.
+		const options: PushHandlerOptions = {
+			router,
+			documentId: workflowDocumentStore.value.documentId,
+		};
+
 		switch (event.type) {
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
@@ -75,7 +75,7 @@ export function usePushConnection({
 			case 'nodeExecuteAfter':
 				return await nodeExecuteAfter(event, options);
 			case 'nodeExecuteAfterData':
-				return await nodeExecuteAfterData(event);
+				return await nodeExecuteAfterData(event, options);
 			case 'executionStarted':
 				return await executionStarted(event, options);
 			case 'sendWorkerStatusMessage':
@@ -89,11 +89,13 @@ export function usePushConnection({
 			case 'executionRecovered':
 				return await executionRecovered(event, options);
 			case 'workflowActivated':
-				return await workflowActivated(event);
+				return await workflowActivated(event, options);
 			case 'workflowDeactivated':
-				return await workflowDeactivated(event);
+				return await workflowDeactivated(event, options);
 			case 'workflowAutoDeactivated':
-				return await workflowAutoDeactivated(event);
+				return await workflowAutoDeactivated(event, options);
+			case 'workflowSettingsUpdated':
+				return await workflowSettingsUpdated(event, options);
 			case 'updateBuilderCredits':
 				return await builderCreditsUpdated(event);
 		}

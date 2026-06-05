@@ -3,6 +3,7 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
 	BuiltEval,
 	RunOptions,
@@ -14,10 +15,10 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	ToolExecutionContext,
 	InterruptibleToolContext,
 	CheckpointStore,
 	StreamChunk,
-	SubAgentUsage,
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
@@ -28,23 +29,78 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
+	MemoryDescriptor,
+	ObservationCapableMemory,
 	TitleGenerationConfig,
 	Thread,
-	SemanticRecallConfig,
+	EpisodicMemoryConfig,
+	EpisodicMemoryCursor,
+	EpisodicMemoryEmbeddingProviderOptions,
+	EpisodicMemoryEntry,
+	EpisodicMemoryEntrySource,
+	EpisodicMemoryExtractFn,
+	EpisodicMemoryExtraction,
+	EpisodicMemoryExtractionCandidate,
+	EpisodicMemoryExtractorInput,
+	EpisodicMemoryMethods,
+	EpisodicMemoryPrompts,
+	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflection,
+	EpisodicMemoryReflectionApply,
+	EpisodicMemoryReflectionApplyMerge,
+	EpisodicMemoryReflectionMerge,
+	EpisodicMemoryReflectionResult,
+	EpisodicMemoryReflectorInput,
+	EpisodicMemoryScope,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryStatus,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
+	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryEntry,
+	NewEpisodicMemoryEntrySource,
+	NewEpisodicMemoryEntrySourceForEntry,
+	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	SmoothStreamOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
 	AttributeValue,
+	ObservationCursor,
+	ObservationalMemoryConfig,
+	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	ObservationLogReadOptions,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
+	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './types';
 
-export { Tool } from './sdk/tool';
+export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
+export type { Cancellation } from './sdk/cancellation';
+export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
 export { Eval } from './sdk/eval';
@@ -55,6 +111,50 @@ export { Telemetry } from './sdk/telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type { AgentSnapshot } from './sdk/agent';
+export {
+	appendSkillCatalogToInstructions,
+	createListSkillsTool,
+	createRuntimeSkillRegistry,
+	createRuntimeSkillSource,
+	createRuntimeSkillTools,
+	createSkillLoadTool,
+	formatSkillValidationErrors,
+	InvalidRuntimeSkillError,
+	loadRuntimeSkillsFromDirectory,
+	loadRuntimeSkillSourceFromDirectory,
+	parseRuntimeSkillMarkdown,
+	renderSkillCatalogPrompt,
+	RUNTIME_SKILL_TOOL_NAMES,
+	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_LINKED_FILE_GROUPS,
+	RUNTIME_SKILL_NAME_PATTERN,
+	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	LIST_SKILLS_TOOL_NAME,
+	SKILL_LOAD_TOOL_NAME,
+	validateRuntimeSkill,
+} from './skills';
+export type {
+	RenderSkillCatalogOptions,
+	RuntimeSkill,
+	RuntimeSkillContent,
+	RuntimeSkillDependenciesContract,
+	RuntimeSkillFileContent,
+	RuntimeSkillFileLoader,
+	RuntimeSkillIndexEntry,
+	RuntimeSkillInterfaceContract,
+	RuntimeSkillLinkedFile,
+	RuntimeSkillLinkedFileGroup,
+	RuntimeSkillLinkedFiles,
+	RuntimeSkillLoader,
+	RuntimeSkillMcpServerDependency,
+	RuntimeSkillPolicyContract,
+	RuntimeSkillRegistry,
+	RuntimeSkillRegistryEntry,
+	RuntimeSkillSource,
+	RuntimeSkillValidationError,
+	RuntimeSkillValidationResult,
+} from './skills';
 export type {
 	AgentBuilder,
 	CredentialProvider,
@@ -62,7 +162,6 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
-export { Network } from './sdk/network';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
@@ -73,7 +172,6 @@ export type {
 	ContentReasoning,
 	ContentText,
 	ContentToolCall,
-	ContentToolResult,
 	Message,
 	MessageContent,
 	MessageRole,
@@ -82,19 +180,10 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
-export type {
-	AgentSchema,
-	ToolSchema,
-	MemorySchema,
-	EvalSchema,
-	ThinkingSchema,
-	ProviderToolSchema,
-	GuardrailSchema,
-	McpServerSchema,
-	TelemetrySchema,
-} from './types/sdk/schema';
-export { generateAgentCode } from './codegen/generate-agent-code';
-export { filterLlmMessages, isLlmMessage } from './sdk/message';
+export {
+	filterLlmMessages,
+	isLlmMessage,
+} from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
 export { providerCapabilities } from './sdk/provider-capabilities';
 export type { ProviderCapability } from './sdk/provider-capabilities';
@@ -105,17 +194,137 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory } from './storage/sqlite-memory';
-export {
-	UPDATE_WORKING_MEMORY_TOOL_NAME,
-	WORKING_MEMORY_DEFAULT_INSTRUCTION,
-} from './runtime/working-memory';
-export type { SqliteMemoryConfig } from './storage/sqlite-memory';
-export { PostgresMemory } from './storage/postgres-memory';
-export type { PostgresMemoryConfig } from './storage/postgres-memory';
+export { BaseMemory } from './storage/base-memory';
+export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
+export {
+	ROOT_SUB_AGENT_TASK_PATH,
+	assertSubAgentPolicyAllowsChildCount,
+	assertSubAgentTaskPath,
+	createChildSubAgentTaskPath,
+	isSubAgentTaskPath,
+	sanitizeSubAgentTaskName,
+} from './runtime/sub-agent-task-path';
+export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
+export {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	INLINE_SUB_AGENT_ID,
+	createDelegateSubAgentTool,
+	failedDelegatedChildSuspendOutput,
+	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
+	renderDelegateSubAgentPrompt,
+} from './runtime/delegate-sub-agent-tool';
+export type {
+	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentInput,
+	DelegateSubAgentPolicy,
+	DelegateSubAgentRequest,
+	DelegateSubAgentRunner,
+	DelegateSubAgentRunnerHelpers,
+	DelegateSubAgentToolOutput,
+} from './runtime/delegate-sub-agent-tool';
+export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';
+export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
+export {
+	activeLifecycleState,
+	droppedLifecycleState,
+	markLifecycleActive,
+	markLifecycleDropped,
+	markLifecycleSuperseded,
+	normalizeFlatReflectionActions,
+	supersededLifecycleState,
+	uniqueStrings,
+} from './runtime/memory-lifecycle';
+export {
+	RECALL_MEMORY_TOOL_NAME,
+	createRecallMemoryTool,
+	getEpisodicMemoryScope,
+	hashEpisodicMemoryContent,
+	hashEpisodicMemoryEvidence,
+	hasEpisodicMemoryStore,
+	isEpisodicMemoryEnabled,
+	rankEpisodicMemoryEntries,
+	runEpisodicMemoryIndexer,
+	withEpisodicMemoryDefaults,
+} from './runtime/episodic-memory';
+export {
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
+	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
+	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
+	DEFAULT_EPISODIC_MEMORY_TOP_K,
+	buildEpisodicMemoryExtractorPrompt,
+	buildEpisodicMemoryReflectorPrompt,
+	createEpisodicMemoryExtractFn,
+	createEpisodicMemoryReflectFn,
+} from './runtime/episodic-memory-defaults';
+export type {
+	CreateEpisodicMemoryExtractFnOptions,
+	CreateEpisodicMemoryReflectFnOptions,
+} from './runtime/episodic-memory-defaults';
+export type { MemoryLifecycleState, MemoryLifecycleStatus } from './runtime/memory-lifecycle';
+export {
+	parseObservationLogMarkdown,
+	renderObserverTranscript,
+	runObservationLogObserver,
+} from './runtime/observation-log-observer';
+export {
+	normalizeObservationLogReflection,
+	parseObservationLogReflectionJson,
+	renderObservationLogForReflection,
+	runObservationLogReflector,
+} from './runtime/observation-log-reflector';
+export { ScopedMemoryTaskRunner } from './runtime/scoped-memory-task-runner';
+export {
+	buildObservationLogReflectorPrompt,
+	buildObservationLogObserverPrompt,
+	createObservationLogReflectFn,
+	createObservationLogObserveFn,
+	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
+	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
+	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
+	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
+} from './runtime/observation-log-defaults';
+export type {
+	CreateObservationLogObserveFnOptions,
+	CreateObservationLogReflectFnOptions,
+} from './runtime/observation-log-defaults';
+export type {
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogObserverMemory,
+	ParsedObservationLogEntry,
+	ParseObservationLogMarkdownResult,
+	RenderObserverTranscriptOptions,
+	RunObservationLogObserverOpts,
+	RunObservationLogObserverResult,
+} from './runtime/observation-log-observer';
+export type {
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
+	ObservationLogReflectorMemory,
+	ObservationLogReflectorWarning,
+	RunObservationLogReflectorOpts,
+	RunObservationLogReflectorResult,
+} from './runtime/observation-log-reflector';
+export type {
+	ScopedMemoryTaskDescriptor,
+	ScopedMemoryTaskError,
+	ScopedMemoryTaskEvent,
+	ScopedMemoryTaskHandle,
+	ScopedMemoryTaskInfo,
+	ScopedMemoryTaskResult,
+	ScopedMemoryTaskRunnerOptions,
+	ScopedMemoryTaskStatus,
+} from './runtime/scoped-memory-task-runner';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
@@ -151,3 +360,7 @@ export type {
 	SpawnProcessOptions,
 	ProcessInfo,
 } from './workspace';
+
+export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
+
+export { isZodSchema, zodToJsonSchema } from './utils/zod';

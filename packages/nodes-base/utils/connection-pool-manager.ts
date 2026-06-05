@@ -13,6 +13,8 @@ type RegistrationOptions = {
 	credentials: unknown;
 	nodeType: string;
 	nodeVersion?: string;
+	/** Additional data to include in the pool cache key, for options that affect how data is read */
+	poolKeyExtras?: Record<string, unknown>;
 };
 
 type GetConnectionOption<Pool> = RegistrationOptions & {
@@ -71,7 +73,12 @@ export class ConnectionPoolManager {
 	 * Generates a unique key for connection pool identification.
 	 * Hashes the credentials and node information for security.
 	 */
-	private makeKey({ credentials, nodeType, nodeVersion }: RegistrationOptions): string {
+	private makeKey({
+		credentials,
+		nodeType,
+		nodeVersion,
+		poolKeyExtras,
+	}: RegistrationOptions): string {
 		// The credential contains decrypted secrets, that's why we hash it.
 		return createHash('sha1')
 			.update(
@@ -79,6 +86,7 @@ export class ConnectionPoolManager {
 					credentials,
 					nodeType,
 					nodeVersion,
+					poolKeyExtras,
 				}),
 			)
 			.digest('base64');

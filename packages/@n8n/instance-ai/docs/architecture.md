@@ -76,10 +76,10 @@ graph TB
 
     subgraph Sandbox ["Sandbox (Optional)"]
         Service -->|per-thread| WorkspaceManager[Workspace Manager]
+        WorkspaceManager --> N8nSandbox[n8n Sandbox Service]
         WorkspaceManager --> DaytonaSandbox[Daytona Container]
-        WorkspaceManager --> LocalSandbox[Local Sandbox]
+        N8nSandbox --> SandboxFS[Filesystem + execute_command]
         DaytonaSandbox --> SandboxFS[Filesystem + execute_command]
-        LocalSandbox --> SandboxFS
     end
 
 
@@ -132,30 +132,25 @@ prompts written by the orchestrator.
 ```mermaid
 graph TD
     O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
-    O -->|build-workflow-with-agent| S2[Builder Agent]
     O -->|plan| S3[Planned Tasks]
     O -->|direct| T1[list-workflows]
     O -->|direct| T2[run-workflow]
     O -->|direct| T3[get-execution]
     O -->|direct| T4[plan]
+    O -->|direct| T5[data-tables]
 
-    S3 -->|kind: build-workflow| S4[Builder Agent]
-    S3 -->|kind: manage-data-tables| S5[Data Table Agent]
-    S3 -->|kind: research| S6[Research Agent]
+    S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
-    S1 -->|tools| T5[get-execution]
-    S1 -->|tools| T6[get-workflow]
-    S2 -->|tools| T7[search-nodes]
-    S2 -->|tools| T8[build-workflow]
+    S1 -->|tools| T6[get-execution]
+    S1 -->|tools| T7[get-workflow]
+    S4 -->|tools| T8[search-nodes]
+    S4 -->|tools| T9[build-workflow]
 
     style O fill:#f9f,stroke:#333
     style S1 fill:#bbf,stroke:#333
-    style S2 fill:#bbf,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S5 fill:#bbf,stroke:#333
-    style S6 fill:#bbf,stroke:#333
     style S7 fill:#bbf,stroke:#333
 ```
 
@@ -165,14 +160,13 @@ graph TD
 - Planning (plan tool — always direct)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 
-**Single-task delegation** (`delegate`, `build-workflow-with-agent`):
-- Complex multi-step operations (building workflows, debugging failures)
+**Single-task delegation** (`delegate`):
+- Complex multi-step operations that are not handled by a planned build follow-up
 - Tasks that benefit from clean context (no accumulated noise)
-- Builder agent runs as a background task — returns immediately
 
 **Multi-task plans** (`plan` tool):
 - Dependency-aware task graphs with parallel execution
-- Each task dispatched to a preconfigured agent (builder, data-table, research, or delegate)
+- Each task dispatched to a preconfigured executor (build-workflow, checkpoint, or delegate)
 - User approves the plan before execution starts
 
 The orchestrator decides what to delegate based on complexity — simple reads
@@ -186,15 +180,15 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `browser-credential-setup`
-- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
+- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
+- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
+- **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
-- **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
+- **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
@@ -314,7 +308,7 @@ suspension/resume cycles. Two control modes:
 
 ### Background Task Manager
 
-Long-running tasks (workflow builds, data table operations, research) run as
+Long-running tasks (workflow builds and delegated work) run as
 background tasks with concurrency limits (default: 5 per thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
@@ -343,13 +337,17 @@ task has a `kind` that determines its executor:
 | Kind | Executor | Tools |
 |------|----------|-------|
 | `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `manage-data-tables` | Data table agent | All `*-data-table*` tools |
-| `research` | Research agent | web-search, fetch-url |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
+| `checkpoint` | Orchestrator follow-up | verify-built-workflow, executions |
 
-Tasks run detached as background agents. Dependencies are respected — a task
-only starts when all its `deps` have succeeded. The plan is shown to the user
-for approval before execution begins.
+Standalone data-table work bypasses planned tasks: the orchestrator loads the
+`data-table-manager` skill and uses `data-tables` / `parse-file` directly.
+
+Build and delegate tasks run detached as background agents. Checkpoint
+tasks run as orchestrator follow-ups so they can inspect the latest workflow
+state before verifying. Dependencies are respected — a task only starts when all
+its `deps` have succeeded. The plan is shown to the user for approval before
+execution begins.
 
 ### Workflow Loop State Machine
 
@@ -382,18 +380,24 @@ The processor is configurable via `disableDeferredTools` flag.
 
 ## MCP Integration
 
-External MCP servers are connected via `McpClientManager`. Their tools are:
+External MCP servers are owned by `McpClientManager` (`mcp/mcp-client-manager.ts`).
+The cli's `InstanceAiService` holds one manager instance and passes it to
+`createInstanceAgent` via options; the agent factory calls
+`mcpManager.getRegularTools(mcpServers)`. Tool descriptions are:
 
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
    shadowing of tools like `run-workflow`)
 3. **Separated** from domain tools in the orchestrator's tool set
-4. **Cached** by config hash across agent instances
+4. **Cached** by config hash inside the manager — the underlying `MCPClient`
+   instances are tracked so `mcpManager.disconnect()` (called during service
+   shutdown) closes SSE / stdio connections cleanly.
 
-Browser MCP tools (Chrome DevTools) are excluded from the orchestrator to avoid
-context bloat from screenshots. They're available to `browser-credential-setup`
-sub-agents.
+The local Computer Use server is separate from external MCP configuration. Its
+browser tools are available directly to the orchestrator and are guided by the
+`credential-setup-with-computer-use` skill when credential setup requires a
+browser.
 
 ## Tracing & Observability
 
@@ -405,13 +409,6 @@ LangSmith integration provides step-level observability:
 - **Sub-agent traces** — child spans under parent agent runs
 - **Synthetic tool traces** — internal tools tracked separately from
   LLM-invoked tools
-
-## Message Compaction
-
-For conversations that exceed the context window, `generateCompactionSummary()`
-creates an LLM-generated summary of the conversation history. The summary uses
-a structured format (Goal, Important facts, Current state, Open issues, Next
-step) and is included as a `<conversation-summary>` block in subsequent requests.
 
 ## Domain Access Gating
 

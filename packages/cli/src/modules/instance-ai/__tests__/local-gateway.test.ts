@@ -1,5 +1,5 @@
 import { LocalGateway } from '../filesystem/local-gateway';
-import type { LocalGatewayEvent } from '../filesystem/local-gateway';
+import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway';
 import type { McpTool } from '@n8n/api-types';
 
 const SAMPLE_TOOL: McpTool = {
@@ -57,13 +57,37 @@ describe('LocalGateway', () => {
 
 			await expect(callPromise).rejects.toThrow('disconnected');
 		});
+
+		it('should emit gateway-disconnect event before clearing state', () => {
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
+
+			const observedConnectedAtEmit: boolean[] = [];
+			gateway.onDisconnect(() => {
+				observedConnectedAtEmit.push(gateway.isConnected);
+			});
+
+			gateway.disconnect();
+
+			expect(observedConnectedAtEmit).toEqual([true]);
+			expect(gateway.isConnected).toBe(false);
+		});
+
+		it('should deliver gateway-disconnect event with the expected shape', () => {
+			gateway.init(EMPTY_CAPABILITIES);
+			const events: Array<{ type: string }> = [];
+			gateway.onDisconnect((event) => events.push(event));
+
+			gateway.disconnect();
+
+			expect(events).toEqual([{ type: 'gateway-disconnect' }]);
+		});
 	});
 
 	describe('callTool (gateway round-trip)', () => {
 		it('should emit filesystem-request event and resolve on response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -94,7 +118,7 @@ describe('LocalGateway', () => {
 		it('should reject on error string response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -110,7 +134,7 @@ describe('LocalGateway', () => {
 		it('should reject on isError result', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -155,7 +179,7 @@ describe('LocalGateway', () => {
 		it('should dispatch different tool names correctly', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const treeText = 'project/\n  src/\n    index.ts';
@@ -191,7 +215,7 @@ describe('LocalGateway', () => {
 		it('should resolve with isError result so the tool layer can inspect it', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const requestEvents: LocalGatewayEvent[] = [];
+			const requestEvents: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((e) => requestEvents.push(e));
 
 			const callPromise = gateway.callTool({
@@ -233,7 +257,7 @@ describe('LocalGateway', () => {
 		it('should return unsubscribe function that stops event delivery', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			const unsubscribe = gateway.onRequest((event) => events.push(event));
 
 			const p1 = gateway

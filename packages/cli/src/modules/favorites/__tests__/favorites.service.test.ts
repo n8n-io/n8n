@@ -1,9 +1,12 @@
 import { mock } from 'jest-mock-extended';
-import type {
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	WorkflowRepository,
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	type FolderRepository,
+	type ProjectRepository,
+	type SharedWorkflowRepository,
+	type User,
+	type WorkflowRepository,
 } from '@n8n/db';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,6 +25,20 @@ const makeUserFavorite = (overrides: Partial<UserFavorite> = {}): UserFavorite =
 		resourceType: 'workflow',
 		...overrides,
 	}) as UserFavorite;
+
+const makeUser = (overrides: Partial<User> = {}): User =>
+	({
+		id: 'user1',
+		role: GLOBAL_MEMBER_ROLE,
+		...overrides,
+	}) as unknown as User;
+
+const makeAdmin = (overrides: Partial<User> = {}): User =>
+	makeUser({
+		id: 'admin1',
+		role: GLOBAL_ADMIN_ROLE,
+		...overrides,
+	});
 
 describe('FavoritesService', () => {
 	const repo = mock<UserFavoriteRepository>();
@@ -45,7 +62,7 @@ describe('FavoritesService', () => {
 		it('should return empty array when user has no favorites', async () => {
 			repo.findByUser.mockResolvedValue([]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(repo.findByUser).toHaveBeenCalledWith('user1');
 			expect(result).toEqual([]);
@@ -60,7 +77,7 @@ describe('FavoritesService', () => {
 			workflowRepository.findByIds.mockResolvedValue([{ id: 'wf1', name: 'My Workflow' } as never]);
 			sharedWorkflowRepository.find.mockResolvedValue([{ workflowId: 'wf1' } as never]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({ resourceId: 'wf1', resourceName: 'My Workflow' });
@@ -76,7 +93,7 @@ describe('FavoritesService', () => {
 			// Not in accessible workflows via SharedWorkflow
 			sharedWorkflowRepository.find.mockResolvedValue([]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(0);
 		});
@@ -86,7 +103,7 @@ describe('FavoritesService', () => {
 			repo.findByUser.mockResolvedValue([favorite]);
 			projectRepository.getAccessibleProjects.mockResolvedValue([]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
 			expect(result).toHaveLength(0);
@@ -99,7 +116,7 @@ describe('FavoritesService', () => {
 				{ id: 'proj1', name: 'My Project' } as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({ resourceId: 'proj1', resourceName: 'My Project' });
@@ -112,7 +129,7 @@ describe('FavoritesService', () => {
 				{ id: 'proj1', name: 'My Project' } as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(0);
 		});
@@ -127,7 +144,7 @@ describe('FavoritesService', () => {
 				{ id: 'dt1', name: 'My Table', projectId: 'proj1' } as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({
@@ -147,7 +164,7 @@ describe('FavoritesService', () => {
 				{ id: 'dt1', name: 'My Table', projectId: 'proj-other' } as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(0);
 		});
@@ -166,7 +183,7 @@ describe('FavoritesService', () => {
 				} as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toMatchObject({
@@ -190,7 +207,7 @@ describe('FavoritesService', () => {
 				} as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(0);
 		});
@@ -209,7 +226,7 @@ describe('FavoritesService', () => {
 				} as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(0);
 		});
@@ -233,9 +250,97 @@ describe('FavoritesService', () => {
 				{ id: 'folder1', name: 'My Folder', homeProject: { id: 'proj1' } } as never,
 			]);
 
-			const result = await service.getEnrichedFavorites('user1');
+			const result = await service.getEnrichedFavorites(makeUser());
 
 			expect(result).toHaveLength(4);
+		});
+
+		describe('global admin access', () => {
+			it('should enrich workflow favorites without explicit project membership', async () => {
+				const favorite = makeUserFavorite({ resourceId: 'wf1', resourceType: 'workflow' });
+				repo.findByUser.mockResolvedValue([favorite]);
+				projectRepository.getAccessibleProjects.mockResolvedValue([]);
+				workflowRepository.findByIds.mockResolvedValue([
+					{ id: 'wf1', name: 'My Workflow' } as never,
+				]);
+
+				const result = await service.getEnrichedFavorites(makeAdmin());
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ resourceId: 'wf1', resourceName: 'My Workflow' });
+				expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+			});
+
+			it('should enrich project favorites without explicit project membership', async () => {
+				const favorite = makeUserFavorite({ resourceId: 'proj-other', resourceType: 'project' });
+				repo.findByUser.mockResolvedValue([favorite]);
+				projectRepository.getAccessibleProjects.mockResolvedValue([]);
+				projectRepository.find.mockResolvedValue([
+					{ id: 'proj-other', name: 'Other Project' } as never,
+				]);
+
+				const result = await service.getEnrichedFavorites(makeAdmin());
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					resourceId: 'proj-other',
+					resourceName: 'Other Project',
+				});
+			});
+
+			it('should enrich dataTable favorites without explicit project membership', async () => {
+				const favorite = makeUserFavorite({ resourceId: 'dt1', resourceType: 'dataTable' });
+				repo.findByUser.mockResolvedValue([favorite]);
+				projectRepository.getAccessibleProjects.mockResolvedValue([]);
+				dataTableRepository.find.mockResolvedValue([
+					{ id: 'dt1', name: 'My Table', projectId: 'proj-other' } as never,
+				]);
+
+				const result = await service.getEnrichedFavorites(makeAdmin());
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					resourceId: 'dt1',
+					resourceName: 'My Table',
+					resourceProjectId: 'proj-other',
+				});
+			});
+
+			it('should enrich folder favorites without explicit project membership', async () => {
+				const favorite = makeUserFavorite({ resourceId: 'folder1', resourceType: 'folder' });
+				repo.findByUser.mockResolvedValue([favorite]);
+				projectRepository.getAccessibleProjects.mockResolvedValue([]);
+				folderRepository.find.mockResolvedValue([
+					{
+						id: 'folder1',
+						name: 'My Folder',
+						homeProject: { id: 'proj-other' },
+					} as never,
+				]);
+
+				const result = await service.getEnrichedFavorites(makeAdmin());
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({
+					resourceId: 'folder1',
+					resourceName: 'My Folder',
+					resourceProjectId: 'proj-other',
+				});
+			});
+
+			it('should not query for additional projects when admin already has membership', async () => {
+				const favorite = makeUserFavorite({ resourceId: 'proj1', resourceType: 'project' });
+				repo.findByUser.mockResolvedValue([favorite]);
+				projectRepository.getAccessibleProjects.mockResolvedValue([
+					{ id: 'proj1', name: 'My Project' } as never,
+				]);
+
+				const result = await service.getEnrichedFavorites(makeAdmin());
+
+				expect(projectRepository.find).not.toHaveBeenCalled();
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ resourceId: 'proj1', resourceName: 'My Project' });
+			});
 		});
 	});
 

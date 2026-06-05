@@ -1,4 +1,4 @@
-import type { SharedWorkflow, User } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -7,6 +7,7 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
 @Service()
@@ -28,24 +29,7 @@ export class WorkflowFinderService {
 			em?: EntityManager;
 		} = {},
 	) {
-		let where: FindOptionsWhere<SharedWorkflow> = {};
-
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const [projectRoles, workflowRoles] = await Promise.all([
-				this.roleService.rolesWithScope('project', scopes, options.em),
-				this.roleService.rolesWithScope('workflow', scopes, options.em),
-			]);
-
-			where = {
-				role: In(workflowRoles),
-				project: {
-					projectRelations: {
-						role: In(projectRoles),
-						userId: user.id,
-					},
-				},
-			};
-		}
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
@@ -60,6 +44,52 @@ export class WorkflowFinderService {
 		}
 
 		return sharedWorkflow.workflow;
+	}
+
+	/**
+	 * Read-access check that projects only `versionId` and `updatedAt` from the
+	 * workflow row — skips the heavyweight `nodes`/`connections`/`settings` JSON
+	 * columns. Use for cache-validity checks where the body isn't needed.
+	 */
+	async findWorkflowHeadForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+	): Promise<{ versionId: string; updatedAt: Date } | null> {
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
+		const sw = await this.sharedWorkflowRepository.findOne({
+			where: { workflowId, ...where },
+			relations: { workflow: true },
+			select: {
+				workflowId: true,
+				workflow: { id: true, versionId: true, updatedAt: true },
+			},
+		});
+		if (!sw?.workflow) return null;
+		return { versionId: sw.workflow.versionId, updatedAt: sw.workflow.updatedAt };
+	}
+
+	private async buildSingleWorkflowReadWhere(
+		user: User,
+		scopes: Scope[],
+		em?: EntityManager,
+	): Promise<FindOptionsWhere<SharedWorkflow>> {
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
+
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', scopes, em),
+			this.roleService.rolesWithScope('workflow', scopes, em),
+		]);
+
+		return {
+			role: In(workflowRoles),
+			project: {
+				projectRelations: {
+					role: In(projectRoles),
+					userId: user.id,
+				},
+			},
+		};
 	}
 
 	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
@@ -122,6 +152,45 @@ export class WorkflowFinderService {
 		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
 	}
 
+	async findWorkflowsByIdsForUser(
+		workflowIds: string[],
+		user: User,
+		scopes: Scope[],
+		options: { includeParentFolder?: boolean } = {},
+	): Promise<WorkflowEntity[]> {
+		if (workflowIds.length === 0) return [];
+
+		const where = await this.findAllWhere(user, scopes);
+		const sharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: { ...where, workflowId: In(workflowIds) },
+			relations: { workflow: { parentFolder: options.includeParentFolder } },
+		});
+
+		// A workflow may appear via several share paths (project membership +
+		// direct share); dedupe so callers see one entity per id.
+		const seen = new Set<string>();
+		const workflows: WorkflowEntity[] = [];
+		for (const { workflow } of sharedWorkflows) {
+			if (seen.has(workflow.id)) continue;
+			seen.add(workflow.id);
+			workflows.push(workflow);
+		}
+		return workflows;
+	}
+
+	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {
+		return await userHasScopes(user, scopes, false, { projectId });
+	}
+
+	async findProjectIdForFolder(folderId: string): Promise<string | null> {
+		const folder = await this.folderRepository.findOne({
+			where: { id: folderId },
+			relations: { homeProject: true },
+		});
+
+		return folder?.homeProject.id ?? null;
+	}
+
 	async findAllWorkflowIdsForUser(
 		user: User,
 		scopes: Scope[],
@@ -134,7 +203,7 @@ export class WorkflowFinderService {
 			where,
 		});
 
-		return sharedWorkflows.map(({ workflowId }) => workflowId);
+		return Array.from(new Set(sharedWorkflows.map(({ workflowId }) => workflowId)));
 	}
 
 	async findAllWorkflowsForUser(

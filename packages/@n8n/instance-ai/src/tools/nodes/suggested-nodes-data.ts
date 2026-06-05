@@ -22,7 +22,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 		nodes: [
 			{
 				name: '@n8n/n8n-nodes-langchain.chatTrigger',
-				note: 'When loadPreviousSession is set to memory, the downstream Agent must also have its own memory subnode to maintain conversation context during processing',
+				note: "Do not attach a memory subnode to the Chat Trigger to give the Agent memory — that's the Agent's job. See the loadPreviousSession builderHint for when the trigger itself needs memory.",
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.agent',

@@ -61,7 +61,7 @@ describe('CredentialCheckProxyService', () => {
 		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
 
 		mockExecutionContextService = {
-			decryptExecutionContext: jest.fn().mockReturnValue(plaintextContext),
+			decryptExecutionContext: jest.fn().mockResolvedValue(plaintextContext),
 		} as unknown as jest.Mocked<ExecutionContextService>;
 
 		mockOauthService = {
@@ -166,7 +166,7 @@ describe('CredentialCheckProxyService', () => {
 		});
 
 		it('should throw when no credential context in execution context', async () => {
-			mockExecutionContextService.decryptExecutionContext.mockReturnValue({
+			mockExecutionContextService.decryptExecutionContext.mockResolvedValue({
 				version: 1,
 				establishedAt: Date.now(),
 				source: 'webhook',
@@ -230,7 +230,7 @@ describe('CredentialCheckProxyService', () => {
 		});
 
 		it('should pass empty authorizationHeader when identity is missing', async () => {
-			mockExecutionContextService.decryptExecutionContext.mockReturnValue({
+			mockExecutionContextService.decryptExecutionContext.mockResolvedValue({
 				version: 1,
 				establishedAt: Date.now(),
 				source: 'webhook',

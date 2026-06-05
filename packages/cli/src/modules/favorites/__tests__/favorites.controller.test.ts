@@ -21,7 +21,7 @@ describe('FavoritesController', () => {
 
 			const result = await controller.getFavorites(req);
 
-			expect(favoritesService.getEnrichedFavorites).toHaveBeenCalledWith('user1');
+			expect(favoritesService.getEnrichedFavorites).toHaveBeenCalledWith(req.user);
 			expect(result).toBe(favorites);
 		});
 	});

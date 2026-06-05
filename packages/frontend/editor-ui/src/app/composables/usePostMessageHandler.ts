@@ -19,24 +19,20 @@ import { buildExecutionResponseFromSchema } from '@/features/execution/execution
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
-	type useWorkflowDocumentStore,
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 interface PostMessageHandlerDeps {
-	workflowState: WorkflowState;
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
-export function usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-}: PostMessageHandlerDeps) {
+export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -78,10 +74,11 @@ export function usePostMessageHandler({
 		projectId?: string;
 		tidyUp?: boolean;
 		suppressNotifications?: boolean;
+		allowErrorNotifications?: boolean;
 	}) {
-		if (json.suppressNotifications) {
-			uiStore.setNotificationsSuppressed(true);
-		}
+		uiStore.setNotificationsSuppressed(json.suppressNotifications === true, {
+			allowErrors: json.allowErrorNotifications === true,
+		});
 
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);
@@ -104,7 +101,10 @@ export function usePostMessageHandler({
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			workflowState.setActiveExecutionId(null);
+			const workflowDocumentStore = currentWorkflowDocumentStore.value;
+			if (workflowDocumentStore) {
+				useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setActiveExecutionId(null);
+			}
 		}
 
 		if (json.tidyUp === true) {
@@ -137,9 +137,8 @@ export function usePostMessageHandler({
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
-			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(
-				createWorkflowDocumentId(wfId),
-			);
+			const workflowDocumentId = createWorkflowDocumentId(wfId);
+			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(workflowDocumentId);
 		}
 
 		void nextTick(() => {
@@ -201,8 +200,13 @@ export function usePostMessageHandler({
 
 		await importWorkflowExact(json);
 
-		workflowState.setWorkflowExecutionData(data);
-		currentWorkflowDocumentStore.value?.setPinData({});
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+		if (workflowDocumentStore) {
+			useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setWorkflowExecutionData(
+				data,
+			);
+			workflowDocumentStore.setPinData({});
+		}
 
 		canvasStore.stopLoading();
 
@@ -248,10 +252,14 @@ export function usePostMessageHandler({
 						type: 'error',
 					});
 				}
+			} else if (json?.command === 'resetWorkflow') {
+				resetWorkspace();
 			} else if (json?.command === 'setActiveExecution') {
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
 				)) as ExecutionSummary;
+			} else if (json?.command === 'fitView') {
+				canvasEventBus.emit('fitView');
 			} else if (json?.command === 'executionEvent') {
 				// Relay execution push events from parent into the iframe's push pipeline.
 				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch

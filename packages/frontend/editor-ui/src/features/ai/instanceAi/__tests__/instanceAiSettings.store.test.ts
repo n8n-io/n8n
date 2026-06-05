@@ -1,8 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import type { FrontendModuleSettings } from '@n8n/api-types';
+import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -19,8 +17,17 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
-		addEventListener: vi.fn(),
+		addEventListener: vi.fn().mockReturnValue(() => {}),
+		isConnected: false,
 	}),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@n8n/i18n', () => ({
+	i18n: { baseText: (key: string) => key },
 }));
 
 const mockFetchSettings = vi.fn();
@@ -29,6 +36,8 @@ const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
 const mockFetchModelCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
+const mockCreateGatewayLink = vi.fn();
+const mockDisconnectGatewaySession = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
@@ -39,20 +48,45 @@ vi.mock('../instanceAi.settings.api', () => ({
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
 }));
 
+const mockGetGatewayStatus = vi.fn();
 vi.mock('../instanceAi.api', () => ({
-	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
+	createGatewayLink: (...args: unknown[]) => mockCreateGatewayLink(...args),
+	disconnectGatewaySession: (...args: unknown[]) => mockDisconnectGatewaySession(...args),
+	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
 }));
 
-vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: vi.fn().mockReturnValue(false),
-}));
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+
+type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
+
+function makeModuleSettings(
+	overrides: Partial<InstanceAiModuleSettings> = {},
+): InstanceAiModuleSettings {
+	return {
+		enabled: true,
+		localGatewayDisabled: false,
+		proxyEnabled: false,
+		cloudManaged: false,
+		sandboxEnabled: true,
+		workflowBuilderAvailable: true,
+		sandboxUnavailableReason: null,
+		...overrides,
+	};
+}
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
-	instanceAi: FrontendModuleSettings['instance-ai'],
+	instanceAi: Partial<InstanceAiModuleSettings>,
 ) {
-	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+	settingsStore.moduleSettings = { 'instance-ai': makeModuleSettings(instanceAi) };
+}
+
+function setUserPreference(
+	store: ReturnType<typeof useInstanceAiSettingsStore>,
+	prefs: Partial<InstanceAiUserPreferencesResponse> | null,
+) {
+	(store as unknown as { preferences: typeof prefs }).preferences = prefs;
 }
 
 describe('useInstanceAiSettingsStore', () => {
@@ -72,7 +106,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: false,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isInstanceAiDisabled).toBe(true);
@@ -83,7 +116,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isInstanceAiDisabled).toBe(false);
@@ -106,7 +138,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isLocalGatewayDisabledByAdmin).toBe(true);
@@ -117,7 +148,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: true } });
@@ -131,7 +161,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isLocalGatewayDisabled).toBe(true);
@@ -142,7 +171,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: true } });
@@ -154,7 +182,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: true,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: true } });
@@ -166,7 +193,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			store.$patch({ preferences: { localGatewayDisabled: false } });
@@ -180,7 +206,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: true,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isProxyEnabled).toBe(true);
@@ -191,7 +216,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isProxyEnabled).toBe(false);
@@ -204,7 +228,6 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: true,
 			});
 			expect(store.isCloudManaged).toBe(true);
@@ -215,10 +238,35 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: true,
 				localGatewayDisabled: false,
 				proxyEnabled: false,
-				optinModalDismissed: false,
 				cloudManaged: false,
 			});
 			expect(store.isCloudManaged).toBe(false);
+		});
+	});
+
+	describe('workflow builder availability', () => {
+		it('returns false when the module settings mark the builder unavailable', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: null,
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(false);
+			expect(store.sandboxUnavailableReason).toBeNull();
+		});
+
+		it('exposes the sandbox unavailable reason from module settings', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: true,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(true);
+			expect(store.sandboxUnavailableReason).toBe('N8N_SANDBOX_SERVICE_URL is required.');
 		});
 	});
 
@@ -264,28 +312,22 @@ describe('useInstanceAiSettingsStore', () => {
 				enabled: false,
 				localGatewayDisabled: false,
 				proxyEnabled: true,
-				optinModalDismissed: false,
 				cloudManaged: true,
 			});
 
 			const adminResponse = {
 				enabled: true,
-				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
 				localGatewayDisabled: false,
-				optinModalDismissed: true,
 			};
 
 			mockUpdateSettings.mockResolvedValue(adminResponse);
@@ -298,6 +340,167 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.cloudManaged).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
+			expect(ms?.sandboxEnabled).toBe(false);
+			expect(ms?.workflowBuilderAvailable).toBe(false);
+			expect(ms?.sandboxUnavailableReason).toBeNull();
+		});
+	});
+
+	describe('connections', () => {
+		it('is empty when the gateway is disabled for the user', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+
+			expect(store.connections).toEqual([]);
+		});
+
+		it('shows a disconnected Computer Use row when enabled but not paired', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0]).toMatchObject({
+				type: 'computer-use',
+				status: 'disconnected',
+			});
+		});
+
+		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+			mockGetGatewayStatus.mockResolvedValue({
+				connected: true,
+				directory: '/Users/test/project',
+				hostIdentifier: 'host-1',
+				toolCategories: [{ name: 'browser', enabled: true }],
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+			await store.fetchGatewayStatus();
+
+			expect(store.connections).toHaveLength(2);
+			expect(store.connections[0]).toMatchObject({
+				type: 'computer-use',
+				name: '/Users/test/project',
+				status: 'connected',
+			});
+			expect(store.connections[1]).toMatchObject({
+				type: 'browser-use',
+				status: 'connected',
+			});
+		});
+
+		it('omits the Browser Use row when connected without a browser tool category', async () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+			mockGetGatewayStatus.mockResolvedValue({
+				connected: true,
+				directory: '/Users/test/project',
+				hostIdentifier: 'host-1',
+				toolCategories: [{ name: 'filesystem', enabled: true }],
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+			await store.fetchGatewayStatus();
+
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0].type).toBe('computer-use');
+		});
+	});
+
+	describe('setup command', () => {
+		beforeEach(() => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				cloudManaged: false,
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('clears stale command state while fetching a new setup command', async () => {
+			let resolveRequest: (value: {
+				command: string;
+				expiresAt: string;
+				ttlSeconds: number;
+			}) => void = () => {};
+			mockCreateGatewayLink.mockReturnValue(
+				new Promise((resolve) => {
+					resolveRequest = resolve;
+				}),
+			);
+			store.setupCommand = 'old command';
+			store.setupCommandExpiresAt = '2026-01-01T00:00:00.000Z';
+			store.setupCommandTtlSeconds = 1;
+			store.setupCommandFetchedAt = 1;
+
+			const request = store.fetchSetupCommand();
+
+			expect(store.setupCommand).toBeNull();
+			expect(store.setupCommandExpiresAt).toBeNull();
+			expect(store.setupCommandTtlSeconds).toBeNull();
+			expect(store.setupCommandFetchedAt).toBeNull();
+
+			resolveRequest({
+				command: 'new command',
+				expiresAt: '2026-01-01T00:05:00.000Z',
+				ttlSeconds: 300,
+			});
+			await request;
+
+			expect(store.setupCommand).toBe('new command');
+		});
+
+		it('uses the request start time as setup command countdown baseline', async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			mockCreateGatewayLink.mockImplementation(async () => {
+				vi.setSystemTime(new Date('2026-01-01T00:00:10.000Z'));
+				return {
+					command: 'command',
+					expiresAt: '2026-01-01T00:05:00.000Z',
+					ttlSeconds: 300,
+				};
+			});
+
+			await store.fetchSetupCommand();
+
+			expect(store.setupCommandFetchedAt).toBe(new Date('2026-01-01T00:00:00.000Z').getTime());
+		});
+
+		it('clears setup command state on disconnect', async () => {
+			mockDisconnectGatewaySession.mockResolvedValue(undefined);
+			store.setupCommand = 'old command';
+			store.setupCommandExpiresAt = '2026-01-01T00:00:00.000Z';
+			store.setupCommandTtlSeconds = 1;
+			store.setupCommandFetchedAt = 1;
+
+			await store.disconnectComputerUse();
+
+			expect(store.setupCommand).toBeNull();
+			expect(store.setupCommandExpiresAt).toBeNull();
+			expect(store.setupCommandTtlSeconds).toBeNull();
+			expect(store.setupCommandFetchedAt).toBeNull();
 		});
 	});
 });

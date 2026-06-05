@@ -11,7 +11,11 @@ import type express from 'express';
 import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	ESamlHttpRequest,
+	PostBindingContext,
+} from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -112,11 +116,11 @@ export class SamlService {
 	 * Returns the decrypted signing private key for internal use (e.g., signing SAML requests).
 	 * @throws BadRequestError if decryption fails
 	 */
-	private getDecryptedSigningPrivateKey(): string | undefined {
+	private async getDecryptedSigningPrivateKey(): Promise<string | undefined> {
 		if (!this.isSignedSamlRequestsEnabled()) return undefined;
 		if (!this._samlPreferences.signingPrivateKey) return undefined;
 		try {
-			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
+			return await this.cipher.decryptV2(this._samlPreferences.signingPrivateKey);
 		} catch {
 			throw new BadRequestError(
 				'Failed to decrypt SAML signing private key. The key may be corrupted.',
@@ -148,7 +152,7 @@ export class SamlService {
 		}
 	}
 
-	private validateSigningKeyConfiguration(prefs: Partial<SamlPreferences>): void {
+	private async validateSigningKeyConfiguration(prefs: Partial<SamlPreferences>): Promise<void> {
 		// Treat the blanking value as "keep existing" — the UI sends it back for redacted fields
 		// Treat empty string as "clear this field"
 		const isClearingKey = prefs.signingPrivateKey === '';
@@ -187,7 +191,7 @@ export class SamlService {
 				? undefined
 				: isNewKey
 					? prefs.signingPrivateKey!
-					: this.getDecryptedSigningPrivateKey();
+					: await this.getDecryptedSigningPrivateKey();
 			const effectiveCert = isClearingCert
 				? undefined
 				: isNewCert
@@ -362,6 +366,7 @@ export class SamlService {
 	): Promise<{
 		authenticatedUser: User | undefined;
 		attributes: SamlUserAttributes;
+		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
 	}> {
 		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
@@ -392,6 +397,7 @@ export class SamlService {
 					return {
 						authenticatedUser: user,
 						attributes,
+						rawAttributes,
 						onboardingRequired: false,
 					};
 				} else {
@@ -402,6 +408,7 @@ export class SamlService {
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired,
 					};
 				}
@@ -413,6 +420,7 @@ export class SamlService {
 					return {
 						authenticatedUser: newUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired: !newUser.firstName || !newUser.lastName,
 					};
 				}
@@ -422,6 +430,7 @@ export class SamlService {
 		return {
 			authenticatedUser: undefined,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		};
 	}
@@ -489,7 +498,7 @@ export class SamlService {
 		broadcastReload: boolean = true,
 	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
-		this.validateSigningKeyConfiguration(prefs);
+		await this.validateSigningKeyConfiguration(prefs);
 		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
 		await this.applyLoadedPreferences(prefs, previousMetadataUrl, tryFallback);
@@ -586,7 +595,9 @@ export class SamlService {
 				this._samlPreferences.signingPrivateKey = undefined;
 			} else if (this.isValidPemPrivateKey(prefs.signingPrivateKey)) {
 				// Plaintext PEM from API → encrypt
-				this._samlPreferences.signingPrivateKey = this.cipher.encrypt(prefs.signingPrivateKey);
+				this._samlPreferences.signingPrivateKey = await this.cipher.encryptV2(
+					prefs.signingPrivateKey,
+				);
 			} else {
 				// Already-encrypted from DB → store as-is
 				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
@@ -713,10 +724,14 @@ export class SamlService {
 			const idp = metadataOverride
 				? await this.createIdentityProviderFromMetadata(metadataOverride)
 				: this.getIdentityProviderInstance();
+			const samlRequest: ESamlHttpRequest = {
+				body: req.body,
+				query: req.query as Record<string, string | undefined>,
+			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				idp,
 				binding,
-				req,
+				samlRequest,
 			);
 		} catch (error) {
 			// throw error;

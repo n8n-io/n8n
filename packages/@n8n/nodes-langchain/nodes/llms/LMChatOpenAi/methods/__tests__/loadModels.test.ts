@@ -1,21 +1,22 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import OpenAI from 'openai';
+import type { Mocked, MockedClass } from 'vitest';
 
 import { searchModels } from '../loadModels';
 
-jest.mock('openai');
+vi.mock('openai');
 
 describe('searchModels', () => {
-	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
-	let mockOpenAI: jest.Mocked<typeof OpenAI>;
+	let mockContext: Mocked<ILoadOptionsFunctions>;
+	let mockOpenAI: Mocked<typeof OpenAI>;
 
 	beforeEach(() => {
 		mockContext = {
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				apiKey: 'test-api-key',
 			}),
-			getNodeParameter: jest.fn().mockReturnValue(''),
-		} as unknown as jest.Mocked<ILoadOptionsFunctions>;
+			getNodeParameter: vi.fn().mockReturnValue(''),
+		} as unknown as Mocked<ILoadOptionsFunctions>;
 
 		// Setup OpenAI mock with required properties
 		const mockOpenAIInstance = {
@@ -24,7 +25,7 @@ describe('searchModels', () => {
 			project: null,
 			_options: {},
 			models: {
-				list: jest.fn().mockResolvedValue({
+				list: vi.fn().mockResolvedValue({
 					data: [
 						{ id: 'gpt-4' },
 						{ id: 'gpt-3.5-turbo' },
@@ -42,13 +43,15 @@ describe('searchModels', () => {
 			},
 		} as unknown as OpenAI;
 
-		(OpenAI as jest.MockedClass<typeof OpenAI>).mockImplementation(() => mockOpenAIInstance);
+		(OpenAI as MockedClass<typeof OpenAI>).mockImplementation(function () {
+			return mockOpenAIInstance;
+		});
 
-		mockOpenAI = OpenAI as jest.Mocked<typeof OpenAI>;
+		mockOpenAI = OpenAI as Mocked<typeof OpenAI>;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return filtered models if custom API endpoint is not provided', async () => {
@@ -85,7 +88,7 @@ describe('searchModels', () => {
 	});
 
 	it('should use default OpenAI URL if no custom URL provided', async () => {
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-api-key',
 		});
 
@@ -100,7 +103,7 @@ describe('searchModels', () => {
 	});
 
 	it('should include all models for custom API endpoints', async () => {
-		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://custom-api.com');
+		mockContext.getNodeParameter = vi.fn().mockReturnValue('https://custom-api.com');
 
 		const result = await searchModels.call(mockContext);
 		expect(result.results).toEqual([
@@ -180,7 +183,7 @@ describe('searchModels', () => {
 		const mockUnsortedInstance = {
 			apiKey: 'test-api-key',
 			models: {
-				list: jest.fn().mockResolvedValue({
+				list: vi.fn().mockResolvedValue({
 					data: [
 						{ id: 'gpt-4' },
 						{ id: 'a-model' },
@@ -192,10 +195,12 @@ describe('searchModels', () => {
 			},
 		} as unknown as OpenAI;
 
-		(OpenAI as jest.MockedClass<typeof OpenAI>).mockImplementation(() => mockUnsortedInstance);
+		(OpenAI as MockedClass<typeof OpenAI>).mockImplementation(function () {
+			return mockUnsortedInstance;
+		});
 
 		// Custom API endpoint to include all models
-		mockContext.getNodeParameter = jest.fn().mockReturnValue('https://custom-api.com');
+		mockContext.getNodeParameter = vi.fn().mockReturnValue('https://custom-api.com');
 
 		const result = await searchModels.call(mockContext);
 

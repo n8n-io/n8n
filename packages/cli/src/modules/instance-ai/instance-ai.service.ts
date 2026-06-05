@@ -1,7 +1,10 @@
 import {
 	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
+	buildProxyHeaders,
 	type InstanceAiAttachment,
+	type InstanceAiAgentNode,
+	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 	type InstanceAiGatewayCapabilities,
@@ -9,49 +12,62 @@ import {
 	type ToolCategory,
 	type TaskList,
 } from '@n8n/api-types';
+import type { Message, Workspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
-import type { InstanceAiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
+
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UrlService } from '@/services/url.service';
 import {
 	MAX_STEPS,
 	createInstanceAgent,
 	createAllTools,
-	createMemory,
 	createSandbox,
 	createWorkspace,
+	createLazyRuntimeWorkspace,
+	createLazyWorkspaceRuntimeSkillSource,
+	createScopedWorkspace,
+	setupSandboxWorkspace,
+	getPromptWorkspaceRoot,
+	getWorkspaceRoot,
+	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
+	createInternalOperationTraceContext,
+	continueInstanceAiTraceContext,
+	createInstanceAiLivenessPolicyConfig,
+	InstanceAiLivenessPolicy,
 	McpClientManager,
-	BuilderSandboxFactory,
-	SnapshotManager,
 	createDomainAccessTracker,
+	createSubAgentResourceId,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
 	classifyAttachments,
 	buildAttachmentManifest,
-	isStructuredAttachment,
+	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
-	MastraTaskStorage,
+	InstanceAiTerminalResponseGuard,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
+	TerminalOutcomeStorage,
 	applyPlannedTaskPermissions,
+	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
 	resumeAgentRun,
 	RunStateRegistry,
-	startBuildWorkflowAgentTask,
-	startDataTableAgentTask,
 	startDetachedDelegateTask,
-	startResearchAgentTask,
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
 	patchThread,
 	type ConfirmationData,
+	type BuiltMemory,
 	type DomainAccessTracker,
+	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
@@ -61,16 +77,27 @@ import {
 	type PlannedTaskRecord,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
+	type SpawnBackgroundTaskResult,
 	type ServiceProxyConfig,
 	type StreamableAgent,
+	type SuspendedRunState,
+	type TerminalOutcome,
+	type TerminalResponseDecision,
+	type TerminalResponseStatus,
+	type WorkSummary,
+	type WorkflowBuildOutcome,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
+	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
@@ -78,33 +105,295 @@ import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry } from './filesystem';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
-import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { InstanceAiCompactionService } from './compaction.service';
-import { ProxyTokenManager } from './proxy-token-manager';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
+import { InstanceAiMcpRegistryService } from './mcp';
+import {
+	buildInstanceAiRunTraceMetadata,
+	type InstanceAiRunTraceMetadataOptions,
+} from './run-trace-metadata';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function isTelemetryConfigurableAgent(
+	agent: unknown,
+): agent is { telemetry: (telemetry: unknown) => void } {
+	return (
+		typeof agent === 'object' &&
+		agent !== null &&
+		typeof Reflect.get(agent, 'telemetry') === 'function'
+	);
+}
+
+const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
+
+/**
+ * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
+ * processResumedStream promises to drain after their abortControllers fire.
+ * Sized well below n8n's `gracefulShutdownTimeoutInS` (30s default) so a
+ * stuck agent can't burn the whole budget here.
+ */
+const INSTANCE_AI_SHUTDOWN_DRAIN_TIMEOUT_MS = 5 * 1000;
+
+function isTextMessagePart(part: unknown): part is { type: 'text'; text: string } {
+	return (
+		typeof part === 'object' &&
+		part !== null &&
+		'type' in part &&
+		part.type === 'text' &&
+		'text' in part &&
+		typeof part.text === 'string'
+	);
+}
+
+const ORCHESTRATOR_AGENT_ID = 'agent-001';
+
+type PlannedBuildFollowUp = {
+	isPlannedBuildFollowUp: true;
+	buildTaskId: string;
+	workItemId: string;
+	savedOutcome?: WorkflowBuildOutcome;
+};
+
+type RuntimeSandboxEntry = {
+	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
+	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
+	setupComplete: boolean;
+	setupPromise: Promise<void> | undefined;
+	expiresAt: number;
+	cleanupTimer?: ReturnType<typeof setTimeout>;
+};
+
+const SANDBOX_NAME_MAX_LEN = 63;
+const SANDBOX_LABEL_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
+const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
+
+function slugifySandboxName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+function slugifySandboxLabel(value: string, maxLen: number): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, maxLen)
+		.replace(/[-.]+$/, '');
+}
+
+function getThreadScopedSandboxName(threadId: string): string {
+	return `instance-ai-thread-${threadId}`;
+}
+
+function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
+	const parts: string[] = [];
+	if (namePrefix) {
+		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
+		if (prefixSlug) parts.push(prefixSlug);
+	}
+	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
+	if (threadSlug) parts.push(threadSlug);
+	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
+	if (!name) throw new UnexpectedError('Failed to build thread-scoped sandbox name');
+	return name;
+}
+
+function buildThreadScopedSandboxLabels(
+	threadId: string,
+	namePrefix: string | undefined,
+): Record<string, string> {
+	const baseName = getThreadScopedSandboxName(threadId);
+	const labels: Record<string, string> = {
+		'n8n-builder': slugifySandboxLabel(baseName, SANDBOX_LABEL_MAX_LEN),
+		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
+	};
+	if (namePrefix) labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
+	return labels;
+}
+
+function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
+	if (!config.enabled || config.provider !== 'daytona') return config;
+
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
+	return {
+		...config,
+		id: name,
+		name,
+		labels: {
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix),
+			...config.labels,
+		},
+	};
+}
+
+function getUserFacingErrorMessage(error: unknown): string {
+	if (error instanceof UserError) {
+		return error.message;
+	}
+
+	if (error instanceof OperationalError) {
+		return 'I hit an operational error before I could finish that response. Please try again.';
+	}
+
+	if (error instanceof UnexpectedError) {
+		return 'Something went wrong before I could finish that response. Please try again.';
+	}
+
+	return 'Something went wrong before I could finish that response. Please try again.';
+}
+
+function getBackgroundOutcomeResponseId(outcome: TerminalOutcome): string {
+	return `background-outcome:${outcome.id}`;
+}
+
+function createTerminalOutcomeAgentTree(
+	outcome: TerminalOutcome,
+	responseId: string,
+): InstanceAiAgentNode {
+	return {
+		agentId: ORCHESTRATOR_AGENT_ID,
+		role: 'orchestrator',
+		status:
+			outcome.status === 'cancelled'
+				? 'cancelled'
+				: outcome.status === 'failed'
+					? 'error'
+					: 'completed',
+		textContent: outcome.userFacingMessage,
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [{ type: 'text', content: outcome.userFacingMessage, responseId }],
+	};
+}
+
+function appendTerminalOutcomeToAgentTree(
+	tree: InstanceAiAgentNode,
+	outcome: TerminalOutcome,
+	responseId: string,
+): { tree: InstanceAiAgentNode; appended: boolean } {
+	const text = outcome.userFacingMessage.trim();
+	if (!text) return { tree, appended: false };
+
+	const alreadyInTimeline = tree.timeline.some(
+		(entry) => entry.type === 'text' && entry.responseId === responseId,
+	);
+	if (alreadyInTimeline) {
+		return { tree, appended: false };
+	}
+
+	return {
+		appended: true,
+		tree: {
+			...tree,
+			textContent: tree.textContent ? `${tree.textContent}\n\n${outcome.userFacingMessage}` : text,
+			timeline: [
+				...tree.timeline,
+				{ type: 'text', content: outcome.userFacingMessage, responseId },
+			],
+		},
+	};
 }
 
 function createInertAbortSignal(): AbortSignal {
 	return new AbortController().signal;
 }
 
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
+function getAbortReason(signal: AbortSignal): string {
+	const reason = (signal as AbortSignal & { reason?: unknown }).reason;
+	if (
+		typeof reason === 'object' &&
+		reason !== null &&
+		'name' in reason &&
+		reason.name === 'AbortError'
+	) {
+		return 'user_cancelled';
+	}
+	if (reason instanceof Error) return reason.message;
+	return typeof reason === 'string' ? reason : 'user_cancelled';
+}
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith
 // upserts the record (thumbs-down → later text comment = one record, not two).
 const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
+
+function stringifyForContextValue(value: unknown): string {
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+const PLANNED_TASK_CONTEXT_VALUE_LIMIT = 1_500;
+
+function truncateContextValue(value: string): string {
+	if (value.length <= PLANNED_TASK_CONTEXT_VALUE_LIMIT) return value;
+	return `${value.slice(0, PLANNED_TASK_CONTEXT_VALUE_LIMIT)}...`;
+}
+
+function buildPlannedTaskConversationContext(
+	task: PlannedTaskRecord,
+	graph: PlannedTaskGraph | undefined,
+): string | undefined {
+	if (!graph) return undefined;
+
+	const parts: string[] = [
+		`Approved plan task: ${task.title}`,
+		`Task id: ${task.id}`,
+		`Task kind: ${task.kind}`,
+		`Plan run id: ${graph.planRunId}`,
+	];
+
+	if (task.workflowId) {
+		parts.push(`Target workflow id: ${task.workflowId}`);
+	}
+
+	const dependencies = graph.tasks.filter((candidate) => task.deps.includes(candidate.id));
+	if (dependencies.length > 0) {
+		parts.push('Completed dependency context:');
+		for (const dependency of dependencies) {
+			const dependencyParts = [
+				`- ${dependency.id} (${dependency.kind}, ${dependency.status}): ${dependency.title}`,
+			];
+			if (dependency.result) {
+				dependencyParts.push(`result=${truncateContextValue(dependency.result)}`);
+			}
+			if (dependency.error) {
+				dependencyParts.push(`error=${truncateContextValue(dependency.error)}`);
+			}
+			if (dependency.outcome) {
+				dependencyParts.push(
+					`outcome=${truncateContextValue(stringifyForContextValue(dependency.outcome))}`,
+				);
+			}
+			parts.push(dependencyParts.join(' '));
+		}
+	}
+
+	return parts.join('\n');
+}
 
 /**
  * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
@@ -128,7 +417,7 @@ function getProxyFetch(): typeof globalThis.fetch | undefined {
 }
 
 interface MessageTraceFinalization {
-	status: 'completed' | 'cancelled' | 'error';
+	status: 'completed' | 'cancelled' | 'error' | 'suspended';
 	outputText?: string;
 	reason?: string;
 	modelId?: ModelConfig;
@@ -137,15 +426,94 @@ interface MessageTraceFinalization {
 	error?: string;
 }
 
+type OrchestratorResumeReason =
+	| 'approval'
+	| 'background_task_completed'
+	| 'planned_checkpoint'
+	| 'replan';
+
+/** A pending-confirmation orphan that's already passed the `canResumeOrphan`
+ *  predicate — i.e. has the SDK-side pointers (`toolCallId`, `checkpointKey`)
+ *  needed to rebuild a suspended run from the checkpoint blob. */
+type ResumableOrphan = NonNullable<
+	Awaited<ReturnType<InstanceAiPendingConfirmationRepository['claim']>>
+> & {
+	toolCallId: string;
+	checkpointKey: string;
+};
+
+/** Result of `rebuildSuspendedRunFromCheckpoint`. Each failure variant
+ *  corresponds to one rebuild step the caller can log distinctly; `ready`
+ *  carries the fully-assembled state for `runState.suspendRun`. */
+type RebuildSuspendedRunOutcome =
+	| { kind: 'ready'; state: SuspendedRunState<User> }
+	| { kind: 'no-user' }
+	| { kind: 'no-checkpoint'; error?: unknown }
+	| { kind: 'env-failure'; error: unknown }
+	| { kind: 'agent-failure'; error: unknown };
+
+/** Collapse the frontend's typed confirmation union into the flat payload
+ *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
+ *  relevant to the submitted kind are populated — everything else stays undefined.
+ *
+ *  Most kinds carry implicit approval (you wouldn't be submitting answers,
+ *  selected credentials, or a setup action otherwise) — only `approval`,
+ *  `domainAccessDeny`, and `planDeny` carry a denial path. */
+function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
+	switch (request.kind) {
+		case 'approval':
+			return { approved: request.approved, userInput: request.userInput };
+		case 'domainAccessApprove':
+			return { approved: true, domainAccessAction: request.domainAccessAction };
+		case 'domainAccessDeny':
+			return { approved: false };
+		case 'planDeny':
+			return { approved: false, denied: true };
+		case 'questions':
+			return { approved: true, answers: request.answers };
+		case 'credentialSelection':
+			return { approved: true, credentials: request.credentials };
+		case 'resourceDecision':
+			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'setupWorkflowApply':
+			return {
+				approved: true,
+				action: 'apply',
+				nodeCredentials: request.nodeCredentials,
+				nodeParameters: request.nodeParameters,
+			};
+		case 'setupWorkflowTestTrigger':
+			return {
+				approved: true,
+				action: 'test-trigger',
+				testTriggerNode: request.testTriggerNode,
+				nodeCredentials: request.nodeCredentials,
+				nodeParameters: request.nodeParameters,
+			};
+	}
+}
+
 @Service()
 export class InstanceAiService {
-	private readonly mcpClientManager = new McpClientManager();
+	private _mcpClientManager?: McpClientManager;
+	private readonly _ssrfProtectionConfig: SsrfProtectionConfig;
+	private readonly _ssrfProtectionService: SsrfProtectionService;
+	private get mcpClientManager(): McpClientManager {
+		if (!this._mcpClientManager) {
+			this._mcpClientManager = new McpClientManager(
+				this._ssrfProtectionConfig.enabled ? this._ssrfProtectionService : undefined,
+			);
+		}
+		return this._mcpClientManager;
+	}
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
 	private readonly oauth2CallbackUrl: string;
 
 	private readonly webhookBaseUrl: string;
+
+	private readonly formBaseUrl: string;
 
 	private readonly runState = new RunStateRegistry<User>();
 
@@ -163,14 +531,15 @@ export class InstanceAiService {
 			traceSlug?: string;
 		}
 	>();
-	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
-	private readonly sandboxes = new Map<
-		string,
-		{
-			sandbox: Awaited<ReturnType<typeof createSandbox>>;
-			workspace: ReturnType<typeof createWorkspace>;
-		}
-	>();
+	/**
+	 * Shared runtime workspaces keyed by thread ID. This is only an in-process
+	 * cache; deterministic sandbox names let providers reconnect after restart
+	 * or from another main when the thread uses the workspace again.
+	 */
+	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
+
+	/** In-flight runtime workspace creations keyed by thread ID. */
+	private readonly sandboxCreations = new Map<string, Promise<RuntimeSandboxEntry | undefined>>();
 
 	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
 	private readonly gatewayRegistry = new LocalGatewayRegistry();
@@ -184,8 +553,19 @@ export class InstanceAiService {
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
 
-	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
-	private confirmationTimeoutInterval?: NodeJS.Timeout;
+	/**
+	 * Checkpoint re-entries that could not fire when their parent-tagged child
+	 * settled (an orchestrator run was live, or other parent siblings were
+	 * still running). Drained from the post-run cleanup path so the checkpoint
+	 * is never left orphaned.
+	 */
+	private readonly pendingCheckpointReentries = new Map<string, Set<string>>();
+
+	private readonly pendingTerminalOutcomes = new Map<string, TerminalOutcome>();
+
+	private terminalOutcomeStorage?: TerminalOutcomeStorage;
+
+	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
@@ -198,53 +578,120 @@ export class InstanceAiService {
 
 	private readonly logger: Logger;
 
+	private checkpointPruneTimer: NodeJS.Timeout | undefined;
+
+	private checkpointPruningStopped = true;
+
+	/**
+	 * In-flight `executeRun` / `processResumedStream` promises. Tracked so
+	 * `shutdown()` can drain them before n8n closes the DB connection — the
+	 * SDK's abort-driven `cleanupRun` and `executeRun`'s `finally` block
+	 * both write to the DB during teardown, and racing the connection close
+	 * surfaces as `DriverAlreadyReleasedError` for callers.
+	 */
+	private readonly inFlightExecutions = new Set<Promise<unknown>>();
+
+	/**
+	 * Run IDs whose post-stream terminal handling should be skipped when their
+	 * abort fires. Populated by `shutdown()` for runs that were sitting on an
+	 * inline HITL confirmation, and drained by `shouldPreserveHitlOnShutdown(runId)`.
+	 */
+	private readonly preserveHitlOnShutdown = new Set<string>();
+
+	/**
+	 * Restart-recovery metadata for runs that haven't yet been persisted by the
+	 * SDK's end-of-turn save. Registered by the run entry point with the chosen
+	 * `messageId` + raw text; consumed by:
+	 *   1. `executeRun`'s streamInput builder, to tag the SDK's message with
+	 *      our id so its eventual end-of-turn save upserts the same row.
+	 *   2. `persistUserMessageOnFirstSuspend`, called from `waitForConfirmation`
+	 *      so an inline HITL that pauses the turn before the SDK can save
+	 *      still leaves the user's prompt in `instance_ai_messages` for
+	 *      restart recovery.
+	 *
+	 * Entries are removed on confirmed DB save and cleared unconditionally in
+	 * `executeRun`'s finally — the SDK's end-of-turn save handles the success
+	 * path, and a mid-turn error means we deliberately don't want a
+	 * half-saved row.
+	 */
+	private readonly userMessagePersistenceByRun = new Map<
+		string,
+		{ userId: string; message: { id: string; text: string } }
+	>();
+
 	constructor(
 		logger: Logger,
 		globalConfig: GlobalConfig,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly compositeStore: TypeORMCompositeStore,
-		private readonly compactionService: InstanceAiCompactionService,
+		private readonly memoryService: InstanceAiMemoryService,
+		private readonly agentMemory: TypeORMAgentMemory,
+		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly telemetry: Telemetry,
+		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
+		private readonly userRepository: UserRepository,
+		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly errorReporter: ErrorReporter,
+		ssrfProtectionConfig: SsrfProtectionConfig,
+		ssrfProtectionService: SsrfProtectionService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
+		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
+			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
+		});
+		this.liveness = new InstanceAiLivenessService<SuspendedRunState<User>>({
+			policy: new InstanceAiLivenessPolicy(livenessPolicyConfig),
+			backgroundTaskIdleTimeoutMs: livenessPolicyConfig.backgroundTaskIdleTimeoutMs,
+			runState: this.runState,
+			backgroundTasks: this.backgroundTasks,
+			eventBus: this.eventBus,
+			logger: this.logger,
+			finalizeCancelledSuspendedRun: (suspended, reason) => {
+				void this.finalizeCancelledSuspendedRun(suspended, reason);
+			},
+			onPendingConfirmationRejected: (requestId) => {
+				void this.dropPendingConfirmation(requestId);
+			},
+		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
-		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
-		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
+		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
+		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
 
-		this.startConfirmationTimeoutSweep();
-	}
+		this._ssrfProtectionConfig = ssrfProtectionConfig;
+		this._ssrfProtectionService = ssrfProtectionService;
 
-	private startConfirmationTimeoutSweep(): void {
-		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
-		if (timeoutMs <= 0) return;
-
-		this.confirmationTimeoutInterval = setInterval(() => {
-			const { suspendedThreadIds, confirmationRequestIds } = this.runState.sweepTimedOut(timeoutMs);
-
-			for (const threadId of suspendedThreadIds) {
-				this.logger.debug('Auto-rejecting timed-out suspended run', { threadId });
-				this.cancelRun(threadId);
-			}
-
-			for (const reqId of confirmationRequestIds) {
-				this.logger.debug('Auto-rejecting timed-out sub-agent confirmation', {
-					requestId: reqId,
+		// When the admin changes MCP settings, tear down existing clients so the
+		// next agent run rebuilds them against the new config. In-flight tool
+		// calls on disconnected clients will fail — that's accepted: the
+		// alternative is leaking clients keyed by stale config until shutdown.
+		// We only listen for the MCP-changed flag so unrelated settings saves
+		// don't churn live MCP connections.
+		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
+			if (!mcpSettingsChanged) return;
+			if (!this._mcpClientManager) return;
+			this._mcpClientManager.disconnect().catch((error: unknown) => {
+				this.logger.warn('Failed to disconnect MCP clients after settings change', {
+					error: getErrorMessage(error),
 				});
-				this.runState.rejectPendingConfirmation(reqId);
-			}
-		}, Time.minutes.toMilliseconds);
+			});
+		});
+
+		this.liveness.start();
+		if (this.instanceSettings.isLeader) this.startCheckpointPruning();
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -257,44 +704,37 @@ export class InstanceAiService {
 			n8nSandboxServiceApiKey,
 			sandboxImage,
 			sandboxTimeout,
+			sandboxNamePrefix,
+			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
+		const provider = normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
-				provider:
-					sandboxProvider === 'n8n-sandbox'
-						? 'n8n-sandbox'
-						: sandboxProvider === 'daytona'
-							? 'daytona'
-							: 'local',
+				provider,
 				timeout: sandboxTimeout,
 			};
 		}
 
-		if (sandboxProvider === 'daytona') {
+		if (provider === 'daytona') {
 			return {
 				enabled: true,
 				provider: 'daytona',
 				daytonaApiUrl: daytonaApiUrl || undefined,
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
+				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
-			};
-		}
-
-		if (sandboxProvider === 'n8n-sandbox') {
-			return {
-				enabled: true,
-				provider: 'n8n-sandbox',
-				serviceUrl: n8nSandboxServiceUrl || undefined,
-				apiKey: n8nSandboxServiceApiKey || undefined,
-				timeout: sandboxTimeout,
+				namePrefix: sandboxNamePrefix || undefined,
+				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}
 
 		return {
 			enabled: true,
-			provider: 'local',
+			provider: 'n8n-sandbox',
+			serviceUrl: requireN8nSandboxServiceUrl(n8nSandboxServiceUrl),
+			apiKey: n8nSandboxServiceApiKey || undefined,
 			timeout: sandboxTimeout,
 		};
 	}
@@ -311,6 +751,7 @@ export class InstanceAiService {
 					...base,
 					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 					image: proxyConfig.image,
+					logger: this.logger,
 					getAuthToken: async () => {
 						const token = await client.getBuilderApiProxyToken(
 							{ id: user.id },
@@ -330,60 +771,182 @@ export class InstanceAiService {
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-		if (base.provider === 'n8n-sandbox') {
-			const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
-			return {
-				...base,
-				serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
-				apiKey: sandbox.apiKey ?? base.apiKey,
-			};
-		}
-		return base;
+		const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
+		return {
+			...base,
+			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
+			apiKey: sandbox.apiKey ?? base.apiKey,
+		};
 	}
 
-	private async createBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
-		const config = await this.resolveSandboxConfig(user);
-		if (!config.enabled) return undefined;
-
-		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
-		}
-
-		return new BuilderSandboxFactory(config);
-	}
-
-	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
-	private async getOrCreateWorkspace(threadId: string, user: User) {
+	private async getOrCreateWorkspaceEntry(
+		threadId: string,
+		user: User,
+	): Promise<RuntimeSandboxEntry | undefined> {
 		const existing = this.sandboxes.get(threadId);
-		if (existing) return existing;
+		if (existing) {
+			if (this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId)) {
+				this.evictSandboxEntry(threadId, existing);
+			} else {
+				this.touchSandboxEntry(threadId, existing);
+				return existing;
+			}
+		}
 
-		const config = await this.resolveSandboxConfig(user);
-		if (!config.enabled) return undefined;
+		const pending = this.sandboxCreations.get(threadId);
+		if (pending) return await pending;
 
-		const sandbox = await createSandbox(config);
-		const workspace = createWorkspace(sandbox);
-		if (!sandbox || !workspace) return undefined;
+		const creation = this.createWorkspaceEntry(threadId, user);
+		this.sandboxCreations.set(threadId, creation);
+		try {
+			return await creation;
+		} finally {
+			this.sandboxCreations.delete(threadId);
+		}
+	}
 
-		const entry = { sandbox, workspace };
-		this.sandboxes.set(threadId, entry);
+	/** Get or create the shared runtime sandbox + workspace for a thread. */
+	private async getOrCreateWorkspace(
+		threadId: string,
+		user: User,
+		context: InstanceAiContext,
+	): Promise<RuntimeSandboxEntry | undefined> {
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
+		if (entry) await this.ensureWorkspaceSetup(entry, context);
 		return entry;
 	}
 
-	/** Destroy and remove the sandbox for a thread. */
-	private async destroySandbox(threadId: string): Promise<void> {
+	private async ensureWorkspaceSetup(
+		entry: RuntimeSandboxEntry,
+		context: InstanceAiContext,
+	): Promise<void> {
+		if (entry.setupComplete) return;
+
+		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context)
+			.then(() => {
+				entry.setupComplete = true;
+			})
+			.finally(() => {
+				entry.setupPromise = undefined;
+			});
+
+		await entry.setupPromise;
+	}
+
+	private async createWorkspaceEntry(
+		threadId: string,
+		user: User,
+	): Promise<RuntimeSandboxEntry | undefined> {
+		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
+		if (!config.enabled) return undefined;
+
+		const sandbox = await createSandbox(config, {
+			logger: this.logger,
+			errorReporter: this.errorReporter,
+			useSnapshotFallback: true,
+		});
+		const workspace = createWorkspace(sandbox);
+		if (!sandbox || !workspace) return undefined;
+		try {
+			await workspace.init();
+		} catch (error) {
+			try {
+				await workspace.destroy();
+			} catch {
+				// Best-effort cleanup when the sandbox cannot start
+			}
+			throw error;
+		}
+
+		const entry: RuntimeSandboxEntry = {
+			sandbox,
+			workspace,
+			setupComplete: false,
+			setupPromise: undefined,
+			expiresAt: this.nextSandboxExpiry(),
+		};
+		this.sandboxes.set(threadId, entry);
+		this.scheduleSandboxExpiry(threadId, entry);
+		return entry;
+	}
+
+	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxes.get(threadId) !== entry) return;
+
+		this.sandboxes.delete(threadId);
+		if (entry.cleanupTimer) {
+			clearTimeout(entry.cleanupTimer);
+			entry.cleanupTimer = undefined;
+		}
+	}
+
+	/** Destroy and remove the shared runtime workspace for a thread. */
+	private async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
 		if (!entry?.sandbox) return;
 
-		this.sandboxes.delete(threadId);
+		this.evictSandboxEntry(threadId, entry);
 		try {
-			if ('destroy' in entry.sandbox && typeof entry.sandbox.destroy === 'function') {
-				await (entry.sandbox.destroy as () => Promise<void>)();
-			}
+			await entry.workspace?.destroy();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
+				reason,
 				error: error instanceof Error ? error.message : String(error),
 			});
+		}
+	}
+
+	private get sandboxTtlMs(): number {
+		return this.instanceAiConfig?.builderSandboxTtlMs ?? DEFAULT_SANDBOX_TTL_MS;
+	}
+
+	private nextSandboxExpiry(): number {
+		return Date.now() + this.sandboxTtlMs;
+	}
+
+	private isSandboxEntryExpired(entry: RuntimeSandboxEntry): boolean {
+		return this.sandboxTtlMs > 0 && entry.expiresAt <= Date.now();
+	}
+
+	private touchSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxTtlMs <= 0) return;
+		entry.expiresAt = this.nextSandboxExpiry();
+		this.scheduleSandboxExpiry(threadId, entry);
+	}
+
+	private isSandboxInUse(threadId: string): boolean {
+		return Boolean(
+			this.runState.getActiveRunId(threadId) ||
+				this.runState.hasSuspendedRun(threadId) ||
+				this.backgroundTasks.getRunningTasks(threadId).length > 0,
+		);
+	}
+
+	private scheduleSandboxExpiry(threadId: string, entry: RuntimeSandboxEntry): void {
+		if (this.sandboxTtlMs <= 0) return;
+		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
+
+		// Provider auto-stop handles remote Daytona sandboxes. This timer only
+		// drops our in-process cache entry so the map cannot grow indefinitely.
+		const delay = Math.max(0, entry.expiresAt - Date.now());
+		entry.cleanupTimer = setTimeout(() => {
+			const current = this.sandboxes.get(threadId);
+			if (current !== entry) return;
+			if (this.isSandboxInUse(threadId)) {
+				this.touchSandboxEntry(threadId, entry);
+				return;
+			}
+			this.evictSandboxEntry(threadId, entry);
+		}, delay);
+		entry.cleanupTimer.unref();
+	}
+
+	private stopSandboxExpiryTimers(): void {
+		for (const entry of this.sandboxes.values()) {
+			if (!entry.cleanupTimer) continue;
+			clearTimeout(entry.cleanupTimer);
+			entry.cleanupTimer = undefined;
 		}
 	}
 
@@ -404,12 +967,36 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Full model-resolver chain shared between chat and eval paths.
+	 *
+	 * Mirrors the resolution used in `processMessage`:
+	 *   1. AI service proxy (when enabled) — wraps with proxy auth.
+	 *   2. HTTP_PROXY (when set, e.g. e2e tests) — wraps with proxy fetch.
+	 *   3. Env vars / user credential — raw settings resolution.
+	 *
+	 * Call this instead of `settingsService.resolveModelConfig` directly so
+	 * the eval endpoint gets the same working model the chat endpoint uses.
+	 */
+	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			const proxyBaseUrl = client.getApiProxyBaseUrl();
+			const tokenManager = new ProxyTokenManager(async () => {
+				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			});
+			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
+		}
+		const httpProxyModel = await this.resolveHttpProxyModel(user);
+		if (httpProxyModel) return httpProxyModel;
+		return await this.settingsService.resolveModelConfig(user);
+	}
+
+	/**
 	 * Build model config. When the AI service proxy is enabled, returns a native
 	 * Anthropic LanguageModelV2 instance pointing at the proxy.
 	 *
 	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because Mastra's model router forces all configs with a `url` through
-	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
+	 * object because this proxy route needs the native Anthropic transport.
 	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
 	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
 	 *
@@ -422,7 +1009,7 @@ export class InstanceAiService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 	): Promise<ModelConfig> {
-		const modelName = await this.settingsService.resolveModelName(user);
+		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 		const provider = createAnthropic({
 			baseURL: proxyBaseUrl + '/anthropic/v1',
@@ -433,6 +1020,11 @@ export class InstanceAiService {
 				for (const [k, v] of Object.entries(auth)) {
 					headers.set(k, v);
 				}
+				for (const [k, v] of Object.entries(
+					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
+				)) {
+					headers.set(k, v);
+				}
 				return await globalThis.fetch(input, { ...init, headers });
 			},
 		});
@@ -441,8 +1033,7 @@ export class InstanceAiService {
 
 	/**
 	 * When HTTP_PROXY is set (e.g. e2e tests with MockServer), build the model
-	 * with a proxy-aware fetch so the AI SDK routes through the proxy. Mastra's
-	 * ModelRouter doesn't pass `fetch` to providers, so we must do it here.
+	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
 	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
@@ -484,7 +1075,17 @@ export class InstanceAiService {
 		// Fast in-memory check — prevents the read-then-write race within a single process.
 		if (this.creditedThreads.has(threadId)) return;
 
-		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
+		try {
+			thread = await this.threadRepo.findOneBy({ id: threadId });
+		} catch (error) {
+			this.logger.warn('Failed to check Instance AI credit status', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
 		if (!thread) return;
 		if (thread.metadata?.creditCounted) {
 			this.creditedThreads.add(threadId); // Sync in-memory with DB state
@@ -548,6 +1149,18 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext,
 		messageGroupId?: string,
 	): void {
+		const existing = this.traceContextsByRunId.get(runId);
+		if (
+			existing?.tracing.traceWriter &&
+			existing.traceSlug &&
+			existing.tracing.traceWriter !== tracing.traceWriter
+		) {
+			this.traceReplay.preserveWriterEvents(
+				existing.traceSlug,
+				existing.tracing.traceWriter.getEvents(),
+			);
+		}
+
 		this.traceContextsByRunId.set(runId, {
 			threadId,
 			messageGroupId,
@@ -558,6 +1171,65 @@ export class InstanceAiService {
 
 	private getTraceContext(runId: string): InstanceAiTraceContext | undefined {
 		return this.traceContextsByRunId.get(runId)?.tracing;
+	}
+
+	private getTraceContextForContinuation(
+		threadId: string,
+		messageGroupId?: string,
+	): InstanceAiTraceContext | undefined {
+		const entries = [...this.traceContextsByRunId.values()].reverse();
+		const sameGroup =
+			messageGroupId === undefined
+				? undefined
+				: entries.find(
+						(entry) => entry.threadId === threadId && entry.messageGroupId === messageGroupId,
+					)?.tracing;
+		return sameGroup ?? entries.find((entry) => entry.threadId === threadId)?.tracing;
+	}
+
+	private async createOrchestratorResumeTraceContext(options: {
+		baseTracing?: InstanceAiTraceContext;
+		threadId: string;
+		messageId: string;
+		messageGroupId?: string;
+		runId: string;
+		userId: string;
+		modelId?: ModelConfig;
+		input: Record<string, unknown>;
+		proxyConfig?: ServiceProxyConfig;
+		resumeReason: OrchestratorResumeReason;
+		metadata?: Record<string, unknown>;
+	}): Promise<InstanceAiTraceContext | undefined> {
+		const baseTracing =
+			options.baseTracing ??
+			this.getTraceContextForContinuation(options.threadId, options.messageGroupId);
+		if (!baseTracing) return undefined;
+
+		const tracing = await continueInstanceAiTraceContext(baseTracing, {
+			threadId: options.threadId,
+			messageId: options.messageId,
+			messageGroupId: options.messageGroupId,
+			runId: options.runId,
+			userId: options.userId,
+			modelId: options.modelId,
+			input: options.input,
+			proxyConfig: options.proxyConfig ?? baseTracing?.proxyConfig,
+			metadata: {
+				resume_reason: options.resumeReason,
+				agent_id: ORCHESTRATOR_AGENT_ID,
+				...options.metadata,
+			},
+			n8nVersion: N8N_VERSION,
+			workflowSdkVersion: WORKFLOW_SDK_VERSION,
+		});
+
+		if (tracing) {
+			await this.configureTraceReplayMode(tracing);
+			this.storeTraceContext(options.runId, options.threadId, tracing, options.messageGroupId);
+			this.runState.attachTracing(options.threadId, tracing);
+		}
+
+		return tracing;
 	}
 
 	private async configureTraceReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
@@ -613,6 +1285,28 @@ export class InstanceAiService {
 		await this.finalizeMessageTraceRoot(runId, tracing, options);
 	}
 
+	private buildMessageTraceMetadata(
+		threadId: string,
+		runId: string,
+		options: InstanceAiRunTraceMetadataOptions,
+	): Record<string, unknown> {
+		const traceOptions = {
+			status: options.status,
+			...(options.cancellationReason !== undefined
+				? { cancellationReason: options.cancellationReason }
+				: {}),
+			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
+		};
+
+		return {
+			completion_source: 'orchestrator',
+			...buildInstanceAiRunTraceMetadata(
+				this.eventBus.getEventsForRun(threadId, runId),
+				traceOptions,
+			),
+		};
+	}
+
 	private async finalizeRemainingMessageTraceRoots(
 		threadId: string,
 		options: MessageTraceFinalization,
@@ -645,6 +1339,22 @@ export class InstanceAiService {
 		}
 	}
 
+	private deleteTraceContextsForSlug(slug: string): void {
+		for (const [runId, entry] of this.traceContextsByRunId) {
+			if (entry.traceSlug === slug) {
+				releaseTraceClient(entry.tracing.rootRun.traceId);
+				this.traceContextsByRunId.delete(runId);
+			}
+		}
+	}
+
+	clearTraceContextsForTest(): void {
+		for (const entry of this.traceContextsByRunId.values()) {
+			releaseTraceClient(entry.tracing.rootRun.traceId);
+		}
+		this.traceContextsByRunId.clear();
+	}
+
 	private async finalizeDetachedTraceRun(
 		taskId: string,
 		traceContext: InstanceAiTraceContext | undefined,
@@ -658,6 +1368,22 @@ export class InstanceAiService {
 		if (!traceContext) return;
 
 		try {
+			if (
+				traceContext.actorRun.id !== traceContext.rootRun.id &&
+				traceContext.actorRun.endTime === undefined
+			) {
+				await traceContext.finishRun(traceContext.actorRun, {
+					outputs: {
+						status: options.status,
+						...options.outputs,
+					},
+					metadata: {
+						final_status: options.status,
+						...options.metadata,
+					},
+					...(options.error ? { error: options.error } : {}),
+				});
+			}
 			await traceContext.finishRun(traceContext.rootRun, {
 				outputs: {
 					status: options.status,
@@ -686,8 +1412,9 @@ export class InstanceAiService {
 		options: MessageTraceFinalization,
 	): Promise<void> {
 		if (!tracing) return;
+		if (tracing.actorRun.endTime) return;
 
-		const outputs = {
+		const outputs = options.outputs ?? {
 			status: options.status,
 			runId,
 			...(options.outputText ? { response: options.outputText } : {}),
@@ -697,6 +1424,7 @@ export class InstanceAiService {
 		const metadata = {
 			final_status: options.status,
 			...(options.modelId !== undefined ? { model_id: options.modelId } : {}),
+			...options.metadata,
 		};
 
 		try {
@@ -805,31 +1533,50 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		message: string,
-		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
 	): string {
+		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
-			researchMode,
 		});
+
+		// Persist the user's time zone so checkpoint / replan / synthesize
+		// follow-up runs can reinject it into the planner and system prompt
+		// instead of falling back to GENERIC_TIMEZONE.
+		if (timeZone) {
+			this.runState.setTimeZone(threadId, timeZone);
+		}
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
 		}
 
-		void this.executeRun(
+		// Stable id for the user-typed message. Coordinated with the SDK's
+		// end-of-turn save (see executeRun's streamInput construction) so we
+		// end up with exactly one user-message row per turn — and so a save
+		// triggered by `waitForConfirmation` on a suspended HITL turn uses the
+		// same id the SDK would have used for completion.
+		const userMessageId = nanoid();
+		this.userMessagePersistenceByRun.set(runId, {
+			userId: user.id,
+			message: { id: userMessageId, text: message },
+		});
+
+		this.startExecuteRun(
 			user,
 			threadId,
 			runId,
 			message,
 			abortController,
-			researchMode,
 			attachments,
 			messageGroupId,
 			timeZone,
+			false,
+			undefined,
+			undefined,
 		);
 
 		return runId;
@@ -864,7 +1611,7 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
-	cancelRun(threadId: string): void {
+	cancelRun(threadId: string, reason = 'user_cancelled'): void {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
@@ -873,50 +1620,54 @@ export class InstanceAiService {
 				type: 'agent-completed',
 				runId: task.runId,
 				agentId: task.agentId,
-				payload: { role: task.role, result: '', error: 'Cancelled by user' },
+				payload: {
+					role: task.role,
+					result: '',
+					error: reason === INSTANCE_AI_RUN_TIMEOUT_REASON ? 'Timed out' : 'Cancelled by user',
+				},
 			});
-			void this.saveAgentTreeSnapshot(
-				threadId,
-				task.runId,
-				this.dbSnapshotStorage,
-				true,
-				task.messageGroupId,
-			);
+			void this.recordBackgroundTerminalOutcome(task).finally(() => {
+				void this.saveAgentTreeSnapshot(
+					threadId,
+					task.runId,
+					this.dbSnapshotStorage,
+					true,
+					task.messageGroupId,
+				);
+			});
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
 			}
 		}
 
+		// Clean up any awaiting_approval plan graph for this thread. The user
+		// cancelled before approving, so leaving the graph persisted would (a)
+		// cause doSchedulePlannedTasks() to republish the stale checklist on
+		// every later pass via syncPlannedTasksToUi(), and (b) incorrectly let a
+		// future unrelated create-tasks call bypass the replan-only guard via
+		// threadHasExistingPlan(). Only target awaiting_approval — active and
+		// awaiting_replan graphs have their own settlement logic via the
+		// background-task cancellations above.
+		void this.cancelAwaitingApprovalPlan(threadId);
+
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
+			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
 			active.abortController.abort();
+			// inline-kind rows are dropped via the resolve-callback fired by
+			// runState.cancelThread; suspended-kind rows (no in-memory
+			// resolver) get cleaned up here so the index never outlives the run.
+			void this.dropPendingConfirmationsForThread(threadId);
 			return;
 		}
 
 		if (suspended) {
+			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(suspended.runId);
 			suspended.abortController.abort();
-			void this.finalizeRunTracing(suspended.runId, suspended.tracing, {
-				status: 'cancelled',
-				reason: 'user_cancelled',
-			});
-			this.eventBus.publish(threadId, {
-				type: 'run-finish',
-				runId: suspended.runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { status: 'cancelled', reason: 'user_cancelled' },
-			});
-			// Persist the snapshot so the run-finish event (which clears
-			// in-flight tool calls) is reflected in the stored tree.
-			void this.saveAgentTreeSnapshot(threadId, suspended.runId, this.dbSnapshotStorage, true);
-			if (suspended.mastraRunId) {
-				void this.cleanupMastraSnapshots(suspended.mastraRunId);
-			}
-			void this.maybeFinalizeRunTraceRoot(suspended.runId, {
-				status: 'cancelled',
-				reason: 'user_cancelled',
-				metadata: { completion_source: 'orchestrator' },
-			});
+			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
+
+		void this.dropPendingConfirmationsForThread(threadId);
 	}
 
 	/** Send a correction message to a running background task. */
@@ -944,13 +1695,15 @@ export class InstanceAiService {
 		// Persist the updated agent tree so cancelled status survives page reload.
 		// The onSettled callback in executeTask is skipped for aborted tasks,
 		// so we must save the snapshot explicitly here.
-		void this.saveAgentTreeSnapshot(
-			threadId,
-			task.runId,
-			this.dbSnapshotStorage,
-			true,
-			task.messageGroupId,
-		);
+		void this.recordBackgroundTerminalOutcome(task).finally(() => {
+			void this.saveAgentTreeSnapshot(
+				threadId,
+				task.runId,
+				this.dbSnapshotStorage,
+				true,
+				task.messageGroupId,
+			);
+		});
 
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
@@ -967,6 +1720,133 @@ export class InstanceAiService {
 		return cancelled.length;
 	}
 
+	async startStuckBackgroundTaskForTest(
+		user: User,
+		threadId: string,
+	): Promise<{
+		threadId: string;
+		runId: string;
+		messageGroupId: string;
+		taskId: string;
+		agentId: string;
+		timeoutAt: number;
+	}> {
+		const messageId = `msg_${nanoid()}`;
+		const messageText = 'I started a background workflow-builder task.';
+		const { runId, messageGroupId } = this.runState.startRun({ threadId, user });
+		if (!messageGroupId) {
+			throw new UnexpectedError('Failed to create message group for timeout simulation');
+		}
+		const taskId = `task_${nanoid()}`;
+		const agentId = `agent_${nanoid()}`;
+
+		this.eventBus.publish(threadId, {
+			type: 'run-start',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			userId: user.id,
+			payload: { messageId, messageGroupId },
+		});
+		this.eventBus.publish(threadId, {
+			type: 'text-delta',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			responseId: `test-background-start:${runId}`,
+			payload: { text: messageText },
+		});
+		this.eventBus.publish(threadId, {
+			type: 'agent-spawned',
+			runId,
+			agentId,
+			payload: {
+				parentId: ORCHESTRATOR_AGENT_ID,
+				role: 'workflow-builder',
+				tools: [],
+				taskId,
+				kind: 'builder',
+				title: 'Building workflow',
+				subtitle: 'Timeout simulation',
+				goal: 'Simulate a stuck background task timeout',
+			},
+		});
+
+		// Persist the assistant message so the UI can render it after navigation.
+		await this.agentMemory.saveMessages({
+			threadId,
+			resourceId: user.id,
+			messages: [
+				{
+					id: messageId,
+					createdAt: new Date(),
+					type: 'llm',
+					role: 'assistant',
+					content: [{ type: 'text', text: messageText }],
+				},
+			],
+		});
+
+		const outcome = this.backgroundTasks.spawn({
+			taskId,
+			threadId,
+			runId,
+			role: 'workflow-builder',
+			agentId,
+			messageGroupId,
+			run: async (signal) =>
+				await new Promise<string>((resolve) => {
+					signal.addEventListener('abort', () => resolve('aborted'), { once: true });
+				}),
+			onFailed: (task) => {
+				this.eventBus.publish(threadId, {
+					type: 'agent-completed',
+					runId,
+					agentId,
+					payload: {
+						role: task.role,
+						result: '',
+						error: task.error ?? 'Unknown error',
+					},
+				});
+			},
+			onSettled: async (task) => {
+				await this.recordBackgroundTerminalOutcome(task);
+				await this.saveAgentTreeSnapshot(
+					threadId,
+					runId,
+					this.dbSnapshotStorage,
+					true,
+					messageGroupId,
+				);
+			},
+		});
+
+		if (outcome.status !== 'started') {
+			throw new UnexpectedError('Failed to start stuck background task simulation');
+		}
+
+		this.runState.clearActiveRun(threadId);
+		this.eventBus.publish(threadId, {
+			type: 'run-finish',
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			userId: user.id,
+			payload: { status: 'completed' },
+		});
+
+		return {
+			threadId,
+			runId,
+			messageGroupId,
+			taskId,
+			agentId,
+			timeoutAt: outcome.task.lastActivityAt + this.liveness.backgroundTaskIdleTimeoutMs + 1,
+		};
+	}
+
+	async runLivenessSweepForTest(now?: number): Promise<void> {
+		await this.liveness.sweepTimedOutWork(now);
+	}
+
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
 
 	// ── Test-only trace replay API ───────────────────────────────────────────
@@ -979,11 +1859,25 @@ export class InstanceAiService {
 		return this.traceReplay.getEventsWithWriterFallback(slug, this.traceContextsByRunId.values());
 	}
 
+	hasRunningWorkForTest(): boolean {
+		const threadIds = new Set(
+			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
+		);
+
+		for (const threadId of threadIds) {
+			if (this.runState.getActiveRunId(threadId)) return true;
+			if (this.backgroundTasks.getRunningTasks(threadId).length > 0) return true;
+		}
+
+		return false;
+	}
+
 	activateTraceSlug(slug: string): void {
 		this.traceReplay.activateSlug(slug);
 	}
 
 	clearTraceEvents(slug: string): void {
+		this.deleteTraceContextsForSlug(slug);
 		this.traceReplay.clearEvents(slug);
 	}
 
@@ -993,6 +1887,10 @@ export class InstanceAiService {
 
 	generatePairingToken(userId: string): string {
 		return this.gatewayRegistry.generatePairingToken(userId);
+	}
+
+	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
 	}
 
 	getPairingToken(userId: string): string | null {
@@ -1070,8 +1968,10 @@ export class InstanceAiService {
 	 * Must be called when a thread is deleted so the maps don't leak.
 	 */
 	async clearThreadState(threadId: string): Promise<void> {
+		this.liveness.clearThreadState(threadId);
+
 		// Clear run-state registry entries (active/suspended runs, confirmations,
-		// user, research mode, and message-group mappings).
+		// user, time zone, and message-group mappings).
 		const { active, suspended } = this.runState.clearThread(threadId);
 		if (active) {
 			active.abortController.abort();
@@ -1105,34 +2005,81 @@ export class InstanceAiService {
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.destroySandbox(threadId);
+		await this.reapAiTemporaryForThreadCleanup(threadId);
+		await this.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
 	}
 
 	async shutdown(): Promise<void> {
-		if (this.confirmationTimeoutInterval) {
-			clearInterval(this.confirmationTimeoutInterval);
-			this.confirmationTimeoutInterval = undefined;
-		}
+		this.stopCheckpointPruning();
+		this.liveness.shutdown();
 
-		const { activeRuns, suspendedRuns } = this.runState.shutdown();
+		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
+		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
-			run.abortController.abort();
+			// Runs holding an inline HITL confirmation (planner `submit-plan`,
+			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
+			// is alive — it's just awaiting the in-process Promise. Their
+			// `instance_ai_pending_confirmations` row survives the restart and
+			// `handleOrphanedConfirmation` will issue the user-visible
+			// `restart_lost_confirmation` UserError + `run-finish` when (if)
+			// the user clicks confirm. If we publish run-finish + re-save the
+			// snapshot here, we'd permanently overwrite the plan/ask card with
+			// a `status: 'cancelled'` tree before the user has a chance to see
+			// it on reload.
+			if (threadsWithPendingHitl.has(run.threadId)) {
+				await this.finalizeRunTracing(run.runId, run.tracing, {
+					status: 'cancelled',
+					reason: 'service_shutdown',
+				});
+				// Record the policy *before* the abort fires so the run's catch
+				// handler (which runs synchronously off the abort) sees the
+				// flag. The catch path consults `shouldPreserveHitlOnShutdown`
+				// and skips the terminal-fallback / run-finish / snapshot
+				// writes that would otherwise overwrite the plan/ask card.
+				this.preserveHitlOnShutdown.add(run.runId);
+				run.abortController.abort();
+				continue;
+			}
+
+			// Truly mid-stream run: publish run-finish first so the terminal
+			// event lands in the event bus before the snapshot reads it;
+			// saveAgentTreeSnapshot rebuilds the tree from the bus, so without
+			// this order the persisted tree would still look mid-stream after
+			// the process is gone.
+			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
+			await this.persistShutdownSnapshot(run.threadId, run.runId, run.messageGroupId);
 			await this.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
+			run.abortController.abort();
 		}
 		for (const run of suspendedRuns) {
-			run.abortController.abort();
+			// Suspended runs are recoverable from the checkpoint store + pending
+			// confirmation index, so leave the run-finish unpublished and the
+			// snapshot untouched. We only need to abort the in-process stream;
+			// the DB rows are intentionally preserved across restart.
 			await this.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
+			run.abortController.abort();
 		}
 		for (const task of this.backgroundTasks.cancelAll()) {
 			task.abortController.abort();
 			await this.finalizeBackgroundTaskTracing(task, 'cancelled');
 		}
+
+		// Drain the now-aborted executeRun / processResumedStream promises
+		// before returning. Each one's finally block does DB work
+		// (`schedulePlannedTasks`, `dropPendingConfirmationsForThread`) and
+		// the SDK's abort-driven `cleanupRun` issues `checkpointStore.delete`,
+		// all of which would race the connection close in `exitSuccessFully`
+		// and surface as `DriverAlreadyReleasedError` otherwise. Bounded so
+		// a hung agent can't block n8n's own graceful-shutdown deadline.
+		await this.drainInFlightExecutions(INSTANCE_AI_SHUTDOWN_DRAIN_TIMEOUT_MS);
+
 		const threadsWithTraces = new Set(
 			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
 		);
@@ -1146,46 +2093,332 @@ export class InstanceAiService {
 
 		this.gatewayRegistry.disconnectAll();
 
-		// Destroy all active sandboxes
-		const sandboxCleanups = [...this.sandboxes.keys()].map(
-			async (threadId) => await this.destroySandbox(threadId),
-		);
-		await Promise.allSettled(sandboxCleanups);
+		this.stopSandboxExpiryTimers();
+
+		// Thread-scoped sandboxes survive service shutdown so a restarted process
+		// can reuse them. Explicit thread cleanup and idle TTL remain the
+		// teardown paths.
 
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();
 
 		this.eventBus.clear();
-		await this.mcpClientManager.disconnect();
+		await this._mcpClientManager?.disconnect();
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private createMemoryConfig() {
+	@OnLeaderTakeover()
+	startCheckpointPruning(): void {
+		if (this.checkpointPruneTimer || this.instanceAiConfig.pruneInterval <= 0) return;
+		this.checkpointPruningStopped = false;
+		this.scheduleCheckpointPrune(0);
+	}
+
+	@OnLeaderStepdown()
+	stopCheckpointPruning(): void {
+		this.checkpointPruningStopped = true;
+		clearTimeout(this.checkpointPruneTimer);
+		this.checkpointPruneTimer = undefined;
+	}
+
+	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.pruneInterval): void {
+		if (this.checkpointPruningStopped) return;
+		this.checkpointPruneTimer = setTimeout(() => {
+			void this.runScheduledPrune();
+		}, delayMs);
+		this.checkpointPruneTimer.unref();
+	}
+
+	/**
+	 * Track a fire-and-forget run so `shutdown()` can wait for its cleanup
+	 * (finally block + SDK `cleanupRun`) to finish before the DB closes.
+	 * The promise removes itself from the set on settle so the set doesn't
+	 * grow unbounded across long-running threads.
+	 *
+	 * Prefer `startExecuteRun` / `startProcessResumedStream` over calling this
+	 * directly — they make tracking unmissable by binding the spawn and the
+	 * tracking together in one method.
+	 */
+	private trackInFlightExecution(promise: Promise<unknown>): void {
+		const tracked = promise.finally(() => {
+			this.inFlightExecutions.delete(tracked);
+		});
+		this.inFlightExecutions.add(tracked);
+	}
+
+	/**
+	 * Single spawn point for the executor — guarantees shutdown can drain the
+	 * run before closing the DB. New call sites should always go through this
+	 * wrapper rather than invoking `executeRun` directly.
+	 */
+	private startExecuteRun(...args: Parameters<InstanceAiService['executeRun']>): void {
+		this.trackInFlightExecution(this.executeRun(...args));
+	}
+
+	/** Same shutdown-drain contract as `startExecuteRun`, for the resume path. */
+	private startProcessResumedStream(
+		...args: Parameters<InstanceAiService['processResumedStream']>
+	): void {
+		this.trackInFlightExecution(this.processResumedStream(...args));
+	}
+
+	/**
+	 * True when `shutdown()` aborted this run with the explicit policy that its
+	 * inline-HITL snapshot should be left intact. Used by `executeRun` and
+	 * `processResumedStream` to short-circuit the cancelled-path terminal
+	 * finalisation (run-finish event + cancelled tree snapshot) that would
+	 * otherwise overwrite the plan/ask card the user expects to see on reload.
+	 */
+	private shouldPreserveHitlOnShutdown(runId: string): boolean {
+		return this.preserveHitlOnShutdown.has(runId);
+	}
+
+	/**
+	 * Idempotent first-suspend persistence. The first `waitForConfirmation`
+	 * for a run consumes the pending entry; later HITLs are no-ops because
+	 * the entry has been removed. If the DB write fails the entry stays in
+	 * the map so the next HITL retries — see `persistUserMessageOnSuspend`'s
+	 * success-boolean return for the retry contract.
+	 */
+	private async persistUserMessageOnFirstSuspend(threadId: string, runId: string): Promise<void> {
+		const entry = this.userMessagePersistenceByRun.get(runId);
+		if (!entry) return;
+		const ok = await this.persistUserMessageOnSuspend(threadId, entry.userId, entry.message);
+		if (ok) this.userMessagePersistenceByRun.delete(runId);
+	}
+
+	private async drainInFlightExecutions(timeoutMs: number): Promise<void> {
+		if (this.inFlightExecutions.size === 0) return;
+
+		const drain = Promise.allSettled([...this.inFlightExecutions]);
+		const timeout = new Promise<'timeout'>((resolve) => {
+			setTimeout(() => resolve('timeout'), timeoutMs).unref();
+		});
+
+		const outcome = await Promise.race([drain.then(() => 'drained' as const), timeout]);
+		if (outcome === 'timeout') {
+			this.logger.warn('Timed out waiting for in-flight Instance AI runs to drain', {
+				timeoutMs,
+				stillInFlight: this.inFlightExecutions.size,
+			});
+		}
+	}
+
+	/**
+	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
+	 * drop expired pending confirmations, and delete expired conversation
+	 * threads, then schedule the next run. A checkpoint failure reschedules
+	 * with a shorter retry delay; the confirmation and thread steps swallow
+	 * their own errors so they never disrupt the cycle.
+	 */
+	private async runScheduledPrune(now = Date.now()): Promise<void> {
+		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
+
+		try {
+			const count = await this.checkpointStore.markExpiredOlderThan(olderThan);
+			if (count > 0) {
+				this.logger.info('Expired stale Instance AI checkpoints', { count });
+			} else {
+				this.logger.debug('No stale Instance AI checkpoints to expire');
+			}
+			await this.pruneStalePendingConfirmations(now);
+			await this.pruneExpiredThreads();
+			this.scheduleCheckpointPrune();
+		} catch (error: unknown) {
+			this.logger.warn('Failed to expire stale Instance AI checkpoints', {
+				error: getErrorMessage(error),
+			});
+			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Delete conversation threads older than the configured TTL as part of the
+	 * recurring leader prune. Has its own try/catch so a failure here never
+	 * disrupts checkpoint pruning or the next scheduled run. No-op when
+	 * `threadTtlDays` is 0 (handled inside `cleanupExpiredThreads`).
+	 */
+	private async pruneExpiredThreads(): Promise<void> {
+		try {
+			await this.memoryService.cleanupExpiredThreads(
+				async (threadId) => await this.clearThreadState(threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to clean up expired Instance AI conversation threads', {
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private async pruneStalePendingConfirmations(now: number): Promise<void> {
+		try {
+			const count = await this.pendingConfirmationRepo.deleteExpired(new Date(now));
+			if (count === 0) {
+				this.logger.debug('No stale Instance AI pending confirmations to drop');
+				return;
+			}
+			this.logger.info('Dropped stale Instance AI pending confirmations', { count });
+		} catch (error: unknown) {
+			this.logger.warn('Failed to drop stale Instance AI pending confirmations', {
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private computePendingConfirmationExpiresAt(): Date | null {
+		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
+		return timeoutMs > 0 ? new Date(Date.now() + timeoutMs) : null;
+	}
+
+	/**
+	 * Persist the index for a HITL confirmation so a fresh process can find it
+	 * after the in-memory `pendingConfirmations` / `suspendedRuns` maps are gone.
+	 * Fire-and-forget: a DB write failure must not block the agent flow, which
+	 * still operates correctly via the in-memory state on this main.
+	 */
+	private async persistPendingConfirmation(params: {
+		requestId: string;
+		threadId: string;
+		userId: string;
+		runId: string;
+		messageGroupId?: string;
+		kind: 'inline' | 'suspended';
+		toolCallId?: string;
+		checkpointKey?: string;
+		checkpointTaskId?: string;
+	}): Promise<void> {
+		try {
+			await this.pendingConfirmationRepo.save(
+				this.pendingConfirmationRepo.create({
+					requestId: params.requestId,
+					threadId: params.threadId,
+					userId: params.userId,
+					kind: params.kind,
+					runId: params.runId,
+					messageGroupId: params.messageGroupId ?? null,
+					toolCallId: params.toolCallId ?? null,
+					checkpointKey: params.checkpointKey ?? null,
+					checkpointTaskId: params.checkpointTaskId ?? null,
+					expiresAt: this.computePendingConfirmationExpiresAt(),
+				}),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to persist pending confirmation', {
+				requestId: params.requestId,
+				threadId: params.threadId,
+				kind: params.kind,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private async dropPendingConfirmation(requestId: string): Promise<void> {
+		try {
+			await this.pendingConfirmationRepo.deleteByRequestId(requestId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to drop pending confirmation', {
+				requestId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private async dropPendingConfirmationsForThread(threadId: string): Promise<void> {
+		try {
+			await this.pendingConfirmationRepo.deleteByThreadId(threadId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to drop pending confirmations for thread', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Persist the original user-typed message to thread memory the first time
+	 * a run hits an inline HITL confirmation, so the message bubble survives
+	 * a restart that happens while the run is suspended. The `id` matches the
+	 * one we pass to the SDK's streamInput, so the SDK's eventual end-of-turn
+	 * save (if the run does resume and complete) upserts the same row instead
+	 * of creating a duplicate.
+	 */
+	private async persistUserMessageOnSuspend(
+		threadId: string,
+		userId: string,
+		message: { id: string; text: string },
+	): Promise<boolean> {
+		try {
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: message.id,
+						role: 'user',
+						content: [{ type: 'text', text: message.text }],
+						createdAt: new Date(),
+					},
+				],
+			});
+			return true;
+		} catch (error: unknown) {
+			this.logger.warn('Failed to persist user message on HITL suspend', {
+				threadId,
+				userId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+	}
+
+	/**
+	 * Save the in-flight agent tree as a terminal snapshot so the UI doesn't
+	 * sit on a half-rendered turn after the process restarts. Best-effort: a
+	 * DB write failure here must not block the rest of shutdown.
+	 */
+	private async persistShutdownSnapshot(
+		threadId: string,
+		runId: string,
+		messageGroupId: string | undefined,
+	): Promise<void> {
+		try {
+			await this.saveAgentTreeSnapshot(
+				threadId,
+				runId,
+				this.dbSnapshotStorage,
+				true,
+				messageGroupId,
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to persist shutdown snapshot', {
+				threadId,
+				runId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	private createAgentMemoryOptions() {
 		return {
-			storage: this.compositeStore,
-			embedderModel: this.instanceAiConfig.embedderModel || undefined,
-			lastMessages: this.instanceAiConfig.lastMessages,
-			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
+			observationalMemory: {
+				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
+				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+			},
 		};
 	}
 
 	private async ensureThreadExists(
-		memory: ReturnType<typeof createMemory>,
+		memory: BuiltMemory,
 		threadId: string,
 		resourceId: string,
 	): Promise<void> {
-		const existingThread = await memory.getThreadById({ threadId });
+		const existingThread = await memory.getThread(threadId);
 		if (existingThread) return;
 
-		const now = new Date();
 		await memory.saveThread({
-			thread: {
-				id: threadId,
-				resourceId,
-				title: '',
-				createdAt: now,
-				updatedAt: now,
-			},
+			id: threadId,
+			resourceId,
+			title: '',
 		});
 	}
 
@@ -1207,9 +2440,13 @@ export class InstanceAiService {
 	}
 
 	private buildPlannedTaskFollowUpMessage(
-		type: 'synthesize' | 'replan',
+		type: 'synthesize' | 'replan' | 'checkpoint' | 'build-workflow',
 		graph: PlannedTaskGraph,
-		failedTask?: PlannedTaskRecord,
+		options: {
+			failedTask?: PlannedTaskRecord;
+			checkpoint?: PlannedTaskRecord;
+			buildTask?: PlannedTaskRecord;
+		} = {},
 	): string {
 		const payload: Record<string, unknown> = {
 			tasks: graph.tasks.map((task) => ({
@@ -1223,13 +2460,43 @@ export class InstanceAiService {
 			})),
 		};
 
-		if (failedTask) {
+		if (options.failedTask) {
 			payload.failedTask = {
-				id: failedTask.id,
-				title: failedTask.title,
-				kind: failedTask.kind,
-				error: failedTask.error,
-				result: failedTask.result,
+				id: options.failedTask.id,
+				title: options.failedTask.title,
+				kind: options.failedTask.kind,
+				error: options.failedTask.error,
+				result: options.failedTask.result,
+			};
+		}
+
+		if (options.checkpoint) {
+			const depOutcomes = graph.tasks
+				.filter((t) => options.checkpoint!.deps.includes(t.id))
+				.map((t) => ({
+					id: t.id,
+					title: t.title,
+					kind: t.kind,
+					status: t.status,
+					result: t.result,
+					outcome: t.outcome,
+				}));
+			payload.checkpoint = {
+				id: options.checkpoint.id,
+				title: options.checkpoint.title,
+				instructions: options.checkpoint.spec,
+				dependsOn: depOutcomes,
+			};
+		}
+
+		if (options.buildTask) {
+			payload.buildTask = {
+				id: options.buildTask.id,
+				title: options.buildTask.title,
+				kind: options.buildTask.kind,
+				spec: options.buildTask.spec,
+				workflowId: options.buildTask.workflowId,
+				deps: options.buildTask.deps,
 			};
 		}
 
@@ -1237,11 +2504,380 @@ export class InstanceAiService {
 	}
 
 	private async createPlannedTaskState() {
-		const memory = createMemory(this.createMemoryConfig());
-		const taskStorage = new MastraTaskStorage(memory);
+		const memory = this.agentMemory;
+		const taskStorage = new ThreadTaskStorage(memory);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
 		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
 		return { memory, taskStorage, plannedTaskService };
+	}
+
+	private evaluateTerminalResponse(
+		threadId: string,
+		runId: string,
+		status: Exclude<TerminalResponseStatus, 'waiting'>,
+		options: {
+			messageGroupId?: string;
+			correlationId?: string;
+			workSummary?: WorkSummary;
+			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
+		} = {},
+	): TerminalResponseDecision | undefined {
+		const guard = new InstanceAiTerminalResponseGuard({
+			runId,
+			rootAgentId: ORCHESTRATOR_AGENT_ID,
+			messageGroupId: options.messageGroupId,
+			correlationId: options.correlationId,
+		});
+		const decision = guard.evaluateTerminal(
+			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			status,
+			{
+				workSummary: options.workSummary,
+				errorMessage: options.errorMessage,
+				suppressCompletedFallback: options.suppressCompletedFallback,
+			},
+		);
+		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
+		return decision;
+	}
+
+	private evaluateWaitingResponse(
+		threadId: string,
+		runId: string,
+		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
+		options: { messageGroupId?: string; correlationId?: string } = {},
+	): TerminalResponseDecision | undefined {
+		const guard = new InstanceAiTerminalResponseGuard({
+			runId,
+			rootAgentId: ORCHESTRATOR_AGENT_ID,
+			messageGroupId: options.messageGroupId,
+			correlationId: options.correlationId,
+		});
+		const decision = guard.evaluateWaiting(
+			this.getTerminalGuardEvents(threadId, runId, options.messageGroupId),
+			confirmationEvent,
+		);
+		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
+		return decision;
+	}
+
+	private getTerminalGuardEvents(
+		threadId: string,
+		runId: string,
+		messageGroupId?: string,
+	): InstanceAiEvent[] {
+		if (!messageGroupId) return this.eventBus.getEventsForRun(threadId, runId);
+
+		const groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
+		return groupRunIds.length > 0
+			? this.eventBus.getEventsForRuns(threadId, groupRunIds)
+			: this.eventBus.getEventsForRun(threadId, runId);
+	}
+
+	private handleTerminalResponseDecision(
+		threadId: string,
+		runId: string,
+		decision: TerminalResponseDecision,
+		messageGroupId?: string,
+	): void {
+		this.telemetry.track('instance_ai_terminal_response_decision', {
+			thread_id: threadId,
+			run_id: runId,
+			message_group_id: messageGroupId,
+			source: 'terminal_guard',
+			status: decision.status,
+			action: decision.action,
+			reason: decision.reason,
+			visibility_source: decision.visibilitySource,
+		});
+
+		if (decision.reason === 'completed-after-error') {
+			this.logger.warn('completed_after_error_event', {
+				threadId,
+				runId,
+				messageGroupId,
+			});
+		}
+
+		if (decision.reason === 'confirmation-invalid') {
+			this.logger.warn('invalid_confirmation_payload', {
+				threadId,
+				runId,
+				messageGroupId,
+			});
+		}
+
+		if (decision.action === 'emit' && decision.event) {
+			this.eventBus.publish(threadId, decision.event);
+		}
+	}
+
+	private createTerminalOutcomeStorage(): TerminalOutcomeStorage {
+		this.terminalOutcomeStorage ??= new TerminalOutcomeStorage(this.agentMemory);
+		return this.terminalOutcomeStorage;
+	}
+
+	private async finishInvalidConfirmationRun(args: {
+		threadId: string;
+		runId: string;
+		abortController: AbortController;
+		snapshotStorage: DbSnapshotStorage;
+		tracing?: InstanceAiTraceContext;
+	}): Promise<MessageTraceFinalization> {
+		this.runState.cancelThread(args.threadId);
+		void this.dropPendingConfirmationsForThread(args.threadId);
+		args.abortController.abort();
+		await this.finalizeRunTracing(args.runId, args.tracing, {
+			status: 'error',
+			reason: 'invalid_confirmation_payload',
+		});
+		this.publishRunFinish(
+			args.threadId,
+			args.runId,
+			'errored',
+			'I need your input to continue, but I could not display the prompt. Please try again.',
+		);
+		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage);
+		return {
+			status: 'error',
+			reason: 'invalid_confirmation_payload',
+			metadata: this.buildMessageTraceMetadata(args.threadId, args.runId, {
+				status: 'error',
+			}),
+		};
+	}
+
+	private buildBackgroundTerminalOutcome(task: ManagedBackgroundTask): TerminalOutcome {
+		const status =
+			task.status === 'failed' ? 'failed' : task.status === 'cancelled' ? 'cancelled' : 'completed';
+		const userFacingMessage =
+			status === 'completed'
+				? `The background ${task.role} task finished.`
+				: status === 'cancelled'
+					? `The background ${task.role} task was cancelled.`
+					: `The background ${task.role} task failed before I could complete that part.`;
+
+		return {
+			id: `${task.messageGroupId ?? task.runId}:${task.taskId}:${status}`,
+			threadId: task.threadId,
+			runId: task.runId,
+			messageGroupId: task.messageGroupId,
+			correlationId: task.messageGroupId,
+			taskId: task.taskId,
+			agentId: task.agentId,
+			status,
+			userFacingMessage,
+			createdAt: new Date().toISOString(),
+		};
+	}
+
+	async replayUndeliveredTerminalOutcomes(
+		threadId: string,
+		options: { delivery?: 'snapshot' | 'event' } = {},
+	): Promise<void> {
+		const storage = this.createTerminalOutcomeStorage();
+		const persistedOutcomes = await storage.getUndelivered(threadId).catch((error) => {
+			this.logger.warn('Failed to load undelivered Instance AI terminal outcomes', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return [] as TerminalOutcome[];
+		});
+		const inMemoryOutcomes = [...this.pendingTerminalOutcomes.values()].filter(
+			(outcome) => outcome.threadId === threadId,
+		);
+		const outcomes = new Map<string, TerminalOutcome>();
+		for (const outcome of [...persistedOutcomes, ...inMemoryOutcomes]) {
+			outcomes.set(outcome.id, outcome);
+		}
+		const persistedOutcomeIds = new Set(persistedOutcomes.map((outcome) => outcome.id));
+		const delivery = options.delivery ?? 'snapshot';
+
+		for (const outcome of outcomes.values()) {
+			const responseId = getBackgroundOutcomeResponseId(outcome);
+			let snapshotDelivered = false;
+			try {
+				snapshotDelivered = await this.persistTerminalOutcomeLineToSnapshot(outcome, responseId);
+			} catch (error) {
+				this.logger.warn('Failed to replay Instance AI terminal outcome', {
+					threadId,
+					runId: outcome.runId,
+					taskId: outcome.taskId,
+					error: getErrorMessage(error),
+				});
+				if (delivery === 'event') {
+					const published = this.publishTerminalOutcomeLine(outcome, responseId);
+					this.telemetry.track('instance_ai_terminal_response_decision', {
+						thread_id: threadId,
+						run_id: outcome.runId,
+						message_group_id: outcome.messageGroupId,
+						task_id: outcome.taskId,
+						source: 'terminal_outcome_replay',
+						status: outcome.status,
+						action: published ? 'replay_event' : 'already-emitted',
+						visibility_source: 'background-outcome',
+					});
+				}
+				continue;
+			}
+
+			if (!snapshotDelivered) continue;
+
+			let action = 'replay_snapshot';
+			if (delivery === 'event') {
+				const published = this.publishTerminalOutcomeLine(outcome, responseId);
+				action = published ? 'replay_event' : 'already-emitted';
+			}
+
+			if (persistedOutcomeIds.has(outcome.id)) {
+				await storage
+					.markDelivered(threadId, outcome.id, new Date().toISOString())
+					.catch((error) => {
+						this.logger.warn('Failed to mark Instance AI terminal outcome as delivered', {
+							threadId,
+							runId: outcome.runId,
+							taskId: outcome.taskId,
+							error: getErrorMessage(error),
+						});
+					});
+			}
+			this.pendingTerminalOutcomes.delete(outcome.id);
+			this.telemetry.track('instance_ai_terminal_response_decision', {
+				thread_id: threadId,
+				run_id: outcome.runId,
+				message_group_id: outcome.messageGroupId,
+				task_id: outcome.taskId,
+				source: 'terminal_outcome_replay',
+				status: outcome.status,
+				action,
+				visibility_source: 'background-outcome',
+			});
+		}
+	}
+
+	private async persistTerminalOutcomeLineToSnapshot(
+		outcome: TerminalOutcome,
+		responseId: string,
+	): Promise<boolean> {
+		const snapshot = await this.dbSnapshotStorage.getLatest(outcome.threadId, {
+			messageGroupId: outcome.messageGroupId,
+			runId: outcome.runId,
+		});
+		if (!snapshot) {
+			await this.dbSnapshotStorage.save(
+				outcome.threadId,
+				createTerminalOutcomeAgentTree(outcome, responseId),
+				outcome.runId,
+				{
+					messageGroupId: outcome.messageGroupId,
+					runIds: [outcome.runId],
+				},
+			);
+			return true;
+		}
+
+		const { tree } = appendTerminalOutcomeToAgentTree(snapshot.tree, outcome, responseId);
+		const runIds = new Set(snapshot.runIds ?? [snapshot.runId]);
+		runIds.add(outcome.runId);
+		await this.dbSnapshotStorage.updateLast(outcome.threadId, tree, snapshot.runId, {
+			messageGroupId: snapshot.messageGroupId ?? outcome.messageGroupId,
+			runIds: [...runIds],
+			langsmithRunId: snapshot.langsmithRunId,
+			langsmithTraceId: snapshot.langsmithTraceId,
+		});
+		return true;
+	}
+
+	private publishTerminalOutcomeLine(outcome: TerminalOutcome, responseId: string): boolean {
+		const alreadyPublished = this.eventBus
+			.getEventsForRun(outcome.threadId, outcome.runId)
+			.some((event) => event.responseId === responseId);
+		if (alreadyPublished) return false;
+
+		this.eventBus.publish(outcome.threadId, {
+			type: 'text-delta',
+			runId: outcome.runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			responseId,
+			payload: { text: outcome.userFacingMessage },
+		});
+		return true;
+	}
+
+	private async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
+		const outcome = this.buildBackgroundTerminalOutcome(task);
+		let persisted = false;
+		try {
+			await this.createTerminalOutcomeStorage().upsert(task.threadId, outcome);
+			persisted = true;
+		} catch (error) {
+			this.pendingTerminalOutcomes.set(outcome.id, outcome);
+			this.logger.warn('Failed to persist Instance AI terminal outcome', {
+				threadId: task.threadId,
+				runId: task.runId,
+				taskId: task.taskId,
+				error: getErrorMessage(error),
+			});
+			this.telemetry.track('instance_ai_terminal_outcome_persistence_failure', {
+				thread_id: task.threadId,
+				run_id: task.runId,
+				task_id: task.taskId,
+				status: outcome.status,
+				phase: 'metadata',
+			});
+		}
+
+		const responseId = getBackgroundOutcomeResponseId(outcome);
+		const published = this.publishTerminalOutcomeLine(outcome, responseId);
+
+		this.telemetry.track('instance_ai_terminal_response_decision', {
+			thread_id: task.threadId,
+			run_id: task.runId,
+			message_group_id: task.messageGroupId,
+			task_id: task.taskId,
+			source: 'background_outcome',
+			status: outcome.status,
+			action: published ? 'emit' : 'already-emitted',
+			visibility_source: 'background-outcome',
+		});
+
+		let snapshotDelivered = false;
+		try {
+			snapshotDelivered = await this.persistTerminalOutcomeLineToSnapshot(outcome, responseId);
+		} catch (error) {
+			this.logger.warn('Failed to persist Instance AI terminal outcome line to snapshot', {
+				threadId: task.threadId,
+				runId: task.runId,
+				taskId: task.taskId,
+				error: getErrorMessage(error),
+			});
+			this.telemetry.track('instance_ai_terminal_outcome_persistence_failure', {
+				thread_id: task.threadId,
+				run_id: task.runId,
+				task_id: task.taskId,
+				status: outcome.status,
+				phase: 'snapshot',
+			});
+		}
+
+		if (!persisted || !snapshotDelivered) return;
+
+		try {
+			await this.createTerminalOutcomeStorage().markDelivered(
+				task.threadId,
+				outcome.id,
+				new Date().toISOString(),
+			);
+			this.pendingTerminalOutcomes.delete(outcome.id);
+		} catch (error) {
+			this.logger.warn('Failed to mark Instance AI terminal outcome as delivered', {
+				threadId: task.threadId,
+				runId: task.runId,
+				taskId: task.taskId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	private async syncPlannedTasksToUi(threadId: string, graph: PlannedTaskGraph): Promise<void> {
@@ -1256,16 +2892,47 @@ export class InstanceAiService {
 		});
 	}
 
+	/**
+	 * Drop any persisted planned-task graph that is still `awaiting_approval`,
+	 * and clear the UI checklist. Called on run cancellation and HITL timeout so
+	 * stale approval state doesn't linger. A graph in `active` / `awaiting_replan`
+	 * is already in-flight and has its own settlement logic.
+	 */
+	private async cancelAwaitingApprovalPlan(threadId: string): Promise<void> {
+		try {
+			const { plannedTaskService, taskStorage } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			if (!graph || graph.status !== 'awaiting_approval') return;
+
+			await plannedTaskService.clear(threadId);
+			await taskStorage.save(threadId, { tasks: [] });
+			this.eventBus.publish(threadId, {
+				type: 'tasks-update',
+				runId: graph.planRunId,
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to clean up awaiting_approval plan on cancel', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	private async createExecutionEnvironment(
 		user: User,
 		threadId: string,
 		runId: string,
 		abortSignal: AbortSignal,
-		researchMode?: boolean,
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = await this.settingsService.isLocalGatewayDisabledForUser(user.id);
+		const adminSettings = this.settingsService.getAdminSettings();
+		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
+		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
+			user.id,
+		);
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and
@@ -1283,13 +2950,23 @@ export class InstanceAiService {
 				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 			});
 			tokenManager = manager;
+			const featureHeaders = buildProxyHeaders({
+				feature: 'instance-ai',
+				n8nVersion: N8N_VERSION,
+			});
 			searchProxyConfig = {
 				apiUrl: proxyBaseUrl + '/brave-search',
-				getAuthHeaders: async () => await manager.getAuthHeaders(),
+				getAuthHeaders: async () => ({
+					...(await manager.getAuthHeaders()),
+					...featureHeaders,
+				}),
 			};
 			tracingProxyConfig = {
 				apiUrl: proxyBaseUrl + '/langsmith',
-				getAuthHeaders: async () => await manager.getAuthHeaders(),
+				getAuthHeaders: async () => ({
+					...(await manager.getAuthHeaders()),
+					...featureHeaders,
+				}),
 			};
 		}
 
@@ -1298,7 +2975,7 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 		});
-		if (!localGatewayDisabled && userGateway?.isConnected) {
+		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
 		context.permissions = this.settingsService.getPermissions();
@@ -1316,26 +2993,30 @@ export class InstanceAiService {
 		context.runId = runId;
 
 		// Compute gateway status for the system prompt
-		if (localGatewayDisabled) {
-			context.localGatewayStatus = { status: 'disabled' };
-		} else if (userGateway?.isConnected) {
-			context.localGatewayStatus = { status: 'connected' };
+		if (localGatewayDisabledGlobally) {
+			context.localGatewayStatus = { status: 'disabledGlobally' };
+		} else if (!localGatewayDisabledForUser && userGateway?.isConnected) {
+			context.localGatewayStatus = {
+				status: 'connected',
+				capabilities: userGateway
+					.getStatus()
+					.toolCategories.filter(({ enabled }) => enabled)
+					.map(({ name }) => name),
+			};
 		} else {
 			context.localGatewayStatus = {
-				status: 'disconnected',
-				capabilities: ['filesystem', 'browser'],
+				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
 			};
 		}
 
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: ((await this.resolveHttpProxyModel(user)) ??
-					(await this.settingsService.resolveModelConfig(user)));
-		const memory = createMemory(this.createMemoryConfig());
+				: await this.resolveAgentModelConfig(user);
+		const memory = this.agentMemory;
 		await this.ensureThreadExists(memory, threadId, user.id);
 
-		const taskStorage = new MastraTaskStorage(memory);
+		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
 		const snapshotStorage = this.dbSnapshotStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
@@ -1349,7 +3030,58 @@ export class InstanceAiService {
 		}
 
 		const domainTools = createAllTools(context);
-		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
+		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		let runtimeSkills = baseRuntimeSkills;
+		let runtimeWorkspace: Workspace | undefined;
+		let workspaceRoot: string | undefined;
+
+		const sandboxStatus = this.settingsService.getSandboxStatus();
+		if (sandboxStatus.workflowBuilderAvailable) {
+			const sandboxConfig = await this.resolveSandboxConfig(user);
+
+			if (sandboxConfig.enabled) {
+				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+
+				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
+				const getSandboxEntry = async () => {
+					sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user).catch(
+						(error: unknown) => {
+							sandboxEntryPromise = undefined;
+							throw error;
+						},
+					);
+
+					return await sandboxEntryPromise;
+				};
+				const getSetupSandboxEntry = async () => {
+					return await this.getOrCreateWorkspace(threadId, user, context);
+				};
+
+				const scopeWorkspaceForAgent = async (
+					workspace: Workspace | undefined,
+				): Promise<Workspace | undefined> => {
+					if (!workspace) return undefined;
+					const root = await getWorkspaceRoot(workspace);
+					return createScopedWorkspace(workspace, root);
+				};
+
+				runtimeWorkspace = createLazyRuntimeWorkspace({
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
+				});
+				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+					id: 'instance-ai-runtime-skill-workspace',
+					name: 'Instance AI runtime skill workspace',
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
+				});
+				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
+					source: baseRuntimeSkills,
+					workspace: runtimeSkillWorkspace,
+					logger: this.logger,
+				});
+			}
+		}
 
 		const orchestrationContext: OrchestrationContext = {
 			threadId,
@@ -1358,28 +3090,48 @@ export class InstanceAiService {
 			userId: user.id,
 			orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 			modelId,
-			storage: this.compositeStore,
+			checkpointStore: this.checkpointStore,
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
+			trackTelemetry: (eventName, properties) => {
+				this.telemetry.track(eventName, properties);
+			},
 			domainTools,
 			abortSignal,
 			taskStorage,
-			researchMode,
 			timeZone: this.defaultTimeZone,
-			browserMcpConfig: this.instanceAiConfig.browserMcp
-				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
-				: undefined,
 			localMcpServer: context.localMcpServer,
+			runtimeSkills,
+			runtimeSkillCatalog: baseRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
+			formBaseUrl: this.formBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
+				this.runState.touchActiveRun(threadId);
+				// First HITL on this run: persist the original user message to
+				// memory so it survives a restart-while-suspended. The SDK only
+				// commits the turn delta on a clean loop completion, and inline
+				// HITL never reaches that point. Doing this *now* (rather than
+				// at executeRun start) avoids polluting the agent's prompt —
+				// the SDK has already loaded its memory snapshot for this run.
+				void this.persistUserMessageOnFirstSuspend(threadId, runId);
+
 				return await new Promise<ConfirmationData>((resolve) => {
 					this.runState.registerPendingConfirmation(requestId, {
 						resolve,
 						threadId,
 						userId: user.id,
 						createdAt: Date.now(),
+					});
+
+					void this.persistPendingConfirmation({
+						requestId,
+						threadId,
+						userId: user.id,
+						runId,
+						messageGroupId,
+						kind: 'inline',
 					});
 
 					// Inline HITL (planner questions / plan approval / sub-agent asks)
@@ -1394,14 +3146,23 @@ export class InstanceAiService {
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			spawnBackgroundTask: (opts) =>
 				this.spawnBackgroundTask(runId, opts, snapshotStorage, messageGroupId),
+			touchRun: () => this.runState.touchActiveRun(threadId),
+			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			plannedTaskService,
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
+			findSubAgentResumeInfo: async (agentKind) =>
+				await this.checkpointStore.findSuspendedSubAgentResumeInfo(
+					createSubAgentResourceId(threadId, agentKind),
+				),
+			persistInFlightUserMessage: async () => {
+				await this.persistUserMessageOnFirstSuspend(threadId, runId);
+			},
 			workflowTaskService: workflowTasks,
-			workspace: sandboxEntry?.workspace,
-			builderSandboxFactory: await this.createBuilderFactory(user),
+			workspace: runtimeWorkspace,
+			workspaceRoot,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
@@ -1418,49 +3179,29 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
-			sandboxEntry,
 		};
 	}
 
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
+		graph?: PlannedTaskGraph,
 	): Promise<void> {
 		// Plan approval authorizes the task-family's non-destructive tools,
 		// so the sub-agent can execute without a redundant second confirmation.
 		const taskContext = this.createPlannedTaskContext(task.kind, context);
+		const conversationContext = buildPlannedTaskConversationContext(task, graph);
 
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
-		switch (task.kind) {
-			case 'build-workflow':
-				started = await startBuildWorkflowAgentTask(taskContext, {
-					task: task.spec,
-					workflowId: task.workflowId,
-					plannedTaskId: task.id,
-				});
-				break;
-			case 'manage-data-tables':
-				started = await startDataTableAgentTask(taskContext, {
-					task: task.spec,
-					plannedTaskId: task.id,
-				});
-				break;
-			case 'research':
-				started = await startResearchAgentTask(taskContext, {
-					goal: task.title,
-					constraints: task.spec,
-					plannedTaskId: task.id,
-				});
-				break;
-			case 'delegate':
-				started = await startDetachedDelegateTask(taskContext, {
-					title: task.title,
-					spec: task.spec,
-					tools: task.tools ?? [],
-					plannedTaskId: task.id,
-				});
-				break;
+		if (task.kind === 'delegate') {
+			started = await startDetachedDelegateTask(taskContext, {
+				title: task.title,
+				spec: task.spec,
+				tools: task.tools ?? [],
+				plannedTaskId: task.id,
+				conversationContext,
+			});
 		}
 
 		if (!started?.taskId) {
@@ -1502,6 +3243,133 @@ export class InstanceAiService {
 		};
 	}
 
+	private collectWorkflowIds(value: unknown, workflowIds: Set<string>): void {
+		if (value === null || value === undefined || typeof value !== 'object') return;
+
+		if (Array.isArray(value)) {
+			for (const item of value) {
+				this.collectWorkflowIds(item, workflowIds);
+			}
+			return;
+		}
+
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			if (key === 'workflowId' && typeof child === 'string' && child.length > 0) {
+				workflowIds.add(child);
+				continue;
+			}
+
+			if (key === 'supportingWorkflowIds' && Array.isArray(child)) {
+				for (const workflowId of child) {
+					if (typeof workflowId === 'string' && workflowId.length > 0) {
+						workflowIds.add(workflowId);
+					}
+				}
+				continue;
+			}
+
+			this.collectWorkflowIds(child, workflowIds);
+		}
+	}
+
+	private getBuildTaskWorkflowName(task: PlannedTaskRecord): string | undefined {
+		if (task.kind !== 'build-workflow') return undefined;
+
+		const titleMatch =
+			task.title.match(/^Build '(.+)' workflow$/) ?? task.title.match(/^Build "(.+)" workflow$/);
+
+		return titleMatch?.[1];
+	}
+
+	/**
+	 * Keep explicit user-requested runs approval-gated even when they happen as checkpoint fallback.
+	 */
+	private checkpointRequiresRunApproval(
+		graph: PlannedTaskGraph,
+		checkpoint: PlannedTaskRecord,
+	): boolean {
+		if (graph.postBuildRunApprovalRequired === true) return true;
+
+		const deps = new Set(checkpoint.deps);
+		const text = graph.tasks
+			.filter((task) => deps.has(task.id))
+			.map((task) => `${task.title}\n${task.spec}`)
+			.join('\n')
+			.toLowerCase();
+
+		return (
+			/\bthen\s+(run|execute|test)\b/.test(text) ||
+			/\b(run|execute|test)\s+(it\s+)?(once|immediately|manually|after building)\b/.test(text)
+		);
+	}
+
+	/**
+	 * Resolve the workflows the checkpoint task is verifying so the runWorkflow
+	 * permission override can be scoped. Workflow names are carried as an E2E replay
+	 * fallback because runtime workflow IDs can be remapped.
+	 */
+	private async getCheckpointRunPolicy(
+		threadId: string,
+		checkpointTaskId: string,
+	): Promise<{
+		allowedWorkflowIds: ReadonlySet<string>;
+		allowedWorkflowNames: ReadonlySet<string>;
+		requireApproval: boolean;
+	}> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const checkpoint = graph?.tasks.find((t) => t.id === checkpointTaskId);
+			if (!graph || !checkpoint) {
+				return {
+					allowedWorkflowIds: new Set(),
+					allowedWorkflowNames: new Set(),
+					requireApproval: false,
+				};
+			}
+			const deps = new Set(checkpoint.deps);
+			const ids = new Set<string>();
+			const names = new Set<string>();
+			for (const task of graph.tasks) {
+				if (!deps.has(task.id)) continue;
+
+				const workflowName = this.getBuildTaskWorkflowName(task);
+				if (workflowName) {
+					names.add(workflowName);
+				}
+
+				if (task.workflowId) {
+					ids.add(task.workflowId);
+				}
+				this.collectWorkflowIds(task.outcome, ids);
+			}
+
+			const tracing = this.getTraceContextForContinuation(threadId);
+			for (const workflowId of [...ids]) {
+				const remappedWorkflowId = tracing?.idRemapper?.remapOutput(workflowId);
+				if (typeof remappedWorkflowId === 'string' && remappedWorkflowId.length > 0) {
+					ids.add(remappedWorkflowId);
+				}
+			}
+			return {
+				allowedWorkflowIds: ids,
+				allowedWorkflowNames: names,
+				requireApproval: this.checkpointRequiresRunApproval(graph, checkpoint),
+			};
+		} catch (error) {
+			this.logger.warn('Failed to resolve checkpoint allowed workflow IDs', {
+				threadId,
+				checkpointTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return {
+				allowedWorkflowIds: new Set(),
+				allowedWorkflowNames: new Set(),
+				requireApproval: false,
+			};
+		}
+	}
+
 	private async handlePlannedTaskSettlement(
 		user: User,
 		task: ManagedBackgroundTask,
@@ -1538,9 +3406,10 @@ export class InstanceAiService {
 		user: User,
 		threadId: string,
 		message: string,
-		researchMode: boolean | undefined,
 		messageGroupId?: string,
 		isReplanFollowUp: boolean = false,
+		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
@@ -1550,21 +3419,33 @@ export class InstanceAiService {
 		const { runId, abortController } = this.runState.startRun({
 			threadId,
 			user,
-			researchMode,
 			messageGroupId,
 		});
 
-		void this.executeRun(
+		// Resolve user time zone from the thread's run-state snapshot (captured on the
+		// initial user-facing run) before falling back to the instance default. Follow-up
+		// runs (checkpoint / replan / synthesize) used to drop this context, which made
+		// the planner emit "instance default timezone" for user-local schedules.
+		const timeZone = this.runState.getTimeZone(threadId) ?? this.defaultTimeZone;
+		const resumeReason: OrchestratorResumeReason = checkpoint
+			? 'planned_checkpoint'
+			: isReplanFollowUp
+				? 'replan'
+				: 'background_task_completed';
+
+		this.startExecuteRun(
 			user,
 			threadId,
 			runId,
 			message,
 			abortController,
-			researchMode,
 			undefined,
 			messageGroupId,
-			undefined,
+			timeZone,
 			isReplanFollowUp,
+			checkpoint,
+			resumeReason,
+			plannedBuild,
 		);
 
 		return runId;
@@ -1579,6 +3460,18 @@ export class InstanceAiService {
 	}
 
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const revalidated = await this.revalidateActiveUser(user.id);
+		if (!revalidated) {
+			this.logger.warn('Cancelling run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+			});
+			this.cancelRun(threadId);
+			return;
+		}
+
+		const activeUser = revalidated;
+
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -1595,65 +3488,186 @@ export class InstanceAiService {
 
 		if (action.type === 'replan') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
-			await this.startInternalFollowUpRun(
-				user,
+			const startedRunId = await this.startInternalFollowUpRun(
+				activeUser,
 				threadId,
-				this.buildPlannedTaskFollowUpMessage('replan', action.graph, action.failedTask),
-				this.runState.getThreadResearchMode(threadId),
+				this.buildPlannedTaskFollowUpMessage('replan', action.graph, {
+					failedTask: action.failedTask,
+				}),
 				action.graph.messageGroupId,
 				true,
 			);
+			// tick() already transitioned the graph to `awaiting_replan`. If the
+			// follow-up run couldn't start (live run present), revert the status
+			// so the next schedulePlannedTasks() pass can re-emit this action.
+			// Without this, tick() returns `none` for non-active graphs and the
+			// replan is silently lost.
+			if (!startedRunId) {
+				await plannedTaskService.revertToActive(threadId);
+			}
 			return;
 		}
 
 		if (action.type === 'synthesize') {
 			await this.syncPlannedTasksToUi(threadId, action.graph);
-			await this.startInternalFollowUpRun(
-				user,
+			const startedRunId = await this.startInternalFollowUpRun(
+				activeUser,
 				threadId,
 				this.buildPlannedTaskFollowUpMessage('synthesize', action.graph),
-				this.runState.getThreadResearchMode(threadId),
 				action.graph.messageGroupId,
 			);
+			// Same rollback as replan: tick() transitioned to `completed`, but if
+			// the synthesize follow-up didn't actually start, revert so the next
+			// tick can emit it again.
+			if (!startedRunId) {
+				await plannedTaskService.revertToActive(threadId);
+			}
+			return;
+		}
+
+		if (action.type === 'orchestrate-build-workflow') {
+			if (this.runState.hasLiveRun(threadId)) {
+				return;
+			}
+
+			const buildTask = action.tasks[0];
+			const workItemId = buildTask.workflowId
+				? `${action.graph.planRunId}:default`
+				: `wi_${nanoid(8)}`;
+			await plannedTaskService.markRunning(threadId, buildTask.id, {
+				agentId: ORCHESTRATOR_AGENT_ID,
+			});
+			const graphAfterMark = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
+			await this.syncPlannedTasksToUi(threadId, graphAfterMark);
+
+			const buildTaskRecord = graphAfterMark.tasks.find((t) => t.id === buildTask.id) ?? buildTask;
+			const plannedBuild: PlannedBuildFollowUp = {
+				isPlannedBuildFollowUp: true,
+				buildTaskId: buildTask.id,
+				workItemId,
+			};
+			const startedRunId = await this.startInternalFollowUpRun(
+				activeUser,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('build-workflow', graphAfterMark, {
+					buildTask: buildTaskRecord,
+				}),
+				action.graph.messageGroupId,
+				false,
+				undefined,
+				plannedBuild,
+			);
+
+			if (!startedRunId) {
+				this.logger.warn(
+					'Build workflow follow-up run did not start — reverting build task to planned for retry',
+					{ threadId, buildTaskId: buildTask.id },
+				);
+				await plannedTaskService.revertBuildWorkflowToPlanned(threadId, buildTask.id);
+			}
+			return;
+		}
+
+		if (action.type === 'orchestrate-checkpoint') {
+			// Defer if a run is already active or suspended. The currently-live
+			// run's post-finally reschedule hook will pick this checkpoint up.
+			if (this.runState.hasLiveRun(threadId)) {
+				return;
+			}
+
+			const checkpoint = action.tasks[0];
+
+			// Mark running before starting the follow-up so complete-checkpoint
+			// (which requires status === 'running') always sees the correct state.
+			// If startInternalFollowUpRun no-ops below (tight race), we roll back
+			// the transition to avoid leaving the task in a phantom 'running' state.
+			await plannedTaskService.markRunning(threadId, checkpoint.id, {
+				agentId: ORCHESTRATOR_AGENT_ID,
+			});
+			const graphAfterMark = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
+			await this.syncPlannedTasksToUi(threadId, graphAfterMark);
+
+			const checkpointRecord =
+				graphAfterMark.tasks.find((t) => t.id === checkpoint.id) ?? checkpoint;
+
+			const startedRunId = await this.startInternalFollowUpRun(
+				activeUser,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('checkpoint', graphAfterMark, {
+					checkpoint: checkpointRecord,
+				}),
+				action.graph.messageGroupId,
+				false,
+				{ isCheckpointFollowUp: true, checkpointTaskId: checkpoint.id },
+			);
+
+			if (!startedRunId) {
+				// Rare race: the outer hasLiveRun check passed but the inner guard
+				// in startInternalFollowUpRun did not (another path started a run
+				// between our two checks). Revert the checkpoint back to `planned`
+				// so the next scheduler tick re-emits `orchestrate-checkpoint` —
+				// marking it `failed` here would cascade cancel to every dependent
+				// and destroy downstream work even though nothing actually failed.
+				this.logger.warn(
+					'Checkpoint follow-up run did not start — reverting checkpoint to planned for retry',
+					{ threadId, checkpointTaskId: checkpoint.id },
+				);
+				await plannedTaskService.revertCheckpointToPlanned(threadId, checkpoint.id);
+			}
 			return;
 		}
 
 		const environment = await this.createExecutionEnvironment(
-			user,
+			activeUser,
 			threadId,
 			action.graph.planRunId,
 			createInertAbortSignal(),
-			this.runState.getThreadResearchMode(threadId),
 			action.graph.messageGroupId,
+			// Route planned-task workflow runs (build agent, checkpoint verifications)
+			// to the user's iframe session so live execution push events reach the
+			// frontend, matching the orchestrator main-run path.
+			this.threadPushRef.get(threadId),
 		);
 		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);
 
 		for (const task of action.tasks) {
-			await this.dispatchPlannedTask(task, environment.orchestrationContext);
+			await this.dispatchPlannedTask(task, environment.orchestrationContext, action.graph);
 		}
 
-		await this.doSchedulePlannedTasks(user, threadId);
+		await this.doSchedulePlannedTasks(activeUser, threadId);
 	}
 
+	/**
+	 * Run body for a fresh orchestrator turn. Never call directly — go through
+	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
+	 * and shutdown can drain it before the DB closes.
+	 */
 	private async executeRun(
 		user: User,
 		threadId: string,
 		runId: string,
 		message: string,
 		abortController: AbortController,
-		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 		timeZone?: string,
 		isReplanFollowUp: boolean = false,
+		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+		resumeReason?: OrchestratorResumeReason,
+		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<void> {
+		// Read once at the top so the streamInput builder + (if any later
+		// retry) see the same view of restart-recovery metadata.
+		const userMessagePersistence = this.userMessagePersistenceByRun.get(runId)?.message;
 		const signal = abortController.signal;
-		let mastraRunId = '';
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
+		let aiCreatedWorkflowIds: Set<string> | undefined;
+		let activeSnapshotStorage: DbSnapshotStorage | undefined;
+		let messageId = '';
 
 		try {
-			const messageId = nanoid();
+			messageId = nanoid();
 
 			// Publish run-start (includes userId for audit trail attribution)
 			this.eventBus.publish(threadId, {
@@ -1666,6 +3680,10 @@ export class InstanceAiService {
 
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
+				this.evaluateTerminalResponse(threadId, runId, 'cancelled', {
+					messageGroupId,
+					correlationId: messageId,
+				});
 				this.eventBus.publish(threadId, {
 					type: 'run-finish',
 					runId,
@@ -1675,30 +3693,89 @@ export class InstanceAiService {
 				return;
 			}
 
-			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+			const registryMcpServers = await this.mcpRegistryService.getRegistryMcpServers(user);
+			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);
-			const { context, memory, taskStorage, snapshotStorage, modelId, orchestrationContext } =
-				await this.createExecutionEnvironment(
-					user,
-					threadId,
-					runId,
-					signal,
-					researchMode,
-					messageGroupId,
-					executionPushRef,
-				);
+			const environment = await this.createExecutionEnvironment(
+				user,
+				threadId,
+				runId,
+				signal,
+				messageGroupId,
+				executionPushRef,
+			);
+			activeSnapshotStorage = environment.snapshotStorage;
+			const {
+				context,
+				memory,
+				taskStorage,
+				snapshotStorage,
+				workflowTasks,
+				plannedTaskService,
+				modelId,
+				orchestrationContext,
+			} = environment;
+			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
+			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available to sub-agents (e.g. planner)
-			// since memory.recall() only returns previously-saved messages.
+			// since memory history only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
 			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
+
+			if (checkpoint?.isCheckpointFollowUp) {
+				orchestrationContext.isCheckpointFollowUp = true;
+				orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
+				// Plan approval authorizes verification; grant runWorkflow on the adapter context
+				// because createInstanceAgent builds domain tools from `context`, not `orchestrationContext.domainContext`.
+				context.permissions = {
+					...context.permissions,
+					...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
+				} as typeof context.permissions;
+				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
+				// the orchestrator can call `executions(action="run")` on a depended-on workflow
+				// without HITL, but any other workflow id still requires user approval.
+				const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
+				context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
+				context.allowedRunWorkflowNames = runPolicy.allowedWorkflowNames;
+				context.requireRunWorkflowApproval = runPolicy.requireApproval;
+			}
+
+			if (plannedBuild?.isPlannedBuildFollowUp) {
+				context.permissions = {
+					...context.permissions,
+					...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
+				} as typeof context.permissions;
+				context.workflowBuildContext = {
+					threadId,
+					runId,
+					taskId: plannedBuild.buildTaskId,
+					workItemId: plannedBuild.workItemId,
+					allowPostPlanWorkflowCreate: true,
+					plannedTaskService,
+					workflowTaskService: workflowTasks,
+					onBuildOutcome: (outcome) => {
+						plannedBuild.savedOutcome = outcome;
+					},
+				};
+			} else {
+				context.workflowBuildContext = {
+					threadId,
+					runId,
+					taskId: `build-${runId}`,
+					workItemId: `wi_${nanoid(8)}`,
+					allowPostPlanWorkflowCreate: isPostPlanFollowUp,
+					workflowTaskService: workflowTasks,
+				};
+			}
 
 			// Thread attachments into the domain context so parse-file can access them
 			if (attachments && attachments.length > 0) {
 				context.currentUserAttachments = attachments;
 			}
-			const memoryConfig = this.createMemoryConfig();
+			const memoryConfig = this.createAgentMemoryOptions();
 			const traceInput = {
 				message,
 				...(attachments?.length
@@ -1709,19 +3786,40 @@ export class InstanceAiService {
 							})),
 						}
 					: {}),
-				...(researchMode !== undefined ? { researchMode } : {}),
 				...(messageGroupId ? { messageGroupId } : {}),
 			};
-			tracing = await createInstanceAiTraceContext({
-				threadId,
-				messageId,
-				messageGroupId,
-				runId,
-				userId: user.id,
-				modelId,
-				input: traceInput,
-				proxyConfig: orchestrationContext.tracingProxyConfig,
-			});
+			tracing = resumeReason
+				? await this.createOrchestratorResumeTraceContext({
+						threadId,
+						messageId,
+						messageGroupId,
+						runId,
+						userId: user.id,
+						modelId,
+						input: traceInput,
+						proxyConfig: orchestrationContext.tracingProxyConfig,
+						resumeReason,
+						metadata: {
+							...(checkpoint?.isCheckpointFollowUp
+								? { checkpoint_task_id: checkpoint.checkpointTaskId }
+								: {}),
+							...(plannedBuild?.isPlannedBuildFollowUp
+								? { build_task_id: plannedBuild.buildTaskId }
+								: {}),
+						},
+					})
+				: await createInstanceAiTraceContext({
+						threadId,
+						messageId,
+						messageGroupId,
+						runId,
+						userId: user.id,
+						modelId,
+						input: traceInput,
+						proxyConfig: orchestrationContext.tracingProxyConfig,
+						n8nVersion: N8N_VERSION,
+						workflowSdkVersion: WORKFLOW_SDK_VERSION,
+					});
 
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
@@ -1731,14 +3829,16 @@ export class InstanceAiService {
 			}
 
 			if (tracing) {
-				await this.configureTraceReplayMode(tracing);
 				orchestrationContext.tracing = tracing;
-				this.runState.attachTracing(threadId, tracing);
-				this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+				if (this.getTraceContext(runId) !== tracing) {
+					await this.configureTraceReplayMode(tracing);
+					this.runState.attachTracing(threadId, tracing);
+					this.storeTraceContext(runId, threadId, tracing, messageGroupId);
+				}
 			}
 
 			// Set heuristic title before agent starts — thread always has a title
-			const thread = await memory.getThreadById({ threadId });
+			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
 				await patchThread(memory, {
 					threadId,
@@ -1756,133 +3856,64 @@ export class InstanceAiService {
 				});
 			}
 
-			const agent = await createInstanceAgent({
-				modelId,
-				context,
-				orchestrationContext,
-				mcpServers,
-				memoryConfig,
-				memory,
-				workspace: orchestrationContext.workspace,
-				disableDeferredTools: true,
-				timeZone: timeZone ?? this.defaultTimeZone,
-			});
+			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
+			let nonStructuredAttachments: InstanceAiAttachment[] = [];
+			let attachmentManifest = '';
+			let hasParseableAttachment = false;
 
-			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
-			this.eventBus.publish(threadId, {
-				type: 'status',
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { message: 'Recalling conversation...' },
-			});
-			const contextCompactionRun = tracing
-				? await tracing.startChildRun(tracing.actorRun, {
-						name: 'context_compaction',
-						tags: ['context'],
-						metadata: { agent_role: 'context_compaction' },
-						inputs: {
-							threadId,
-							lastMessages: this.instanceAiConfig.lastMessages ?? 20,
-						},
-					})
-				: undefined;
-			let conversationSummary: string | null | undefined;
-			try {
-				conversationSummary = await this.compactionService.prepareCompactedContext(
-					threadId,
-					memory,
-					modelId,
-					this.instanceAiConfig.lastMessages ?? 20,
+			if (attachments && attachments.length > 0) {
+				const classifiedAttachments = classifyAttachments(attachments);
+				nonStructuredAttachments = attachments.filter(
+					(attachment) => !isParseableAttachment(attachment),
 				);
-				if (contextCompactionRun && tracing) {
-					await tracing.finishRun(contextCompactionRun, {
-						outputs: {
-							summarized: Boolean(conversationSummary),
-							summary: conversationSummary ?? '',
-						},
-						metadata: { final_status: 'completed' },
-					});
-				}
-			} catch (error) {
-				if (contextCompactionRun && tracing) {
-					await tracing.failRun(contextCompactionRun, error, {
-						final_status: 'error',
-					});
-				}
-				throw error;
+				hasParseableAttachment = classifiedAttachments.some(
+					(attachment: { parseable: boolean }) => attachment.parseable,
+				);
+				attachmentManifest = buildAttachmentManifest(classifiedAttachments);
 			}
-			this.eventBus.publish(threadId, {
-				type: 'status',
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				payload: { message: '' },
-			});
+
+			const fullMessage =
+				!message && hasParseableAttachment
+					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${attachmentManifest}`
+					: attachmentManifest
+						? `${enrichedMessage}\n\n${attachmentManifest}`
+						: enrichedMessage;
 
 			const promptBuildRun = tracing
-				? await tracing.startChildRun(tracing.actorRun, {
-						name: 'prompt_build',
+				? await tracing.startChildRun(tracing.messageRun, {
+						name: 'prepare: prompt',
+						canonicalName: 'instance-ai.prompt_build',
 						tags: ['prompt'],
 						metadata: { agent_role: 'prompt_build' },
 						inputs: {
 							message,
-							hasConversationSummary: Boolean(conversationSummary),
 							attachmentCount: attachments?.length ?? 0,
 						},
 					})
 				: undefined;
-			let streamInput:
-				| string
-				| Array<{
-						role: 'user';
-						content: Array<
-							{ type: 'text'; text: string } | { type: 'file'; data: string; mimeType: string }
-						>;
-				  }>;
+			let streamInput: string | Message[];
 			try {
-				const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-
-				// Compose runtime input: conversation summary → background tasks → user message
-				let fullMessage = conversationSummary
-					? `${conversationSummary}\n\n${enrichedMessage}`
-					: enrichedMessage;
-
-				// Classify attachments: structured (csv/tsv/json) go through parse-file,
-				// non-structured keep the existing multimodal file path.
-				if (attachments && attachments.length > 0) {
-					const classified = classifyAttachments(attachments);
-					const nonStructured = attachments.filter((a) => !isStructuredAttachment(a));
-					const hasParseable = classified.some((c: { parseable: boolean }) => c.parseable);
-
-					// Build compact manifest for structured attachments
-					const manifest = buildAttachmentManifest(classified);
-
-					// For attachment-only messages, synthesize a stub
-					if (!message && hasParseable) {
-						fullMessage = conversationSummary
-							? `${conversationSummary}\n\nThe user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`
-							: `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`;
-					} else {
-						fullMessage = `${fullMessage}\n\n${manifest}`;
-					}
-
-					// Only include non-structured attachments as raw multimodal content
-					if (nonStructured.length > 0) {
-						streamInput = [
-							{
-								role: 'user' as const,
-								content: [
-									{ type: 'text' as const, text: fullMessage },
-									...nonStructured.map((a) => ({
-										type: 'file' as const,
-										data: a.data,
-										mimeType: a.mimeType,
-									})),
-								],
-							},
-						];
-					} else {
-						streamInput = fullMessage;
-					}
+				// When this is a user-initiated turn, build the input as an
+				// explicit message object carrying our chosen id. The SDK
+				// preserves the id on its end-of-turn save so the row matches
+				// any user-message row we may have written from inside
+				// `waitForConfirmation`.
+				if (nonStructuredAttachments.length > 0 || userMessagePersistence) {
+					const baseContent = [
+						{ type: 'text' as const, text: fullMessage },
+						...nonStructuredAttachments.map((attachment) => ({
+							type: 'file' as const,
+							data: attachment.data,
+							mediaType: attachment.mimeType,
+						})),
+					];
+					streamInput = [
+						{
+							...(userMessagePersistence ? { id: userMessagePersistence.id } : {}),
+							role: 'user' as const,
+							content: baseContent,
+						},
+					];
 				} else {
 					streamInput = fullMessage;
 				}
@@ -1895,8 +3926,7 @@ export class InstanceAiService {
 							: {
 									fullMessage,
 									attachmentCount: attachments?.length ?? 0,
-									nonStructuredAttachmentCount:
-										attachments?.filter((a) => !isStructuredAttachment(a)).length ?? 0,
+									nonStructuredAttachmentCount: nonStructuredAttachments.length,
 								};
 					await tracing.finishRun(promptBuildRun, {
 						outputs: traceOutput,
@@ -1912,17 +3942,46 @@ export class InstanceAiService {
 				throw error;
 			}
 
+			if (tracing && tracing.actorRun.id === tracing.rootRun.id) {
+				const actorRun = await tracing.startChildRun(tracing.rootRun, {
+					name: 'agent: orchestrator',
+					canonicalName: 'instance-ai.agent.orchestrator',
+					tags: ['orchestrator'],
+					metadata: {
+						agent_role: 'orchestrator',
+						agent_id: ORCHESTRATOR_AGENT_ID,
+						execution_mode: 'foreground',
+						trace_kind: tracing.traceKind,
+					},
+					inputs: traceInput,
+				});
+				tracing.actorRun = actorRun;
+				tracing.orchestratorRun = actorRun;
+			}
+
+			const agent = await createInstanceAgent({
+				modelId,
+				context,
+				orchestrationContext,
+				mcpServers,
+				mcpManager: this.mcpClientManager,
+				memoryConfig,
+				memory,
+				checkpointStore: this.checkpointStore,
+				timeZone: timeZone ?? this.defaultTimeZone,
+			});
+
 			const result = tracing
-				? await tracing.withRunTree(tracing.actorRun, async () => {
+				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(
 							agent as StreamableAgent,
 							streamInput,
 							{
-								maxSteps: MAX_STEPS.ORCHESTRATOR,
+								maxIterations: MAX_STEPS.ORCHESTRATOR,
 								abortSignal: signal,
-								memory: {
-									resource: user.id,
-									thread: threadId,
+								persistence: {
+									resourceId: user.id,
+									threadId,
 								},
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1935,6 +3994,7 @@ export class InstanceAiService {
 								signal,
 								eventBus: this.eventBus,
 								logger: this.logger,
+								onActivity: () => this.runState.touchActiveRun(threadId),
 							},
 						);
 					})
@@ -1942,11 +4002,11 @@ export class InstanceAiService {
 						agent as StreamableAgent,
 						streamInput,
 						{
-							maxSteps: MAX_STEPS.ORCHESTRATOR,
+							maxIterations: MAX_STEPS.ORCHESTRATOR,
 							abortSignal: signal,
-							memory: {
-								resource: user.id,
-								thread: threadId,
+							persistence: {
+								resourceId: user.id,
+								threadId,
 							},
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1959,15 +4019,14 @@ export class InstanceAiService {
 							signal,
 							eventBus: this.eventBus,
 							logger: this.logger,
+							onActivity: () => this.runState.touchActiveRun(threadId),
 						},
 					);
-			mastraRunId = result.mastraRunId;
-
 			if (result.status === 'suspended') {
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
 						runId,
-						mastraRunId: result.mastraRunId,
+						agentRunId: result.agentRunId,
 						agent,
 						threadId,
 						user,
@@ -1977,6 +4036,20 @@ export class InstanceAiService {
 						messageGroupId,
 						createdAt: Date.now(),
 						tracing,
+						modelId,
+						checkpoint,
+						plannedBuild,
+					});
+					void this.persistPendingConfirmation({
+						requestId: result.suspension.requestId,
+						threadId,
+						userId: user.id,
+						runId,
+						messageGroupId,
+						kind: 'suspended',
+						toolCallId: result.suspension.toolCallId,
+						checkpointKey: result.agentRunId,
+						checkpointTaskId: checkpoint?.checkpointTaskId,
 					});
 				}
 
@@ -1990,6 +4063,27 @@ export class InstanceAiService {
 					});
 				}
 
+				const waitingDecision = this.evaluateWaitingResponse(
+					threadId,
+					runId,
+					result.confirmationEvent,
+					{
+						messageGroupId,
+						correlationId: messageId,
+					},
+				);
+
+				if (waitingDecision?.reason === 'confirmation-invalid') {
+					messageTraceFinalization = await this.finishInvalidConfirmationRun({
+						threadId,
+						runId,
+						abortController,
+						snapshotStorage,
+						tracing,
+					});
+					return;
+				}
+
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
@@ -1999,10 +4093,65 @@ export class InstanceAiService {
 				// The tree is rebuilt from in-memory events and includes the
 				// confirmation-request data that the frontend needs.
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+				const suspensionOutputs = {
+					status: 'suspended',
+					runId,
+					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
+					...(result.suspension?.toolCallId
+						? { pendingToolCallId: result.suspension.toolCallId }
+						: {}),
+					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
+				};
+				await this.finalizeRunTracing(runId, tracing, {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				});
+				messageTraceFinalization = {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				};
+				return;
+			}
+
+			// `streamAgentRun` doesn't throw on abort — it returns
+			// `status: 'cancelled'`. When the abort came from shutdown's
+			// preserve-HITL path, falling through into the normal terminal
+			// handling would still call `evaluateTerminalResponse` and
+			// `finalizeRun`, both of which rewrite the snapshot. Bail out
+			// before either fires so the plan/ask card stays on disk.
+			if (result.status === 'cancelled' && this.shouldPreserveHitlOnShutdown(runId)) {
 				return;
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			this.evaluateTerminalResponse(threadId, runId, result.status, {
+				messageGroupId,
+				correlationId: messageId,
+				workSummary: result.workSummary,
+				suppressCompletedFallback:
+					checkpoint?.isCheckpointFollowUp === true ||
+					plannedBuild?.isPlannedBuildFollowUp === true,
+			});
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
@@ -2013,11 +4162,17 @@ export class InstanceAiService {
 				status: finalStatus,
 				outputText,
 				modelId,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
 			};
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				threadId,
+				user,
+				aiCreatedWorkflowIds,
+			);
 			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
 				userId: user.id,
 				modelId,
+				archivedWorkflowIds,
 			});
 
 			// Count credits on first completed run per thread
@@ -2033,25 +4188,69 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (signal.aborted) {
+				// Shutdown asked us to preserve the HITL card on disk: the
+				// service has already finalised tracing and the per-run DB
+				// rows (pending_confirmation, snapshot) are the durable
+				// signal. Emitting the terminal-fallback text + run-finish
+				// here would clobber the plan/ask snapshot the user expects
+				// to see on reload, so just bail out.
+				if (this.shouldPreserveHitlOnShutdown(runId)) {
+					return;
+				}
+				const runTimeout = this.liveness.consumeRunTimeout(runId);
+				const cancellationReason = runTimeout.timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(signal);
+				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+					this.liveness.publishRunTimeoutNotice(threadId, runId);
+				}
+				this.evaluateTerminalResponse(threadId, runId, 'cancelled', {
+					messageGroupId,
+					correlationId: messageId,
+				});
 				await this.finalizeRunTracing(runId, tracing, {
 					status: 'cancelled',
-					reason: 'user_cancelled',
+					reason: cancellationReason,
 				});
 				messageTraceFinalization = {
 					status: 'cancelled',
-					reason: 'user_cancelled',
-					metadata: { completion_source: 'orchestrator' },
+					reason: cancellationReason,
+					metadata: this.buildMessageTraceMetadata(threadId, runId, {
+						status: 'cancelled',
+						cancellationReason,
+						runTimeout,
+					}),
 				};
-				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled');
+				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+					threadId,
+					user,
+					aiCreatedWorkflowIds,
+				);
+				this.publishRunFinish(
+					threadId,
+					runId,
+					'cancelled',
+					cancellationReason,
+					archivedWorkflowIds,
+				);
+				if (activeSnapshotStorage) {
+					await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
+				}
 				return;
 			}
 
 			const errorMessage = getErrorMessage(error);
+			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
 			this.logger.error('Instance AI run error', {
 				error: errorMessage,
 				threadId,
 				runId,
+			});
+			this.evaluateTerminalResponse(threadId, runId, 'errored', {
+				messageGroupId,
+				correlationId: messageId,
+				errorMessage: userFacingErrorMessage,
 			});
 			await this.finalizeRunTracing(runId, tracing, {
 				status: 'error',
@@ -2060,39 +4259,317 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
 			};
 
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				threadId,
+				user,
+				aiCreatedWorkflowIds,
+			);
 			this.eventBus.publish(threadId, {
 				type: 'run-finish',
 				runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: {
 					status: 'error',
-					reason: errorMessage,
+					reason: userFacingErrorMessage,
+					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
+			if (activeSnapshotStorage) {
+				await this.saveAgentTreeSnapshot(threadId, runId, activeSnapshotStorage);
+			}
 		} finally {
 			this.runState.clearActiveRun(threadId);
-			this.threadPushRef.delete(threadId);
+			// Drop any unconsumed first-suspend persistence intent. SDK
+			// end-of-turn save handles the success path; a mid-turn error
+			// means we deliberately don't want a half-saved row.
+			this.userMessagePersistenceByRun.delete(runId);
+			// Note: don't delete threadPushRef here. Planned tasks (build agent,
+			// checkpoint verifications) dispatch later in this same finally and
+			// later still in the post-run scheduler — they need the pushRef to
+			// route execution events to the user's iframe session. The next
+			// startRun overwrites it; thread-cleanup deletes it on dispose.
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
+				if (messageTraceFinalization.status !== 'cancelled') {
+					this.liveness.consumeRunTimeout(runId);
+				}
 			}
-			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
-			// Mastra only persists snapshots on suspension and never deletes them on completion.
-			if (!this.runState.hasSuspendedRun(threadId) && mastraRunId) {
-				void this.cleanupMastraSnapshots(mastraRunId);
+			// Post-run planned-task wiring (only when the run is actually ending,
+			// not when it merely suspended for HITL):
+			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
+			//      follow-up and the orchestrator exited without calling
+			//      complete-checkpoint, mark the task failed so the scheduler
+			//      can transition to awaiting_replan.
+			//   2. Unconditional reschedule — drive the next tick. This covers
+			//      the case where a background task settled during an ordinary
+			//      chat run: its schedulePlannedTasks call may have skipped the
+			//      checkpoint branch because hasLiveRun was true. Ticking again
+			//      now (with no live run) picks it up. schedulerLocks serializes
+			//      this call, and tick() is a no-op when no graph exists.
+			if (!this.runState.hasSuspendedRun(threadId)) {
+				if (checkpoint?.isCheckpointFollowUp) {
+					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId);
+				} else if (plannedBuild?.isPlannedBuildFollowUp) {
+					await this.finalizePlannedBuildFollowUp(user, threadId, plannedBuild);
+				} else {
+					await this.schedulePlannedTasks(user, threadId);
+				}
+				await this.drainPendingCheckpointReentries(user, threadId);
 			}
 		}
+	}
+
+	/**
+	 * Post-run cleanup for a checkpoint follow-up. Ensures the checkpoint task is
+	 * terminal (marking it failed if the orchestrator abandoned it) and re-ticks
+	 * the scheduler so the next planned action can fire.
+	 */
+	private queuePendingCheckpointReentry(threadId: string, checkpointTaskId: string): void {
+		let set = this.pendingCheckpointReentries.get(threadId);
+		if (!set) {
+			set = new Set();
+			this.pendingCheckpointReentries.set(threadId, set);
+		}
+		set.add(checkpointTaskId);
+	}
+
+	/**
+	 * Drain any checkpoint re-entries whose parent-tagged children settled while
+	 * an orchestrator run was live (or while other siblings were still running).
+	 * Called from the post-run cleanup path in every run-ending `finally` block,
+	 * so the checkpoint is never left orphaned when the settlement path could
+	 * not fire immediately.
+	 */
+	private async drainPendingCheckpointReentries(user: User, threadId: string): Promise<void> {
+		const set = this.pendingCheckpointReentries.get(threadId);
+		if (!set || set.size === 0) return;
+		const snapshot = [...set];
+		for (const checkpointTaskId of snapshot) {
+			// If a new run started while we were draining, stop — the next run's
+			// cleanup will pick up the remaining markers.
+			if (this.runState.getActiveRunId(threadId) || this.runState.hasSuspendedRun(threadId)) {
+				return;
+			}
+			// A new parent-tagged child is running — let its settlement drive the
+			// checkpoint instead of racing another re-entry.
+			const siblings = this.backgroundTasks.getRunningTasksByParentCheckpoint(
+				threadId,
+				checkpointTaskId,
+			);
+			if (siblings.length > 0) continue;
+			set.delete(checkpointTaskId);
+			await this.reenterCheckpointById(user, threadId, checkpointTaskId);
+		}
+		if (set.size === 0) this.pendingCheckpointReentries.delete(threadId);
+	}
+
+	/**
+	 * Fire a synthetic `<planned-task-follow-up type="checkpoint">` for the
+	 * given checkpoint task id when the parent-tagged children that drove it
+	 * are no longer running and no new orchestrator run is live. Used by both
+	 * the immediate re-entry path (via `maybeReenterParentCheckpoint`) and the
+	 * deferred drain (via `drainPendingCheckpointReentries`).
+	 */
+	private async reenterCheckpointById(
+		user: User,
+		threadId: string,
+		checkpointTaskId: string,
+		messageGroupId?: string,
+	): Promise<boolean> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const checkpoint = graph?.tasks.find((t) => t.id === checkpointTaskId);
+			if (!graph || !checkpoint || checkpoint.kind !== 'checkpoint') return false;
+			if (checkpoint.status !== 'running') return false;
+
+			const startedRunId = await this.startInternalFollowUpRun(
+				user,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('checkpoint', graph, { checkpoint }),
+				messageGroupId,
+				false,
+				{ isCheckpointFollowUp: true, checkpointTaskId },
+			);
+			if (!startedRunId) return false;
+			this.logger.debug('Re-entered checkpoint follow-up', {
+				threadId,
+				checkpointTaskId,
+				messageGroupId,
+			});
+			return true;
+		} catch (error) {
+			this.logger.error('Failed to re-enter checkpoint follow-up', {
+				threadId,
+				checkpointTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
+		}
+	}
+
+	/**
+	 * When a direct background task (builder/research/data-table/delegate)
+	 * settles and was spawned inside a checkpoint follow-up, try to re-enter
+	 * that checkpoint so the orchestrator can call `complete-checkpoint`.
+	 *
+	 * Returns `true` only when a follow-up was actually started. Returns
+	 * `false` in every other case (checkpoint no longer running, siblings
+	 * still in-flight, an orchestrator run is active or suspended, or the
+	 * graph no longer has the checkpoint). The caller is responsible for
+	 * queuing a deferred re-entry in the false case — never falling through
+	 * to a generic `<background-task-completed>` shell, which would re-open
+	 * the orphan bug.
+	 */
+	private async maybeReenterParentCheckpoint(
+		user: User,
+		threadId: string,
+		task: ManagedBackgroundTask,
+	): Promise<boolean> {
+		const parentCheckpointId = task.parentCheckpointId;
+		if (!parentCheckpointId) return false;
+
+		// If other parent-tagged children are still running, let the LAST one
+		// re-drive the checkpoint; emitting multiple re-dispatches would race.
+		const siblings = this.backgroundTasks
+			.getRunningTasksByParentCheckpoint(threadId, parentCheckpointId)
+			.filter((t) => t.taskId !== task.taskId);
+		if (siblings.length > 0) return false;
+
+		// If a run is live, defer — startInternalFollowUpRun would be rejected
+		// and we must not fall through to the shell path.
+		if (this.runState.getActiveRunId(threadId) || this.runState.hasSuspendedRun(threadId)) {
+			return false;
+		}
+
+		return await this.reenterCheckpointById(
+			user,
+			threadId,
+			parentCheckpointId,
+			task.messageGroupId,
+		);
+	}
+
+	private async finalizeCheckpointFollowUp(
+		user: User,
+		threadId: string,
+		checkpointTaskId: string,
+	): Promise<void> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const task = graph?.tasks.find((t) => t.id === checkpointTaskId);
+			if (task && task.status === 'running') {
+				// If the orchestrator spawned a detached sub-agent inside this
+				// checkpoint's turn (builder, research, data-table, delegate) and
+				// that child is still running, leave the checkpoint running. The
+				// child's settlement path re-emits `orchestrate-checkpoint` so the
+				// orchestrator re-enters the same checkpoint context and can then
+				// call `complete-checkpoint`.
+				const inflightChildren = this.backgroundTasks.getRunningTasksByParentCheckpoint(
+					threadId,
+					checkpointTaskId,
+				);
+				if (inflightChildren.length > 0) {
+					this.logger.debug(
+						'Checkpoint run ended with in-flight child tasks — deferring finalization',
+						{
+							threadId,
+							checkpointTaskId,
+							inflightTaskIds: inflightChildren.map((t) => t.taskId),
+						},
+					);
+				} else {
+					this.logger.warn('Checkpoint run ended without reporting completion — marking failed', {
+						threadId,
+						checkpointTaskId,
+					});
+					await plannedTaskService.markCheckpointFailed(threadId, checkpointTaskId, {
+						error: 'Checkpoint run ended without reporting completion',
+					});
+					const nextGraph = await plannedTaskService.getGraph(threadId);
+					if (nextGraph) {
+						await this.syncPlannedTasksToUi(threadId, nextGraph);
+					}
+				}
+			}
+		} catch (error) {
+			this.logger.error('Checkpoint finalization failed', {
+				threadId,
+				checkpointTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		await this.schedulePlannedTasks(user, threadId);
+	}
+
+	private async finalizePlannedBuildFollowUp(
+		user: User,
+		threadId: string,
+		plannedBuild: PlannedBuildFollowUp,
+	): Promise<void> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const task = graph?.tasks.find((t) => t.id === plannedBuild.buildTaskId);
+			if (task && task.status === 'running') {
+				if (plannedBuild.savedOutcome?.submitted === true) {
+					await plannedTaskService.markSucceeded(threadId, plannedBuild.buildTaskId, {
+						result: plannedBuild.savedOutcome.summary,
+						outcome: plannedBuild.savedOutcome,
+					});
+				} else {
+					this.logger.warn('Build workflow follow-up ended without saving — marking failed', {
+						threadId,
+						buildTaskId: plannedBuild.buildTaskId,
+					});
+					await plannedTaskService.markFailed(threadId, plannedBuild.buildTaskId, {
+						error: 'Workflow build run ended without saving a workflow',
+					});
+				}
+				const nextGraph = await plannedTaskService.getGraph(threadId);
+				if (nextGraph) {
+					await this.syncPlannedTasksToUi(threadId, nextGraph);
+				}
+			}
+		} catch (error) {
+			this.logger.error('Build workflow finalization failed', {
+				threadId,
+				buildTaskId: plannedBuild.buildTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		await this.schedulePlannedTasks(user, threadId);
 	}
 
 	async resolveConfirmation(
 		requestingUserId: string,
 		requestId: string,
-		data: ConfirmationData,
+		request: InstanceAiConfirmRequest,
 	): Promise<boolean> {
-		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
+		const data = toConfirmationData(request);
+		const freshUser = await this.revalidateActiveUser(requestingUserId);
+		if (!freshUser) {
+			this.runState.rejectPendingConfirmation(requestId);
+			const suspended = this.runState.findSuspendedByRequestId(requestId);
+			if (suspended?.user.id === requestingUserId) {
+				this.cancelRun(suspended.threadId);
+			}
+			this.logger.warn('Rejecting confirmation: user no longer authorized for AI Assistant', {
+				userId: requestingUserId,
+				requestId,
+			});
+			return false;
+		}
+
+		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
+			void this.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
@@ -2105,7 +4582,250 @@ export class InstanceAiService {
 			approved: data.approved,
 		});
 
-		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		if (await this.resumeSuspendedRun(requestingUserId, requestId, data)) {
+			return true;
+		}
+
+		// Last resort: the in-memory state is gone, but a persisted index row
+		// may still exist from before a process restart. For `suspended`-kind
+		// rows we try to rebuild the agent from the DB-backed checkpoint and
+		// resume; for `inline`-kind (no checkpoint, just an in-process Promise
+		// that died with the previous process) or any rebuild failure we
+		// publish a terminal `run-finish` and surface a clear UserError so the
+		// client doesn't sit on a stale confirmation card.
+		return await this.resolveOrphanedConfirmation(requestingUserId, requestId, data);
+	}
+
+	private async resolveOrphanedConfirmation(
+		userId: string,
+		requestId: string,
+		data: ConfirmationData,
+	): Promise<boolean> {
+		let orphan: Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>;
+		try {
+			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to claim orphaned pending confirmation', {
+				requestId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+		if (!orphan) return false;
+
+		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
+			requestId,
+			threadId: orphan.threadId,
+			runId: orphan.runId,
+			kind: orphan.kind,
+			hasCheckpoint: Boolean(orphan.checkpointKey),
+		});
+
+		if (orphan.kind === 'suspended' && this.canResumeOrphan(orphan)) {
+			const resumed = await this.tryResumeFromOrphan(orphan, data);
+			if (resumed) return true;
+		}
+
+		this.finalizeUnresumableOrphan(orphan);
+		throw new UserError(
+			'This confirmation was lost when the assistant restarted. Send a new message to continue.',
+		);
+	}
+
+	private canResumeOrphan(
+		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
+	): orphan is ResumableOrphan {
+		return Boolean(orphan.toolCallId && orphan.checkpointKey);
+	}
+
+	private finalizeUnresumableOrphan(
+		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
+	): void {
+		try {
+			// Live SSE clients use this to drop their interactive card.
+			this.publishRunFinish(
+				orphan.threadId,
+				orphan.runId,
+				'cancelled',
+				'restart_lost_confirmation',
+			);
+			// Terminalise the existing snapshot in place instead of rebuilding
+			// the tree from the in-memory event bus. After a restart the bus
+			// only carries the run-finish we just emitted, so a rebuild would
+			// replace the saved plan/ask card with an empty cancelled tree;
+			// `markRunCancelled` keeps the plan content intact while flipping
+			// all in-flight nodes and confirmation buttons off.
+			void this.dbSnapshotStorage
+				.markRunCancelled(orphan.threadId, orphan.runId)
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to mark orphan snapshot as cancelled', {
+						requestId: orphan.requestId,
+						threadId: orphan.threadId,
+						runId: orphan.runId,
+						error: getErrorMessage(error),
+					});
+				});
+		} catch (error: unknown) {
+			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
+				requestId: orphan.requestId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Rebuild the orchestration environment + agent for a checkpoint-backed
+	 * suspended run that survived a process restart, register it as a
+	 * `SuspendedRunState` in the in-memory registry, and hand off to the
+	 * existing `resumeSuspendedRun` path. The original `runId` /
+	 * `messageGroupId` are reused so the frontend's SSE correlation
+	 * (`groupIdByRunId`) keeps working.
+	 */
+	private async tryResumeFromOrphan(
+		orphan: ResumableOrphan,
+		data: ConfirmationData,
+	): Promise<boolean> {
+		const outcome = await this.rebuildSuspendedRunFromCheckpoint(orphan);
+		switch (outcome.kind) {
+			case 'ready':
+				// Re-seed the in-memory runState so `resumeSuspendedRun` can find
+				// this confirmation by requestId and the rest of the cancel /
+				// liveness / shutdown paths see the run as live. We deliberately
+				// do NOT call `persistPendingConfirmation` again — the DB row
+				// was already consumed by `claim()` above.
+				this.runState.suspendRun(orphan.threadId, outcome.state);
+				return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
+			case 'no-user':
+				this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
+					requestId: orphan.requestId,
+					userId: orphan.userId,
+				});
+				return false;
+			case 'no-checkpoint':
+				this.logger.warn('Cannot resume orphaned run: checkpoint missing or unavailable', {
+					requestId: orphan.requestId,
+					checkpointKey: orphan.checkpointKey,
+					...(outcome.error ? { error: getErrorMessage(outcome.error) } : {}),
+				});
+				return false;
+			case 'env-failure':
+				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
+					requestId: orphan.requestId,
+					threadId: orphan.threadId,
+					error: getErrorMessage(outcome.error),
+				});
+				return false;
+			case 'agent-failure':
+				this.logger.warn('Cannot resume orphaned run: failed to build agent', {
+					requestId: orphan.requestId,
+					threadId: orphan.threadId,
+					error: getErrorMessage(outcome.error),
+				});
+				return false;
+		}
+	}
+
+	/**
+	 * Rebuild the in-memory pieces a suspended run needs (user, agent,
+	 * execution environment) from a persisted orphan row + checkpoint, and
+	 * package them into a `SuspendedRunState`. The caller wraps the result in
+	 * `runState.suspendRun` and hands off to `resumeSuspendedRun`.
+	 *
+	 * Returns a discriminated union so the caller can log a precise reason
+	 * per failure mode without inlining each step's try/catch. Logging here
+	 * would be premature — the helper has the failure context but not the
+	 * routing decision (`tryResumeFromOrphan` decides whether the failure is
+	 * worth surfacing to the user vs. just retrying).
+	 */
+	private async rebuildSuspendedRunFromCheckpoint(
+		orphan: ResumableOrphan,
+	): Promise<RebuildSuspendedRunOutcome> {
+		const user = await this.revalidateActiveUser(orphan.userId);
+		if (!user) return { kind: 'no-user' };
+
+		// Bail early if the checkpoint store doesn't have a usable snapshot —
+		// `load()` throws UserError for expired tombstones and returns
+		// undefined when the row is gone entirely. Either way there's nothing
+		// to resume.
+		try {
+			const state = await this.checkpointStore.load(orphan.checkpointKey);
+			if (!state) return { kind: 'no-checkpoint' };
+		} catch (error: unknown) {
+			return { kind: 'no-checkpoint', error };
+		}
+
+		const abortController = new AbortController();
+		let environment;
+		try {
+			environment = await this.createExecutionEnvironment(
+				user,
+				orphan.threadId,
+				orphan.runId,
+				abortController.signal,
+				orphan.messageGroupId ?? undefined,
+				this.threadPushRef.get(orphan.threadId),
+			);
+		} catch (error: unknown) {
+			return { kind: 'env-failure', error };
+		}
+
+		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		let agent;
+		try {
+			agent = await createInstanceAgent({
+				modelId: environment.modelId,
+				context: environment.context,
+				orchestrationContext: environment.orchestrationContext,
+				mcpServers,
+				mcpManager: this.mcpClientManager,
+				memoryConfig: this.createAgentMemoryOptions(),
+				memory: environment.memory,
+				checkpointStore: this.checkpointStore,
+				timeZone: this.runState.getTimeZone(orphan.threadId) ?? this.defaultTimeZone,
+			});
+		} catch (error: unknown) {
+			return { kind: 'agent-failure', error };
+		}
+
+		return {
+			kind: 'ready',
+			state: {
+				runId: orphan.runId,
+				agentRunId: orphan.checkpointKey,
+				agent,
+				threadId: orphan.threadId,
+				user,
+				toolCallId: orphan.toolCallId,
+				requestId: orphan.requestId,
+				abortController,
+				messageGroupId: orphan.messageGroupId ?? undefined,
+				createdAt: Date.now(),
+				tracing: undefined,
+				modelId: environment.modelId,
+				checkpoint: orphan.checkpointTaskId
+					? { isCheckpointFollowUp: true, checkpointTaskId: orphan.checkpointTaskId }
+					: undefined,
+			},
+		};
+	}
+
+	private async revalidateActiveUser(userId: string): Promise<User | null> {
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				relations: ['role'],
+			});
+			if (!user || user.disabled) return null;
+			const hasInstanceAiMessageScope =
+				user.role?.scopes?.some((scope) => scope.slug === 'instanceAi:message') ?? false;
+			return hasInstanceAiMessageScope ? user : null;
+		} catch (error: unknown) {
+			this.logger.warn('Failed to revalidate user', {
+				userId,
+				error: getErrorMessage(error),
+			});
+			return null;
+		}
 	}
 
 	private async resumeSuspendedRun(
@@ -2122,20 +4842,48 @@ export class InstanceAiService {
 			return false;
 		}
 
-		const { agent, runId, mastraRunId, threadId, user, toolCallId, abortController, tracing } =
-			suspended;
+		const {
+			agent,
+			runId,
+			agentRunId,
+			threadId,
+			user,
+			toolCallId,
+			abortController,
+			tracing,
+			modelId,
+			messageGroupId,
+			checkpoint,
+			plannedBuild,
+		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
+		const activeUser = await this.revalidateActiveUser(user.id);
+		if (!activeUser) {
+			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+				requestId,
+			});
+			this.cancelRun(threadId);
+			return false;
+		}
+
 		this.runState.activateSuspendedRun(threadId);
+
+		// The in-memory `suspendedRuns` map carries no resolver callback, so
+		// the suspended-kind DB row has to be dropped explicitly here. The
+		// inline-kind drop is wired into the Promise resolver in
+		// `waitForConfirmation` and fires whether the resolution came from the
+		// user, from `cancelThread`, or from a liveness timeout.
+		void this.dropPendingConfirmation(requestId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
 		// other tools use the flat credentials map. Prefer nodeCredentials when present.
 		const credentialsPayload = data.nodeCredentials ?? data.credentials;
 		const resumeData = {
 			approved: data.approved,
-			...(data.credentialId ? { credentialId: data.credentialId } : {}),
 			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
-			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 			...(data.action ? { action: data.action } : {}),
@@ -2145,26 +4893,63 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
-		void this.processResumedStream(agent, resumeData, {
-			runId,
-			mastraRunId,
+		const resumeTracing = await this.createOrchestratorResumeTraceContext({
+			baseTracing: tracing,
 			threadId,
-			user,
+			messageId: nanoid(),
+			messageGroupId,
+			runId,
+			userId: activeUser.id,
+			modelId,
+			input: {
+				requestId,
+				toolCallId,
+				approved: data.approved,
+				resumeFields: Object.keys(resumeData),
+			},
+			resumeReason: 'approval',
+			metadata: {
+				request_id: requestId,
+				pending_tool_call_id: toolCallId,
+				approved: data.approved,
+				...(checkpoint?.isCheckpointFollowUp
+					? { checkpoint_task_id: checkpoint.checkpointTaskId }
+					: {}),
+				...(plannedBuild?.isPlannedBuildFollowUp
+					? { build_task_id: plannedBuild.buildTaskId }
+					: {}),
+			},
+		});
+
+		this.startProcessResumedStream(agent, resumeData, {
+			runId,
+			agentRunId,
+			threadId,
+			user: activeUser,
 			toolCallId,
 			signal: abortController.signal,
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
-			tracing,
+			tracing: resumeTracing ?? tracing,
+			modelId,
+			checkpoint,
+			plannedBuild,
 		});
 		return true;
 	}
 
+	/**
+	 * Run body for a resumed suspended orchestrator turn. Never call directly
+	 * — go through `startProcessResumedStream` so the promise is registered
+	 * with `inFlightExecutions` and shutdown can drain it before the DB
+	 * closes.
+	 */
 	private async processResumedStream(
 		agent: unknown,
 		resumeData: Record<string, unknown>,
 		opts: {
 			runId: string;
-			mastraRunId: string;
+			agentRunId: string;
 			threadId: string;
 			user: User;
 			toolCallId: string;
@@ -2172,20 +4957,42 @@ export class InstanceAiService {
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
+			modelId?: ModelConfig;
+			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
+			plannedBuild?: PlannedBuildFollowUp;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 
 		try {
+			if (opts.tracing?.getTelemetry && isTelemetryConfigurableAgent(agent)) {
+				try {
+					agent.telemetry(
+						opts.tracing.getTelemetry({
+							agentRole: 'orchestrator',
+							functionId: 'instance-ai.orchestrator',
+							executionMode:
+								opts.tracing.traceKind === 'orchestrator_resume' ? 'resume' : 'foreground',
+						}),
+					);
+				} catch (error) {
+					this.logger.warn('Failed to configure Instance AI resume tracing', {
+						error: getErrorMessage(error),
+						threadId: opts.threadId,
+						runId: opts.runId,
+					});
+				}
+			}
+
 			const result = opts.tracing
-				? await opts.tracing.withRunTree(opts.tracing.actorRun, async () => {
+				? await opts.tracing.withActiveSpan(opts.tracing.actorRun, async () => {
 						return await resumeAgentRun(
 							agent,
 							resumeData,
 							{
-								runId: opts.mastraRunId,
+								runId: opts.agentRunId,
 								toolCallId: opts.toolCallId,
-								memory: { resource: opts.user.id, thread: opts.threadId },
+								persistence: { resourceId: opts.user.id, threadId: opts.threadId },
 							},
 							{
 								threadId: opts.threadId,
@@ -2194,7 +5001,8 @@ export class InstanceAiService {
 								signal: opts.signal,
 								eventBus: this.eventBus,
 								logger: this.logger,
-								mastraRunId: opts.mastraRunId,
+								agentRunId: opts.agentRunId,
+								onActivity: () => this.runState.touchActiveRun(opts.threadId),
 							},
 						);
 					})
@@ -2202,9 +5010,9 @@ export class InstanceAiService {
 						agent,
 						resumeData,
 						{
-							runId: opts.mastraRunId,
+							runId: opts.agentRunId,
 							toolCallId: opts.toolCallId,
-							memory: { resource: opts.user.id, thread: opts.threadId },
+							persistence: { resourceId: opts.user.id, threadId: opts.threadId },
 						},
 						{
 							threadId: opts.threadId,
@@ -2213,24 +5021,40 @@ export class InstanceAiService {
 							signal: opts.signal,
 							eventBus: this.eventBus,
 							logger: this.logger,
-							mastraRunId: opts.mastraRunId,
+							agentRunId: opts.agentRunId,
+							onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						},
 					);
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
+					const resumeMessageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
-						mastraRunId: result.mastraRunId,
+						agentRunId: result.agentRunId,
 						agent,
 						threadId: opts.threadId,
 						user: opts.user,
 						toolCallId: result.suspension.toolCallId,
 						requestId: result.suspension.requestId,
 						abortController: opts.abortController,
-						messageGroupId: this.traceContextsByRunId.get(opts.runId)?.messageGroupId,
+						messageGroupId: resumeMessageGroupId,
 						createdAt: Date.now(),
 						tracing: opts.tracing,
+						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+						checkpoint: opts.checkpoint,
+						plannedBuild: opts.plannedBuild,
+					});
+					void this.persistPendingConfirmation({
+						requestId: result.suspension.requestId,
+						threadId: opts.threadId,
+						userId: opts.user.id,
+						runId: opts.runId,
+						messageGroupId: resumeMessageGroupId,
+						kind: 'suspended',
+						toolCallId: result.suspension.toolCallId,
+						checkpointKey: result.agentRunId,
+						checkpointTaskId: opts.checkpoint?.checkpointTaskId,
 					});
 				}
 
@@ -2244,6 +5068,25 @@ export class InstanceAiService {
 					});
 				}
 
+				const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+				const waitingDecision = this.evaluateWaitingResponse(
+					opts.threadId,
+					opts.runId,
+					result.confirmationEvent,
+					{ messageGroupId },
+				);
+
+				if (waitingDecision?.reason === 'confirmation-invalid') {
+					messageTraceFinalization = await this.finishInvalidConfirmationRun({
+						threadId: opts.threadId,
+						runId: opts.runId,
+						abortController: opts.abortController,
+						snapshotStorage: opts.snapshotStorage,
+						tracing: opts.tracing,
+					});
+					return;
+				}
+
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
@@ -2252,11 +5095,60 @@ export class InstanceAiService {
 				// Persist the refreshed agent tree so repeated HITL waits
 				// survive page refresh after a resume as well.
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
+				const suspensionOutputs = {
+					status: 'suspended',
+					runId: opts.runId,
+					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
+					...(result.suspension?.toolCallId
+						? { pendingToolCallId: result.suspension.toolCallId }
+						: {}),
+					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
+				};
+				await this.finalizeRunTracing(opts.runId, opts.tracing, {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				});
+				messageTraceFinalization = {
+					status: 'suspended',
+					outputs: suspensionOutputs,
+					metadata: {
+						completion_source: 'orchestrator',
+						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
+						...(result.suspension?.toolCallId
+							? { pending_tool_call_id: result.suspension.toolCallId }
+							: {}),
+						...(result.suspension?.toolName
+							? { pending_tool_name: result.suspension.toolName }
+							: {}),
+					},
+				};
 
 				return;
 			}
 
+			if (result.status === 'cancelled' && this.shouldPreserveHitlOnShutdown(opts.runId)) {
+				return;
+			}
+
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+			this.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
+				messageGroupId,
+				workSummary: result.workSummary,
+				suppressCompletedFallback:
+					opts.checkpoint?.isCheckpointFollowUp === true ||
+					opts.plannedBuild?.isPlannedBuildFollowUp === true,
+			});
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: finalStatus,
@@ -2265,11 +5157,21 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					status: finalStatus,
+				}),
 			};
-			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage);
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+			);
+			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
+				archivedWorkflowIds,
+			});
 
 			if (result.status === 'completed') {
+				await this.countCreditsIfFirst(opts.user, opts.threadId, opts.runId);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,
@@ -2280,25 +5182,61 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			if (opts.signal.aborted) {
+				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
+					return;
+				}
+				const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
+				const cancellationReason = runTimeout.timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				if (cancellationReason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+					this.liveness.publishRunTimeoutNotice(opts.threadId, opts.runId);
+				}
+				this.evaluateTerminalResponse(opts.threadId, opts.runId, 'cancelled', {
+					messageGroupId,
+				});
 				await this.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'cancelled',
-					reason: 'user_cancelled',
+					reason: cancellationReason,
 				});
 				messageTraceFinalization = {
 					status: 'cancelled',
-					reason: 'user_cancelled',
-					metadata: { completion_source: 'orchestrator' },
+					reason: cancellationReason,
+					metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+						status: 'cancelled',
+						cancellationReason,
+						runTimeout,
+					}),
 				};
-				this.publishRunFinish(opts.threadId, opts.runId, 'cancelled', 'user_cancelled');
+				const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+					opts.threadId,
+					opts.user,
+					undefined,
+				);
+				this.publishRunFinish(
+					opts.threadId,
+					opts.runId,
+					'cancelled',
+					cancellationReason,
+					archivedWorkflowIds,
+				);
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 				return;
 			}
 
 			const errorMessage = getErrorMessage(error);
+			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
 			this.logger.error('Instance AI resumed run error', {
 				error: errorMessage,
 				threadId: opts.threadId,
 				runId: opts.runId,
+			});
+			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
+			this.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
+				messageGroupId,
+				errorMessage: userFacingErrorMessage,
 			});
 			await this.finalizeRunTracing(opts.runId, opts.tracing, {
 				status: 'error',
@@ -2307,23 +5245,54 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: { completion_source: 'orchestrator' },
+				metadata: this.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					status: 'error',
+				}),
 			};
 
+			const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+			);
 			this.eventBus.publish(opts.threadId, {
 				type: 'run-finish',
 				runId: opts.runId,
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: {
 					status: 'error',
-					reason: errorMessage,
+					reason: userFacingErrorMessage,
+					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
+			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
-			this.threadPushRef.delete(opts.threadId);
+			// See note in executeRun's finally — keep threadPushRef alive for
+			// post-run planned-task dispatch.
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
+				if (messageTraceFinalization.status !== 'cancelled') {
+					this.liveness.consumeRunTimeout(opts.runId);
+				}
+			}
+			// Post-run planned-task wiring — mirror the executeRun finally.
+			// Resumed ordinary-chat runs also need to drive the scheduler in case
+			// a background task settled while they were active or suspended and
+			// the orchestrate-checkpoint branch was skipped because of hasLiveRun.
+			if (!this.runState.hasSuspendedRun(opts.threadId)) {
+				if (opts.checkpoint?.isCheckpointFollowUp) {
+					await this.finalizeCheckpointFollowUp(
+						opts.user,
+						opts.threadId,
+						opts.checkpoint.checkpointTaskId,
+					);
+				} else if (opts.plannedBuild?.isPlannedBuildFollowUp) {
+					await this.finalizePlannedBuildFollowUp(opts.user, opts.threadId, opts.plannedBuild);
+				} else {
+					await this.schedulePlannedTasks(opts.user, opts.threadId);
+				}
+				await this.drainPendingCheckpointReentries(opts.user, opts.threadId);
 			}
 		}
 	}
@@ -2335,8 +5304,8 @@ export class InstanceAiService {
 		opts: SpawnBackgroundTaskOptions,
 		snapshotStorage: DbSnapshotStorage,
 		messageGroupIdOverride?: string,
-	): void {
-		this.backgroundTasks.spawn({
+	): SpawnBackgroundTaskResult {
+		const outcome = this.backgroundTasks.spawn({
 			taskId: opts.taskId,
 			threadId: opts.threadId,
 			runId,
@@ -2346,6 +5315,9 @@ export class InstanceAiService {
 			plannedTaskId: opts.plannedTaskId,
 			workItemId: opts.workItemId,
 			traceContext: opts.traceContext,
+			createTraceContext: opts.createTraceContext,
+			dedupeKey: opts.dedupeKey,
+			parentCheckpointId: opts.parentCheckpointId,
 			run: opts.run,
 			onLimitReached: async (errorMessage) => {
 				await this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
@@ -2401,6 +5373,7 @@ export class InstanceAiService {
 				}
 			},
 			onSettled: async (task) => {
+				await this.recordBackgroundTerminalOutcome(task);
 				await this.saveAgentTreeSnapshot(
 					opts.threadId,
 					runId,
@@ -2412,36 +5385,121 @@ export class InstanceAiService {
 				// Auto-follow-up: when the last background task finishes and no
 				// orchestrator run is active, resume the orchestrator so it can
 				// synthesize results for the user. Planned tasks handle this via
-				// schedulePlannedTasks(); this covers direct build-workflow-with-agent calls.
-				if (!task.plannedTaskId) {
-					const remaining = this.backgroundTasks.getRunningTasks(opts.threadId);
-					const hasActiveRun = !!this.runState.getActiveRunId(opts.threadId);
-					const hasSuspendedRun = this.runState.hasSuspendedRun(opts.threadId);
-					if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
-						const user = this.runState.getThreadUser(opts.threadId);
-						if (user) {
-							const payload = JSON.stringify(
-								{
-									role: opts.role,
-									status: task.result ? 'completed' : task.error ? 'failed' : 'finished',
-									result: task.result ?? undefined,
-									error: task.error ?? undefined,
-								},
-								null,
-								2,
-							);
-							await this.startInternalFollowUpRun(
-								user,
-								opts.threadId,
-								`<background-task-completed>\n${payload}\n</background-task-completed>\n\n${AUTO_FOLLOW_UP_MESSAGE}`,
-								this.runState.getThreadResearchMode(opts.threadId),
-								task.messageGroupId,
-							);
-						}
+				// schedulePlannedTasks(); this covers direct detached delegate calls.
+				if (task.plannedTaskId) return;
+
+				// Parent-tagged children (patch-builder etc. spawned inside a
+				// checkpoint follow-up) must NEVER emit a generic
+				// `<background-task-completed>` shell — the orchestrator would
+				// land outside the checkpoint context and the checkpoint would
+				// be orphaned. Try immediate re-entry; if the run state or
+				// still-running siblings block it, queue a deferred marker that
+				// the post-run drain hook will pick up.
+				const parentCheckpointId = task.parentCheckpointId;
+				if (parentCheckpointId) {
+					const user = this.runState.getThreadUser(opts.threadId);
+					if (!user) {
+						this.queuePendingCheckpointReentry(opts.threadId, parentCheckpointId);
+						return;
+					}
+					const reentered = await this.maybeReenterParentCheckpoint(user, opts.threadId, task);
+					if (!reentered) {
+						this.queuePendingCheckpointReentry(opts.threadId, parentCheckpointId);
+					}
+					return;
+				}
+
+				const remaining = this.backgroundTasks.getRunningTasks(opts.threadId);
+				const hasActiveRun = !!this.runState.getActiveRunId(opts.threadId);
+				const hasSuspendedRun = this.runState.hasSuspendedRun(opts.threadId);
+				if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
+					if (this.liveness.hasTimedOutActiveRunThread(opts.threadId)) {
+						this.logger.debug('Skipping background auto-follow-up after active run timeout', {
+							threadId: opts.threadId,
+							taskId: task.taskId,
+						});
+						return;
+					}
+
+					const user = this.runState.getThreadUser(opts.threadId);
+					if (user) {
+						const payload = JSON.stringify(
+							{
+								role: opts.role,
+								status: task.result ? 'completed' : task.error ? 'failed' : 'finished',
+								result: task.result ?? undefined,
+								outcome: task.outcome ?? undefined,
+								error: task.error ?? undefined,
+							},
+							null,
+							2,
+						);
+						await this.startInternalFollowUpRun(
+							user,
+							opts.threadId,
+							`<background-task-completed>\n${payload}\n</background-task-completed>\n\n${AUTO_FOLLOW_UP_MESSAGE}`,
+							task.messageGroupId,
+						);
 					}
 				}
 			},
 		});
+
+		if (outcome.status === 'started') {
+			return { status: 'started', taskId: outcome.task.taskId, agentId: outcome.task.agentId };
+		}
+		if (outcome.status === 'duplicate') {
+			this.logger.warn('Background task dispatch deduped — task already in flight', {
+				threadId: opts.threadId,
+				requestedTaskId: opts.taskId,
+				existingTaskId: outcome.existing.taskId,
+				plannedTaskId: opts.dedupeKey?.plannedTaskId,
+				workflowId: opts.dedupeKey?.workflowId,
+				role: opts.role,
+			});
+			// The sub-agent dispatch tools publish `agent-spawned` and allocate a
+			// detached LangSmith trace root BEFORE calling spawnBackgroundTask, so
+			// the freshly-generated subAgentId for this deduped attempt already has
+			// a phantom sub-agent node in the event stream and an unfinished trace
+			// root. Compensate the same way `onLimitReached` does so the agent tree
+			// snapshot doesn't keep a ghost child and the trace client is released.
+			void this.finalizeDetachedTraceRun(opts.taskId, opts.traceContext, {
+				status: 'cancelled',
+				outputs: {
+					taskId: opts.taskId,
+					agentId: opts.agentId,
+					role: opts.role,
+					deduped_to: outcome.existing.taskId,
+				},
+				metadata: {
+					deduped: true,
+					existing_task_id: outcome.existing.taskId,
+					...(opts.plannedTaskId ? { planned_task_id: opts.plannedTaskId } : {}),
+					...(opts.workItemId ? { work_item_id: opts.workItemId } : {}),
+				},
+			});
+			this.eventBus.publish(opts.threadId, {
+				type: 'agent-completed',
+				runId,
+				agentId: opts.agentId,
+				payload: {
+					role: opts.role,
+					result: '',
+					error: `Deduped: task already in flight as ${outcome.existing.taskId}`,
+				},
+			});
+			return {
+				status: 'duplicate',
+				existing: {
+					taskId: outcome.existing.taskId,
+					agentId: outcome.existing.agentId,
+					role: outcome.existing.role,
+					plannedTaskId: outcome.existing.plannedTaskId,
+					workItemId: outcome.existing.workItemId,
+				},
+			};
+		}
+		return { status: 'limit-reached' };
 	}
 
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {
@@ -2492,21 +5550,200 @@ export class InstanceAiService {
 		});
 	}
 
+	/**
+	 * Archive any workflow the agent created for this thread that still carries
+	 * the AI-builder temporary marker. The orchestrator clears the marker on the
+	 * main deliverable before run-finish, so anything still marked is a
+	 * stepping-stone — chunk, scratch, or sub-workflow the user never sees in
+	 * the workflows list. Soft delete: a mistaken reap is recoverable from the
+	 * archive view.
+	 *
+	 * Best-effort. Individual archive failures are logged but do not block
+	 * the run-finish emit.
+	 */
+	private async reapAiTemporaryFromRun(
+		threadId: string,
+		user: User,
+		createdWorkflowIds: Set<string> | undefined,
+	): Promise<string[]> {
+		const runningTaskCount = this.backgroundTasks.getRunningTasks(threadId).length;
+		if (runningTaskCount > 0) {
+			this.logger.debug('Deferring AI-builder temporary workflow cleanup until tasks settle', {
+				threadId,
+				runningTaskCount,
+			});
+			return [];
+		}
+
+		let markedWorkflows: Array<{ workflowId: string }> = [];
+		try {
+			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to inspect AI-builder temporary workflows during run finish', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
+		const workflowIds = new Set([
+			...markedWorkflows.map(({ workflowId }) => workflowId),
+			...(createdWorkflowIds ?? []),
+		]);
+		if (workflowIds.size === 0) return [];
+
+		return await this.archiveAiTemporaryWorkflows(threadId, user, workflowIds);
+	}
+
+	private async archiveAiTemporaryWorkflows(
+		threadId: string,
+		user: User,
+		workflowIds: Set<string>,
+	): Promise<string[]> {
+		const adapter = this.adapterService.createContext(user, { threadId });
+		const archived: string[] = [];
+		for (const workflowId of workflowIds) {
+			try {
+				const didArchive = await adapter.workflowService.archiveIfAiTemporary(workflowId);
+				if (didArchive) archived.push(workflowId);
+			} catch (error) {
+				this.logger.warn('Failed to reap AI-builder temporary workflow', {
+					threadId,
+					workflowId,
+					error: getErrorMessage(error),
+				});
+			}
+		}
+		return archived;
+	}
+
+	private async finalizeCancelledSuspendedRun(
+		suspended: SuspendedRunState<User>,
+		reason = 'user_cancelled',
+	): Promise<void> {
+		const runTimeout =
+			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
+				? this.liveness.consumeRunTimeout(suspended.runId)
+				: undefined;
+		if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) {
+			this.liveness.publishRunTimeoutNotice(suspended.threadId, suspended.runId);
+		}
+		await this.finalizeRunTracing(suspended.runId, suspended.tracing, {
+			status: 'cancelled',
+			reason,
+		});
+
+		const archivedWorkflowIds = await this.reapAiTemporaryFromRun(
+			suspended.threadId,
+			suspended.user,
+			undefined,
+		);
+		this.publishRunFinish(
+			suspended.threadId,
+			suspended.runId,
+			'cancelled',
+			reason,
+			archivedWorkflowIds,
+		);
+
+		// Persist the snapshot so the run-finish event (which clears
+		// in-flight tool calls) is reflected in the stored tree.
+		await this.saveAgentTreeSnapshot(
+			suspended.threadId,
+			suspended.runId,
+			this.dbSnapshotStorage,
+			true,
+		);
+		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
+			status: 'cancelled',
+			reason,
+			metadata: this.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
+				status: 'cancelled',
+				cancellationReason: reason,
+				...(runTimeout ? { runTimeout } : {}),
+			}),
+		});
+
+		void this.dropPendingConfirmation(suspended.requestId);
+	}
+
+	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {
+		let markedWorkflows: Array<{ workflowId: string }>;
+		try {
+			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to inspect AI-builder temporary workflows during thread cleanup', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+
+		if (markedWorkflows.length === 0) return;
+
+		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
+		try {
+			thread = await this.threadRepo.findOneBy({ id: threadId });
+		} catch (error) {
+			this.logger.warn('Failed to load thread owner for AI-builder temporary workflow cleanup', {
+				threadId,
+				markedWorkflowCount: markedWorkflows.length,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+		if (!thread?.resourceId) {
+			this.logger.warn('Skipping AI-builder temporary workflow cleanup for thread without owner', {
+				threadId,
+				markedWorkflowCount: markedWorkflows.length,
+			});
+			return;
+		}
+
+		let user: User | null;
+		try {
+			user = await this.userRepository.findOneBy({ id: thread.resourceId });
+		} catch (error) {
+			this.logger.warn('Failed to load user for AI-builder temporary workflow cleanup', {
+				threadId,
+				userId: thread.resourceId,
+				markedWorkflowCount: markedWorkflows.length,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+		if (!user) {
+			this.logger.warn('Skipping AI-builder temporary workflow cleanup for missing thread owner', {
+				threadId,
+				userId: thread.resourceId,
+				markedWorkflowCount: markedWorkflows.length,
+			});
+			return;
+		}
+
+		await this.archiveAiTemporaryWorkflows(
+			threadId,
+			user,
+			new Set(markedWorkflows.map(({ workflowId }) => workflowId)),
+		);
+	}
+
 	private publishRunFinish(
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
+		archivedWorkflowIds?: string[],
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
+		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
-			payload:
-				status === 'cancelled'
-					? { status: effectiveStatus, reason: reason ?? 'user_cancelled' }
-					: { status: effectiveStatus },
+			payload: {
+				status: effectiveStatus,
+				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
+				...(hasArchived ? { archivedWorkflowIds } : {}),
+			},
 		});
 	}
 
@@ -2515,14 +5752,12 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		snapshotStorage: DbSnapshotStorage,
-		options?: { userId?: string; modelId?: ModelConfig },
+		options?: { userId?: string; modelId?: ModelConfig; archivedWorkflowIds?: string[] },
 	): Promise<void> {
-		this.publishRunFinish(threadId, runId, status);
-		if (status === 'completed') {
-			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-			if (options?.userId && options?.modelId) {
-				void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
-			}
+		this.publishRunFinish(threadId, runId, status, undefined, options?.archivedWorkflowIds);
+		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+		if (status === 'completed' && options?.userId && options?.modelId) {
+			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
 	}
 
@@ -2536,23 +5771,78 @@ export class InstanceAiService {
 		modelId: ModelConfig,
 	): Promise<void> {
 		try {
-			const memory = createMemory(this.createMemoryConfig());
-			const thread = await memory.getThreadById({ threadId });
+			const memory = this.agentMemory;
+			const thread = await memory.getThread(threadId);
 			if (!thread?.title) return;
 
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Concat all recalled user messages so retries after a trivial first message
+			// Concat recent user messages so retries after a trivial first message
 			// (e.g. "hey") have enough signal to produce a good title.
-			const result = await memory.recall({ threadId, resourceId: userId, perPage: 5 });
-			const userTexts = result.messages
-				.filter((m) => m.role === 'user')
-				.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+			const history = await memory.getMessages(threadId, { limit: 5 });
+			const userTexts = history.flatMap((m) => {
+				if (!('role' in m) || m.role !== 'user') return [];
+				const text = this.extractStoredMessageText(m.content);
+				return text.length > 0 ? [text] : [];
+			});
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 
-			const llmTitle = await generateTitleForRun(modelId, userText);
+			const baseTracing = this.getTraceContextForContinuation(threadId);
+			const titleTracing = await createInternalOperationTraceContext({
+				threadId,
+				conversationId: threadId,
+				messageId: `internal:title:${threadId}`,
+				runId: `title-${nanoid()}`,
+				userId,
+				modelId,
+				operationName: 'thread_title',
+				input: {
+					message_count: userTexts.length,
+					source: 'thread_title_refinement',
+				},
+				proxyConfig: baseTracing?.proxyConfig,
+				metadata: {
+					n8n_version: N8N_VERSION || undefined,
+					operation_name: 'thread_title',
+					trigger: 'run_completed',
+				},
+			});
+			const titleTelemetry = titleTracing?.getTelemetry?.({
+				agentRole: 'thread_title',
+				functionId: 'instance-ai.thread_title',
+				executionMode: 'internal',
+				metadata: {
+					operation_name: 'thread_title',
+				},
+			});
+			let llmTitle: string | null;
+			if (titleTracing) {
+				try {
+					llmTitle = await titleTracing.withActiveSpan(titleTracing.rootRun, async () => {
+						const title = await generateTitleForRun(modelId, userText, {
+							...(titleTelemetry ? { telemetry: titleTelemetry } : {}),
+						});
+						if (title) {
+							await titleTracing.finishRun(titleTracing.rootRun, {
+								outputs: { title },
+								metadata: { final_status: 'completed' },
+							});
+						} else {
+							await titleTracing.finishRun(titleTracing.rootRun, {
+								outputs: { title: null },
+								metadata: { final_status: 'skipped' },
+							});
+						}
+						return title;
+					});
+				} finally {
+					releaseTraceClient(titleTracing.rootRun.traceId);
+				}
+			} else {
+				llmTitle = await generateTitleForRun(modelId, userText);
+			}
 			if (!llmTitle) return;
 
 			await patchThread(memory, {
@@ -2579,24 +5869,12 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Remove Mastra workflow snapshots left behind after a run completes.
-	 *
-	 * Mastra's `executionWorkflow` and `agentic-loop` workflows only persist
-	 * snapshots on suspension (`shouldPersistSnapshot` returns true only for
-	 * status "suspended") and never clean them up on completion. This leaves
-	 * orphaned "suspended" rows that accumulate over time.
-	 */
-	private async cleanupMastraSnapshots(mastraRunId: string): Promise<void> {
-		try {
-			const workflowsStorage = this.compositeStore.stores.workflows as TypeORMWorkflowsStorage;
-			await workflowsStorage.deleteAllByRunId(mastraRunId);
-		} catch (error) {
-			this.logger.warn('Failed to clean up Mastra workflow snapshots', {
-				mastraRunId,
-				error: getErrorMessage(error),
-			});
+	private extractStoredMessageText(content: unknown): string {
+		if (typeof content === 'string') return content;
+		if (Array.isArray(content)) {
+			return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
 		}
+		return '';
 	}
 
 	/**
@@ -2617,9 +5895,21 @@ export class InstanceAiService {
 			let groupRunIds: string[] | undefined;
 			if (messageGroupId) {
 				groupRunIds = this.getRunIdsForMessageGroup(messageGroupId);
+				if (groupRunIds.length === 0) {
+					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
+					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
+				}
 				events = this.eventBus.getEventsForRuns(threadId, groupRunIds);
 			} else {
 				events = this.eventBus.getEventsForRun(threadId, runId);
+			}
+			if (isUpdate && events.length === 0) {
+				this.logger.warn('Skipped updating empty Instance AI agent tree snapshot', {
+					threadId,
+					runId,
+					messageGroupId,
+				});
+				return;
 			}
 			const agentTree = buildAgentTreeFromEvents(events);
 
@@ -2627,6 +5917,8 @@ export class InstanceAiService {
 			const saveOptions = {
 				messageGroupId,
 				runIds: groupRunIds,
+				traceId: tracing?.rootRun.otelTraceId,
+				spanId: tracing?.rootRun.otelSpanId,
 				langsmithRunId: tracing?.rootRun.id,
 				langsmithTraceId: tracing?.rootRun.traceId,
 			};

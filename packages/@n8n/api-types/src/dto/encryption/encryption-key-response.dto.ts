@@ -1,7 +1,3 @@
-export type EncryptionKeyResponseDto = {
-	id: string;
-	type: string;
-	algorithm: string | null;
-	status: string;
-	createdAt: string;
-};
+import type { EncryptionKey } from '../../schemas/encryption-key.schema';
+
+export type EncryptionKeyResponseDto = EncryptionKey;

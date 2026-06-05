@@ -1,7 +1,7 @@
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { AuthStrategy } from './auth-strategy.types';
+import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 
 /**
  * Ordered registry of AuthStrategy implementations for the public API.
@@ -26,6 +26,24 @@ export class AuthStrategyRegistry {
 
 	register(strategy: AuthStrategy): void {
 		this.strategies.push(strategy);
+	}
+
+	async buildContextFromToken(
+		token: string,
+		options?: AuthStrategyOptions,
+	): Promise<TokenGrant | null> {
+		for (const strategy of this.strategies) {
+			const result = await strategy.buildTokenGrant(token, options);
+			if (result === false) {
+				// this strategy was responsible, but the token validation failed
+				return null;
+			}
+			if (result !== null) {
+				return result; // true = success, false = fail fast
+			}
+			// null = this strategy abstained, continue to next
+		}
+		return null; // all strategies abstained = unauthenticated
 	}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean> {

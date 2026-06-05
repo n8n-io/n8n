@@ -8,6 +8,7 @@ import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
+	type IRun,
 	type ITaskData,
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -29,6 +30,7 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 mockInstance(WorkflowPublishHistoryRepository);
@@ -40,6 +42,7 @@ mockInstance(ExternalSecretsProxy);
 mockInstance(WorkflowStaticDataService);
 mockInstance(WorkflowStatisticsService);
 mockInstance(ExternalHooks);
+mockInstance(WorkflowHookContextService);
 mockInstance(DataTableProxyService);
 mockInstance(OwnershipService, {
 	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
@@ -919,6 +922,103 @@ describe('JobProcessor', () => {
 				response: unknown;
 			};
 			expect(lastResponse.response).toBe('supply data tool result');
+		});
+	});
+
+	describe('waitTill propagation', () => {
+		it('carries waitTill on JobFinishedProps from the worker run (lightweight path)', () => {
+			const waitTill = new Date(Date.now() + 60_000);
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+			const run = mock<IRun>({
+				status: 'waiting',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			// set Date field after construction, else jest-mock-extended serializes them otherwise.
+			run.waitTill = waitTill;
+
+			const props = jobProcessor['deriveJobFinishedProps'](run, new Date());
+
+			expect(props.waitTill).toBe(waitTill);
+			expect(props.status).toBe('waiting');
+		});
+
+		it('carries waitTill on JobFinishedProps from the persisted execution (DB-fetch path)', async () => {
+			const waitTill = new Date(Date.now() + 60_000);
+			const executionRepository = mock<ExecutionRepository>();
+			const persisted = mock<IExecutionResponse>({
+				status: 'waiting',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			persisted.waitTill = waitTill;
+			executionRepository.findSingleExecution.mockResolvedValueOnce(persisted);
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+
+			const props = await jobProcessor['fetchJobFinishedResult']('exec-1');
+
+			expect(props.waitTill).toBe(waitTill);
+			expect(props.status).toBe('waiting');
+		});
+
+		it('defaults waitTill to null on JobFinishedProps when the run is not waiting', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+			);
+			const run = mock<IRun>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			run.waitTill = undefined;
+			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
+
+			const persisted = mock<IExecutionResponse>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {}, error: undefined },
+					executionData: undefined,
+				}),
+			});
+			persisted.waitTill = null;
+			executionRepository.findSingleExecution.mockResolvedValueOnce(persisted);
+			expect((await jobProcessor['fetchJobFinishedResult']('exec-1')).waitTill).toBeNull();
 		});
 	});
 

@@ -26,6 +26,20 @@ describe('Workflow Builder', () => {
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionOrder).toBe('v1');
 		});
+
+		it('should throw a clear TypeError when id is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow({ id: 'test-id' }, 'Test Workflow');
+			}).toThrow(/workflow\(\) requires a string id as first argument/);
+		});
+
+		it('should throw a clear TypeError when name is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('test-id', { name: 'Test Workflow' });
+			}).toThrow(/workflow\(\) requires a string name as second argument/);
+		});
 	});
 
 	describe('.add()', () => {
@@ -281,6 +295,82 @@ describe('Workflow Builder', () => {
 			expect(() => (wf as unknown as { input: (n: number) => void }).input(1)).toThrow(
 				'Cannot call .input() on the workflow builder',
 			);
+		});
+
+		it('should throw a clear error when an OutputSelector is passed to .add()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Set' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = source.output(0) as unknown as NodeInstance<string, string, unknown>;
+			expect(() => wf.add(misuse).to(target)).toThrow(TypeError);
+			expect(() => wf.add(misuse).to(target)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
+			expect(() => wf.add(misuse).to(target)).toThrow(/Branch\.output\(0\)\.to\(/);
+		});
+
+		it('should throw a clear error when an OutputSelector is passed to .to()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = source.output(1) as unknown as NodeInstance<string, string, unknown>;
+			expect(() => wf.to(misuse)).toThrow(/Cannot pass an OutputSelector to \.to\(\)/);
+		});
+
+		it('should throw a clear error when an OutputSelector is inside an array passed to .add()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const sibling = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Sibling' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = [sibling, source.output(0)] as unknown as NodeInstance<
+				string,
+				string,
+				unknown
+			>;
+			expect(() => wf.add(misuse)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
+		});
+
+		it('should accept node.output(n).to(target) inside .add() — the documented form', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Set' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t).add(source.output(0).to(target));
+			const json = wf.toJSON();
+			const branchConns = json.connections[source.name]?.main[0];
+			expect(branchConns).toBeDefined();
+			expect(branchConns).toHaveLength(1);
+			expect(branchConns?.[0]?.node).toBe(target.name);
 		});
 	});
 

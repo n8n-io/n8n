@@ -6,14 +6,14 @@ function createStorage() {
 	const records = new Map<string, Record<string, unknown>>();
 
 	const storage = {
-		getWorkItem: jest.fn(async (_threadId: string, workItemId: string) => {
+		getWorkItem: vi.fn(async (_threadId: string, workItemId: string) => {
 			return await Promise.resolve(
 				(records.get(workItemId) ?? null) as Awaited<
 					ReturnType<WorkflowLoopStorage['getWorkItem']>
 				>,
 			);
 		}),
-		saveWorkItem: jest.fn(
+		saveWorkItem: vi.fn(
 			async (
 				_threadId: string,
 				state: Record<string, unknown>,
@@ -91,6 +91,53 @@ describe('WorkflowTaskCoordinator', () => {
 			expect.objectContaining({
 				type: 'done',
 				workflowId: 'wf-1',
+			}),
+		);
+	});
+
+	it('ignores stale build outcomes without overwriting the current work item', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+
+		await coordinator.reportBuildOutcome(createBuildOutcome({ runId: 'run-current' }));
+		const action = await coordinator.reportBuildOutcome(
+			createBuildOutcome({
+				runId: 'run-previous',
+				submitted: false,
+				failureSignature: 'old validation failure',
+			}),
+		);
+
+		expect(action.type).toBe('ignored');
+		expect(storage.saveWorkItem).toHaveBeenCalledTimes(1);
+		expect(await coordinator.getBuildOutcome('wi_1')).toEqual(
+			expect.objectContaining({
+				runId: 'run-current',
+				submitted: true,
+			}),
+		);
+	});
+
+	it('ignores stale verification verdicts without overwriting the current work item', async () => {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+
+		await coordinator.reportBuildOutcome(createBuildOutcome({ runId: 'run-current' }));
+		const action = await coordinator.reportVerificationVerdict({
+			workItemId: 'wi_1',
+			runId: 'run-previous',
+			workflowId: 'wf-1',
+			verdict: 'verified',
+			summary: 'Old run finished.',
+		});
+
+		expect(action.type).toBe('ignored');
+		expect(storage.saveWorkItem).toHaveBeenCalledTimes(1);
+		expect(await coordinator.getWorkflowLoopState('wi_1')).toEqual(
+			expect.objectContaining({
+				runId: 'run-current',
+				phase: 'verifying',
+				status: 'active',
 			}),
 		);
 	});

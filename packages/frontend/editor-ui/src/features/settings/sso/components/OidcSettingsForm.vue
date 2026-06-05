@@ -35,9 +35,9 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
-	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	trackProvisioningChange,
 	roleAssignmentTransition,
 	storedHasProjectRoles,
 	isDroppingProjectRules,
@@ -69,6 +69,10 @@ const promptDescriptions: PromptDescription[] = [
 ];
 
 const authenticationContextClassReference = ref('');
+const additionalScopes = ref('');
+const isAdditionalScopesInvalid = computed(() =>
+	[',', ';'].some((c) => additionalScopes.value.includes(c)),
+);
 
 const getOidcConfig = async () => {
 	const config = await ssoStore.getOidcConfig();
@@ -79,6 +83,7 @@ const getOidcConfig = async () => {
 	prompt.value = config.prompt ?? 'select_account';
 	authenticationContextClassReference.value =
 		config.authenticationContextClassReference?.join(',') || '';
+	additionalScopes.value = config.additionalScopes ?? '';
 };
 
 const loadOidcConfig = async () => {
@@ -104,15 +109,17 @@ const cannotSaveOidcSettings = computed(() => {
 	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 
 	return (
-		ssoStore.oidcConfig?.clientId === clientId.value &&
-		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
-		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
-		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
-		ssoStore.oidcConfig?.prompt === prompt.value &&
-		!isUserRoleProvisioningChanged.value &&
-		!isRuleMappingDirty &&
-		storedAcrString === authenticationContextClassReference.value &&
-		currentAcrString === storedAcrString
+		isAdditionalScopesInvalid.value ||
+		(ssoStore.oidcConfig?.clientId === clientId.value &&
+			ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
+			ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
+			ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
+			ssoStore.oidcConfig?.prompt === prompt.value &&
+			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
+			!isUserRoleProvisioningChanged.value &&
+			!isRuleMappingDirty &&
+			storedAcrString === authenticationContextClassReference.value &&
+			currentAcrString === storedAcrString)
 	);
 });
 
@@ -158,8 +165,9 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			prompt: prompt.value,
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
+			additionalScopes: additionalScopes.value,
 		});
-		await saveProvisioningConfig(isDisablingOidcLogin);
+		const provisioningResult = await saveProvisioningConfig(isDisablingOidcLogin);
 
 		// If the user's effective role assignment doesn't include project roles,
 		// discard any project-rule state in the editor (both locally-added and
@@ -171,9 +179,12 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
 
-		if (userRoleProvisioning.value === 'expression_based') {
-			await roleMappingRuleEditorRef.value?.save();
-		}
+		const ruleSaveResult =
+			mappingMethod.value === 'rules_in_n8n'
+				? await roleMappingRuleEditorRef.value?.save()
+				: undefined;
+
+		trackProvisioningChange(provisioningResult, ruleSaveResult);
 
 		showUserRoleProvisioningDialog.value = false;
 
@@ -311,7 +322,6 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
-				v-model:legacy-value="userRoleProvisioning"
 				auth-protocol="oidc"
 				:disabled="isSsoManagedByEnv"
 			/>
@@ -345,6 +355,27 @@ onMounted(async () => {
 				<small
 					>ACR values to include in the authorization request (acr_values parameter), separated by
 					commas in order of preference.</small
+				>
+			</div>
+			<div :class="$style.group">
+				<label
+					>Additional scopes
+					<span :class="$style.optional">(Optional)</span>
+				</label>
+				<N8nInput
+					:model-value="additionalScopes"
+					:disabled="isSsoManagedByEnv"
+					type="text"
+					data-test-id="oidc-additional-scopes"
+					placeholder="e.g. groups roles"
+					@update:model-value="(v: string) => (additionalScopes = v)"
+				/>
+				<small v-if="isAdditionalScopesInvalid" :class="$style.fieldError"
+					>Use spaces to separate scopes. Commas and semicolons are not allowed.</small
+				>
+				<small v-else
+					>By default n8n requests <code>openid</code>, <code>profile</code> and <code>email</code>.
+					If you need other scopes, define them here space separated.</small
 				>
 			</div>
 		</div>

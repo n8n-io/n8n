@@ -7,7 +7,7 @@ import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, toRef, useTemplateRef } from 'vue';
 import type { ArtifactInfo } from '../agentTimeline.utils';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import { useTimelineGrouping } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -25,7 +25,7 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
 
 const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
@@ -46,7 +46,7 @@ const lastGroupIdx = computed(() => {
 });
 
 function resolveArtifactName(artifact: ArtifactInfo): string {
-	const entry = store.producedArtifacts.get(artifact.resourceId);
+	const entry = thread.producedArtifacts.get(artifact.resourceId);
 	return entry?.name ?? artifact.name;
 }
 </script>
@@ -91,6 +91,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
 					:class="$style.artifactCard"
 				/>
 			</template>
@@ -108,12 +109,21 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 <style lang="scss" module>
 .reasoningTrigger {
-	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
-	color: var(--text-color--subtler);
+	--button--padding: 0;
+	--button--font-size: var(--font-size--sm);
+
+	padding-inline: 0;
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-2);
 }
 
 .artifactCard {
 	max-width: 90%;
+	margin: var(--spacing--sm) 0;
+
+	+ .artifactCard {
+		margin-top: 0;
+	}
 }
 
 .reasoningContent {

@@ -1,5 +1,9 @@
-import { AI_NODE_SDK_VERSION } from '@n8n/ai-utilities';
 import { Config, Env } from '@n8n/config';
+
+// Keep in sync with AI_NODE_SDK_VERSION in
+// packages/@n8n/ai-utilities/src/ai-node-sdk-version.ts.
+// Inlined to avoid loading the @n8n/ai-utilities barrel at boot.
+const AI_NODE_SDK_VERSION = 1;
 
 @Config
 export class CommunityPackagesConfig {

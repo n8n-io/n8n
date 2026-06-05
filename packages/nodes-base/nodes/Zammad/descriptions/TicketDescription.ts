@@ -253,6 +253,33 @@ export const ticketDescription: INodeProperties[] = [
 						default: 'note',
 					},
 					{
+						displayName: 'To',
+						name: 'to',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+						required: true,
+						description: 'Recipient email address',
+						displayOptions: {
+							show: {
+								type: ['email'],
+							},
+						},
+					},
+					{
+						displayName: 'CC',
+						name: 'cc',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+						description: 'CC recipient email address(es), comma-separated',
+						displayOptions: {
+							show: {
+								type: ['email'],
+							},
+						},
+					},
+					{
 						displayName: 'Reply To',
 						name: 'reply_to',
 						type: 'string',

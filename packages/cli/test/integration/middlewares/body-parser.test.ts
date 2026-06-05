@@ -6,9 +6,11 @@ import { gzipSync, deflateSync } from 'zlib';
 import { rawBodyReader, bodyParser } from '@/middlewares/body-parser';
 
 describe('bodyParser', () => {
-	const server = createServer((req: Request, res: Response) => {
-		void rawBodyReader(req, res, async () => {
-			void bodyParser(req, res, () => res.end(JSON.stringify(req.body)));
+	const server = createServer((req, res) => {
+		const expressReq = req as unknown as Request;
+		const expressRes = res as unknown as Response;
+		void rawBodyReader(expressReq, expressRes, async () => {
+			void bodyParser(expressReq, expressRes, () => res.end(JSON.stringify(expressReq.body)));
 		});
 	});
 

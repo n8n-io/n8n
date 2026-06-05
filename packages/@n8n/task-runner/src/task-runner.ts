@@ -282,6 +282,15 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
+		if (this.isShuttingDown) {
+			this.send({
+				type: 'runner:taskrejected',
+				taskId,
+				reason: 'Runner is shutting down',
+			});
+			return;
+		}
+
 		if (!this.hasOpenTaskSlots()) {
 			this.openOffers.delete(offerId);
 			this.send({
@@ -522,6 +531,7 @@ export abstract class TaskRunner extends EventEmitter {
 		this.clearIdleTimer();
 
 		this.stopTaskOffers();
+		this.openOffers.clear();
 
 		await this.waitUntilAllTasksAreDone();
 

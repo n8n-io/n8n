@@ -124,7 +124,7 @@ export class CreateCredentialDependencyTable1773000000000 implements ReversibleM
 
 	private tryDecryptCredentialData(encryptedCredentialData: string): unknown {
 		try {
-			const decrypted = this.cipher.decrypt(encryptedCredentialData);
+			const decrypted = this.cipher.decryptWithInstanceKey(encryptedCredentialData);
 			return JSON.parse(decrypted) as unknown;
 		} catch {
 			return null;

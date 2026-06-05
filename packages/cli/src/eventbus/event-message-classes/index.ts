@@ -71,6 +71,7 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.shared',
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
+	'n8n.audit.user.credentials.userDisconnected',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.user.mfa.enabled',
@@ -106,6 +107,7 @@ export const eventNamesAudit = [
 	'n8n.audit.personal-sharing-restricted.disabled',
 	'n8n.audit.2fa-enforcement.enabled',
 	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.redaction-enforcement.updated',
 	'n8n.audit.execution.data.revealed',
 	'n8n.audit.execution.data.reveal_failure',
 	'n8n.audit.token-exchange.succeeded',
@@ -120,6 +122,15 @@ export const eventNamesAudit = [
 	'n8n.audit.role-mapping.rule.updated',
 	'n8n.audit.role-mapping.rule.deleted',
 	'n8n.audit.role-mapping.rules.bulk-deleted',
+	'n8n.audit.cluster.version-mismatch.detected',
+	'n8n.audit.cluster.version-mismatch.resolved',
+	'n8n.audit.cluster.hostid-clash.detected',
+	'n8n.audit.cluster.hostid-clash.resolved',
+	'n8n.audit.cluster.split-brain.detected',
+	'n8n.audit.cluster.split-brain.resolved',
+	'n8n.audit.cluster.instance-joined',
+	'n8n.audit.cluster.instance-left',
+	'n8n.audit.oauth.callback.binding.rejected',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
@@ -158,3 +169,6 @@ export type EventMessageTypes =
 	| EventMessageAiNode
 	| EventMessageQueue
 	| EventMessageRunner;
+
+export const isNodeEventMessage = (message: EventMessageTypes): message is EventMessageNode =>
+	message.eventName.startsWith('n8n.node.');

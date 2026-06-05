@@ -1,4 +1,5 @@
 ---
+name: n8n:spec-driven-development
 description: Keeps implementation and specs in sync. Use when working on a feature that has a spec in .claude/specs/, when the user says /spec, or when starting implementation of a documented feature. Also use when the user asks to verify implementation against a spec or update a spec after changes.
 ---
 

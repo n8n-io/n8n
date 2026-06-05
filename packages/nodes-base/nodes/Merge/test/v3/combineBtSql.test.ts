@@ -353,5 +353,27 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 			// Database count must not grow – each invocation cleans up after itself
 			expect(countAfter).toBe(countBefore);
 		});
+
+		it('should handle a large dataset (25k rows) without exhausting the sandbox', async () => {
+			const context = await loadAlaSqlSandbox();
+			const rows = Array.from({ length: 25_000 }, (_, i) => ({
+				id: i,
+				a: `v${i}`,
+				b: i * 2,
+				c: i % 7,
+				d: `tag-${i % 100}`,
+				e: i % 2 === 0,
+				f: i / 3,
+				g: `group-${i % 50}`,
+				h: i,
+				j: `x${i}`,
+			}));
+			const result = await runAlaSqlInSandbox(
+				context,
+				[rows],
+				'SELECT COUNT(*) AS n FROM input1 WHERE b > 10000',
+			);
+			expect(result[0]).toEqual({ n: 19999 });
+		});
 	});
 });

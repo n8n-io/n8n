@@ -1192,6 +1192,25 @@ describe('OperationHandler', () => {
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
+
+			it('should use /tasks/quick endpoint for node version >= 2.2', async () => {
+				const handler = new QuickAddHandler();
+				const mockCtx = createMockContext({
+					text: 'Buy milk',
+					options: {},
+				});
+				mockCtx.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.2 }));
+
+				mockTodoistSyncRequest.mockResolvedValue({ id: '123' });
+
+				await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
+					{ text: 'Buy milk' },
+					{},
+					'/tasks/quick',
+				);
+			});
 		});
 	});
 

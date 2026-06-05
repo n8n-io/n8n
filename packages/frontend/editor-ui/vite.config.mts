@@ -4,7 +4,6 @@ import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgLoader from 'vite-svg-loader';
-import istanbul from 'vite-plugin-istanbul';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 
@@ -35,6 +34,7 @@ const alias = [
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
 	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
+	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
@@ -94,18 +94,6 @@ const plugins: UserConfig['plugins'] = [
 		compiler: 'vue3',
 		autoInstall: NODE_ENV === 'development',
 	}),
-	// Add istanbul coverage plugin for E2E tests
-	...(process.env.BUILD_WITH_COVERAGE === 'true'
-		? [
-				istanbul({
-					include: 'src/**/*',
-					exclude: ['node_modules', 'tests/', 'dist/'],
-					extension: ['.js', '.ts', '.vue'],
-					forceBuildInstrument: true,
-					requireEnv: false,
-				}),
-			]
-		: []),
 	viteStaticCopy({
 		targets: [
 			{
@@ -246,7 +234,9 @@ export default mergeConfig(
 		},
 		build: {
 			minify: !!release,
-			sourcemap: !!release,
+			// Coverage builds emit INLINE maps so browser V8 coverage carries the
+			// map in the script source and monocart resolves offsets back to src.
+			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
 			target,
 		},
 		optimizeDeps: {

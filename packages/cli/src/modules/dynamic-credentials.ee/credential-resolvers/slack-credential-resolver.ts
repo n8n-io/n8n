@@ -101,7 +101,7 @@ export class SlackCredentialResolver implements ICredentialResolver {
 		}
 
 		try {
-			const plaintext = this.cipher.decrypt(data);
+			const plaintext = await this.cipher.decryptV2(data);
 			return jsonParse<ICredentialDataDecryptedObject>(plaintext);
 		} catch (error) {
 			this.logger.error('Failed to decrypt or parse credential data');
@@ -121,7 +121,7 @@ export class SlackCredentialResolver implements ICredentialResolver {
 		// Use resolveKey() which only derives the storage key without re-verifying.
 		const key = this.slackSignatureIdentifier.resolveKey(context, parsedOptions);
 
-		const encryptedData = this.cipher.encrypt(data);
+		const encryptedData = await this.cipher.encryptV2(data);
 
 		await this.storage.setCredentialData(
 			credentialId,

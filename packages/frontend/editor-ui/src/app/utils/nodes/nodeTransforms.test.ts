@@ -4,11 +4,12 @@ import { setActivePinia } from 'pinia';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
 
-import { getParameterDisplayableOptions } from './nodeTransforms';
+import { getParameterDisplayableOptions, serializeNode } from './nodeTransforms';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-vi.mock('n8n-workflow', () => ({
+vi.mock('n8n-workflow', async (importOriginal) => ({
+	...(await importOriginal()),
 	NodeHelpers: {
 		displayParameter: vi.fn(),
 		getNodeParameters: vi.fn(),
@@ -254,5 +255,68 @@ describe('getParameterDisplayableOptions', () => {
 				mockNodeType,
 			);
 		});
+	});
+});
+
+describe('serializeNode', () => {
+	const nodeTypeProvider = { getNodeType: vi.fn().mockReturnValue(null) };
+
+	function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
+		return {
+			id: 'id',
+			name: 'Test Node',
+			type: 'test',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...overrides,
+		};
+	}
+
+	beforeEach(() => {
+		nodeTypeProvider.getNodeType.mockReturnValue(null);
+	});
+
+	it('passes parameters + credentials through when node type is unknown', () => {
+		const node = createNode({
+			name: 'Unknown',
+			parameters: { foo: 'bar' },
+			credentials: { someCred: { id: '1', name: 'cred' } },
+		});
+
+		const result = serializeNode(nodeTypeProvider, node);
+
+		expect(result.parameters).toEqual({ foo: 'bar' });
+		expect(result.credentials).toEqual({ someCred: { id: '1', name: 'cred' } });
+	});
+
+	it('preserves disabled / continueOnFail / onError / notes only when set', () => {
+		const withFlags = createNode({
+			name: 'With',
+			disabled: true,
+			continueOnFail: true,
+			onError: 'continueRegularOutput',
+			notes: 'hello',
+		});
+		const withoutFlags = createNode({
+			name: 'Without',
+			disabled: false,
+			continueOnFail: false,
+			onError: 'stopWorkflow',
+			notes: '',
+		});
+
+		const resultWith = serializeNode(nodeTypeProvider, withFlags);
+		const resultWithout = serializeNode(nodeTypeProvider, withoutFlags);
+
+		expect(resultWith.disabled).toBe(true);
+		expect(resultWith.continueOnFail).toBe(true);
+		expect(resultWith.onError).toBe('continueRegularOutput');
+		expect(resultWith.notes).toBe('hello');
+
+		expect(resultWithout.disabled).toBeUndefined();
+		expect(resultWithout.continueOnFail).toBeUndefined();
+		expect(resultWithout.onError).toBeUndefined();
+		expect(resultWithout.notes).toBeUndefined();
 	});
 });

@@ -1,9 +1,9 @@
-import type { ModelConfig } from './agent';
-import type { CredentialProvider } from './credential-provider';
+import type { ExecutionOptions, ModelConfig } from './agent';
 import type { BuiltEval } from './eval';
 import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { BuiltProviderTool, BuiltTool } from './tool';
+import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 
 /**
  * Interface describing the fluent builder methods used to configure an agent.
@@ -16,20 +16,21 @@ import type { BuiltProviderTool, BuiltTool } from './tool';
  */
 export interface AgentBuilder {
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
-	credential(name: string): this;
 	instructions(text: string): this;
 	tool(t: BuiltTool | BuiltTool[]): this;
+	deferredTool(t: BuiltTool | BuiltTool[], options?: { search?: { topK?: number } }): this;
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this;
 	providerTool(t: BuiltProviderTool): this;
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	toolCallConcurrency(n: number): this;
 	requireToolApproval(): this;
 	memory(m: unknown): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;
-	credentialProvider(p: CredentialProvider): this;
 	inputGuardrail(g: BuiltGuardrail): this;
 	outputGuardrail(g: BuiltGuardrail): this;
 	eval(e: BuiltEval): this;
 	structuredOutput(schema: unknown): this;
 	telemetry(t: unknown): this;
 	mcp(client: unknown): this;
+	configuration(options: ExecutionOptions): this;
 }

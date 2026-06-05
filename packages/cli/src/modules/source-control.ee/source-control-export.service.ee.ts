@@ -140,6 +140,7 @@ export class SourceControlExportService {
 						owner: owners[workflow.id],
 						parentFolderId: workflow.parentFolder?.id ?? null,
 						isArchived: workflow.isArchived,
+						nodeGroups: workflow.nodeGroups ?? [],
 					};
 					this.logger.debug(`Writing workflow ${workflow.id} to ${fileName}`);
 					return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
@@ -255,7 +256,7 @@ export class SourceControlExportService {
 
 	async exportDataTablesToWorkFolder(
 		candidates: SourceControlledFile[],
-		_context: SourceControlContext,
+		context: SourceControlContext,
 	): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
@@ -275,6 +276,7 @@ export class SourceControlExportService {
 			const dataTables = await this.dataTableRepository.find({
 				where: {
 					id: In(candidateIds),
+					...this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 				},
 				relations: [
 					'columns',
@@ -551,7 +553,7 @@ export class SourceControlExportService {
 						};
 					}
 
-					const sanitizedData = sanitizeCredentialData(credentials.getData());
+					const sanitizedData = sanitizeCredentialData(await credentials.getData());
 
 					const stub: ExportableCredential = {
 						id,

@@ -11,6 +11,8 @@ import glob from 'fast-glob';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
+import { checkPackageProvenance } from './provenance.mjs';
+
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
@@ -115,29 +117,47 @@ const downloadAndExtractPackage = async (packageName, version) => {
 	}
 };
 
-const analyzePackage = async (packageDir) => {
+export const analyzePackage = async (packageDir) => {
 	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
+	const tsParser = await import('@typescript-eslint/parser');
+
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended, {
-			rules: { 'no-console': 'error' },
-		}),
+		overrideConfig: defineConfig(
+			n8nCommunityNodesPlugin.configs.recommended,
+			{
+				rules: { 'no-console': 'error' },
+			},
+			// JSON files (notably `package.json`) are not parseable by ESLint's
+			// default JS parser, so register the TypeScript parser for them. The
+			// community-nodes rules that gate on `package.json` walk a TSESTree
+			// `ObjectExpression` AST, which `@typescript-eslint/parser` produces
+			// when given a top-level JSON object literal.
+			{
+				files: ['**/*.json'],
+				languageOptions: { parser: tsParser.default ?? tsParser },
+			},
+		),
 	});
 
 	try {
-		const jsFiles = glob.sync('**/*.js', {
+		// Lint both JS and JSON files. JSON inclusion is required because rules
+		// such as `no-overrides-field`, `valid-peer-dependencies`, and
+		// `package-name-convention` only run against `package.json`. Without
+		// it the scanner silently skips every package.json-based rule.
+		const filesToLint = glob.sync(['**/*.js', '**/*.json'], {
 			cwd: packageDir,
 			absolute: true,
-			ignore: ['node_modules/**'],
+			ignore: ['node_modules/**', '**/package-lock.json'],
 		});
 
-		if (jsFiles.length === 0) {
-			return { passed: true, message: 'No JavaScript files found to analyze' };
+		if (filesToLint.length === 0) {
+			return { passed: true, message: 'No files found to analyze' };
 		}
 
-		const results = await eslint.lintFiles(jsFiles);
+		const results = await eslint.lintFiles(filesToLint);
 		const violations = results.filter((result) => result.errorCount > 0);
 
 		if (violations.length > 0) {
@@ -164,10 +184,12 @@ const analyzePackage = async (packageDir) => {
 export const analyzePackageByName = async (packageName, version) => {
 	try {
 		let exactVersion = version;
+		let packageMetadata;
 
 		// If version is a range, get the latest matching version
 		if (version && semver.validRange(version) && !semver.valid(version)) {
 			const { data } = await axios.get(`${registry}/${packageName}`);
+			packageMetadata = data;
 			const versions = Object.keys(data.versions);
 			exactVersion = semver.maxSatisfying(versions, version);
 
@@ -179,10 +201,32 @@ export const analyzePackageByName = async (packageName, version) => {
 		// If no version specified, get the latest
 		if (!exactVersion) {
 			const { data } = await axios.get(`${registry}/${packageName}`);
+			packageMetadata = data;
 			exactVersion = data['dist-tags'].latest;
 		}
 
+		packageMetadata ??= (await axios.get(`${registry}/${packageName}`)).data;
+		exactVersion = packageMetadata['dist-tags']?.[exactVersion] ?? exactVersion;
 		const label = `${packageName}@${exactVersion}`;
+
+		stdout.write(`Checking provenance for ${label}...`);
+		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
+		if (stdout.TTY) {
+			stdout.clearLine(0);
+			stdout.cursorTo(0);
+		}
+
+		if (!provenanceResult.passed) {
+			stdout.write(`❌ Provenance check failed for ${label} \n`);
+
+			return {
+				packageName,
+				version: exactVersion,
+				...provenanceResult,
+			};
+		}
+
+		stdout.write(`✅ Provenance check passed for ${label} \n`);
 
 		stdout.write(`Downloading ${label}...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);

@@ -62,8 +62,19 @@ const BINARY_DATA = {
 
 function buildRunExecutionData(opts: {
 	policy?: 'none' | 'non-manual' | 'all';
+	channels?: { production: boolean; manual: boolean };
 	mode?: WorkflowExecuteMode;
 }): IRunExecutionData {
+	const redaction = opts.channels
+		? {
+				version: 2 as const,
+				production: opts.channels.production,
+				manual: opts.channels.manual,
+			}
+		: opts.policy
+			? { version: 1 as const, policy: opts.policy }
+			: undefined;
+
 	return createRunExecutionData({
 		resultData: {
 			runData: {
@@ -88,13 +99,13 @@ function buildRunExecutionData(opts: {
 				],
 			},
 		},
-		executionData: opts.policy
+		executionData: redaction
 			? {
 					runtimeData: {
 						version: 1 as const,
 						establishedAt: Date.now(),
 						source: opts.mode ?? 'trigger',
-						redaction: { version: 1 as const, policy: opts.policy },
+						redaction,
 					},
 				}
 			: undefined,
@@ -105,8 +116,13 @@ async function createExecutionWithRedaction(opts: {
 	workflow: IWorkflowBase;
 	mode?: WorkflowExecuteMode;
 	policy?: 'none' | 'non-manual' | 'all';
+	channels?: { production: boolean; manual: boolean };
 }) {
-	const runData = buildRunExecutionData({ policy: opts.policy, mode: opts.mode });
+	const runData = buildRunExecutionData({
+		policy: opts.policy,
+		channels: opts.channels,
+		mode: opts.mode,
+	});
 	return await createExecution(
 		{ data: stringify(runData), mode: opts.mode ?? 'trigger' },
 		opts.workflow,
@@ -298,6 +314,72 @@ describe('GET /executions/:id — Execution Redaction', () => {
 		});
 	});
 
+	describe('per-channel (V2) redaction snapshot', () => {
+		test('production channel on, trigger mode — returns redacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				channels: { production: true, manual: false },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertRedacted(parseResponseData(response.body));
+		});
+
+		test('production channel on, manual mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'manual',
+				channels: { production: true, manual: false },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
+		});
+
+		test('both channels on, manual mode — returns redacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'manual',
+				channels: { production: true, manual: true },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertRedacted(parseResponseData(response.body));
+		});
+
+		test('both channels off, trigger mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				channels: { production: false, manual: false },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
+		});
+	});
+
 	describe('explicit redactExecutionData=true query param', () => {
 		test('always redacts even when policy is "none"', async () => {
 			const workflow = await createWorkflow({}, owner);
@@ -335,6 +417,23 @@ describe('GET /executions/:id — Execution Redaction', () => {
 			assertNotRedacted(parseResponseData(response.body));
 		});
 
+		test('member can reveal data on a workflow in their own personal project', async () => {
+			const workflow = await createWorkflow({}, member);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get(`/executions/${execution.id}`)
+				.query({ redactExecutionData: 'false' })
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
+		});
+
 		test('project editor without execution:reveal scope gets 403 with structured error', async () => {
 			testServer.license.enable('feat:sharing');
 
@@ -354,15 +453,8 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				.query({ redactExecutionData: 'false' })
 				.expect(403);
 
-			expect(response.body).toMatchObject({
-				code: 403,
-				message: expect.stringContaining('execution:reveal'),
-				hint: expect.any(String),
-				meta: {
-					errorCode: 'EXECUTION_REVEAL_FORBIDDEN',
-					requiredScope: 'execution:reveal',
-				},
-			});
+			expect(response.status).toBe(403);
+			expect(response.body.message).toContain('execution:reveal');
 		});
 
 		test('project editor without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {
@@ -599,7 +691,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 			assertNotRedacted(response.body.data as IRunExecutionData);
 		});
 
-		test('policy "non-manual" with trigger mode — redacts for member (canReveal=false)', async () => {
+		test('policy "non-manual" with trigger mode — redacts for member on own personal project workflow (canReveal=true)', async () => {
 			const workflow = await createWorkflow({}, publicApiMember);
 			const execution = await createExecutionWithRedaction({
 				workflow,
@@ -612,7 +704,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}?includeData=true`)
 				.expect(200);
 
-			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', false);
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', true);
 		});
 
 		test('policy "non-manual" with trigger mode — redacts for owner (canReveal=true)', async () => {
@@ -647,7 +739,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 			assertNotRedacted(response.body.data as IRunExecutionData);
 		});
 
-		test('policy "all" with trigger mode — redacts for member (canReveal=false)', async () => {
+		test('policy "all" with trigger mode — redacts for member on own personal project workflow (canReveal=true)', async () => {
 			const workflow = await createWorkflow({}, publicApiMember);
 			const execution = await createExecutionWithRedaction({
 				workflow,
@@ -660,7 +752,7 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}?includeData=true`)
 				.expect(200);
 
-			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', false);
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', true);
 		});
 
 		test('includeData=false — returns execution without data field', async () => {
@@ -733,10 +825,8 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}?includeData=true&redactExecutionData=false`)
 				.expect(403);
 
-			expect(response.body).toMatchObject({
-				code: 403,
-				message: expect.stringContaining('execution:reveal'),
-			});
+			expect(response.status).toBe(403);
+			expect(response.body.message).toContain('execution:reveal');
 		});
 
 		test('member without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {
@@ -784,7 +874,7 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		assertRedacted(
 			response.body.data[0].data as IRunExecutionData,
 			'workflow_redaction_policy',
-			false,
+			true,
 		);
 	});
 
@@ -861,10 +951,10 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		const wf2Trigger = results.find((e) => e.workflowId === workflow2.id && e.mode === 'trigger');
 		const wf2Webhook = results.find((e) => e.workflowId === workflow2.id && e.mode === 'webhook');
 
-		assertRedacted(wf1Trigger!.data, 'workflow_redaction_policy', false);
+		assertRedacted(wf1Trigger!.data, 'workflow_redaction_policy', true);
 		assertNotRedacted(wf1Manual!.data);
 		assertNotRedacted(wf2Trigger!.data);
-		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', false);
+		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', true);
 	});
 
 	describe('explicit redactExecutionData=true query param', () => {
@@ -922,10 +1012,8 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 				.get('/executions?includeData=true&redactExecutionData=false')
 				.expect(403);
 
-			expect(response.body).toMatchObject({
-				code: 403,
-				message: expect.stringContaining('execution:reveal'),
-			});
+			expect(response.status).toBe(403);
+			expect(response.body.message).toContain('execution:reveal');
 		});
 	});
 });

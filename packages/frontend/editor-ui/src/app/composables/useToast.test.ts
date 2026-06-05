@@ -215,9 +215,10 @@ describe('useToast', () => {
 	});
 
 	describe('notification suppression', () => {
-		it('should not render notification when notifications are suppressed', async () => {
+		it('should not render non-error notification when notifications are suppressed', async () => {
 			const uiStore = useUIStore();
 			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = true;
 
 			toast.showMessage({ message: 'Should not appear', title: 'Suppressed' });
 
@@ -231,6 +232,69 @@ describe('useToast', () => {
 					{ timeout: 200 },
 				),
 			).rejects.toThrow();
+		});
+
+		it('should not render error notification when notifications are suppressed and errors are not allowed', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = false;
+
+			toast.showMessage({
+				message: 'Error should not appear',
+				title: 'Suppressed error',
+				type: 'error',
+			});
+
+			await expect(
+				waitFor(
+					() => {
+						expect(screen.getByRole('alert')).toBeVisible();
+					},
+					{ timeout: 200 },
+				),
+			).rejects.toThrow();
+			expect(telemetryTrackSpy).not.toHaveBeenCalled();
+		});
+
+		it('should render error notification when notifications are suppressed and errors are allowed', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = true;
+
+			toast.showMessage({
+				message: 'Error should appear',
+				title: 'Allowed error',
+				type: 'error',
+			});
+
+			await waitFor(() => {
+				expect(screen.getByRole('alert')).toBeVisible();
+				expect(
+					within(screen.getByRole('alert')).getByRole('heading', { level: 2 }),
+				).toHaveTextContent('Allowed error');
+				expect(screen.getByRole('alert')).toContainHTML('<p>Error should appear</p>');
+			});
+		});
+
+		it('should track telemetry for allowed suppressed error notification', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+			uiStore.allowErrorNotificationsWhenSuppressed = true;
+
+			toast.showMessage({
+				message: 'Allowed error tracked',
+				title: 'Allowed error',
+				type: 'error',
+			});
+
+			await waitFor(() => {
+				expect(telemetryTrackSpy).toHaveBeenCalledWith('Instance FE emitted error', {
+					error_title: 'Allowed error',
+					error_message: 'Allowed error tracked',
+					caused_by_credential: false,
+					workflow_id: expect.any(String),
+				});
+			});
 		});
 	});
 

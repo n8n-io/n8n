@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "clean": "rimraf storybook-static .turbo",
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
+    "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
@@ -28,7 +30,8 @@
     "@storybook/addon-themes": "catalog:storybook",
     "@storybook/addon-vitest": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",
-    "@types/node": "^24.10.1",
+    "storybook-addon-vue-mdx": "3.0.0",
+    "@types/node": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/browser-playwright": "^4.0.16",
     "@vitest/coverage-v8": "catalog:",
@@ -40,6 +43,7 @@
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-svg-loader": "catalog:frontend",
+    "remark-gfm": "^4.0.1",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },

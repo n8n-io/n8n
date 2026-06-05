@@ -8,5 +8,6 @@ export type {
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
 	InstanceAiSendMessageResponse,
-	InstanceAiConfirmResponse,
+	InstanceAiConfirmRequest,
+	InstanceAiConfirmRequestKind,
 } from '@n8n/api-types';

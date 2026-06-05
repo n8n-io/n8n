@@ -76,13 +76,13 @@ export class ActiveWorkflows {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
-		const triggerNodes = workflow.getTriggerNodes();
+		const triggerFunctionNodes = workflow.getTriggerNodes();
 
 		const triggerResponses: ITriggerResponse[] = [];
 
-		for (const triggerNode of triggerNodes) {
+		for (const triggerNode of triggerFunctionNodes) {
 			try {
-				const triggerResponse = await this.triggersAndPollers.runTrigger(
+				const triggerResponse = await this.triggersAndPollers.runTriggerFunction(
 					workflow,
 					triggerNode,
 					getTriggerFunctions,
@@ -105,13 +105,13 @@ export class ActiveWorkflows {
 
 		this.activeWorkflows[workflowId] = { triggerResponses };
 
-		const pollingNodes = workflow.getPollNodes();
+		const pollTriggerNodes = workflow.getPollNodes();
 
-		if (pollingNodes.length === 0) return;
+		if (pollTriggerNodes.length === 0) return;
 
-		for (const pollNode of pollingNodes) {
+		for (const pollNode of pollTriggerNodes) {
 			try {
-				await this.activatePolling(
+				await this.activatePollTrigger(
 					pollNode,
 					workflow,
 					additionalData,
@@ -120,7 +120,8 @@ export class ActiveWorkflows {
 					activation,
 				);
 			} catch (e) {
-				// Do not mark this workflow as active if there are no triggerResponses, and any polling activation failed
+				// Do not mark this workflow as active if there are no active or schedule
+				// trigger responses, and any poll trigger activation failed.
 				if (triggerResponses.length === 0) {
 					delete this.activeWorkflows[workflowId];
 				}
@@ -136,9 +137,9 @@ export class ActiveWorkflows {
 	}
 
 	/**
-	 * Activates polling for the given node
+	 * Activates the given poll trigger node.
 	 */
-	private async activatePolling(
+	private async activatePollTrigger(
 		node: INode,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -154,14 +155,17 @@ export class ActiveWorkflows {
 
 		// Get all the trigger times
 		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
-		// The trigger function to execute when the cron-time got reached
-		const executeTrigger = this.createPollExecuteFn(workflow, node, pollFunctions);
+		const executePollTrigger = this.createPollTriggerExecuteFn(workflow, node, pollFunctions);
 
-		// Execute the trigger directly to be able to know if it works
-		await executeTrigger(true);
+		// Execute the poll trigger directly to be able to know if it works.
+		await executePollTrigger(true);
 
 		for (const expression of cronExpressions) {
-			if (expression.split(' ').at(0)?.includes('*')) {
+			const fields = expression.split(' ');
+			// 6-field expressions include seconds as the first field.
+			// A wildcard there means sub-minute execution, which is too frequent.
+			// 5-field expressions (standard cron) have minute-level granularity at minimum.
+			if (fields.length === 6 && fields[0].includes('*')) {
 				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
@@ -172,7 +176,9 @@ export class ActiveWorkflows {
 				expression,
 			};
 
-			this.scheduledTaskManager.registerCron(ctx, executeTrigger);
+			this.scheduledTaskManager.registerCron(ctx, () => {
+				void executePollTrigger();
+			});
 		}
 	}
 
@@ -197,7 +203,7 @@ export class ActiveWorkflows {
 		return true;
 	}
 
-	async removeAllTriggerAndPollerBasedWorkflows() {
+	async removeAllNonWebhookTriggerWorkflows() {
 		const activeWorkflowIds = Object.keys(this.activeWorkflows);
 
 		if (activeWorkflowIds.length === 0) return;
@@ -206,7 +212,7 @@ export class ActiveWorkflows {
 			await this.remove(workflowId);
 		}
 
-		this.logger.debug('Deactivated all trigger- and poller-based workflows', {
+		this.logger.debug('Deactivated all non-webhook trigger workflows', {
 			workflowIds: activeWorkflowIds,
 		});
 	}
@@ -235,10 +241,10 @@ export class ActiveWorkflows {
 	}
 
 	/**
-	 * Creates a function that executes the poll function for a given workflow
-	 * and node and triggers a workflow execution based on the output.
+	 * Creates a function that executes the poll() implementation for a poll
+	 * trigger node and triggers a workflow execution based on the output.
 	 */
-	private createPollExecuteFn(
+	private createPollTriggerExecuteFn(
 		workflow: Workflow,
 		node: INode,
 		pollFunctions: IPollFunctions,
@@ -254,13 +260,23 @@ export class ActiveWorkflows {
 					},
 				},
 				async (span) => {
-					this.logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
+					this.logger.debug(`Poll trigger initiated for workflow "${workflow.name}"`, {
 						workflowName: workflow.name,
 						workflowId: workflow.id,
 					});
 
+					// The initial activation poll runs inside ActiveWorkflowManager's
+					// outer acquireIsolate window, which also covers countTriggers
+					// afterwards. Acquiring here would release the outer bridge early
+					// (acquire is idempotent per caller; release deletes it). Scheduled
+					// polls fire from the cron scheduler's own async context outside
+					// that window and must acquire/release per tick — see CAT-3147.
+					const ownsIsolate = !testingTrigger;
+
 					try {
-						const pollResponse = await this.triggersAndPollers.runPoll(
+						if (ownsIsolate) await workflow.expression.acquireIsolate();
+
+						const pollResponse = await this.triggersAndPollers.runPollFunction(
 							workflow,
 							node,
 							pollFunctions,
@@ -273,13 +289,15 @@ export class ActiveWorkflows {
 						span.setStatus({ code: SpanStatus.ok });
 					} catch (error) {
 						span.setStatus({ code: SpanStatus.error });
-						// If the poll function fails in the first activation
+						// If the poll trigger fails in the first activation
 						// throw the error back so we let the user know there is
 						// an issue with the trigger.
 						if (testingTrigger) {
 							throw error;
 						}
 						pollFunctions.__emitError(error as Error);
+					} finally {
+						if (ownsIsolate) await workflow.expression.releaseIsolate();
 					}
 				},
 			);

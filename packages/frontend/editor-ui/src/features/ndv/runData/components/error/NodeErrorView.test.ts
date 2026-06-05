@@ -10,6 +10,7 @@ import NodeErrorView from './NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -50,8 +51,9 @@ describe('NodeErrorView.vue', () => {
 		createTestingPinia();
 		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockWorkflowsStore.workflowId = 'test-workflow-id';
+		mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 
 		//@ts-expect-error
 		error = {
@@ -248,7 +250,7 @@ describe('NodeErrorView.vue', () => {
 			expect(mockRouterResolve).toHaveBeenCalledWith({
 				name: 'ExecutionPreview',
 				params: {
-					name: 'different-workflow-id',
+					workflowId: 'different-workflow-id',
 					executionId: 'different-execution-id',
 					nodeId: 'd1ce5dc9-f9ae-4ac6-84e5-0696ba175dd9',
 				},
@@ -258,6 +260,7 @@ describe('NodeErrorView.vue', () => {
 
 		it('sets active node name when error is in current workflow/execution', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
+			mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('current-workflow-id'));
 			mockWorkflowsStore.getWorkflowExecution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;

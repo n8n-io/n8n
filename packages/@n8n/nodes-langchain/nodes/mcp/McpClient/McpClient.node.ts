@@ -17,9 +17,8 @@ import * as resourceMapping from './resourceMapping';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
-	getAuthHeaders,
-	tryRefreshOAuth2Token,
-	connectMcpClient,
+	connectMcpClientForCredential,
+	isStructuredContent,
 	mapToNodeOperationError,
 } from '../shared/utils';
 
@@ -33,7 +32,8 @@ export class McpClient implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		defaults: {
 			name: 'MCP Client',
 		},
@@ -225,14 +225,11 @@ export class McpClient implements INodeType {
 		const serverTransport = this.getNodeParameter('serverTransport', 0) as McpServerTransport;
 		const endpointUrl = this.getNodeParameter('endpointUrl', 0) as string;
 		const node = this.getNode();
-		const { headers } = await getAuthHeaders(this, authentication);
-		const client = await connectMcpClient({
+		const client = await connectMcpClientForCredential(this, {
+			authentication,
 			serverTransport,
 			endpointUrl,
-			headers,
-			name: node.type,
-			version: node.typeVersion,
-			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
+			surface: 'MCP Client',
 		});
 		if (!client.ok) {
 			throw mapToNodeOperationError(node, client.error);
@@ -264,6 +261,15 @@ export class McpClient implements INodeType {
 						},
 					)) as CallToolResult;
 
+					if (node.typeVersion >= 1.1 && result.isError) {
+						const textContent = result.content.find((item) => item.type === 'text');
+						const errorMessage =
+							textContent && 'text' in textContent
+								? textContent.text
+								: `Tool "${tool}" returned an error`;
+						throw new NodeOperationError(node, errorMessage, { itemIndex });
+					}
+
 					let binaryIndex = 0;
 					const binary: IBinaryKeyData = {};
 					const content: IDataObject[] = [];
@@ -290,10 +296,16 @@ export class McpClient implements INodeType {
 						content.push(contentItem as IDataObject);
 					}
 
+					const outputJson: IDataObject = {};
+					if (isStructuredContent(result.structuredContent)) {
+						outputJson.structuredContent = { ...result.structuredContent };
+					}
+					if (content.length > 0) {
+						outputJson.content = content;
+					}
+
 					returnData.push({
-						json: {
-							content: content.length > 0 ? content : undefined,
-						},
+						json: outputJson,
 						binary: Object.keys(binary).length > 0 ? binary : undefined,
 						pairedItem: {
 							item: itemIndex,

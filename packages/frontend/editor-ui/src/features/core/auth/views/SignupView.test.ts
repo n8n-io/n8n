@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { useToast } from '@/app/composables/useToast';
 import SignupView from './SignupView.vue';
 import { VIEWS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { mockedStore } from '@/__tests__/utils';
 
@@ -194,6 +195,24 @@ describe('SignupView', () => {
 		// IAM-403: invite acceptance is token-only; must not send legacy params
 		expect(payload).not.toHaveProperty('inviterId');
 		expect(payload).not.toHaveProperty('inviteeId');
+	});
+
+	it('should default to 8-character minimum when passwordMinLength is not configured', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		delete (settingsStore.userManagement as { passwordMinLength?: number }).passwordMinLength;
+
+		const { getByText } = renderComponent();
+
+		expect(getByText(/8\+ characters/)).toBeInTheDocument();
+	});
+
+	it('should reflect configured passwordMinLength in password hint text', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.userManagement.passwordMinLength = 12;
+
+		const { getByText } = renderComponent();
+
+		expect(getByText(/12\+ characters/)).toBeInTheDocument();
 	});
 
 	it('should show error and redirect when URL has inviterId but no token', async () => {

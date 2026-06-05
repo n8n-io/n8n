@@ -38,7 +38,7 @@ const allCredentialsFilled = computed(() => {
 		return true;
 	}
 
-	const nodes = workflowDocumentStore?.value?.getNodes() ?? [];
+	const nodes = workflowDocumentStore?.value?.allNodes ?? [];
 	if (!nodes.length) {
 		return true;
 	}
@@ -63,7 +63,7 @@ const showButton = computed(() => {
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return (workflowDocumentStore?.value?.getNodes() ?? []).length > 0;
+		return (workflowDocumentStore?.value?.allNodes ?? []).length > 0;
 	}
 
 	if (isTemplateSetupCompleted.value) {

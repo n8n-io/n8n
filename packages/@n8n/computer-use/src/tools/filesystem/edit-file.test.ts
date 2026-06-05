@@ -1,29 +1,30 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { editFileTool } from './edit-file';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
 function mockStat(size: number): void {
-	jest.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
 }
 
 function mockReadFile(content: string): void {
-	(fs.readFile as jest.Mock).mockResolvedValue(content);
+	(fs.readFile as Mock).mockResolvedValue(content);
 }
 
 function mockWriteFile(): void {
-	(fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+	(fs.writeFile as Mock).mockResolvedValue(undefined);
 }
 
 describe('editFileTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});
@@ -76,6 +77,41 @@ describe('editFileTool', () => {
 			expect(() =>
 				editFileTool.inputSchema.parse({ filePath: 'src/index.ts', oldString: 'foo' }),
 			).toThrow();
+		});
+	});
+
+	describe('getAffectedResources', () => {
+		it('declares both read and write access for the edited file', async () => {
+			const resources = await editFileTool.getAffectedResources(
+				{ filePath: 'src/index.ts', oldString: 'foo', newString: 'bar' },
+				CONTEXT,
+			);
+
+			expect(resources).toEqual([
+				{
+					toolGroup: 'filesystemRead',
+					resource: '/base/src/index.ts',
+					description: 'Read file: src/index.ts',
+				},
+				{
+					toolGroup: 'filesystemWrite',
+					resource: '/base/src/index.ts',
+					description: 'Edit file: src/index.ts',
+				},
+			]);
+		});
+
+		it('rejects excluded paths for the read phase', async () => {
+			await expect(
+				editFileTool.getAffectedResources(
+					{
+						filePath: 'node_modules/pkg/index.js',
+						oldString: 'foo',
+						newString: 'bar',
+					},
+					CONTEXT,
+				),
+			).rejects.toThrow('excluded from filesystem reads');
 		});
 	});
 
@@ -157,6 +193,20 @@ describe('editFileTool', () => {
 					CONTEXT,
 				),
 			).rejects.toThrow('escapes');
+		});
+
+		it.each([
+			'node_modules/pkg/index.js',
+			'Node_Modules/pkg/index.js',
+			'.git/config',
+			'dist/out.js',
+		])('rejects edit reads under excluded directory %s', async (filePath) => {
+			await expect(
+				editFileTool.execute({ filePath, oldString: 'foo', newString: 'bar' }, CONTEXT),
+			).rejects.toThrow('excluded from filesystem reads');
+			expect(fs.stat).not.toHaveBeenCalled();
+			expect(fs.readFile).not.toHaveBeenCalled();
+			expect(fs.writeFile).not.toHaveBeenCalled();
 		});
 	});
 });

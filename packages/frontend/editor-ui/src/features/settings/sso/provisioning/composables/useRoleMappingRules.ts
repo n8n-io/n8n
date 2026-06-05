@@ -5,6 +5,13 @@ import type {
 } from '@n8n/rest-api-client/api/roleMappingRule';
 import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
 
+export type RoleMappingRulesSaveResult = {
+	createdCount: number;
+	deletedCount: number;
+	instanceRuleCount: number;
+	projectRuleCount: number;
+};
+
 function generateLocalId(): string {
 	return `local-${crypto.randomUUID()}`;
 }
@@ -127,7 +134,7 @@ export function useRoleMappingRules() {
 		serverProjectRuleIds = new Set();
 	}
 
-	async function save() {
+	async function save(): Promise<RoleMappingRulesSaveResult> {
 		isLoading.value = true;
 		try {
 			// Defensive re-sync: the server may have removed rules between the
@@ -173,6 +180,13 @@ export function useRoleMappingRules() {
 			}
 
 			await loadRules();
+
+			return {
+				createdCount: createRules.length,
+				deletedCount: deleteIds.length,
+				instanceRuleCount: instanceRules.value.length,
+				projectRuleCount: projectRules.value.length,
+			};
 		} finally {
 			isLoading.value = false;
 		}

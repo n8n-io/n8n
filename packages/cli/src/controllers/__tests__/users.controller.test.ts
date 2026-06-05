@@ -1,4 +1,3 @@
-import type { UsersListFilterDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
@@ -6,9 +5,7 @@ import type { Response } from 'express';
 import type { EventService } from '@/events/event.service';
 import type { JwtService } from '@/services/jwt.service';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { UsersController } from '../users.controller';
@@ -19,7 +16,6 @@ describe('UsersController', () => {
 	const jwtService = mock<JwtService>();
 	const urlService = mock<UrlService>();
 	const provisioningService = mock<ProvisioningService>();
-	const projectService = mock<ProjectService>();
 
 	const controller = new UsersController(
 		mock(),
@@ -36,7 +32,6 @@ describe('UsersController', () => {
 		mock(),
 		jwtService,
 		urlService,
-		projectService,
 		provisioningService,
 	);
 
@@ -66,81 +61,6 @@ describe('UsersController', () => {
 				targetUserNewRole: 'global:member',
 				publicApi: false,
 			});
-		});
-	});
-
-	describe('listUsers', () => {
-		const mockQueryBuilder = () => mock({ getManyAndCount: jest.fn().mockResolvedValue([[], 0]) });
-
-		it('should allow global:owner to list users without checking project scopes', async () => {
-			userRepository.buildUserQuery.mockReturnValue(mockQueryBuilder() as never);
-			const req = mock<AuthenticatedRequest>({
-				user: mock<User>({ role: { slug: 'global:owner', scopes: [] } }),
-			});
-
-			await expect(
-				controller.listUsers(
-					req,
-					mock<Response>(),
-					mock<UsersListFilterDto>({ filter: undefined, select: undefined }),
-				),
-			).resolves.toBeDefined();
-
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-		});
-
-		it('should allow user with project:update scope to list all users without projectId filter', async () => {
-			userRepository.buildUserQuery.mockReturnValue(mockQueryBuilder() as never);
-			projectService.getProjectIdsWithScope.mockResolvedValue(['project-1']);
-			const req = mock<AuthenticatedRequest>({
-				user: mock<User>({ role: { slug: 'global:member', scopes: [] } }),
-			});
-
-			await expect(
-				controller.listUsers(
-					req,
-					mock<Response>(),
-					mock<UsersListFilterDto>({ filter: undefined, select: undefined }),
-				),
-			).resolves.toBeDefined();
-
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(req.user, [
-				'project:update',
-			]);
-		});
-
-		it('should throw ForbiddenError when member has no project:update scope and no projectId filter', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValue([]);
-			const req = mock<AuthenticatedRequest>({
-				user: mock<User>({ role: { slug: 'global:member' } }),
-			});
-
-			await expect(
-				controller.listUsers(
-					req,
-					mock<Response>(),
-					mock<UsersListFilterDto>({ filter: undefined }),
-				),
-			).rejects.toThrow(ForbiddenError);
-
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(req.user, [
-				'project:update',
-			]);
-		});
-
-		it('should throw NotFoundError when filtering by an unknown projectId', async () => {
-			projectService.getProjectWithScope.mockResolvedValue(null);
-			const req = mock<AuthenticatedRequest>({
-				user: mock<User>({ role: { slug: 'global:member' } }),
-			});
-
-			await expect(
-				controller.listUsers(
-					req,
-					mock<Response>(),
-					mock<UsersListFilterDto>({ filter: { projectId: 'unknown-project-id' } }),
-				),
-			).rejects.toThrow(NotFoundError);
 		});
 	});
 

@@ -1,4 +1,5 @@
-import { trace } from '@opentelemetry/api';
+import { propagation, trace } from '@opentelemetry/api';
+import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import {
 	BasicTracerProvider,
 	InMemorySpanExporter,
@@ -28,6 +29,7 @@ export class OtelTestProvider {
 			spanProcessors: [new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
+		propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 		return new OtelTestProvider(provider, exporter);
 	}
 
@@ -43,5 +45,6 @@ export class OtelTestProvider {
 		this.exporter.reset();
 		await this.provider.shutdown();
 		trace.disable();
+		propagation.disable();
 	}
 }

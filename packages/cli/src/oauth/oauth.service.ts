@@ -4,7 +4,7 @@ import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import Csrf from 'csrf';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -13,6 +13,7 @@ import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
+import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -25,6 +26,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import {
 	ClientOAuth2,
 	type ClientOAuth2Options,
+	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
@@ -52,6 +54,9 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { EventService } from '@/events/event.service';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';
@@ -74,6 +79,10 @@ export class OauthService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly authService: AuthService,
+		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
+		private readonly browserBindingService: OAuthBrowserBindingService,
+		private readonly eventService: EventService,
 	) {}
 
 	private validateOAuthUrlOrThrow(url: string): void {
@@ -90,7 +99,7 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredential(
+	async getCredentialForUpdate(
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
@@ -102,18 +111,45 @@ export class OauthService {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:read'],
+			['credential:update'],
 		);
 
 		if (!credential) {
 			this.logger.error(
 				'OAuth credential authorization failed because the current user does not have the correct permissions',
-				{ userId: req.user.id },
+				{ userId: req.user.id, credentialId },
 			);
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
 		return credential;
+	}
+
+	async buildCsrfStateData(
+		credential: CredentialsEntity,
+		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
+	): Promise<CreateCsrfStateData> {
+		if (credential.isResolvable) {
+			const resolverId = this.dynamicCredentialsProxy.getSystemResolverId();
+			if (resolverId !== null) {
+				const cookieToken = this.authService.getCookieToken(req as Request);
+				if (cookieToken) {
+					return {
+						cid: credential.id,
+						origin: 'dynamic-credential',
+						userId: req.user.id,
+						credentialResolverId: resolverId,
+						authorizationHeader: `Bearer ${cookieToken}`,
+						authMetadata: { source: 'manual-execution' },
+					};
+				}
+			}
+		}
+		return {
+			cid: credential.id,
+			origin: 'static-credential',
+			userId: req.user.id,
+		};
 	}
 
 	protected async getAdditionalData() {
@@ -185,7 +221,7 @@ export class OauthService {
 		}
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(toUpdate, toDelete);
+		await credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
@@ -234,61 +270,97 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(data: CreateCsrfStateData): [string, string] {
+	async createCsrfState(data: CreateCsrfStateData): Promise<[string, string]> {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfState = {
 			token: token.create(csrfSecret),
 			createdAt: Date.now(),
-			data: this.cipher.encrypt(JSON.stringify(data)),
+			data: await this.cipher.encryptV2(JSON.stringify(data)),
 		};
 
 		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
 		return [csrfSecret, base64State];
 	}
 
-	protected decodeCsrfState(
+	protected async decodeCsrfState(
 		encodedState: string,
 		req: AuthenticatedRequest,
-	): CsrfState & CreateCsrfStateData {
+	): Promise<[CsrfState & CreateCsrfStateData, CredentialsEntity | null]> {
 		const errorMessage = 'Invalid state format';
 		const decodedState = Buffer.from(encodedState, 'base64').toString();
 		const decoded = jsonParse<CsrfState>(decodedState, {
 			errorMessage,
 		});
 
-		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
-			errorMessage,
-		});
+		const decryptedState = jsonParse<CreateCsrfStateData>(
+			await this.cipher.decryptV2(decoded.data),
+			{
+				errorMessage,
+			},
+		);
 
 		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
+		// Browser binding check runs before any origin-specific branch, so that
+		// dynamic-credential and N8N_SKIP_AUTH_ON_OAUTH_CALLBACK flows — which
+		// otherwise have no user-identity check at callback time — are also
+		// protected. A bindingHash is only set when binding was enabled at /auth;
+		// states without it pre-date the feature and are accepted.
+		if (typeof decryptedState.bindingHash === 'string' && decryptedState.bindingHash.length > 0) {
+			const result = this.browserBindingService.verifyBinding(req, decryptedState.bindingHash);
+			if (!result.ok) {
+				this.eventService.emit('oauth-callback-binding-rejected', {
+					reason: result.reason,
+					credentialId: decryptedState.cid,
+					origin: decryptedState.origin,
+				});
+				throw new AuthError(
+					'This OAuth flow was started in a different browser. Please retry from your original window.',
+				);
+			}
+		}
+
+		// Dynamic credentials: skip user-ownership check since the credential may be shared,
+		// but validate userId when both the state and the caller carry an n8n user identity
+		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
+		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
+		// the state has no userId and the check is skipped.
 		if (decryptedState.origin === 'dynamic-credential') {
-			return {
-				...decoded,
-				...decryptedState,
-			};
+			if (
+				req.user?.id !== undefined &&
+				decryptedState.userId !== undefined &&
+				decryptedState.userId !== req.user.id
+			) {
+				throw new AuthError('Unauthorized');
+			}
+			return [
+				{ ...decoded, ...decryptedState },
+				await this.getCredentialWithoutUser(decryptedState.cid),
+			];
 		}
 
 		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true (e.g. embed/iframe)
 		if (skipAuthOnOAuthCallback) {
-			return {
-				...decoded,
-				...decryptedState,
-			};
+			return [
+				{ ...decoded, ...decryptedState },
+				await this.getCredentialWithoutUser(decryptedState.cid),
+			];
 		}
 
 		if (req.user?.id === undefined || decryptedState.userId !== req.user.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return {
-			...decoded,
-			...decryptedState,
-		};
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			decryptedState.cid,
+			req.user,
+			['credential:update'],
+		);
+
+		return [{ ...decoded, ...decryptedState }, credential];
 	}
 
 	protected verifyCsrfState(
@@ -310,10 +382,9 @@ export class OauthService {
 		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
 	> {
 		const { state: encodedState } = req.query;
-		const state = this.decodeCsrfState(encodedState, req);
-		const credential = await this.getCredentialWithoutUser(state.cid);
+		const [state, credential] = await this.decodeCsrfState(encodedState, req);
 		if (!credential) {
-			throw new UnexpectedError('OAuth callback failed because of insufficient permissions');
+			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
 		const additionalData = await this.getAdditionalData();
@@ -347,11 +418,16 @@ export class OauthService {
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
 		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
 		// inheritance) so that manually entered scopes survive reconnects.
+		// For managed credentials we always strip the scope so that the pre-registered default
+		// scope on n8n's OAuth app is used, regardless of credential type.
+		const userCanEditScope =
+			GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) ||
+			this.hasEditableScopeProperty(credential.type);
+
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
-			!this.hasEditableScopeProperty(credential.type)
+			(credential.isManaged || !userCanEditScope)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -363,6 +439,77 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Refresh the OAuth2 token stored on a credential by id, persist the refreshed token data,
+	 * and return the new auth headers to inject into outbound requests.
+	 */
+	async refreshOAuth2CredentialById(
+		credentialId: string,
+		projectId: string,
+	): Promise<Record<string, string> | null> {
+		const credential = await this.credentialsRepository.findOne({
+			where: { id: credentialId },
+			relations: { shared: true },
+		});
+		if (!credential) return null;
+
+		const isAccessible =
+			credential.isGlobal || (credential.shared ?? []).some((s) => s.projectId === projectId);
+		if (!isAccessible) return null;
+
+		const oauthCredentials = await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+		const oauthTokenData = oauthCredentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+		if (!oauthTokenData) return null;
+
+		const scopes = oauthCredentials.scope
+			?.split(' ')
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		const oAuthClient = new ClientOAuth2({
+			clientId: oauthCredentials.clientId,
+			clientSecret: oauthCredentials.clientSecret,
+			accessTokenUri: oauthCredentials.accessTokenUrl,
+			scopes: scopes?.length ? scopes : undefined,
+			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
+			authentication: oauthCredentials.authentication ?? 'header',
+		});
+
+		const token = oAuthClient.createToken(
+			{
+				...oauthTokenData,
+				...(oauthTokenData.access_token ? { access_token: oauthTokenData.access_token } : {}),
+				...(oauthTokenData.refresh_token ? { refresh_token: oauthTokenData.refresh_token } : {}),
+			},
+			oauthTokenData.token_type,
+		);
+
+		let refreshed;
+		try {
+			refreshed =
+				oauthCredentials.grantType === 'clientCredentials'
+					? await token.client.credentials.getToken()
+					: await token.refresh();
+		} catch (error) {
+			this.logger.warn('Failed to refresh OAuth2 token for credential', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+
+		try {
+			await this.encryptAndSaveData(credential, { oauthTokenData: refreshed.data });
+		} catch (error) {
+			this.logger.warn('Refreshed OAuth2 token but failed to persist new token data', {
+				credentialId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return { Authorization: `Bearer ${refreshed.accessToken}` };
 	}
 
 	/**
@@ -380,10 +527,31 @@ export class OauthService {
 		}
 	}
 
+	/**
+	 * Mutates `csrfData` to include a `bindingHash` when browser binding is
+	 * enabled and a request/response pair is available. No-op otherwise — so
+	 * server-initiated flows (e.g. workflow-execution credential checks) that
+	 * don't carry a browser context naturally skip binding.
+	 */
+	private applyBrowserBindingIfEnabled(
+		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
+	): void {
+		if (!req || !res) return;
+		if (!this.browserBindingService.isEnabled()) return;
+		const nonce = this.browserBindingService.ensureBindingCookie(req, res);
+		csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
+	}
+
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
 	): Promise<string> {
+		this.applyBrowserBindingIfEnabled(csrfData, req, res);
+
 		const oauthCredentials: OAuth2CredentialData =
 			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
 
@@ -436,20 +604,26 @@ export class OauthService {
 			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
 
 			// Build discovery URLs in priority order per MCP specification
-			const discoveryUrls = pathComponent
-				? [
-						// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
-						// 2. OpenID Connect Discovery 1.0 (path insertion)
-						`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
-						// 3. OpenID Connect Discovery 1.0 (path appending)
-						`${authorizationServerUrl}/.well-known/openid-configuration`,
-					]
-				: [
-						// For root-level issuers (no path)
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
-						`${issuerUrl.origin}/.well-known/openid-configuration`,
-					];
+			// If the path already contains /.well-known/, skip path-insertion variants to avoid
+			// double well-known paths (e.g. /.well-known/openid-configuration/.well-known/openid-configuration)
+			const pathIsWellKnown = pathComponent.startsWith('/.well-known');
+			const discoveryUrls =
+				pathComponent && !pathIsWellKnown
+					? [
+							// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+							// 2. OpenID Connect Discovery 1.0 (path insertion)
+							`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
+							// 3. OpenID Connect Discovery 1.0 (path appending)
+							`${authorizationServerUrl}/.well-known/openid-configuration`,
+							// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+						]
+					: [
+							// For root-level issuers or already-well-known paths
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+							`${issuerUrl.origin}/.well-known/openid-configuration`,
+						];
 
 			let data: unknown;
 			let lastError: Error | undefined;
@@ -521,6 +695,9 @@ export class OauthService {
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
 				scope,
+				...(oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+					: {}),
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
@@ -550,7 +727,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState(csrfData);
+		const [csrfSecret, state] = await this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -590,7 +767,11 @@ export class OauthService {
 	async generateAOauth1AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
+		req?: Request,
+		res?: Response,
 	): Promise<string> {
+		this.applyBrowserBindingIfEnabled(csrfData, req, res);
+
 		const oauthCredentials: OAuth1CredentialData =
 			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
 
@@ -598,7 +779,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
-		const [csrfSecret, state] = this.createCsrfState(csrfData);
+		const [csrfSecret, state] = await this.createCsrfState(csrfData);
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -657,9 +838,17 @@ export class OauthService {
 			);
 		}
 
-		const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+		const returnUriUrl = new URL(oauthCredentials.authUrl);
+		returnUriUrl.searchParams.set('oauth_token', responseJson.oauth_token);
+		const returnUri = returnUriUrl.toString();
 
-		await this.encryptAndSaveData(credential, { csrfSecret }, []);
+		// The request token secret is required to sign the later access token
+		// request, so it must be persisted until the callback completes.
+		await this.encryptAndSaveData(
+			credential,
+			{ csrfSecret, oauth_token_secret: responseJson.oauth_token_secret ?? '' },
+			[],
+		);
 
 		this.logger.debug('OAuth1 authorization url created for credential', {
 			csrfData,
@@ -667,6 +856,63 @@ export class OauthService {
 		});
 
 		return returnUri;
+	}
+
+	/**
+	 * Exchanges an authorized OAuth1 request token for an access token.
+	 *
+	 * The access token request must be signed with the consumer credentials and
+	 * the request token key/secret obtained during {@link generateAOauth1AuthUri}.
+	 * Returns the parsed token data from the (x-www-form-urlencoded) response.
+	 */
+	async getOAuth1AccessToken(
+		oauthCredentials: OAuth1CredentialData,
+		params: { oauthToken: string; oauthVerifier: string; oauthTokenSecret: string },
+	): Promise<Record<string, string>> {
+		const { signatureMethod } = oauthCredentials;
+
+		const oauth = new clientOAuth1({
+			consumer: {
+				key: oauthCredentials.consumerKey,
+				secret: oauthCredentials.consumerSecret,
+			},
+			signature_method: signatureMethod,
+			hash_function(base, key) {
+				const algorithm = algorithmMap[signatureMethod] ?? 'sha1';
+				return createHmac(algorithm, key).update(base).digest('base64');
+			},
+		});
+
+		const requestData: RequestOptions = {
+			method: 'POST',
+			url: oauthCredentials.accessTokenUrl,
+			data: { oauth_verifier: params.oauthVerifier },
+		};
+
+		const token = { key: params.oauthToken, secret: params.oauthTokenSecret };
+		const headers = oauth.toHeader(oauth.authorize(requestData, token));
+
+		// `oauth_verifier` is part of the signature base string but is not emitted
+		// into the Authorization header by `toHeader`, so it must travel in the
+		// form-encoded body for the server to receive and verify it.
+		const { data: response } = await axios.request<string>({
+			method: 'POST',
+			url: oauthCredentials.accessTokenUrl,
+			data: new URLSearchParams({ oauth_verifier: params.oauthVerifier }).toString(),
+			headers: {
+				...headers,
+				'content-type': 'application/x-www-form-urlencoded',
+			},
+		});
+
+		// Response comes as x-www-form-urlencoded string so convert it to JSON
+		if (typeof response !== 'string') {
+			throw new BadRequestError(
+				'Expected string response from OAuth1 access token endpoint, but received invalid response type',
+			);
+		}
+
+		return Object.fromEntries(new URLSearchParams(response).entries());
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
@@ -755,7 +1001,7 @@ export class OauthService {
 		tokenEndpointAuthMethods: string[],
 		codeChallengeMethods: string[],
 	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
-		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
+		if (grantTypes.includes('authorization_code')) {
 			if (codeChallengeMethods.includes('S256')) {
 				return { grantType: 'pkce' };
 			}
@@ -816,7 +1062,7 @@ export class OauthService {
 		authMetadata: Record<string, unknown> = {},
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(oauthTokenData, ['csrfSecret']);
+		await credentials.updateData(oauthTokenData, ['csrfSecret']);
 
 		const credentialStoreMetadata: CredentialStoreMetadata = {
 			id: credential.id,
@@ -830,7 +1076,7 @@ export class OauthService {
 			credentialStoreMetadata,
 			oauthTokenData,
 			{ version: 1, identity: authHeader, metadata: authMetadata },
-			credentials.getData(),
+			await credentials.getData(),
 			{ credentialResolverId },
 		);
 	}

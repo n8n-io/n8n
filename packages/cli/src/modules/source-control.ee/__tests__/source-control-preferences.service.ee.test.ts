@@ -75,7 +75,7 @@ describe('SourceControlPreferencesService', () => {
 			const expectedNormalizedKey = keyWithCRLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(keyWithCRLF);
+			mockCipher.decryptV2.mockResolvedValue(keyWithCRLF);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -107,7 +107,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(keyWithMixedEndings);
+			mockCipher.decryptV2.mockResolvedValue(keyWithMixedEndings);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -141,7 +141,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(keyWithLF);
+			mockCipher.decryptV2.mockResolvedValue(keyWithLF);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -181,7 +181,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(testKey);
+			mockCipher.decryptV2.mockResolvedValue(testKey);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -237,7 +237,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(testKey);
+			mockCipher.decryptV2.mockResolvedValue(testKey);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -402,7 +402,7 @@ describe('SourceControlPreferencesService', () => {
 					loadOnStartup: false,
 				}),
 			);
-			mockCipher.decrypt.mockImplementation((value) => `decrypted-${value}`);
+			mockCipher.decryptV2.mockImplementation(async (value) => `decrypted-${value}`);
 
 			const result = await service.getDecryptedHttpsCredentials();
 

@@ -7,7 +7,13 @@ import {
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import { type InstanceSettings, Cipher, CipherAes256GCM, CipherAes256CBC } from 'n8n-core';
+import {
+	type InstanceSettings,
+	Cipher,
+	CipherAes256GCM,
+	CipherAes256CBC,
+	EncryptionKeyProxy,
+} from 'n8n-core';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -24,6 +30,7 @@ import { deepCopy, Workflow } from 'n8n-workflow';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -45,6 +52,7 @@ describe('CredentialsHelper', () => {
 		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
 		new CipherAes256GCM(),
 		new CipherAes256CBC(),
+		new EncryptionKeyProxy(),
 	);
 	Container.set(Cipher, cipher);
 
@@ -491,6 +499,59 @@ describe('CredentialsHelper', () => {
 				expect(credentialsRepository.update).not.toHaveBeenCalled();
 			});
 
+			test('should fall back to the system resolver from the proxy when no override is set', async () => {
+				const mockCredentialEntity = {
+					id: 'cred-789',
+					name: 'Test OAuth2 Credential',
+					type: 'oAuth2Api',
+					data: cipher.encrypt(existingCredentialData),
+					isResolvable: true,
+					resolverId: null,
+				} as unknown as CredentialsEntity;
+
+				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
+
+				const resolverProvider = {
+					resolveIfNeeded: jest.fn(),
+					getSystemResolverId: jest.fn().mockReturnValue('system-resolver'),
+				};
+				dynamicCredentialProxy.setResolverProvider(resolverProvider);
+
+				const additionalDataWithCredentials = {
+					executionContext: {
+						version: 1,
+						establishedAt: Date.now(),
+						source: 'manual' as const,
+						credentials: 'encrypted-credential-context',
+					},
+					workflowSettings: {},
+				} as IWorkflowExecuteAdditionalData;
+
+				try {
+					await credentialsHelper.updateCredentialsOauthTokenData(
+						nodeCredentials,
+						'oAuth2Api',
+						newOauthTokenData,
+						additionalDataWithCredentials,
+					);
+
+					expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
+						expect.objectContaining({
+							id: 'cred-789',
+							isResolvable: true,
+							resolverId: 'system-resolver',
+						}),
+						newOauthTokenData.oauthTokenData,
+						additionalDataWithCredentials.executionContext,
+						existingCredentialData,
+						additionalDataWithCredentials.workflowSettings,
+					);
+					expect(credentialsRepository.update).not.toHaveBeenCalled();
+				} finally {
+					dynamicCredentialProxy.setResolverProvider(undefined as any);
+				}
+			});
+
 			test('should skip dynamic proxy when credentials context is missing', async () => {
 				// Setup: Resolvable credential with resolver, but NO credentials context
 				const mockCredentialEntity = {
@@ -615,6 +676,7 @@ describe('CredentialsHelper', () => {
 				userId: undefined,
 				workflowId: 'workflow-123',
 				projectId: 'project-456',
+				executionId: undefined,
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -634,6 +696,7 @@ describe('CredentialsHelper', () => {
 				userId: undefined,
 				workflowId: 'workflow-123',
 				projectId: 'project-456',
+				executionId: undefined,
 			});
 			expect(result).toEqual(syntheticCred);
 		});
@@ -658,6 +721,7 @@ describe('CredentialsHelper', () => {
 				userId: 'user-123',
 				workflowId: undefined,
 				projectId: undefined,
+				executionId: undefined,
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -677,10 +741,59 @@ describe('CredentialsHelper', () => {
 				userId: 'user-123',
 				workflowId: undefined,
 				projectId: undefined,
+				executionId: undefined,
 			});
 			expect(result).toEqual(syntheticCred);
 			// Should NOT attempt to look up a DB credential
 			expect(credentialsRepository.findOneByOrFail).not.toHaveBeenCalled();
+		});
+
+		it('should forward executionId from additionalData to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+			);
+
+			const syntheticCred = {
+				apiKey: 'mock-jwt',
+				host: 'http://gateway/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google',
+			};
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			expect(result).toEqual(syntheticCred);
 		});
 	});
 
@@ -754,6 +867,7 @@ describe('CredentialsHelper', () => {
 	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
 			resolveIfNeeded: jest.fn(),
+			getSystemResolverId: jest.fn(),
 		};
 
 		const mockAdditionalData = {
@@ -1123,6 +1237,107 @@ describe('CredentialsHelper', () => {
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(additionalDataWithoutSettings.executionContext);
 			expect(call[3]).toBeUndefined(); // workflowSettings
+		});
+	});
+
+	describe('isCredentialUsableByNode', () => {
+		const buildHelper = (credentialTypes: CredentialTypes) =>
+			new CredentialsHelper(
+				credentialTypes,
+				mock<CredentialsOverwrites>(),
+				mock<CredentialsRepository>(),
+				mock<DynamicCredentialsProxy>(),
+				mock<SecretsProviderConnectionRepository>(),
+				mock<LicenseState>(),
+				mock<ExternalSecretsConfig>(),
+				mock<AiGatewayService>(),
+			);
+
+		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");
+		// the FQ list (matching `nodeType`) comes from `credentialTypes.getSupportedNodes`.
+		// Mocks split the two so the FQ-vs-short bug stays caught.
+		const mockType = (overrides: Partial<ICredentialType>): ICredentialType =>
+			({ name: 'restrictedApi', ...overrides }) as ICredentialType;
+
+		const buildCredentialTypes = (typeDef: ICredentialType, supportedNodes: string[] = []) => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.mockReturnValue(typeDef);
+			credentialTypes.getSupportedNodes.mockReturnValue(supportedNodes);
+			return credentialTypes;
+		};
+
+		it('returns true when the credential type does not opt into restriction', () => {
+			// no restrictToSupportedNodes — FQ list shouldn't even be consulted
+			const credentialTypes = buildCredentialTypes(
+				mockType({ supportedNodes: ['restrictedConsumer'] }),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.httpRequest',
+				),
+			).toBe(true);
+		});
+
+		it('returns true when restricted and the node is in supportedNodes', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({
+					restrictToSupportedNodes: true,
+					supportedNodes: ['restrictedConsumer'],
+				}),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.restrictedConsumer',
+				),
+			).toBe(true);
+		});
+
+		it('returns false when restricted and the node is NOT in supportedNodes', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({
+					restrictToSupportedNodes: true,
+					supportedNodes: ['restrictedConsumer'],
+				}),
+				['n8n-nodes-base.restrictedConsumer'],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.httpRequest',
+				),
+			).toBe(false);
+		});
+
+		it('returns false when restricted and the FQ supportedNodes list is empty (fail-safe)', () => {
+			const credentialTypes = buildCredentialTypes(
+				mockType({ restrictToSupportedNodes: true }), // no supportedNodes
+				[],
+			);
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode(
+					'restrictedApi',
+					'n8n-nodes-base.restrictedConsumer',
+				),
+			).toBe(false);
+		});
+
+		it('returns true when the credential type is unknown (caller surfaces the real error)', () => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.mockImplementation(() => {
+				throw new Error('Unknown credential type');
+			});
+
+			expect(
+				buildHelper(credentialTypes).isCredentialUsableByNode('missing', 'n8n-nodes-base.anything'),
+			).toBe(true);
 		});
 	});
 

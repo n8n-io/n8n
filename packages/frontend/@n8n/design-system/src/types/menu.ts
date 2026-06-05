@@ -37,7 +37,6 @@ export type IMenuItem = {
 	disabledReason?: string;
 	notification?: boolean;
 	size?: 'medium' | 'small';
-	beta?: boolean;
 	preview?: boolean;
 	new?: boolean;
 	creditsTag?: string;

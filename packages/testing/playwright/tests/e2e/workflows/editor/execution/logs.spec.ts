@@ -1,4 +1,6 @@
-import { test, expect } from '../../../../../fixtures/base';
+import { test, expect, executionLogsTestConfig } from './fixtures';
+
+test.use(executionLogsTestConfig);
 
 // Node name constants
 const NODES = {
@@ -101,58 +103,50 @@ test.describe(
 			await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toContainText(NODES.IF);
 		});
 
-		// TODO: make it possible to test workflows with AI model end-to-end
-		test.fixme(
-			'should show input and output data in the selected display mode',
-			async ({ n8n, setupRequirements }) => {
-				await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
+		test('should show input and output data in the selected display mode', async ({
+			n8n,
+			anthropicCredential,
+			setupRequirements,
+		}) => {
+			await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
 
-				await n8n.canvas.clickZoomToFitButton();
-				await n8n.canvas.logsPanel.open();
-				await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
-				await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
-				await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
-				await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText(
-					'Hello from e2e model!!!',
-				);
-				await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toHaveText('E2E Chat Model');
-				await n8n.canvas.logsPanel.getLogEntries().nth(2).click();
+			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.openNode('E2E Chat Model');
+			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(anthropicCredential.name);
+			await n8n.ndv.close();
+			await n8n.canvas.logsPanel.open();
+			await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+			await expect(n8n.canvas.logsPanel.getLogEntries().nth(2)).toHaveText('E2E Chat Model');
 
-				await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
-					'Hello from e2e model!!!',
-				);
-				await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('table');
-				await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 0)).toContainText(
-					'text:Hello from **e2e** model!!!',
-				);
-				await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 1)).toContainText(
-					'completionTokens:20',
-				);
-				await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('schema');
-				await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText('generations[0]');
-				await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
-					'Hello from **e2e** model!!!',
-				);
-				await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('json');
-				await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
-					'[{"response": {"generations": [',
-				);
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText('Hello');
+			await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('table');
+			await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 0)).toContainText('text:Hello');
+			await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 1)).toContainText(
+				/completionTokens:\d+promptTokens:\d+totalTokens:\d+/,
+			);
+			await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('schema');
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText('generations[0]');
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText('Hello');
+			await n8n.canvas.logsPanel.outputPanel.switchDisplayMode('json');
+			await expect(n8n.canvas.logsPanel.outputPanel.get()).toContainText(
+				/\[\s*{\s*"response":\s*{\s*"generations":\s*\[/,
+			);
 
-				await n8n.canvas.logsPanel.toggleInputPanel();
-				await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('Human: Hi!');
-				await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('table');
-				await expect(n8n.canvas.logsPanel.inputPanel.getTbodyCell(0, 0)).toContainText(
-					'0:Human: Hi!',
-				);
-				await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('schema');
-				await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('messages[0]');
-				await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('Human: Hi!');
-				await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('json');
-				await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText(
-					'[{"messages": ["Human: Hi!"],',
-				);
-			},
-		);
+			await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('Human: Hi!');
+			await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('table');
+			await expect(n8n.canvas.logsPanel.inputPanel.getTbodyCell(0, 0)).toContainText(
+				'0:Human: Hi!',
+			);
+			await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('schema');
+			await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('messages[0]');
+			await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText('Human: Hi!');
+			await n8n.canvas.logsPanel.inputPanel.switchDisplayMode('json');
+			await expect(n8n.canvas.logsPanel.inputPanel.get()).toContainText(
+				/\[\s*{\s*"messages":\s*\[\s*"Human: Hi!"\s*\],/,
+			);
+		});
 
 		test('should show input and output data of correct run index and branch', async ({
 			n8n,
@@ -223,21 +217,25 @@ test.describe(
 			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(6);
 		});
 
-		// TODO: make it possible to test workflows with AI model end-to-end
-		test.fixme('should show logs for a past execution', async ({ n8n, setupRequirements }) => {
+		test('should show logs for a past execution', async ({
+			n8n,
+			anthropicCredential,
+			setupRequirements,
+		}) => {
 			await setupRequirements({ workflow: 'Workflow_ai_agent.json' });
 
 			await n8n.canvas.clickZoomToFitButton();
+			await n8n.canvas.openNode('E2E Chat Model');
+			await expect(n8n.ndv.getCredentialSelect()).toHaveValue(anthropicCredential.name);
+			await n8n.ndv.close();
 			await n8n.canvas.logsPanel.open();
 
 			await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+			await n8n.notifications.waitForNotificationAndClose('Successful');
 			await n8n.canvas.openExecutions();
 			await n8n.executions.getAutoRefreshButton().click();
 			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
-			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText(
-				'Hello from e2e model!!!',
-			);
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
 			await expect(
 				n8n.executions.logsPanel.getOverviewStatus().filter({ hasText: /Success in [\d.]+m?s/ }),
 			).toBeVisible();

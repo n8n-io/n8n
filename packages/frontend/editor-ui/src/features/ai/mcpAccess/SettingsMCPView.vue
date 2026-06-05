@@ -18,6 +18,7 @@ import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTab
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
 import {
 	N8nHeading,
+	N8nNotice,
 	N8nTabs,
 	N8nTooltip,
 	N8nButton,
@@ -66,7 +67,21 @@ const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
-const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+const canToggleMCP = computed(() => (isOwner.value || isAdmin.value) && !mcpStore.mcpManagedByEnv);
+
+const canSeeInstanceStats = computed(() => isOwner.value || isAdmin.value);
+
+const showInstanceCapacityNotice = computed(
+	() => canSeeInstanceStats.value && mcpStore.instanceClientStats?.atCapacity === true,
+);
+
+const instanceCapacityNoticeContent = computed(() => {
+	const stats = mcpStore.instanceClientStats;
+	if (!stats) return '';
+	return i18n.baseText('settings.mcp.instanceCapacity.warning', {
+		interpolate: { count: String(stats.count), limit: String(stats.limit) },
+	});
+});
 
 const showConnectWorkflowsButton = computed(() => {
 	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
@@ -164,7 +179,7 @@ const fetchoAuthCLients = async () => {
 	try {
 		oAuthClientsLoading.value = true;
 		const clients = await mcpStore.getAllOAuthClients();
-		connectedOAuthClients.value = clients;
+		connectedOAuthClients.value = clients ?? [];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
@@ -207,7 +222,11 @@ onMounted(async () => {
 	if (!mcpStore.mcpAccessEnabled) {
 		return;
 	}
-	await fetchAvailableWorkflows();
+	const fetches: Array<Promise<unknown>> = [fetchAvailableWorkflows(), fetchoAuthCLients()];
+	if (canSeeInstanceStats.value) {
+		fetches.push(mcpStore.getInstanceClientStats());
+	}
+	await Promise.all(fetches);
 });
 </script>
 <template>
@@ -239,6 +258,7 @@ onMounted(async () => {
 				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
 				:loading="mcpStatusLoading"
+				:managed-by-env="mcpStore.mcpManagedByEnv"
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
@@ -246,6 +266,7 @@ onMounted(async () => {
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
+			:managed-by-env="mcpStore.mcpManagedByEnv"
 			@turn-on-mcp="onToggleMCPAccess(true)"
 		/>
 		<div
@@ -253,6 +274,12 @@ onMounted(async () => {
 			:class="$style.container"
 			data-test-id="mcp-enabled-section"
 		>
+			<N8nNotice
+				v-if="showInstanceCapacityNotice"
+				theme="warning"
+				data-test-id="mcp-instance-capacity-notice"
+				:content="instanceCapacityNoticeContent"
+			/>
 			<header :class="$style['tabs-header']">
 				<N8nTabs :model-value="selectedTab" :options="tabs" @update:model-value="onTabSelected" />
 				<div :class="$style.actions">

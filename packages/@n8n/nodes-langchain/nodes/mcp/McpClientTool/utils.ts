@@ -8,6 +8,7 @@ import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type { McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
+import { isStructuredContent } from '../shared/utils';
 
 export function getSelectedTools({
 	mode,
@@ -96,6 +97,10 @@ export const createCallTool =
 
 		if (result.toolResult !== undefined) {
 			return result.toolResult;
+		}
+
+		if (isStructuredContent(result.structuredContent)) {
+			return result.structuredContent;
 		}
 
 		if (result.content !== undefined) {
