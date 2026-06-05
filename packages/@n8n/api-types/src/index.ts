@@ -328,6 +328,7 @@ export {
 } from './schemas/instance-ai.schema';
 
 export type {
+	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
 } from './schemas/instance-ai.schema';

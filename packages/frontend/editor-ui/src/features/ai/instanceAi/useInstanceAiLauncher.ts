@@ -1,14 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { InstanceAiThreadOrigin, InstanceAiThreadSourcePersisted } from '@n8n/api-types';
+import type { InstanceAiThreadOrigin, InstanceAiThreadSource } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore } from './instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
 
 export interface InstanceAiLaunchOptions {
 	message: string;
-	source: InstanceAiThreadSourcePersisted;
+	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
 	autoSend?: boolean;
