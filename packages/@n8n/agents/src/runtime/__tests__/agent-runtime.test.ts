@@ -2622,7 +2622,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 	});
 
 	it('suspends when a tool has .requireApproval() set', async () => {
-		const approvalTool = new ToolBuilder('delete')
+		const builtApprovalTool = new ToolBuilder('delete')
 			.description('Delete a record')
 			.input(z.object({ id: z.string() }))
 			.requireApproval()
@@ -2630,6 +2630,10 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 				return await Promise.resolve({ deleted: id });
 			})
 			.build();
+		const approvalTool = {
+			...builtApprovalTool,
+			metadata: { displayName: 'Delete record' },
+		};
 
 		generateText.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'delete', { id: 'rec-1' }));
 
@@ -2648,6 +2652,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 		expect(result.pendingSuspend![0].suspendPayload).toMatchObject({
 			type: 'approval',
 			toolName: 'delete',
+			displayName: 'Delete record',
 			args: { id: 'rec-1' },
 		});
 	});
@@ -2722,6 +2727,136 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 			{ runId, toolCallId },
 		);
 		expect(resumeResult.finishReason).toBe('stop');
+	});
+
+	it('does not start tool execution before approval is granted', async () => {
+		const handler = vi.fn(async ({ id }: { id: string }) => {
+			return await Promise.resolve({ deleted: id });
+		});
+		const approvalTool = new ToolBuilder('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.requireApproval()
+			.handler(handler)
+			.build();
+
+		streamText.mockReturnValue({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'delete',
+								args: { id: 'rec-1' },
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-1', toolName: 'delete', input: { id: 'rec-1' } },
+			]),
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [approvalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const { stream: readableStream } = await runtime.stream('Delete record rec-1');
+		const chunks = await collectChunks(readableStream);
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(chunks.map((c) => c.type)).toContain('tool-call-suspended');
+		expect(chunks.map((c) => c.type)).not.toContain('tool-execution-start');
+	});
+
+	it('starts tool execution when conditional approval allows the call immediately', async () => {
+		const handler = vi.fn(async ({ id }: { id: string }) => {
+			return await Promise.resolve({ found: id });
+		});
+		const conditionalApprovalTool = new ToolBuilder('lookup')
+			.description('Look up a record')
+			.input(
+				z.object({
+					id: z.string(),
+					password: z.string(),
+					nested: z.object({ apiKey: z.string() }),
+				}),
+			)
+			.needsApprovalFn(async ({ id }: { id: string }) => {
+				return await Promise.resolve(id === 'secret');
+			})
+			.handler(handler)
+			.build();
+		const startEvents: Array<AgentEventData & { type: AgentEvent.ToolExecutionStart }> = [];
+		const eventBus = new AgentEventBus();
+		eventBus.on(AgentEvent.ToolExecutionStart, (event) => {
+			startEvents.push(event as AgentEventData & { type: AgentEvent.ToolExecutionStart });
+		});
+		const toolInput = {
+			id: 'public',
+			password: 'plain-secret-password',
+			nested: { apiKey: 'secret-api-key' },
+		};
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'lookup',
+									args: toolInput,
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'lookup', input: toolInput }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [conditionalApprovalTool],
+			eventBus,
+			checkpointStorage: 'memory',
+		});
+
+		const { stream: readableStream } = await runtime.stream('Look up public');
+		const chunks = await collectChunks(readableStream);
+
+		expect(handler).toHaveBeenCalledWith(
+			toolInput,
+			expect.objectContaining({ toolCallId: 'tc-1' }),
+		);
+		expect(startEvents[0]?.args).toEqual({
+			id: 'public',
+			password: 'plain-secret-password',
+			nested: { apiKey: 'secret-api-key' },
+		});
+		expect(chunks.map((c) => c.type)).toContain('tool-execution-start');
+		expect(chunks.map((c) => c.type)).toContain('tool-execution-end');
+		expect(chunks.map((c) => c.type)).not.toContain('tool-call-suspended');
 	});
 });
 
