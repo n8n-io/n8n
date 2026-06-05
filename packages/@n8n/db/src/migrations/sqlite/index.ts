@@ -53,6 +53,7 @@ import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessa
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
+import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -195,7 +196,7 @@ import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/178
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
-import { AddProjectIdToInstanceAiThread1784000000026 } from '../common/1784000000026-AddProjectIdToInstanceAiThread';
+import { AddProjectIdToInstanceAiThread1784000000027 } from '../common/1784000000027-AddProjectIdToInstanceAiThread';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -394,7 +395,8 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
 	AddResourceToOAuthAuthorizationCodes1784000000024,
 	MigrateRedactionEnforcementToFloor1784000000025,
-	AddProjectIdToInstanceAiThread1784000000026,
+	AddScopeColumnToOAuthTables1784000000026,
+	AddProjectIdToInstanceAiThread1784000000027,
 ];
 
 export { sqliteMigrations };

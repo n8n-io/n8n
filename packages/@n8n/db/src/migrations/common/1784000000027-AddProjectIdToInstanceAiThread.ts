@@ -15,7 +15,7 @@ const THREADS_TABLE = 'instance_ai_threads';
 const PROJECT_ID_COLUMN = 'projectId';
 const SUB_AGENT_PREFIX = 'instance-ai-subagent';
 
-export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMigration {
+export class AddProjectIdToInstanceAiThread1784000000027 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
 			schemaBuilder: { addColumns, column, addForeignKey, createIndex, addNotNull },

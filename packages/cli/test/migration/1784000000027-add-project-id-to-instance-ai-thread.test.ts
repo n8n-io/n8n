@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddProjectIdToInstanceAiThread1784000000026';
+const MIGRATION_NAME = 'AddProjectIdToInstanceAiThread1784000000027';
 const PERSONAL_OWNER_ROLE = 'project:personalOwner';
 
 describe('AddProjectIdToInstanceAiThread Migration', () => {

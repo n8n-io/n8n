@@ -201,7 +201,8 @@ import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../commo
 import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
-import { AddProjectIdToInstanceAiThread1784000000026 } from '../common/1784000000026-AddProjectIdToInstanceAiThread';
+import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
+import { AddProjectIdToInstanceAiThread1784000000027 } from '../common/1784000000027-AddProjectIdToInstanceAiThread';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -408,5 +409,6 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
 	AddResourceToOAuthAuthorizationCodes1784000000024,
 	MigrateRedactionEnforcementToFloor1784000000025,
-	AddProjectIdToInstanceAiThread1784000000026,
+	AddScopeColumnToOAuthTables1784000000026,
+	AddProjectIdToInstanceAiThread1784000000027,
 ];
