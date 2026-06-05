@@ -96,6 +96,8 @@ const targetOutputSchema = z.object({
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId: z.string().optional(),
 	workflowChecks: z.array(checkOutcomeSchema).optional(),
+	/** Plan rejections the proxy issued — deterministic conversation counter. Multi-turn only. */
+	planRejections: z.number().optional(),
 });
 
 type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
@@ -560,6 +562,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			nodeCount,
 			threadId: build.threadId,
 			workflowChecks: build.workflowChecks,
+			planRejections: build.proxyDecisionStats?.rejection ?? 0,
 		};
 	};
 
@@ -590,6 +593,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		];
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
+		}
+		// Deterministic conversation counter (per rubric §04) — a navigation/feature
+		// signal for the HOW judges, not a gating check.
+		if (output.planRejections !== undefined) {
+			feedback.push({ key: 'plan_rejection_count', score: output.planRejections });
 		}
 		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
 		if (output.workflowChecks) {
