@@ -19,16 +19,21 @@ export function metric(name, value, unit, dimensions = {}) {
 
 /** Build git/ci/runner context from environment variables. */
 export function buildContext(benchmarkName = null) {
-	const ref = process.env.GITHUB_REF ?? '';
+	// Use `||` (not `??`) when falling back across GitHub env vars: on `push` and
+	// `merge_group` events GITHUB_HEAD_REF is set to '' (empty string, not undefined),
+	// so `??` would never fall through to GITHUB_REF_NAME and every non-PR row would
+	// land in BigQuery with git_branch = ''. The same applies to any other GITHUB_*
+	// var whose intended fallback is null — preserve null, not ''.
+	const ref = process.env.GITHUB_REF || '';
 	const prMatch = ref.match(/refs\/pull\/(\d+)/);
-	const runId = process.env.GITHUB_RUN_ID ?? null;
+	const runId = process.env.GITHUB_RUN_ID || null;
 
 	return {
 		timestamp: new Date().toISOString(),
 		benchmark_name: benchmarkName,
 		git: {
-			sha: process.env.GITHUB_SHA?.slice(0, 8) ?? null,
-			branch: process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? null,
+			sha: process.env.GITHUB_SHA?.slice(0, 8) || null,
+			branch: process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || null,
 			pr: prMatch ? parseInt(prMatch[1], 10) : null,
 		},
 		ci: {
@@ -37,8 +42,8 @@ export function buildContext(benchmarkName = null) {
 				runId && process.env.GITHUB_REPOSITORY
 					? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`
 					: null,
-			job: process.env.GITHUB_JOB ?? null,
-			workflow: process.env.GITHUB_WORKFLOW ?? null,
+			job: process.env.GITHUB_JOB || null,
+			workflow: process.env.GITHUB_WORKFLOW || null,
 			attempt: process.env.GITHUB_RUN_ATTEMPT
 				? parseInt(process.env.GITHUB_RUN_ATTEMPT, 10)
 				: null,

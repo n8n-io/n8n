@@ -8,7 +8,7 @@ import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
-import { InstanceSettings } from 'n8n-core';
+import { InstanceSettings, StorageConfig } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
@@ -21,6 +21,11 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import type { Includes, MetricCategory, MetricLabel } from './types';
 
+/** Bucket boundaries (in seconds) shared by all duration histograms. */
+const DURATION_BUCKETS_SECONDS = [
+	0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600,
+];
+
 @Service()
 export class PrometheusMetricsService {
 	constructor(
@@ -31,11 +36,14 @@ export class PrometheusMetricsService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly storageConfig: StorageConfig,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
 	private tokenExchangeListenersRegistered = false;
+
+	private executionDataListenersRegistered = false;
 
 	private readonly gauges: Record<string, Gauge<string>> = {};
 
@@ -53,6 +61,7 @@ export class PrometheusMetricsService {
 			workflowExecutionDuration:
 				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
 			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
+			executionData: this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -79,6 +88,7 @@ export class PrometheusMetricsService {
 		this.initActiveWorkflowCountMetric();
 		this.initWorkflowStatisticsMetrics();
 		this.initTokenExchangeMetrics();
+		this.initExecutionDataMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -367,7 +377,7 @@ export class PrometheusMetricsService {
 			name: this.prefix + 'workflow_execution_duration_seconds',
 			help: 'Workflow execution duration in seconds.',
 			labelNames,
-			buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
+			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
 		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
@@ -710,6 +720,86 @@ export class PrometheusMetricsService {
 
 		this.eventService.on('token-exchange-identity-linked', () => {
 			this.counters.tokenExchangeIdentityLinkedTotal?.inc(1);
+		});
+	}
+
+	private initExecutionDataMetrics() {
+		if (!this.includes.metrics.executionData) return;
+
+		const readsTotal = (this.counters.executionDataReadsTotal = new promClient.Counter({
+			name: this.prefix + 'execution_data_reads_total',
+			help: 'Total number of execution data reads.',
+			labelNames: ['mode', 'result'],
+		}));
+
+		const writesTotal = (this.counters.executionDataWritesTotal = new promClient.Counter({
+			name: this.prefix + 'execution_data_writes_total',
+			help: 'Total number of execution data writes.',
+			labelNames: ['mode', 'result'],
+		}));
+
+		const unreadableBundlesTotal = (this.counters.executionDataUnreadableBundlesTotal =
+			new promClient.Counter({
+				name: this.prefix + 'execution_data_unreadable_bundles_total',
+				help: 'Total number of execution data bundles that were missing or corrupt on read.',
+				labelNames: ['mode'],
+			}));
+
+		for (const mode of ['db', 'fs'] as const) {
+			for (const result of ['success', 'failure'] as const) {
+				readsTotal.inc({ mode, result }, 0);
+				writesTotal.inc({ mode, result }, 0);
+			}
+			unreadableBundlesTotal.inc({ mode }, 0);
+		}
+
+		this.histograms.executionDataReadDuration = new promClient.Histogram({
+			name: this.prefix + 'execution_data_read_duration_seconds',
+			help: 'Execution data read duration in seconds (fetch + deserialize).',
+			labelNames: ['mode'],
+			buckets: DURATION_BUCKETS_SECONDS,
+		});
+
+		this.histograms.executionDataWriteDuration = new promClient.Histogram({
+			name: this.prefix + 'execution_data_write_duration_seconds',
+			help: 'Execution data write duration in seconds.',
+			labelNames: ['mode'],
+			buckets: DURATION_BUCKETS_SECONDS,
+		});
+
+		this.gauges.executionDataStorageMode = new promClient.Gauge({
+			name: this.prefix + 'execution_data_storage_mode',
+			help: 'Configured execution data storage mode (1 for the active mode, 0 otherwise).',
+			labelNames: ['mode'],
+		});
+		this.gauges.executionDataStorageMode.set({ mode: 'db' }, 0);
+		this.gauges.executionDataStorageMode.set({ mode: 'fs' }, 0);
+		this.gauges.executionDataStorageMode.set({ mode: this.storageConfig.modeTag }, 1);
+
+		if (this.executionDataListenersRegistered) return;
+		this.executionDataListenersRegistered = true;
+
+		this.eventService.on(
+			'execution-data-read',
+			({ mode, durationMs, success, unreadableBundles }) => {
+				this.counters.executionDataReadsTotal?.inc(
+					{ mode, result: success ? 'success' : 'failure' },
+					1,
+				);
+				if (success)
+					this.histograms.executionDataReadDuration?.observe({ mode }, durationMs / 1000);
+				if (unreadableBundles > 0) {
+					this.counters.executionDataUnreadableBundlesTotal?.inc({ mode }, unreadableBundles);
+				}
+			},
+		);
+
+		this.eventService.on('execution-data-write', ({ mode, durationMs, success }) => {
+			this.counters.executionDataWritesTotal?.inc(
+				{ mode, result: success ? 'success' : 'failure' },
+				1,
+			);
+			if (success) this.histograms.executionDataWriteDuration?.observe({ mode }, durationMs / 1000);
 		});
 	}
 }

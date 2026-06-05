@@ -15,6 +15,7 @@ import {
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
+import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
@@ -131,6 +132,26 @@ const isSubAgent = computed((): boolean =>
 	props.item ? isSubAgentTimelineItem(props.item) : false,
 );
 
+/**
+ * For an agent (assistant) message the persisted content is the raw response
+ * text. When that text is a JSON object/array — i.e. the agent produced
+ * structured output — parse it so it can be pretty-printed instead of shown as
+ * a raw one-line string. Plain-text answers return `undefined` and keep their
+ * markdown rendering.
+ */
+const agentStructuredContent = computed((): unknown => {
+	const item = props.item;
+	if (!item || item.kind !== 'agent') return undefined;
+	const content = item.content?.trim();
+	if (!content || (!content.startsWith('{') && !content.startsWith('['))) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(content);
+		return parsed !== null && typeof parsed === 'object' ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+});
+
 const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
@@ -242,8 +263,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 									<N8nTooltip
 										:content="
 											copiedBlock === 'workflow-output'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
 										"
 									>
 										<N8nButton
@@ -253,8 +274,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 											:icon="copiedBlock === 'workflow-output' ? 'check' : 'copy'"
 											:aria-label="
 												copiedBlock === 'workflow-output'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 											@click="copyJsonBlock('workflow-output', item.toolOutput)"
 										/>
@@ -268,68 +289,73 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'tool'">
-						<div>
-							<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
-							<div :class="$style.codeBlock">
-								<div :class="$style.codeBlockCopy">
-									<N8nTooltip
-										:content="
-											copiedBlock === 'tool-input'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
-										"
-									>
-										<N8nButton
-											variant="outline"
-											size="small"
-											icon-only
-											:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
-											:aria-label="
+						<template v-if="item.toolName === 'rich_interaction'">
+							<RichInteractionCard :input="item.toolInput" :output="item.toolOutput" />
+						</template>
+						<template v-else>
+							<div>
+								<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
+								<div :class="$style.codeBlock">
+									<div :class="$style.codeBlockCopy">
+										<N8nTooltip
+											:content="
 												copiedBlock === 'tool-input'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
-											@click="copyJsonBlock('tool-input', item.toolInput)"
-										/>
-									</N8nTooltip>
+										>
+											<N8nButton
+												variant="outline"
+												size="small"
+												icon-only
+												:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
+												:aria-label="
+													copiedBlock === 'tool-input'
+														? i18n.baseText('generic.copied')
+														: i18n.baseText('generic.copy')
+												"
+												@click="copyJsonBlock('tool-input', item.toolInput)"
+											/>
+										</N8nTooltip>
+									</div>
+									<!-- eslint-disable vue/no-v-html -->
+									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
+									<!-- eslint-enable vue/no-v-html -->
 								</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
-								<!-- eslint-enable vue/no-v-html -->
 							</div>
-						</div>
-						<div>
-							<div :class="$style.label">
-								{{ i18n.baseText('agentSessions.timeline.output') }}
-							</div>
-							<div :class="$style.codeBlock">
-								<div :class="$style.codeBlockCopy">
-									<N8nTooltip
-										:content="
-											copiedBlock === 'tool-output'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
-										"
-									>
-										<N8nButton
-											variant="outline"
-											size="small"
-											icon-only
-											:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
-											:aria-label="
+							<div>
+								<div :class="$style.label">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</div>
+								<div :class="$style.codeBlock">
+									<div :class="$style.codeBlockCopy">
+										<N8nTooltip
+											:content="
 												copiedBlock === 'tool-output'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
-											@click="copyJsonBlock('tool-output', item.toolOutput)"
-										/>
-									</N8nTooltip>
+										>
+											<N8nButton
+												variant="outline"
+												size="small"
+												icon-only
+												:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
+												:aria-label="
+													copiedBlock === 'tool-output'
+														? i18n.baseText('generic.copied')
+														: i18n.baseText('generic.copy')
+												"
+												@click="copyJsonBlock('tool-output', item.toolOutput)"
+											/>
+										</N8nTooltip>
+									</div>
+									<!-- eslint-disable vue/no-v-html -->
+									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
+									<!-- eslint-enable vue/no-v-html -->
 								</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-								<!-- eslint-enable vue/no-v-html -->
 							</div>
-						</div>
+						</template>
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
@@ -343,6 +369,36 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							:node-parameters="item.nodeParameters"
 							:success="item.toolSuccess"
 						/>
+					</template>
+
+					<template v-else-if="item.kind === 'agent' && agentStructuredContent !== undefined">
+						<div :class="$style.codeBlock">
+							<div :class="$style.codeBlockCopy">
+								<N8nTooltip
+									:content="
+										copiedBlock === 'agent-output'
+											? i18n.baseText('generic.copied')
+											: i18n.baseText('generic.copy')
+									"
+								>
+									<N8nButton
+										variant="outline"
+										size="small"
+										icon-only
+										:icon="copiedBlock === 'agent-output' ? 'check' : 'copy'"
+										:aria-label="
+											copiedBlock === 'agent-output'
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
+										"
+										@click="copyJsonBlock('agent-output', agentStructuredContent)"
+									/>
+								</N8nTooltip>
+							</div>
+							<!-- eslint-disable vue/no-v-html -->
+							<pre :class="$style.json" v-html="highlightJson(agentStructuredContent)" />
+							<!-- eslint-enable vue/no-v-html -->
+						</div>
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
