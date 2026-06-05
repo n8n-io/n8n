@@ -15,12 +15,17 @@ const mockAuthMiddleware = vi.fn().mockImplementation(async (_req, _res, next) =
 const mcpServerMiddlewareService = mockDeep<McpServerMiddlewareService>();
 mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware);
 
-// We need to mock the service before importing the controller as it's used in the middleware
+// We need to mock the service before importing the controller, because its
+// route decorators evaluate `getAuthMiddleware()` (→ Container.get) at class
+// definition time. A static import is hoisted above this `Container.set`, so
+// the controller must be loaded dynamically afterwards.
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
-import { McpController, type FlushableResponse } from '../mcp.controller';
+import type { FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
+
+const { McpController } = await import('../mcp.controller');
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
@@ -31,6 +36,21 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 	}));
 	return { StreamableHTTPServerTransport };
 });
+
+// eslint-disable-next-line import-x/order
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+
+// `restoreMocks: true` wipes the factory `mockImplementation` before each test,
+// so re-apply it (and the request handler) per test.
+function applyTransportMock() {
+	mockHandleRequest.mockResolvedValue(undefined);
+	vi.mocked(StreamableHTTPServerTransport).mockImplementation(function () {
+		return {
+			handleRequest: mockHandleRequest,
+			close: vi.fn().mockResolvedValue(undefined),
+		} as never;
+	} as never);
+}
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
@@ -58,6 +78,7 @@ describe('McpController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		applyTransportMock();
 
 		// Default mock — the controller now resolves the MCP Apps variant for
 		// every request, so tests that don't care about the variant still need

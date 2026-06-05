@@ -31,6 +31,11 @@ export function workspaceDistExternals(): Plugin {
 	const isWorkspacePkg = (source: string) => {
 		if (EXCLUDE.has(source)) return false;
 		if (source.startsWith('@n8n/')) return true;
+		// `zod` is externalized so a single instance is shared with the externalized
+		// workspace packages (e.g. `@n8n/api-types` schemas); otherwise a
+		// Vite-inlined `zod` and the dist `zod` produce distinct `ZodError`
+		// classes and `instanceof` checks fail across the boundary.
+		if (source === 'zod' || source.startsWith('zod/')) return true;
 		return N8N_PREFIXES.some((name) => source === name || source.startsWith(`${name}/`));
 	};
 
