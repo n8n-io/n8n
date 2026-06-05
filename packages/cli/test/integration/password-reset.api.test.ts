@@ -42,7 +42,7 @@ beforeEach(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	member = await createUser({ role: GLOBAL_MEMBER_ROLE });
 	externalHooks.run.mockReset();
-	mailer.isEmailSetUp = true;
+	Object.assign(mailer, { isEmailSetUp: true });
 	authService = Container.get(AuthService);
 });
 
@@ -64,7 +64,7 @@ describe('POST /forgot-password', () => {
 	});
 
 	test('should fail if emailing is not set up', async () => {
-		mailer.isEmailSetUp = false;
+		Object.assign(mailer, { isEmailSetUp: false });
 
 		await testServer.authlessAgent
 			.post('/forgot-password')

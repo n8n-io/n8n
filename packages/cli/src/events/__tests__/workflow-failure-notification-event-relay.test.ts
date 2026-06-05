@@ -32,7 +32,7 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 		};
 
 		it('should skip sending email when SMTP is not configured', async () => {
-			mailer.isEmailSetUp = false;
+			Object.assign(mailer, { isEmailSetUp: false });
 
 			eventService.emit('instance-first-production-workflow-failed', baseEvent);
 
@@ -50,7 +50,7 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 		});
 
 		it('should warn and skip when user is not found', async () => {
-			mailer.isEmailSetUp = true;
+			Object.assign(mailer, { isEmailSetUp: true });
 			userRepository.findOneBy.mockResolvedValue(null);
 
 			eventService.emit('instance-first-production-workflow-failed', baseEvent);
@@ -69,7 +69,7 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 		});
 
 		it('should warn and skip when user has no email', async () => {
-			mailer.isEmailSetUp = true;
+			Object.assign(mailer, { isEmailSetUp: true });
 			userRepository.findOneBy.mockResolvedValue({
 				id: 'user123',
 				email: '',
@@ -91,7 +91,7 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 		});
 
 		it('should send email successfully when user is found with valid email', async () => {
-			mailer.isEmailSetUp = true;
+			Object.assign(mailer, { isEmailSetUp: true });
 			userRepository.findOneBy.mockResolvedValue({
 				id: 'user123',
 				email: 'user@example.com',
@@ -117,7 +117,7 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 		});
 
 		it('should log error when email sending fails with Error instance', async () => {
-			mailer.isEmailSetUp = true;
+			Object.assign(mailer, { isEmailSetUp: true });
 			userRepository.findOneBy.mockResolvedValue({
 				id: 'user123',
 				email: 'user@example.com',
@@ -138,7 +138,7 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 		});
 
 		it('should log error when email sending fails with non-Error value', async () => {
-			mailer.isEmailSetUp = true;
+			Object.assign(mailer, { isEmailSetUp: true });
 			userRepository.findOneBy.mockResolvedValue({
 				id: 'user123',
 				email: 'user@example.com',

@@ -254,9 +254,9 @@ describe('CredentialsOverwrites', () => {
 		beforeEach(async () => {
 			// Mock SettingsRepository
 			settingsRepository = mockInstance(SettingsRepository, {
-				findByKey: vi.fn(),
-				create: vi.fn(),
-				save: vi.fn(),
+				findByKey: vi.fn() as never,
+				create: vi.fn() as never,
+				save: vi.fn() as never,
 			});
 
 			// Mock Cipher
@@ -519,9 +519,9 @@ describe('CredentialsOverwrites', () => {
 		beforeEach(async () => {
 			// Mock SettingsRepository
 			settingsRepository = mockInstance(SettingsRepository, {
-				findByKey: vi.fn(),
-				create: vi.fn(),
-				save: vi.fn(),
+				findByKey: vi.fn() as never,
+				create: vi.fn() as never,
+				save: vi.fn() as never,
 			});
 
 			// Mock Cipher
@@ -862,8 +862,8 @@ describe('CredentialsOverwrites', () => {
 						value: 'encrypted-data',
 						loadOnStartup: false,
 					}),
-					create: vi.fn(),
-					save: vi.fn(),
+					create: vi.fn() as never,
+					save: vi.fn() as never,
 				});
 
 				const cipher = mockInstance(Cipher, {
@@ -909,9 +909,9 @@ describe('CredentialsOverwrites', () => {
 		beforeEach(async () => {
 			// Mock SettingsRepository
 			settingsRepository = mockInstance(SettingsRepository, {
-				findByKey: vi.fn(),
-				create: vi.fn(),
-				save: vi.fn(),
+				findByKey: vi.fn() as never,
+				create: vi.fn() as never,
+				save: vi.fn() as never,
 			});
 
 			// Mock Cipher

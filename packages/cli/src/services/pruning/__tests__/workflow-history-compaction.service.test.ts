@@ -77,12 +77,12 @@ describe('WorkflowHistoryCompactionService', () => {
 			const scheduleOptimizationSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(compactingService, 'scheduleOptimization')
-				.mockImplementation(() => {});
+				.mockImplementation((() => {}) as never);
 
 			const scheduleTrimmingSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(compactingService, 'scheduleTrimming')
-				.mockImplementation(() => {});
+				.mockImplementation((() => {}) as never);
 
 			compactingService.startCompacting();
 
@@ -105,7 +105,7 @@ describe('WorkflowHistoryCompactionService', () => {
 		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'compactHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 
 		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
@@ -130,11 +130,11 @@ describe('WorkflowHistoryCompactionService', () => {
 		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 
 		compactingService.startCompacting();
 
@@ -155,11 +155,11 @@ describe('WorkflowHistoryCompactionService', () => {
 		const optimizeHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 
 		compactingService.startCompacting();
 
@@ -181,11 +181,11 @@ describe('WorkflowHistoryCompactionService', () => {
 		const optimizeHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation(() => {});
+			.mockImplementation((() => {}) as never);
 
 		compactingService.startCompacting();
 
