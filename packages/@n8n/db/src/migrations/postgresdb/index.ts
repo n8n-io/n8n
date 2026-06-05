@@ -51,6 +51,7 @@ import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-Exp
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
+import { AddProjectIdToInstanceAiThread1784000000027 } from './1784000000027-AddProjectIdToInstanceAiThread';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -202,7 +203,6 @@ import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../comm
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
-import { AddProjectIdToInstanceAiThread1784000000027 } from './1784000000027-AddProjectIdToInstanceAiThread';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [

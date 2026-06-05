@@ -69,7 +69,7 @@ export class AddProjectIdToInstanceAiThread1784000000027 implements ReversibleMi
 		}: MigrationContext,
 		{ withProjectId }: { withProjectId: boolean },
 	) {
-		const builder = createTable(THREADS_TABLE_TMP).withColumns(
+		let builder = createTable(THREADS_TABLE_TMP).withColumns(
 			column('id').uuid.primary.notNull,
 			column('resourceId').varchar(255).notNull,
 			...(withProjectId
@@ -79,7 +79,7 @@ export class AddProjectIdToInstanceAiThread1784000000027 implements ReversibleMi
 			column('metadata').json,
 		);
 		if (withProjectId) {
-			builder.withForeignKey(PROJECT_ID_COLUMN, {
+			builder = builder.withForeignKey(PROJECT_ID_COLUMN, {
 				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
