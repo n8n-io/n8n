@@ -31,9 +31,11 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 }));
 
 const showError = vi.fn();
+const showMessage = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError,
+		showMessage,
 	}),
 }));
 
@@ -89,6 +91,7 @@ describe('SettingsSso View', () => {
 		telemetryTrack.mockReset();
 		confirmMessage.mockReset();
 		showError.mockReset();
+		showMessage.mockReset();
 		mockProvisioningStore.provisioningConfig = undefined;
 		mockProvisioningStore.getProvisioningConfig.mockResolvedValue({});
 	});
@@ -594,6 +597,53 @@ describe('SettingsSso View', () => {
 				expect(queryByTestId('sso-save')).not.toBeInTheDocument();
 				expect(queryByTestId('sso-test')).toBeInTheDocument();
 			});
+		});
+
+		it('should save only rules and not SSO config when SAML is managed by env and mapping method is rules_in_n8n', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: true };
+			mockProvisioningStore.getProvisioningConfig.mockResolvedValue({
+				scopesUseExpressionMapping: true,
+			});
+			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
+
+			const { getByTestId } = renderView();
+
+			const saveButton = await waitFor(() => getByTestId('sso-save'));
+			await userEvent.click(saveButton);
+
+			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should save only rules and not SSO config when OIDC is managed by env and mapping method is rules_in_n8n', async () => {
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.ssoManagedByEnv = true;
+			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: true };
+			mockProvisioningStore.getProvisioningConfig.mockResolvedValue({
+				scopesUseExpressionMapping: true,
+			});
+			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
+
+			const { getAllByRole, getByTestId } = renderView();
+
+			// Switch to OIDC
+			const protocolSelect = getAllByRole('combobox')[0];
+			await userEvent.click(protocolSelect);
+			const dropdown = await waitFor(() => document.querySelector('.el-select-dropdown__list'));
+			const oidcItem = Array.from(dropdown!.querySelectorAll('.el-select-dropdown__item')).find(
+				(item) => item.textContent?.includes('OIDC'),
+			);
+			await userEvent.click(oidcItem!);
+
+			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
+			await userEvent.click(saveButton);
+
+			expect(ssoStore.saveOidcConfig).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 		});
 
 		it('should show save button when SAML is managed by env and mapping method is rules_in_n8n', async () => {
