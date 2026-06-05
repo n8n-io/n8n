@@ -69,7 +69,7 @@ const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(vie
 const {
 	nodes: mappedWorkflowNodes,
 	connections: mappedConnections,
-	nodeDimensionsById,
+	nodeDisplaySizeById,
 } = useCanvasMapping({
 	nodes,
 	connections,
@@ -78,16 +78,19 @@ const {
 	isExperimentalNdvActive,
 });
 
-const mappedGroupNodes = computed(() =>
+const mappedGroupVueFlowNodes = computed(() =>
 	mapGroupsToVueFlowNodes({
 		allGroups: workflowDocumentStore.value.allGroups,
 		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
-		getNodeDimensions: (id) => nodeDimensionsById.value[id],
+		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
 	}),
 );
 
-const mappedNodes = computed(() => [...mappedWorkflowNodes.value, ...mappedGroupNodes.value]);
+const mappedNodes = computed(() => [
+	...mappedWorkflowNodes.value,
+	...mappedGroupVueFlowNodes.value,
+]);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {
@@ -182,7 +185,7 @@ defineExpose({
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:render-data="renderData"
-				:node-dimensions-by-id="nodeDimensionsById"
+				:node-display-size-by-id="nodeDisplaySizeById"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"

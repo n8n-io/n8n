@@ -17,14 +17,14 @@ import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
 	CanvasConnection,
 	CanvasEventBusEvents,
-	CanvasGroupViewState,
+	CanvasGroupNodeData,
 	CanvasNode,
 	CanvasNodeData,
 	CanvasNodeMoveEvent,
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import { CanvasNodeRenderType, isCanvasNodeGroup } from '../canvas.types';
+import { CanvasNodeRenderType, isCanvasGroupNode } from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -151,7 +151,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		renderData: CanvasRenderData;
-		nodeDimensionsById?: Record<string, { width: number; height: number }>;
+		nodeDisplaySizeById?: Record<string, { width: number; height: number }>;
 		readOnly?: boolean;
 		canExecute?: boolean;
 		executing?: boolean;
@@ -168,7 +168,7 @@ const props = withDefaults(
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
-		nodeDimensionsById: () => ({}),
+		nodeDisplaySizeById: () => ({}),
 		readOnly: false,
 		canExecute: false,
 		executing: false,
@@ -201,7 +201,7 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 const vueFlowNodes = computed(() =>
 	props.showNodeGroups && isCanvasNodeGroupingEnabled.value
 		? props.nodes
-		: props.nodes.filter((node) => !isCanvasNodeGroup(node)),
+		: props.nodes.filter((node) => !isCanvasGroupNode(node)),
 );
 
 const vueFlow = useVueFlow(props.id);
@@ -244,14 +244,14 @@ const {
 const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(props, 'renderData'));
 
 const selectedNodes = computed(() =>
-	selectedNodesAndGroups.value.filter((node) => !isCanvasNodeGroup(node)),
+	selectedNodesAndGroups.value.filter((node) => !isCanvasGroupNode(node)),
 );
 const workflowGraphNodes = computed(() =>
-	graphNodes.value.filter((node) => !isCanvasNodeGroup(node)),
+	graphNodes.value.filter((node) => !isCanvasGroupNode(node)),
 );
 
 const isPaneReady = ref(false);
-const nodeGroupIdToAutofocusTitle = ref<string | null>(null);
+const autofocusGroupTitleId = ref<string | null>(null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -374,12 +374,12 @@ function onToggleZoomMode() {
 }
 
 function onNodeGroupCreated(groupId: string) {
-	nodeGroupIdToAutofocusTitle.value = groupId;
+	autofocusGroupTitleId.value = groupId;
 }
 
 function onNodeGroupTitleFocused(groupId: string) {
-	if (nodeGroupIdToAutofocusTitle.value === groupId) {
-		nodeGroupIdToAutofocusTitle.value = null;
+	if (autofocusGroupTitleId.value === groupId) {
+		autofocusGroupTitleId.value = null;
 	}
 }
 
@@ -394,7 +394,7 @@ const {
 
 function onKeyboardGroup() {
 	const group = groupSelection();
-	if (group) nodeGroupIdToAutofocusTitle.value = group.id;
+	if (group) autofocusGroupTitleId.value = group.id;
 }
 
 const keyMap = computed(() => {
@@ -487,7 +487,7 @@ const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
-		if (isCanvasNodeGroup(node)) return false;
+		if (isCanvasGroupNode(node)) return false;
 		return (
 			node.data?.render.type === CanvasNodeRenderType.Default &&
 			node.data.render.options.trigger === true
@@ -541,7 +541,7 @@ const groupDrag = useCanvasNodeGroupDrag({
 	getGroupById: (id) => workflowDocumentStore.value.getGroupById(id),
 	getGroupForNode: (id) => workflowDocumentStore.value.getGroupForNode(id),
 	isNodeInGroup: (id) => workflowDocumentStore.value.nodeIdToGroupId.has(id),
-	getNodeDimensions: (id) => props.nodeDimensionsById?.[id],
+	getNodeDisplaySize: (id) => props.nodeDisplaySizeById?.[id],
 });
 
 function onNodeDragStart(event: NodeDragEvent) {
@@ -575,7 +575,7 @@ function onCanvasGroupUngroup(groupId: string) {
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	// Title bars have their own click handlers
-	if (isCanvasNodeGroup(node)) return;
+	if (isCanvasGroupNode(node)) return;
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -887,16 +887,16 @@ function onViewportChange() {
 // resulting in outdated data. We use this computed property as a workaround to get the latest node data.
 const nodeDataById = computed(() =>
 	props.nodes.reduce<Record<string, CanvasNodeData>>((acc, node) => {
-		if (!isCanvasNodeGroup(node) && node.data) {
+		if (!isCanvasGroupNode(node) && node.data) {
 			acc[node.id] = node.data;
 		}
 		return acc;
 	}, {}),
 );
 
-const groupNodeDataById = computed(() =>
-	props.nodes.reduce<Record<string, CanvasGroupViewState>>((acc, node) => {
-		if (isCanvasNodeGroup(node) && node.data) {
+const groupNodeFallbackDataById = computed(() =>
+	props.nodes.reduce<Record<string, CanvasGroupNodeData>>((acc, node) => {
+		if (isCanvasGroupNode(node) && node.data) {
 			acc[node.id] = node.data;
 		}
 		return acc;
@@ -1035,7 +1035,7 @@ const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
 const isMinimapVisible = ref(false);
 
 function minimapNodeClassnameFn(node: CanvasNodeOrGroup) {
-	if (isCanvasNodeGroup(node)) return 'minimap-node-group';
+	if (isCanvasGroupNode(node)) return 'minimap-node-group';
 	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
 }
 
@@ -1259,8 +1259,8 @@ defineExpose({
 		<template #node-canvas-node-group="nodeProps">
 			<CanvasNodeGroupTitleBar
 				v-bind="nodeProps"
-				:data="nodeProps.data ?? groupNodeDataById[nodeProps.id]"
-				:autofocus-group-id="nodeGroupIdToAutofocusTitle"
+				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
+				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
 				@update:name="onCanvasGroupNameUpdate"
 				@title:focused="onNodeGroupTitleFocused"

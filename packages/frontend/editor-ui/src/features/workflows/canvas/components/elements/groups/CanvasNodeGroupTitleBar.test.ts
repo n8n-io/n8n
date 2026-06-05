@@ -30,7 +30,7 @@ vi.mock('@vue-flow/core', () => ({
 
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
 import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
-import type { CanvasGroupViewState } from '../../../canvas.types';
+import type { CanvasGroupNodeData } from '../../../canvas.types';
 
 const baseGroup: IWorkflowGroup = {
 	id: 'g1',
@@ -38,7 +38,7 @@ const baseGroup: IWorkflowGroup = {
 	name: 'My group',
 };
 
-function makeData(overrides: Partial<CanvasGroupViewState> = {}): CanvasGroupViewState {
+function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNodeData {
 	return {
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
@@ -49,7 +49,7 @@ function makeData(overrides: Partial<CanvasGroupViewState> = {}): CanvasGroupVie
 describe('CanvasNodeGroupTitleBar', () => {
 	function render(
 		props: Partial<{
-			data: CanvasGroupViewState;
+			data: CanvasGroupNodeData;
 			autofocusGroupId: string | null;
 			dimensions: { width: number; height: number };
 			readOnly: boolean;

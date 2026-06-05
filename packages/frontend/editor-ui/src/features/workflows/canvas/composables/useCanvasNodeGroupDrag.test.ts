@@ -61,7 +61,7 @@ function makeSelectionEvent(...nodes: GraphNode[]): NodeDragEvent {
 describe('useCanvasNodeGroupDrag', () => {
 	function setup(opts?: {
 		groups?: Array<{ id: string; nodeIds: string[] }>;
-		getNodeDimensions?: (id: string) => { width: number; height: number } | undefined;
+		getNodeDisplaySize?: (id: string) => { width: number; height: number } | undefined;
 	}) {
 		updateNodeMock.mockClear();
 		findNodeMock.mockReset();
@@ -82,7 +82,7 @@ describe('useCanvasNodeGroupDrag', () => {
 			getGroupById: (id) => groups.find((g) => g.id === id),
 			getGroupForNode,
 			isNodeInGroup,
-			getNodeDimensions: opts?.getNodeDimensions,
+			getNodeDisplaySize: opts?.getNodeDisplaySize,
 		});
 		return { drag, getGroupForNode, isNodeInGroup };
 	}
@@ -241,7 +241,7 @@ describe('useCanvasNodeGroupDrag', () => {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },
 			};
-			const { drag } = setup({ getNodeDimensions: (id) => nodeDimensions[id] });
+			const { drag } = setup({ getNodeDisplaySize: (id) => nodeDimensions[id] });
 			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
 			const node = makeRegularGraphNode('a', 120, 220);
 			drag.onNodeDrag(makeEvent(node));
@@ -263,7 +263,7 @@ describe('useCanvasNodeGroupDrag', () => {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },
 			};
-			const { drag } = setup({ getNodeDimensions: (id) => nodeDimensions[id] });
+			const { drag } = setup({ getNodeDisplaySize: (id) => nodeDimensions[id] });
 			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
 
 			const groupedNode = makeRegularGraphNode('a', 120, 220);
@@ -291,7 +291,7 @@ describe('useCanvasNodeGroupDrag', () => {
 				a: { width: 100, height: 80 },
 				b: { width: 100, height: 80 },
 			};
-			const { drag } = setup({ getNodeDimensions: (id) => nodeDimensions[id] });
+			const { drag } = setup({ getNodeDisplaySize: (id) => nodeDimensions[id] });
 			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
 
 			const node = makeRegularGraphNode('a', 100, 200);

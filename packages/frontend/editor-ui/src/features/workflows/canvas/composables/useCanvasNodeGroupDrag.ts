@@ -1,12 +1,12 @@
 import type { GraphNode, NodeDragEvent } from '@vue-flow/core';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
-import type { CanvasGroupViewState, CanvasNodeMoveEvent } from '../canvas.types';
-import { CANVAS_NODE_GROUP_ID_PREFIX, isCanvasNodeGroup } from '../canvas.types';
+import type { CanvasGroupNodeData, CanvasNodeMoveEvent } from '../canvas.types';
+import { CANVAS_NODE_GROUP_ID_PREFIX, isCanvasGroupNode } from '../canvas.types';
 import {
 	computeNodesRectFromStore,
 	titleBarFromNodesRect,
-	type GetNodeDimensions,
+	type GetNodeDisplaySize,
 } from './useCanvasMapping.groups';
 
 export interface UseCanvasNodeGroupDragDeps {
@@ -15,7 +15,7 @@ export interface UseCanvasNodeGroupDragDeps {
 	getGroupById: (groupId: string) => { nodeIds: string[] } | undefined;
 	getGroupForNode: (nodeId: string) => { id: string; nodeIds: string[] } | undefined;
 	isNodeInGroup: (nodeId: string) => boolean;
-	getNodeDimensions?: GetNodeDimensions;
+	getNodeDisplaySize?: GetNodeDisplaySize;
 }
 
 interface GroupDragSnapshot {
@@ -35,14 +35,14 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	let isSelectionBoxDragInProgress = false;
 	let skipPairedNodeDragStop = false;
 
-	function getGroupNodeIds(groupVfId: string): string[] {
-		if (!groupVfId.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)) return [];
-		const groupId = groupVfId.slice(CANVAS_NODE_GROUP_ID_PREFIX.length);
+	function getGroupNodeIds(groupVueFlowId: string): string[] {
+		if (!groupVueFlowId.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)) return [];
+		const groupId = groupVueFlowId.slice(CANVAS_NODE_GROUP_ID_PREFIX.length);
 		return deps.getGroupById(groupId)?.nodeIds ?? [];
 	}
 
-	function snapshotGroup(groupVfNode: GraphNode) {
-		const nodeIds = getGroupNodeIds(groupVfNode.id);
+	function snapshotGroup(groupVueFlowNode: GraphNode) {
+		const nodeIds = getGroupNodeIds(groupVueFlowNode.id);
 		if (nodeIds.length === 0) return;
 		const initialNodePositions = new Map<string, { x: number; y: number }>();
 		for (const id of nodeIds) {
@@ -51,43 +51,43 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 				initialNodePositions.set(id, { x: node.position[0], y: node.position[1] });
 			}
 		}
-		snapshots.set(groupVfNode.id, {
-			initialGroupPos: { x: groupVfNode.position.x, y: groupVfNode.position.y },
+		snapshots.set(groupVueFlowNode.id, {
+			initialGroupPos: { x: groupVueFlowNode.position.x, y: groupVueFlowNode.position.y },
 			initialNodePositions,
 		});
 	}
 
-	function applyDelta(groupVfNode: GraphNode) {
-		const snap = snapshots.get(groupVfNode.id);
+	function applyGroupTitleBarDeltaToNodes(groupVueFlowNode: GraphNode) {
+		const snap = snapshots.get(groupVueFlowNode.id);
 		if (!snap) return;
-		const dx = groupVfNode.position.x - snap.initialGroupPos.x;
-		const dy = groupVfNode.position.y - snap.initialGroupPos.y;
+		const dx = groupVueFlowNode.position.x - snap.initialGroupPos.x;
+		const dy = groupVueFlowNode.position.y - snap.initialGroupPos.y;
 		for (const [id, p] of snap.initialNodePositions) {
 			updateNode(id, { position: { x: p.x + dx, y: p.y + dy } });
 		}
 	}
 
-	function collectNodeMoves(): {
+	function collectMemberMoves(): {
 		moves: CanvasNodeMoveEvent[];
-		nodeIdsMoved: Set<string>;
+		movedNodeIds: Set<string>;
 	} {
 		const moves: CanvasNodeMoveEvent[] = [];
-		const nodeIdsMoved = new Set<string>();
-		for (const [groupVfId, snap] of snapshots) {
-			const finalPos = finalGroupPositions.get(groupVfId);
+		const movedNodeIds = new Set<string>();
+		for (const [groupVueFlowId, snap] of snapshots) {
+			const finalPos = finalGroupPositions.get(groupVueFlowId);
 			if (!finalPos) continue;
 			const dx = finalPos.x - snap.initialGroupPos.x;
 			const dy = finalPos.y - snap.initialGroupPos.y;
 			for (const [id, p] of snap.initialNodePositions) {
 				moves.push({ id, position: { x: p.x + dx, y: p.y + dy } });
-				nodeIdsMoved.add(id);
+				movedNodeIds.add(id);
 			}
 		}
-		return { moves, nodeIdsMoved };
+		return { moves, movedNodeIds };
 	}
 
 	function recordFinalPosition(node: GraphNode) {
-		if (!isCanvasNodeGroup(node)) return;
+		if (!isCanvasGroupNode(node)) return;
 		finalGroupPositions.set(node.id, { x: node.position.x, y: node.position.y });
 	}
 
@@ -99,7 +99,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	function nonGroupMoves(eventNodes: GraphNode[], skip: Set<string>): CanvasNodeMoveEvent[] {
 		const out: CanvasNodeMoveEvent[] = [];
 		for (const node of eventNodes) {
-			if (isCanvasNodeGroup(node) || skip.has(node.id)) continue;
+			if (isCanvasGroupNode(node) || skip.has(node.id)) continue;
 			out.push({ id: node.id, position: { x: node.position.x, y: node.position.y } });
 		}
 		return out;
@@ -133,20 +133,20 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		if (groupsToSync.size === 0) return;
 
 		for (const group of groupsToSync.values()) {
-			const vfId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`;
-			if (!findNode(vfId)) continue; // title bar not yet rendered
+			const groupVueFlowId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`;
+			if (!findNode(groupVueFlowId)) continue; // title bar not yet rendered
 
 			const rect = computeNodesRectFromStore(
 				group.nodeIds,
 				deps.getNodeById,
-				deps.getNodeDimensions,
+				deps.getNodeDisplaySize,
 				positionOverrides,
 			);
 			const titleBar = titleBarFromNodesRect(rect);
-			updateNode(vfId, (n) => ({
+			updateNode(groupVueFlowId, (n) => ({
 				position: titleBar.position,
 				width: titleBar.width,
-				data: { ...(n.data as CanvasGroupViewState), nodesRect: rect },
+				data: { ...(n.data as CanvasGroupNodeData), nodesRect: rect },
 			}));
 		}
 	}
@@ -164,13 +164,13 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		if (isMultiSelectDrag(event)) {
 			reset();
 			for (const node of event.nodes ?? []) {
-				if (isCanvasNodeGroup(node)) snapshotGroup(node);
+				if (isCanvasGroupNode(node)) snapshotGroup(node);
 			}
 			return;
 		}
 		const node = event.node;
 		reset();
-		if (!isCanvasNodeGroup(node)) return;
+		if (!isCanvasGroupNode(node)) return;
 		snapshotGroup(node);
 	}
 
@@ -179,8 +179,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	function handleDragTick(nodes: readonly GraphNode[]) {
 		const nodesToSync: Array<{ id: string; position: { x: number; y: number } }> = [];
 		for (const node of nodes) {
-			if (isCanvasNodeGroup(node)) {
-				applyDelta(node);
+			if (isCanvasGroupNode(node)) {
+				applyGroupTitleBarDeltaToNodes(node);
 			} else {
 				nodesToSync.push({ id: node.id, position: { x: node.position.x, y: node.position.y } });
 			}
@@ -204,29 +204,29 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 		if (isMultiSelectDrag(event)) {
 			for (const node of event.nodes ?? []) {
-				if (isCanvasNodeGroup(node)) recordFinalPosition(node);
+				if (isCanvasGroupNode(node)) recordFinalPosition(node);
 			}
-			const { moves: groupNodeMoves, nodeIdsMoved } = collectNodeMoves();
+			const { moves: memberMoves, movedNodeIds } = collectMemberMoves();
 			reset();
-			return [...groupNodeMoves, ...nonGroupMoves(event.nodes ?? [], nodeIdsMoved)];
+			return [...memberMoves, ...nonGroupMoves(event.nodes ?? [], movedNodeIds)];
 		}
-		if (!isCanvasNodeGroup(event.node) || !snapshots.has(event.node.id)) {
+		if (!isCanvasGroupNode(event.node) || !snapshots.has(event.node.id)) {
 			reset();
 			return nonGroupMoves(event.nodes ?? [], new Set());
 		}
 		recordFinalPosition(event.node);
-		const { moves: groupNodeMoves, nodeIdsMoved } = collectNodeMoves();
+		const { moves: memberMoves, movedNodeIds } = collectMemberMoves();
 		reset();
-		return [...groupNodeMoves, ...nonGroupMoves(event.nodes ?? [], nodeIdsMoved)];
+		return [...memberMoves, ...nonGroupMoves(event.nodes ?? [], movedNodeIds)];
 	}
 
 	function onSelectionDragStart(event: NodeDragEvent) {
 		isSelectionBoxDragInProgress = true;
 		skipPairedNodeDragStop = false;
 		reset();
-		// Snapshot every selected group title bar — applyDelta needs a baseline.
+		// Snapshot every selected group title bar — applyGroupTitleBarDeltaToNodes needs a baseline.
 		for (const node of event.nodes ?? []) {
-			if (isCanvasNodeGroup(node)) snapshotGroup(node);
+			if (isCanvasGroupNode(node)) snapshotGroup(node);
 		}
 	}
 
@@ -242,13 +242,13 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			return nonGroupMoves(event.nodes ?? [], new Set());
 		}
 		for (const node of event.nodes ?? []) {
-			if (isCanvasNodeGroup(node)) recordFinalPosition(node);
+			if (isCanvasGroupNode(node)) recordFinalPosition(node);
 		}
-		const { moves: groupNodeMoves, nodeIdsMoved } = collectNodeMoves();
+		const { moves: memberMoves, movedNodeIds } = collectMemberMoves();
 		reset();
 		isSelectionBoxDragInProgress = false;
 		skipPairedNodeDragStop = true;
-		return [...groupNodeMoves, ...nonGroupMoves(event.nodes ?? [], nodeIdsMoved)];
+		return [...memberMoves, ...nonGroupMoves(event.nodes ?? [], movedNodeIds)];
 	}
 
 	return {

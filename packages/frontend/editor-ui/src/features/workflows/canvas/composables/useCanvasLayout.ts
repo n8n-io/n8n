@@ -4,7 +4,7 @@ import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vu
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	CanvasNodeRenderType,
-	isCanvasNodeGroup,
+	isCanvasGroupNode,
 	type BoundingBox,
 	type CanvasConnection,
 	type CanvasNodeData,
@@ -68,7 +68,7 @@ export function useCanvasLayout(
 		// Group title-bar nodes are positioned from their nodes' bounding rect, not by dagre.
 		const source = target === 'selection' ? getSelectedNodes.value : allNodes.value;
 		return {
-			nodes: source.filter((node) => !isCanvasNodeGroup(node)),
+			nodes: source.filter((node) => !isCanvasGroupNode(node)),
 			edges: allEdges.value,
 		};
 	}

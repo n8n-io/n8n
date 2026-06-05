@@ -139,18 +139,18 @@ export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
 export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
 export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 
-export interface CanvasGroupViewState {
+export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 }
 
-export type CanvasGroupNode = Node<CanvasGroupViewState>;
+export type CanvasGroupNode = Node<CanvasGroupNodeData>;
 
 export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
 
-export function isCanvasNodeGroup(node: CanvasNodeOrGroup): node is CanvasGroupNode;
-export function isCanvasNodeGroup(node: { type?: string }): boolean;
-export function isCanvasNodeGroup(node: { type?: string }): boolean {
+export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
+export function isCanvasGroupNode(node: { type?: string }): boolean;
+export function isCanvasGroupNode(node: { type?: string }): boolean {
 	return node.type === CANVAS_NODE_GROUP_TYPE;
 }
 

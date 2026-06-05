@@ -12,7 +12,7 @@ import {
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
-	type CanvasGroupViewState,
+	type CanvasGroupNodeData,
 } from '../../../canvas.types';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
@@ -23,7 +23,7 @@ defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
 	defineProps<{
-		data: CanvasGroupViewState;
+		data: CanvasGroupNodeData;
 		autofocusGroupId?: string | null;
 		dimensions?: { width: number; height: number };
 		readOnly?: boolean;

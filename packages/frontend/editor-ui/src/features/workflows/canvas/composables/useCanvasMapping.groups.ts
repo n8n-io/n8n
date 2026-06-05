@@ -1,6 +1,6 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasGroupNode, CanvasGroupViewState } from '../canvas.types';
+import type { CanvasGroupNode, CanvasGroupNodeData } from '../canvas.types';
 import { CANVAS_NODE_GROUP_ID_PREFIX, CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
@@ -21,7 +21,7 @@ export interface NodesRect {
  * Size lookup for nodes that aren't the default size
  * (configurable inputs, config nodes, sticky notes).
  */
-export type GetNodeDimensions = (id: string) => { width: number; height: number } | undefined;
+export type GetNodeDisplaySize = (id: string) => { width: number; height: number } | undefined;
 
 // Sticky is the only node type whose dimensions live in parameters today.
 // typeof-narrow keeps the read type-safe
@@ -35,9 +35,9 @@ function readStickyDimensions(node: INodeUi): { width: number; height: number } 
 // Precedence: caller-supplied → sticky parameters → DEFAULT_NODE_SIZE.
 function resolveNodeDimensions(
 	node: INodeUi,
-	getNodeDimensions?: GetNodeDimensions,
+	getNodeDisplaySize?: GetNodeDisplaySize,
 ): { width: number; height: number } {
-	const supplied = getNodeDimensions?.(node.id);
+	const supplied = getNodeDisplaySize?.(node.id);
 	const sticky = readStickyDimensions(node);
 	return {
 		width: supplied?.width ?? sticky?.width ?? DEFAULT_NODE_SIZE[0],
@@ -75,7 +75,7 @@ export function titleBarFromNodesRect(nodesRect: NodesRect): {
 export function computeNodesRectFromStore(
 	nodeIds: string[],
 	getNodeById: (id: string) => INodeUi | undefined,
-	getNodeDimensions?: GetNodeDimensions,
+	getNodeDisplaySize?: GetNodeDisplaySize,
 	positionOverrides?: Map<string, { x: number; y: number }>,
 ): NodesRect {
 	const nodes = nodeIds.map((id) => getNodeById(id)).filter((n): n is INodeUi => n !== undefined);
@@ -93,7 +93,7 @@ export function computeNodesRectFromStore(
 		const override = positionOverrides?.get(node.id);
 		const x = override?.x ?? node.position[0];
 		const y = override?.y ?? node.position[1];
-		const { width, height } = resolveNodeDimensions(node, getNodeDimensions);
+		const { width, height } = resolveNodeDimensions(node, getNodeDisplaySize);
 		if (x < minX) minX = x;
 		if (y < minY) minY = y;
 		if (x + width > maxX) maxX = x + width;
@@ -111,7 +111,7 @@ export function computeNodesRectFromStore(
 export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
-	getNodeDimensions?: GetNodeDimensions;
+	getNodeDisplaySize?: GetNodeDisplaySize;
 	readOnly: boolean;
 }
 
@@ -122,7 +122,7 @@ export interface MapGroupsToVueFlowNodesInputs {
 export function mapGroupsToVueFlowNodes({
 	allGroups,
 	getNodeById,
-	getNodeDimensions,
+	getNodeDisplaySize,
 	readOnly,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
@@ -132,9 +132,9 @@ export function mapGroupsToVueFlowNodes({
 		const hasNode = group.nodeIds.some((id) => getNodeById(id) !== undefined);
 		if (!hasNode) continue;
 
-		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDimensions);
+		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
 
-		const data: CanvasGroupViewState = {
+		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
 		};
