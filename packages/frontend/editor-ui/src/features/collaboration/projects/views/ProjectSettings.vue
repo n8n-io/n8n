@@ -725,6 +725,7 @@ onMounted(async () => {
 							:can-edit-role="!isProjectRoleProvisioningEnabled && !isExpressionMappingEnabled"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
+							@show-role-upgrade-dialog="upgradeDialogVisible = true"
 							@action="onMembersListAction"
 						/>
 					</div>

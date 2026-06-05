@@ -635,7 +635,7 @@ describe('workflowExecutionState.store', () => {
 		});
 	});
 
-	describe('setActiveExecution', () => {
+	describe('setWorkflowExecutionData (execution-data store writes)', () => {
 		it('null clears pending and displayed execution ids', () => {
 			const workflowExecutionStateStore = useWorkflowExecutionStateStore(
 				createWorkflowDocumentId('wf-1'),
@@ -646,7 +646,7 @@ describe('workflowExecutionState.store', () => {
 			);
 			workflowExecutionStateStore.setActiveExecutionId('exec-1');
 
-			workflowExecutionStateStore.setActiveExecution(null);
+			workflowExecutionStateStore.setWorkflowExecutionData(null);
 
 			expect(workflowExecutionStateStore.pendingExecution).toBeNull();
 			expect(workflowExecutionStateStore.displayedExecutionId).toBeUndefined();
@@ -658,7 +658,7 @@ describe('workflowExecutionState.store', () => {
 			);
 			const payload = makeExecution({ id: IN_PROGRESS_EXECUTION_ID, executedNode: 'Code' });
 
-			workflowExecutionStateStore.setActiveExecution(payload);
+			workflowExecutionStateStore.setWorkflowExecutionData(payload);
 
 			expect(workflowExecutionStateStore.activeExecutionId).toBeNull();
 			expect(workflowExecutionStateStore.pendingExecution?.id).toBe(IN_PROGRESS_EXECUTION_ID);
@@ -674,7 +674,7 @@ describe('workflowExecutionState.store', () => {
 			workflowExecutionStateStore.setPendingExecution(makeExecution());
 			const exec = makeExecution({ id: 'exec-real' });
 
-			workflowExecutionStateStore.setActiveExecution(exec);
+			workflowExecutionStateStore.setWorkflowExecutionData(exec);
 
 			expect(useExecutionDataStore(createExecutionDataId('exec-real')).execution?.id).toBe(
 				'exec-real',
@@ -694,7 +694,7 @@ describe('workflowExecutionState.store', () => {
 			workflowExecutionStateStore.setActiveExecutionId('exec-1');
 			const updated = makeExecution({ id: 'exec-1', executedNode: 'Code' });
 
-			workflowExecutionStateStore.setActiveExecution(updated);
+			workflowExecutionStateStore.setWorkflowExecutionData(updated);
 
 			expect(workflowExecutionStateStore.activeExecutionId).toBe('exec-1');
 			expect(workflowExecutionStateStore.displayedExecutionId).toBe('exec-1');

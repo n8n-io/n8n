@@ -371,6 +371,9 @@ describe('renderSbom — edge cases', () => {
 			'pkg:npm/ssh2@1.15.0',
 			'pkg:npm/streamsearch@1.1.0',
 			'pkg:npm/utf7@1.0.2',
+			'pkg:npm/nub@0.0.0',
+			'pkg:npm/xml-escape@1.1.0',
+			'pkg:npm/duck@0.1.12',
 		];
 		const sbom = {
 			components: purls.map((purl) => {
