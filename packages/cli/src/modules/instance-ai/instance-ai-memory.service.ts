@@ -4,6 +4,8 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiThreadOrigin,
+	InstanceAiThreadSourcePersisted,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -28,6 +30,12 @@ import {
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+
+export interface InstanceAiThreadLaunchMetadata {
+	source: InstanceAiThreadSourcePersisted;
+	origin: InstanceAiThreadOrigin;
+	sourceContext?: Record<string, unknown>;
+}
 
 function isAgentMessageLike(value: unknown): value is AgentDbMessage {
 	return (
@@ -87,7 +95,11 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async ensureThread(userId: string, threadId: string): Promise<InstanceAiEnsureThreadResponse> {
+	async ensureThread(
+		userId: string,
+		threadId: string,
+		launchMetadata?: InstanceAiThreadLaunchMetadata,
+	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
 			if (existing.resourceId !== userId) {
@@ -104,6 +116,17 @@ export class InstanceAiMemoryService {
 			id: threadId,
 			resourceId: userId,
 			title: '',
+			...(launchMetadata
+				? {
+						metadata: {
+							source: launchMetadata.source,
+							origin: launchMetadata.origin,
+							...(launchMetadata.sourceContext
+								? { sourceContext: launchMetadata.sourceContext }
+								: {}),
+						},
+					}
+				: {}),
 		});
 
 		return {

@@ -14,6 +14,7 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -524,7 +525,17 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+
+		const launchMetadata =
+			payload.source !== undefined || payload.origin !== undefined
+				? {
+						source: normalizeInstanceAiThreadSource(payload.source),
+						origin: payload.origin ?? ('internal' as const),
+						sourceContext: payload.sourceContext,
+					}
+				: undefined;
+
+		return await this.memoryService.ensureThread(req.user.id, requestedThreadId, launchMetadata);
 	}
 
 	@Delete('/threads/:threadId')
