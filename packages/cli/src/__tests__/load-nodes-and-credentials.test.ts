@@ -100,7 +100,7 @@ describe('LoadNodesAndCredentials', () => {
 		beforeEach(() => {
 			const mockInstance = (pkg: string, directory: string) => {
 				const mi = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
-				const mockLoader = mock<DirectoryLoader>({ directory });
+				const mockLoader = mock<DirectoryLoader>({ directory } as never);
 				Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 				mi.loaders[pkg] = mockLoader;
 				return mi;
@@ -453,7 +453,7 @@ describe('LoadNodesAndCredentials', () => {
 			isLazyLoaded: false,
 			reset: vi.fn(),
 			loadAll: vi.fn(),
-		});
+		} as never);
 		Object.setPrototypeOf(mockLoader, DirectoryLoader.prototype);
 
 		beforeEach(() => {
@@ -530,13 +530,13 @@ describe('LoadNodesAndCredentials', () => {
 				directory: '/test/dir',
 				known: { nodes: {}, credentials: {} },
 				types: {
-					nodes: [{ name: 'TestNode', displayName: 'Test' } as INodeTypeDescription],
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as never],
 					credentials: [],
 				},
 				credentialTypes: {},
 				isLazyLoaded: false,
 				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
-			});
+			} as never);
 
 			instance.loaders = { 'test-package': mockLoader };
 
@@ -556,7 +556,7 @@ describe('LoadNodesAndCredentials', () => {
 				credentialTypes: {},
 				isLazyLoaded: false,
 				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
-			});
+			} as never);
 
 			instance.loaders = { 'test-package': mockLoader };
 
@@ -589,13 +589,13 @@ describe('LoadNodesAndCredentials', () => {
 				directory: '/test/dir',
 				known: { nodes: {}, credentials: {} },
 				types: {
-					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as INodeTypeDescription],
+					nodes: [{ name: 'httpRequest', displayName: 'HTTP Request' } as never],
 					credentials: [{ name: 'httpBasicAuth', displayName: 'HTTP Basic Auth' }],
 				},
 				credentialTypes: {},
 				isLazyLoaded: false,
 				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
-			});
+			} as never);
 
 			instance.loaders = { 'n8n-nodes-base': mockLoader };
 
@@ -613,13 +613,13 @@ describe('LoadNodesAndCredentials', () => {
 				directory: '/test/dir',
 				known: { nodes: {}, credentials: {} },
 				types: {
-					nodes: [{ name: 'TestNode', displayName: 'Test' } as INodeTypeDescription],
+					nodes: [{ name: 'TestNode', displayName: 'Test' } as never],
 					credentials: [],
 				},
 				credentialTypes: {},
 				isLazyLoaded: false,
 				ensureTypesLoaded: vi.fn().mockResolvedValue(undefined),
-			});
+			} as never);
 
 			instance.loaders = { 'test-package': mockLoader };
 

@@ -564,7 +564,7 @@ describe('SourceControlExportService', () => {
 						],
 					}),
 					workflow: mock(),
-				}),
+				} as never) as SharedWorkflow,
 			]);
 
 			// Act
@@ -606,7 +606,7 @@ describe('SourceControlExportService', () => {
 						id: 'test-workflow-id',
 						name: 'TestWorkflow',
 					}),
-				}),
+				} as never) as SharedWorkflow,
 			]);
 
 			// Act & Assert
