@@ -66,7 +66,15 @@ export class Peekalink extends Node {
 		],
 	};
 
-	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(
+		this: IExecuteFunctions | Peekalink,
+		contextOrResponse?: IExecuteFunctions | import('n8n-workflow').EngineResponse,
+	): Promise<INodeExecutionData[][]> {
+		const context =
+			contextOrResponse && 'getNodeParameter' in contextOrResponse
+				? (contextOrResponse as IExecuteFunctions)
+				: (this as unknown as IExecuteFunctions);
+
 		const items = context.getInputData();
 		const operation = context.getNodeParameter('operation', 0) as Operation;
 

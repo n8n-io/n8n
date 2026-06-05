@@ -504,7 +504,15 @@ export class Wait extends Webhook {
 		return await super.webhook(context);
 	}
 
-	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(
+		this: IExecuteFunctions | Wait,
+		contextOrResponse?: IExecuteFunctions | EngineResponse,
+	): Promise<INodeExecutionData[][]> {
+		const context =
+			contextOrResponse && 'getNodeParameter' in contextOrResponse
+				? (contextOrResponse as IExecuteFunctions)
+				: (this as unknown as IExecuteFunctions);
+
 		const resume = context.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
