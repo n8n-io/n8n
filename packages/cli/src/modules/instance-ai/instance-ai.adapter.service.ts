@@ -63,7 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
@@ -337,6 +337,7 @@ export class InstanceAiAdapterService {
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			executionRepository,
+			executionPersistence,
 			license,
 			allowSendingParameterValues,
 			telemetry,
@@ -508,7 +509,7 @@ export class InstanceAiAdapterService {
 				});
 				if (!latest) return null;
 
-				const execution = await executionRepository.findSingleExecution(latest.id, {
+				const execution = await executionPersistence.findSingleExecution(latest.id, {
 					includeData: true,
 					unflattenData: true,
 				});
@@ -984,8 +985,8 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				runData.source = 'instance_ai';
 				runData.telemetryMetadata = {
-					source: 'instance_ai',
 					mockDataSources,
 				};
 
@@ -1045,11 +1046,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				const result = await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				const result = await extractExecutionResult(executionId, allowSendingParameterValues);
 				trackBuilderExecutedWorkflow(result.status);
 				return result;
 			},
@@ -1060,11 +1057,7 @@ export class InstanceAiAdapterService {
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async getResult(executionId: string) {
@@ -1073,11 +1066,7 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async stop(executionId: string) {
@@ -1106,12 +1095,7 @@ export class InstanceAiAdapterService {
 
 			async getDebugInfo(executionId: string) {
 				await assertExecutionAccess(executionId);
-				return await extractExecutionDebugInfo(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-					nodeTypes,
-				);
+				return await extractExecutionDebugInfo(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getNodeOutput(executionId, nodeName, options) {
@@ -1126,7 +1110,7 @@ export class InstanceAiAdapterService {
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+				return await extractNodeOutput(executionId, nodeName, options);
 			},
 
 			getResolvedNodeParameters: async (
@@ -1149,13 +1133,7 @@ export class InstanceAiAdapterService {
 					} satisfies ResolvedNodeParametersResult;
 				}
 
-				return await extractResolvedNodeParameters(
-					executionRepository,
-					nodeTypes,
-					executionId,
-					nodeName,
-					options,
-				);
+				return await extractResolvedNodeParameters(nodeTypes, executionId, nodeName, options);
 			},
 		};
 	}
@@ -2763,11 +2741,10 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 }
 
 export async function extractExecutionResult(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -2906,12 +2883,11 @@ const MAX_ITEM_CHARS = 50_000;
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
  */
 export async function extractNodeOutput(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
 ): Promise<NodeOutputResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -3136,12 +3112,11 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 
 /** Extract structured debug info from a completed execution. */
 export async function extractExecutionDebugInfo(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -3154,11 +3129,7 @@ export async function extractExecutionDebugInfo(
 		};
 	}
 
-	const baseResult = await extractExecutionResult(
-		executionRepository,
-		executionId,
-		includeOutputData,
-	);
+	const baseResult = await extractExecutionResult(executionId, includeOutputData);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
@@ -3232,13 +3203,10 @@ export async function extractExecutionDebugInfo(
 				nodeName: _omitName,
 				suppressed: _omitSuppressed,
 				...bundle
-			} = await extractResolvedNodeParameters(
-				executionRepository,
-				nodeTypes,
-				executionId,
-				failedNode.name,
-				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
-			);
+			} = await extractResolvedNodeParameters(nodeTypes, executionId, failedNode.name, {
+				itemIndex: failedItemIndex,
+				runIndex: failedRunIndex,
+			});
 			failedNode.resolvedParameters = bundle;
 		} catch {
 			// debug must always succeed — silently skip the resolved-params view.

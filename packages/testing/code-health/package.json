@@ -32,6 +32,7 @@
 		"@n8n/vitest-config": "workspace:*",
 		"@vitest/coverage-v8": "catalog:",
 		"fast-glob": "catalog:",
+		"ts-morph": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",

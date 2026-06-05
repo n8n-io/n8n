@@ -51,6 +51,8 @@ const baseInput = {
 	workItemId: 'wi_test1234',
 	workflowId: 'wf-123',
 	verdict: 'verified' as const,
+	workflowInspection:
+		'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 	summary: 'Workflow ran successfully',
 };
 
@@ -83,6 +85,8 @@ describe('report-verification-verdict tool', () => {
 				workItemId: 'wi_test1234',
 				workflowId: 'wf-123',
 				verdict: 'verified',
+				workflowInspection:
+					'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 			}),
 		);
 		expect((result as { guidance: string }).guidance).toContain('verified successfully');
@@ -373,6 +377,8 @@ describe('report-verification-verdict tool', () => {
 				workflowId: 'wf-123',
 				executionId: 'exec-456',
 				verdict: 'verified',
+				workflowInspection:
+					'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 				failureSignature: 'TypeError:null',
 				failedNodeName: 'Code',
 				diagnosis: 'Null reference',

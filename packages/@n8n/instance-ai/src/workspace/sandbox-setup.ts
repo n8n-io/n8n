@@ -55,6 +55,7 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
+
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
 	| 'read-initialization-marker'
@@ -108,10 +109,6 @@ export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 			return DAYTONA_WORKSPACE_ROOT;
 		case 'n8n-sandbox':
 			return N8N_SANDBOX_WORKSPACE_ROOT;
-		case 'local':
-			// Local workspaces are already scoped to the resolved root; use `.` so
-			// paths like `./knowledge-base/...` resolve under `<root>/`, not `<root>/workspace/`.
-			return '.';
 	}
 }
 
@@ -234,42 +231,6 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-/**
- * Return the absolute on-disk path of a host-installed package, or `null`
- * if it can't be resolved. Used by the local provider to point the sandbox
- * at the workspace SDK via a `file:` reference instead of the npm registry.
- */
-function resolveHostDepPath(name: string): string | null {
-	try {
-		const pkgPath = hostRequire.resolve(`${name}/package.json`);
-		return pkgPath.slice(0, pkgPath.length - '/package.json'.length);
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Build a PACKAGE_JSON that points `@n8n/workflow-sdk` at its host-resolved
- * location via `file:` — so the local provider picks up workspace SDK
- * changes after `pnpm build` without needing a publish.
- *
- * Falls back to the registry-pinned PACKAGE_JSON if the SDK can't be
- * resolved on disk (e.g. a stripped-down test harness).
- */
-function buildLocalProviderPackageJson(): string {
-	const sdkPath = resolveHostDepPath('@n8n/workflow-sdk');
-	if (!sdkPath) return PACKAGE_JSON;
-	return buildPackageJson(`file:${sdkPath}`);
-}
-
-function getSandboxProvider(workspace: SandboxWorkspace): string | undefined {
-	return workspace.filesystem?.provider ?? workspace.sandbox?.provider;
-}
-
-function buildWorkspacePackageJson(workspace: SandboxWorkspace): string {
-	return getSandboxProvider(workspace) === 'local' ? buildLocalProviderPackageJson() : PACKAGE_JSON;
-}
-
 let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
@@ -277,7 +238,7 @@ export async function linkWorkspaceSdkIfEnabled(
 	root: string,
 	logger?: Logger,
 ): Promise<void> {
-	if (!isLinkWorkspaceSdkEnabled() || getSandboxProvider(workspace) === 'local') return;
+	if (!isLinkWorkspaceSdkEnabled()) return;
 
 	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
 		sdkTarballPromise = null;
@@ -559,11 +520,7 @@ export async function setupSandboxWorkspace(
 
 	const files = new Map<string, string>();
 
-	// Config files. Local provider runs on the dev host, so point the SDK at
-	// its workspace location via `file:` — this makes SDK changes visible in
-	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
-	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
-	files.set('package.json', buildWorkspacePackageJson(workspace));
+	files.set('package.json', PACKAGE_JSON);
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
 
