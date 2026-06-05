@@ -1,5 +1,4 @@
 import type { Tool as AiSdkTool } from 'ai';
-import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { loadAi } from './lazy-ai';
@@ -12,6 +11,7 @@ import {
 	type ToolExecutionContext,
 	type ToolContext,
 } from '../types';
+import { fixSchema } from '../utils/json-schema';
 import { isZodSchema } from '../utils/zod';
 
 type AiSdkProviderTool = AiSdkTool & {
@@ -58,19 +58,6 @@ export function toAiSdkProviderTools(tools?: BuiltProviderTool[]): Record<string
 	}
 	return result;
 }
-
-const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
-	// Ensure 'type: object' is present when properties are present (required by some providers):
-	if (
-		typeof schema === 'object' &&
-		schema !== null &&
-		'properties' in schema &&
-		!('type' in schema)
-	) {
-		return { ...schema, type: 'object' as const };
-	}
-	return schema;
-};
 
 /**
  * Convert an array of BuiltTools into a Record of AI SDK tool definitions.

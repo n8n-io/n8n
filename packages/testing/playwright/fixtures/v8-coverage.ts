@@ -1,17 +1,15 @@
 import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 import { CoverageReport } from 'monocart-coverage-reports';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
-import { BY_SPEC_DIR, coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
-
-/** Spec id = project-relative path (e.g. tests/e2e/nodes/if-node.spec.ts) — the
- *  same id the runner uses, so the impact map keys match runnable specs. */
-function specId(testInfo: TestInfo): string {
-	return relative(process.cwd(), testInfo.file).split('\\').join('/');
-}
-
-const slugify = (spec: string) => spec.replace(/[^a-zA-Z0-9]+/g, '_');
+import {
+	BY_SPEC_DIR,
+	coverageOptions,
+	COVERAGE_ENABLED,
+	slugify,
+	specId,
+} from '../coverage-options';
 
 /**
  * Browser-native V8 coverage collection (Chromium `page.coverage`), replacing

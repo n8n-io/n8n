@@ -137,15 +137,6 @@ export class AwsAssumeRole implements ICredentialType {
 			sessionToken: string;
 		};
 
-		if (!credentials.roleArn || credentials.roleArn.trim() === '') {
-			throw new ApplicationError('Role ARN is required when assuming a role.');
-		}
-		if (!credentials.externalId || credentials.externalId.trim() === '') {
-			throw new ApplicationError('External ID is required when assuming a role.');
-		}
-		if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
-			throw new ApplicationError('Role Session Name is required when assuming a role.');
-		}
 		try {
 			securityHeaders = await assumeRole(credentials, region);
 			finalCredentials = { ...credentials, ...securityHeaders };

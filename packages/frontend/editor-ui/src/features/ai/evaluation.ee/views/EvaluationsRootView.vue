@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { EVALUATIONS_DOCS_URL } from '@/app/constants';
+import { EVALUATIONS_DOCS_URL, VIEWS } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -10,11 +10,14 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
+import EvaluationsEmptyState from '../components/EvaluationsEmptyState/EvaluationsEmptyState.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 const props = defineProps<{
 	workflowId: string;
 }>();
@@ -27,6 +30,9 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const router = useRouter();
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;
@@ -74,6 +80,14 @@ const evaluationsQuotaExceeded = computed(() => {
 		!hasRuns.value
 	);
 });
+
+function openWizardOnCanvas() {
+	void router.push({
+		name: VIEWS.WORKFLOW,
+		params: { workflowId: props.workflowId },
+		query: { action: 'openEvaluationsWizard' },
+	});
+}
 
 async function fetchTestRuns() {
 	if (!workflowIsSaved.value) return;
@@ -131,7 +145,16 @@ watch(
 
 <template>
 	<div :class="$style.evaluationsView">
-		<template v-if="isReady && showWizard">
+		<!--
+			With the wizard-sidepanel experiment on we replace the long-form
+			setup screen (video + step list) with a focused empty-state card.
+			The "Get started" CTA navigates to the canvas with the wizard auto-
+			opened — same destination the floating CTA above already targets.
+		-->
+		<template v-if="isReady && showWizard && isEvaluationsWizardSidepanelEnabled">
+			<EvaluationsEmptyState :disabled="isProtectedEnvironment" @get-started="openWizardOnCanvas" />
+		</template>
+		<template v-else-if="isReady && showWizard">
 			<div :class="$style.setupContent">
 				<div>
 					<N8nText size="large" color="text-dark" tag="h3" bold>
@@ -175,6 +198,7 @@ watch(
 	height: 100%;
 	display: flex;
 	justify-content: center;
+	position: relative;
 }
 
 .setupContent {
