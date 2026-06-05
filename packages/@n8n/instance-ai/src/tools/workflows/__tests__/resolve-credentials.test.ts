@@ -30,10 +30,7 @@ function createMockContext(existingWorkflow?: WorkflowJSON): InstanceAiContext {
 		},
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
-		workflowTemplateService: {
-			// eslint-disable-next-line @typescript-eslint/require-await
-			getTemplate: async () => ({ available: false as const }),
-		},
+		workflowTemplateService: {} as InstanceAiContext['workflowTemplateService'],
 	};
 }
 
