@@ -120,7 +120,6 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 		if (!groupedDraggedNodes) return;
 
-		// Only grouped dragged nodes need bounds recomputation.
 		const groupsToSync = new Map<string, { id: string; nodeIds: string[] }>();
 		const positionOverrides = new Map<string, { x: number; y: number }>();
 		for (const n of groupedDraggedNodes) {
