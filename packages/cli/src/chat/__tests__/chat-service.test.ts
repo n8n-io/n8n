@@ -97,7 +97,7 @@ describe('ChatService', () => {
 		});
 
 		it('should terminate existing session if the same key is used and clear interval', async () => {
-			const clearIntervalSpy = vi.spyOn(global, 'clearInterval').mockImplementation();
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval').mockImplementation(() => {});
 			const req = {
 				ws: mockWs,
 				query: {

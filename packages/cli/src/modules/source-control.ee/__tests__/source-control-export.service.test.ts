@@ -103,7 +103,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -144,7 +144,7 @@ describe('SourceControlExportService', () => {
 						id: 'team1',
 						name: 'Test Team',
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -210,7 +210,7 @@ describe('SourceControlExportService', () => {
 						id: 'team1',
 						name: 'Test Team',
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -270,7 +270,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -328,7 +328,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act

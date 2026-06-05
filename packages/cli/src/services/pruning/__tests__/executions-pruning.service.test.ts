@@ -143,12 +143,12 @@ describe('PruningService', () => {
 			const scheduleRollingSoftDeletionsSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(pruningService, 'scheduleRollingSoftDeletions')
-				.mockImplementation();
+				.mockImplementation(() => {});
 
 			const scheduleNextHardDeletionSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(pruningService, 'scheduleNextHardDeletion')
-				.mockImplementation();
+				.mockImplementation(() => {});
 
 			pruningService.startPruning();
 

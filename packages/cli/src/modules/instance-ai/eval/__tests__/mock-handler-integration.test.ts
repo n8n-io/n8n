@@ -73,7 +73,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 
 	it('chain output reflects mock-handler-generated content (not the no-handler stub)', async () => {
 		const mockHandler = vi
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockResolvedValue({
 				body: { content: 'Hello, Jane — your order #ORD-42 ships today.' },
 				headers: { 'content-type': 'application/json' },
@@ -122,7 +122,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 	it('mock handler receives the full conversation on every turn (multi-turn awareness)', async () => {
 		const receivedMessagesPerCall: unknown[] = [];
 		const mockHandler = vi
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockImplementation(async (req: IHttpRequestOptions) => {
 				const body = req.body as { messages?: unknown[] };
 				receivedMessagesPerCall.push(body.messages);
@@ -197,7 +197,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 
 	it('attributes every turn to the AI root regardless of how many turns it generates', async () => {
 		const mockHandler = vi
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockResolvedValue({
 				body: { content: 'ok' },
 				headers: { 'content-type': 'application/json' },
@@ -246,7 +246,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 		const subNodeB: INode = { ...subNode, id: 'b', name: 'OpenAI B' };
 
 		const mockHandler = vi
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockResolvedValue({
 				body: { content: 'ok' },
 				headers: { 'content-type': 'application/json' },

@@ -121,7 +121,7 @@ describe('LlmWireServer', () => {
 
 		it('calls the mock handler with the synthetic OpenAI request shape', async () => {
 			const mockHandler = vi
-				.fn<ReturnType<EvalLlmMockHandler>, Parameters<EvalLlmMockHandler>>()
+				.fn<(...args: Parameters<EvalLlmMockHandler>) => ReturnType<EvalLlmMockHandler>>()
 				.mockResolvedValue({
 					body: { content: 'handler said hi' },
 					headers: { 'content-type': 'application/json' },

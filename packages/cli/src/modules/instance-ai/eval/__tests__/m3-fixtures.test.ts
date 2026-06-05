@@ -108,7 +108,7 @@ describe('M3 fixtures — Agent + Chat Model + HTTP tool + MemoryBufferWindow', 
 		// tool-shaped output the grader looks for.
 		const scriptedResponses: EvalMockHttpResponse[] = [];
 		const mockHandler = vi
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockImplementation(async () => {
 				const next = scriptedResponses.shift();
 				if (!next) {
