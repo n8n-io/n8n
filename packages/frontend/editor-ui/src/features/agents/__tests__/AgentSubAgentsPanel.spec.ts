@@ -43,8 +43,13 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.subAgents.modelsByDifficulty.title': 'Inline sub-agent models',
 				'agents.builder.subAgents.modelsByDifficulty.hint': 'Inline models hint',
 				'agents.builder.subAgents.modelsByDifficulty.low.label': 'Low difficulty',
+				'agents.builder.subAgents.modelsByDifficulty.low.description': 'Low difficulty description',
 				'agents.builder.subAgents.modelsByDifficulty.medium.label': 'Medium difficulty',
+				'agents.builder.subAgents.modelsByDifficulty.medium.description':
+					'Medium difficulty description',
 				'agents.builder.subAgents.modelsByDifficulty.high.label': 'High difficulty',
+				'agents.builder.subAgents.modelsByDifficulty.high.description':
+					'High difficulty description',
 				'agents.builder.subAgents.modelsByDifficulty.clear': 'Use parent model',
 				'credentials.noResults': 'No credentials',
 				error: 'Error',

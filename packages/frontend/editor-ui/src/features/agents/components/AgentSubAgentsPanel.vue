@@ -48,6 +48,12 @@ const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
 	high: 'agents.builder.subAgents.modelsByDifficulty.high.label',
 };
 
+const DIFFICULTY_DESCRIPTION_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
+	low: 'agents.builder.subAgents.modelsByDifficulty.low.description',
+	medium: 'agents.builder.subAgents.modelsByDifficulty.medium.description',
+	high: 'agents.builder.subAgents.modelsByDifficulty.high.description',
+};
+
 const props = defineProps<{
 	config: AgentJsonConfig | null;
 	disabled: boolean;
@@ -349,49 +355,54 @@ function onRemoveSubAgent(agentId: string) {
 				</N8nText>
 			</div>
 
-			<div
-				v-for="difficulty in SUB_AGENT_TASK_DIFFICULTIES"
-				:key="difficulty"
-				:class="$style.difficultyRow"
-				:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
-			>
-				<div :class="$style.difficultyLabel">
-					<N8nText size="small" :bold="true">
-						{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
-					</N8nText>
-				</div>
-				<div :class="$style.difficultyControls">
-					<AgentModelSelector
-						:selected-model="selectedModelForDifficulty(difficulty)"
-						:credentials="credentialsForDifficulty(difficulty)"
-						:models-by-provider="filteredModels"
-						:is-loading="isLoading"
-						:project-id="projectId"
-						:warn-missing-credentials="true"
-						horizontal
-						:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
-						@change="(selection) => onDifficultyModelChange(difficulty, selection)"
-						@select-credential="
-							(provider, credentialId) =>
-								onDifficultySelectCredential(difficulty, provider, credentialId)
-						"
-					/>
-					<N8nTooltip
-						v-if="hasDifficultyMapping(difficulty)"
-						:content="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
-						placement="top"
-					>
-						<N8nIconButton
-							icon="x"
-							variant="ghost"
-							size="mini"
-							icon-size="small"
-							:disabled="disabled"
-							:aria-label="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
-							:data-testid="`agent-sub-agents-difficulty-${difficulty}-clear`"
-							@click="clearDifficultyMapping(difficulty)"
+			<div :class="$style.difficultyRows">
+				<div
+					v-for="difficulty in SUB_AGENT_TASK_DIFFICULTIES"
+					:key="difficulty"
+					:class="$style.difficultyRow"
+					:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
+				>
+					<div :class="$style.difficultyLabel">
+						<N8nText size="small" :bold="true">
+							{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
+						</N8nText>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText(DIFFICULTY_DESCRIPTION_KEYS[difficulty]) }}
+						</N8nText>
+					</div>
+					<div :class="$style.difficultyControls">
+						<AgentModelSelector
+							:selected-model="selectedModelForDifficulty(difficulty)"
+							:credentials="credentialsForDifficulty(difficulty)"
+							:models-by-provider="filteredModels"
+							:is-loading="isLoading"
+							:project-id="projectId"
+							:warn-missing-credentials="true"
+							horizontal
+							:data-testid="`agent-sub-agents-difficulty-${difficulty}-model`"
+							@change="(selection) => onDifficultyModelChange(difficulty, selection)"
+							@select-credential="
+								(provider, credentialId) =>
+									onDifficultySelectCredential(difficulty, provider, credentialId)
+							"
 						/>
-					</N8nTooltip>
+						<N8nTooltip
+							v-if="hasDifficultyMapping(difficulty)"
+							:content="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
+							placement="top"
+						>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="mini"
+								icon-size="small"
+								:disabled="disabled"
+								:aria-label="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
+								:data-testid="`agent-sub-agents-difficulty-${difficulty}-clear`"
+								@click="clearDifficultyMapping(difficulty)"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -519,8 +530,6 @@ function onRemoveSubAgent(agentId: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	padding-left: var(--spacing--sm);
-	border-left: var(--border);
 	width: 100%;
 }
 
@@ -528,6 +537,14 @@ function onRemoveSubAgent(agentId: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+}
+
+.difficultyRows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
+	border-left: var(--border);
 }
 
 .difficultyRow {
@@ -539,6 +556,9 @@ function onRemoveSubAgent(agentId: string) {
 }
 
 .difficultyLabel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 	flex: 1;
 	min-width: 0;
 }
