@@ -107,4 +107,30 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
 	});
+
+	it('loads the bundled planning skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'planning');
+
+		expect(skill?.name).toBe('planning');
+		expect(skill?.recommendedTools).toEqual([
+			'create-tasks',
+			'workflows',
+			'nodes',
+			'credentials',
+			'data-tables',
+			'parse-file',
+			'research',
+			'ask-user',
+		]);
+		expect(skill?.description).toContain('dependency-aware execution plans');
+
+		const loaded = await source.loadSkill('planning');
+		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
+		expect(loaded?.instructions).toContain('Do not spawn another agent');
+		expect(loaded?.instructions).toContain('Do not add\nroutine "verify this workflow"');
+		expect(loaded?.instructions).toContain('Checkpoint tasks are exceptional semantic checks');
+		expect(loaded?.instructions).not.toContain('submit-plan');
+		expect(loaded?.instructions).not.toContain('add-plan-item');
+	});
 });

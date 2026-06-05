@@ -23,6 +23,12 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
+	it('strips <workflow-verification-follow-up> block', () => {
+		const stored =
+			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
 	it('returns null for auto-follow-up message', () => {
 		expect(cleanStoredUserMessage(AUTO_FOLLOW_UP_MESSAGE)).toBeNull();
 	});
