@@ -99,7 +99,18 @@ describe('WaitingWebhooks', () => {
 		 * Arrange
 		 */
 		executionRepository.findSingleExecution.mockResolvedValue(
-			mock<IExecutionResponse>({ finished: true, workflowData: { nodes: [] } }),
+			mock<IExecutionResponse>({
+				finished: true,
+				workflowData: {
+					id: '1',
+					name: 'test',
+					active: false,
+					nodes: [],
+					connections: {},
+					settings: {},
+					staticData: {},
+				},
+			}),
 		);
 
 		/**
