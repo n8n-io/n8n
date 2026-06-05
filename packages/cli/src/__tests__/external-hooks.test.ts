@@ -13,6 +13,25 @@ import { mock } from 'vitest-mock-extended';
 
 import { ExternalHooks } from '@/external-hooks';
 
+// `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
+// path that doesn't resolve to a real module, so write a real fixture that
+// delegates to a per-test global, letting the test assert on its own spy.
+const { validHookPath } = vi.hoisted(() => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { mkdtempSync, writeFileSync } = require('fs');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { tmpdir } = require('os');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { join } = require('path');
+	const dir = mkdtempSync(join(tmpdir(), 'ext-hooks-'));
+	const p = join(dir, 'valid-hook.js');
+	writeFileSync(
+		p,
+		'module.exports = { workflow: { create: [(...args) => globalThis.__extHookFn(...args)] } };',
+	);
+	return { validHookPath: p as string };
+});
+
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
@@ -60,14 +79,9 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should successfully load hooks from valid hook file', async () => {
-			const mockHookFile = {
-				workflow: {
-					create: [hookFn],
-				},
-			};
+			(globalThis as unknown as { __extHookFn: typeof hookFn }).__extHookFn = hookFn;
 
-			globalConfig.externalHooks.files = ['/path/to/valid-hook.js'];
-			vi.mock('/path/to/valid-hook.js', () => mockHookFile);
+			globalConfig.externalHooks.files = [validHookPath];
 
 			await externalHooks.init();
 
