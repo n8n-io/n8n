@@ -71,25 +71,29 @@ export class WorkflowPublicationOutboxConsumer {
 			const record = await this.outboxRepository.claimNextPendingRecord();
 			if (!record) break;
 
+			await this.tryProcessRecord(record);
+		}
+	}
+
+	private async tryProcessRecord(record: WorkflowPublicationOutbox) {
+		try {
+			await this.processRecord(record);
+		} catch (error) {
+			this.logger.error('Unexpected error processing outbox record', {
+				outboxId: record.id,
+				workflowId: record.workflowId,
+				error: ensureError(error).message,
+			});
 			try {
-				await this.processRecord(record);
-			} catch (error) {
-				this.logger.error('Unexpected error processing outbox record', {
+				await this.outboxRepository.markFailed(
+					record.id,
+					`Unexpected: ${ensureError(error).message}`,
+				);
+			} catch (markError) {
+				this.logger.error('Failed to mark outbox record as failed', {
 					outboxId: record.id,
-					workflowId: record.workflowId,
-					error: ensureError(error).message,
+					error: ensureError(markError).message,
 				});
-				try {
-					await this.outboxRepository.markFailed(
-						record.id,
-						`Unexpected: ${ensureError(error).message}`,
-					);
-				} catch (markError) {
-					this.logger.error('Failed to mark outbox record as failed', {
-						outboxId: record.id,
-						error: ensureError(markError).message,
-					});
-				}
 			}
 		}
 	}
