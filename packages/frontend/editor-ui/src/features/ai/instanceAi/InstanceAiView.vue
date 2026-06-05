@@ -8,7 +8,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from './constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_NEW_VIEW } from './constants';
 import { SidebarStateKey } from './instanceAiLayout';
 
 const store = useInstanceAiStore();
@@ -47,11 +47,21 @@ provide(SidebarStateKey, {
 // Reset to collapsed when leaving the AI chat namespace, so the next entry
 // starts collapsed by default. Refreshes (which don't trigger the guard) keep
 // the user's current open/closed state.
-const CHAT_ROUTE_NAMES = new Set<string>([INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW]);
+const CHAT_ROUTE_NAMES = new Set<string>([
+	INSTANCE_AI_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_NEW_VIEW,
+]);
 onBeforeRouteLeave((to) => {
 	const name = typeof to.name === 'string' ? to.name : undefined;
 	if (!name || !CHAT_ROUTE_NAMES.has(name)) {
 		sidebarCollapsed.value = true;
+		// Dispose runtimes only when actually leaving the AI chat module. This
+		// must NOT live in onUnmounted: entering the module from another part of
+		// the app can transiently remount this layout, and disposing there would
+		// kill a runtime mid-run (e.g. a just-launched thread's first message)
+		// while the route never left the module.
+		store.disposeRuntimes();
 	}
 });
 
@@ -92,7 +102,8 @@ watch(
 );
 
 onUnmounted(() => {
-	store.disposeRuntimes();
+	// NOTE: runtime disposal happens in onBeforeRouteLeave (only when leaving the
+	// module), not here — this hook also fires on transient remounts.
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
 });
