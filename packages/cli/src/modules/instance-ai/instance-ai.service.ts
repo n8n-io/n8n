@@ -550,6 +550,9 @@ export class InstanceAiService {
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
 
+	/** Counts plan-review confirmations per thread, to tell the first plan apart from later revisions. */
+	private readonly planRequestsByThread = new Map<string, number>();
+
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
 
@@ -2003,6 +2006,7 @@ export class InstanceAiService {
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
+		this.planRequestsByThread.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
 		await this.destroySandbox(threadId);
 		await this.reapAiTemporaryForThreadCleanup(threadId);
@@ -5540,6 +5544,17 @@ export class InstanceAiService {
 			numSteps = payload.setupRequests.length;
 		} else if (Array.isArray(payload.credentialRequests)) {
 			numSteps = payload.credentialRequests.length;
+		}
+
+		if (inputType === 'plan-review') {
+			// Tell the first plan in a thread apart from later revisions the user asked
+			// for. The per-thread counter is cleared on thread cleanup.
+			const planCount = (this.planRequestsByThread.get(threadId) ?? 0) + 1;
+			this.planRequestsByThread.set(threadId, planCount);
+			type = planCount === 1 ? 'first_plan' : 'revised_plan';
+			if (Array.isArray(payload.planItems)) {
+				numSteps = payload.planItems.length;
+			}
 		}
 
 		this.telemetry.track('Builder asked for input', {

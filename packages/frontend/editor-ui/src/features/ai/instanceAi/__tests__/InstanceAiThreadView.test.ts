@@ -587,7 +587,10 @@ describe('InstanceAiThreadView', () => {
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
 			'User finished providing input',
-			expect.objectContaining({ feedback: 'use [REDACTED] to call the API' }),
+			expect.objectContaining({
+				feedback: 'use [REDACTED] to call the API',
+				plan_feedback_type: 'changes_requested',
+			}),
 		);
 		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
 			kind: 'approval',

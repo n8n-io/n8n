@@ -518,6 +518,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			skipped_inputs: [],
 			num_tasks: planEdit.taskCount,
 			feedback: scrubSecretsInText(message),
+			plan_feedback_type: 'changes_requested',
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
 		void thread
