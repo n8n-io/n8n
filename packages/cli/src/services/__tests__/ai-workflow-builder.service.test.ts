@@ -31,6 +31,8 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 	}),
 }));
 vi.mock('@n8n_io/ai-assistant-sdk');
+vi.mock('node:fs');
+vi.mock('node:fs/promises');
 
 const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as MockedClass<
 	typeof AiWorkflowBuilderService

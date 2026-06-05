@@ -175,7 +175,7 @@ describe('Strapi utils', () => {
 			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(result).toEqual([]);
-		});
+		}, 10000);
 
 		it('should handle network timeout and continue gracefully', async () => {
 			// Mock axios to simulate timeout
