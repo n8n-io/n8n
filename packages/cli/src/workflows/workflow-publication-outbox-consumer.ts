@@ -88,14 +88,14 @@ export class WorkflowPublicationOutboxConsumer {
 		try {
 			await this.processRecord(record);
 		} catch (error) {
-			this.errorReporter.error(error);
+			this.errorReporter.error(error, { shouldBeLogged: true });
 			try {
 				await this.outboxRepository.markFailed(
 					record.id,
 					`Unexpected: ${ensureError(error).message}`,
 				);
 			} catch (markError) {
-				this.errorReporter.error(markError);
+				this.errorReporter.error(markError, { shouldBeLogged: true });
 			}
 		}
 	}
