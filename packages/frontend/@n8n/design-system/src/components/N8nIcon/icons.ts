@@ -238,6 +238,7 @@ import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
 import IconLucideTags from '~icons/lucide/tags';
 import IconLucideTerminal from '~icons/lucide/terminal';
+import IconLucideTelescope from '~icons/lucide/telescope';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
 import IconLucideTimer from '~icons/lucide/timer';
@@ -727,6 +728,7 @@ export const updatedIconSet = {
 	sun: IconLucideSun,
 	table: IconLucideTable,
 	tags: IconLucideTags,
+	telescope: IconLucideTelescope,
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,

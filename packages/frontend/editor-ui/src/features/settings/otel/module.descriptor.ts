@@ -1,0 +1,25 @@
+import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { VIEWS } from '@/app/constants';
+
+const SettingsOpenTelemetryView = async () => await import('./SettingsOpenTelemetryView.vue');
+
+export const OtelModule: FrontendModuleDescription = {
+	id: 'otel',
+	name: 'OpenTelemetry',
+	description: 'Configure OpenTelemetry settings',
+	icon: 'telescope',
+	routes: [
+		{
+			path: 'opentelemetry',
+			name: VIEWS.OPENTELEMETRY_SETTINGS,
+			component: SettingsOpenTelemetryView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+	],
+};

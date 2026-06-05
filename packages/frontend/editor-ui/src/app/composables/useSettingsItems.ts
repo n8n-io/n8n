@@ -167,6 +167,17 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
+			id: 'settings-opentelemetry',
+			icon: 'telescope',
+			label: i18n.baseText('settings.opentelemetry'),
+			position: 'top',
+			available:
+				settingsStore.isModuleActive('otel') &&
+				hasPermission(['rbac'], { rbac: { scope: 'otel:manage' } }),
+			route: { to: { name: VIEWS.OPENTELEMETRY_SETTINGS } },
+		});
+
+		menuItems.push({
 			id: 'settings-community-nodes',
 			icon: 'box',
 			label: i18n.baseText('settings.communityNodes'),

@@ -1,4 +1,3 @@
-export const OTEL_SETTINGS_VIEW = 'SettingsOpenTelemetry';
 export const OTEL_STORE = 'otel';
 
 /** Maps each settings field to its env-var name — shown in per-field tooltips. */

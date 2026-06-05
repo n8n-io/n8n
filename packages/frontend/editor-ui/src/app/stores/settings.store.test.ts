@@ -330,7 +330,20 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+					exporterEndpoint: '',
+					exporterTracingPath: '',
+					exporterServiceName: '',
+					exporterHeaders: '',
+					tracesSampleRate: 1,
+					startupConnectivityTimeoutMs: 2000,
+					includeNodeSpans: true,
+					injectOutbound: true,
+					productionExecutionsOnly: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});
