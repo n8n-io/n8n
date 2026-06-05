@@ -265,6 +265,7 @@ export async function executeNpmRequest<T = unknown>(
 	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
 
 	try {
+		// eslint-disable-next-line n8n-local-rules/no-unprotected-axios -- Community package registries are admin-configured and commonly self-hosted on internal networks; intentionally not SSRF-protected
 		const { data } = await axios.get<T>(url, {
 			timeout,
 			headers: Object.keys(headers).length > 0 ? headers : undefined,

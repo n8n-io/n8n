@@ -109,6 +109,7 @@ export class MessageEventBusDestinationWebhook
 
 		const axiosSetting = this.buildAxiosSetting(options);
 
+		// eslint-disable-next-line n8n-local-rules/no-unprotected-axios -- Log-streaming webhook destinations are admin-configured and may legitimately point to internal collectors; intentionally not SSRF-protected
 		this.axiosInstance = axios.create(axiosSetting);
 
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);

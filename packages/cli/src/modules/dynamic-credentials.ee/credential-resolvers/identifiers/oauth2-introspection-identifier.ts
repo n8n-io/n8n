@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import axios from 'axios';
+import type { AxiosInstance } from 'axios';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CacheService } from '@/services/cache/cache.service';
+import { SafeAxiosFactory } from '@/services/ssrf/safe-axios.factory';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
@@ -62,10 +63,15 @@ const CACHE_PREFIX = 'oauth2-introspection-identifier';
 
 @Service()
 export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
+	private readonly httpClient: AxiosInstance;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
-	) {}
+		safeAxiosFactory: SafeAxiosFactory,
+	) {
+		this.httpClient = safeAxiosFactory.create();
+	}
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
 		const options = this.parseOptions(identifierOptions);
@@ -158,7 +164,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			}
 		}
 
-		const response = await axios.get(options.metadataUri, {
+		const response = await this.httpClient.get(options.metadataUri, {
 			validateStatus: () => true,
 			timeout: 10 * Time.seconds.toMilliseconds,
 		});
@@ -254,7 +260,7 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			...authParams,
 		});
 
-		const response = await axios.post(metadata.introspection_endpoint, params, {
+		const response = await this.httpClient.post(metadata.introspection_endpoint, params, {
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...authHeaders },
 			validateStatus: () => true,
 			timeout: 10 * Time.seconds.toMilliseconds,

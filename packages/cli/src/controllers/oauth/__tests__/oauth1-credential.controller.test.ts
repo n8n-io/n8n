@@ -3,15 +3,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import axios from 'axios';
 import type { Response } from 'express';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { EventService } from '@/events/event.service';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
-
-jest.mock('axios');
 
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
@@ -111,9 +108,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 
 			await controller.handleCallback(req, res);
 			// @ts-ignore
@@ -156,9 +154,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
 
 			await controller.handleCallback(dynamicReq, res);
@@ -211,9 +210,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
 
 			await controller.handleCallback(dynamicReq, res);
@@ -250,9 +250,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -288,9 +289,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -327,9 +329,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -364,9 +367,10 @@ describe('OAuth1CredentialController', () => {
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.exchangeOAuth1Token.mockResolvedValueOnce({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
 
 			await controller.handleCallback(undefinedOriginReq, res);
 

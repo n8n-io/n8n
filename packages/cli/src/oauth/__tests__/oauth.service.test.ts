@@ -5,6 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import type { AxiosInstance } from 'axios';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
@@ -31,11 +32,11 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
+import { SafeAxiosFactory } from '@/services/ssrf/safe-axios.factory';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 jest.mock('@/workflow-execute-additional-data');
-jest.mock('axios');
 jest.mock('@n8n/client-oauth2');
 jest.mock('pkce-challenge');
 
@@ -53,8 +54,10 @@ describe('OauthService', () => {
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
 	const browserBindingService = mockInstance(OAuthBrowserBindingService);
 	const eventService = mockInstance(EventService);
+	const safeAxiosFactory = mockInstance(SafeAxiosFactory);
 
 	let service: OauthService;
+	let httpClientMock: { get: jest.Mock; post: jest.Mock; request: jest.Mock };
 
 	const timestamp = 1706750625678;
 	jest.useFakeTimers({ advanceTimers: true });
@@ -71,10 +74,9 @@ describe('OauthService', () => {
 			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
 		externalHooks.run.mockResolvedValue(undefined);
 
-		// Setup axios mock
-		const axios = require('axios');
-		axios.get = jest.fn();
-		axios.post = jest.fn();
+		// Setup the SSRF-protected http client mock returned by the factory
+		httpClientMock = { get: jest.fn(), post: jest.fn(), request: jest.fn() };
+		safeAxiosFactory.create.mockReturnValue(httpClientMock as unknown as AxiosInstance);
 
 		cipher.encryptV2.mockImplementation(async (data: string | object) => {
 			const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
@@ -98,6 +100,7 @@ describe('OauthService', () => {
 			oauthJweServiceProxy,
 			browserBindingService,
 			eventService,
+			safeAxiosFactory,
 		);
 	});
 
@@ -1783,7 +1786,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle dynamic client registration with root-level server URL', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
@@ -1845,7 +1848,7 @@ describe('OauthService', () => {
 				}),
 			);
 			// JWE fields are only added behind both feature gates (flag + jweEnabled).
-			const dcrPayload = (axios.post as jest.Mock).mock.calls[0][1];
+			const dcrPayload = axios.post.mock.calls[0][1];
 			expect(dcrPayload).not.toHaveProperty('jwks_uri');
 			expect(dcrPayload).not.toHaveProperty('id_token_encrypted_response_alg');
 			expect(dcrPayload).not.toHaveProperty('id_token_encrypted_response_enc');
@@ -1868,7 +1871,7 @@ describe('OauthService', () => {
 		});
 
 		it('should throw BadRequestError when OAuth2 server metadata is invalid', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://example.domain',
@@ -1897,7 +1900,7 @@ describe('OauthService', () => {
 		});
 
 		it('should throw BadRequestError when client registration response is invalid', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			jest.mocked(ClientOAuth2).mockImplementation(() => ({}) as any);
 
@@ -1940,7 +1943,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle dynamic client registration with client_secret_post authentication', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
@@ -2123,7 +2126,7 @@ describe('OauthService', () => {
 
 	describe('generateAOauth2AuthUri with DCR and RFC 8414 compliance', () => {
 		it('should insert .well-known between host and path per RFC 8414', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
@@ -2180,7 +2183,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle root-level issuer URLs (no path)', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () =>
@@ -2236,7 +2239,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle issuer URLs with trailing slashes', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
@@ -2288,7 +2291,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle multi-segment paths correctly', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://oauth.example.com/authorize?client_id=test_id',
@@ -2340,7 +2343,7 @@ describe('OauthService', () => {
 		});
 
 		it('should fall back to OpenID Connect path insertion when RFC 8414 fails', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
@@ -2407,7 +2410,7 @@ describe('OauthService', () => {
 		});
 
 		it('should fall back to OpenID Connect path appending when first two fail', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
@@ -2479,7 +2482,7 @@ describe('OauthService', () => {
 		});
 
 		it('should fall back to origin-only discovery when path-aware variants fail (Atlassian MCP)', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://mcp.atlassian.com/authorize?client_id=test_id',
@@ -2553,7 +2556,7 @@ describe('OauthService', () => {
 		});
 
 		it('should throw error when all discovery endpoints fail', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://example.domain/issuer1',
@@ -2586,7 +2589,7 @@ describe('OauthService', () => {
 		});
 
 		it('should discover authorization server via protected resource metadata (MCP flow)', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://auth.example.com/authorize?client_id=test_id',
@@ -2660,7 +2663,7 @@ describe('OauthService', () => {
 		});
 
 		it('should fall back to direct authorization server discovery when protected resource fails', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
@@ -2730,7 +2733,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle Smithery MCP server with path-specific protected resource discovery', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://auth.smithery.ai/authorize?client_id=test_id',
@@ -2801,7 +2804,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle Notion MCP server with root protected resource discovery', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://mcp.notion.com/authorize?client_id=test_id',
@@ -2879,7 +2882,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle VEED.io with fallback to authorization server discovery', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://www.veed.io/authorize?client_id=test_id',
@@ -2949,7 +2952,7 @@ describe('OauthService', () => {
 		});
 
 		it('should reject malicious authorization server URL from protected resource (SSRF protection)', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
 			const oauthCredentials = {
 				serverUrl: 'https://malicious-mcp.example.com/mcp',
@@ -2981,7 +2984,7 @@ describe('OauthService', () => {
 		});
 
 		it('should succeed when server advertises only authorization_code without refresh_token', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://login.commonroom.io/authorize?client_id=test_id',
@@ -3037,7 +3040,7 @@ describe('OauthService', () => {
 		});
 
 		it('should not produce double /.well-known/ paths when authorization server URL already contains /.well-known/', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
 				toString: () => 'https://example.domain/authorize?client_id=test_id',
@@ -3090,7 +3093,7 @@ describe('OauthService', () => {
 			});
 
 			// Verify the discovery URL used is the root-level one (no double /.well-known/)
-			const authServerDiscoveryCall = (axios.get as jest.Mock).mock.calls[2]; // after 2 protected resource calls
+			const authServerDiscoveryCall = axios.get.mock.calls[2]; // after 2 protected resource calls
 			expect(authServerDiscoveryCall[0]).not.toContain(
 				'/.well-known/openid-configuration/.well-known/',
 			);
@@ -3125,7 +3128,7 @@ describe('OauthService', () => {
 
 	describe('generateAOauth2AuthUri with DCR and JWE fields', () => {
 		beforeEach(() => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			jest.mocked(axios.get).mockResolvedValue({
 				data: {
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
@@ -3174,8 +3177,8 @@ describe('OauthService', () => {
 				userId: 'user-id',
 			});
 
-			const axios = require('axios');
-			return (axios.post as jest.Mock).mock.calls[0][1];
+			const axios = httpClientMock;
+			return axios.post.mock.calls[0][1];
 		}
 
 		it.each([
@@ -3250,7 +3253,7 @@ describe('OauthService', () => {
 
 	describe('generateAOauth1AuthUri', () => {
 		it('should generate auth URI for OAuth1 credential', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
 			const oauthCredentials: OAuth1CredentialData = {
 				consumerKey: 'consumer_key',
@@ -3305,7 +3308,7 @@ describe('OauthService', () => {
 		});
 
 		it('should generate auth URI with different signature methods', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
 			const oauthCredentials: OAuth1CredentialData = {
 				consumerKey: 'consumer_key',
@@ -3333,7 +3336,7 @@ describe('OauthService', () => {
 		});
 
 		it('should handle request token URL errors', async () => {
-			const axios = require('axios');
+			const axios = httpClientMock;
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
 			const oauthCredentials: OAuth1CredentialData = {
 				consumerKey: 'consumer_key',

@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
-import axios from 'axios';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
@@ -49,18 +48,10 @@ export class OAuth1CredentialController {
 			const [credential, _, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
 
-			// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
-			const oauthToken = await axios.post<string>(
+			const oauthTokenData = await this.oauthService.exchangeOAuth1Token(
 				oauthCredentials.accessTokenUrl,
 				{ oauth_token, oauth_verifier },
-				{ headers: { 'content-type': 'application/x-www-form-urlencoded' } },
 			);
-
-			// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-			const paramParser = new URLSearchParams(oauthToken.data);
-
-			const oauthTokenData = Object.fromEntries(paramParser.entries());
 
 			if (!state.origin || state.origin === 'static-credential') {
 				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);

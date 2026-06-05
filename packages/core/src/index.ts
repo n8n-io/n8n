@@ -14,6 +14,7 @@ export * from './nodes-loader';
 export * from './utils';
 export * from './http-proxy';
 export { WorkflowHasIssuesError } from './errors/workflow-has-issues.error';
+export { applyAxiosSsrfProtection } from './execution-engine/node-execution-context/utils/request-helpers';
 export * from './observability';
 
 export type * from './interfaces';

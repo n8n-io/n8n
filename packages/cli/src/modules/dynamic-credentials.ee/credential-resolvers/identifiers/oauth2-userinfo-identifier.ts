@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import axios from 'axios';
+import type { AxiosInstance } from 'axios';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CacheService } from '@/services/cache/cache.service';
+import { SafeAxiosFactory } from '@/services/ssrf/safe-axios.factory';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
@@ -44,10 +45,15 @@ const CACHE_PREFIX = 'oauth2-userinfo-identifier';
 
 @Service()
 export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
+	private readonly httpClient: AxiosInstance;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
-	) {}
+		safeAxiosFactory: SafeAxiosFactory,
+	) {
+		this.httpClient = safeAxiosFactory.create();
+	}
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
 		const options = this.parseOptions(identifierOptions);
@@ -126,7 +132,7 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			}
 		}
 
-		const response = await axios.get(options.metadataUri, {
+		const response = await this.httpClient.get(options.metadataUri, {
 			validateStatus: () => true,
 			timeout: 10 * Time.seconds.toMilliseconds,
 		});
@@ -166,7 +172,7 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 		options: OAuth2UserInfoOptions,
 		context: ICredentialContext,
 	): Promise<{ subject: string; ttl?: number }> {
-		const response = await axios.get(metadata.userinfo_endpoint, {
+		const response = await this.httpClient.get(metadata.userinfo_endpoint, {
 			headers: { authorization: `Bearer ${context.identity}` },
 			validateStatus: () => true,
 			timeout: 10 * Time.seconds.toMilliseconds,

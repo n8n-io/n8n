@@ -286,6 +286,43 @@ export function buildTargetUrl(url?: string, baseURL?: string): string | undefin
 	}
 }
 
+/**
+ * Applies SSRF protection to an arbitrary axios request config in-place.
+ *
+ * Use this to harden axios instances created outside the node request helpers
+ * (e.g. via `axios.create()` or one-off `axios(config)` calls). It wires:
+ * - a secure DNS lookup into the request agents, so resolved IPs are validated
+ *   at connection time (defeats TOCTOU / DNS-rebinding)
+ * - a `beforeRedirect` guard that re-validates redirect targets
+ *
+ * Pre-request URL validation (`ssrfBridge.validateUrl`) should be performed
+ * separately by the caller, as it is asynchronous.
+ *
+ * Existing agents on the config are respected and not overwritten.
+ */
+export function applyAxiosSsrfProtection(
+	config: AxiosRequestConfig,
+	ssrfBridge: SsrfBridge,
+): void {
+	const targetUrl = buildTargetUrl(config.url, config.baseURL);
+	if (!targetUrl) return;
+
+	const proxyConfig = config.proxy === false ? undefined : config.proxy;
+	const agentOptions: AgentOptions = {};
+	const secureLookup = ssrfBridge.createSecureLookup();
+
+	setAxiosAgents(config, agentOptions, proxyConfig, secureLookup);
+
+	config.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		config,
+		proxyConfig,
+		true,
+		undefined,
+		ssrfBridge,
+	);
+}
+
 /** Sets `httpAgent` and `httpsAgent` on an axios config, respecting proxy and SSRF settings. */
 export function setAxiosAgents(
 	config: AxiosRequestConfig,

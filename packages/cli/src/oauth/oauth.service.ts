@@ -21,6 +21,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
+import { SafeAxiosFactory } from '@/services/ssrf/safe-axios.factory';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
@@ -31,7 +32,7 @@ import {
 	type OAuth2CredentialData,
 	type OAuth2GrantType,
 } from '@n8n/client-oauth2';
-import axios from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
@@ -40,7 +41,6 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
-import type { AxiosRequestConfig } from 'axios';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -83,7 +83,13 @@ export class OauthService {
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 		private readonly browserBindingService: OAuthBrowserBindingService,
 		private readonly eventService: EventService,
-	) {}
+		safeAxiosFactory: SafeAxiosFactory,
+	) {
+		this.httpClient = safeAxiosFactory.create();
+	}
+
+	/** SSRF-protected axios instance for outbound OAuth provider requests. */
+	private readonly httpClient: AxiosInstance;
 
 	private validateOAuthUrlOrThrow(url: string): void {
 		try {
@@ -634,7 +640,7 @@ export class OauthService {
 					// Validate each URL before making request (defense-in-depth)
 					this.validateOAuthUrlOrThrow(url);
 
-					const response = await axios.get<unknown>(url, {
+					const response = await this.httpClient.get<unknown>(url, {
 						validateStatus: (status) => status === 200,
 					});
 					data = response.data;
@@ -702,7 +708,7 @@ export class OauthService {
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
 
-			const { data: registerResult } = await axios.post<unknown>(
+			const { data: registerResult } = await this.httpClient.post<unknown>(
 				registration_endpoint,
 				registerPayload,
 			);
@@ -820,7 +826,7 @@ export class OauthService {
 			},
 		};
 
-		const { data: response } = await axios.request(axiosConfig);
+		const { data: response } = await this.httpClient.request(axiosConfig);
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
 		if (typeof response !== 'string') {
@@ -848,6 +854,24 @@ export class OauthService {
 		});
 
 		return returnUri;
+	}
+
+	/**
+	 * Exchanges an OAuth1 verifier for an access token at the credential's
+	 * access token endpoint. Returns the parsed token data.
+	 */
+	async exchangeOAuth1Token(
+		accessTokenUrl: string,
+		params: { oauth_token: string; oauth_verifier: string },
+	): Promise<Record<string, string>> {
+		// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
+		const { data } = await this.httpClient.post<string>(accessTokenUrl, params, {
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+		});
+
+		// Response comes as x-www-form-urlencoded string so convert it to JSON
+		const paramParser = new URLSearchParams(data);
+		return Object.fromEntries(paramParser.entries());
 	}
 
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
@@ -909,7 +933,7 @@ export class OauthService {
 				// Validate each URL before making request (defense-in-depth)
 				this.validateOAuthUrlOrThrow(discoveryUrl);
 
-				const { data } = await axios.get(discoveryUrl, {
+				const { data } = await this.httpClient.get(discoveryUrl, {
 					validateStatus: (status) => status === 200,
 				});
 

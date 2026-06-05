@@ -692,6 +692,7 @@ export class SamlService {
 			);
 			const httpAgent = createHttpProxyAgent(null, url);
 
+			// eslint-disable-next-line n8n-local-rules/no-unprotected-axios -- SAML IdP metadata URLs are admin-configured and may legitimately point to internal hosts; intentionally not SSRF-protected
 			const response = await axios.get(url, {
 				httpsAgent,
 				httpAgent,

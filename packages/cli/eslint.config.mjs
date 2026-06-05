@@ -134,4 +134,18 @@ export default defineConfig(
 			'n8n-local-rules/no-constructor-in-backend-module': 'error',
 		},
 	},
+	{
+		// Outbound HTTP must go through SafeAxiosFactory so it is SSRF-protected.
+		// The factory itself is the one place allowed to touch the raw axios export.
+		// Currently `warn` while existing call sites are migrated; tighten to `error`
+		// once they are all either moved to the factory or explicitly marked unsafe.
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/**/__tests__/**/*.ts', './test/**/*.ts'],
+		rules: {
+			'n8n-local-rules/no-unprotected-axios': [
+				'warn',
+				{ allow: ['services/ssrf/safe-axios.factory'] },
+			],
+		},
+	},
 );

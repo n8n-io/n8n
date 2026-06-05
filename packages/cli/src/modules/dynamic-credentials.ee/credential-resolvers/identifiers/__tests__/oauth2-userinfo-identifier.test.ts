@@ -1,9 +1,10 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
-import axios from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import { mock } from 'jest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
+import type { SafeAxiosFactory } from '@/services/ssrf/safe-axios.factory';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2UserInfoIdentifier } from '../oauth2-userinfo-identifier';
@@ -14,6 +15,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('OAuth2UserInfoIdentifier', () => {
 	const logger = mockLogger();
 	const cache = mock<CacheService>();
+	const safeAxiosFactory = mock<SafeAxiosFactory>();
 	let identifier: OAuth2UserInfoIdentifier;
 
 	const validOptions = {
@@ -40,7 +42,8 @@ describe('OAuth2UserInfoIdentifier', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		identifier = new OAuth2UserInfoIdentifier(logger, cache);
+		safeAxiosFactory.create.mockReturnValue(mockedAxios as unknown as AxiosInstance);
+		identifier = new OAuth2UserInfoIdentifier(logger, cache, safeAxiosFactory);
 		cache.get.mockResolvedValue(undefined);
 		cache.set.mockResolvedValue();
 	});

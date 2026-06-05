@@ -271,6 +271,7 @@ export class VaultProvider extends SecretsProvider {
 
 		const baseURL = new URL(this.settings.url);
 
+		// eslint-disable-next-line n8n-local-rules/no-unprotected-axios -- HashiCorp Vault is admin-configured infrastructure that commonly runs on a private/internal address; intentionally not SSRF-protected
 		this.#http = axios.create({ baseURL: baseURL.toString() });
 		if (this.settings.namespace) {
 			this.#http.interceptors.request.use((config) => {
