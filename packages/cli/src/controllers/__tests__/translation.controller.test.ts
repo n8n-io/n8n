@@ -2,12 +2,38 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { TranslationRequest } from '@/controllers/translation.controller';
-import {
-	TranslationController,
-	CREDENTIAL_TRANSLATIONS_DIR,
-} from '@/controllers/translation.controller';
+import { TranslationController } from '@/controllers/translation.controller';
 import type { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+// The controller loads the translation file via `require(<computed path>)`.
+// Vitest cannot mock a path that doesn't resolve to a real module, so write a
+// real fixture and point `safeJoinPath` at it. The fixture is created in a
+// hoisted block because the mock factory below is hoisted above module init.
+const { fixturePath } = vi.hoisted(() => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { mkdtempSync, writeFileSync } = require('fs');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { tmpdir } = require('os');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { join } = require('path');
+	const dir = mkdtempSync(join(tmpdir(), 'translations-'));
+	const p = join(dir, 'credential-type.json');
+	writeFileSync(p, JSON.stringify({ translation: 'string' }));
+	return { fixturePath: p as string };
+});
+
+vi.mock('@n8n/backend-common', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/backend-common')>();
+	return {
+		...actual,
+		safeJoinPath: vi.fn((...args: string[]) =>
+			args.some((a) => a.endsWith('credential-type.json'))
+				? fixturePath
+				: actual.safeJoinPath(...args),
+		),
+	};
+});
 
 describe('TranslationController', () => {
 	const credentialTypes = mock<CredentialTypes>();
@@ -33,7 +59,6 @@ describe('TranslationController', () => {
 			const req = mock<TranslationRequest.Credential>({ query: { credentialType } });
 			credentialTypes.recognizes.calledWith(credentialType).mockReturnValue(true);
 			const response = { translation: 'string' };
-			vi.mock(`${CREDENTIAL_TRANSLATIONS_DIR}/de/credential-type.json`, () => response);
 
 			expect(await controller.getCredentialTranslation(req)).toEqual(response);
 		});
