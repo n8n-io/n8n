@@ -2978,6 +2978,11 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Preserve error on waiting on a sub-workflow to resume.
+	 */
+	resumeError?: ExecutionError;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */

@@ -1,8 +1,20 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	ExecutionRepository,
+	IExecutionResponse,
+	Project,
+	Variables,
+} from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IRun,
+	ITaskData,
+	IWorkflowBase,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
@@ -14,6 +26,7 @@ import {
 	removeDefaultValues,
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
+	updateParentExecutionWithChildResults,
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
@@ -664,5 +677,70 @@ describe('getLastExecutedNodeRuns', () => {
 		const snapshot = [...runs];
 		getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs }));
 		expect(runs).toEqual(snapshot);
+	});
+});
+
+describe('updateParentExecutionWithChildResults', () => {
+	const PARENT_ID = 'parent-execution-id';
+
+	const waitingParent = (): IExecutionResponse =>
+		({
+			status: 'waiting',
+			data: {
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: { name: 'Execute Sub-workflow' },
+							data: { main: [[{ json: { in: 1 } }]] },
+							source: null,
+						},
+					],
+				},
+			},
+		}) as unknown as IExecutionResponse;
+
+	const childRun = (
+		status: string,
+		lastNode: string,
+		nodeRun: Partial<ITaskData>,
+		error?: ExecutionError,
+	): IRun =>
+		({
+			mode: 'integrated',
+			status,
+			data: {
+				resultData: { lastNodeExecuted: lastNode, error, runData: { [lastNode]: [nodeRun] } },
+			},
+		}) as unknown as IRun;
+
+	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
+	async function resumeWith(child: IRun) {
+		const executionRepository = mock<ExecutionRepository>();
+		executionRepository.findSingleExecution.mockResolvedValue(waitingParent());
+
+		await updateParentExecutionWithChildResults(executionRepository, PARENT_ID, child);
+
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+		const [, payload] = executionRepository.updateExistingExecution.mock.calls[0];
+		return (payload as IExecutionResponse).data.executionData!.nodeExecutionStack[0] as unknown as {
+			data?: unknown;
+			metadata?: { resumeError?: ExecutionError };
+		};
+	}
+
+	it('carries the child error onto the parent node so resume can fail it', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error));
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+	});
+
+	it('copies the last node output for a successful child and sets no resume error', async () => {
+		const entry = await resumeWith(
+			childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
+		);
+
+		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+		expect(entry.metadata?.resumeError).toBeUndefined();
 	});
 });

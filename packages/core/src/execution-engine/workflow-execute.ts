@@ -1284,6 +1284,20 @@ export class WorkflowExecute {
 		const { node } = executionData;
 		let inputData = executionData.data;
 
+		// @TODO check this again before ready
+		if (executionData.metadata?.resumeError) {
+			const { resumeError } = executionData.metadata;
+			// see `processRunExecutionData` line 1980
+			const continuesOnError =
+				node.continueOnFail === true ||
+				['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '');
+			if (!continuesOnError) {
+				throw resumeError;
+			}
+
+			return { data: [[{ json: { error: resumeError.message }, pairedItem: { item: 0 } }]] };
+		}
+
 		if (node.disabled === true) {
 			return this.handleDisabledNode(inputData);
 		}
@@ -1406,7 +1420,12 @@ export class WorkflowExecute {
 			);
 
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
-			executionStackEntry.node.disabled = true;
+			// If the node has `resumeError`, keep enabled to ensure it goes through
+			// normal error handling instead of passing its input through
+			// @TODO double check this
+			if (!executionStackEntry.metadata?.resumeError) {
+				executionStackEntry.node.disabled = true;
+			}
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
 
