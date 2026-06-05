@@ -186,12 +186,21 @@ export class ActiveWorkflows {
 	 * Makes a workflow inactive in memory.
 	 */
 	async remove(workflowId: string) {
+		// Ensure crons are deregistered to prevent executions on inactive workflows
+		const hadRegisteredCrons = this.scheduledTaskManager.cronsByWorkflow.has(workflowId);
+		this.scheduledTaskManager.deregisterCrons(workflowId);
+
 		if (!this.isActive(workflowId)) {
-			this.logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
+			if (hadRegisteredCrons) {
+				// Crons were registered for an inactive workflow, which shouldn't happen
+				this.logger.warn(
+					`Deregistered orphaned crons for workflow not tracked as active: "${workflowId}"`,
+					{ workflowId },
+				);
+			}
+
 			return false;
 		}
-
-		this.scheduledTaskManager.deregisterCrons(workflowId);
 
 		const w = this.activeWorkflows[workflowId];
 		for (const r of w.triggerResponses ?? []) {
@@ -204,16 +213,23 @@ export class ActiveWorkflows {
 	}
 
 	async removeAllNonWebhookTriggerWorkflows() {
-		const activeWorkflowIds = Object.keys(this.activeWorkflows);
+		// Sweep both workflows tracked as active AND any that still have registered
+		// crons but are no longer tracked (stranded orphans). On leader stepdown the
+		// process keeps running as a follower, so an orphan left behind here would
+		// survive the demotion and resurface/stack on the next leader takeover.
+		const workflowIds = new Set([
+			...Object.keys(this.activeWorkflows),
+			...this.scheduledTaskManager.cronsByWorkflow.keys(),
+		]);
 
-		if (activeWorkflowIds.length === 0) return;
+		if (workflowIds.size === 0) return;
 
-		for (const workflowId of activeWorkflowIds) {
+		for (const workflowId of workflowIds) {
 			await this.remove(workflowId);
 		}
 
-		this.logger.debug('Deactivated all non-webhook trigger workflows', {
-			workflowIds: activeWorkflowIds,
+		this.logger.debug('Deactivated non-webhook triggers and cleared any stranded crons', {
+			workflowIds: [...workflowIds],
 		});
 	}
 

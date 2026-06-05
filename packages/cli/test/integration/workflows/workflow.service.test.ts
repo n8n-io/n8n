@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -44,6 +45,7 @@ let workflowService: WorkflowService;
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowHistoryService: WorkflowHistoryService;
+const loggerMock = mock<Logger>();
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
@@ -60,7 +62,7 @@ beforeAll(async () => {
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
-		mock(),
+		loggerMock,
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
@@ -626,6 +628,12 @@ describe('activateWorkflow trigger cleanup', () => {
 		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow();
 
 		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+
+		// Check whether the rollback was logged
+		expect(loggerMock.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Rolled back partial activation'),
+			{ workflowId: workflow.id },
+		);
 
 		// Check rollback happened
 		const reloaded = await workflowRepository.findById(workflow.id);

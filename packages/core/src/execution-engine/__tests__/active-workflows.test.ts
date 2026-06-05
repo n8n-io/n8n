@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type {
 	INode,
 	ITriggerResponse,
@@ -13,12 +14,13 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ErrorReporter } from '@/errors/error-reporter';
+import type { InstanceSettings } from '@/instance-settings';
 import { Tracing } from '@/observability';
 
 import { ActiveWorkflows } from '../active-workflows';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
-import type { ScheduledTaskManager } from '../scheduled-task-manager';
+import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 
 describe('ActiveWorkflows', () => {
@@ -36,6 +38,7 @@ describe('ActiveWorkflows', () => {
 	const getPollFunctions = vi.fn<(...args: unknown[]) => PollContext>();
 
 	LoggerProxy.init(mock());
+	const logger = mock<Logger>();
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const errorReporter = mock<ErrorReporter>();
@@ -53,12 +56,16 @@ describe('ActiveWorkflows', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Give the mock a real Map so `cronsByWorkflow.has`/`.keys()` work; registerCron
+		// is mocked (no-op), so it stays empty unless a test populates it explicitly.
+		// @ts-expect-error -- override the readonly mock property for tests
+		scheduledTaskManager.cronsByWorkflow = new Map();
 		acquireIsolate = vi.fn().mockResolvedValue(undefined);
 		releaseIsolate = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
 		workflow.expression = { acquireIsolate, releaseIsolate };
 		activeWorkflows = new ActiveWorkflows(
-			mock(),
+			logger,
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
@@ -388,7 +395,17 @@ describe('ActiveWorkflows', () => {
 			const result = await activeWorkflows.remove('non-existent');
 
 			expect(result).toBe(false);
-			expect(scheduledTaskManager.deregisterCrons).not.toHaveBeenCalled();
+			// Crons are deregistered unconditionally, even for a workflow
+			// not tracked as active; such a cron can always be stopped.
+			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith('non-existent');
+		});
+
+		it('should not warn when removing a workflow not active in memory', async () => {
+			// `remove` is routinely called for workflows not tracked as active (e.g.
+			// webhook-only workflows), so that case must not emit a warning.
+			await activeWorkflows.remove('not-active-in-memory');
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should handle TriggerCloseError when closing trigger', async () => {
@@ -452,6 +469,80 @@ describe('ActiveWorkflows', () => {
 
 			expect(activeWorkflows.allActiveWorkflows()).toEqual([]);
 			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+		});
+	});
+
+	describe('ScheduledTaskManager cron cleanup', () => {
+		const hourly = '0 * * * *' as CronExpression;
+		let realLogger: ReturnType<typeof mock<Logger>>;
+		let realScheduledTaskManager: ScheduledTaskManager;
+		let activeWorkflowsReal: ActiveWorkflows;
+
+		const registerStrandedCron = (id: string, nodeId = 'schedule-node') =>
+			realScheduledTaskManager.registerCron(
+				{ workflowId: id, nodeId, timezone: 'GMT', expression: hourly },
+				vi.fn(),
+			);
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			realLogger = mock<Logger>();
+			realScheduledTaskManager = new ScheduledTaskManager(
+				mock<InstanceSettings>({ isLeader: true }),
+				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
+				mock(),
+				mock(),
+			);
+			activeWorkflowsReal = new ActiveWorkflows(
+				realLogger,
+				realScheduledTaskManager,
+				triggersAndPollers,
+				errorReporter,
+				tracing,
+			);
+		});
+
+		afterEach(() => {
+			realScheduledTaskManager.deregisterAllCrons();
+			vi.useRealTimers();
+		});
+
+		it('should stop a stranded cron on remove even when the workflow is not active in memory', async () => {
+			// A cron registered in the ScheduledTaskManager while the workflow is not
+			// tracked as active in memory must still be stoppable via remove().
+			registerStrandedCron(workflowId);
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(true);
+			expect(activeWorkflowsReal.isActive(workflowId)).toBe(false);
+
+			const result = await activeWorkflowsReal.remove(workflowId);
+
+			expect(result).toBe(false);
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+		});
+
+		it('should warn when it deregisters a cron for a workflow not active in memory', async () => {
+			registerStrandedCron(workflowId);
+
+			await activeWorkflowsReal.remove(workflowId);
+
+			// Stopping a cron for a not-active workflow is unexpected, so it's surfaced.
+			expect(realLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Deregistered orphaned crons'),
+				{ workflowId },
+			);
+		});
+
+		it('should deregister crons not tracked as active on removeAll', async () => {
+			// removeAll runs on shutdown and on leader stepdown (the process keeps
+			// running as a follower), so it must also stop crons whose workflow is no
+			// longer tracked as active.
+			registerStrandedCron('orphan-workflow');
+			expect(activeWorkflowsReal.isActive('orphan-workflow')).toBe(false);
+			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(true);
+
+			await activeWorkflowsReal.removeAllNonWebhookTriggerWorkflows();
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(false);
 		});
 	});
 });

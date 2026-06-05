@@ -595,6 +595,11 @@ export class WorkflowService {
 			// resolvable by `clearWebhooks`.
 			try {
 				await this.activeWorkflowManager.remove(workflowId);
+
+				this.logger.warn(
+					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+					{ workflowId },
+				);
 			} catch (cleanupError) {
 				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
 					workflowId,
