@@ -6,7 +6,7 @@
  *
  * Lives in its own module to keep `instance-ai.adapter.service.ts` focused.
  */
-import type { ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	wrapUntrustedData,
 	type EmptyExpressionResolution,
@@ -24,6 +24,8 @@ import {
 	createEmptyRunExecutionData,
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
+
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import type { NodeTypes } from '@/node-types';
 
@@ -226,13 +228,12 @@ function reconstructExecuteData(
  * stemming from variables that only exist during a live run (e.g. `$response`).
  */
 export async function extractResolvedNodeParameters(
-	executionRepository: ExecutionRepository,
 	nodeTypes: NodeTypes,
 	executionId: string,
 	nodeName: string,
 	options?: { itemIndex?: number; runIndex?: number },
 ): Promise<ResolvedNodeParametersResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
