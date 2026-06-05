@@ -2,11 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
+	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
-	WorkflowPublishedVersionRepository,
+	WorkflowPublicationOutboxStatus,
+	WorkflowPublishedVersion,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { WorkflowPublicationOutbox } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
@@ -29,7 +30,6 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly globalConfig: GlobalConfig,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly activationErrorsService: ActivationErrorsService,
 	) {
@@ -118,61 +118,66 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		if (workflow.activeVersionId === publishedVersionId) {
-			await this.workflowPublishedVersionRepository.setPublishedVersion(
-				workflowId,
-				publishedVersionId,
-			);
-			await this.outboxRepository.markCompleted(record.id);
+			await this.finalizePublication(record);
 			return;
 		}
 
-		// Step 1: Tear down old triggers. Must happen BEFORE updating
-		// activeVersionId because clearWebhooks() reads activeVersion from DB.
 		try {
-			await this.activeWorkflowManager.remove(workflowId);
-		} catch (error) {
-			await this.outboxRepository.markFailed(
-				record.id,
-				`Failed to remove old triggers: ${ensureError(error).message}`,
-			);
-			return;
-		}
+			await this.tearDownOldTriggers(record);
 
-		// Step 2: Swing activeVersionId to the new version.
-		await this.workflowRepository.update(workflowId, {
-			activeVersionId: publishedVersionId,
-		});
-
-		// Step 3: Register all triggers from the new version.
-		try {
-			await this.activeWorkflowManager.add(workflowId, 'update', undefined, {
-				shouldPublish: false,
-			});
-		} catch (error) {
 			await this.workflowRepository.update(workflowId, {
-				active: false,
-				activeVersionId: null,
+				activeVersionId: publishedVersionId,
 			});
-			await this.activationErrorsService.register(workflowId, ensureError(error).message);
-			await this.outboxRepository.markFailed(
-				record.id,
-				`Failed to register new triggers: ${ensureError(error).message}`,
-			);
+
+			await this.registerNewTriggers(record);
+		} catch (error) {
+			await this.outboxRepository.markFailed(record.id, ensureError(error).message);
 			return;
 		}
 
-		// Step 4: Update published version mapping and finalize.
-		await this.workflowPublishedVersionRepository.setPublishedVersion(
-			workflowId,
-			publishedVersionId,
-		);
-		await this.activationErrorsService.deregister(workflowId);
-		await this.outboxRepository.markCompleted(record.id);
+		await this.finalizePublication(record);
 
 		this.logger.debug('Successfully processed outbox record', {
 			workflowId,
 			publishedVersionId,
 			outboxId: record.id,
 		});
+	}
+
+	// Must happen BEFORE updating activeVersionId because
+	// clearWebhooks() reads activeVersion from DB.
+	private async tearDownOldTriggers(record: WorkflowPublicationOutbox) {
+		await this.activeWorkflowManager.remove(record.workflowId);
+	}
+
+	private async registerNewTriggers(record: WorkflowPublicationOutbox) {
+		try {
+			await this.activeWorkflowManager.add(record.workflowId, 'update', undefined, {
+				shouldPublish: false,
+			});
+		} catch (error) {
+			await this.workflowRepository.update(record.workflowId, {
+				active: false,
+				activeVersionId: null,
+			});
+			await this.activationErrorsService.register(record.workflowId, ensureError(error).message);
+			throw error;
+		}
+	}
+
+	private async finalizePublication(record: WorkflowPublicationOutbox) {
+		await this.outboxRepository.manager.transaction(async (trx) => {
+			await trx.upsert(
+				WorkflowPublishedVersion,
+				{ workflowId: record.workflowId, publishedVersionId: record.publishedVersionId },
+				['workflowId'],
+			);
+			await trx.update(
+				WorkflowPublicationOutbox,
+				{ id: record.id, status: WorkflowPublicationOutboxStatus.InProgress },
+				{ status: WorkflowPublicationOutboxStatus.Completed, errorMessage: null },
+			);
+		});
+		await this.activationErrorsService.deregister(record.workflowId);
 	}
 }

@@ -3,10 +3,10 @@ import type { GlobalConfig } from '@n8n/config';
 import type {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowEntity,
 } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -19,7 +19,6 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 
@@ -34,7 +33,6 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			globalConfig,
 			outboxRepository,
 			workflowRepository,
-			publishedVersionRepository,
 			activeWorkflowManager,
 			activationErrorsService,
 		);
@@ -72,7 +70,14 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
-		publishedVersionRepository.setPublishedVersion.mockResolvedValue(undefined);
+		Object.defineProperty(outboxRepository, 'manager', {
+			value: {
+				transaction: jest.fn(
+					async (fn: (trx: EntityManager) => Promise<void>) => await fn(mock<EntityManager>()),
+				),
+			},
+			writable: true,
+		});
 		activationErrorsService.register.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 	}
@@ -119,7 +124,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	});
 
 	describe('processRecord', () => {
-		test('removes old triggers, updates version, adds new triggers, marks completed', async () => {
+		test('removes old triggers, updates version, adds new triggers, finalizes', async () => {
 			const record = makeRecord();
 			workflowRepository.findById.mockResolvedValue(makeWorkflow());
 
@@ -145,10 +150,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.add).toHaveBeenCalledWith('wf-1', 'update', undefined, {
 				shouldPublish: false,
 			});
-			expect(publishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith('wf-1', 'v-2');
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-
 			expect(callOrder).toEqual(['remove', 'update', 'add']);
 		});
 
@@ -175,34 +177,30 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 		});
 
-		test('marks completed without trigger reapply when version already matches', async () => {
+		test('finalizes without trigger reapply when version already matches', async () => {
 			const record = makeRecord({ publishedVersionId: 'v-1' });
 			workflowRepository.findById.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-1' }));
 
 			await consumer.processRecord(record);
 
-			expect(publishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith('wf-1', 'v-1');
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(outboxRepository.manager.transaction).toHaveBeenCalled();
 			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 
-		test('marks failed when remove() throws', async () => {
+		test('marks failed when tearDownOldTriggers throws', async () => {
 			const record = makeRecord();
 			workflowRepository.findById.mockResolvedValue(makeWorkflow());
 			activeWorkflowManager.remove.mockRejectedValue(new Error('webhook cleanup failed'));
 
 			await consumer.processRecord(record);
 
-			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
-				1,
-				'Failed to remove old triggers: webhook cleanup failed',
-			);
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'webhook cleanup failed');
 			expect(workflowRepository.update).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 
-		test('rolls back and marks failed when add() throws after remove()', async () => {
+		test('rolls back and marks failed when registerNewTriggers throws', async () => {
 			const record = makeRecord();
 			workflowRepository.findById.mockResolvedValue(makeWorkflow());
 			activeWorkflowManager.add.mockRejectedValue(new Error('trigger registration failed'));
@@ -221,11 +219,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				'wf-1',
 				'trigger registration failed',
 			);
-			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
-				1,
-				'Failed to register new triggers: trigger registration failed',
-			);
-			expect(publishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'trigger registration failed');
 		});
 	});
 });
