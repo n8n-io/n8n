@@ -14,6 +14,7 @@ export interface UseCanvasNodeGroupDragDeps {
 	getNodeById: (id: string) => INodeUi | undefined;
 	getGroupById: (groupId: string) => { nodeIds: string[] } | undefined;
 	getGroupForNode: (nodeId: string) => { id: string; nodeIds: string[] } | undefined;
+	isNodeInGroup: (nodeId: string) => boolean;
 	getNodeDimensions?: GetNodeDimensions;
 }
 
@@ -111,10 +112,18 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	) {
 		if (draggedNodes.length === 0) return;
 
-		// O(1) per-node lookup so a drag tick on an ungrouped node does no work
+		let groupedDraggedNodes: typeof draggedNodes | undefined;
+		for (const node of draggedNodes) {
+			if (!deps.isNodeInGroup(node.id)) continue;
+			groupedDraggedNodes ??= [];
+			groupedDraggedNodes.push(node);
+		}
+		if (!groupedDraggedNodes) return;
+
+		// Only grouped dragged nodes need bounds recomputation.
 		const groupsToSync = new Map<string, { id: string; nodeIds: string[] }>();
 		const positionOverrides = new Map<string, { x: number; y: number }>();
-		for (const n of draggedNodes) {
+		for (const n of groupedDraggedNodes) {
 			positionOverrides.set(n.id, n.position);
 			const group = deps.getGroupForNode(n.id);
 			if (group && !groupsToSync.has(group.id)) {

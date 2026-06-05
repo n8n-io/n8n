@@ -60,6 +60,7 @@ function makeSelectionEvent(...nodes: GraphNode[]): NodeDragEvent {
 
 describe('useCanvasNodeGroupDrag', () => {
 	function setup(opts?: {
+		groups?: Array<{ id: string; nodeIds: string[] }>;
 		getNodeDimensions?: (id: string) => { width: number; height: number } | undefined;
 	}) {
 		updateNodeMock.mockClear();
@@ -70,25 +71,41 @@ describe('useCanvasNodeGroupDrag', () => {
 			['c', makeStoredNode('c', 500, 500)],
 			['d', makeStoredNode('d', 700, 500)],
 		]);
-		const groups = [
+		const groups = opts?.groups ?? [
 			{ id: 'g1', nodeIds: ['a', 'b'] },
 			{ id: 'g2', nodeIds: ['c', 'd'] },
 		];
+		const getGroupForNode = vi.fn((id: string) => groups.find((g) => g.nodeIds.includes(id)));
+		const isNodeInGroup = vi.fn((id: string) => groups.some((g) => g.nodeIds.includes(id)));
 		const drag = useCanvasNodeGroupDrag({
 			getNodeById: (id) => store.get(id),
 			getGroupById: (id) => groups.find((g) => g.id === id),
-			getGroupForNode: (id) => groups.find((g) => g.nodeIds.includes(id)),
+			getGroupForNode,
+			isNodeInGroup,
 			getNodeDimensions: opts?.getNodeDimensions,
 		});
-		return { drag };
+		return { drag, getGroupForNode, isNodeInGroup };
 	}
 
 	it('ignores drag events on nodes that are not in any group', () => {
-		const { drag } = setup();
+		const { drag, getGroupForNode, isNodeInGroup } = setup();
 		const unrelated = makeRegularGraphNode('unrelated');
 		drag.onNodeDragStart(makeEvent(unrelated));
 		drag.onNodeDrag(makeEvent(unrelated));
 		drag.processNodeDragStop(makeEvent(unrelated));
+		expect(updateNodeMock).not.toHaveBeenCalled();
+		expect(isNodeInGroup).toHaveBeenCalledWith('unrelated');
+		expect(getGroupForNode).not.toHaveBeenCalled();
+	});
+
+	it('skips group lookup during drag ticks when the workflow has no groups', () => {
+		const { drag, getGroupForNode, isNodeInGroup } = setup({ groups: [] });
+		const node = makeRegularGraphNode('a', 10, 20);
+
+		drag.onNodeDrag(makeEvent(node));
+
+		expect(isNodeInGroup).toHaveBeenCalledWith('a');
+		expect(getGroupForNode).not.toHaveBeenCalled();
 		expect(updateNodeMock).not.toHaveBeenCalled();
 	});
 
