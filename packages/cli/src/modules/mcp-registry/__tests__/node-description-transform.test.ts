@@ -1,6 +1,7 @@
 import { deepCopy, type INodeTypeDescription } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialTypeName,
 	serverToNodeDescription,
 	serverToCredentialDescription,
 } from '../node-description-transform';
@@ -273,6 +274,9 @@ describe('serverToNodeDescription', () => {
 
 		expect(description).toMatchInlineSnapshot(`
 {
+  "builderHint": {
+    "searchHint": "Agent-optimised Notion integration. When wiring an ai_tool to an AI Agent for Notion, use THIS node, not the native action node — this variant exposes Notion's tools in the shape AI Agents expect and ships pre-configured connection details.",
+  },
   "codex": {
     "alias": [
       "MCP",
@@ -599,5 +603,17 @@ describe('serverToCredentialDescription', () => {
 
 			expect(description?.extends).toEqual(['mcpOAuth2Api']);
 		});
+	});
+});
+
+describe('getMcpRegistryCredentialTypeName', () => {
+	it.each([
+		{ slug: 'notion', expected: 'notionMcpOAuth2Api' },
+		{ slug: 'linear', expected: 'linearMcpOAuth2Api' },
+		{ slug: 'multi-word-service', expected: 'multiWordServiceMcpOAuth2Api' },
+	])('maps slug "$slug" to credential type "$expected"', ({ slug, expected }) => {
+		expect(
+			getMcpRegistryCredentialTypeName({ ...notionMockServer, slug } as McpRegistryServer),
+		).toBe(expected);
 	});
 });

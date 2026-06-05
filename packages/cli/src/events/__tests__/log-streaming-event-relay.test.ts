@@ -2656,6 +2656,24 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('does not emit an audit event for data_redaction_enforcement_floor (telemetry-only; audit is handled by redaction-enforcement-updated)', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user404',
+					email: 'admin7@example.com',
+					firstName: 'Seventh',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				settingName: 'data_redaction_enforcement_floor',
+				value: 'all',
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('redaction enforcement events', () => {
@@ -2668,8 +2686,8 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Admin',
 					role: { slug: 'global:owner' },
 				},
-				before: { enforced: false, manual: false, production: false },
-				after: { enforced: true, manual: false, production: true },
+				before: 'off',
+				after: 'production',
 			};
 
 			eventService.emit('redaction-enforcement-updated', event);
@@ -2682,8 +2700,8 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Seventh',
 					_lastName: 'Admin',
 					globalRole: 'global:owner',
-					before: { enforced: false, manual: false, production: false },
-					after: { enforced: true, manual: false, production: true },
+					before: 'off',
+					after: 'production',
 				},
 			});
 		});
@@ -2697,8 +2715,8 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Admin',
 					role: { slug: 'global:owner' },
 				},
-				before: { enforced: true, manual: true, production: true },
-				after: { enforced: true, manual: false, production: true },
+				before: 'all',
+				after: 'production',
 			};
 
 			eventService.emit('redaction-enforcement-updated', event);
@@ -2711,13 +2729,13 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Seventh',
 					_lastName: 'Admin',
 					globalRole: 'global:owner',
-					before: { enforced: true, manual: true, production: true },
-					after: { enforced: true, manual: false, production: true },
+					before: 'all',
+					after: 'production',
 				},
 			});
 		});
 
-		it('should log `redaction-enforcement.updated` for upgrade to `all` (full-tuple passthrough)', () => {
+		it('should log `redaction-enforcement.updated` for upgrade to `all`', () => {
 			const event: RelayEventMap['redaction-enforcement-updated'] = {
 				user: {
 					id: 'user404',
@@ -2726,8 +2744,8 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Admin',
 					role: { slug: 'global:owner' },
 				},
-				before: { enforced: true, manual: false, production: true },
-				after: { enforced: true, manual: true, production: true },
+				before: 'production',
+				after: 'all',
 			};
 
 			eventService.emit('redaction-enforcement-updated', event);
@@ -2740,8 +2758,8 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Seventh',
 					_lastName: 'Admin',
 					globalRole: 'global:owner',
-					before: { enforced: true, manual: false, production: true },
-					after: { enforced: true, manual: true, production: true },
+					before: 'production',
+					after: 'all',
 				},
 			});
 		});

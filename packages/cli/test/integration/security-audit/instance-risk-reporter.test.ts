@@ -4,8 +4,10 @@ import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 
+import * as constants from '@/constants';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { toReportTitle } from '@/security-audit/utils';
@@ -19,20 +21,34 @@ import {
 } from './utils';
 
 let securityAuditService: SecurityAuditService;
+let originalN8nVersion: string;
 
 beforeAll(async () => {
 	await testDb.init();
 
 	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository), mock());
 
+	originalN8nVersion = constants.N8N_VERSION;
+});
+
+// Reset nock + the mutated N8N_VERSION constant between tests so each test
+// starts from the up-to-date baseline. `simulateOutdatedInstanceOnce` mutates
+// `constants.N8N_VERSION` and registers a `.once()` interceptor; without this
+// reset, later tests inherit the stale version + a consumed interceptor and
+// fail on requests to api.n8n.io for the leftover version. Previously masked
+// by the `workerIdleMemoryLimit: '1MB'` per-file worker recycling.
+beforeEach(async () => {
+	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
+	nock.cleanAll();
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = originalN8nVersion;
 	simulateUpToDateInstance();
 });
 
-beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
-});
-
 afterAll(async () => {
+	nock.cleanAll();
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = originalN8nVersion;
 	await testDb.terminate();
 });
 

@@ -100,11 +100,13 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		resetForAgentSwitch: vi.fn(),
 		captureToolsBaseline: vi.fn(),
 		captureSkillsBaseline: vi.fn(),
+		captureTasksBaseline: vi.fn(),
 		fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 		recordConfigEdit: vi.fn(),
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
 		trackSkillsAdded: vi.fn(),
+		trackTasksChanged: vi.fn(),
 		trackOpenedToolFromList: vi.fn(),
 		trackOpenedSkillFromList: vi.fn(),
 		trackOpenedAddSkillModal: vi.fn(),
@@ -330,7 +332,7 @@ const commonStubs = {
 		],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
-	// in stores / composables (users, chatHub, credentials, sessions list)
+	// in stores / composables (users, credentials, sessions list)
 	// that the view-level test isn't trying to exercise — leaving them real
 	// would require mocking the full surrounding ecosystem just to mount.
 	AgentInfoPanel: {
@@ -430,6 +432,22 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
 		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
+	});
+
+	it('reloads task bodies after reverting to a published version', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('tasksReloadKey')).toBe(0);
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('reverted', makeAgentResponse({ activeVersionId: 'published-version' }));
+		await flushPromises();
+
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasksReloadKey'),
+		).toBe(1);
 	});
 
 	it('renders only the full-page preview chat on the preview route', async () => {

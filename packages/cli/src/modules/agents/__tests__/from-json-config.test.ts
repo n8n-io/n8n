@@ -104,6 +104,9 @@ describe('buildFromJson()', () => {
 						extract?: unknown;
 						reflect?: unknown;
 					};
+					titleGeneration?: {
+						sync?: boolean;
+					};
 				};
 			}
 		).memoryConfig;
@@ -355,6 +358,25 @@ describe('buildFromJson()', () => {
 				},
 			),
 		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
+	});
+
+	it('rejects custom tools that reuse SDK built-in tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'write_todos' });
+		const config = makeConfig({
+			tools: [{ type: 'custom', id: 'planner_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ planner_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Tool name "write_todos" is reserved for SDK built-in tools');
 	});
 
 	it('throws when custom tool id is not found in descriptors', async () => {
@@ -781,6 +803,24 @@ describe('buildFromJson()', () => {
 		});
 		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it('uses synchronous title generation so the first message can sync the title', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
 	it('configures observational memory worker models with their own credentials', async () => {
@@ -1293,25 +1333,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',
@@ -1383,25 +1418,20 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('parses an integrations array containing schedule + chat triggers', () => {
+	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
-				{
-					type: 'schedule',
-					active: false,
-					cronExpression: '0 0 * * *',
-					wakeUpPrompt: 'tick',
-				},
+				{ type: 'telegram', credentialId: 'cred-tg' },
 				{ type: 'slack', credentialId: 'cred-1' },
 			],
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.integrations).toHaveLength(2);
-		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'telegram', credentialId: 'cred-tg' });
 		expect(parsed.integrations?.[1]).toMatchObject({
 			type: 'slack',
 			credentialId: 'cred-1',

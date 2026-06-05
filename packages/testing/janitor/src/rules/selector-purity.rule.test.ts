@@ -20,7 +20,7 @@ export class TestComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations.length).toBeGreaterThan(0);
 	});
@@ -40,7 +40,7 @@ export class TestComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -62,7 +62,7 @@ export class TestComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -77,7 +77,7 @@ test('my test', async ({ n8n }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations.length).toBeGreaterThan(0);
 	});
@@ -98,7 +98,7 @@ export class TestComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations.length).toBeGreaterThanOrEqual(3);
 	});
@@ -115,7 +115,7 @@ test('my test', async ({ n8n }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations.length).toBeGreaterThan(0);
 		expect(violations[0].message).toContain('Chained locator call');
@@ -134,7 +134,7 @@ test('my test', async ({ n8n }) => {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations.length).toBeGreaterThan(0);
 		expect(violations[0].message).toContain('Chained locator call');
@@ -159,7 +159,7 @@ export class TestComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});

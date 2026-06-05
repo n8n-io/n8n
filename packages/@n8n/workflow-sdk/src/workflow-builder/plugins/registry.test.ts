@@ -8,7 +8,7 @@ function createMockValidator(id: string, nodeTypes: string[] = [], priority = 0)
 		name: `Mock Validator ${id}`,
 		nodeTypes,
 		priority,
-		validateNode: jest.fn().mockReturnValue([]),
+		validateNode: vi.fn().mockReturnValue([]),
 	};
 }
 
@@ -23,7 +23,7 @@ function createMockCompositeHandler(
 		name: `Mock Handler ${id}`,
 		priority,
 		canHandle: canHandleFn as (input: unknown) => input is unknown,
-		addNodes: jest.fn().mockReturnValue('mock-node'),
+		addNodes: vi.fn().mockReturnValue('mock-node'),
 	};
 }
 
@@ -33,7 +33,7 @@ function createMockSerializer(id: string, format: string): SerializerPlugin {
 		id,
 		name: `Mock Serializer ${id}`,
 		format,
-		serialize: jest.fn().mockReturnValue({}),
+		serialize: vi.fn().mockReturnValue({}),
 	};
 }
 
@@ -218,12 +218,9 @@ describe('pluginRegistry singleton', () => {
 		expect(pluginRegistry).toBeInstanceOf(PluginRegistry);
 	});
 
-	it('returns the same instance on multiple imports', () => {
-		// Import again to verify singleton - intentionally using require() to test module-level singleton
-		// eslint-disable-next-line @typescript-eslint/no-require-imports -- Testing CommonJS singleton behavior
-		const { pluginRegistry: anotherRegistry } = require('./registry') as {
-			pluginRegistry: PluginRegistry;
-		};
+	it('returns the same instance on multiple imports', async () => {
+		// Import again to verify the module-level singleton is shared across imports
+		const { pluginRegistry: anotherRegistry } = await import('./registry');
 		expect(anotherRegistry).toBe(pluginRegistry);
 	});
 });

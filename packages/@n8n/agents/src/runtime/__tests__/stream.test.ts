@@ -3,6 +3,7 @@ import type { TextStreamPart, ToolSet } from 'ai';
 import { convertChunk } from '../stream';
 
 type ToolCallChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-call' }>;
+type ToolErrorChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-error' }>;
 type ToolResultChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-result' }>;
 
 describe('convertChunk — tool-call invalid/error handling', () => {
@@ -135,6 +136,28 @@ describe('convertChunk — tool-result output passthrough', () => {
 			toolCallId: '',
 			toolName: '',
 			output: 'plain text result',
+		});
+	});
+});
+
+describe('convertChunk — tool-error handling', () => {
+	it('maps provider-executed tool-error to tool-result with isError', () => {
+		const error = new Error('search failed');
+		const chunk = {
+			type: 'tool-error',
+			toolCallId: 'tc-err',
+			toolName: 'web_search',
+			input: { query: 'n8n' },
+			error,
+			providerExecuted: true,
+		} as unknown as ToolErrorChunk;
+
+		expect(convertChunk(chunk)).toEqual({
+			type: 'tool-result',
+			toolCallId: 'tc-err',
+			toolName: 'web_search',
+			output: error,
+			isError: true,
 		});
 	});
 });

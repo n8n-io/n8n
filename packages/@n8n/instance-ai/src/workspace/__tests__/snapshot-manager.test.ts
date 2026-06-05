@@ -1,6 +1,12 @@
-// Mock the Daytona SDK before importing — its source has require() paths that
-// jest can't resolve in this monorepo, and we don't need the real types here.
-jest.mock('@daytonaio/sdk', () => {
+/* eslint-disable import-x/order */
+import type { Mock } from 'vitest';
+
+// The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s
+// @daytonaio/sdk — a path the test runner can't resolve in this monorepo), so we
+// mock the first-party `lazy-daytona` module. The mock classes live in vi.hoisted
+// so they are shared between the mock factory and the test (`instanceof` checks in
+// source must see the same DaytonaError the test constructs).
+const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
 	class DaytonaError extends Error {
 		statusCode?: number;
 		constructor(message: string, statusCode?: number) {
@@ -17,11 +23,18 @@ jest.mock('@daytonaio/sdk', () => {
 	}
 	class Image {
 		dockerfile: string;
+		contextList: Array<{ sourcePath: string; archivePath: string }>;
 		constructor(base = 'node:20') {
 			this.dockerfile = `FROM ${base}`;
+			this.contextList = [];
 		}
 		static base(base: string) {
 			return new Image(base);
+		}
+		addLocalDir(localPath: string, remotePath: string) {
+			this.contextList.push({ sourcePath: localPath, archivePath: localPath });
+			this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
+			return this;
 		}
 		runCommands(...commands: string[]) {
 			this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
@@ -31,17 +44,32 @@ jest.mock('@daytonaio/sdk', () => {
 	return { DaytonaError, DaytonaNotFoundError, Image };
 });
 
-import { DaytonaError } from '@daytonaio/sdk';
+vi.mock('../lazy-daytona', () => ({
+	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
+}));
+
+vi.mock('../builder-templates-service', () => {
+	class MockBuilderTemplatesService {
+		getBundle = vi.fn().mockResolvedValue({ archive: null, version: null });
+	}
+	return {
+		BuilderTemplatesService: MockBuilderTemplatesService,
+		builderTemplatesOptionsFromEnv: vi.fn().mockReturnValue({}),
+	};
+});
+
 import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
 
-const SNAPSHOT_NAME_PATTERN = /^n8n\/instance-ai:1\.123\.0-[a-f0-9]{12}$/;
+const SNAPSHOT_NAME_PATTERN = /^n8n\/instance-ai:1\.123\.0-[a-f0-9]{12}-[a-f0-9]{12}$/;
 const SKILLS_HASH_A = 'aaaaaaaaaaaa';
 const SKILLS_HASH_B = 'bbbbbbbbbbbb';
 
@@ -58,8 +86,8 @@ interface CreateSnapshotParams {
 }
 
 interface FakeSnapshotApi {
-	get: jest.Mock<Promise<{ name: string }>, [string]>;
-	create: jest.Mock<Promise<{ name: string }>, [CreateSnapshotParams, unknown?]>;
+	get: Mock<(...args: [string]) => Promise<{ name: string }>>;
+	create: Mock<(...args: [CreateSnapshotParams, unknown?]) => Promise<{ name: string }>>;
 }
 
 interface FakeDaytona {
@@ -105,26 +133,59 @@ function createRuntimeSkillSource(skillsHash: string): RuntimeSkillSource {
 function makeFakeDaytona(): FakeDaytona {
 	return {
 		snapshot: {
-			get: jest.fn<Promise<{ name: string }>, [string]>(),
-			create: jest.fn<Promise<{ name: string }>, [CreateSnapshotParams, unknown?]>(),
+			get: vi.fn<(...args: [string]) => Promise<{ name: string }>>(),
+			create: vi.fn<(...args: [CreateSnapshotParams, unknown?]) => Promise<{ name: string }>>(),
 		},
 	};
 }
 
+async function knowledgeBaseHash(): Promise<string> {
+	const { buildKnowledgeBaseWorkspaceBundle } = await import(
+		'../../knowledge-base/materialize-knowledge-base'
+	);
+	return buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' }).contentHash;
+}
+
 describe('SnapshotManager.ensureImage', () => {
-	it('bakes runtime skill files and manifest into the Daytona image descriptor', async () => {
+	it('stages workspace files and builds a small COPY-based Daytona image descriptor', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 
 		const image = await manager.ensureImage();
 
+		expect(image.dockerfile).toContain('COPY');
+		expect(image.dockerfile).toContain('/tmp/n8n-workspace-bake');
+		expect(image.dockerfile).toContain('cp -a /tmp/n8n-workspace-bake/. /home/daytona/workspace/');
 		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/skills/data-table-manager/SKILL.md',
+			'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
 		);
-		expect(image.dockerfile).toContain(
-			'/home/daytona/workspace/skills/data-table-manager/references/data-table-playbook.md',
-		);
-		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/registry.json');
-		expect(image.dockerfile).toContain('/home/daytona/workspace/skills/.manifest.json');
+		expect(image.dockerfile).toContain('npm install --ignore-scripts');
+
+		const stagingDir = image.contextList[0]?.sourcePath;
+		expect(stagingDir).toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'skills/data-table-manager/SKILL.md'), 'utf-8'),
+		).resolves.toContain('data-table');
+		await expect(
+			readFile(
+				join(stagingDir, 'skills/data-table-manager/references/data-table-playbook.md'),
+				'utf-8',
+			),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'skills/registry.json'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'skills/.manifest.json'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'knowledge-base/best-practices/scheduling.md'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'knowledge-base/best-practices/index.json'), 'utf-8'),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(join(stagingDir, 'knowledge-base/.manifest.json'), 'utf-8'),
+		).resolves.toBeDefined();
 	});
 
 	it('changes the snapshot suffix when the runtime skills hash changes', async () => {
@@ -152,8 +213,8 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(snapshotA).toMatch(SNAPSHOT_NAME_PATTERN);
 		expect(snapshotB).toMatch(SNAPSHOT_NAME_PATTERN);
-		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}`);
-		expect(snapshotB).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_B}`);
+		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}-${await knowledgeBaseHash()}`);
+		expect(snapshotB).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_B}-${await knowledgeBaseHash()}`);
 		expect(snapshotA).not.toBe(snapshotB);
 	});
 
@@ -180,7 +241,7 @@ describe('SnapshotManager.ensureImage', () => {
 		const snapshotA = await managerA.createSnapshot(daytonaA as never);
 		const snapshotB = await managerB.createSnapshot(daytonaB as never);
 
-		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}`);
+		expect(snapshotA).toBe(`n8n/instance-ai:1.123.0-${SKILLS_HASH_A}-${await knowledgeBaseHash()}`);
 		expect(snapshotB).toBe(snapshotA);
 		expect(daytonaA.snapshot.create.mock.calls[0][0].image.dockerfile).toContain(
 			'FROM daytonaio/sandbox:0.5.0',
@@ -246,7 +307,7 @@ describe('SnapshotManager.createSnapshot', () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:1.123.0' });
-		const onLogs = jest.fn();
+		const onLogs = vi.fn();
 
 		await manager.createSnapshot(daytona as never, { timeout: 1800, onLogs });
 
@@ -344,7 +405,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 		});
 
 		it('reports transient failures via the error reporter', async () => {
-			const errorReporter = { error: jest.fn() };
+			const errorReporter = { error: vi.fn() };
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			const error = new DaytonaError('upstream 500', 500);
@@ -361,7 +422,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 		});
 
 		it('does not report when create succeeds', async () => {
-			const errorReporter = { error: jest.fn() };
+			const errorReporter = { error: vi.fn() };
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:1.123.0' });
@@ -372,7 +433,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 		});
 
 		it('does not report 409/already-exists as an error', async () => {
-			const errorReporter = { error: jest.fn() };
+			const errorReporter = { error: vi.fn() };
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));

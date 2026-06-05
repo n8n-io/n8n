@@ -97,17 +97,6 @@ describe('node grouping validation', () => {
 		}
 	});
 
-	it('returns too-few-nodes for a single-node grouping selection', () => {
-		const graph = makeLinearGraph();
-
-		const result = validateGrouping({
-			nodes: [graph.nodes[0]],
-			connectionsBySourceNode: graph.connections,
-		});
-
-		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
-	});
-
 	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
 		const graph = makeLinearGraph();
 

@@ -258,6 +258,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		if (!this.additionalData.listAgents || !this.additionalData.userId) {
 			return [];
 		}
+
 		return await this.additionalData.listAgents(this.additionalData.userId);
 	}
 
@@ -502,7 +503,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
+			throw new ApplicationError(`Could not get parameter "${parameterName}"`, {
+				extra: { parameterName },
+			});
 		}
 
 		if (options?.rawExpressions) {

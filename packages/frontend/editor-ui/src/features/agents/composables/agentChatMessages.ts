@@ -22,6 +22,7 @@ import {
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import type { ChatMessageStatus, ToolCallState } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 export { type ChatMessageStatus, type ToolCallState };
 
 // ---------------------------------------------------------------------------
@@ -34,7 +35,12 @@ export interface ToolCall {
 	toolCallId: string;
 	input?: unknown;
 	output?: unknown;
+	canceled?: boolean;
 	state: ToolCallState;
+	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
+	startTime?: number;
+	/** Epoch ms when the tool settled. Absent while still running. */
+	endTime?: number;
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
@@ -59,6 +65,8 @@ interface InteractivePayloadBase {
 	runId?: string;
 	/** Wall-clock timestamp when the user submitted; absent when card is open. */
 	resolvedAt?: number;
+	/** Set when the tool was cancelled via a steering message rather than answered. */
+	cancelled?: boolean;
 }
 
 /**
@@ -285,9 +293,16 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
+				const canceled = part.canceled === true;
 				if (part.state === 'resolved') {
-					state = TOOL_CALL_STATE.DONE;
 					output = part.output;
+					if (canceled) {
+						state = TOOL_CALL_STATE.CANCELLED;
+					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
+						state = TOOL_CALL_STATE.ERROR;
+					} else {
+						state = TOOL_CALL_STATE.DONE;
+					}
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -301,7 +316,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					toolCallId: part.toolCallId ?? '',
 					input: part.input,
 					...(output !== undefined && { output }),
+					...(canceled && { canceled }),
 					state,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				});
 			}
