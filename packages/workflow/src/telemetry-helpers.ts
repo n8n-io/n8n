@@ -1,5 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -253,43 +251,6 @@ export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
 
 	// Default: return last 2 parts (standard TLD like .com, .org, .net)
 	return parts.slice(-2).join('.');
-}
-
-function isSensitive(segment: string) {
-	if (/^v\d+$/.test(segment)) return false;
-
-	return /%40/.test(segment) || /\d/.test(segment) || /^[0-9A-F]{8}/i.test(segment);
-}
-
-export const ANONYMIZATION_CHARACTER = '*';
-
-function sanitizeRoute(raw: string, check = isSensitive, char = ANONYMIZATION_CHARACTER) {
-	return raw
-		.split('/')
-		.map((segment) => (check(segment) ? char.repeat(segment.length) : segment))
-		.join('/');
-}
-
-/**
- * Return pathname plus query string from URL, anonymizing IDs in route and query params.
- */
-export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
-	try {
-		const url = new URL(raw);
-
-		if (!url.hostname) throw new ApplicationError('Malformed URL');
-
-		return sanitizeRoute(url.pathname);
-	} catch {
-		const match = urlParts.exec(raw);
-
-		if (!match?.groups?.pathname) return '';
-
-		// discard query string
-		const route = match.groups.pathname.split('?').shift() as string;
-
-		return sanitizeRoute(route);
-	}
 }
 
 function getNumberOfItemsInRuns(runs: ITaskData[]): number {

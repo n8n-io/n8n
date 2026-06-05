@@ -22,12 +22,10 @@ import type {
 import { NodeConnectionTypes } from '../src/interfaces';
 import * as nodeHelpers from '../src/node-helpers';
 import {
-	ANONYMIZATION_CHARACTER as CHAR,
 	extractLastExecutedNodeCredentialData,
 	extractLastExecutedNodeStructuredOutputErrorInfo,
 	generateNodesGraph,
 	getDomainBase,
-	getDomainPath,
 	getNodeRole,
 	resolveAIMetrics,
 	resolveVectorStoreMetrics,
@@ -84,56 +82,6 @@ describe('getDomainBase should return protocol plus domain', () => {
 	test('should handle IP addresses', () => {
 		expect(getDomainBase('https://192.168.1.1/path')).toBe('192.168.1.1');
 		expect(getDomainBase('https://[::1]/path')).toBe('[::1]');
-	});
-});
-
-describe('getDomainPath should return pathname, excluding query string', () => {
-	describe('anonymizing strings containing at least one number', () => {
-		test('in valid URLs', () => {
-			for (const url of validUrls(alphanumericId)) {
-				const { full, pathname } = url;
-				expect(getDomainPath(full)).toBe(pathname);
-			}
-		});
-
-		test('in malformed URLs', () => {
-			for (const url of malformedUrls(alphanumericId)) {
-				const { full, pathname } = url;
-				expect(getDomainPath(full)).toBe(pathname);
-			}
-		});
-	});
-
-	describe('anonymizing UUIDs', () => {
-		test('in valid URLs', () => {
-			for (const url of uuidUrls(validUrls)) {
-				const { full, pathname } = url;
-				expect(getDomainPath(full)).toBe(pathname);
-			}
-		});
-
-		test('in malformed URLs', () => {
-			for (const url of uuidUrls(malformedUrls)) {
-				const { full, pathname } = url;
-				expect(getDomainPath(full)).toBe(pathname);
-			}
-		});
-	});
-
-	describe('anonymizing emails', () => {
-		test('in valid URLs', () => {
-			for (const url of validUrls(email)) {
-				const { full, pathname } = url;
-				expect(getDomainPath(full)).toBe(pathname);
-			}
-		});
-
-		test('in malformed URLs', () => {
-			for (const url of malformedUrls(email)) {
-				const { full, pathname } = url;
-				expect(getDomainPath(full)).toBe(pathname);
-			}
-		});
 	});
 });
 
@@ -2822,110 +2770,65 @@ describe('userInInstanceRanOutOfFreeAiCredits', () => {
 	});
 });
 
-function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
+function validUrls(idMaker: typeof numericId) {
 	const firstId = idMaker();
 	const secondId = idMaker();
-	const firstIdObscured = char.repeat(firstId.length);
-	const secondIdObscured = char.repeat(secondId.length);
 
 	return [
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
 			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
 			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
 			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
-		},
-		{
-			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
 			protocolPlusDomain: 'test.com',
-			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
 			protocolPlusDomain: 'test.com',
-			pathname: '/api/v1/users',
-		},
-		{
-			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
 }
 
-function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
+function malformedUrls(idMaker: typeof numericId) {
 	const firstId = idMaker();
 	const secondId = idMaker();
-	const firstIdObscured = char.repeat(firstId.length);
-	const secondIdObscured = char.repeat(secondId.length);
 
 	return [
 		{
 			full: `test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
 			protocolPlusDomain: 'test.com',
-			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `test.com/api/v1/users?id=${firstId}`,
 			protocolPlusDomain: 'test.com',
-			pathname: '/api/v1/users',
 		},
 		{
 			full: `test.com/api/v1/users?id=${firstId}&post=${secondId}`,
 			protocolPlusDomain: 'test.com',
-			pathname: '/api/v1/users',
 		},
-	];
-}
-
-const email = () => encodeURIComponent('test@test.com');
-
-function uuidUrls(
-	urlsMaker: typeof validUrls | typeof malformedUrls,
-	baseName = 'test',
-	namespaceUuid = uuidv4(),
-) {
-	return [
-		...urlsMaker(() => uuidv5(baseName, namespaceUuid)),
-		...urlsMaker(uuidv4),
-		...urlsMaker(() => uuidv3(baseName, namespaceUuid)),
-		...urlsMaker(uuidv1),
 	];
 }
 
 function numericId(length = randomInt(1, 10)) {
 	return Array.from({ length }, () => randomInt(10)).join('');
 }
-
-function alphanumericId() {
-	return chooseRandomly([`john${numericId()}`, `title${numericId(1)}`, numericId()]);
-}
-
-const chooseRandomly = <T>(array: T[]) => array[randomInt(array.length)];
 
 function generateTestWorkflowAndRunData(): { workflow: Partial<IWorkflowBase>; runData: IRunData } {
 	const workflow: Partial<IWorkflowBase> = {

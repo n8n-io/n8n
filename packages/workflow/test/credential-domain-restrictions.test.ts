@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UserError } from '../src/errors';
 
 import {
 	DOMAIN_RESTRICTION_FIELDS,
@@ -298,10 +298,10 @@ describe('assertUrlAllowed', () => {
 		).not.toThrow();
 	});
 
-	it('throws ApplicationError on a non-matching URL when no node is provided', () => {
+	it('throws UserError on a non-matching URL when no node is provided', () => {
 		expect(() =>
 			assertUrlAllowed({ url: 'https://attacker.example', allowedDomains: 'example.com' }),
-		).toThrow(ApplicationError);
+		).toThrow(UserError);
 		expect(() =>
 			assertUrlAllowed({ url: 'https://attacker.example', allowedDomains: 'example.com' }),
 		).toThrow(

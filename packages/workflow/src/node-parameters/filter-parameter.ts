@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UserError } from '../errors';
 import type { DateTime } from 'luxon';
 
 import type {
@@ -20,10 +20,10 @@ type FilterConditionMetadata = {
 	errorFormat: 'full' | 'inline';
 };
 
-export class FilterError extends ApplicationError {
+export class FilterError extends UserError {
 	constructor(
 		message: string,
-		readonly description: string,
+		override readonly description: string,
 	) {
 		super(message, { level: 'warning' });
 	}
