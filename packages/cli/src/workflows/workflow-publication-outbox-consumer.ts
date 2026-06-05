@@ -80,7 +80,7 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		if (processed > 0) {
-			this.logger.debug(`Processed ${processed} outbox record(s)`);
+			this.logger.info(`Processed ${processed} outbox record(s)`);
 		}
 	}
 
