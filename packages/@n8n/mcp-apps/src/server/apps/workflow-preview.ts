@@ -7,15 +7,39 @@ import {
 	WORKFLOW_PREVIEW_FRAME_DOMAINS,
 } from '../constants';
 import { loadAppHtml } from '../resource-loader';
+import {
+	injectTelemetryConfig,
+	RUDDERSTACK_CDN_ORIGIN,
+	type McpAppTelemetryConfig,
+} from '../telemetry-config';
 
-const WORKFLOW_PREVIEW_UI_META: McpUiResourceMeta = {
-	csp: {
-		frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
-	},
-	prefersBorder: false,
-};
+export interface RegisterWorkflowPreviewAppOptions {
+	/** Origin allowed for telemetry egress via CSP `connect-src`. */
+	instanceOrigin?: string;
+	/** Front-end telemetry runtime config injected into the app HTML. */
+	telemetry: McpAppTelemetryConfig;
+	/** Called when the host reads the app HTML to render it. */
+	onResourceRead?: () => void;
+}
 
-export function registerWorkflowPreviewApp(server: Pick<McpServer, 'resource'>): void {
+function getWorkflowPreviewUiMeta(instanceOrigin?: string): McpUiResourceMeta {
+	return {
+		csp: {
+			frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
+			resourceDomains: instanceOrigin ? [RUDDERSTACK_CDN_ORIGIN] : [],
+			connectDomains: instanceOrigin ? [instanceOrigin] : [],
+		},
+		prefersBorder: false,
+	};
+}
+
+export function registerWorkflowPreviewApp(
+	server: Pick<McpServer, 'resource'>,
+	options: RegisterWorkflowPreviewAppOptions,
+): void {
+	const { instanceOrigin, telemetry, onResourceRead } = options;
+	const uiMeta = getWorkflowPreviewUiMeta(instanceOrigin);
+
 	server.resource(
 		'workflow-preview',
 		WORKFLOW_PREVIEW_APP_URI,
@@ -23,20 +47,30 @@ export function registerWorkflowPreviewApp(server: Pick<McpServer, 'resource'>):
 			description: 'Workflow preview shown after creating a workflow from code',
 			mimeType: RESOURCE_MIME_TYPE,
 			_meta: {
-				ui: WORKFLOW_PREVIEW_UI_META,
+				ui: uiMeta,
 			},
 		},
-		async () => ({
-			contents: [
-				{
-					uri: WORKFLOW_PREVIEW_APP_URI,
-					mimeType: RESOURCE_MIME_TYPE,
-					text: await loadAppHtml('workflow-preview.html'),
-					_meta: {
-						ui: WORKFLOW_PREVIEW_UI_META,
+		async () => {
+			const html = await loadAppHtml('workflow-preview.html');
+
+			try {
+				onResourceRead?.();
+			} catch {
+				// Telemetry must never break serving the app resource.
+			}
+
+			return {
+				contents: [
+					{
+						uri: WORKFLOW_PREVIEW_APP_URI,
+						mimeType: RESOURCE_MIME_TYPE,
+						text: injectTelemetryConfig(html, telemetry),
+						_meta: {
+							ui: uiMeta,
+						},
 					},
-				},
-			],
-		}),
+				],
+			};
+		},
 	);
 }
