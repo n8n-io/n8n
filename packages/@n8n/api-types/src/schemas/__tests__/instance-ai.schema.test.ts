@@ -2,6 +2,9 @@ import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	isDisplayableConfirmationRequest,
+	InstanceAiEnsureThreadRequest,
+	normalizeInstanceAiThreadSource,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
@@ -230,5 +233,33 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('instance-ai launch schema', () => {
+	it('normalizes a known source', () => {
+		expect(normalizeInstanceAiThreadSource('template-view')).toBe('template-view');
+	});
+
+	it('falls back for an unknown source', () => {
+		expect(normalizeInstanceAiThreadSource('totally-made-up')).toBe(
+			INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+		);
+		expect(normalizeInstanceAiThreadSource(undefined)).toBe(INSTANCE_AI_THREAD_SOURCE_FALLBACK);
+	});
+
+	it('parses an ensure-thread request with launch fields', () => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			origin: 'external',
+			source: 'external-link',
+			sourceContext: { templateId: '42' },
+		});
+		expect(parsed.origin).toBe('external');
+		expect(parsed.sourceContext).toEqual({ templateId: '42' });
+	});
+
+	it('rejects an oversized sourceContext', () => {
+		const big = { blob: 'x'.repeat(3000) };
+		expect(() => new InstanceAiEnsureThreadRequest({ sourceContext: big })).toThrow();
 	});
 });
