@@ -186,12 +186,11 @@ function goToUpgrade() {
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
+				:hide-add-input="isResolvable"
 				:disabled-tooltip="
-					isResolvable
-						? i18n.baseText('credentialEdit.credentialSharing.info.dynamicCredential')
-						: isPersonalSpaceRestricted
-							? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
-							: undefined
+					isPersonalSpaceRestricted
+						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
+						: undefined
 				"
 				:placeholder="sharingSelectPlaceholder"
 				:can-share-globally="canShareGlobally"

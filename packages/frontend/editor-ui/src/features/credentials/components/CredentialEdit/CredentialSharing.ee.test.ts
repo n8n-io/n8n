@@ -403,7 +403,7 @@ describe('CredentialSharing.ee', () => {
 	describe('dynamic credentials', () => {
 		it('should explain why sharing is disabled for a dynamic credential', () => {
 			const credential = createCredential();
-			const { getByText } = renderComponent({
+			const { getByText, queryByTestId } = renderComponent({
 				props: {
 					credentialId: credential.id,
 					credentialData: {},
@@ -416,6 +416,8 @@ describe('CredentialSharing.ee', () => {
 
 			// The reason sharing is unavailable is surfaced to the user
 			expect(getByText(/not supported/i)).toBeInTheDocument();
+			// The add-share input is hidden entirely, not just disabled
+			expect(queryByTestId('project-sharing-select')).not.toBeInTheDocument();
 		});
 
 		it('should still allow removing existing shares for a private credential', () => {
