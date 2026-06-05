@@ -109,6 +109,7 @@
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
+      "@opentelemetry/api": "1.9.0",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
