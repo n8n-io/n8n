@@ -572,6 +572,55 @@ describe('useImportCurlCommand', () => {
 			const curl = 'curl -X POST -d "key=value"';
 			expect(() => toHttpNodeParameters(curl)).toThrow('no URL specified!');
 		});
+
+		test('Should use json body mode when JSON body contains integer values', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"size\":100}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ size: 100 }, null, 2));
+		});
+
+		test('Should use json body mode when JSON body contains boolean values', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"active\":true,\"verified\":false}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ active: true, verified: false }, null, 2));
+		});
+
+		test('Should use json body mode when JSON body contains null values', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"name\":null}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ name: null }, null, 2));
+		});
+
+		test('Should use json body mode when JSON body mixes string and non-string values', () => {
+			const curl =
+				'curl \'http://hostname\' -H \'content-type: application/json\' --data-raw \'{"name":"Alice","age":30}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ name: 'Alice', age: 30 }, null, 2));
+		});
+
+		test('Should use keypair mode when all JSON body values are strings', () => {
+			const curl =
+				'curl \'http://hostname\' -H \'content-type: application/json\' --data-raw \'{"login":"user","password":"pass"}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({ name: 'login', value: 'user' });
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'password',
+				value: 'pass',
+			});
+		});
 	});
 });
 
