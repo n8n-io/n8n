@@ -1,14 +1,20 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Adds a non-null project foreign key to Instance AI threads. Existing threads
- * are backfilled so none is left unscoped: user threads take their owner's
- * personal project, sub-agent threads inherit their parent thread's project, and
- * any remaining thread (deleted user/parent) falls back to the instance owner's
- * personal project. A final safety net deletes any thread still unscoped after
- * the backfills — only reachable when no instance owner exists (e.g. a corrupted
- * or half-set-up database) — so the NOT NULL constraint can always be applied.
- * The schema change is reversible via `down()`.
+ * Adds a non-null project foreign key to Instance AI threads (Postgres).
+ *
+ * Existing threads are backfilled so none is left unscoped: user threads take
+ * their owner's personal project, sub-agent threads inherit their parent
+ * thread's project, and any remaining thread (deleted user/parent) falls back to
+ * the instance owner's personal project. A final safety net deletes any thread
+ * still unscoped afterwards — only reachable when no instance owner exists (e.g.
+ * a corrupted or half-set-up database) — so the NOT NULL constraint can always
+ * be applied.
+ *
+ * Postgres applies the column, NOT NULL, foreign key, and index in place via the
+ * DSL (cheap ALTERs). The SQLite variant (sqlite/1784000000027) instead rebuilds
+ * the table once by hand, because there each operation would recreate the whole
+ * table. The schema change is reversible via `down()`.
  */
 const FK_NAME = 'FK_instance_ai_threads_projectId';
 const THREADS_TABLE = 'instance_ai_threads';
@@ -18,7 +24,7 @@ const SUB_AGENT_PREFIX = 'instance-ai-subagent';
 export class AddProjectIdToInstanceAiThread1784000000027 implements ReversibleMigration {
 	async up(ctx: MigrationContext) {
 		const {
-			schemaBuilder: { addColumns, column, addForeignKey, createIndex, addNotNull },
+			schemaBuilder: { addColumns, column, addNotNull, addForeignKey, createIndex },
 		} = ctx;
 
 		await addColumns(
@@ -108,7 +114,7 @@ export class AddProjectIdToInstanceAiThread1784000000027 implements ReversibleMi
 	/**
 	 * Safety net for threads whose user or parent no longer exists: bind them to the
 	 * instance owner's personal project so no row is left null when the column
-	 * becomes NOT NULL. We never delete rows.
+	 * becomes NOT NULL. We never delete rows that can be scoped.
 	 */
 	private async backfillRemainingToInstanceOwner({ runQuery, escape }: MigrationContext) {
 		const threads = escape.tableName(THREADS_TABLE);

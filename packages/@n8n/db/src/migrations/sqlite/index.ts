@@ -196,7 +196,7 @@ import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/178
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
-import { AddProjectIdToInstanceAiThread1784000000027 } from '../common/1784000000027-AddProjectIdToInstanceAiThread';
+import { AddProjectIdToInstanceAiThread1784000000027 } from './1784000000027-AddProjectIdToInstanceAiThread';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,

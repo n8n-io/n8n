@@ -202,7 +202,7 @@ import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../comm
 import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
-import { AddProjectIdToInstanceAiThread1784000000027 } from '../common/1784000000027-AddProjectIdToInstanceAiThread';
+import { AddProjectIdToInstanceAiThread1784000000027 } from './1784000000027-AddProjectIdToInstanceAiThread';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
