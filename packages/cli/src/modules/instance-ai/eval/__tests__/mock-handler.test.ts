@@ -43,7 +43,7 @@ const mockExtractText = vi.hoisted(() => vi.fn((result: { _text?: string }) => r
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
 	extractText: mockExtractText,
-	Tool: vi.fn().mockImplementation((name: string) => {
+	Tool: vi.fn().mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
 			description: vi.fn().mockReturnThis(),
@@ -101,7 +101,7 @@ function reapplyMockImplementations() {
 	vi.mocked(fetchApiDocs).mockResolvedValue('');
 	vi.mocked(extractNodeConfig).mockReturnValue('{}');
 	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
-	vi.mocked(Tool).mockImplementation(((name: string) => {
+	vi.mocked(Tool).mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
 			description: vi.fn().mockReturnThis(),
@@ -113,7 +113,7 @@ function reapplyMockImplementations() {
 			build: vi.fn(() => built),
 		};
 		return builder;
-	}) as never);
+	} as never);
 	mockAgent.tool.mockImplementation(function (
 		this: MockAgent,
 		builtTool: { _name?: string; _handler?: unknown },
@@ -324,9 +324,6 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = require('../node-config') as {
-			extractNodeConfig: Mock;
-		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
 
 		llmSubmits({ type: 'json', body: { ok: true } });
@@ -340,9 +337,6 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = require('../node-config') as {
-			extractNodeConfig: Mock;
-		};
 		extractNodeConfig.mockReturnValue('{}');
 
 		llmSubmits({ type: 'json', body: {} });
