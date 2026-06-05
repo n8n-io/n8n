@@ -52,7 +52,7 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { buildFixWithAiPrompt } from './fixWithAi';
+import { buildFixWithAiPrompt, IS_FIX_WITH_AI_OFFER_ENABLED } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -100,6 +100,7 @@ const isChatInProgress = computed(
 );
 
 const activeFixWithAiOffer = computed(() => {
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return null;
 	const run = failedRun.value;
 	if (!run) return null;
 	if (run.executionId === dismissedExecutionId.value) return null;
@@ -562,6 +563,7 @@ function dismissFixWithAiOffer() {
 }
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 	failedRun.value = report;
 }
 </script>
@@ -658,16 +660,19 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
 								<InstanceAiConfirmationPanel kind="inline" />
-								<Transition name="confirmation-slide">
-									<InstanceAiFixWithAiPanel
-										v-if="activeFixWithAiOffer"
-										:node-name="activeFixWithAiOffer.errors[0].nodeName"
-										:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-										:failed-count="activeFixWithAiOffer.errors.length"
-										@fix-with-ai="handleFixWithAiFromOffer"
-										@dismiss="dismissFixWithAiOffer"
-									/>
-								</Transition>
+
+								<template v-if="IS_FIX_WITH_AI_OFFER_ENABLED">
+									<Transition name="confirmation-slide">
+										<InstanceAiFixWithAiPanel
+											v-if="activeFixWithAiOffer"
+											:node-name="activeFixWithAiOffer.errors[0].nodeName"
+											:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+											:failed-count="activeFixWithAiOffer.errors.length"
+											@fix-with-ai="handleFixWithAiFromOffer"
+											@dismiss="dismissFixWithAiOffer"
+										/>
+									</Transition>
+								</template>
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
