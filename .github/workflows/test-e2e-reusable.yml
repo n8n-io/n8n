@@ -149,6 +149,7 @@ jobs:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
+            packages/testing/playwright/test-results.json
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/coverage/lcov.info
             packages/testing/playwright/coverage/by-spec/
