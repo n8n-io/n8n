@@ -65,7 +65,7 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 	description: 'VictoriaMetrics',
 
 	getOptions(ctx: StartContext): VictoriaMetricsConfig {
-		const { mains, workers, projectName } = ctx;
+		const { mains, workers, webhooks, projectName } = ctx;
 		const scrapeTargets: ScrapeTarget[] = [];
 
 		for (let i = 1; i <= mains; i++) {
@@ -74,6 +74,14 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				job: 'n8n-main',
 				instance: `n8n-main-${i}`,
 				host: hostname,
+				port: 5678,
+			});
+		}
+		for (let i = 1; i <= webhooks; i++) {
+			scrapeTargets.push({
+				job: 'n8n-webhook',
+				instance: `n8n-webhook-${i}`,
+				host: `${projectName}-n8n-webhook-${i}`,
 				port: 5678,
 			});
 		}

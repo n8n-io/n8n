@@ -11,10 +11,17 @@ import {
 } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
-import type { ExecutionStatus, ExecutionSummary, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	ExecutionSummary,
+	IRunExecutionData,
+	ITaskData,
+} from 'n8n-workflow';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ExecutionOutputMap } from '@/app/types/executionData';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { useExecutingNode } from '@/app/composables/useExecutingNode';
@@ -24,11 +31,9 @@ import {
 	disposeExecutionDataStore,
 	useExecutionDataStore,
 } from './executionData.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-	type WorkflowDocumentId,
-} from './workflowDocument.store';
+import { useWorkflowDocumentStore, type WorkflowDocumentId } from './workflowDocument.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 import type {
@@ -37,6 +42,7 @@ import type {
 	NodesChangeEvent,
 	NodesSetPayload,
 } from './workflowDocument/useWorkflowDocumentNodes';
+import type { ExecutionOutputMap } from '@/app/types/executionData';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionStatus>>();
@@ -61,7 +67,6 @@ export type WorkflowExecutionStateField =
 	| 'selectedTriggerNodeName'
 	| 'currentWorkflowExecutions'
 	| 'lastSuccessfulExecutionId'
-	| 'executingNode'
 	| 'state';
 
 export type WorkflowExecutionStateChangeEvent = ChangeEvent<WorkflowExecutionStateChangePayload>;
@@ -89,12 +94,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowExecutionStateStoreId(id), () => {
 		const documentId = id;
 		const [workflowId] = id.split('@');
-
-		// Live-run "executing node" queue (spinner state). Composed here so it's
-		// scoped per workflow and cleared on `resetExecutionState`. Migrated from
-		// the temporary `workflowState.store` — see git history for the original
-		// composable.
-		const executingNode = useExecutingNode();
 
 		// --- State ---
 
@@ -128,6 +127,14 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * the slot-only collection would otherwise miss.
 		 */
 		const trackedExecutionIds = ref<Set<string>>(new Set());
+
+		/**
+		 * Queue of currently-executing node names driving per-node loading
+		 * spinners. Owned by the per-document store so spinner state stays
+		 * isolated per workflow document. Read purely via Vue reactivity; it is
+		 * intentionally not wired into the change-event mechanism below.
+		 */
+		const executingNode = useExecutingNode();
 
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
@@ -314,7 +321,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		// when the *value* changes (gated by structural equality).
 		// ---------------------------------------------------------------------
 
-		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const documentStore = useWorkflowDocumentStore(documentId);
 
 		const executionRunningByNodeId = shallowReactive(new Map<string, ComputedRef<boolean>>());
 		const executionWaitingForNextByNodeId = shallowReactive(
@@ -371,13 +378,11 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			for (const id of nodeIds) applyAddRunningEntry(id);
 		}
 
-		// Subscribe lazily and defensively. Many older test files mock
+		// Subscribe lazily and defensively. Some test files mock
 		// `useWorkflowDocumentStore` with a partial object that lacks
-		// `onNodesChange` / `nodesById`. Without this guard, every consumer that
-		// transitively constructs the workflowExecutionState store (via
-		// `useWorkflowState`) blows up in those tests. The guard keeps the
-		// dependency soft for tests that don't exercise the running maps; in
-		// production the document store always provides the full surface.
+		// `onNodesChange` / `nodesById`. The guard keeps the dependency soft for
+		// tests that don't exercise the running maps; in production the document
+		// store always provides the full surface.
 		if (typeof documentStore.onNodesChange === 'function') {
 			documentStore.onNodesChange((event: NodesChangeEvent) => {
 				switch (event.action) {
@@ -508,6 +513,34 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			useExecutionDataStore(createExecutionDataId(executionId)).setExecution(promoted);
 			setActiveExecutionId(executionId);
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
+		}
+
+		/**
+		 * Applies a fetched/started execution result to this document's session state:
+		 * clears it when null, stages it as the pending scaffold while in progress, or
+		 * tracks it as a displayed execution once it has a backend id.
+		 */
+		function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
+			if (workflowResultData === null) {
+				setPendingExecution(null);
+				clearDisplayedExecution();
+			} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
+				setPendingExecution(workflowResultData);
+				setActiveExecutionId(null);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					workflowResultData,
+				);
+			} else {
+				trackExecutionId(workflowResultData.id);
+				useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
+					workflowResultData,
+				);
+				if (typeof activeExecutionId.value !== 'string') {
+					setPendingExecution(null);
+					setActiveExecutionId(undefined);
+					setDisplayedExecutionId(workflowResultData.id);
+				}
+			}
 		}
 
 		function clearActiveNodeExecutionData(nodeName: string) {
@@ -759,10 +792,54 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
 
+		/**
+		 * Resets this document's execution session after a stop: clears the active
+		 * execution id / executing-node queue / webhook-wait, restores the IDLE
+		 * document title, and marks the relevant executionData store as stopped
+		 * (active id → IN_PROGRESS scaffold → displayed-id fallback for the
+		 * stop-race-with-finished case).
+		 */
+		function markExecutionAsStopped(stopData?: IExecutionsStopData) {
+			const activeId = activeExecutionId.value;
+
+			setActiveExecutionId(undefined);
+			executingNode.clearNodeExecutionQueue();
+			setExecutionWaitingForWebhook(false);
+
+			useDocumentTitle().setDocumentTitle(useWorkflowDocumentStore(documentId).name, 'IDLE');
+
+			if (typeof activeId === 'string') {
+				const executionDataStore = useExecutionDataStore(createExecutionDataId(activeId));
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+			} else if (activeId === null) {
+				// Pending scaffold: filter the IN_PROGRESS placeholder data and
+				// mirror status onto the pendingExecution ref so the UI sees the canceled state.
+				const executionDataStore = useExecutionDataStore(
+					createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+				);
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+				if (stopData) {
+					applyStopDataToPendingExecution(stopData);
+				}
+			} else {
+				// activeExecutionId === undefined: fall back to displayedExecutionId for the
+				// stop-race-with-finished case where active was just cleared.
+				const displayedId = displayedExecutionId.value;
+				if (typeof displayedId === 'string') {
+					const executionDataStore = useExecutionDataStore(createExecutionDataId(displayedId));
+					executionDataStore.clearExecutionStartedData();
+					executionDataStore.markAsStopped(stopData);
+				}
+			}
+
+			clearPopupWindowState();
+		}
+
 		return {
 			documentId,
 			workflowId,
-			executingNode,
 			// Read API
 			activeExecutionId: readonly(activeExecutionId),
 			displayedExecutionId: readonly(displayedExecutionId),
@@ -775,6 +852,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName: readonly(selectedTriggerNodeName),
 			currentWorkflowExecutions: readonly(currentWorkflowExecutions),
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
+			executingNode,
 			activeExecution,
 			activeExecutionRunData,
 			activeExecutionExecutedNode,
@@ -797,6 +875,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			// Write API
 			trackExecutionId,
 			setActiveExecutionId,
+			setWorkflowExecutionData,
 			setDisplayedExecutionId,
 			setPendingExecution,
 			setPendingExecutionRunData,
@@ -824,6 +903,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			addActiveNodeExecutionStartedData,
 			renameActiveExecutionNode,
 			resetExecutionState,
+			markExecutionAsStopped,
 			// Events
 			onWorkflowExecutionStateChange: onWorkflowExecutionStateChange.on,
 		};

@@ -67,6 +67,18 @@ export class ActiveExecutions {
 		const mode = executionData.executionMode;
 		const capacityReservation = new ConcurrencyCapacityReservation(this.concurrencyControl);
 
+		// Evaluation executions are already gated instance-wide by the
+		// test-runner fan-out, which throttles the shared evaluation
+		// concurrency queue before launching each case (see
+		// `test-runner.service.ee.ts`). Reserving capacity again here would
+		// consume a second slot from the same queue for the same case; once
+		// the fan-out fills the queue up to its cap, this nested reservation
+		// blocks forever — before `setRunning` runs — leaving the execution
+		// stuck at status 'new' with `startedAt` null (TRUST-144). Skip the
+		// reservation for evaluation mode; `release()` below is a no-op when
+		// nothing was reserved.
+		const shouldReserveCapacity = mode !== 'evaluation';
+
 		try {
 			if (maybeExecutionId === undefined) {
 				const fullExecutionData: CreateExecutionPayload = {
@@ -89,7 +101,9 @@ export class ActiveExecutions {
 				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
 				assert(maybeExecutionId);
 
-				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				}
 
 				if (this.executionsConfig.mode === 'regular') {
 					await this.executionRepository.setRunning(maybeExecutionId);
@@ -98,7 +112,9 @@ export class ActiveExecutions {
 			} else {
 				// Is an existing execution we want to finish so update in DB
 
-				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				}
 
 				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 					id: maybeExecutionId,

@@ -1,13 +1,14 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
     "build": "vite build",
+    "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",

@@ -156,6 +156,16 @@ describe('WorkflowsView', () => {
 				expect(getByText('There are currently no workflows to view')).toBeInTheDocument();
 			});
 
+			it('does not repeat generic prompt in fallback empty state', async () => {
+				const projectsStore = mockedStore(useProjectsStore);
+				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+				const { getAllByText } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getAllByText('What do you want to build?')).toHaveLength(1);
+			});
+
 			it('for user with create scope', async () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;

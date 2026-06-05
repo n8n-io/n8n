@@ -1,13 +1,17 @@
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
 import { HumanMessage } from '@langchain/core/messages';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
+import * as toolConverter from 'src/converters/tool';
 import type { GenerateResult, StreamChunk } from 'src/types/output';
+import * as failedAttemptHandler from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
+import * as n8nLlmTracing from 'src/utils/n8n-llm-tracing';
 
 import { LangchainChatModelAdapter } from '../../adapters/langchain-chat-model';
 
-jest.mock('src/converters/tool', () => ({
-	fromLcTool: jest.fn().mockImplementation((t: { name?: string }) => ({
+vi.mock('src/converters/tool', () => ({
+	fromLcTool: vi.fn().mockImplementation((t: { name?: string }) => ({
 		type: 'function' as const,
 		name: t?.name ?? 'tool',
 		description: '',
@@ -15,32 +19,32 @@ jest.mock('src/converters/tool', () => ({
 	})),
 }));
 
-jest.mock('src/utils/n8n-llm-tracing', () => ({
-	N8nLlmTracing: jest.fn().mockImplementation(function (this: unknown) {
+vi.mock('src/utils/n8n-llm-tracing', () => ({
+	N8nLlmTracing: vi.fn().mockImplementation(function (this: unknown) {
 		return this;
 	}),
 }));
 
-jest.mock('src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler', () => ({
-	makeN8nLlmFailedAttemptHandler: jest.fn().mockReturnValue(jest.fn()),
+vi.mock('src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler', () => ({
+	makeN8nLlmFailedAttemptHandler: vi.fn().mockReturnValue(vi.fn()),
 }));
 
-const { fromLcTool } = jest.requireMock('src/converters/tool');
-const { N8nLlmTracing } = jest.requireMock('src/utils/n8n-llm-tracing');
-const { makeN8nLlmFailedAttemptHandler } = jest.requireMock(
-	'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler',
+const fromLcTool = vi.mocked(toolConverter.fromLcTool);
+const N8nLlmTracing = vi.mocked(n8nLlmTracing.N8nLlmTracing);
+const makeN8nLlmFailedAttemptHandler = vi.mocked(
+	failedAttemptHandler.makeN8nLlmFailedAttemptHandler,
 );
 
 function createMockChatModel(
 	overrides: {
-		generate?: jest.Mock;
-		stream?: jest.Mock;
-		withTools?: jest.Mock;
+		generate?: Mock;
+		stream?: Mock;
+		withTools?: Mock;
 	} = {},
 ) {
-	const generate = jest.fn();
-	const stream = jest.fn();
-	const withTools = jest.fn().mockImplementation(function (
+	const generate = vi.fn();
+	const stream = vi.fn();
+	const withTools = vi.fn().mockImplementation(function (
 		this: ReturnType<typeof createMockChatModel>,
 	) {
 		return this;
@@ -56,14 +60,14 @@ function createMockChatModel(
 
 describe('LangchainAdapter', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
 		it('passes callbacks and onFailedAttempt when ctx is provided', () => {
 			const ctx = {
-				getNode: jest.fn(),
-				addOutputData: jest.fn(),
+				getNode: vi.fn(),
+				addOutputData: vi.fn(),
 			} as unknown as ISupplyDataFunctions;
 			const chatModel = createMockChatModel();
 
@@ -200,10 +204,10 @@ describe('LangchainAdapter', () => {
 				yield response2;
 			}
 			const chatModel = createMockChatModel({
-				stream: jest.fn().mockImplementation(() => stream()),
+				stream: vi.fn().mockImplementation(() => stream()),
 			});
 			const adapter = new LangchainChatModelAdapter(chatModel);
-			const handleLLMNewToken = jest.fn();
+			const handleLLMNewToken = vi.fn();
 
 			const chunks: any[] = [];
 			for await (const chunk of adapter._streamResponseChunks([new HumanMessage('hi')], {}, {
@@ -244,7 +248,7 @@ describe('LangchainAdapter', () => {
 				yield response;
 			}
 			const chatModel = createMockChatModel({
-				stream: jest.fn().mockImplementation(() => stream()),
+				stream: vi.fn().mockImplementation(() => stream()),
 			});
 			const adapter = new LangchainChatModelAdapter(chatModel);
 
@@ -272,7 +276,7 @@ describe('LangchainAdapter', () => {
 				};
 			}
 			const chatModel = createMockChatModel({
-				stream: jest.fn().mockImplementation(() => stream()),
+				stream: vi.fn().mockImplementation(() => stream()),
 			});
 			const adapter = new LangchainChatModelAdapter(chatModel);
 
@@ -295,7 +299,7 @@ describe('LangchainAdapter', () => {
 		it('converts tools via fromLcTool, calls chatModel.withTools, and returns new LangchainAdapter', () => {
 			const chatModel = createMockChatModel();
 			const adapter = new LangchainChatModelAdapter(chatModel, undefined);
-			const lcTools = [{ name: 'my_tool', schema: {}, invoke: jest.fn() }];
+			const lcTools = [{ name: 'my_tool', schema: {}, invoke: vi.fn() }];
 
 			const bound = adapter.bindTools(lcTools);
 

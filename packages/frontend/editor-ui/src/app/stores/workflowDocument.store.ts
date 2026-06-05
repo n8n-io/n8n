@@ -10,10 +10,8 @@ import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
-import {
-	useWorkflowDocumentSettings,
-	DEFAULT_SETTINGS,
-} from './workflowDocument/useWorkflowDocumentSettings';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -246,7 +244,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				connections,
 				active: workflowDocumentActive.active.value,
-				settings: workflowDocumentSettings.settings.value,
+				settings: workflowDocumentSettings.getSettingsSnapshot(),
 				tags: [...workflowDocumentTags.tags.value],
 				versionId: workflowDocumentVersionData.versionId.value,
 				meta: workflowDocumentMeta.meta.value,
@@ -382,7 +380,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				updatedAt: workflowDocumentTimestamps.updatedAt.value,
 				nodes: workflowDocumentNodes.allNodes.value,
 				connections: workflowDocumentConnections.connectionsBySourceNode.value,
-				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
+				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.getSettingsSnapshot() },
 				tags: [...workflowDocumentTags.tags.value],
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??

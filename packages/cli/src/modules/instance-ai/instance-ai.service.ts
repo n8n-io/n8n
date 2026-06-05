@@ -30,7 +30,10 @@ import {
 	createWorkspace,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	createScopedWorkspace,
 	setupSandboxWorkspace,
+	getPromptWorkspaceRoot,
+	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
@@ -56,7 +59,6 @@ import {
 	submitLangsmithUserFeedback,
 	resumeAgentRun,
 	RunStateRegistry,
-	startBuildWorkflowAgentTask,
 	startDetachedDelegateTask,
 	streamAgentRun,
 	truncateToTitle,
@@ -83,6 +85,7 @@ import {
 	type TerminalResponseDecision,
 	type TerminalResponseStatus,
 	type WorkSummary,
+	type WorkflowBuildOutcome,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
@@ -102,9 +105,11 @@ import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry } from './filesystem';
+import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
@@ -114,6 +119,7 @@ import { InstanceAiPendingConfirmationRepository } from './repositories/instance
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
+import { InstanceAiMcpRegistryService } from './mcp';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
@@ -156,6 +162,13 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
+type PlannedBuildFollowUp = {
+	isPlannedBuildFollowUp: true;
+	buildTaskId: string;
+	workItemId: string;
+	savedOutcome?: WorkflowBuildOutcome;
+};
+
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
@@ -168,7 +181,6 @@ type RuntimeSandboxEntry = {
 const SANDBOX_NAME_MAX_LEN = 63;
 const SANDBOX_LABEL_MAX_LEN = 63;
 const NAME_PREFIX_SLUG_MAX_LEN = 24;
-const SHORT_RUN_ID_LEN = 8;
 const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
 function slugifySandboxName(value: string, maxLen: number): string {
@@ -191,19 +203,11 @@ function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
-function buildThreadScopedSandboxName(
-	threadId: string,
-	namePrefix: string | undefined,
-	runId: string | undefined,
-): string {
+function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
 	const parts: string[] = [];
 	if (namePrefix) {
 		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
 		if (prefixSlug) parts.push(prefixSlug);
-	}
-	if (runId) {
-		const runSlug = slugifySandboxName(runId, SHORT_RUN_ID_LEN);
-		if (runSlug) parts.push(runSlug);
 	}
 	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
 	if (threadSlug) parts.push(threadSlug);
@@ -215,7 +219,6 @@ function buildThreadScopedSandboxName(
 function buildThreadScopedSandboxLabels(
 	threadId: string,
 	namePrefix: string | undefined,
-	runId: string | undefined,
 ): Record<string, string> {
 	const baseName = getThreadScopedSandboxName(threadId);
 	const labels: Record<string, string> = {
@@ -223,24 +226,19 @@ function buildThreadScopedSandboxLabels(
 		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
 	};
 	if (namePrefix) labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
-	if (runId) labels.run_id = slugifySandboxLabel(runId, SANDBOX_LABEL_MAX_LEN);
 	return labels;
 }
 
-function withThreadScopedSandboxIdentity(
-	config: SandboxConfig,
-	threadId: string,
-	runId?: string,
-): SandboxConfig {
+function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
 	if (!config.enabled || config.provider !== 'daytona') return config;
 
-	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, runId);
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
 	return {
 		...config,
 		id: name,
 		name,
 		labels: {
-			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, runId),
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix),
 			...config.labels,
 		},
 	};
@@ -628,6 +626,7 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly aiService: AiService,
@@ -639,6 +638,7 @@ export class InstanceAiService {
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly telemetry: Telemetry,
+		private readonly mcpRegistryService: InstanceAiMcpRegistryService,
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
@@ -707,20 +707,16 @@ export class InstanceAiService {
 			sandboxNamePrefix,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
+		const provider = normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
-				provider:
-					sandboxProvider === 'n8n-sandbox'
-						? 'n8n-sandbox'
-						: sandboxProvider === 'daytona'
-							? 'daytona'
-							: 'local',
+				provider,
 				timeout: sandboxTimeout,
 			};
 		}
 
-		if (sandboxProvider === 'daytona') {
+		if (provider === 'daytona') {
 			return {
 				enabled: true,
 				provider: 'daytona',
@@ -734,19 +730,11 @@ export class InstanceAiService {
 			};
 		}
 
-		if (sandboxProvider === 'n8n-sandbox') {
-			return {
-				enabled: true,
-				provider: 'n8n-sandbox',
-				serviceUrl: n8nSandboxServiceUrl || undefined,
-				apiKey: n8nSandboxServiceApiKey || undefined,
-				timeout: sandboxTimeout,
-			};
-		}
-
 		return {
 			enabled: true,
-			provider: 'local',
+			provider: 'n8n-sandbox',
+			serviceUrl: requireN8nSandboxServiceUrl(n8nSandboxServiceUrl),
+			apiKey: n8nSandboxServiceApiKey || undefined,
 			timeout: sandboxTimeout,
 		};
 	}
@@ -783,21 +771,17 @@ export class InstanceAiService {
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-		if (base.provider === 'n8n-sandbox') {
-			const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
-			return {
-				...base,
-				serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
-				apiKey: sandbox.apiKey ?? base.apiKey,
-			};
-		}
-		return base;
+		const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
+		return {
+			...base,
+			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
+			apiKey: sandbox.apiKey ?? base.apiKey,
+		};
 	}
 
 	private async getOrCreateWorkspaceEntry(
 		threadId: string,
 		user: User,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
 		const existing = this.sandboxes.get(threadId);
 		if (existing) {
@@ -812,7 +796,7 @@ export class InstanceAiService {
 		const pending = this.sandboxCreations.get(threadId);
 		if (pending) return await pending;
 
-		const creation = this.createWorkspaceEntry(threadId, user, runId);
+		const creation = this.createWorkspaceEntry(threadId, user);
 		this.sandboxCreations.set(threadId, creation);
 		try {
 			return await creation;
@@ -826,9 +810,8 @@ export class InstanceAiService {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const entry = await this.getOrCreateWorkspaceEntry(threadId, user, runId);
+		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
 		if (entry) await this.ensureWorkspaceSetup(entry, context);
 		return entry;
 	}
@@ -853,13 +836,8 @@ export class InstanceAiService {
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
-		runId?: string,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(
-			await this.resolveSandboxConfig(user),
-			threadId,
-			runId,
-		);
+		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config, {
@@ -1171,6 +1149,18 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext,
 		messageGroupId?: string,
 	): void {
+		const existing = this.traceContextsByRunId.get(runId);
+		if (
+			existing?.tracing.traceWriter &&
+			existing.traceSlug &&
+			existing.tracing.traceWriter !== tracing.traceWriter
+		) {
+			this.traceReplay.preserveWriterEvents(
+				existing.traceSlug,
+				existing.tracing.traceWriter.getEvents(),
+			);
+		}
+
 		this.traceContextsByRunId.set(runId, {
 			threadId,
 			messageGroupId,
@@ -1347,6 +1337,22 @@ export class InstanceAiService {
 				this.traceContextsByRunId.delete(runId);
 			}
 		}
+	}
+
+	private deleteTraceContextsForSlug(slug: string): void {
+		for (const [runId, entry] of this.traceContextsByRunId) {
+			if (entry.traceSlug === slug) {
+				releaseTraceClient(entry.tracing.rootRun.traceId);
+				this.traceContextsByRunId.delete(runId);
+			}
+		}
+	}
+
+	clearTraceContextsForTest(): void {
+		for (const entry of this.traceContextsByRunId.values()) {
+			releaseTraceClient(entry.tracing.rootRun.traceId);
+		}
+		this.traceContextsByRunId.clear();
 	}
 
 	private async finalizeDetachedTraceRun(
@@ -1853,11 +1859,25 @@ export class InstanceAiService {
 		return this.traceReplay.getEventsWithWriterFallback(slug, this.traceContextsByRunId.values());
 	}
 
+	hasRunningWorkForTest(): boolean {
+		const threadIds = new Set(
+			[...this.traceContextsByRunId.values()].map((entry) => entry.threadId),
+		);
+
+		for (const threadId of threadIds) {
+			if (this.runState.getActiveRunId(threadId)) return true;
+			if (this.backgroundTasks.getRunningTasks(threadId).length > 0) return true;
+		}
+
+		return false;
+	}
+
 	activateTraceSlug(slug: string): void {
 		this.traceReplay.activateSlug(slug);
 	}
 
 	clearTraceEvents(slug: string): void {
+		this.deleteTraceContextsForSlug(slug);
 		this.traceReplay.clearEvents(slug);
 	}
 
@@ -2089,7 +2109,7 @@ export class InstanceAiService {
 
 	@OnLeaderTakeover()
 	startCheckpointPruning(): void {
-		if (this.checkpointPruneTimer || this.instanceAiConfig.snapshotPruneInterval <= 0) return;
+		if (this.checkpointPruneTimer || this.instanceAiConfig.pruneInterval <= 0) return;
 		this.checkpointPruningStopped = false;
 		this.scheduleCheckpointPrune(0);
 	}
@@ -2101,10 +2121,10 @@ export class InstanceAiService {
 		this.checkpointPruneTimer = undefined;
 	}
 
-	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.snapshotPruneInterval): void {
+	private scheduleCheckpointPrune(delayMs = this.instanceAiConfig.pruneInterval): void {
 		if (this.checkpointPruningStopped) return;
 		this.checkpointPruneTimer = setTimeout(() => {
-			void this.pruneStaleCheckpoints();
+			void this.runScheduledPrune();
 		}, delayMs);
 		this.checkpointPruneTimer.unref();
 	}
@@ -2184,7 +2204,14 @@ export class InstanceAiService {
 		}
 	}
 
-	private async pruneStaleCheckpoints(now = Date.now()): Promise<void> {
+	/**
+	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
+	 * drop expired pending confirmations, and delete expired conversation
+	 * threads, then schedule the next run. A checkpoint failure reschedules
+	 * with a shorter retry delay; the confirmation and thread steps swallow
+	 * their own errors so they never disrupt the cycle.
+	 */
+	private async runScheduledPrune(now = Date.now()): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
 
 		try {
@@ -2195,12 +2222,31 @@ export class InstanceAiService {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
 			await this.pruneStalePendingConfirmations(now);
+			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
 		} catch (error: unknown) {
 			this.logger.warn('Failed to expire stale Instance AI checkpoints', {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Delete conversation threads older than the configured TTL as part of the
+	 * recurring leader prune. Has its own try/catch so a failure here never
+	 * disrupts checkpoint pruning or the next scheduled run. No-op when
+	 * `threadTtlDays` is 0 (handled inside `cleanupExpiredThreads`).
+	 */
+	private async pruneExpiredThreads(): Promise<void> {
+		try {
+			await this.memoryService.cleanupExpiredThreads(
+				async (threadId) => await this.clearThreadState(threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to clean up expired Instance AI conversation threads', {
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
@@ -2394,9 +2440,13 @@ export class InstanceAiService {
 	}
 
 	private buildPlannedTaskFollowUpMessage(
-		type: 'synthesize' | 'replan' | 'checkpoint',
+		type: 'synthesize' | 'replan' | 'checkpoint' | 'build-workflow',
 		graph: PlannedTaskGraph,
-		options: { failedTask?: PlannedTaskRecord; checkpoint?: PlannedTaskRecord } = {},
+		options: {
+			failedTask?: PlannedTaskRecord;
+			checkpoint?: PlannedTaskRecord;
+			buildTask?: PlannedTaskRecord;
+		} = {},
 	): string {
 		const payload: Record<string, unknown> = {
 			tasks: graph.tasks.map((task) => ({
@@ -2439,6 +2489,17 @@ export class InstanceAiService {
 			};
 		}
 
+		if (options.buildTask) {
+			payload.buildTask = {
+				id: options.buildTask.id,
+				title: options.buildTask.title,
+				kind: options.buildTask.kind,
+				spec: options.buildTask.spec,
+				workflowId: options.buildTask.workflowId,
+				deps: options.buildTask.deps,
+			};
+		}
+
 		return `<planned-task-follow-up type="${type}">\n${JSON.stringify(payload, null, 2)}\n</planned-task-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
@@ -2459,6 +2520,7 @@ export class InstanceAiService {
 			correlationId?: string;
 			workSummary?: WorkSummary;
 			errorMessage?: string;
+			suppressCompletedFallback?: boolean;
 		} = {},
 	): TerminalResponseDecision | undefined {
 		const guard = new InstanceAiTerminalResponseGuard({
@@ -2473,6 +2535,7 @@ export class InstanceAiService {
 			{
 				workSummary: options.workSummary,
 				errorMessage: options.errorMessage,
+				suppressCompletedFallback: options.suppressCompletedFallback,
 			},
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
@@ -2970,35 +3033,54 @@ export class InstanceAiService {
 		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
-		if (adminSettings.sandboxEnabled) {
-			let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
-			const getSandboxEntry = async () => {
-				sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user, runId).catch(
-					(error: unknown) => {
-						sandboxEntryPromise = undefined;
-						throw error;
-					},
-				);
+		let workspaceRoot: string | undefined;
 
-				return await sandboxEntryPromise;
-			};
-			const getSetupSandboxEntry = async () => {
-				return await this.getOrCreateWorkspace(threadId, user, context, runId);
-			};
+		const sandboxStatus = this.settingsService.getSandboxStatus();
+		if (sandboxStatus.workflowBuilderAvailable) {
+			const sandboxConfig = await this.resolveSandboxConfig(user);
 
-			runtimeWorkspace = createLazyRuntimeWorkspace({
-				ensureWorkspace: async () => (await getSetupSandboxEntry())?.workspace,
-			});
-			const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
-				id: 'instance-ai-runtime-skill-workspace',
-				name: 'Instance AI runtime skill workspace',
-				ensureWorkspace: async () => (await getSandboxEntry())?.workspace,
-			});
-			runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
-				source: baseRuntimeSkills,
-				workspace: runtimeSkillWorkspace,
-				logger: this.logger,
-			});
+			if (sandboxConfig.enabled) {
+				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+
+				let sandboxEntryPromise: Promise<RuntimeSandboxEntry | undefined> | undefined;
+				const getSandboxEntry = async () => {
+					sandboxEntryPromise ??= this.getOrCreateWorkspaceEntry(threadId, user).catch(
+						(error: unknown) => {
+							sandboxEntryPromise = undefined;
+							throw error;
+						},
+					);
+
+					return await sandboxEntryPromise;
+				};
+				const getSetupSandboxEntry = async () => {
+					return await this.getOrCreateWorkspace(threadId, user, context);
+				};
+
+				const scopeWorkspaceForAgent = async (
+					workspace: Workspace | undefined,
+				): Promise<Workspace | undefined> => {
+					if (!workspace) return undefined;
+					const root = await getWorkspaceRoot(workspace);
+					return createScopedWorkspace(workspace, root);
+				};
+
+				runtimeWorkspace = createLazyRuntimeWorkspace({
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
+				});
+				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
+					id: 'instance-ai-runtime-skill-workspace',
+					name: 'Instance AI runtime skill workspace',
+					ensureWorkspace: async () =>
+						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
+				});
+				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
+					source: baseRuntimeSkills,
+					workspace: runtimeSkillWorkspace,
+					logger: this.logger,
+				});
+			}
 		}
 
 		const orchestrationContext: OrchestrationContext = {
@@ -3080,6 +3162,7 @@ export class InstanceAiService {
 			},
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
+			workspaceRoot,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
@@ -3111,24 +3194,14 @@ export class InstanceAiService {
 
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
-		switch (task.kind) {
-			case 'build-workflow':
-				started = await startBuildWorkflowAgentTask(taskContext, {
-					task: task.spec,
-					workflowId: task.workflowId,
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
-			case 'delegate':
-				started = await startDetachedDelegateTask(taskContext, {
-					title: task.title,
-					spec: task.spec,
-					tools: task.tools ?? [],
-					plannedTaskId: task.id,
-					conversationContext,
-				});
-				break;
+		if (task.kind === 'delegate') {
+			started = await startDetachedDelegateTask(taskContext, {
+				title: task.title,
+				spec: task.spec,
+				tools: task.tools ?? [],
+				plannedTaskId: task.id,
+				conversationContext,
+			});
 		}
 
 		if (!started?.taskId) {
@@ -3170,40 +3243,130 @@ export class InstanceAiService {
 		};
 	}
 
+	private collectWorkflowIds(value: unknown, workflowIds: Set<string>): void {
+		if (value === null || value === undefined || typeof value !== 'object') return;
+
+		if (Array.isArray(value)) {
+			for (const item of value) {
+				this.collectWorkflowIds(item, workflowIds);
+			}
+			return;
+		}
+
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			if (key === 'workflowId' && typeof child === 'string' && child.length > 0) {
+				workflowIds.add(child);
+				continue;
+			}
+
+			if (key === 'supportingWorkflowIds' && Array.isArray(child)) {
+				for (const workflowId of child) {
+					if (typeof workflowId === 'string' && workflowId.length > 0) {
+						workflowIds.add(workflowId);
+					}
+				}
+				continue;
+			}
+
+			this.collectWorkflowIds(child, workflowIds);
+		}
+	}
+
+	private getBuildTaskWorkflowName(task: PlannedTaskRecord): string | undefined {
+		if (task.kind !== 'build-workflow') return undefined;
+
+		const titleMatch =
+			task.title.match(/^Build '(.+)' workflow$/) ?? task.title.match(/^Build "(.+)" workflow$/);
+
+		return titleMatch?.[1];
+	}
+
 	/**
-	 * Resolve the workflow IDs the checkpoint task is verifying so the runWorkflow
-	 * permission override can be scoped. Walks the checkpoint's `dependsOn` to find
-	 * the build-workflow tasks it depends on and reads their `outcome.workflowId`.
-	 * Returns an empty set when the graph is missing or the checkpoint has no
-	 * resolved workflow deps (in which case the override applies broadly via the
-	 * `allowList === undefined` short-circuit only if we don't set the field).
+	 * Keep explicit user-requested runs approval-gated even when they happen as checkpoint fallback.
 	 */
-	private async getCheckpointAllowedWorkflowIds(
+	private checkpointRequiresRunApproval(
+		graph: PlannedTaskGraph,
+		checkpoint: PlannedTaskRecord,
+	): boolean {
+		if (graph.postBuildRunApprovalRequired === true) return true;
+
+		const deps = new Set(checkpoint.deps);
+		const text = graph.tasks
+			.filter((task) => deps.has(task.id))
+			.map((task) => `${task.title}\n${task.spec}`)
+			.join('\n')
+			.toLowerCase();
+
+		return (
+			/\bthen\s+(run|execute|test)\b/.test(text) ||
+			/\b(run|execute|test)\s+(it\s+)?(once|immediately|manually|after building)\b/.test(text)
+		);
+	}
+
+	/**
+	 * Resolve the workflows the checkpoint task is verifying so the runWorkflow
+	 * permission override can be scoped. Workflow names are carried as an E2E replay
+	 * fallback because runtime workflow IDs can be remapped.
+	 */
+	private async getCheckpointRunPolicy(
 		threadId: string,
 		checkpointTaskId: string,
-	): Promise<ReadonlySet<string>> {
+	): Promise<{
+		allowedWorkflowIds: ReadonlySet<string>;
+		allowedWorkflowNames: ReadonlySet<string>;
+		requireApproval: boolean;
+	}> {
 		try {
 			const { plannedTaskService } = await this.createPlannedTaskState();
 			const graph = await plannedTaskService.getGraph(threadId);
 			const checkpoint = graph?.tasks.find((t) => t.id === checkpointTaskId);
-			if (!graph || !checkpoint) return new Set();
+			if (!graph || !checkpoint) {
+				return {
+					allowedWorkflowIds: new Set(),
+					allowedWorkflowNames: new Set(),
+					requireApproval: false,
+				};
+			}
 			const deps = new Set(checkpoint.deps);
-			const allowed = new Set<string>();
+			const ids = new Set<string>();
+			const names = new Set<string>();
 			for (const task of graph.tasks) {
 				if (!deps.has(task.id)) continue;
-				const workflowId = task.outcome?.workflowId;
-				if (typeof workflowId === 'string' && workflowId.length > 0) {
-					allowed.add(workflowId);
+
+				const workflowName = this.getBuildTaskWorkflowName(task);
+				if (workflowName) {
+					names.add(workflowName);
+				}
+
+				if (task.workflowId) {
+					ids.add(task.workflowId);
+				}
+				this.collectWorkflowIds(task.outcome, ids);
+			}
+
+			const tracing = this.getTraceContextForContinuation(threadId);
+			for (const workflowId of [...ids]) {
+				const remappedWorkflowId = tracing?.idRemapper?.remapOutput(workflowId);
+				if (typeof remappedWorkflowId === 'string' && remappedWorkflowId.length > 0) {
+					ids.add(remappedWorkflowId);
 				}
 			}
-			return allowed;
+			return {
+				allowedWorkflowIds: ids,
+				allowedWorkflowNames: names,
+				requireApproval: this.checkpointRequiresRunApproval(graph, checkpoint),
+			};
 		} catch (error) {
 			this.logger.warn('Failed to resolve checkpoint allowed workflow IDs', {
 				threadId,
 				checkpointTaskId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return new Set();
+			return {
+				allowedWorkflowIds: new Set(),
+				allowedWorkflowNames: new Set(),
+				requireApproval: false,
+			};
 		}
 	}
 
@@ -3246,6 +3409,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
+		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
@@ -3281,6 +3445,7 @@ export class InstanceAiService {
 			isReplanFollowUp,
 			checkpoint,
 			resumeReason,
+			plannedBuild,
 		);
 
 		return runId;
@@ -3356,6 +3521,49 @@ export class InstanceAiService {
 			// tick can emit it again.
 			if (!startedRunId) {
 				await plannedTaskService.revertToActive(threadId);
+			}
+			return;
+		}
+
+		if (action.type === 'orchestrate-build-workflow') {
+			if (this.runState.hasLiveRun(threadId)) {
+				return;
+			}
+
+			const buildTask = action.tasks[0];
+			const workItemId = buildTask.workflowId
+				? `${action.graph.planRunId}:default`
+				: `wi_${nanoid(8)}`;
+			await plannedTaskService.markRunning(threadId, buildTask.id, {
+				agentId: ORCHESTRATOR_AGENT_ID,
+			});
+			const graphAfterMark = (await plannedTaskService.getGraph(threadId)) ?? action.graph;
+			await this.syncPlannedTasksToUi(threadId, graphAfterMark);
+
+			const buildTaskRecord = graphAfterMark.tasks.find((t) => t.id === buildTask.id) ?? buildTask;
+			const plannedBuild: PlannedBuildFollowUp = {
+				isPlannedBuildFollowUp: true,
+				buildTaskId: buildTask.id,
+				workItemId,
+			};
+			const startedRunId = await this.startInternalFollowUpRun(
+				activeUser,
+				threadId,
+				this.buildPlannedTaskFollowUpMessage('build-workflow', graphAfterMark, {
+					buildTask: buildTaskRecord,
+				}),
+				action.graph.messageGroupId,
+				false,
+				undefined,
+				plannedBuild,
+			);
+
+			if (!startedRunId) {
+				this.logger.warn(
+					'Build workflow follow-up run did not start — reverting build task to planned for retry',
+					{ threadId, buildTaskId: buildTask.id },
+				);
+				await plannedTaskService.revertBuildWorkflowToPlanned(threadId, buildTask.id);
 			}
 			return;
 		}
@@ -3446,6 +3654,7 @@ export class InstanceAiService {
 		isReplanFollowUp: boolean = false,
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 		resumeReason?: OrchestratorResumeReason,
+		plannedBuild?: PlannedBuildFollowUp,
 	): Promise<void> {
 		// Read once at the top so the streamInput builder + (if any later
 		// retry) see the same view of restart-recovery metadata.
@@ -3484,7 +3693,9 @@ export class InstanceAiService {
 				return;
 			}
 
-			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+			const registryMcpServers = await this.mcpRegistryService.getRegistryMcpServers(user);
+			const mcpServers = [...staticMcpServers, ...registryMcpServers];
 
 			const executionPushRef = this.threadPushRef.get(threadId);
 			const environment = await this.createExecutionEnvironment(
@@ -3496,9 +3707,18 @@ export class InstanceAiService {
 				executionPushRef,
 			);
 			activeSnapshotStorage = environment.snapshotStorage;
-			const { context, memory, taskStorage, snapshotStorage, modelId, orchestrationContext } =
-				environment;
+			const {
+				context,
+				memory,
+				taskStorage,
+				snapshotStorage,
+				workflowTasks,
+				plannedTaskService,
+				modelId,
+				orchestrationContext,
+			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
+			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory history only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
@@ -3517,10 +3737,38 @@ export class InstanceAiService {
 				// Scope the runWorkflow override to the workflows this checkpoint is verifying:
 				// the orchestrator can call `executions(action="run")` on a depended-on workflow
 				// without HITL, but any other workflow id still requires user approval.
-				context.allowedRunWorkflowIds = await this.getCheckpointAllowedWorkflowIds(
+				const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
+				context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
+				context.allowedRunWorkflowNames = runPolicy.allowedWorkflowNames;
+				context.requireRunWorkflowApproval = runPolicy.requireApproval;
+			}
+
+			if (plannedBuild?.isPlannedBuildFollowUp) {
+				context.permissions = {
+					...context.permissions,
+					...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
+				} as typeof context.permissions;
+				context.workflowBuildContext = {
 					threadId,
-					checkpoint.checkpointTaskId,
-				);
+					runId,
+					taskId: plannedBuild.buildTaskId,
+					workItemId: plannedBuild.workItemId,
+					allowPostPlanWorkflowCreate: true,
+					plannedTaskService,
+					workflowTaskService: workflowTasks,
+					onBuildOutcome: (outcome) => {
+						plannedBuild.savedOutcome = outcome;
+					},
+				};
+			} else {
+				context.workflowBuildContext = {
+					threadId,
+					runId,
+					taskId: `build-${runId}`,
+					workItemId: `wi_${nanoid(8)}`,
+					allowPostPlanWorkflowCreate: isPostPlanFollowUp,
+					workflowTaskService: workflowTasks,
+				};
 			}
 
 			// Thread attachments into the domain context so parse-file can access them
@@ -3554,6 +3802,9 @@ export class InstanceAiService {
 						metadata: {
 							...(checkpoint?.isCheckpointFollowUp
 								? { checkpoint_task_id: checkpoint.checkpointTaskId }
+								: {}),
+							...(plannedBuild?.isPlannedBuildFollowUp
+								? { build_task_id: plannedBuild.buildTaskId }
 								: {}),
 						},
 					})
@@ -3787,6 +4038,7 @@ export class InstanceAiService {
 						tracing,
 						modelId,
 						checkpoint,
+						plannedBuild,
 					});
 					void this.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -3896,6 +4148,9 @@ export class InstanceAiService {
 				messageGroupId,
 				correlationId: messageId,
 				workSummary: result.workSummary,
+				suppressCompletedFallback:
+					checkpoint?.isCheckpointFollowUp === true ||
+					plannedBuild?.isPlannedBuildFollowUp === true,
 			});
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(runId, tracing, {
@@ -4058,6 +4313,8 @@ export class InstanceAiService {
 			if (!this.runState.hasSuspendedRun(threadId)) {
 				if (checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId);
+				} else if (plannedBuild?.isPlannedBuildFollowUp) {
+					await this.finalizePlannedBuildFollowUp(user, threadId, plannedBuild);
 				} else {
 					await this.schedulePlannedTasks(user, threadId);
 				}
@@ -4244,6 +4501,46 @@ export class InstanceAiService {
 			this.logger.error('Checkpoint finalization failed', {
 				threadId,
 				checkpointTaskId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		await this.schedulePlannedTasks(user, threadId);
+	}
+
+	private async finalizePlannedBuildFollowUp(
+		user: User,
+		threadId: string,
+		plannedBuild: PlannedBuildFollowUp,
+	): Promise<void> {
+		try {
+			const { plannedTaskService } = await this.createPlannedTaskState();
+			const graph = await plannedTaskService.getGraph(threadId);
+			const task = graph?.tasks.find((t) => t.id === plannedBuild.buildTaskId);
+			if (task && task.status === 'running') {
+				if (plannedBuild.savedOutcome?.submitted === true) {
+					await plannedTaskService.markSucceeded(threadId, plannedBuild.buildTaskId, {
+						result: plannedBuild.savedOutcome.summary,
+						outcome: plannedBuild.savedOutcome,
+					});
+				} else {
+					this.logger.warn('Build workflow follow-up ended without saving — marking failed', {
+						threadId,
+						buildTaskId: plannedBuild.buildTaskId,
+					});
+					await plannedTaskService.markFailed(threadId, plannedBuild.buildTaskId, {
+						error: 'Workflow build run ended without saving a workflow',
+					});
+				}
+				const nextGraph = await plannedTaskService.getGraph(threadId);
+				if (nextGraph) {
+					await this.syncPlannedTasksToUi(threadId, nextGraph);
+				}
+			}
+		} catch (error) {
+			this.logger.error('Build workflow finalization failed', {
+				threadId,
+				buildTaskId: plannedBuild.buildTaskId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -4557,6 +4854,7 @@ export class InstanceAiService {
 			modelId,
 			messageGroupId,
 			checkpoint,
+			plannedBuild,
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
 
@@ -4617,6 +4915,9 @@ export class InstanceAiService {
 				...(checkpoint?.isCheckpointFollowUp
 					? { checkpoint_task_id: checkpoint.checkpointTaskId }
 					: {}),
+				...(plannedBuild?.isPlannedBuildFollowUp
+					? { build_task_id: plannedBuild.buildTaskId }
+					: {}),
 			},
 		});
 
@@ -4632,6 +4933,7 @@ export class InstanceAiService {
 			tracing: resumeTracing ?? tracing,
 			modelId,
 			checkpoint,
+			plannedBuild,
 		});
 		return true;
 	}
@@ -4657,6 +4959,7 @@ export class InstanceAiService {
 			tracing?: InstanceAiTraceContext;
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
+			plannedBuild?: PlannedBuildFollowUp;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -4740,6 +5043,7 @@ export class InstanceAiService {
 						tracing: opts.tracing,
 						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 						checkpoint: opts.checkpoint,
+						plannedBuild: opts.plannedBuild,
 					});
 					void this.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -4841,6 +5145,9 @@ export class InstanceAiService {
 			this.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
 				messageGroupId,
 				workSummary: result.workSummary,
+				suppressCompletedFallback:
+					opts.checkpoint?.isCheckpointFollowUp === true ||
+					opts.plannedBuild?.isPlannedBuildFollowUp === true,
 			});
 			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(opts.runId, opts.tracing, {
@@ -4980,6 +5287,8 @@ export class InstanceAiService {
 						opts.threadId,
 						opts.checkpoint.checkpointTaskId,
 					);
+				} else if (opts.plannedBuild?.isPlannedBuildFollowUp) {
+					await this.finalizePlannedBuildFollowUp(opts.user, opts.threadId, opts.plannedBuild);
 				} else {
 					await this.schedulePlannedTasks(opts.user, opts.threadId);
 				}
@@ -5076,7 +5385,7 @@ export class InstanceAiService {
 				// Auto-follow-up: when the last background task finishes and no
 				// orchestrator run is active, resume the orchestrator so it can
 				// synthesize results for the user. Planned tasks handle this via
-				// schedulePlannedTasks(); this covers direct build-workflow-with-agent calls.
+				// schedulePlannedTasks(); this covers direct detached delegate calls.
 				if (task.plannedTaskId) return;
 
 				// Parent-tagged children (patch-builder etc. spawned inside a

@@ -106,7 +106,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 		// Setup Container mock for different dependencies
 		const mockTriggersAndPollersInstance = {
-			runTrigger: vi.fn(),
+			runTriggerFunction: vi.fn(),
 		};
 		const mockGlobalConfigInstance = {
 			sentry: { backendDsn: '' },
@@ -935,7 +935,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -959,7 +959,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockTriggerData });
 		});
 
@@ -970,7 +970,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
+				runTriggerFunction: vi.fn().mockResolvedValue(undefined), // Return undefined to trigger line 1277
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -994,7 +994,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: null });
 		});
 
@@ -1011,7 +1011,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1035,7 +1035,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(result).toEqual({ data: null, closeFunction: mockCloseFunction });
 		});
 
@@ -1055,7 +1055,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue(mockTriggerResponse),
+				runTriggerFunction: vi.fn().mockResolvedValue(mockTriggerResponse),
 			};
 			const mockGlobalConfigInstance = {
 				sentry: { backendDsn: '' },
@@ -1079,7 +1079,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(mockTriggersAndPollersInstance.runTrigger).toHaveBeenCalled();
+			expect(mockTriggersAndPollersInstance.runTriggerFunction).toHaveBeenCalled();
 			expect(mockManualTriggerFunction).toHaveBeenCalled(); // Verify line 1294 was executed
 			expect(result).toEqual({ data: mockTriggerData, closeFunction: mockCloseFunction });
 		});
@@ -1552,7 +1552,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			mockNodeType.webhook = undefined;
 
 			const mockTriggersAndPollersInstance = {
-				runTrigger: vi.fn().mockResolvedValue({
+				runTriggerFunction: vi.fn().mockResolvedValue({
 					manualTriggerResponse: Promise.resolve([[{ json: { triggered: 'data' } }]]),
 				}),
 			};

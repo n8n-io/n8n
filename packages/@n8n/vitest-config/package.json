@@ -1,6 +1,6 @@
 {
   "name": "@n8n/vitest-config",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "type": "module",
   "peerDependencies": {
     "vite": "catalog:",
@@ -43,6 +43,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "watch": "tsc -p tsconfig.build.json --watch"

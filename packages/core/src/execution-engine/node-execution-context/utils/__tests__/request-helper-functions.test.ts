@@ -9,7 +9,6 @@ import type {
 	INode,
 	IRequestOptions,
 	IWorkflowExecuteAdditionalData,
-	PaginationOptions,
 	Workflow,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -21,7 +20,6 @@ import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import {
-	applyPaginationRequestData,
 	convertN8nRequestToAxios,
 	httpRequest,
 	invokeAxios,
@@ -703,150 +701,6 @@ describe('Request Helper Functions', () => {
 		});
 	});
 
-	describe('applyPaginationRequestData', () => {
-		test('should merge pagination request data with original request options', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'GET',
-				qs: { page: 1 },
-				headers: { 'X-Original-Header': 'original' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-				headers: { 'X-Pagination-Header': 'pagination' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'GET',
-				qs: { page: 1 },
-				headers: {
-					'X-Original-Header': 'original',
-					'X-Pagination-Header': 'pagination',
-				},
-				body: { key: 'value' },
-			});
-		});
-
-		test('should handle formData correctly', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'POST',
-				formData: { original: 'data' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'POST',
-				formData: { key: 'value', original: 'data' },
-			});
-		});
-
-		test('should handle form data correctly', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'POST',
-				form: { original: 'data' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'POST',
-				form: { key: 'value', original: 'data' },
-			});
-		});
-
-		test('should prefer pagination body over original body', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'POST',
-				body: { original: 'data' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'POST',
-				body: { key: 'value', original: 'data' },
-			});
-		});
-
-		test('should merge complex request options', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'GET',
-				qs: { page: 1, limit: 10 },
-				headers: { 'X-Original-Header': 'original' },
-				body: { filter: 'active' },
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {
-				url: 'https://pagination.com/api',
-				body: { key: 'value' },
-				headers: { 'X-Pagination-Header': 'pagination' },
-				qs: { offset: 20 },
-			};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://pagination.com/api',
-				url: 'https://pagination.com/api',
-				method: 'GET',
-				qs: { offset: 20, limit: 10, page: 1 },
-				headers: {
-					'X-Original-Header': 'original',
-					'X-Pagination-Header': 'pagination',
-				},
-				body: { key: 'value', filter: 'active' },
-			});
-		});
-
-		test('should handle edge cases with empty pagination data', () => {
-			const originalRequestOptions: IRequestOptions = {
-				uri: 'https://original.com/api',
-				method: 'GET',
-			};
-
-			const paginationRequestData: PaginationOptions['request'] = {};
-
-			const result = applyPaginationRequestData(originalRequestOptions, paginationRequestData);
-
-			expect(result).toEqual({
-				uri: 'https://original.com/api',
-				method: 'GET',
-			});
-		});
-	});
-
 	describe('httpRequest', () => {
 		const baseUrl = 'https://example.com';
 
@@ -1338,6 +1192,84 @@ describe('Request Helper Functions', () => {
 			expect(
 				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 			).not.toHaveBeenCalled();
+		});
+
+		test('should surface an actionable reconnect message when refresh returns invalid_grant', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(400, {
+				error: 'invalid_grant',
+				error_description: 'Token has been expired or revoked.',
+			});
+
+			const promise = refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			await expect(promise).rejects.toThrow(
+				'The credential "test-credentials-name" needs to be reconnected.',
+			);
+			await expect(promise).rejects.toMatchObject({
+				description: expect.stringContaining('reconnect'),
+				level: 'warning',
+			});
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).not.toHaveBeenCalled();
+		});
+
+		test('should surface an actionable reconnect message when client credentials token fetch returns invalid_grant', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				...mockCredentialData,
+				grantType: 'clientCredentials',
+			});
+			nock(baseUrl).post('/token').reply(400, {
+				error: 'invalid_grant',
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('The credential "test-credentials-name" needs to be reconnected.');
+		});
+
+		test('should rethrow non-invalid_grant token errors unchanged', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(400, {
+				error: 'invalid_client',
+			});
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.not.toThrow('needs to be reconnected');
+		});
+
+		test('should rethrow non-AuthError refresh failures unchanged', async () => {
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').replyWithError(new Error('network exploded'));
+
+			const promise = refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			await expect(promise).rejects.toThrow('network exploded');
+			await expect(promise).rejects.not.toThrow('needs to be reconnected');
+		});
+
+		test('should fall back to credential type when no credential name is set', async () => {
+			mockNode.credentials = {
+				'test-credentials-type': { id: 'test-credentials-id', name: '' },
+			};
+			mockThis.getCredentials.mockResolvedValue(mockCredentialData);
+			nock(baseUrl).post('/token').reply(400, { error: 'invalid_grant' });
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toThrow('The credential of type "test-credentials-type" needs to be reconnected.');
 		});
 
 		describe('JWE decryption via oauth-jwe proxy', () => {
