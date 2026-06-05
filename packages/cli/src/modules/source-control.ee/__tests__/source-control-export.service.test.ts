@@ -19,6 +19,8 @@ import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User, WorkflowEntity } from 
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
+
+vi.mock('node:fs/promises');
 import { captor, mock } from 'vitest-mock-extended';
 
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';

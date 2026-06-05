@@ -23,7 +23,7 @@ const mockMiddleware = (
 
 vi.mock('node:fs', () => ({ readFileSync: vi.fn() }));
 vi.mock('prom-client');
-vi.mock('express-prom-bundle', () => vi.fn(() => mockMiddleware));
+vi.mock('express-prom-bundle', () => ({ default: vi.fn(() => mockMiddleware) }));
 
 const mockedReadFileSync = vi.mocked(readFileSync);
 

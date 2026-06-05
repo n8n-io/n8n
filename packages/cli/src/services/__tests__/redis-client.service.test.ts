@@ -9,11 +9,13 @@ import { RedisClientService } from '@/services/redis-client.service';
 type EventHandler = (...args: unknown[]) => void;
 
 vi.mock('ioredis', () => {
-	return vi.fn().mockImplementation(() => {
-		return {
-			on: vi.fn(),
-		};
-	});
+	return {
+		default: vi.fn().mockImplementation(function () {
+			return {
+				on: vi.fn(),
+			};
+		}),
+	};
 });
 
 describe('RedisClientService', () => {

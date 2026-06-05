@@ -9,8 +9,10 @@ import { CacheService } from '@/services/cache/cache.service';
 vi.mock('ioredis', () => {
 	const Redis = require('ioredis-mock');
 
-	return function (...args: unknown[]) {
-		return new Redis(args);
+	return {
+		default: function (...args: unknown[]) {
+			return new Redis(args);
+		},
 	};
 });
 
