@@ -454,7 +454,7 @@ describe('search-projects MCP tool', () => {
 		expect(output.hint).toBeUndefined();
 	});
 
-	test('prefers the team-projects-disabled hint over disambiguation hints', async () => {
+	test('combines the disambiguation hint with the team-projects-disabled note when both apply', async () => {
 		const projects = [
 			{ id: 'proj-old', name: 'Finance-Old', type: 'team' },
 			{ id: 'proj-archive', name: 'Old Finance Archive', type: 'team' },
@@ -478,6 +478,11 @@ describe('search-projects MCP tool', () => {
 			hint?: string;
 		};
 		expect(output.teamProjectsEnabled).toBe(false);
+		expect(output.hint).toContain('No exact match for "finance"');
 		expect(output.hint).toContain('Team projects are not enabled');
+		const disambigIdx = output.hint?.indexOf('No exact match') ?? -1;
+		const disabledIdx = output.hint?.indexOf('Team projects') ?? -1;
+		expect(disambigIdx).toBeGreaterThanOrEqual(0);
+		expect(disabledIdx).toBeGreaterThan(disambigIdx);
 	});
 });
