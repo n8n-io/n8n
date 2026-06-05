@@ -551,4 +551,46 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 		await expect(filesystem.readFile('/workspace/file.txt')).resolves.toBeUndefined();
 		expect(clientLog.some((c) => c.create.mock.calls.length > 0)).toBe(true);
 	});
+
+	it('DaytonaFilesystem.exists() recovers a stopped sandbox instead of reporting missing', async () => {
+		// getFileDetails on a stopped sandbox fails with a non-404 — it must bubble to
+		// recovery, not be swallowed as "file does not exist".
+		const failing = makeMockSandbox('sb-stale', 'started');
+		failing.fs.getFileDetails = vi
+			.fn()
+			.mockRejectedValue(new DaytonaError('Endpoint not allowed', 403));
+		const probeStopped = makeMockSandbox('sb-probe', 'stopped');
+		const resumed = makeMockSandbox('sb-resumed', 'stopped');
+		queuedGetResults.push(failing, probeStopped, resumed);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await expect(filesystem.exists('/workspace/marker')).resolves.toBe(true);
+		expect(resumed.start).toHaveBeenCalled();
+	});
+
+	it('DaytonaFilesystem.exists() returns false for a genuine 404 without recovering', async () => {
+		const handle = makeMockSandbox('sb-1', 'started');
+		handle.fs.getFileDetails = vi.fn().mockRejectedValue(new DaytonaError('file not found', 404));
+		queuedGetResults.push(handle);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await expect(filesystem.exists('/workspace/missing')).resolves.toBe(false);
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('DaytonaFilesystem.appendFile() treats a genuine 404 as an empty file', async () => {
+		const handle = makeMockSandbox('sb-1', 'started');
+		handle.fs.downloadFile = vi.fn().mockRejectedValue(new DaytonaError('file not found', 404));
+		queuedGetResults.push(handle);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await filesystem.appendFile('/workspace/log.txt', 'entry');
+		expect(handle.fs.uploadFile).toHaveBeenCalled();
+	});
 });

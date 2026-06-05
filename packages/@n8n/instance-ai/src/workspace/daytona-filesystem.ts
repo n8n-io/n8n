@@ -79,7 +79,10 @@ export class DaytonaFilesystem extends BaseFilesystem {
 			let existing: Buffer;
 			try {
 				existing = await fs.downloadFile(path);
-			} catch {
+			} catch (error) {
+				// Only a genuinely missing file means "start empty". Sandbox/provider errors
+				// (e.g. a stopped sandbox) must bubble up so withFilesystem() can recover.
+				if (!isDaytona404(error)) throw error;
 				existing = Buffer.alloc(0);
 			}
 			const append =
@@ -128,8 +131,12 @@ export class DaytonaFilesystem extends BaseFilesystem {
 			try {
 				await fs.getFileDetails(path);
 				return true;
-			} catch {
-				return false;
+			} catch (error) {
+				// A genuine 404 means the file is absent. Sandbox/provider errors (e.g. a
+				// stopped sandbox) must bubble up so withFilesystem() can recover instead of
+				// silently reporting the file as missing.
+				if (isDaytona404(error)) return false;
+				throw error;
 			}
 		});
 	}
