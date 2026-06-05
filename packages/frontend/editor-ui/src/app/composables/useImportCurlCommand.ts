@@ -119,7 +119,7 @@ const isBinaryRequest = (curlJson: JSONOutput): boolean => {
 
 const toKeyValueArray = ([key, value]: [string, unknown]) => ({
 	name: key,
-	value: value?.toString() ?? '',
+	value: typeof value === 'string' ? value : `={{ ${value} }}`,
 });
 
 const extractHeaders = (headers: JSONOutput['headers'] = {}): HttpNodeHeaders => {
@@ -200,8 +200,8 @@ const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
 
 const encodeBasicAuthentication = (username: string, password: string) =>
 	btoa(`${username}:${password}`);
-const jsonHasNonStringValues = (json: { [key: string]: unknown }) =>
-	Object.values(json).some((e) => typeof e !== 'string');
+const jsonHasNestedObjects = (json: { [key: string]: string | number | object }) =>
+	Object.values(json).some((e) => typeof e === 'object' && e !== null);
 
 const mapCookies = (cookies: JSONOutput['cookies']): { cookie: string } | {} => {
 	if (!cookies) return {};
@@ -350,7 +350,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		if (curlJson.data) {
 			const json = curlJson.data;
 
-			if (jsonHasNonStringValues(json)) {
+			if (jsonHasNestedObjects(json)) {
 				// json body
 				Object.assign(httpNodeParameters, {
 					specifyBody: 'json',
