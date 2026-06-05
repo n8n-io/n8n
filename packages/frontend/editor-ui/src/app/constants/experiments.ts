@@ -124,7 +124,7 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperim
 );
 
 export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
-	'087_instance_ai_mcp_connections',
+	'089_instance_ai_mcp_connections',
 );
 
 export const EXPERIMENTS_TO_TRACK = [
