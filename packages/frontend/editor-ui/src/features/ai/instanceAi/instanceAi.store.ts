@@ -53,6 +53,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return message;
 	}
 
+	/**
+	 * Whether a launcher has queued a prefill or auto-send for this thread but the
+	 * thread view hasn't consumed it yet. Used to keep a freshly launched thread
+	 * from being treated as "unknown" before its first message lands and it shows
+	 * up in the server-side thread list.
+	 */
+	function hasPendingLaunch(threadId: string): boolean {
+		return pendingAutoSends.has(threadId) || pendingPrefills.has(threadId);
+	}
+
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
 	const debugMode = ref(false);
@@ -299,6 +309,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		consumePendingPrefill,
 		setPendingAutoSend,
 		consumePendingAutoSend,
+		hasPendingLaunch,
 	};
 });
 

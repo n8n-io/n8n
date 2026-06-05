@@ -467,12 +467,16 @@ function reconnectThreadAfterHydration(): void {
 // store-level "active thread" state is needed here.
 async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
+	// Captured before any await: a freshly launched thread (queued prefill or
+	// auto-send) is valid even if it hasn't surfaced in the server thread list
+	// yet, so it must not be treated as an unknown/invalid route.
+	const wasLaunched = store.hasPendingLaunch(requestedThreadId);
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
 	// User may have navigated elsewhere while we awaited
 	if (requestedThreadId !== props.threadId) return;
-	if (!store.threads.some((t) => t.id === requestedThreadId)) {
+	if (!wasLaunched && !store.threads.some((t) => t.id === requestedThreadId)) {
 		void router.replace({ name: INSTANCE_AI_VIEW });
 		return;
 	}
