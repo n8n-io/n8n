@@ -79,7 +79,7 @@ export class Peekalink extends Node {
 		const operation = context.getNodeParameter('operation', 0) as Operation;
 
 		const returnData = await Promise.all(
-			items.map(async (_, i) => {
+			items.map(async (_: import('n8n-workflow').INodeExecutionData, i: number) => {
 				try {
 					const link = context.getNodeParameter('url', i) as string;
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-return

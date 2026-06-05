@@ -450,7 +450,7 @@ export class Form extends Node {
 		}
 
 		const parentNodes = context.getParentNodes(context.getNode().name);
-		const hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+		const hasFormTrigger = parentNodes.some((node: import('n8n-workflow').INode) => node.type === FORM_TRIGGER_NODE_TYPE);
 
 		if (!hasFormTrigger) {
 			throw new NodeOperationError(
@@ -460,7 +460,7 @@ export class Form extends Node {
 		}
 
 		const childNodes = context.getChildNodes(context.getNode().name);
-		const hasNextPage = childNodes.some((node) => node.type === FORM_NODE_TYPE);
+		const hasNextPage = childNodes.some((node: import('n8n-workflow').INode) => node.type === FORM_NODE_TYPE);
 
 		if (operation === 'completion' && hasNextPage) {
 			throw new NodeOperationError(

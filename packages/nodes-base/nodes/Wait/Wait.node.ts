@@ -506,7 +506,7 @@ export class Wait extends Webhook {
 
 	async execute(
 		this: IExecuteFunctions | Wait,
-		contextOrResponse?: IExecuteFunctions | EngineResponse,
+		contextOrResponse?: IExecuteFunctions | import('n8n-workflow').EngineResponse,
 	): Promise<INodeExecutionData[][]> {
 		const context =
 			contextOrResponse && 'getNodeParameter' in contextOrResponse
@@ -527,7 +527,7 @@ export class Wait extends Webhook {
 				context.setMetadata({ resumeFormUrl });
 
 				const parentNodes = context.getParentNodes(context.getNode().name);
-				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+				hasFormTrigger = parentNodes.some((node: import('n8n-workflow').INode) => node.type === FORM_TRIGGER_NODE_TYPE);
 			}
 
 			if (resume === 'webhook') {
@@ -536,7 +536,7 @@ export class Wait extends Webhook {
 				context.setMetadata({ resumeUrl });
 			}
 
-			const returnData = await this.configureAndPutToWait(context);
+			const returnData = await configureAndPutToWait(context);
 
 			if (resume === 'form' && hasFormTrigger) {
 				context.sendResponse({
@@ -614,10 +614,11 @@ export class Wait extends Webhook {
 		}
 
 		// If longer than 65 seconds put execution to wait
-		return await this.putToWait(context, waitTill);
+		return await putToWait(context, waitTill);
 	}
+}
 
-	private async configureAndPutToWait(context: IExecuteFunctions) {
+async function configureAndPutToWait(context: IExecuteFunctions) {
 		let waitTill = WAIT_INDEFINITELY;
 		const limitWaitTime = context.getNodeParameter('limitWaitTime', 0);
 
@@ -645,11 +646,10 @@ export class Wait extends Webhook {
 			}
 		}
 
-		return await this.putToWait(context, waitTill);
-	}
+		return await putToWait(context, waitTill);
+}
 
-	private async putToWait(context: IExecuteFunctions, waitTill: Date) {
-		await context.putExecutionToWait(waitTill);
-		return [context.getInputData()];
-	}
+async function putToWait(context: IExecuteFunctions, waitTill: Date) {
+	await context.putExecutionToWait(waitTill);
+	return [context.getInputData()];
 }
