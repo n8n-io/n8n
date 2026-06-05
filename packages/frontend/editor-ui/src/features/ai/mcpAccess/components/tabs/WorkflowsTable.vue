@@ -264,6 +264,12 @@ const onConnectClick = () => {
 }
 
 .workflow-table {
+	margin-bottom: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		overflow-y: hidden;
+	}
+
 	tr:last-child {
 		border-bottom: none !important;
 	}
