@@ -401,7 +401,7 @@ describe('SourceControlPreferencesService', () => {
 				value: encryptedCredentialsJsonString,
 				column: 'testing',
 				loadOnStartup: false,
-			});
+			} as never);
 			mockCipher.decryptV2.mockImplementation(async (value) => `decrypted-${value}`);
 
 			const result = await service.getDecryptedHttpsCredentials();
