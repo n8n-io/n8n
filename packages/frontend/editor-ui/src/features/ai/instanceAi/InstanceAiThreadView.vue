@@ -451,14 +451,6 @@ function reconnectThreadAfterHydration(): void {
 		if (hydrationStatus === 'stale') return;
 		void thread.loadThreadStatus();
 		thread.connectSSE();
-		// A launcher (e.g. "Start with AI") may have queued a first message to
-		// auto-send. Dispatch it now — after hydration + SSE connect — so the
-		// optimistic message lands on this runtime and isn't overwritten by the
-		// history load above.
-		const pendingAutoSend = store.consumePendingAutoSend(props.threadId);
-		if (pendingAutoSend) {
-			void thread.sendMessage(pendingAutoSend, undefined, rootStore.pushRef);
-		}
 	});
 }
 
@@ -487,7 +479,18 @@ async function syncRouteToStore() {
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
-	void syncRouteToStore();
+
+	const pendingAutoSend = store.consumePendingAutoSend(props.threadId);
+	if (pendingAutoSend) {
+		// A launcher queued a first message for this freshly created thread. There
+		// is no history to hydrate, so send straight away (like the empty view):
+		// sendMessage connects SSE and pushes the optimistic message onto this
+		// view's runtime, so it renders immediately rather than only after a revisit.
+		void thread.sendMessage(pendingAutoSend, undefined, rootStore.pushRef);
+	} else {
+		void syncRouteToStore();
+	}
+
 	void nextTick(focusChatInputIfFocusIsIdle);
 
 	const prefill = store.consumePendingPrefill(props.threadId);

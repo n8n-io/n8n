@@ -61,6 +61,9 @@ packages/cli/THIRD_PARTY_LICENSES.md
 .nyc_output
 coverage-gaps.json
 packages/cli/src/commands/export/outputs
+# Instance AI local sandbox working directory (generated at runtime when
+# N8N_INSTANCE_AI_SANDBOX_PROVIDER=local)
+packages/cli/bin/workspace/
 *.bak
 .data
 .data/
