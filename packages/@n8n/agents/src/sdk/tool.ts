@@ -6,7 +6,6 @@ import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
-import { scrubToolInputForEvent } from '../utils/scrub-tool-input';
 import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
@@ -29,12 +28,6 @@ export interface ApprovalConfig {
 	needsApprovalFn?: (args: unknown) => Promise<boolean> | boolean;
 }
 
-function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
-	const metadata = tool.metadata;
-	const displayName = metadata?.displayName ?? metadata?.workflowName;
-	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
-}
-
 function emitToolExecutionStart(
 	tool: BuiltTool,
 	input: unknown,
@@ -45,8 +38,14 @@ function emitToolExecutionStart(
 		type: AgentEvent.ToolExecutionStart,
 		toolCallId: ctx.toolCallId,
 		toolName: tool.name,
-		args: scrubToolInputForEvent(input),
+		args: input,
 	});
+}
+
+export function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
+	const metadata = tool.metadata;
+	const displayName = metadata?.displayName ?? metadata?.workflowName;
+	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
 }
 
 /**

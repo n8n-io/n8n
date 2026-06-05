@@ -16,13 +16,14 @@ import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	AI_VENDOR_NODE_TYPES,
-	CHAT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 	type INode,
 	type INodeProperties,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
@@ -183,16 +184,13 @@ function makeUniqueName(
 }
 
 const agentProviderNodeTypes = new Set<string>(AI_VENDOR_NODE_TYPES);
-const hiddenAvailableToolNodeTypes = new Set<string>([
-	...AI_VENDOR_NODE_TYPES.map((nodeType) => `${nodeType}Tool`),
-	CHAT_TOOL_NODE_TYPE,
-]);
-const availableAiUtilityToolNodeTypes = new Set<string>([
-	'toolCalculator',
-	'toolThink',
-	'@n8n/n8n-nodes-langchain.toolCalculator',
-	'@n8n/n8n-nodes-langchain.toolThink',
-]);
+const hiddenAvailableToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+);
+// This list moves these nodes from the normal list of nodes into the AI section
+const availableAiUtilityToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+);
 
 function isAgentProviderNodeType(nodeType: INodeTypeDescription): boolean {
 	return agentProviderNodeTypes.has(nodeType.name);

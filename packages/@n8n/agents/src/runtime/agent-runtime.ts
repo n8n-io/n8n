@@ -81,6 +81,7 @@ import {
 } from './tool-adapter';
 import { isCancellation } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
+import { getToolApprovalDisplayName } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
 import type {
@@ -94,7 +95,6 @@ import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
-import { scrubToolInputForEvent } from '../utils/scrub-tool-input';
 import { isZodSchema } from '../utils/zod';
 
 interface TelemetrySpan {
@@ -176,12 +176,6 @@ function shouldSuspendForRequiredApproval(tool: BuiltTool, resumeData: unknown):
 function getToolResumeJsonSchema(tool: BuiltTool): JsonSchema7Type | undefined {
 	if (!tool.resumeSchema) return undefined;
 	return isZodSchema(tool.resumeSchema) ? zodToJsonSchema(tool.resumeSchema) : tool.resumeSchema;
-}
-
-function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
-	const metadata = tool.metadata;
-	const displayName = metadata?.displayName ?? metadata?.workflowName;
-	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
 }
 
 function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<string, AttributeValue> {
@@ -2258,7 +2252,7 @@ export class AgentRuntime {
 				type: AgentEvent.ToolExecutionStart,
 				toolCallId,
 				toolName,
-				args: scrubToolInputForEvent(toolInput),
+				args: toolInput,
 			});
 		}
 
