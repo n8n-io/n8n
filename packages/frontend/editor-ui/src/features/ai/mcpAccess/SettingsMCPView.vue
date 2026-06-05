@@ -67,6 +67,7 @@ const workflowsTableState = ref<TableOptions>({
 	itemsPerPage: 10,
 	sortBy: [],
 });
+const workflowsTableItemsPerPage = ref(workflowsTableState.value.itemsPerPage);
 
 const oAuthClientsLoading = ref(false);
 const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
@@ -202,7 +203,9 @@ const onRefreshWorkflows = async () => {
 };
 
 const onWorkflowsTableUpdate = async (options: TableOptions) => {
-	workflowsTableState.value = options;
+	const pageSizeChanged = options.itemsPerPage !== workflowsTableItemsPerPage.value;
+	workflowsTableState.value = { ...options, page: pageSizeChanged ? 0 : options.page };
+	workflowsTableItemsPerPage.value = options.itemsPerPage;
 	await fetchAvailableWorkflows();
 };
 

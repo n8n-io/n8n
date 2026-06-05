@@ -59,7 +59,7 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 			WorkflowsTable: {
 				inheritAttrs: true,
 				template:
-					'<div><button data-test-id="workflows-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button>Workflows Table</div>',
+					'<div><button data-test-id="workflows-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button><button data-test-id="workflows-table-page-size-50" @click="$emit(\'update:options\', { page: 3, itemsPerPage: 50, sortBy: [] })">Page size 50</button>Workflows Table</div>',
 			},
 			OAuthClientsTable: {
 				inheritAttrs: true,
@@ -424,6 +424,21 @@ describe('SettingsMCPView', () => {
 
 			await waitFor(() => {
 				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(2, 10);
+			});
+		});
+
+		it('should reset to first page when workflow table page size changes', async () => {
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+			});
+			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+
+			await userEvent.click(getByTestId('workflows-table-page-size-50'));
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 50);
 			});
 		});
 	});
