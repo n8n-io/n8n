@@ -202,7 +202,8 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
       "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
-      "assert@2.1.0": "patches/assert@2.1.0.patch"
+      "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "@n8n/typeorm@0.3.20-17": "patches/@n8n__typeorm@0.3.20-17.patch"
     }
   }
 }
