@@ -1050,6 +1050,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						options.inlineSubAgentBlockedTools,
 					)
 				: [];
+			const childModelId = modelConfigToId(childModelConfig);
+			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
+				? this.thinkingConfig
+				: undefined;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: childModelConfig,
@@ -1061,7 +1065,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				checkpointStorage: this.checkpointStore,
-				thinking: this.thinkingConfig,
+				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
@@ -1079,9 +1083,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						: {}),
 				});
 				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
-					return failedDelegatedChildSuspendOutput(request.taskPath, result.model);
+					return failedDelegatedChildSuspendOutput(request.taskPath, result.model ?? childModelId);
 				}
-				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+				const resultWithModel =
+					result.model === undefined && childModelId !== undefined
+						? { ...result, model: childModelId }
+						: result;
+				return generateResultToDelegateSubAgentOutput(request.taskPath, resultWithModel);
 			} finally {
 				await childRuntime.dispose();
 			}
@@ -1127,6 +1135,40 @@ function resolveInlineSubAgentModelConfig(
 
 	const mappedModel = options.inlineSubAgentModelsByDifficulty?.[request.difficulty];
 	return mappedModel ?? options.modelConfig;
+}
+
+function modelConfigToId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
+		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+	}
+	if (
+		typeof modelConfig === 'object' &&
+		modelConfig !== null &&
+		'provider' in modelConfig &&
+		'modelId' in modelConfig
+	) {
+		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
+		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
+		return provider && modelId ? `${provider}/${modelId}` : undefined;
+	}
+	return undefined;
+}
+
+function modelConfigProvider(modelConfig: ModelConfig): string | undefined {
+	const modelId = modelConfigToId(modelConfig);
+	if (!modelId) return undefined;
+	const slashIndex = modelId.indexOf('/');
+	return slashIndex > 0 ? modelId.slice(0, slashIndex) : undefined;
+}
+
+function shouldInheritThinking(
+	parentModelConfig: ModelConfig,
+	childModelConfig: ModelConfig,
+): boolean {
+	const parentProvider = modelConfigProvider(parentModelConfig);
+	const childProvider = modelConfigProvider(childModelConfig);
+	return parentProvider !== undefined && parentProvider === childProvider;
 }
 
 export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {

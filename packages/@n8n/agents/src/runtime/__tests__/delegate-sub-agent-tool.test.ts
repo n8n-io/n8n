@@ -89,7 +89,7 @@ describe('createDelegateSubAgentTool', () => {
 	});
 
 	it('preserves resolveInlineSubAgentProviderTools in delegate tool metadata', () => {
-		const resolveInlineSubAgentProviderTools = async () => [];
+		const resolveInlineSubAgentProviderTools = () => [];
 		const tool = createDelegateSubAgentTool({
 			resolveInlineSubAgentProviderTools,
 			runSubAgent: async () =>

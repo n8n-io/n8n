@@ -8,6 +8,7 @@ import type {
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
+	createDelegateSubAgentTool,
 } from '../../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/episodic-memory';
 import { WRITE_TODOS_TOOL_NAME } from '../../runtime/write-todos-tool';
@@ -15,6 +16,22 @@ import type { BuiltProviderTool, BuiltTool } from '../../types';
 import { Agent, filterInlineSubAgentTools } from '../agent';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
+const runtimeGenerateResults: Array<Record<string, unknown>> = [];
+
+function makeGenerateSuccess(): Record<string, unknown> {
+	return {
+		runId: 'child-run',
+		finishReason: 'stop',
+		messages: [
+			{
+				role: 'assistant',
+				type: 'llm',
+				content: [{ type: 'text', text: 'done' }],
+			},
+		],
+		usage: {},
+	};
+}
 
 vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
@@ -26,18 +43,7 @@ vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 			}
 
 			async generate() {
-				return await Promise.resolve({
-					runId: 'child-run',
-					finishReason: 'stop',
-					messages: [
-						{
-							role: 'assistant',
-							type: 'llm',
-							content: [{ type: 'text', text: 'done' }],
-						},
-					],
-					usage: {},
-				});
+				return await Promise.resolve(runtimeGenerateResults.shift() ?? makeGenerateSuccess());
 			}
 
 			async dispose() {
@@ -104,6 +110,7 @@ function providerToolNames(runtimeConfig: Record<string, unknown> | undefined): 
 describe('inline sub-agent tool filtering', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
+		runtimeGenerateResults.length = 0;
 	});
 
 	it.each([
@@ -157,7 +164,7 @@ describe('inline sub-agent tool filtering', () => {
 
 	it('loads provider tools from the inline provider-tool resolver', async () => {
 		const runner = createInlineRunner({
-			resolveInlineSubAgentProviderTools: async () => [openaiWebSearchProviderTool],
+			resolveInlineSubAgentProviderTools: () => [openaiWebSearchProviderTool],
 		});
 
 		await runner({
@@ -178,7 +185,7 @@ describe('inline sub-agent tool filtering', () => {
 	it('loads provider tools after difficulty changes the inline child model', async () => {
 		const resolveInlineSubAgentProviderTools = vi
 			.fn<InlineSubAgentProviderToolsResolver>()
-			.mockImplementation(async (modelConfig) => {
+			.mockImplementation((modelConfig) => {
 				if (typeof modelConfig === 'string' && modelConfig.startsWith('anthropic/')) {
 					return [anthropicWebSearchProviderTool];
 				}
@@ -209,7 +216,7 @@ describe('inline sub-agent tool filtering', () => {
 		const runner = createInlineRunner({
 			inlineSubAgentBlockedTools: ['anthropic.web_search_20250305'],
 			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
-			resolveInlineSubAgentProviderTools: async () => [anthropicWebSearchProviderTool],
+			resolveInlineSubAgentProviderTools: () => [anthropicWebSearchProviderTool],
 		});
 
 		await runner({
@@ -223,5 +230,118 @@ describe('inline sub-agent tool filtering', () => {
 
 		expect(runtimeConfigs).toHaveLength(1);
 		expect(runtimeConfigs[0]?.providerTools).toBeUndefined();
+	});
+
+	it('does not inherit parent thinking when difficulty selects a different provider', async () => {
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').thinking('openai', {
+			reasoningEffort: 'high',
+		});
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+		expect(runtimeConfigs[0]?.thinking).toBeUndefined();
+	});
+
+	it('keeps parent thinking when difficulty keeps the same provider', async () => {
+		const thinking = { reasoningEffort: 'high' as const };
+		const agent = new Agent('parent').model('openai', 'gpt-4o-mini').thinking('openai', thinking);
+		const runner = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+			inlineSubAgentModelsByDifficulty: { high: 'openai/o3-mini' },
+		});
+
+		await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('openai/o3-mini');
+		expect(runtimeConfigs[0]?.thinking).toEqual(thinking);
+	});
+
+	it('includes selected child model in failed inline child output when runtime result omits it', async () => {
+		runtimeGenerateResults.push({
+			runId: 'child-run',
+			finishReason: 'error',
+			error: 'model failed',
+			messages: [],
+			usage: {},
+		});
+		const runner = createInlineRunner({
+			inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+		});
+
+		const output = await runner({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: '/root/research',
+			childCount: 0,
+			difficulty: 'high',
+		});
+
+		expect(output).toMatchObject({
+			status: 'failed',
+			model: 'anthropic/claude-sonnet-4-5',
+			error: 'model failed',
+		});
+	});
+
+	it('wires provider-tool resolver through the public Agent delegate tool path', async () => {
+		const resolveInlineSubAgentProviderTools = vi
+			.fn<InlineSubAgentProviderToolsResolver>()
+			.mockResolvedValue([anthropicWebSearchProviderTool]);
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Help')
+			.tool(
+				createDelegateSubAgentTool({
+					inlineSubAgentModelsByDifficulty: { high: 'anthropic/claude-sonnet-4-5' },
+					resolveInlineSubAgentProviderTools,
+				}),
+			);
+
+		await agent.generate('delegate something');
+		const parentRuntimeConfig = runtimeConfigs[0];
+		const delegateTool = (parentRuntimeConfig?.tools as BuiltTool[] | undefined)?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(
+			{
+				subAgentId: INLINE_SUB_AGENT_ID,
+				taskName: 'research',
+				goal: 'Find the answer',
+				difficulty: 'high',
+			},
+			{ runId: 'parent-run' },
+		);
+
+		expect(runtimeConfigs).toHaveLength(2);
+		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-5');
+		expect(providerToolNames(runtimeConfigs[1])).toEqual(['anthropic.web_search_20250305']);
 	});
 });

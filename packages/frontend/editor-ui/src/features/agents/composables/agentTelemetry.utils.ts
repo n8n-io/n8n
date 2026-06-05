@@ -1,18 +1,6 @@
-import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentTaskDifficulty } from '@n8n/api-types';
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
-
-type SubAgentModelMappingFingerprint = Array<{
-	difficulty: SubAgentTaskDifficulty;
-	model: string;
-}>;
-
-type SubAgentModelMappingVersionPayload = Array<{
-	difficulty: SubAgentTaskDifficulty;
-	model: string;
-	credential: string;
-}>;
 
 export type AgentConfigFingerprint = {
 	instructions: string;
@@ -21,7 +9,6 @@ export type AgentConfigFingerprint = {
 	triggers: string[];
 	memory: { enabled: boolean; storage: 'n8n' } | null;
 	model: string | null;
-	subAgentModelsByDifficulty: SubAgentModelMappingFingerprint;
 	config_version: string;
 };
 
@@ -55,30 +42,6 @@ export function skillIdentifiersFromConfig(config: AgentJsonConfig | null): stri
 		.sort();
 }
 
-function subAgentModelMappingsFromConfig(
-	config: AgentJsonConfig | null,
-): SubAgentModelMappingFingerprint {
-	const mappings = config?.subAgents?.modelsByDifficulty;
-	if (!mappings) return [];
-
-	return SUB_AGENT_TASK_DIFFICULTIES.flatMap((difficulty) => {
-		const mapping = mappings[difficulty];
-		return mapping ? [{ difficulty, model: mapping.model }] : [];
-	});
-}
-
-function subAgentModelMappingsVersionPayload(
-	config: AgentJsonConfig | null,
-): SubAgentModelMappingVersionPayload {
-	const mappings = config?.subAgents?.modelsByDifficulty;
-	if (!mappings) return [];
-
-	return SUB_AGENT_TASK_DIFFICULTIES.flatMap((difficulty) => {
-		const mapping = mappings[difficulty];
-		return mapping ? [{ difficulty, model: mapping.model, credential: mapping.credential }] : [];
-	});
-}
-
 export async function buildAgentConfigFingerprint(
 	config: AgentJsonConfig | null,
 	connectedTriggers: string[],
@@ -91,7 +54,6 @@ export async function buildAgentConfigFingerprint(
 		? { enabled: config.memory.enabled, storage: config.memory.storage }
 		: null;
 	const model = config?.model ?? null;
-	const subAgentModelsByDifficulty = subAgentModelMappingsFromConfig(config);
 
 	const versionPayload = JSON.stringify({
 		instructions,
@@ -100,7 +62,6 @@ export async function buildAgentConfigFingerprint(
 		triggers,
 		memory,
 		model,
-		subAgentModelsByDifficulty: subAgentModelMappingsVersionPayload(config),
 	});
 	const configVersion = await sha256Hex16(versionPayload);
 
@@ -111,7 +72,6 @@ export async function buildAgentConfigFingerprint(
 		triggers,
 		memory,
 		model,
-		subAgentModelsByDifficulty,
 		config_version: configVersion,
 	};
 }

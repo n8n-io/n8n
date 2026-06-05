@@ -72,14 +72,16 @@ const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
 );
 
-const selectedCredentialName = computed(() =>
+const selectedCredential = computed(() =>
 	selectedCredentialId.value
-		? credentialsStore.getCredentialById(selectedCredentialId.value)?.name
-		: undefined,
+		? credentialsStore.getCredentialById(selectedCredentialId.value)
+		: null,
 );
 
+const selectedCredentialName = computed(() => selectedCredential.value?.name);
+
 const isCredentialsMissing = computed(
-	() => warnMissingCredentials && selectedModel?.provider && !selectedCredentialId.value,
+	() => warnMissingCredentials && selectedModel?.provider && !selectedCredential.value,
 );
 
 const selectedLabel = computed(
@@ -147,7 +149,9 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const selectedProviderCredentialId = credentials?.[provider] ?? null;
 	const models = modelsByProvider[provider]?.models ?? [];
 	const credentialTypes = getProviderCredentialTypes(provider);
-	const hasProviderCredential = Boolean(selectedProviderCredentialId);
+	const hasProviderCredential =
+		selectedProviderCredentialId !== null &&
+		credentialOptions.some((credential) => credential.id === selectedProviderCredentialId);
 
 	const credentialItems = credentialOptions.map<MenuItem>((credential) => ({
 		id: credentialItemId(provider, credential.id),

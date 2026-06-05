@@ -495,7 +495,7 @@ describe('sanitizeAgentJsonConfig', () => {
 		).toBe(true);
 	});
 
-	it('rejects blank sub-agent difficulty model credentials', () => {
+	it('allows cleared sub-agent difficulty model credentials in draft config', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			subAgents: {
@@ -508,13 +508,9 @@ describe('sanitizeAgentJsonConfig', () => {
 			},
 		});
 
-		expect(result.success).toBe(false);
-		if (result.success) return;
-		expect(
-			result.error.issues.some(
-				(issue) => issue.path.join('.') === 'subAgents.modelsByDifficulty.low.credential',
-			),
-		).toBe(true);
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.subAgents?.modelsByDifficulty?.low?.credential).toBe('');
 	});
 
 	it('preserves existing sub-agent refs and maxChildren with model mappings', () => {

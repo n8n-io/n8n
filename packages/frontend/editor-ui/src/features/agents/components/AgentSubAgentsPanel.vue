@@ -68,7 +68,7 @@ const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProj
 );
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 const projectIdRef = computed(() => props.projectId);
-const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
+const { credentialsByProvider } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectIdRef,
 );
@@ -243,8 +243,6 @@ function onDifficultySelectCredential(
 	credentialId: string | null,
 ) {
 	if (props.disabled) return;
-
-	selectCredential(provider, credentialId);
 
 	const mapping = props.config?.subAgents?.modelsByDifficulty?.[difficulty];
 	if (!mapping?.model || !credentialId) return;

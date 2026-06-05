@@ -18,7 +18,7 @@ const todoItemSchema = z.object({
 	id: z.string().min(1),
 	content: z.string().min(1),
 	status: todoStatusSchema,
-	difficulty: todoDifficultySchema,
+	difficulty: todoDifficultySchema.optional(),
 	delegateHint: z
 		.object({
 			subAgentId: z.string().optional(),
@@ -127,9 +127,11 @@ function formatTodoItem(
 	subAgentNameById?: Map<string, string>,
 ): string {
 	const hints: string[] = [];
-	hints.push(
-		`${i18n.baseText('agents.chat.writeTodos.hint.difficulty')}: ${writeTodosDifficultyLabel(i18n, todo.difficulty)}`,
-	);
+	if (todo.difficulty) {
+		hints.push(
+			`${i18n.baseText('agents.chat.writeTodos.hint.difficulty')}: ${writeTodosDifficultyLabel(i18n, todo.difficulty)}`,
+		);
+	}
 	if (todo.delegateHint?.subAgentId) {
 		const displayName = resolveSubAgentIdForDisplay(
 			todo.delegateHint.subAgentId,

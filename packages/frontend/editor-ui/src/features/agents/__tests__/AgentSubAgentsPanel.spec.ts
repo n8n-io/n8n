@@ -356,7 +356,7 @@ describe('AgentSubAgentsPanel', () => {
 		);
 		await flushPromises();
 
-		expect(selectCredentialMock).toHaveBeenCalledWith('anthropic', 'anthropic-cred-2');
+		expect(selectCredentialMock).not.toHaveBeenCalled();
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
 			{
 				subAgents: {

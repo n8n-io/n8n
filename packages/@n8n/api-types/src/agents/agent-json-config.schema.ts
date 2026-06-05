@@ -74,7 +74,7 @@ const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 const SubAgentDifficultyModelConfigSchema = z
 	.object({
 		model: AgentModelSchema,
-		credential: z.string().trim().min(1),
+		credential: z.string().trim(),
 	})
 	.strict();
 

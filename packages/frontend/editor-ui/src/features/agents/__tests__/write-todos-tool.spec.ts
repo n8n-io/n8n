@@ -64,14 +64,21 @@ describe('write-todos-tool', () => {
 			});
 		});
 
-		it('returns undefined when difficulty is missing or invalid', () => {
+		it('parses legacy output when difficulty is missing', () => {
 			expect(
 				parseWriteTodosOutput({
 					status: 'ok',
 					todoCount: 1,
 					todos: [{ id: 'a', content: 'Do thing', status: 'pending' }],
 				}),
-			).toBeUndefined();
+			).toEqual({
+				status: 'ok',
+				todoCount: 1,
+				todos: [{ id: 'a', content: 'Do thing', status: 'pending' }],
+			});
+		});
+
+		it('returns undefined when difficulty is invalid', () => {
 			expect(
 				parseWriteTodosOutput({
 					status: 'ok',
@@ -190,6 +197,28 @@ describe('write-todos-tool', () => {
 			);
 
 			expect(markdown).toContain('_(Difficulty: Medium; Sub-agent: Unknown agent id)_');
+		});
+
+		it('renders legacy todos without a difficulty hint', () => {
+			const markdown = formatWriteTodosMarkdown(
+				{
+					status: 'ok',
+					todoCount: 1,
+					todos: [
+						{
+							id: 'research',
+							content: 'Research auth options',
+							status: 'pending',
+							delegateHint: { subAgentId: 'inline' },
+						},
+					],
+				},
+				i18n,
+			);
+
+			expect(markdown).toContain('**Pending**');
+			expect(markdown).toContain('- Research auth options _(Sub-agent: Inline)_');
+			expect(markdown).not.toContain('Difficulty:');
 		});
 
 		it('returns undefined for empty todo lists', () => {
