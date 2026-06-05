@@ -11,10 +11,10 @@ export class RedactionModule implements ModuleInterface {
 
 		// Importing the service here registers its @OnPubSubEvent handler with the
 		// pubsub metadata before PubSubRegistry.init() wires up the listeners.
-		const { InstanceRedactionEnforcementService } = await import(
-			'./instance-redaction-enforcement.service'
-		);
-		Container.get(InstanceRedactionEnforcementService);
+		// The decorator runs at class-evaluation (import) time, so the import
+		// side-effect alone is sufficient — the registry instantiates the handler
+		// lazily on event receipt, so we must not eagerly resolve it here.
+		await import('./instance-redaction-enforcement.service');
 
 		const { ExecutionRedactionService } = await import('./executions/execution-redaction.service');
 		const executionRedactionService = Container.get(ExecutionRedactionService);
