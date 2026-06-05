@@ -13,6 +13,7 @@ export {
 	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
 	interactiveToolNameSchema,
 	askLlmInputSchema,
 	askLlmResumeSchema,

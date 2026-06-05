@@ -3,13 +3,13 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 
 import {
 	applyOpenSuspensions,
-	APPROVAL_TOOL_NAME,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 	isGroupable,

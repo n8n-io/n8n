@@ -2,6 +2,7 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
 	askLlmInputSchema,
@@ -68,8 +69,6 @@ interface InteractivePayloadBase {
 	/** Set when the tool was cancelled via a steering message rather than answered. */
 	cancelled?: boolean;
 }
-
-export const APPROVAL_TOOL_NAME = '__approval__' as const;
 
 export interface ApprovalInput {
 	type: 'approval';

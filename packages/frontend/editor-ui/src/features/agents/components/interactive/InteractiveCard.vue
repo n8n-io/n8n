@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import {
+	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { APPROVAL_TOOL_NAME, type InteractivePayload } from '../../composables/agentChatMessages';
+import type { InteractivePayload } from '../../composables/agentChatMessages';
 import AskCredentialCard from './AskCredentialCard.vue';
 import AskLlmCard from './AskLlmCard.vue';
 import AskQuestionCard from './AskQuestionCard.vue';

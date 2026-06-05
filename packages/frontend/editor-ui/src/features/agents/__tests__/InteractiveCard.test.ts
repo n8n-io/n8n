@@ -1,9 +1,10 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { mount } from '@vue/test-utils';
+import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import InteractiveCard from '../components/interactive/InteractiveCard.vue';
-import { APPROVAL_TOOL_NAME, type InteractivePayload } from '../composables/agentChatMessages';
+import type { InteractivePayload } from '../composables/agentChatMessages';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {

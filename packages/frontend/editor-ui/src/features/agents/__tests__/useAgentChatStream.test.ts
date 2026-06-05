@@ -1,7 +1,12 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick } from 'vue';
-import { ASK_CREDENTIAL_TOOL_NAME, ASK_LLM_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
+import {
+	APPROVAL_TOOL_NAME,
+	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_LLM_TOOL_NAME,
+	type AgentSseEvent,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -16,7 +21,6 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { APPROVAL_TOOL_NAME } from '../composables/agentChatMessages';
 
 /** Build a `Response` whose body streams the given events as SSE `data:` lines. */
 function makeSseResponse(events: AgentSseEvent[]): Response {

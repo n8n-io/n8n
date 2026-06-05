@@ -2,6 +2,7 @@
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
@@ -9,7 +10,6 @@ import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
-import { APPROVAL_TOOL_NAME } from '../composables/agentChatMessages';
 
 const props = withDefaults(
 	defineProps<{
