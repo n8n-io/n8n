@@ -17,6 +17,17 @@ describe('AgentEventBus', () => {
 			expect(bus.signal.aborted).toBe(true);
 		});
 
+		it('should preserve the reason passed to agent.abort()', () => {
+			const bus = new AgentEventBus();
+			const reason = new Error('save partial output');
+			bus.resetAbort();
+
+			bus.abort(reason);
+
+			expect(bus.isAborted).toBe(true);
+			expect(bus.signal.reason).toBe(reason);
+		});
+
 		it('should respect external abort signal', () => {
 			const bus = new AgentEventBus();
 			const external = new AbortController();
@@ -26,6 +37,30 @@ describe('AgentEventBus', () => {
 			external.abort();
 			expect(bus.isAborted).toBe(true);
 			expect(bus.signal.aborted).toBe(true);
+		});
+
+		it('should preserve the reason from an external abort signal', () => {
+			const bus = new AgentEventBus();
+			const external = new AbortController();
+			const reason = { _type: 'agent.abort.save-partial-response' };
+			bus.resetAbort(external.signal);
+
+			external.abort(reason);
+
+			expect(bus.isAborted).toBe(true);
+			expect(bus.signal.reason).toBe(reason);
+		});
+
+		it('should preserve the reason from an already-aborted external signal', () => {
+			const bus = new AgentEventBus();
+			const external = new AbortController();
+			const reason = { _type: 'already-aborted' };
+			external.abort(reason);
+
+			bus.resetAbort(external.signal);
+
+			expect(bus.isAborted).toBe(true);
+			expect(bus.signal.reason).toBe(reason);
 		});
 
 		it('should abort when either internal or external signal fires', () => {
@@ -46,6 +81,18 @@ describe('AgentEventBus', () => {
 
 			bus.resetAbort();
 			expect(bus.isAborted).toBe(false);
+		});
+
+		it('should clear the abort reason after reset', () => {
+			const bus = new AgentEventBus();
+			const reason = new Error('old reason');
+			bus.resetAbort();
+			bus.abort(reason);
+
+			bus.resetAbort();
+
+			expect(bus.isAborted).toBe(false);
+			expect(bus.signal.reason).toBeUndefined();
 		});
 	});
 });

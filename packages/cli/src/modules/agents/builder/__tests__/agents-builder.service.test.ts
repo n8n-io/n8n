@@ -1,9 +1,10 @@
-import type {
-	Agent as RuntimeAgent,
-	CredentialProvider,
-	SerializableAgentState,
-	StreamChunk,
-	StreamResult,
+import {
+	SavePartialResponseAbortError,
+	type Agent as RuntimeAgent,
+	type CredentialProvider,
+	type SerializableAgentState,
+	type StreamChunk,
+	type StreamResult,
 } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
@@ -173,5 +174,79 @@ describe('AgentsBuilderService streaming', () => {
 				},
 			],
 		]);
+	});
+});
+
+describe('AgentsBuilderService.streamFromAgent — error silencing', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('swallows an error chunk when the signal is aborted with SavePartialResponseAbortError', async () => {
+		const { service, agentsRuntimeService, builder, user, credentialProvider } = makeService();
+		const abortController = new AbortController();
+		abortController.abort(new SavePartialResponseAbortError());
+		const control = mock<AgentStreamControl>({ signal: abortController.signal });
+
+		builder.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text', text: 'partial text', role: 'assistant' } as unknown as StreamChunk,
+				{ type: 'error', error: new SavePartialResponseAbortError() },
+			]),
+		);
+
+		agentsRuntimeService.streamSteerableTurns.mockImplementation(async function* (
+			config: SteerableTurnsConfig,
+		) {
+			yield* config.streamTurn('build this agent', control);
+		});
+
+		const chunks = await collect(
+			service.buildAgent(agentId, projectId, 'build this agent', credentialProvider, user),
+		);
+
+		expect(chunks.every((c) => c.type !== 'error')).toBe(true);
+	});
+
+	it('passes error chunks through when the signal is not aborted with SavePartialResponseAbortError', async () => {
+		const { service, agentsRuntimeService, builder, user, credentialProvider } = makeService();
+		const abortController = new AbortController();
+		abortController.abort(new Error('plain cancel'));
+		const control = mock<AgentStreamControl>({ signal: abortController.signal });
+		const streamError = new Error('runtime failure');
+
+		builder.stream.mockResolvedValue(makeStreamResult([{ type: 'error', error: streamError }]));
+
+		agentsRuntimeService.streamSteerableTurns.mockImplementation(async function* (
+			config: SteerableTurnsConfig,
+		) {
+			yield* config.streamTurn('build this agent', control);
+		});
+
+		const chunks = await collect(
+			service.buildAgent(agentId, projectId, 'build this agent', credentialProvider, user),
+		);
+
+		expect(chunks.some((c) => c.type === 'error')).toBe(true);
+	});
+
+	it('passes error chunks through when the signal is not aborted at all', async () => {
+		const { service, agentsRuntimeService, builder, user, credentialProvider } = makeService();
+		const control = mock<AgentStreamControl>({ signal: new AbortController().signal });
+		const streamError = new Error('unrelated failure');
+
+		builder.stream.mockResolvedValue(makeStreamResult([{ type: 'error', error: streamError }]));
+
+		agentsRuntimeService.streamSteerableTurns.mockImplementation(async function* (
+			config: SteerableTurnsConfig,
+		) {
+			yield* config.streamTurn('build this agent', control);
+		});
+
+		const chunks = await collect(
+			service.buildAgent(agentId, projectId, 'build this agent', credentialProvider, user),
+		);
+
+		expect(chunks.some((c) => c.type === 'error')).toBe(true);
 	});
 });

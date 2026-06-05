@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, AgentExecutionCounter, StreamChunk } from '@n8n/agents';
+import {
+	createSavePartialResponseAbortReason,
+	type Agent as RuntimeAgent,
+	type AgentExecutionCounter,
+	type StreamChunk,
+} from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -280,8 +285,6 @@ export class AgentsRuntimeService {
 			if (control?.wasAborted()) {
 				const steerMessage = control.takePendingSteerMessage();
 				if (steerMessage !== undefined) {
-					// TODO: Persist partial assistant output on abort once the AI SDK exposes finalized
-					// abortable stream output safely.
 					nextMessage = steerMessage;
 				}
 			}
@@ -370,7 +373,9 @@ export class AgentsRuntimeService {
 		const stream = this.activeStreams.get(streamKey);
 		if (!stream) return false;
 		if (steerMessage !== undefined) stream.pendingSteerMessage = steerMessage;
-		stream.controller.abort();
+		stream.controller.abort(
+			steerMessage !== undefined ? createSavePartialResponseAbortReason() : undefined,
+		);
 		return true;
 	}
 

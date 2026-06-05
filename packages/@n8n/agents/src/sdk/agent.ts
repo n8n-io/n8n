@@ -583,9 +583,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Cancel the currently running agent.
 	 * Synchronous — sets an abort flag; the agentic loop checks it asynchronously.
 	 */
-	abort(): void {
+	abort(reason?: unknown): void {
 		for (const { bus } of this.activeRuntimes) {
-			bus.abort();
+			bus.abort(reason);
 		}
 	}
 

@@ -1,9 +1,10 @@
-import type {
-	Agent as RuntimeAgent,
-	CredentialProvider,
-	SerializableAgentState,
-	StreamChunk,
-	StreamResult,
+import {
+	type Agent as RuntimeAgent,
+	type CredentialProvider,
+	type SerializableAgentState,
+	type StreamChunk,
+	type StreamResult,
+	isSavePartialAbortError,
 } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -99,7 +100,8 @@ export class AgentsBuilderService {
 
 		const resourceId = user.id;
 		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
-		const streamFromAgent = (resultStream: StreamResult) => this.streamFromAgent(resultStream);
+		const streamFromAgent = (resultStream: StreamResult, signal?: AbortSignal) =>
+			this.streamFromAgent(resultStream, signal);
 
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			message,
@@ -110,7 +112,7 @@ export class AgentsBuilderService {
 					abortSignal: control?.signal,
 				});
 
-				yield* streamFromAgent(resultStream);
+				yield* streamFromAgent(resultStream, control?.signal);
 			},
 		});
 	}
@@ -164,7 +166,8 @@ export class AgentsBuilderService {
 
 		const resourceId = user.id;
 		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
-		const streamFromAgent = (resultStream: StreamResult) => this.streamFromAgent(resultStream);
+		const streamFromAgent = (resultStream: StreamResult, signal?: AbortSignal) =>
+			this.streamFromAgent(resultStream, signal);
 
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			streamKey,
@@ -175,7 +178,7 @@ export class AgentsBuilderService {
 					abortSignal: control?.signal,
 				});
 
-				yield* streamFromAgent(resultStream);
+				yield* streamFromAgent(resultStream, control?.signal);
 			},
 			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
 				const resultStream = await builder.stream(turnMessage, {
@@ -183,7 +186,7 @@ export class AgentsBuilderService {
 					abortSignal: control?.signal,
 				});
 
-				yield* streamFromAgent(resultStream);
+				yield* streamFromAgent(resultStream, control?.signal);
 			},
 		});
 	}
@@ -306,8 +309,15 @@ export class AgentsBuilderService {
 	 * on each `tool-call-suspended` chunk by the SDK, so this is just a
 	 * plain reader→generator adapter.
 	 */
-	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
+	private async *streamFromAgent(
+		resultStream: StreamResult,
+		signal?: AbortSignal,
+	): AsyncGenerator<StreamChunk> {
 		for await (const value of streamAgentChunks(resultStream.stream)) {
+			// silence partial response abort errors
+			if (value.type === 'error' && signal?.aborted && isSavePartialAbortError(signal.reason)) {
+				return;
+			}
 			yield value;
 		}
 	}

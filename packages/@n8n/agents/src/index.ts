@@ -98,7 +98,15 @@ export {
 	OBSERVATION_LOG_STATUSES,
 } from './types';
 
-export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
+export {
+	createCancellation,
+	isCancellation,
+	CANCELLATION_TYPE,
+	createSavePartialResponseAbortReason,
+	isSavePartialAbortError,
+	SAVE_PARTIAL_RESPONSE_ABORT_TYPE,
+	SavePartialResponseAbortError,
+} from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';

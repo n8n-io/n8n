@@ -44,8 +44,8 @@ export class AgentEventBus {
 		}
 	}
 
-	abort(): void {
-		this.controller.abort();
+	abort(reason?: unknown): void {
+		this.controller.abort(reason);
 	}
 
 	/**

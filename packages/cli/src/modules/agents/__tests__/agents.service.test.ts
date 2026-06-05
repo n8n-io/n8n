@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+import { SavePartialResponseAbortError } from '@n8n/agents';
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
@@ -2821,6 +2822,22 @@ describe('AgentsService', () => {
 			expect(control.wasAborted()).toBe(true);
 			expect(control.takePendingSteerMessage()).toBe('new message');
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('aborts with a SavePartialResponseAbortError reason when a steer message is provided', () => {
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key', 'steer me');
+
+			expect(control.signal.reason).toBeInstanceOf(SavePartialResponseAbortError);
+		});
+
+		it('does not set a SavePartialResponseAbortError reason on a plain cancel', () => {
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key');
+
+			expect(control.signal.reason).not.toBeInstanceOf(SavePartialResponseAbortError);
 		});
 
 		it('broadcasts stream aborts in multi-main mode', () => {

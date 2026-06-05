@@ -1,4 +1,12 @@
-import { createCancellation, isCancellation, CANCELLATION_TYPE } from '../cancellation';
+import {
+	createCancellation,
+	createSavePartialResponseAbortReason,
+	isCancellation,
+	isSavePartialAbortError,
+	CANCELLATION_TYPE,
+	SAVE_PARTIAL_RESPONSE_ABORT_TYPE,
+	SavePartialResponseAbortError,
+} from '../cancellation';
 
 describe('createCancellation', () => {
 	it('creates an object with the correct _type and message', () => {
@@ -51,5 +59,47 @@ describe('isCancellation', () => {
 		expect((deserialized as ReturnType<typeof createCancellation>).message).toBe(
 			'change direction',
 		);
+	});
+});
+
+describe('createSavePartialResponseAbortReason', () => {
+	it('creates an Error with a stable marker type', () => {
+		const reason = createSavePartialResponseAbortReason();
+
+		expect(reason).toBeInstanceOf(Error);
+		expect(reason).toBeInstanceOf(SavePartialResponseAbortError);
+		expect(reason.name).toBe('SavePartialResponseAbortError');
+		expect(reason._type).toBe(SAVE_PARTIAL_RESPONSE_ABORT_TYPE);
+		expect(reason.message).toBe(
+			'Agent run was aborted with partial response persistence requested',
+		);
+	});
+
+	it('allows a custom error message', () => {
+		const reason = new SavePartialResponseAbortError('interrupt and save');
+
+		expect(reason.message).toBe('interrupt and save');
+		expect(reason._type).toBe(SAVE_PARTIAL_RESPONSE_ABORT_TYPE);
+	});
+});
+
+describe('isSavePartialAbortError', () => {
+	it('returns true for the SDK abort reason instance', () => {
+		expect(isSavePartialAbortError(createSavePartialResponseAbortReason())).toBe(true);
+	});
+
+	it('returns true for structurally equivalent reasons', () => {
+		expect(isSavePartialAbortError({ _type: SAVE_PARTIAL_RESPONSE_ABORT_TYPE })).toBe(true);
+	});
+
+	it('returns false for cancellation resume payloads', () => {
+		expect(isSavePartialAbortError(createCancellation('steer'))).toBe(false);
+	});
+
+	it('returns false for null and unrelated reasons', () => {
+		expect(isSavePartialAbortError(null)).toBe(false);
+		expect(isSavePartialAbortError(undefined)).toBe(false);
+		expect(isSavePartialAbortError(new Error('plain abort'))).toBe(false);
+		expect(isSavePartialAbortError({ _type: 'something.else' })).toBe(false);
 	});
 });

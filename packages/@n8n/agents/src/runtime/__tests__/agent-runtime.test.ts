@@ -2,7 +2,7 @@ import * as aiModule from 'ai';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
-import { createCancellation } from '../../sdk/cancellation';
+import { createCancellation, createSavePartialResponseAbortReason } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
@@ -205,6 +205,18 @@ function createRuntime(eventBus?: AgentEventBus) {
 		model: 'openai/gpt-4o-mini',
 		instructions: 'You are a test assistant.',
 		eventBus: bus,
+	});
+	return { runtime, bus };
+}
+
+function createRuntimeWithMemory(memory: InMemoryMemory, eventBus?: AgentEventBus) {
+	const bus = eventBus ?? new AgentEventBus();
+	const runtime = new AgentRuntime({
+		name: 'test',
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test assistant.',
+		eventBus: bus,
+		memory,
 	});
 	return { runtime, bus };
 }
@@ -574,6 +586,170 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const errorChunks = chunks.filter((c) => c.type === 'error');
 		expect(errorChunks.length).toBeGreaterThan(0);
 
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('saves partial streamed response when aborted with the save-partial reason', async () => {
+		const external = new AbortController();
+		streamText.mockReturnValue({
+			fullStream: (function* () {
+				yield { type: 'text-start', id: 'text-1' };
+				yield { type: 'text-delta', id: 'text-1', text: 'Partial answer. ' };
+				yield {
+					type: 'tool-call',
+					toolCallId: 'tool-call-1',
+					toolName: 'lookup',
+					input: { query: 'n8n' },
+				};
+				yield {
+					type: 'tool-result',
+					toolCallId: 'tool-call-1',
+					toolName: 'lookup',
+					input: { query: 'n8n' },
+					output: { result: 'found' },
+				};
+				external.abort(createSavePartialResponseAbortReason());
+				yield { type: 'abort', reason: 'interrupted' };
+			})(),
+			finishReason: silentReject(new Error('aborted')),
+			usage: Promise.resolve(undefined),
+			response: silentReject(new Error('aborted')),
+			toolCalls: Promise.resolve([]),
+		});
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+		const { runtime } = createRuntimeWithMemory(memory);
+
+		const { stream } = await runtime.stream('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			abortSignal: external.signal,
+		});
+		await collectChunks(stream);
+
+		const messages = await memory.getMessages('thread-1', { resourceId: 'resource-1' });
+		expect(messages).toHaveLength(2);
+		expect(messages[0]).toMatchObject({ role: 'user' });
+		expect(messages[1]).toMatchObject({ role: 'assistant' });
+		if (!isLlmMessage(messages[1]) || messages[1].role !== 'assistant') {
+			throw new Error('Expected partial assistant message to be saved');
+		}
+		expect(messages[1].content).toEqual([
+			{ type: 'text', text: 'Partial answer. ' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tool-call-1',
+				toolName: 'lookup',
+				input: { query: 'n8n' },
+				state: 'resolved',
+				output: { result: 'found' },
+			},
+		]);
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('does not save partial streamed response on plain abort', async () => {
+		const external = new AbortController();
+		streamText.mockReturnValue({
+			fullStream: (function* () {
+				yield { type: 'text-start', id: 'text-1' };
+				yield { type: 'text-delta', id: 'text-1', text: 'Discard me' };
+				external.abort();
+				yield { type: 'abort' };
+			})(),
+			finishReason: silentReject(new Error('aborted')),
+			usage: Promise.resolve(undefined),
+			response: silentReject(new Error('aborted')),
+			toolCalls: Promise.resolve([]),
+		});
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+		const { runtime } = createRuntimeWithMemory(memory);
+
+		const { stream } = await runtime.stream('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			abortSignal: external.signal,
+		});
+		await collectChunks(stream);
+
+		await expect(memory.getMessages('thread-1', { resourceId: 'resource-1' })).resolves.toEqual([]);
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('does not use the AI SDK abort chunk reason as the partial-save signal', async () => {
+		const external = new AbortController();
+		streamText.mockReturnValue({
+			fullStream: (function* () {
+				yield { type: 'text-start', id: 'text-1' };
+				yield { type: 'text-delta', id: 'text-1', text: 'Discard me too' };
+				external.abort();
+				yield { type: 'abort', reason: 'agent.abort.save-partial-response' };
+			})(),
+			finishReason: silentReject(new Error('aborted')),
+			usage: Promise.resolve(undefined),
+			response: silentReject(new Error('aborted')),
+			toolCalls: Promise.resolve([]),
+		});
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+		const { runtime } = createRuntimeWithMemory(memory);
+
+		const { stream } = await runtime.stream('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			abortSignal: external.signal,
+		});
+		await collectChunks(stream);
+
+		await expect(memory.getMessages('thread-1', { resourceId: 'resource-1' })).resolves.toEqual([]);
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('saves partial response when only a tool-call is in-flight at the time of steer-abort', async () => {
+		const external = new AbortController();
+		streamText.mockReturnValue({
+			fullStream: (function* () {
+				yield { type: 'text-start', id: 'text-1' };
+				yield { type: 'text-delta', id: 'text-1', text: 'Let me look that up. ' };
+				yield {
+					type: 'tool-call',
+					toolCallId: 'call-inflight',
+					toolName: 'search',
+					input: { q: 'n8n docs' },
+				};
+				external.abort(createSavePartialResponseAbortReason());
+				yield { type: 'abort' };
+			})(),
+			finishReason: silentReject(new Error('aborted')),
+			usage: Promise.resolve(undefined),
+			response: silentReject(new Error('aborted')),
+			toolCalls: Promise.resolve([]),
+		});
+		const memory = new InMemoryMemory();
+		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
+		const { runtime } = createRuntimeWithMemory(memory);
+
+		const { stream } = await runtime.stream('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			abortSignal: external.signal,
+		});
+		await collectChunks(stream);
+
+		const messages = await memory.getMessages('thread-1', { resourceId: 'resource-1' });
+		expect(messages).toHaveLength(2);
+		expect(messages[0]).toMatchObject({ role: 'user' });
+		expect(messages[1]).toMatchObject({ role: 'assistant' });
+		if (!isLlmMessage(messages[1]) || messages[1].role !== 'assistant') {
+			throw new Error('Expected partial assistant message to be saved');
+		}
+		expect(messages[1].content).toEqual([
+			{ type: 'text', text: 'Let me look that up. ' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-inflight',
+				toolName: 'search',
+				input: { q: 'n8n docs' },
+				state: 'pending',
+			},
+		]);
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
