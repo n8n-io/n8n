@@ -9,6 +9,7 @@
     "build:unchecked": "tsc -p tsconfig.renderer.json --noCheck && tsc -p tsconfig.build.json --noCheck && pnpm copy:renderer && pnpm copy:assets",
     "lint": "eslint . --quiet",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "copy:assets": "node scripts/copy-assets.js",
     "copy:renderer": "node scripts/copy-renderer.js",
     "dev": "pnpm copy:assets && pnpm copy:renderer && concurrently \"tsc -p tsconfig.renderer.json --watch\" \"tsc -p tsconfig.build.json --watch\"",

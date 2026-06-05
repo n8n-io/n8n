@@ -9,6 +9,7 @@
 		"build:unchecked": "pnpm run build",
 		"bundle": "pnpm build && node scripts/bundle.mjs",
 		"typecheck": "tsc --noEmit",
+		"typecheck:tsgo": "tsgo --noEmit",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"test": "vitest run",

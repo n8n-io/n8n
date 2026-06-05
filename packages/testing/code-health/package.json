@@ -24,7 +24,8 @@
 		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"typecheck:tsgo": "tsgo --noEmit"
 	},
 	"license": "MIT",
 	"devDependencies": {
