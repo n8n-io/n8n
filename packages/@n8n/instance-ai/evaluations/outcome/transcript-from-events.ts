@@ -66,6 +66,7 @@ function buildTurn(
 ): TranscriptTurn {
 	const steps: TranscriptStep[] = [];
 	const seenPlainTools = new Set<string>();
+	const outcomeByCallId = collectToolOutcomes(events);
 	let textBuffer = '';
 
 	const flushText = () => {
@@ -85,7 +86,7 @@ function buildTurn(
 
 		let interaction: ToolInteraction | null = null;
 		if (event.type === 'tool-call') {
-			interaction = interpretToolCall(event, seenPlainTools);
+			interaction = interpretToolCall(event, seenPlainTools, outcomeByCallId);
 		} else if (event.type === 'tool-result') {
 			interaction = interpretToolResult(event);
 		} else if (event.type === 'confirmation-request') {
@@ -103,9 +104,32 @@ function buildTurn(
 	return { userMessage, steps };
 }
 
+interface ToolOutcome {
+	result?: unknown;
+	error?: string;
+}
+
+/** Pair every tool result/error in the turn to its originating call by toolCallId. */
+function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> {
+	const map = new Map<string, ToolOutcome>();
+	for (const event of events) {
+		if (event.type !== 'tool-result' && event.type !== 'tool-error') continue;
+		const payload = getRecord(event.data, 'payload') ?? event.data;
+		const callId = getString(payload, 'toolCallId');
+		if (!callId) continue;
+		if (event.type === 'tool-error') {
+			map.set(callId, { error: getString(payload, 'error') ?? 'tool error' });
+		} else {
+			map.set(callId, { result: payload.result });
+		}
+	}
+	return map;
+}
+
 function interpretToolCall(
 	event: CapturedEvent,
 	seenPlainTools: Set<string>,
+	outcomeByCallId: Map<string, ToolOutcome>,
 ): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = getString(payload, 'toolName') ?? '';
@@ -122,7 +146,17 @@ function interpretToolCall(
 	// Plain tool-call — collapsed to one entry per tool name within the turn.
 	if (!toolName || seenPlainTools.has(toolName)) return null;
 	seenPlainTools.add(toolName);
-	return { kind: 'tool-call', toolName, args: Object.keys(args).length > 0 ? args : undefined };
+	const callId = getString(payload, 'toolCallId');
+	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
+	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
+	const result = toolName === 'workflows' ? undefined : outcome?.result;
+	return {
+		kind: 'tool-call',
+		toolName,
+		args: Object.keys(args).length > 0 ? args : undefined,
+		result,
+		error: outcome?.error,
+	};
 }
 
 function interpretToolResult(event: CapturedEvent): ToolInteraction | null {

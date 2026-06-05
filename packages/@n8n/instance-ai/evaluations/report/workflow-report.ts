@@ -430,22 +430,41 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>${messageHtml}${feedbackHtml}`;
 		}
 		case 'tool-call': {
-			if (interaction.args && Object.keys(interaction.args).length > 0) {
-				return `<details class="transcript-aside"><summary>🔧 <code>${escapeHtml(interaction.toolName)}</code></summary><pre class="transcript-args">${escapeHtml(formatToolArgs(interaction.args))}</pre></details>`;
+			const args = interaction.args;
+			const hasArgs = Boolean(args && Object.keys(args).length > 0);
+			const errorText = typeof interaction.error === 'string' ? interaction.error : '';
+			const hasResult = interaction.result !== undefined && interaction.result !== null;
+			if (!hasArgs && !errorText && !hasResult) {
+				return `<div class="transcript-tools">🔧 <code>${escapeHtml(interaction.toolName)}</code></div>`;
 			}
-			return `<div class="transcript-tools">🔧 <code>${escapeHtml(interaction.toolName)}</code></div>`;
+			const argsBlock = hasArgs
+				? `<div class="transcript-section-label">args</div><pre class="transcript-args">${escapeHtml(formatJson(args))}</pre>`
+				: '';
+			const outcomeBlock = errorText
+				? `<div class="transcript-section-label">error</div><pre class="transcript-args transcript-error">${escapeHtml(errorText)}</pre>`
+				: hasResult
+					? `<div class="transcript-section-label">result</div><pre class="transcript-args">${escapeHtml(formatJson(interaction.result))}</pre>`
+					: '';
+			const badge = errorText ? ' <span class="transcript-decision fail">error</span>' : '';
+			return `<details class="transcript-aside"${errorText ? ' open' : ''}><summary>🔧 <code>${escapeHtml(interaction.toolName)}</code>${badge}</summary>${argsBlock}${outcomeBlock}</details>`;
 		}
 	}
 }
 
-function formatToolArgs(args: Record<string, unknown>): string {
-	let json: string;
-	try {
-		json = JSON.stringify(args, null, 2);
-	} catch {
-		return '[unserializable args]';
-	}
+function formatJson(value: unknown): string {
 	const MAX = 2000;
+	if (typeof value === 'string') {
+		return value.length > MAX
+			? `${value.slice(0, MAX)}\n… (${String(value.length - MAX)} more chars)`
+			: value;
+	}
+	let json: string | undefined;
+	try {
+		json = JSON.stringify(value, null, 2);
+	} catch {
+		return '[unserializable]';
+	}
+	if (typeof json !== 'string') return String(value);
 	return json.length > MAX
 		? `${json.slice(0, MAX)}\n… (${String(json.length - MAX)} more chars)`
 		: json;
@@ -836,6 +855,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
 	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
 	.transcript-args { margin: 4px 0 4px 26px; padding: 6px 8px; font-size: 11px; font-family: monospace; line-height: 1.45; color: var(--text-secondary); background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
+	.transcript-args.transcript-error { color: var(--color-fail); border-left-color: var(--color-fail); }
 	.transcript-plan, .transcript-questions { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
 	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
 	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }

@@ -264,7 +264,14 @@ export type ToolInteraction =
 			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
 			feedback?: string;
 	  }
-	| { kind: 'tool-call'; toolName: string; args?: Record<string, unknown> };
+	| {
+			kind: 'tool-call';
+			toolName: string;
+			args?: Record<string, unknown>;
+			/** Tool output (success) or error message — paired to the call by toolCallId. */
+			result?: unknown;
+			error?: string;
+	  };
 
 export interface PlanTask {
 	title?: string;
