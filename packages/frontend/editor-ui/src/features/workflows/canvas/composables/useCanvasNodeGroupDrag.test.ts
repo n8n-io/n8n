@@ -228,6 +228,32 @@ describe('useCanvasNodeGroupDrag', () => {
 			expect(patch.data.nodesRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
 		});
 
+		it('syncs the owning group title bar during multi-node node drag', () => {
+			const nodeDimensions: Record<string, { width: number; height: number }> = {
+				a: { width: 100, height: 80 },
+				b: { width: 100, height: 80 },
+			};
+			const { drag } = setup({ getNodeDimensions: (id) => nodeDimensions[id] });
+			findNodeMock.mockImplementation((id: string) => (id === 'group:g1' ? { id } : undefined));
+
+			const groupedNode = makeRegularGraphNode('a', 120, 220);
+			const otherNode = makeRegularGraphNode('unrelated', 600, 600);
+			const event = makeSelectionEvent(groupedNode, otherNode);
+
+			drag.onNodeDragStart(event);
+			drag.onNodeDrag(event);
+
+			expect(updateNodeMock).toHaveBeenCalledWith('group:g1', expect.any(Function));
+			const updater = updateNodeMock.mock.calls.find((call) => call[0] === 'group:g1')![1];
+			const patch = updater({ data: {} });
+			expect(patch.data.nodesRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
+
+			expect(drag.processNodeDragStop(event)).toEqual([
+				{ id: 'a', position: { x: 120, y: 220 } },
+				{ id: 'unrelated', position: { x: 600, y: 600 } },
+			]);
+		});
+
 		it("title bar rect tracks the group's nodes at their mapping-time size", () => {
 			// Even if VueFlow's offsetWidth/offsetHeight reports a different
 			// size (e.g. CSS border included), the rect stays at mapping-time.
@@ -259,6 +285,31 @@ describe('useCanvasNodeGroupDrag', () => {
 				{ id: 'c', position: { x: 1, y: 2 } },
 				{ id: 'd', position: { x: 3, y: 4 } },
 			]);
+		});
+
+		it('skips the paired node-drag stop after a one-node selection drag stop', () => {
+			const { drag } = setup();
+			const node = makeRegularGraphNode('c', 1, 2);
+			const event = makeSelectionEvent(node);
+
+			drag.onSelectionDragStart(event);
+
+			expect(drag.processSelectionDragStop(event)).toEqual([{ id: 'c', position: { x: 1, y: 2 } }]);
+			expect(drag.processNodeDragStop(event)).toEqual([]);
+		});
+
+		it('does not skip a later node drag stop if no paired stop arrives', () => {
+			const { drag } = setup();
+			const selectedNode = makeRegularGraphNode('c', 1, 2);
+			const selectionEvent = makeSelectionEvent(selectedNode);
+			const laterNode = makeRegularGraphNode('d', 3, 4);
+			const laterEvent = makeEvent(laterNode);
+
+			drag.onSelectionDragStart(selectionEvent);
+			drag.processSelectionDragStop(selectionEvent);
+			drag.onNodeDragStart(laterEvent);
+
+			expect(drag.processNodeDragStop(laterEvent)).toEqual([{ id: 'd', position: { x: 3, y: 4 } }]);
 		});
 	});
 });

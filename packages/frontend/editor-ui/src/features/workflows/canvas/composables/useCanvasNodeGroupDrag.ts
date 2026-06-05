@@ -31,6 +31,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 
 	let snapshots = new Map<string, GroupDragSnapshot>();
 	const finalGroupPositions = new Map<string, { x: number; y: number }>();
+	let isSelectionBoxDragInProgress = false;
+	let skipPairedNodeDragStop = false;
 
 	function getGroupNodeIds(groupVfId: string): string[] {
 		if (!groupVfId.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)) return [];
@@ -144,10 +146,19 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		return (event.nodes?.length ?? 0) > 1;
 	}
 
-	// VueFlow fires both selectionDrag* and nodeDrag* for multi-select —
-	// let selection-drag own the snapshots, skip the per-node path here.
+	// VueFlow emits both selectionDrag* and nodeDrag* when dragging the
+	// selection rectangle. Dragging one selected node in a multi-selection only
+	// emits nodeDrag*, so that path still needs to sync group bounds.
 	function onNodeDragStart(event: NodeDragEvent) {
-		if (isMultiSelectDrag(event)) return;
+		if (isSelectionBoxDragInProgress) return;
+		skipPairedNodeDragStop = false;
+		if (isMultiSelectDrag(event)) {
+			reset();
+			for (const node of event.nodes ?? []) {
+				if (isCanvasNodeGroup(node)) snapshotGroup(node);
+			}
+			return;
+		}
 		const node = event.node;
 		if (!isCanvasNodeGroup(node)) return;
 		reset();
@@ -169,12 +180,27 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	function onNodeDrag(event: NodeDragEvent) {
-		if (isMultiSelectDrag(event)) return;
+		if (isSelectionBoxDragInProgress) return;
+		if (isMultiSelectDrag(event)) {
+			handleDragTick(event.nodes ?? []);
+			return;
+		}
 		handleDragTick([event.node]);
 	}
 
 	function processNodeDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
-		if (isMultiSelectDrag(event)) return [];
+		if (skipPairedNodeDragStop) {
+			skipPairedNodeDragStop = false;
+			return [];
+		}
+		if (isMultiSelectDrag(event)) {
+			for (const node of event.nodes ?? []) {
+				if (isCanvasNodeGroup(node)) recordFinalPosition(node);
+			}
+			const { moves: groupNodeMoves, nodeIdsMoved } = collectNodeMoves();
+			reset();
+			return [...groupNodeMoves, ...nonGroupMoves(event.nodes ?? [], nodeIdsMoved)];
+		}
 		if (!isCanvasNodeGroup(event.node) || !snapshots.has(event.node.id)) {
 			reset();
 			return nonGroupMoves(event.nodes ?? [], new Set());
@@ -186,6 +212,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	}
 
 	function onSelectionDragStart(event: NodeDragEvent) {
+		isSelectionBoxDragInProgress = true;
+		skipPairedNodeDragStop = false;
 		reset();
 		// Snapshot every selected group title bar — applyDelta needs a baseline.
 		for (const node of event.nodes ?? []) {
@@ -200,6 +228,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	function processSelectionDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
 		if (snapshots.size === 0) {
 			reset();
+			isSelectionBoxDragInProgress = false;
+			skipPairedNodeDragStop = true;
 			return nonGroupMoves(event.nodes ?? [], new Set());
 		}
 		for (const node of event.nodes ?? []) {
@@ -207,6 +237,8 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 		const { moves: groupNodeMoves, nodeIdsMoved } = collectNodeMoves();
 		reset();
+		isSelectionBoxDragInProgress = false;
+		skipPairedNodeDragStop = true;
 		return [...groupNodeMoves, ...nonGroupMoves(event.nodes ?? [], nodeIdsMoved)];
 	}
 

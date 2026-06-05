@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import {
 	CANVAS_NODE_GROUP_TYPE,
 	type CanvasConnection,
+	type CanvasEventBusEvents,
 	type CanvasGroupNode,
 	type CanvasNode,
 } from '../canvas.types';
@@ -18,6 +19,7 @@ import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { createEventBus } from '@n8n/utils/event-bus';
 import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
@@ -45,6 +47,27 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 }));
 
 const canvasId = 'canvas';
+
+function createCanvasGroupNode({
+	nodesRect = { x: 0, y: 0, width: 300, height: 100 },
+	selectable = false,
+}: {
+	nodesRect?: NonNullable<CanvasGroupNode['data']>['nodesRect'];
+	selectable?: boolean;
+} = {}): CanvasGroupNode {
+	return {
+		id: 'group:g1',
+		type: CANVAS_NODE_GROUP_TYPE,
+		position: { x: 0, y: 0 },
+		width: 300,
+		height: 40,
+		selectable,
+		data: {
+			group: { id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
+			nodesRect,
+		},
+	};
+}
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
@@ -111,17 +134,7 @@ describe('Canvas', () => {
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
 		);
 
-		const groupNode: CanvasGroupNode = {
-			id: 'group:g1',
-			type: CANVAS_NODE_GROUP_TYPE,
-			position: { x: 0, y: 0 },
-			width: 300,
-			height: 40,
-			data: {
-				group: { id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
-				nodesRect: { x: 0, y: 0, width: 300, height: 100 },
-			},
-		};
+		const groupNode = createCanvasGroupNode();
 
 		const { getByTestId } = renderComponent({
 			props: {
@@ -144,6 +157,31 @@ describe('Canvas', () => {
 				height: `${240 + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM}px`,
 			});
 		});
+	});
+
+	it('should exclude group title bars from select all', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const node = createCanvasNodeElement({ id: 'node-1' });
+		const groupNode = createCanvasGroupNode();
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+
+		const { container } = renderComponent({
+			props: {
+				nodes: [node, groupNode],
+				eventBus,
+			},
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		eventBus.emit('nodes:selectAll');
+
+		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([node.id]));
 	});
 
 	it('should emit `update:nodes:position` event', async () => {
