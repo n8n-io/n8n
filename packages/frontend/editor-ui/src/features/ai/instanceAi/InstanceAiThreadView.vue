@@ -518,6 +518,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			skipped_inputs: [],
 			num_tasks: planEdit.taskCount,
 			feedback: scrubSecretsInText(message),
+			plan_feedback_type: 'changes_requested',
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
 		void thread
@@ -673,14 +674,18 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										/>
 									</Transition>
 								</template>
+								<!-- Live activity indicator. Sits at the very end of the
+									 conversation flow — below any pending questions/confirmations
+									 and not pinned above the input — so it trails the active
+									 content and scrolls away when reading back. -->
+								<InstanceAiStatusBar />
 							</div>
 
 							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. StatusBar and credit
-								 banner stay anchored above the slot in both states. The
-								 leaving child is positioned absolutely during the cross-fade
-								 so the in-flow child can size the slot to its natural
-								 height. -->
+								 floating-eligible approval is pending. The credit banner stays
+								 anchored above the slot in both states. The leaving child is
+								 positioned absolutely during the cross-fade so the in-flow child
+								 can size the slot to its natural height. -->
 							<div :class="$style.inputDock">
 								<!-- Scroll to bottom button -->
 								<div :class="$style.scrollButtonContainer">
@@ -705,7 +710,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										<WorkflowBuilderUnavailableNotice
 											v-if="!settingsStore.isWorkflowBuilderAvailable"
 										/>
-										<InstanceAiStatusBar />
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
 											:credits-remaining="store.creditsRemaining"
