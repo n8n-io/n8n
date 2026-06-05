@@ -477,6 +477,13 @@ onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 	void syncRouteToStore();
 	void nextTick(focusChatInputIfFocusIsIdle);
+
+	const prefill = store.consumePendingPrefill(props.threadId);
+	if (prefill) {
+		void nextTick(() => {
+			chatInputRef.value?.setText(prefill);
+		});
+	}
 });
 
 onUnmounted(() => {

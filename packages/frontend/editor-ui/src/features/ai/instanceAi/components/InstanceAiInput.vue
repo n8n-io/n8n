@@ -80,9 +80,15 @@ function appendText(text: string) {
 	inputText.value += text;
 }
 
+function setText(text: string) {
+	inputText.value = text;
+	focus();
+}
+
 defineExpose({
 	focus,
 	appendText,
+	setText,
 });
 
 const isBusy = computed(() =>
