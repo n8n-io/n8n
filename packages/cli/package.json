@@ -173,7 +173,7 @@
     "raw-body": "3.0.0",
     "reflect-metadata": "catalog:",
     "replacestream": "4.0.3",
-    "samlify": "2.10.0",
+    "samlify": "2.13.0",
     "semver": "7.5.4",
     "shelljs": "0.8.5",
     "simple-git": "catalog:",
