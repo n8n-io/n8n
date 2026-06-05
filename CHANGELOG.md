@@ -1,3 +1,13 @@
+## [2.25.5](https://github.com/n8n-io/n8n/compare/n8n@2.25.4...n8n@2.25.5) (2026-06-05)
+
+
+### Bug Fixes
+
+* **core:** Keep Instance AI builder sandboxes thread-scoped and non-ephemeral ([#31827](https://github.com/n8n-io/n8n/issues/31827)) ([b99d73f](https://github.com/n8n-io/n8n/commit/b99d73f8ef77b9c01277844e820cca64bb41ac7a))
+* **core:** Resume Instance AI sandboxes that were stopped or deleted while idle ([#31813](https://github.com/n8n-io/n8n/issues/31813)) ([17f181e](https://github.com/n8n-io/n8n/commit/17f181e6175c2f324c395beb8913a5f6690977e9))
+* **editor:** Attribute experiment telemetry in PostHog ([#31807](https://github.com/n8n-io/n8n/issues/31807)) ([69fa7c1](https://github.com/n8n-io/n8n/commit/69fa7c149ba2a613d547f944114dce3f5f294239))
+
+
 ## [2.25.4](https://github.com/n8n-io/n8n/compare/n8n@2.25.3...n8n@2.25.4) (2026-06-05)
 
 
