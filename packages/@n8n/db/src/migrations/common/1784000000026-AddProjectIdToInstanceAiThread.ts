@@ -18,28 +18,18 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 			schemaBuilder: { addColumns, column, addForeignKey, createIndex, addNotNull },
 		} = ctx;
 
-		if (!(await this.hasProjectIdColumn(ctx))) {
-			await addColumns(THREADS_TABLE, [
-				column(PROJECT_ID_COLUMN).varchar(255).comment('Project this thread is scoped to'),
-			]);
-		}
+		await addColumns(THREADS_TABLE, [
+			column(PROJECT_ID_COLUMN).varchar(255).comment('Project this thread is scoped to'),
+		]);
 
 		// Backfill every row before the column becomes NOT NULL.
 		await this.backfillUserThreads(ctx);
 		await this.backfillSubAgentThreads(ctx);
 		await this.backfillRemainingToInstanceOwner(ctx);
 
-		if (!(await this.hasProjectIdNotNull(ctx))) {
-			await addNotNull(THREADS_TABLE, PROJECT_ID_COLUMN);
-		}
-
-		if (!(await this.hasProjectIdForeignKey(ctx))) {
-			await addForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME, 'CASCADE');
-		}
-
-		if (!(await this.hasProjectIdIndex(ctx))) {
-			await createIndex(THREADS_TABLE, [PROJECT_ID_COLUMN]);
-		}
+		await addNotNull(THREADS_TABLE, PROJECT_ID_COLUMN);
+		await addForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME, 'CASCADE');
+		await createIndex(THREADS_TABLE, [PROJECT_ID_COLUMN]);
 	}
 
 	async down(ctx: MigrationContext) {
@@ -47,15 +37,9 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 			schemaBuilder: { dropIndex, dropForeignKey, dropColumns },
 		} = ctx;
 
-		if (await this.hasProjectIdIndex(ctx)) {
-			await dropIndex(THREADS_TABLE, [PROJECT_ID_COLUMN], { skipIfMissing: true });
-		}
-		if (await this.hasProjectIdForeignKey(ctx)) {
-			await dropForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME);
-		}
-		if (await this.hasProjectIdColumn(ctx)) {
-			await dropColumns(THREADS_TABLE, [PROJECT_ID_COLUMN]);
-		}
+		await dropIndex(THREADS_TABLE, [PROJECT_ID_COLUMN]);
+		await dropForeignKey(THREADS_TABLE, PROJECT_ID_COLUMN, ['project', 'id'], FK_NAME);
+		await dropColumns(THREADS_TABLE, [PROJECT_ID_COLUMN]);
 	}
 
 	/**
@@ -141,47 +125,6 @@ export class AddProjectIdToInstanceAiThread1784000000026 implements ReversibleMi
 				 LIMIT 1
 			 )
 			 WHERE ${projectId} IS NULL`,
-		);
-	}
-
-	private async getThreadsTable({ queryRunner, tablePrefix }: MigrationContext) {
-		return await queryRunner.getTable(`${tablePrefix}${THREADS_TABLE}`);
-	}
-
-	private async hasProjectIdColumn(ctx: MigrationContext) {
-		const table = await this.getThreadsTable(ctx);
-		return table?.columns.some(({ name }) => name === PROJECT_ID_COLUMN) ?? false;
-	}
-
-	private async hasProjectIdNotNull(ctx: MigrationContext) {
-		const table = await this.getThreadsTable(ctx);
-		const column = table?.columns.find(({ name }) => name === PROJECT_ID_COLUMN);
-		return column ? !column.isNullable : false;
-	}
-
-	private async hasProjectIdForeignKey(ctx: MigrationContext) {
-		const table = await this.getThreadsTable(ctx);
-		const projectTable = `${ctx.tablePrefix}project`;
-
-		return (
-			table?.foreignKeys.some(
-				({ columnNames, referencedColumnNames, referencedTableName }) =>
-					columnNames.includes(PROJECT_ID_COLUMN) &&
-					referencedColumnNames.includes('id') &&
-					(referencedTableName === 'project' || referencedTableName === projectTable),
-			) ?? false
-		);
-	}
-
-	private async hasProjectIdIndex(ctx: MigrationContext) {
-		const table = await this.getThreadsTable(ctx);
-
-		return (
-			table?.indices.some(
-				({ columnNames, name }) =>
-					name === `IDX_${ctx.tablePrefix}${THREADS_TABLE}_${PROJECT_ID_COLUMN}` ||
-					(columnNames.length === 1 && columnNames.includes(PROJECT_ID_COLUMN)),
-			) ?? false
 		);
 	}
 }
