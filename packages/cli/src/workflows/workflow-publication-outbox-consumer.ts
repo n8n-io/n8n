@@ -18,6 +18,15 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 const POLL_INTERVAL_MS = 1 * Time.minutes.toMilliseconds;
 
+/**
+ * Consumes the workflow publication outbox on the leader instance. It polls for
+ * pending records and, for each one, reapplies the workflow's triggers to match
+ * the published version: tearing down the old triggers, advancing
+ * `activeVersionId`, and registering the new triggers. Records for deleted or
+ * no-longer-active workflows are short-circuited to completed, and activation
+ * failures are recorded against the workflow and marked failed without halting
+ * the poll loop.
+ */
 @Service()
 export class WorkflowPublicationOutboxConsumer {
 	private pollTimeout: NodeJS.Timeout | undefined;
@@ -172,6 +181,11 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 	}
 
+	/**
+	 * Atomically records the published version and marks the outbox record as
+	 * completed in a single transaction, then clears any activation errors for
+	 * the workflow.
+	 */
 	private async finalizePublication(record: WorkflowPublicationOutbox) {
 		await this.outboxRepository.manager.transaction(async (trx) => {
 			await trx.upsert(
