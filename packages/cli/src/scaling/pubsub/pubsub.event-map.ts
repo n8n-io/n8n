@@ -240,6 +240,9 @@ export type PubSubCommandMap = {
 	 * Published by the main that handled a redaction-floor update after the new
 	 * value is persisted; every other main clears its local cache key so the next
 	 * read re-loads the current value from the DB.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating main already
+	 * updates its own cache synchronously in set().
 	 */
 	'redaction-floor-changed': never;
 

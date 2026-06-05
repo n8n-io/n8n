@@ -5,6 +5,7 @@ import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { SELF_SEND_COMMANDS } from '@/scaling/constants';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -229,6 +230,12 @@ describe('InstanceRedactionEnforcementService', () => {
 				await expect(service.set('production')).resolves.toBeUndefined();
 				// Allow the fire-and-forget catch handler to run.
 				await Promise.resolve();
+				// The update still persisted and re-cached despite the publish failure.
+				expect(upsert).toHaveBeenCalledWith(
+					{ key: KEY, value: JSON.stringify('production'), loadOnStartup: true },
+					['key'],
+				);
+				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify('production'));
 				expect(logger.warn).toHaveBeenCalledWith(
 					'[InstanceRedactionEnforcementService] Failed to publish redaction-floor-changed',
 					expect.objectContaining({ error: 'redis is down' }),
@@ -247,25 +254,57 @@ describe('InstanceRedactionEnforcementService', () => {
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('re-reads the floor from the DB on the next get after the key is dropped', async () => {
+		it('delete causes the next get to miss and re-read the new value from the DB', async () => {
 			enableFlag();
-			const stored: RedactionFloor = 'all';
 
-			await service.handleRedactionFloorChanged();
-			expect(cacheService.delete).toHaveBeenCalledWith(KEY);
+			// Stateful in-memory cache so the delete — not the test harness — is what
+			// forces the subsequent read to miss. The test fails if the handler stops
+			// calling cacheService.delete.
+			const store = new Map<string, string>();
+			cacheService.set.mockImplementation(async (key, value) => {
+				store.set(key, value as string);
+			});
+			cacheService.delete.mockImplementation(async (key) => {
+				store.delete(key);
+			});
+			cacheService.get.mockImplementation(async (key, opts) => {
+				if (store.has(key)) return store.get(key);
+				const refreshed = (await opts!.refreshFn!(key)) as string;
+				store.set(key, refreshed);
+				return refreshed;
+			});
 
-			simulateCacheMiss();
-			findByKey.mockResolvedValueOnce(
+			// Seed a STALE value and confirm reads hit it.
+			const stale: RedactionFloor = 'off';
+			await cacheService.set(KEY, JSON.stringify(stale));
+			await expect(service.get()).resolves.toBe(stale);
+			expect(findByKey).not.toHaveBeenCalled();
+
+			// A peer main reports a change; the DB now holds the NEW value.
+			const updated: RedactionFloor = 'production';
+			findByKey.mockResolvedValue(
 				mock<Settings>({
 					key: KEY,
-					value: JSON.stringify(stored),
+					value: JSON.stringify(updated),
 					loadOnStartup: true,
 				}),
 			);
 
-			await expect(service.get()).resolves.toBe(stored);
+			await service.handleRedactionFloorChanged();
+			expect(cacheService.delete).toHaveBeenCalledWith(KEY);
+
+			// The dropped key makes the next read miss → refreshFn → DB → re-cache.
+			await expect(service.get()).resolves.toBe(updated);
 			expect(findByKey).toHaveBeenCalledWith(KEY);
-			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(stored));
+			// The refreshFn re-cached the fresh value via the (stateful) cache.
+			expect(store.get(KEY)).toBe(JSON.stringify(updated));
+		});
+
+		it('relies on redaction-floor-changed not being a self-send command', () => {
+			// The originating main already updates its own cache synchronously in
+			// set(); if this command became self-send, that main would also delete
+			// its freshly written cache entry on receipt.
+			expect(SELF_SEND_COMMANDS.has('redaction-floor-changed')).toBe(false);
 		});
 	});
 });
