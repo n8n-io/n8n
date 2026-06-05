@@ -19,11 +19,6 @@ import { extractResolvedNodeParameters } from '../extract-resolved-node-paramete
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Build a mock execution repository and route the execution-data read through a
- * mocked `ExecutionPersistence` resolved from the DI container, mirroring how
- * `extractResolvedNodeParameters` fetches the execution at runtime.
- */
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeResolutionExecution>,
 ): jest.Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {

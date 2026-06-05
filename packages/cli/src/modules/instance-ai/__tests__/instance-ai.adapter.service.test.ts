@@ -46,11 +46,6 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Build a mock execution repository and route the execution-data read through a
- * mocked `ExecutionPersistence` resolved from the DI container, mirroring how the
- * extraction helpers fetch the execution at runtime.
- */
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeExecution>,
 ): jest.Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
@@ -2439,8 +2434,6 @@ function createRunAdapterForTests(
 	const mockExecutionRepository = {
 		findSingleExecution: jest.fn().mockResolvedValue(options?.execution),
 	};
-	// `run()` reads execution data back through `ExecutionPersistence` (resolved
-	// from the DI container), so route that read to the same mocked execution.
 	const mockExecutionPersistence = mock<ExecutionPersistence>();
 	mockExecutionPersistence.findSingleExecution.mockResolvedValue(options?.execution as never);
 	jest.spyOn(Container, 'get').mockReturnValue(mockExecutionPersistence);

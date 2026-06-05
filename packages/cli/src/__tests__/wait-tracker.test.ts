@@ -387,7 +387,6 @@ describe('WaitTracker', () => {
 					storedAt: 'db',
 				};
 
-				// Setup ExecutionPersistence and ActiveExecutions
 				executionPersistence.findSingleExecution
 					.calledWith(parentExecution.id)
 					.mockResolvedValue(parentExecution);

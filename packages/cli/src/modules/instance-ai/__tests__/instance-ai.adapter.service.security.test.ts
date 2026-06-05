@@ -155,8 +155,6 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
-	// Execution-data reads route through `ExecutionPersistence` resolved from the
-	// DI container, so point `Container.get` at the injected mock.
 	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
