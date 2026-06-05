@@ -55,7 +55,6 @@ describe('createSandbox', () => {
 				language: 'typescript',
 				timeout: 60_000,
 				createTimeoutSeconds: 900,
-				ephemeral: true,
 			}),
 		);
 	});
@@ -78,7 +77,6 @@ describe('createSandbox', () => {
 		expect(getPrivateOptions(result)).toEqual(
 			expect.objectContaining({
 				createTimeoutSeconds: 300,
-				ephemeral: true,
 				labels: {
 					'n8n-builder': 'instance-ai-thread-thread-1',
 					thread_id: 'thread-1',
