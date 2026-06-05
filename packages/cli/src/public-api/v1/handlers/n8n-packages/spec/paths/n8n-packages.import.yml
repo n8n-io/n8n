@@ -84,7 +84,6 @@ post:
             required:
               - package
               - workflows
-              - credentials
               - bindings
             properties:
               package:
