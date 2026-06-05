@@ -79,7 +79,7 @@ function createLoadNodesAndCredentials(options?: {
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		loaders,
-	});
+	} as never) as LoadNodesAndCredentials;
 
 	return { loadNodesAndCredentials, baseNode, sourcePath };
 }

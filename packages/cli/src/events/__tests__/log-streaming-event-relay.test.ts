@@ -434,7 +434,7 @@ describe('LogStreamingEventRelay', () => {
 					status: 'success',
 					mode: 'manual',
 					data: { resultData: {} },
-				}),
+				} as never),
 				projectId: 'proj-456',
 				projectName: 'My Project',
 			});
@@ -465,7 +465,7 @@ describe('LogStreamingEventRelay', () => {
 				mode: 'manual',
 				jobId: '12345',
 				data: { resultData: {} },
-			});
+			} as never);
 
 			const event = {
 				executionId: 'exec-123',
@@ -502,7 +502,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'some-id',
@@ -551,7 +551,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'exec-456',

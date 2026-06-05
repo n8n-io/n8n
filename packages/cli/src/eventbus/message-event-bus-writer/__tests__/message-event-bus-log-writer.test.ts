@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 import type { EventMessageTypes } from '../../event-message-classes';
 import { MessageEventBusLogWriter } from '../message-event-bus-log-writer';
-import type { MockInstance } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');
@@ -320,9 +320,9 @@ describe('MessageEventBusLogWriter.getInstance path resolution', () => {
 			}),
 		);
 		Container.set(InstanceSettings, mock<InstanceSettings>({ n8nFolder: tempDir }));
-		startThreadSpy = vi
-			.spyOn(MessageEventBusLogWriter.prototype as never, 'startThread')
-			.mockResolvedValue(undefined as never);
+		startThreadSpy = (
+			vi.spyOn(MessageEventBusLogWriter.prototype as never, 'startThread') as unknown as Mock
+		).mockResolvedValue(undefined as never);
 	});
 
 	afterEach(() => {

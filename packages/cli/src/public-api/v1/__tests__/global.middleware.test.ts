@@ -18,7 +18,7 @@ describe('publicApiScope', () => {
 		res = mockDeep<Response>();
 		res.status.mockReturnThis();
 		res.json.mockReturnThis();
-		next = vi.fn();
+		next = vi.fn() as MockedFunction<NextFunction>;
 	});
 
 	it('tags the returned middleware with the provided scope', () => {

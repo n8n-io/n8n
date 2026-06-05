@@ -97,7 +97,8 @@ describe('InsightsPruningService', () => {
 		});
 
 		test('pruneInsights is retried up when failing', async () => {
-			const pruneOldDataSpy = insightsByPeriodRepository.pruneOldData
+			const pruneOldDataSpy = vi
+				.mocked(insightsByPeriodRepository.pruneOldData)
 				.mockRejectedValueOnce(new Error('Fail 1'))
 				.mockRejectedValueOnce(new Error('Fail 2'))
 				.mockResolvedValueOnce({ affected: 0 });

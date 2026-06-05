@@ -92,7 +92,7 @@ describe('ExternalHooks', () => {
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 
-			const hookInvocationContext = hookFn.mock.instances[0];
+			const hookInvocationContext = hookFn.mock.instances[0] as Record<string, unknown>;
 			expect(hookInvocationContext).toHaveProperty('dbCollections');
 			expect(hookInvocationContext.dbCollections).toEqual({
 				User: userRepository,

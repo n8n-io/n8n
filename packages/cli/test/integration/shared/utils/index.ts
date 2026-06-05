@@ -109,7 +109,7 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.webhook': {
-			type: mock<INodeType>({ description: new WebhookNode().description }),
+			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
 			sourcePath: '',
 		},
 	};

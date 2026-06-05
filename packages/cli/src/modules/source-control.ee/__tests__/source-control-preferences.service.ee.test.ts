@@ -396,14 +396,12 @@ describe('SourceControlPreferencesService', () => {
 		it('should return decrypted https credentials when present in database', async () => {
 			const encryptedCredentialsJsonString =
 				'{ "encryptedUsername": "encryptedUser", "encryptedPassword": "encryptedPass"}';
-			mockSettingsRepository.findByKey.mockResolvedValue(
-				Promise.resolve({
-					key: 'features.sourceControl.httpsCredentials',
-					value: encryptedCredentialsJsonString,
-					column: 'testing',
-					loadOnStartup: false,
-				}),
-			);
+			mockSettingsRepository.findByKey.mockResolvedValue({
+				key: 'features.sourceControl.httpsCredentials',
+				value: encryptedCredentialsJsonString,
+				column: 'testing',
+				loadOnStartup: false,
+			});
 			mockCipher.decryptV2.mockImplementation(async (value) => `decrypted-${value}`);
 
 			const result = await service.getDecryptedHttpsCredentials();

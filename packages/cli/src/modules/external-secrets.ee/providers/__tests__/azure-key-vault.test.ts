@@ -31,15 +31,16 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		const listSpy = vi
-			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
-			.mockImplementation(() => ({
-				async *[Symbol.asyncIterator]() {
-					yield { name: 'secret1' };
-					yield { name: 'secret2' };
-					yield { name: 'secret3' }; // no value
-				},
-			}));
+		const listSpy = vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'secret1' };
+						yield { name: 'secret2' };
+						yield { name: 'secret3' }; // no value
+					},
+				}) as never,
+		);
 
 		const getSpy = vi
 			.spyOn(SecretClient.prototype, 'getSecret')
@@ -78,14 +79,15 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		const listSpy = vi
-			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
-			.mockImplementation(() => ({
-				async *[Symbol.asyncIterator]() {
-					yield { name: 'enabled-secret', enabled: true };
-					yield { name: 'disabled-secret', enabled: false };
-				},
-			}));
+		const listSpy = vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'enabled-secret', enabled: true };
+						yield { name: 'disabled-secret', enabled: false };
+					},
+				}) as never,
+		);
 
 		const getSpy = vi
 			.spyOn(SecretClient.prototype, 'getSecret')
@@ -113,12 +115,15 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(() => ({
-			async *[Symbol.asyncIterator]() {
-				yield { name: 'good', enabled: true };
-				yield { name: 'bad', enabled: true };
-			},
-		}));
+		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'good', enabled: true };
+						yield { name: 'bad', enabled: true };
+					},
+				}) as never,
+		);
 
 		vi.spyOn(SecretClient.prototype, 'getSecret').mockImplementation(async (name: string) => {
 			if (name === 'bad') {
@@ -146,11 +151,14 @@ describe('AzureKeyVault', () => {
 			}),
 		);
 
-		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(() => ({
-			async *[Symbol.asyncIterator]() {
-				yield { name: 'only-secret', enabled: true };
-			},
-		}));
+		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockImplementation(
+			() =>
+				({
+					async *[Symbol.asyncIterator]() {
+						yield { name: 'only-secret', enabled: true };
+					},
+				}) as never,
+		);
 
 		const getSpy = vi
 			.spyOn(SecretClient.prototype, 'getSecret')
