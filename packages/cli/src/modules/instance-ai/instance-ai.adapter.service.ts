@@ -1197,8 +1197,9 @@ export class InstanceAiAdapterService {
 					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
 				}
 
-				// Unbound runs (internal sub-agents) scope to the caller-supplied workflow
-				// or project so the candidates still match what the save path will accept.
+				// Unbound runs (temporary-workflow archiving, the only caller without a
+				// bound project) scope to the caller-supplied workflow or project so the
+				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
 						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {

@@ -32,7 +32,7 @@ const project = computed(() => {
 	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
 	if (!match)
 		return {
-			name: 'Unknown project',
+			name: i18n.baseText('instanceAi.artifactsPanel.unknownProject'),
 			icon: { type: 'icon' as const, value: 'circle-help' as const },
 		};
 	const isPersonal = match.type === 'personal';
@@ -40,7 +40,7 @@ const project = computed(() => {
 		? match.icon
 		: { type: 'icon' as const, value: 'layers' as const };
 	return {
-		name: isPersonal ? 'Personal space' : match.name,
+		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
 		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
 	};
 });
@@ -124,7 +124,9 @@ const pinButtonLabel = computed(() =>
 			<!-- Project section -->
 			<div :class="$style.section">
 				<div :class="$style.sectionHeader">
-					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle"> Project </N8nHeading>
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
+					</N8nHeading>
 					<N8nTooltip
 						v-if="props.isPinningAvailable"
 						:content="pinButtonLabel"

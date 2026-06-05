@@ -3,6 +3,7 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { N8nIcon, N8nScrollArea, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useI18n } from '@n8n/i18n';
 import {
 	ComboboxAnchor,
 	ComboboxContent,
@@ -19,8 +20,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 const FALLBACK_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layers' };
-const PROJECT_SELECT_TOOLTIP = 'Where AI assistant creates automations';
 
+const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const model = defineModel<string | null>();
 const open = ref(false);
@@ -32,7 +33,9 @@ const selectedProject = computed(() =>
 );
 const showSearch = computed(() => projectsStore.myProjects.length > 5);
 const selectedProjectName = computed(() =>
-	selectedProject.value ? getProjectName(selectedProject.value) : 'Select a project',
+	selectedProject.value
+		? getProjectName(selectedProject.value)
+		: i18n.baseText('instanceAi.projectSelect.placeholder'),
 );
 const selectedProjectIcon = computed(() => getProjectIcon(selectedProject.value));
 const isTooltipDisabled = computed(() => open.value || isTooltipSuppressed.value);
@@ -48,7 +51,9 @@ onBeforeUnmount(() => {
 });
 
 function getProjectName(project: ProjectListItem) {
-	return project.type === 'personal' ? 'Personal space' : (project.name ?? '');
+	return project.type === 'personal'
+		? i18n.baseText('instanceAi.projectSelect.personalSpace')
+		: (project.name ?? '');
 }
 
 function getProjectIcon(project?: ProjectListItem): IconOrEmoji {
@@ -91,7 +96,9 @@ function suppressTooltip() {
 					</button>
 
 					<template #content>
-						<span style="white-space: nowrap">{{ PROJECT_SELECT_TOOLTIP }}</span>
+						<span style="white-space: nowrap">{{
+							i18n.baseText('instanceAi.projectSelect.tooltip')
+						}}</span>
 					</template>
 				</N8nTooltip>
 			</ComboboxTrigger>
@@ -101,12 +108,14 @@ function suppressTooltip() {
 			<ComboboxContent position="popper" align="start" :class="$style.content">
 				<ComboboxInput
 					v-if="showSearch"
-					placeholder="Search projects"
+					:placeholder="i18n.baseText('instanceAi.projectSelect.search')"
 					:class="$style.input"
 					:display-value="() => ''"
 				/>
 
-				<ComboboxEmpty :class="$style.empty">No results</ComboboxEmpty>
+				<ComboboxEmpty :class="$style.empty">{{
+					i18n.baseText('instanceAi.projectSelect.noResults')
+				}}</ComboboxEmpty>
 
 				<N8nScrollArea
 					:class="[$style.scrollArea, { [$style.scrollAreaWithSearch]: showSearch }]"
