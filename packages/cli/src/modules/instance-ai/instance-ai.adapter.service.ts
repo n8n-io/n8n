@@ -1001,8 +1001,8 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				runData.source = 'instance_ai';
 				runData.telemetryMetadata = {
-					source: 'instance_ai',
 					mockDataSources,
 				};
 

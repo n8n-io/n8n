@@ -1,28 +1,26 @@
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import type { PushHandlerOptions } from './types';
 
 /**
  * Handles the 'nodeExecuteBefore' event, which happens before a node is executed.
  */
 export async function nodeExecuteBefore(
 	{ data }: NodeExecuteBefore,
-	{ workflowState }: { workflowState: WorkflowState },
+	{ documentId }: PushHandlerOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 
-	workflowState.executingNode.addExecutingNode(data.nodeName);
-
+	// Ignore node events that don't belong to the execution this document is
+	// tracking — otherwise a concurrent execution's node would pollute this
+	// document's spinner queue and execution data.
 	const activeExecutionId = workflowExecutionStateStore.activeExecutionId;
-	if (typeof activeExecutionId === 'string') {
-		useExecutionDataStore(createExecutionDataId(activeExecutionId)).addNodeExecutionStartedData(
-			data,
-		);
+	if (activeExecutionId !== data.executionId) {
+		return;
 	}
+
+	workflowExecutionStateStore.executingNode.addExecutingNode(data.nodeName);
+
+	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
 }

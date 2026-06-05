@@ -1,4 +1,8 @@
-import type { StartTestRunPayload } from '@n8n/api-types';
+import type {
+	EvaluationConfigDto,
+	StartTestRunPayload,
+	UpsertEvaluationConfigDto,
+} from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { JsonObject } from 'n8n-workflow';
@@ -79,15 +83,22 @@ export const startTestRun = async (
 	workflowId: string,
 	options?: StartTestRunOptions,
 ) => {
+	const body: Record<string, unknown> = {};
+	if (options?.concurrency !== undefined) body.concurrency = options.concurrency;
+	if (options?.evaluationConfigId !== undefined) {
+		body.evaluationConfigId = options.evaluationConfigId;
+	}
+	if (options?.compileFromConfig !== undefined) {
+		body.compileFromConfig = options.compileFromConfig;
+	}
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `/workflows/${workflowId}/test-runs/new`,
 		headers: { 'push-ref': context.pushRef },
-		// `data: undefined` sends an empty POST body. Express's body-parser
-		// normalises that to `req.body = {}`, which the controller's zod parse
-		// resolves to `concurrency: undefined`, defaulting to sequential.
-		data: options?.concurrency !== undefined ? { concurrency: options.concurrency } : undefined,
+		// Sending an empty `{}` is equivalent to sending no body — the
+		// controller's zod parse resolves the optional fields to undefined.
+		data: Object.keys(body).length > 0 ? body : undefined,
 	});
 	// CLI is returning the response without wrapping it in `data` key
 	return response as { success: boolean; testRunId: string };
@@ -130,6 +141,59 @@ export const getTestCaseExecutions = async (
 		context,
 		'GET',
 		getRunExecutionsEndpoint(workflowId, runId),
+	);
+};
+
+// Persist an EvaluationConfig (the DB entity the runner compiles into a
+// Set Metrics workflow). The wizard calls this on step 2 Next before
+// dispatching the test run.
+export const createEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	payload: UpsertEvaluationConfigDto,
+) => {
+	return await makeRestApiRequest<EvaluationConfigDto>(
+		context,
+		'POST',
+		`/workflows/${workflowId}/evaluation-configs`,
+		payload as unknown as JsonObject,
+	);
+};
+
+// EvaluationConfig has a `(workflowId, name)` unique index, so a second run
+// of the wizard for the same workflow would otherwise 409. The wizard lists
+// existing configs to find a reusable one before deciding create vs update.
+export const listEvaluationConfigs = async (context: IRestApiContext, workflowId: string) => {
+	return await makeRestApiRequest<EvaluationConfigDto[]>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/evaluation-configs`,
+	);
+};
+
+export const updateEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+	payload: UpsertEvaluationConfigDto,
+) => {
+	return await makeRestApiRequest<EvaluationConfigDto>(
+		context,
+		'PUT',
+		`/workflows/${workflowId}/evaluation-configs/${configId}`,
+		payload as unknown as JsonObject,
+	);
+};
+
+export const deleteEvaluationConfig = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+) => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'DELETE',
+		`/workflows/${workflowId}/evaluation-configs/${configId}`,
 	);
 };
 

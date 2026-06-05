@@ -430,8 +430,9 @@ function createCheckpointService(): ServiceInternals {
 type CheckpointPruneServiceInternals = {
 	startCheckpointPruning: () => void;
 	stopCheckpointPruning: () => void;
-	pruneStaleCheckpoints: (now?: number) => Promise<void>;
+	runScheduledPrune: (now?: number) => Promise<void>;
 	pruneStalePendingConfirmations: jest.MockedFunction<(now: number) => Promise<void>>;
+	pruneExpiredThreads: jest.MockedFunction<() => Promise<void>>;
 	scheduleCheckpointPrune: jest.MockedFunction<(delayMs?: number) => void>;
 	checkpointStore: {
 		markExpiredOlderThan: jest.MockedFunction<(olderThan: Date) => Promise<number>>;
@@ -439,7 +440,7 @@ type CheckpointPruneServiceInternals = {
 	checkpointPruneTimer?: NodeJS.Timeout;
 	checkpointPruningStopped: boolean;
 	instanceAiConfig: {
-		snapshotPruneInterval: number;
+		pruneInterval: number;
 		snapshotRetention: number;
 	};
 	logger: { info: jest.Mock; debug: jest.Mock; warn: jest.Mock };
@@ -451,12 +452,13 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	) as unknown as CheckpointPruneServiceInternals;
 	service.scheduleCheckpointPrune = jest.fn();
 	service.pruneStalePendingConfirmations = jest.fn(async (_now: number) => undefined);
+	service.pruneExpiredThreads = jest.fn(async () => undefined);
 	service.checkpointStore = {
 		markExpiredOlderThan: jest.fn(async (_olderThan: Date) => 0),
 	};
 	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
-		snapshotPruneInterval: 60 * 60 * 1000,
+		pruneInterval: 60 * 60 * 1000,
 		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
 	};
 	service.logger = {
@@ -523,7 +525,6 @@ type WorkspaceServiceInternals = {
 		threadId: string,
 		user: User,
 		context: InstanceAiContext,
-		runId?: string,
 	) => Promise<unknown>;
 };
 
@@ -945,21 +946,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createWorkspace as jest.Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as jest.Mock).mockResolvedValue(undefined);
 
-		await service.getOrCreateWorkspace(
-			'thread-1',
-			fakeUser,
-			{} as InstanceAiContext,
-			'run_123456789',
-		);
+		await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
 
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'acme-eval-run-1234-instance-ai-thread-thread-1',
-				name: 'acme-eval-run-1234-instance-ai-thread-thread-1',
+				id: 'acme-eval-instance-ai-thread-thread-1',
+				name: 'acme-eval-instance-ai-thread-thread-1',
 				labels: expect.objectContaining({
 					'n8n-builder': 'instance-ai-thread-thread-1',
 					name_prefix: 'Acme-Eval',
-					run_id: 'run_123456789',
 					thread_id: 'thread-1',
 				}),
 			}),
@@ -1171,11 +1166,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createSandbox).toHaveBeenCalledTimes(1);
 		expect(createSandbox).toHaveBeenCalledWith(
 			expect.objectContaining({
-				id: 'run-1-instance-ai-thread-thread-1',
-				name: 'run-1-instance-ai-thread-thread-1',
+				id: 'instance-ai-thread-thread-1',
+				name: 'instance-ai-thread-thread-1',
 				labels: expect.objectContaining({
 					'n8n-builder': 'instance-ai-thread-thread-1',
-					run_id: 'run-1',
 					thread_id: 'thread-1',
 				}),
 			}),
@@ -1425,17 +1419,18 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 	});
 });
 
-describe('InstanceAiService — checkpoint pruning', () => {
+describe('InstanceAiService — scheduled pruning', () => {
 	it('marks checkpoints expired older than the retention window', async () => {
 		const service = createCheckpointPruneService();
 		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
 
-		await service.pruneStaleCheckpoints(now);
+		await service.runScheduledPrune(now);
 
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
 			new Date('2026-05-06T12:00:00.000Z'),
 		);
 		expect(service.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
+		expect(service.pruneExpiredThreads).toHaveBeenCalled();
 		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 	});
 
@@ -1450,11 +1445,57 @@ describe('InstanceAiService — checkpoint pruning', () => {
 
 	it('does not start checkpoint pruning when disabled', () => {
 		const service = createCheckpointPruneService();
-		service.instanceAiConfig.snapshotPruneInterval = 0;
+		service.instanceAiConfig.pruneInterval = 0;
 
 		service.startCheckpointPruning();
 
 		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
+	});
+});
+
+type ExpiredThreadPruneServiceInternals = {
+	pruneExpiredThreads: () => Promise<void>;
+	clearThreadState: jest.MockedFunction<(threadId: string) => Promise<void>>;
+	memoryService: {
+		cleanupExpiredThreads: jest.MockedFunction<
+			(onThreadDeleted?: (threadId: string) => Promise<void>) => Promise<number>
+		>;
+	};
+	logger: { warn: jest.Mock };
+};
+
+function createExpiredThreadPruneService(): ExpiredThreadPruneServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ExpiredThreadPruneServiceInternals;
+	service.clearThreadState = jest.fn(async (_threadId: string) => undefined);
+	service.memoryService = {
+		cleanupExpiredThreads: jest.fn(async (_onThreadDeleted) => 0),
+	};
+	service.logger = { warn: jest.fn() };
+	return service;
+}
+
+describe('InstanceAiService — expired thread pruning', () => {
+	it('delegates to the memory service and clears state for deleted threads', async () => {
+		const service = createExpiredThreadPruneService();
+		service.memoryService.cleanupExpiredThreads.mockImplementation(async (onThreadDeleted) => {
+			await onThreadDeleted?.('thread-1');
+			return 1;
+		});
+
+		await service.pruneExpiredThreads();
+
+		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledTimes(1);
+		expect(service.clearThreadState).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('swallows errors so the recurring prune is not disrupted', async () => {
+		const service = createExpiredThreadPruneService();
+		service.memoryService.cleanupExpiredThreads.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(service.pruneExpiredThreads()).resolves.toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalled();
 	});
 });
 

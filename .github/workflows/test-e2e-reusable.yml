@@ -35,7 +35,7 @@ on:
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
-        default: 'LRxcNt'
+        default: 'nHHLA5'
         type: string
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
