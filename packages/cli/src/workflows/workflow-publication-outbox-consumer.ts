@@ -71,7 +71,7 @@ export class WorkflowPublicationOutboxConsumer {
 	// We will rely on the `workflow-publish-wake-up` event in the future, but
 	// will keep the poller as a fallback since pubsub delivery is not ensured.
 	private schedulePollCycle() {
-		if (this.pollTimeout) return;
+		clearTimeout(this.pollTimeout);
 
 		this.pollTimeout = setTimeout(async () => {
 			await this.pollCycle();
@@ -163,7 +163,21 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async tearDownOldTriggers(record: WorkflowPublicationOutbox) {
-		await this.activeWorkflowManager.remove(record.workflowId);
+		try {
+			await this.activeWorkflowManager.clearWebhooks(record.workflowId);
+		} catch (error) {
+			this.errorReporter.error(error, {
+				shouldBeLogged: true,
+				tags: {
+					workflowId: record.workflowId,
+					outboxId: record.id,
+				},
+			});
+		}
+
+		await this.activeWorkflowManager.handleRemoveNonWebhookTriggers({
+			workflowId: record.workflowId,
+		});
 	}
 
 	private async registerNewTriggers(record: WorkflowPublicationOutbox) {

@@ -68,7 +68,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		workflowRepository.findById.mockResolvedValue(null);
 		workflowRepository.update.mockResolvedValue({} as never);
 		activeWorkflowManager.remove.mockResolvedValue(undefined);
+		activeWorkflowManager.clearWebhooks.mockResolvedValue(undefined);
+		activeWorkflowManager.handleRemoveNonWebhookTriggers.mockResolvedValue(undefined);
 		activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
+		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
 		Object.defineProperty(outboxRepository, 'manager', {
@@ -101,6 +104,15 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(jest.getTimerCount()).toBe(1);
 		});
 
+		test('polling schedules the next cycle after a timer fires', async () => {
+			consumer.startPolling();
+
+			await jest.advanceTimersByTimeAsync(60_000);
+
+			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(1);
+		});
+
 		test('startPolling does nothing when feature flag is off', () => {
 			consumer = createConsumer(false);
 			consumer.startPolling();
@@ -130,8 +142,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			workflowRepository.findById.mockResolvedValue(makeWorkflow());
 
 			const callOrder: string[] = [];
-			activeWorkflowManager.remove.mockImplementation(async () => {
-				callOrder.push('remove');
+			activeWorkflowManager.clearWebhooks.mockImplementation(async () => {
+				callOrder.push('clearWebhooks');
+				return await Promise.resolve();
+			});
+			activeWorkflowManager.handleRemoveNonWebhookTriggers.mockImplementation(async () => {
+				callOrder.push('removeNonWebhookTriggers');
 				return await Promise.resolve();
 			});
 			workflowRepository.update.mockImplementation(async () => {
@@ -145,7 +161,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			await consumer.processRecord(record);
 
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('wf-1');
+			expect(activeWorkflowManager.clearWebhooks).toHaveBeenCalledWith('wf-1');
+			expect(activeWorkflowManager.handleRemoveNonWebhookTriggers).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+			});
 			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
 				activeVersionId: 'v-2',
 			});
@@ -153,7 +172,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				shouldPublish: false,
 			});
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
-			expect(callOrder).toEqual(['remove', 'update', 'add']);
+			expect(callOrder).toEqual(['clearWebhooks', 'removeNonWebhookTriggers', 'update', 'add']);
 		});
 
 		test('marks completed when workflow not found', async () => {
@@ -163,7 +182,8 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			await consumer.processRecord(record);
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.clearWebhooks).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.handleRemoveNonWebhookTriggers).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 
@@ -176,7 +196,8 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			await consumer.processRecord(record);
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.clearWebhooks).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.handleRemoveNonWebhookTriggers).not.toHaveBeenCalled();
 		});
 
 		test('finalizes without trigger reapply when version already matches', async () => {
@@ -186,18 +207,21 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			await consumer.processRecord(record);
 
 			expect(outboxRepository.manager.transaction).toHaveBeenCalled();
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.clearWebhooks).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.handleRemoveNonWebhookTriggers).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 
-		test('marks failed when tearDownOldTriggers throws', async () => {
+		test('marks failed when non-webhook trigger teardown throws', async () => {
 			const record = makeRecord();
 			workflowRepository.findById.mockResolvedValue(makeWorkflow());
-			activeWorkflowManager.remove.mockRejectedValue(new Error('webhook cleanup failed'));
+			activeWorkflowManager.handleRemoveNonWebhookTriggers.mockRejectedValue(
+				new Error('trigger cleanup failed'),
+			);
 
 			await consumer.processRecord(record);
 
-			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'webhook cleanup failed');
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'trigger cleanup failed');
 			expect(workflowRepository.update).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
@@ -209,7 +233,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 			await consumer.processRecord(record);
 
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('wf-1');
+			expect(activeWorkflowManager.clearWebhooks).toHaveBeenCalledWith('wf-1');
+			expect(activeWorkflowManager.handleRemoveNonWebhookTriggers).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+			});
 			expect(activeWorkflowManager.add).toHaveBeenCalled();
 
 			// Rollback: deactivate workflow
