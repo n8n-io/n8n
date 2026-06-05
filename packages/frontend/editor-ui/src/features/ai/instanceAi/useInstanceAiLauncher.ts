@@ -39,9 +39,13 @@ export function useInstanceAiLauncher() {
 			auto_send: autoSend,
 		});
 
+		// Hand the message to the thread view rather than sending here: the view
+		// owns the thread's runtime, and only sends after it has hydrated history
+		// and connected SSE. Sending pre-navigation would push onto a runtime the
+		// view then clobbers during hydration. Prefill seeds the input; auto-send
+		// dispatches the first message once the view is ready.
 		if (autoSend) {
-			const runtime = store.getOrCreateRuntime(threadId);
-			void runtime.sendMessage(options.message, undefined, rootStore.pushRef);
+			store.setPendingAutoSend(threadId, options.message);
 		} else {
 			store.setPendingPrefill(threadId, options.message);
 		}

@@ -451,6 +451,14 @@ function reconnectThreadAfterHydration(): void {
 		if (hydrationStatus === 'stale') return;
 		void thread.loadThreadStatus();
 		thread.connectSSE();
+		// A launcher (e.g. "Start with AI") may have queued a first message to
+		// auto-send. Dispatch it now — after hydration + SSE connect — so the
+		// optimistic message lands on this runtime and isn't overwritten by the
+		// history load above.
+		const pendingAutoSend = store.consumePendingAutoSend(props.threadId);
+		if (pendingAutoSend) {
+			void thread.sendMessage(pendingAutoSend, undefined, rootStore.pushRef);
+		}
 	});
 }
 

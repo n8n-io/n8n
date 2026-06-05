@@ -27,6 +27,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const toast = useToast();
 	const persistedThreadIds = new Set<string>();
 	const pendingPrefills = new Map<string, string>();
+	// Messages a launcher wants auto-sent once the thread view has mounted,
+	// hydrated and connected its SSE. Deferring the send to the view (rather than
+	// sending from the launcher before navigation) ensures the message is sent on
+	// the view's own runtime, after history hydration, so it isn't clobbered.
+	const pendingAutoSends = new Map<string, string>();
 
 	function setPendingPrefill(threadId: string, text: string): void {
 		pendingPrefills.set(threadId, text);
@@ -36,6 +41,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const text = pendingPrefills.get(threadId);
 		pendingPrefills.delete(threadId);
 		return text;
+	}
+
+	function setPendingAutoSend(threadId: string, message: string): void {
+		pendingAutoSends.set(threadId, message);
+	}
+
+	function consumePendingAutoSend(threadId: string): string | undefined {
+		const message = pendingAutoSends.get(threadId);
+		pendingAutoSends.delete(threadId);
+		return message;
 	}
 
 	// --- Instance-level state ---
@@ -282,6 +297,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		syncThread,
 		setPendingPrefill,
 		consumePendingPrefill,
+		setPendingAutoSend,
+		consumePendingAutoSend,
 	};
 });
 
