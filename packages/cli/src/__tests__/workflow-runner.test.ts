@@ -46,6 +46,24 @@ import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+// `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
+// Define the mock at module top-level so the `vi.mock` factory (hoisted) can
+// reference the class without a temporal-dead-zone error — a describe-scoped
+// class isn't initialised when the hoisted factory first resolves.
+const setupQueue = vi.fn();
+const addJob = vi.fn();
+
+@Service()
+class MockScalingService {
+	setupQueue = setupQueue;
+
+	addJob = addJob;
+}
+
+vi.mock('@/scaling/scaling.service', () => ({
+	ScalingService: MockScalingService,
+}));
+
 let owner: User;
 let runner: WorkflowRunner;
 const globalConfig = Container.get(GlobalConfig);
@@ -342,26 +360,6 @@ describe('run', () => {
 });
 
 describe('enqueueExecution', () => {
-	const setupQueue = vi.fn();
-	const addJob = vi.fn();
-
-	@Service()
-	class MockScalingService {
-		setupQueue = setupQueue;
-
-		addJob = addJob;
-	}
-
-	beforeAll(() => {
-		vi.mock('@/scaling/scaling.service', () => ({
-			ScalingService: MockScalingService,
-		}));
-	});
-
-	afterAll(() => {
-		vi.unmock('@/scaling/scaling.service');
-	});
-
 	it('should setup queue when scalingService is not initialized', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
@@ -703,6 +701,7 @@ describe('pre-persist context establishment', () => {
 				nodes: [],
 				connections: {},
 				settings: undefined,
+				staticData: {},
 			},
 			executionData,
 			userId: 'u1',
