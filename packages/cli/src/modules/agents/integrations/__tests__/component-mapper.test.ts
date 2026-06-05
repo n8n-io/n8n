@@ -2,18 +2,33 @@ import type { Mock } from 'vitest';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
 // Define mocks inline inside the factory to avoid vi.mock hoisting issues
 type MockFn = Mock<(...args: any[]) => any>;
-const mockButton: MockFn = vi.fn((opts) => ({ type: 'button', ...opts }));
-const mockCard: MockFn = vi.fn((opts) => ({ type: 'card', ...opts }));
-const mockActions: MockFn = vi.fn((children) => ({ type: 'actions', children }));
-const mockCardText: MockFn = vi.fn((content) => ({ type: 'text', content }));
-const mockSection: MockFn = vi.fn((children) => ({ type: 'section', children }));
-const mockDivider: MockFn = vi.fn(() => ({ type: 'divider' }));
-const mockImage: MockFn = vi.fn((opts) => ({ type: 'image', ...opts }));
-const mockSelect: MockFn = vi.fn((opts) => ({ type: 'select', ...opts }));
-const mockSelectOption: MockFn = vi.fn((opts) => ({ type: 'select_option', ...opts }));
-const mockRadioSelect: MockFn = vi.fn((opts) => ({ type: 'radio_select', ...opts }));
-const mockFields: MockFn = vi.fn((children) => ({ type: 'fields', children }));
-const mockField: MockFn = vi.fn((opts) => ({ type: 'field', ...opts }));
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockSelectOption,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })) as MockFn,
+	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })) as MockFn,
+	mockActions: vi.fn((children: any) => ({ type: 'actions', children })) as MockFn,
+	mockCardText: vi.fn((content: any) => ({ type: 'text', content })) as MockFn,
+	mockSection: vi.fn((children: any) => ({ type: 'section', children })) as MockFn,
+	mockDivider: vi.fn(() => ({ type: 'divider' })) as MockFn,
+	mockImage: vi.fn((opts: any) => ({ type: 'image', ...opts })) as MockFn,
+	mockSelect: vi.fn((opts: any) => ({ type: 'select', ...opts })) as MockFn,
+	mockSelectOption: vi.fn((opts: any) => ({ type: 'select_option', ...opts })) as MockFn,
+	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })) as MockFn,
+	mockFields: vi.fn((children: any) => ({ type: 'fields', children })) as MockFn,
+	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })) as MockFn,
+}));
 
 vi.mock('../esm-loader', () => {
 	// These reference the hoisted variables above via closure

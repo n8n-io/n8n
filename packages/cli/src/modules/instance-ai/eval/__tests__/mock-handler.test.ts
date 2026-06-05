@@ -38,7 +38,7 @@ const mockAgent: MockAgent = {
 	}),
 	generate: mockGenerate,
 };
-const mockExtractText = vi.fn((result: { _text?: string }) => result._text ?? '');
+const mockExtractText = vi.hoisted(() => vi.fn((result: { _text?: string }) => result._text ?? ''));
 
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(() => mockAgent),
