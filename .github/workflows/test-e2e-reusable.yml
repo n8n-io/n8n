@@ -123,8 +123,15 @@ jobs:
 
       - name: Run Tests
         run: |
+          # --pass-with-no-tests makes Playwright exit 0 when the selected specs
+          # resolve to zero runnable tests. Covers the impact-map vs current-suite
+          # skew window: a spec the committed coverage map points at may have been
+          # quarantined (test.skip/fixme) since the map was built, or a capability
+          # --grep on the test-command may filter every test on a shard. The
+          # selector is doing the right thing; the run shouldn't treat "nothing
+          # to run" as failure.
           # shellcheck disable=SC2086
-          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS --pass-with-no-tests
         env:
           # Protect args from template injections
           TEST_COMMAND: ${{ inputs.test-command }}

@@ -67,6 +67,8 @@ export function selectE2e(input: SelectE2eInput): SelectE2eResult {
 		: undefined;
 	const { map, failOpen } = loadMap(input.mapFile);
 	const changed = input.changedFiles.map((file) => ({ file }));
-	const result = resolveImpact(changed, map, { allSpecs });
+	// Sibling fallback on: a new/unmapped file scopes to its nearest covered
+	// directory's specs rather than forcing the whole suite (see resolveImpact).
+	const result = resolveImpact(changed, map, { allSpecs, siblingFallback: true });
 	return { ...result, failOpen };
 }

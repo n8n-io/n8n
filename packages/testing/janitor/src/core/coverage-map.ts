@@ -31,10 +31,43 @@ export type ImpactMap = Record<string, Record<string, string[]>>;
  * ImpactMap exactly. Spec paths repeat across thousands of (file, line) entries,
  * so interning shrinks the artifact ~10x with no loss of the function-level
  * detail that line-precise selection and cross-layer overlap analysis need.
+ *
+ * Each entry's spec set is stored as **whichever is smaller** (lossless):
+ *  - a plain index list `[3, 17]` — cheap when few specs cover the line (sparse), or
+ *  - a base64 **bitmask** string `"b:…"` (one bit per spec) — constant size no
+ *    matter how many specs, so it wins for "hub" lines covered by most specs.
+ * Backend coverage is dense (every spec runs the shared server stack), so hubs
+ * would otherwise dominate the artifact. See `scripts/impact-map.md`.
  */
 export interface InternedImpactMap {
 	specs: string[];
-	files: Record<string, Record<string, number[]>>;
+	files: Record<string, Record<string, number[] | string>>;
+}
+
+const BITMASK_PREFIX = 'b:';
+
+/** Encode a spec-index set as the cheaper of an index list or a base64 bitmask. */
+function encodeSpecSet(indices: number[], specCount: number): number[] | string {
+	const maskBytes = Math.ceil(specCount / 8);
+	const b64Len = Math.ceil(maskBytes / 3) * 4;
+	// +4 ≈ the "b:" prefix and the JSON quotes the string form pays vs the array.
+	if (JSON.stringify(indices).length <= b64Len + 4) return indices;
+	const bytes = new Uint8Array(maskBytes);
+	for (const i of indices) bytes[i >> 3] |= 1 << (i & 7);
+	return BITMASK_PREFIX + Buffer.from(bytes).toString('base64');
+}
+
+/** Decode an entry (index list or `"b:…"` bitmask) back to spec indices. */
+function decodeSpecSet(value: number[] | string): number[] {
+	if (typeof value !== 'string') return value;
+	const bytes = Buffer.from(value.slice(BITMASK_PREFIX.length), 'base64');
+	const out: number[] = [];
+	for (let byte = 0; byte < bytes.length; byte++) {
+		for (let bit = 0; bit < 8; bit++) {
+			if (bytes[byte] & (1 << bit)) out.push(byte * 8 + bit);
+		}
+	}
+	return out;
 }
 
 /** One per-spec lcov and the spec it belongs to (used when records carry no `TN:`). */
@@ -186,27 +219,47 @@ function buildImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
 export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
 	const index = new Map<string, number>();
 	const specs: string[] = [];
-	const idOf = (s: string): number => {
+	const internSpec = (s: string): number => {
 		let i = index.get(s);
 		if (i === undefined) index.set(s, (i = specs.push(s) - 1));
 		return i;
 	};
+	// Pass 1: intern every spec so the bitmask width (specs.length) is known
+	// before any entry is encoded.
+	for (const file of Object.keys(map)) {
+		for (const line of Object.keys(map[file])) {
+			for (const s of map[file][line]) {
+				internSpec(s);
+			}
+		}
+	}
+	// Pass 2: store each entry as the cheaper of an index list or a bitmask.
 	const files: InternedImpactMap['files'] = {};
 	for (const file of Object.keys(map)) {
 		files[file] = {};
-		for (const line of Object.keys(map[file])) files[file][line] = map[file][line].map(idOf);
+		for (const line of Object.keys(map[file])) {
+			const indices = map[file][line].map((s) => index.get(s)!);
+			files[file][line] = encodeSpecSet(indices, specs.length);
+		}
 	}
 	return { specs, files };
 }
 
-/** Expand an {@link InternedImpactMap} back to a full {@link ImpactMap}. */
+/**
+ * Expand an {@link InternedImpactMap} back to a full {@link ImpactMap}. Handles
+ * both entry forms (index list or `"b:…"` bitmask) and older maps that predate
+ * the bitmask form (all index lists). Spec lists come back sorted, matching
+ * {@link mergeCoverage}'s output, so decode∘encode round-trips exactly.
+ */
 export function decodeImpactMap(interned: InternedImpactMap): ImpactMap {
 	const { specs, files } = interned;
 	const map: ImpactMap = {};
 	for (const file of Object.keys(files)) {
 		map[file] = {};
 		for (const line of Object.keys(files[file]))
-			map[file][line] = files[file][line].map((i) => specs[i]);
+			map[file][line] = decodeSpecSet(files[file][line])
+				.map((i) => specs[i])
+				.sort();
 	}
 	return map;
 }
@@ -220,9 +273,36 @@ export interface ChangedFile {
 export interface ResolveResult {
 	/** Specs that must run. In 'broad' mode this is `allSpecs` if supplied. */
 	specs: string[];
-	/** Changed files absent from the map (new/renamed/never-covered) → force broad. */
+	/** Changed files with no map entry AND no covered ancestor dir → force broad. */
 	unmapped: string[];
+	/** Unmapped files resolved to their nearest covered ancestor directory's specs
+	 *  (sibling fallback). Scoped, not broad. */
+	viaSibling?: string[];
 	mode: 'scoped' | 'broad';
+}
+
+const parentDir = (p: string): string => {
+	const i = p.lastIndexOf('/');
+	return i < 0 ? '' : p.slice(0, i);
+};
+
+/**
+ * Index every ancestor directory of every mapped file to the union of specs
+ * under it. Lets an unmapped (new/never-covered) file fall back to the specs
+ * that exercise its directory, instead of forcing the whole suite.
+ */
+function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
+	const dirSpecs = new Map<string, Set<string>>();
+	for (const file of Object.keys(map)) {
+		const fileSpecs = new Set<string>();
+		for (const line of Object.keys(map[file])) for (const s of map[file][line]) fileSpecs.add(s);
+		for (let dir = parentDir(file); dir !== ''; dir = parentDir(dir)) {
+			let set = dirSpecs.get(dir);
+			if (!set) dirSpecs.set(dir, (set = new Set()));
+			for (const s of fileSpecs) set.add(s);
+		}
+	}
+	return dirSpecs;
 }
 
 /**
@@ -244,18 +324,41 @@ export interface ResolveResult {
  * when the map is known function-complete for the file. The default-safe usage —
  * and what the CLI does — is FILE-LEVEL (omit `lines`): a changed file selects
  * every spec covering any part of it. Treat `lines` as an opt-in optimisation.
+ *
+ * SIBLING FALLBACK (`opts.siblingFallback`): an unmapped file (new / never-
+ * covered) otherwise forces 'broad' — counterintuitive for a new file in a
+ * well-covered area ("no spec touches this exact path, so run all of them").
+ * With it on, the file instead selects the specs covering its NEAREST covered
+ * ancestor directory (e.g. a new `@n8n/instance-ai/…` file → the instance-ai
+ * specs). Only a file with NO covered ancestor at all still forces broad.
+ * Deliberate trade: a new file is assumed exercised by the specs that exercise
+ * its directory — a sound superset in practice, far cheaper than the whole suite.
  */
 export function resolveImpact(
 	changed: ChangedFile[],
 	map: ImpactMap,
-	opts: { allSpecs?: string[] } = {},
+	opts: { allSpecs?: string[]; siblingFallback?: boolean } = {},
 ): ResolveResult {
 	const specs = new Set<string>();
 	const unmapped: string[] = [];
+	const viaSibling: string[] = [];
+	const dirIndex = opts.siblingFallback ? buildDirIndex(map) : undefined;
 
 	for (const { file, lines } of changed) {
 		const fileMap = map[file];
 		if (!fileMap) {
+			if (dirIndex) {
+				let resolved: Set<string> | undefined;
+				for (let dir = parentDir(file); dir !== '' && !resolved; dir = parentDir(dir)) {
+					const set = dirIndex.get(dir);
+					if (set?.size) resolved = set;
+				}
+				if (resolved) {
+					for (const s of resolved) specs.add(s);
+					viaSibling.push(file);
+					continue;
+				}
+			}
 			unmapped.push(file);
 			continue;
 		}
@@ -289,5 +392,10 @@ export function resolveImpact(
 	if (mode === 'broad' && opts.allSpecs) {
 		for (const s of opts.allSpecs) specs.add(s);
 	}
-	return { specs: [...specs].sort(), unmapped, mode };
+	return {
+		specs: [...specs].sort(),
+		unmapped,
+		...(viaSibling.length ? { viaSibling } : {}),
+		mode,
+	};
 }
