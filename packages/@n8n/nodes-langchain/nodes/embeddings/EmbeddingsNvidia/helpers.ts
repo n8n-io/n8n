@@ -1,5 +1,6 @@
 import { chunkArray } from '@langchain/core/utils/chunk_array';
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { OperationalError } from 'n8n-workflow';
 import type { OpenAI } from 'openai';
 
 export type NvidiaInputType = 'passage' | 'query';
@@ -54,10 +55,26 @@ export class NvidiaEmbeddings extends OpenAIEmbeddings {
 			};
 			if (this.dimensions) params.dimensions = this.dimensions;
 			if (this.encodingFormat) params.encoding_format = this.encodingFormat;
-			return await this.embeddingWithRetry(params);
+			const { data } = await this.embeddingWithRetry(params);
+			return { expected: batch.length, data };
 		});
 
 		const batchResponses = await Promise.all(batchRequests);
-		return batchResponses.flatMap((response) => response.data.map((entry) => entry.embedding));
+
+		// The caller maps each input text to the embedding at the same position, so every batch must
+		// return exactly one embedding per input. Flatten by input position (like the base class) and
+		// fail loudly on a malformed response rather than silently dropping or shifting embeddings.
+		const embeddings: number[][] = [];
+		for (const { expected, data } of batchResponses) {
+			if (data.length !== expected) {
+				throw new OperationalError(
+					`NVIDIA embeddings API returned ${data.length} embeddings for a batch of ${expected} inputs`,
+				);
+			}
+			for (const entry of data) {
+				embeddings.push(entry.embedding);
+			}
+		}
+		return embeddings;
 	}
 }

@@ -87,4 +87,26 @@ describe('NvidiaEmbeddings', () => {
 		expect(requestFor('a passage to index')).toMatchObject({ input_type: 'passage' });
 		expect(requestFor('a query to search')).toMatchObject({ input_type: 'query' });
 	});
+
+	it('should return one embedding per input, preserving order across batches', async () => {
+		const { embeddings, create } = buildEmbeddings({ batchSize: 2 });
+		// Derive each embedding from its own input so the assertion is independent of batch dispatch order.
+		create.mockImplementation((body: { input: string[] }) => ({
+			data: body.input.map((text) => ({ embedding: [text.charCodeAt(0)] })),
+		}));
+
+		const result = await embeddings.embedDocuments(['a', 'b', 'c', 'd', 'e']);
+
+		expect(result).toEqual([[97], [98], [99], [100], [101]]);
+	});
+
+	it('should throw rather than silently drop embeddings on a partial API response', async () => {
+		const { embeddings, create } = buildEmbeddings();
+		// API returns only a single embedding for a two-input batch.
+		create.mockResolvedValueOnce({ data: [{ embedding: [0.1, 0.2, 0.3] }] });
+
+		await expect(embeddings.embedDocuments(['first', 'second'])).rejects.toThrow(
+			/returned 1 embeddings for a batch of 2/,
+		);
+	});
 });
