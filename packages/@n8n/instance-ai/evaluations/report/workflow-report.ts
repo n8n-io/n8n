@@ -13,7 +13,7 @@ import path from 'path';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import type {
-	ConversationExpectationResult,
+	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
 	ToolInteraction,
@@ -476,12 +476,10 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
-// Conversation expectations
+// Build expectations
 // ---------------------------------------------------------------------------
 
-function renderConversationExpectations(
-	results: ConversationExpectationResult[] | undefined,
-): string {
+function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
 	if (!results || results.length === 0) return '';
 	const passCount = results.filter((r) => r.pass).length;
 	const total = results.length;
@@ -497,7 +495,7 @@ function renderConversationExpectations(
 			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
 		})
 		.join('');
-	return `<details class="section" ${openAttr}><summary>Conversation expectations <span class="${statusClass}">${String(passCount)}/${String(total)}</span></summary><ul class="check-list">${items}</ul></details>`;
+	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${String(passCount)}/${String(total)}</span></summary><ul class="check-list">${items}</ul></details>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -600,7 +598,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
 			${renderConversationMetrics(result.conversationMetrics)}
 			${renderConversationTranscript(result.transcript)}
-			${renderConversationExpectations(result.conversationExpectationResults)}
+			${renderBuildExpectations(result.buildExpectationResults)}
 			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}

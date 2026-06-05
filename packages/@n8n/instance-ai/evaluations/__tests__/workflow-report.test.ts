@@ -10,17 +10,17 @@ const TEST_CASE: WorkflowTestCase = {
 };
 
 function resultWith(
-	conversationExpectationResults: WorkflowTestCaseResult['conversationExpectationResults'],
+	buildExpectationResults: WorkflowTestCaseResult['buildExpectationResults'],
 ): WorkflowTestCaseResult {
 	return {
 		testCase: TEST_CASE,
 		workflowBuildSuccess: true,
 		executionScenarioResults: [],
-		conversationExpectationResults,
+		buildExpectationResults,
 	};
 }
 
-describe('conversation expectations in the workflow report', () => {
+describe('build expectations in the workflow report', () => {
 	it('renders a section with per-expectation verdicts and reasons', () => {
 		const html = generateWorkflowReport([
 			resultWith([
@@ -29,7 +29,7 @@ describe('conversation expectations in the workflow report', () => {
 			]),
 		]);
 
-		expect(html).toContain('Conversation expectations');
+		expect(html).toContain('Build expectations');
 		expect(html).toContain('asked which channel');
 		expect(html).toContain('posts to Slack');
 		expect(html).toContain('asked in turn 1');
@@ -40,7 +40,7 @@ describe('conversation expectations in the workflow report', () => {
 
 	it('omits the section entirely when there are no expectation results', () => {
 		const html = generateWorkflowReport([resultWith(undefined)]);
-		expect(html).not.toContain('Conversation expectations');
+		expect(html).not.toContain('Build expectations');
 	});
 });
 

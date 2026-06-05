@@ -61,30 +61,28 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.triggerType).toBe('webhook');
 	});
 
-	it('accepts the optional conversationExpectations array', () => {
+	it('accepts the optional buildExpectations array', () => {
 		const parsed = WorkflowTestCaseSchema.parse({
 			...validFixture(),
-			conversationExpectations: ['the agent asked which channel before building'],
+			buildExpectations: ['the agent asked which channel before building'],
 		});
-		expect(parsed.conversationExpectations).toEqual([
-			'the agent asked which channel before building',
-		]);
+		expect(parsed.buildExpectations).toEqual(['the agent asked which channel before building']);
 	});
 
-	it('leaves conversationExpectations undefined when omitted', () => {
+	it('leaves buildExpectations undefined when omitted', () => {
 		const parsed = WorkflowTestCaseSchema.parse(validFixture());
-		expect(parsed.conversationExpectations).toBeUndefined();
+		expect(parsed.buildExpectations).toBeUndefined();
 	});
 
-	it('rejects a non-array conversationExpectations', () => {
+	it('rejects a non-array buildExpectations', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), conversationExpectations: 'nope' }),
+			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: 'nope' }),
 		).toThrow();
 	});
 
 	it('rejects an empty-string expectation', () => {
 		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), conversationExpectations: [''] }),
+			WorkflowTestCaseSchema.parse({ ...validFixture(), buildExpectations: [''] }),
 		).toThrow();
 	});
 

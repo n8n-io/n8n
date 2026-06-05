@@ -185,7 +185,7 @@ export interface WorkflowTestCase {
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
 	/** Optional NL assertions about the build conversation; LLM-judged, informational only. */
-	conversationExpectations?: string[];
+	buildExpectations?: string[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -206,8 +206,8 @@ export interface ExecutionScenarioResult {
 	rootCause?: string;
 }
 
-/** Verdict for one author-written conversation expectation. Informational only. */
-export interface ConversationExpectationResult {
+/** Verdict for one author-written build expectation. Informational only. */
+export interface BuildExpectationResult {
 	expectation: string;
 	pass: boolean;
 	reason: string;
@@ -226,7 +226,7 @@ export interface WorkflowTestCaseResult {
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
 	/** Per-expectation verdicts from the conversation-expectations judge. Not consumed by pass@k. */
-	conversationExpectationResults?: ConversationExpectationResult[];
+	buildExpectationResults?: BuildExpectationResult[];
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
 	n8nBaseUrl?: string;

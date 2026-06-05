@@ -22,7 +22,7 @@
 		}
 	],
 	"messageBudget": 6,
-	"conversationExpectations": [
+	"buildExpectations": [
 		"Before building the workflow, the agent asked clarifying questions about the incoming payload shape and the urgency levels.",
 		"Before building the workflow, the agent asked where each urgency level should be routed.",
 		"The final workflow branches on the notification `level` (e.g. a Switch node) and routes High to Microsoft Teams, Medium to Slack, and Low to Gmail, as specified in the follow-up."

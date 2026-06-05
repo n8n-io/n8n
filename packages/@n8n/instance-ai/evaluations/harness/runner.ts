@@ -25,14 +25,14 @@ import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
-import { verifyConversationExpectations } from '../expectations/verifier';
+import { verifyBuildExpectations } from '../expectations/verifier';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ChecklistItem,
 	CapturedEvent,
-	ConversationExpectationResult,
+	BuildExpectationResult,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenarioResult,
@@ -134,26 +134,26 @@ export async function runWorkflowTestCase(
 		result.workflowChecks = build.workflowChecks;
 	}
 
-	// Optional author conversation expectations — informational, judged concurrently with scenarios.
+	// Optional author build expectations — informational, judged concurrently with scenarios.
 	const wantsExpectations =
-		(testCase.conversationExpectations?.length ?? 0) > 0 && (build.transcript?.length ?? 0) > 0;
-	const expectationsPromise: Promise<ConversationExpectationResult[]> = wantsExpectations
-		? verifyConversationExpectations(testCase.conversationExpectations!, {
+		(testCase.buildExpectations?.length ?? 0) > 0 && (build.transcript?.length ?? 0) > 0;
+	const expectationsPromise: Promise<BuildExpectationResult[]> = wantsExpectations
+		? verifyBuildExpectations(testCase.buildExpectations!, {
 				transcript: build.transcript!,
 				workflowJson: build.workflowJsons[0],
 				metrics: build.conversationMetrics,
 			}).catch((error: unknown) => {
 				logger.warn(
-					`  Conversation expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+					`  Build expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
 				);
 				return [];
 			})
-		: Promise.resolve<ConversationExpectationResult[]>([]);
+		: Promise.resolve<BuildExpectationResult[]>([]);
 
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.conversationExpectationResults = expectationResults;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 		return result;
 	}
 
@@ -193,7 +193,7 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.conversationExpectationResults = expectationResults;
+	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(

@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { EPHEMERAL_CACHE, SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
-import { CONVERSATION_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/conversation-expectations-verify';
-import type { ConversationExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
+import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
+import type { BuildExpectationResult, ConversationMetrics, TranscriptTurn } from '../types';
 import { transcriptAsText } from '../utils/conversation-text';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ const expectationResultSchema = z.object({
 // ---------------------------------------------------------------------------
 
 /** The conversation/build artifacts the judge reasons over. */
-export interface ConversationExpectationsBuild {
+export interface BuildExpectationsInput {
 	transcript: TranscriptTurn[];
 	workflowJson?: WorkflowResponse;
 	metrics?: ConversationMetrics;
@@ -42,10 +42,10 @@ const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
  * resulting workflow. Informational only — never feeds verify_pass@k. Never throws:
  * on total judge failure it returns an all-fail verdict so the report stays complete.
  */
-export async function verifyConversationExpectations(
+export async function verifyBuildExpectations(
 	expectations: string[],
-	build: ConversationExpectationsBuild,
-): Promise<ConversationExpectationResult[]> {
+	build: BuildExpectationsInput,
+): Promise<BuildExpectationResult[]> {
 	if (expectations.length === 0) return [];
 
 	// Workflow block is stable per build — mark it as an Anthropic cache breakpoint.
@@ -68,7 +68,7 @@ export async function verifyConversationExpectations(
 
 	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
 		const agent = createEvalAgent('eval-conversation-expectations-verifier', {
-			instructions: CONVERSATION_EXPECTATIONS_VERIFY_PROMPT,
+			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
 			cache: true,
 			model: JUDGE_MODEL,
 		}).structuredOutput(expectationResultSchema);

@@ -8,7 +8,7 @@ vi.mock('../../src/utils/eval-agents', () => ({
 }));
 
 import { createEvalAgent } from '../../src/utils/eval-agents';
-import { verifyConversationExpectations } from '../expectations/verifier';
+import { verifyBuildExpectations } from '../expectations/verifier';
 import type { ConversationMetrics, TranscriptTurn } from '../types';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
@@ -35,14 +35,14 @@ const TRANSCRIPT: TranscriptTurn[] = [
 	{ userMessage: '#general', steps: [{ kind: 'agent-text', text: 'Done.' }] },
 ];
 
-describe('verifyConversationExpectations', () => {
+describe('verifyBuildExpectations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 	});
 
 	it('returns empty and never calls the agent when there are no expectations', async () => {
-		const results = await verifyConversationExpectations([], { transcript: TRANSCRIPT });
+		const results = await verifyBuildExpectations([], { transcript: TRANSCRIPT });
 		expect(results).toEqual([]);
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
@@ -58,7 +58,7 @@ describe('verifyConversationExpectations', () => {
 		});
 		mockJudge(generate);
 
-		const results = await verifyConversationExpectations(
+		const results = await verifyBuildExpectations(
 			['agent asked which channel', 'workflow posts to Slack'],
 			{ transcript: TRANSCRIPT },
 		);
@@ -70,14 +70,12 @@ describe('verifyConversationExpectations', () => {
 	});
 
 	it('synthesizes a fail for any expectation the judge omits', async () => {
-		const generate: GenerateMock = vi
-			.fn<GenerateFn>()
-			.mockResolvedValue({
-				structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
-			});
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
 		mockJudge(generate);
 
-		const results = await verifyConversationExpectations(['first', 'second'], {
+		const results = await verifyBuildExpectations(['first', 'second'], {
 			transcript: TRANSCRIPT,
 		});
 
@@ -98,7 +96,7 @@ describe('verifyConversationExpectations', () => {
 		});
 		mockJudge(generate);
 
-		const results = await verifyConversationExpectations(['only one'], { transcript: TRANSCRIPT });
+		const results = await verifyBuildExpectations(['only one'], { transcript: TRANSCRIPT });
 
 		expect(results).toEqual([{ expectation: 'only one', pass: true, reason: 'ok' }]);
 	});
@@ -112,7 +110,7 @@ describe('verifyConversationExpectations', () => {
 			});
 		mockJudge(generate);
 
-		const results = await verifyConversationExpectations(['only'], { transcript: TRANSCRIPT });
+		const results = await verifyBuildExpectations(['only'], { transcript: TRANSCRIPT });
 
 		expect(generate).toHaveBeenCalledTimes(2);
 		expect(results).toEqual([{ expectation: 'only', pass: true, reason: 'ok' }]);
@@ -122,7 +120,7 @@ describe('verifyConversationExpectations', () => {
 		const generate: GenerateMock = vi.fn<GenerateFn>().mockRejectedValue(new Error('API down'));
 		mockJudge(generate);
 
-		const results = await verifyConversationExpectations(['a', 'b'], { transcript: TRANSCRIPT });
+		const results = await verifyBuildExpectations(['a', 'b'], { transcript: TRANSCRIPT });
 
 		expect(results).toEqual([
 			{ expectation: 'a', pass: false, reason: 'judge produced no result' },
@@ -131,11 +129,9 @@ describe('verifyConversationExpectations', () => {
 	});
 
 	it('passes the metrics ground-truth block and numbered expectations to the judge', async () => {
-		const generate: GenerateMock = vi
-			.fn<GenerateFn>()
-			.mockResolvedValue({
-				structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
-			});
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+		});
 		mockJudge(generate);
 
 		const metrics: ConversationMetrics = {
@@ -145,7 +141,7 @@ describe('verifyConversationExpectations', () => {
 			confirmationAskedByKind: {},
 			reachedRunFinishCleanly: true,
 		};
-		await verifyConversationExpectations(['expectation zero'], { transcript: TRANSCRIPT, metrics });
+		await verifyBuildExpectations(['expectation zero'], { transcript: TRANSCRIPT, metrics });
 
 		const sentMessages = JSON.stringify(generate.mock.calls[0]?.[0]);
 		expect(sentMessages).toContain('ground truth');

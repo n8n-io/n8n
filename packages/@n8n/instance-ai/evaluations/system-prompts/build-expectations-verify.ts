@@ -1,4 +1,4 @@
-export const CONVERSATION_EXPECTATIONS_VERIFY_PROMPT = `You are an expert evaluator for n8n's AI workflow builder. A user (simulated) had a multi-turn conversation with the builder agent, which produced a workflow. Your job is to judge a set of author-written expectations about HOW that conversation went and what it produced.
+export const BUILD_EXPECTATIONS_VERIFY_PROMPT = `You are an expert evaluator for n8n's AI workflow builder. A user (simulated) had a multi-turn conversation with the builder agent, which produced a workflow. Your job is to judge a set of author-written expectations about HOW that conversation went and what it produced.
 
 These expectations are NOT about whether the workflow executes correctly — they are about the conversation itself and the resulting workflow. Examples: "the agent asked which Slack channel before building", "the agent requested credential setup for Gmail", "the change requested in the follow-up turn is reflected in the final workflow".
 
