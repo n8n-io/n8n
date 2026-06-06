@@ -8,30 +8,27 @@ import {
 	handleExecutionFinishedWithWaitTill,
 	setRunExecutionData,
 } from './executionFinished';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import type { useRouter } from 'vue-router';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import type { PushHandlerOptions } from './types';
 
 export async function executionRecovered(
 	{ data }: ExecutionRecovered,
-	options: { router: ReturnType<typeof useRouter>; workflowState: WorkflowState },
+	options: PushHandlerOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionStateStore = useWorkflowExecutionStateStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
-	);
+	const { documentId } = options;
+	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const uiStore = useUIStore();
 
-	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowExecutionStateStore.activeExecutionId === 'undefined') {
+	// Only recover the execution this document is tracking. A mismatch (including
+	// the no-active-execution case, where activeExecutionId is undefined) means
+	// the event belongs to another execution and must be ignored.
+	if (workflowExecutionStateStore.activeExecutionId !== data.executionId) {
 		return;
 	}
 
 	uiStore.setProcessingExecutionResults(true);
 
-	const execution = await fetchExecutionData(data.executionId);
+	const execution = await fetchExecutionData(data.executionId, documentId);
 	if (!execution) {
 		uiStore.setProcessingExecutionResults(false);
 		return;
@@ -43,10 +40,10 @@ export async function executionRecovered(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
+		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, documentId);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, execution.status, false);
+		handleExecutionFinishedWithSuccessOrOther(documentId, execution.status, false);
 	}
 
-	setRunExecutionData(execution, runExecutionData, options.workflowState);
+	setRunExecutionData(execution, runExecutionData, documentId);
 }

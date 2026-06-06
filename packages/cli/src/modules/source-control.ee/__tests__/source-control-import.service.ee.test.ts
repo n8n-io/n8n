@@ -1267,16 +1267,14 @@ describe('SourceControlImportService', () => {
 					}),
 				);
 
-				redactionEnforcementService.assertPolicyChangeAllowed.mockImplementationOnce(() => {
-					throw new Error(
-						'Workflow redaction policy is enforced at the instance level and cannot be modified.',
-					);
-				});
+				redactionEnforcementService.assertPolicyChangeAllowed.mockRejectedValueOnce(
+					new Error('Workflow redaction policy cannot be weaker than the instance floor.'),
+				);
 
 				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
 
 				await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
-					'Workflow redaction policy is enforced at the instance level',
+					'Workflow redaction policy cannot be weaker than the instance floor.',
 				);
 
 				expect(redactionEnforcementService.assertPolicyChangeAllowed).toHaveBeenCalledWith(

@@ -74,10 +74,13 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('research')).toBe('search');
 	});
 
-	test('returns brain for memory/planning tools', () => {
+	test('returns brain for memory/task-control tools', () => {
 		expect(getToolIcon('updateWorkingMemory')).toBe('brain');
-		expect(getToolIcon('plan')).toBe('brain');
 		expect(getToolIcon('task-control')).toBe('brain');
+	});
+
+	test('treats removed plan tool as an ordinary unknown icon', () => {
+		expect(getToolIcon('plan')).toBe('settings');
 	});
 
 	test('returns key-round for credential tools', () => {
@@ -159,8 +162,12 @@ describe('useToolLabel', () => {
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBeUndefined();
-		expect(getToggleLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
 		expect(getToggleLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+	});
+
+	test('getToggleLabel treats removed plan tool as an ordinary unknown tool', () => {
+		const { getToggleLabel } = useToolLabel();
+		expect(getToggleLabel(makeToolCall({ toolName: 'plan' }))).toBe('Show data');
 	});
 
 	test('getHideLabel returns hide data for regular tools', () => {
@@ -175,6 +182,11 @@ describe('useToolLabel', () => {
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
-		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
+		expect(getHideLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+	});
+
+	test('getHideLabel treats removed plan tool as an ordinary unknown tool', () => {
+		const { getHideLabel } = useToolLabel();
+		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBe('Hide data');
 	});
 });

@@ -19,7 +19,6 @@ import { buildExecutionResponseFromSchema } from '@/features/execution/execution
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -27,16 +26,13 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 interface PostMessageHandlerDeps {
-	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
-export function usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-}: PostMessageHandlerDeps) {
+export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -105,7 +101,10 @@ export function usePostMessageHandler({
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			workflowState.setActiveExecutionId(null);
+			const workflowDocumentStore = currentWorkflowDocumentStore.value;
+			if (workflowDocumentStore) {
+				useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setActiveExecutionId(null);
+			}
 		}
 
 		if (json.tidyUp === true) {
@@ -201,8 +200,13 @@ export function usePostMessageHandler({
 
 		await importWorkflowExact(json);
 
-		workflowState.setWorkflowExecutionData(data);
-		currentWorkflowDocumentStore.value?.setPinData({});
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+		if (workflowDocumentStore) {
+			useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setWorkflowExecutionData(
+				data,
+			);
+			workflowDocumentStore.setPinData({});
+		}
 
 		canvasStore.stopLoading();
 

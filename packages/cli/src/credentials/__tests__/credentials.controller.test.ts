@@ -85,6 +85,7 @@ describe('CredentialsController', () => {
 		mock(),
 		eventService,
 		credentialsFinderService,
+		mock(), // connectionStatusProxy
 	);
 
 	let req: AuthenticatedRequest;

@@ -14,8 +14,11 @@
     "./*": "./*"
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "start": "ts-node src/index.ts",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "build": "tsc -p ./tsconfig.build.json",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck",
     "prepack": "pnpm build",
     "test": "vitest run",
     "test:unit": "vitest run",

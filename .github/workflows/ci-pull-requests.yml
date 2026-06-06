@@ -95,7 +95,9 @@ jobs:
               packages/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
             workflows: .github/**
-            workflow-scripts: .github/scripts/**
+            workflow-scripts:
+              .github/scripts/**
+              scripts/licenses/**
             performance:
               packages/testing/performance/**
               packages/workflow/src/**
@@ -120,7 +122,14 @@ jobs:
               packages/cli/test/integration/**
               packages/cli/test/migration/**
               packages/cli/test/shared/db/**
+              packages/cli/test/setup-testcontainers.js
+              packages/cli/test/teardown-testcontainers.js
+              packages/cli/jest.config.integration.js
+              packages/cli/jest.config.integration.testcontainers.js
+              packages/cli/jest.config.migration.js
+              packages/cli/jest.config.migration.testcontainers.js
               packages/@n8n/db/**
+              packages/@n8n/backend-test-utils/**
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
               .github/workflows/test-db-reusable.yml
@@ -174,6 +183,8 @@ jobs:
     if: needs.install-and-build.outputs.ci == 'true'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
+    env:
+      NODE_OPTIONS: --max-old-space-size=7168
     steps:
       - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
@@ -222,7 +233,8 @@ jobs:
       (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
         || needs.install-and-build.outputs.e2e_performance == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e'))
+        || contains(github.event.pull_request.labels.*.name, 'force-e2e')
+        || contains(github.event.pull_request.labels.*.name, 'run-perf-tests'))
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -304,9 +316,13 @@ jobs:
     name: E2E Performance
     needs: [install-and-build, prepare-docker]
     # Performance is internal-only (license secrets required, not available on forks).
+    # Runs when path filter trips OR when the PR carries the `run-perf-tests` label
+    # (opt-in coverage for shared-utility / Vue Flow changes that the path filter
+    # would otherwise miss).
     if: >-
       needs.prepare-docker.result == 'success' &&
-      needs.install-and-build.outputs.e2e_performance == 'true' &&
+      (needs.install-and-build.outputs.e2e_performance == 'true' ||
+       contains(github.event.pull_request.labels.*.name, 'run-perf-tests')) &&
       github.event.pull_request.head.repo.fork != true
     uses: ./.github/workflows/test-e2e-performance-reusable.yml
     secrets: inherit
@@ -340,6 +356,7 @@ jobs:
       needs.install-and-build.result == 'success' &&
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
       github.repository == 'n8n-io/n8n' &&
+      github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test-evals-discovery.yml
     with:
@@ -386,5 +403,5 @@ jobs:
     if: always()
     uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
     with:
-      metrics: memory-heap-used-baseline,memory-rss-baseline,instance-ai-heap-used-baseline,instance-ai-rss-baseline,agents-heap-used-baseline,agents-rss-baseline,docker-image-size-n8n,docker-image-size-runners
+      metrics: memory-heap-used-baseline,memory-rss-baseline,instance-ai-heap-used-baseline,instance-ai-rss-baseline,agents-heap-used-baseline,agents-rss-baseline,docker-image-size-n8n,docker-image-size-runners,canvas-cold-load-S-ms,canvas-cold-load-M-ms,canvas-cold-load-L-ms,canvas-server-heap-M-mb,canvas-server-heap-L-mb,canvas-browser-heap-M-mb,canvas-browser-heap-L-mb,canvas-pan-frame-p95-M-ms,canvas-pan-frame-p95-L-ms,canvas-tidy-up-M-ms,canvas-tidy-up-L-ms,canvas-exec-heavy-M-ms,canvas-exec-heavy-L-ms
     secrets: inherit

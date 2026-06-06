@@ -265,7 +265,7 @@ export class WorkflowValidationService {
 		connections: IConnections,
 		nodeTypes: NodeTypes,
 	): WorkflowValidationResult {
-		// Validate trigger nodes
+		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
 		if (!triggerValidation.isValid) {
@@ -273,7 +273,7 @@ export class WorkflowValidationService {
 				isValid: false,
 				error:
 					triggerValidation.error ??
-					'Workflow cannot be activated because it has no trigger node. At least one trigger, webhook, or polling node is required.',
+					'Workflow cannot be activated because it has no trigger node. At least one active trigger, poll trigger, webhook trigger, or schedule trigger node is required.',
 			};
 		}
 

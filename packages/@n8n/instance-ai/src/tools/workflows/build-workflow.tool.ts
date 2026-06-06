@@ -2,7 +2,6 @@ import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
-import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -86,7 +85,7 @@ export const buildWorkflowInputSchema = z.object({
 		.optional()
 		.describe(
 			'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-				'Supporting workflows are saved and can be verified, but do not complete the planned build task.',
+				'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 		),
 });
 
@@ -245,14 +244,6 @@ function isApprovedBuildContext(context: InstanceAiContext): boolean {
 	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
 }
 
-function isBuildViaPlanGuardEnabled(): boolean {
-	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-	if (raw === undefined) return true;
-	return raw.toLowerCase() !== 'false' && raw !== '0';
-}
-
-const PLAN_GUARD_REJECTION_LIMIT = 3;
-
 async function resolveWorkflowName(
 	context: InstanceAiContext,
 	workflowId: string,
@@ -327,35 +318,11 @@ async function promoteMainWorkflow(context: InstanceAiContext, workflowId: strin
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// Keeps the last code submitted (or patched) so patches work even before save,
 	// and always match the LLM's own code — not a roundtripped version.
+	// lastCodeVersionId pins the cache to the workflow version it was derived
+	// from; a mismatch on the next turn (user edited the workflow in the canvas)
+	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
-	let planGuardRejectionCount = 0;
-
-	const rejectPlanGuardCall = () => {
-		planGuardRejectionCount++;
-		context.logger?.warn('build-workflow called outside plan/replan context — rejecting', {
-			threadId: context.workflowBuildContext?.threadId,
-			runId: context.runId,
-			rejectionCount: planGuardRejectionCount,
-		});
-
-		if (planGuardRejectionCount >= PLAN_GUARD_REJECTION_LIMIT) {
-			context.logger?.warn('build-workflow plan-guard rejection limit reached — aborting run', {
-				threadId: context.workflowBuildContext?.threadId,
-				runId: context.runId,
-				rejectionCount: planGuardRejectionCount,
-			});
-			throw new UserError(
-				'Stopped: the agent looped on `build-workflow` rejections without correcting them. Try again or rephrase the request.',
-			);
-		}
-
-		return {
-			success: false,
-			errors: [
-				'New workflow builds must be planned first: call `plan` so the user can approve the build plan before saving.',
-			],
-		};
-	};
+	let lastCodeVersionId: string | null = null;
 
 	return new Tool('build-workflow')
 		.description(
@@ -396,10 +363,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				return { success: false, errors: ['Action blocked by admin'] };
 			}
 
-			if (!input.workflowId && !isApprovedBuildContext(context) && isBuildViaPlanGuardEnabled()) {
-				return rejectPlanGuardCall();
-			}
-
 			if (
 				input.workflowId &&
 				!isApprovedBuildContext(context) &&
@@ -432,13 +395,32 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			if (patches) {
 				// Patch mode: apply str_replace to existing code.
-				// Source priority: lastCode (same session) → fetch from backend (cross-session)
+				// Cache-hit fast path uses a cheap head check (versionId only, no
+				// nodes/connections payload) to confirm `lastCode` still matches the
+				// server. On match we reuse the cached code; on drift we invalidate
+				// and fall through to the snapshot fetch below, which returns body
+				// + versionId in one round-trip.
+				if (lastCode && lastCodeVersionId && workflowId) {
+					try {
+						const head = await context.workflowService.getWorkflowHead(workflowId);
+						if (head.versionId !== lastCodeVersionId) {
+							lastCode = null;
+							lastCodeVersionId = null;
+						}
+					} catch {
+						// Best-effort: a transient head-lookup failure shouldn't break
+						// patch mode. If the cache is stale, patches will either fail to
+						// apply cleanly or the next save will surface the conflict.
+					}
+				}
+
 				let baseCode = lastCode;
 				if (!baseCode && workflowId) {
 					try {
-						const json = await context.workflowService.getAsWorkflowJSON(workflowId);
-						baseCode = generateWorkflowCode(json);
-						lastCode = baseCode; // Sync so future patches match this code
+						const snapshot = await context.workflowService.getWorkflowSnapshot(workflowId);
+						baseCode = generateWorkflowCode(snapshot.json);
+						lastCode = baseCode;
+						lastCodeVersionId = snapshot.versionId;
 					} catch {
 						return {
 							success: false,
@@ -542,11 +524,20 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					);
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
 				const buildContext = context.workflowBuildContext;
+				const isAuxiliarySupportingWorkflow =
+					isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+				const plannedTaskId =
+					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
+						? buildContext.taskId
+						: undefined;
+				const owner = plannedTaskId
+					? { type: 'planned' as const, taskId: plannedTaskId }
+					: { type: 'direct' as const };
 				const resolvedWorkItemId =
 					workItemId ??
-					(isSupportingWorkflow ? undefined : buildContext?.workItemId) ??
+					(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
 					`wi_${nanoid(8)}`;
-				const resolvedTaskId = isSupportingWorkflow
+				const resolvedTaskId = isAuxiliarySupportingWorkflow
 					? `${buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : 'build')}:supporting-${nanoid(6)}`
 					: (buildContext?.taskId ??
 						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
@@ -568,6 +559,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
+						owner,
+						plannedTaskId,
 						workflowId: savedId,
 						submitted: true,
 						triggerType: 'manual_or_testable',
@@ -596,8 +589,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 					await promoteMainWorkflow(context, savedId);
 					await reportWorkflowBuildOutcome(context, outcome, {
-						storeOnRunContext: !isSupportingWorkflow,
-						markPlannedTaskSucceeded: !isSupportingWorkflow,
+						storeOnRunContext: !isAuxiliarySupportingWorkflow,
+						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
 
 					return {
@@ -638,6 +631,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						json,
 						projectId ? { projectId } : undefined,
 					);
+					lastCodeVersionId = updated.versionId;
 					return await createSuccessResponse(updated.id);
 				} else {
 					const created = await context.workflowService.createFromWorkflowJSON(json, {
@@ -645,6 +639,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						markAsAiTemporary: true,
 					});
 					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+					lastCodeVersionId = created.versionId;
 					return await createSuccessResponse(created.id);
 				}
 			} catch (error) {

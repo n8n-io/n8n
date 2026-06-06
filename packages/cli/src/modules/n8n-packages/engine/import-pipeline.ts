@@ -14,9 +14,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
+import { CredentialImporter } from '../entities/credential/credential-importer';
+import { resolvedBindingsToSummaries } from '../entities/credential/credential.types';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
-import type { ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import type { ImportPackageRequest, ImportResult, PreparedWorkflow } from '../n8n-packages.types';
 import { packageManifestSchema } from '../spec/manifest.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
@@ -27,17 +29,13 @@ interface ImportTarget {
 	folderId: string | null;
 }
 
-interface PreparedWorkflow {
-	entity: WorkflowEntity;
-	sourceId: string;
-}
-
 @Service()
 export class ImportPipeline {
 	private readonly maxUncompressedPackageBytes: number;
 
 	constructor(
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialImporter: CredentialImporter,
 		private readonly workflowCreationService: WorkflowCreationService,
 		globalConfig: GlobalConfig,
 		private readonly projectRepository: ProjectRepository,
@@ -53,10 +51,23 @@ export class ImportPipeline {
 
 		const manifest = await this.loadPackageManifest(reader);
 
-		const { target } = await this.resolveTarget(request.user, request.projectId, request.folderId);
+		const { target, project } = await this.resolveTarget(
+			request.user,
+			request.projectId,
+			request.folderId,
+		);
 
 		// Validates every workflow first so a malformed package aborts before the first DB write.
 		const prepared = await this.prepareWorkflows(manifest.workflows ?? [], reader);
+
+		const credentialResolution = await this.credentialImporter.resolveForImport({
+			requirements: manifest.requirements?.credentials,
+			matchingMode: request.credentialMatchingMode,
+			missingMode: request.credentialMissingMode,
+			targetProject: project,
+			user: request.user,
+		});
+		const matchedCredentials = resolvedBindingsToSummaries(credentialResolution.successes);
 
 		const created: WorkflowEntity[] = [];
 		for (const { entity, sourceId } of prepared) {
@@ -76,6 +87,7 @@ export class ImportPipeline {
 			workflowIds: created.map((w) => w.id),
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
+			matchedCredentialIds: matchedCredentials.map((m) => m.targetId),
 		});
 
 		return {
@@ -92,6 +104,7 @@ export class ImportPipeline {
 				parentFolderId: w.parentFolder?.id ?? null,
 				activeVersionId: w.activeVersionId ?? null,
 			})),
+			credentials: { matched: matchedCredentials },
 		};
 	}
 
