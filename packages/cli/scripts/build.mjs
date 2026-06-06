@@ -15,12 +15,20 @@ const SPEC_THEME_FILENAME = 'swagger-theme.css';
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
+copySandboxRunners();
 generateTimezoneData();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
 	bundleOpenApiSpecs();
+}
+
+function copySandboxRunners() {
+	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'agents', 'sandbox-runners');
+	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'modules', 'agents', 'sandbox-runners');
+	shell.mkdir('-p', destinationDir);
+	shell.cp(path.join(sourceDir, '*.cjs'), destinationDir);
 }
 
 function generateUserManagementEmailTemplates() {

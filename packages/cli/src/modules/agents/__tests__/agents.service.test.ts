@@ -26,7 +26,7 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import type { AgentKnowledgeSandboxCsvService } from '../agent-knowledge-sandbox-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
 import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -110,8 +110,8 @@ function makeRuntimeReconstructionService(
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
-		mock<AgentKnowledgeCommandService>(),
 		mock<AgentKnowledgeSandboxCommandService>(),
+		mock<AgentKnowledgeSandboxCsvService>(),
 		mock<AgentKnowledgeSandboxWorkspaceService>(),
 	);
 }

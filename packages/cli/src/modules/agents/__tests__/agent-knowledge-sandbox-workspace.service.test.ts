@@ -1,16 +1,30 @@
 import type { Logger } from '@n8n/backend-common';
+import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
 import { mock } from 'jest-mock-extended';
 
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
+import type { AgentKnowledgeSandboxImageService } from '../agent-knowledge-sandbox-image.service';
 import { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 
+const prepareDaytonaImageMock = jest.fn<
+	Promise<CreateSandboxFromImageParams['image']>,
+	[string?]
+>();
 const createSandboxMock = jest.fn();
 const createFilesystemMock = jest.fn();
 
+jest.mock('../agent-knowledge-sandbox-image.service', () => ({
+	AgentKnowledgeSandboxImageService: jest.fn().mockImplementation(() => ({
+		prepareDaytonaImage: prepareDaytonaImageMock,
+	})),
+}));
+
 jest.mock('@n8n/ai-utilities/sandbox', () => ({
-	...jest.requireActual('@n8n/ai-utilities/sandbox'),
 	createSandbox: (...args: unknown[]) => createSandboxMock(...args),
 	createFilesystem: (...args: unknown[]) => createFilesystemMock(...args),
+	DAYTONA_WORKSPACE_ROOT: '/home/daytona/workspace',
+	N8N_SANDBOX_WORKSPACE_ROOT: '/home/user/workspace',
+	normalizeSandboxProvider: (value?: string) => (value === 'daytona' ? 'daytona' : 'n8n-sandbox'),
 }));
 
 function makeSandbox(provider: 'n8n-sandbox' | 'daytona' = 'n8n-sandbox') {
@@ -50,6 +64,7 @@ async function flushMicrotasks(): Promise<void> {
 describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let configService: AgentKnowledgeSandboxConfigService;
+	let imageService: AgentKnowledgeSandboxImageService;
 	let service: AgentKnowledgeSandboxWorkspaceService;
 
 	beforeEach(() => {
@@ -61,7 +76,13 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 				n8nSandboxServiceUrl: 'https://sandbox.example.test',
 			}),
 		);
-		service = new AgentKnowledgeSandboxWorkspaceService(logger, configService);
+		prepareDaytonaImageMock.mockResolvedValue({
+			dockerfile: 'FROM test',
+		} as CreateSandboxFromImageParams['image']);
+		imageService = {
+			prepareDaytonaImage: prepareDaytonaImageMock,
+		} as unknown as AgentKnowledgeSandboxImageService;
+		service = new AgentKnowledgeSandboxWorkspaceService(logger, configService, imageService);
 	});
 
 	function mockN8nSandboxWorkspace() {
@@ -114,10 +135,12 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		const workspace = await service.withCachedWorkspace('key-daytona', async (entry) => entry);
 
 		expect(createSandboxMock).toHaveBeenCalledTimes(1);
+		expect(prepareDaytonaImageMock).toHaveBeenCalled();
 		expect(createSandboxMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				enabled: true,
 				provider: 'daytona',
+				image: { dockerfile: 'FROM test' },
 				name: expect.stringMatching(/^knowledge-[a-f0-9]{12}$/),
 				labels: { component: 'agent-knowledge' },
 			}),

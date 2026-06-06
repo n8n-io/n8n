@@ -24,7 +24,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import type { AgentKnowledgeSandboxCsvService } from '../agent-knowledge-sandbox-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
 import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -81,8 +81,8 @@ function makeReconstructionService(
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
-		mock<AgentKnowledgeCommandService>(),
 		mock<AgentKnowledgeSandboxCommandService>(),
+		mock<AgentKnowledgeSandboxCsvService>(),
 		mock<AgentKnowledgeSandboxWorkspaceService>(),
 	);
 }

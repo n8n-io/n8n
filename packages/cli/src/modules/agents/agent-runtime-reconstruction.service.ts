@@ -52,8 +52,8 @@ import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
 import { AgentKnowledgeSandboxCommandService } from './agent-knowledge-sandbox-command.service';
+import { AgentKnowledgeSandboxCsvService } from './agent-knowledge-sandbox-csv.service';
 import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentsToolsService } from './agents-tools.service';
@@ -104,8 +104,8 @@ export class AgentRuntimeReconstructionService {
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
 		private readonly agentKnowledgeSandboxCommandService: AgentKnowledgeSandboxCommandService,
+		private readonly agentKnowledgeSandboxCsvService: AgentKnowledgeSandboxCsvService,
 		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
 	) {}
 
@@ -359,8 +359,8 @@ export class AgentRuntimeReconstructionService {
 						agentId,
 						projectId,
 						knowledgeService: this.agentKnowledgeService,
-						hostCommandService: this.agentKnowledgeCommandService,
 						sandboxCommandService: this.agentKnowledgeSandboxCommandService,
+						sandboxCsvService: this.agentKnowledgeSandboxCsvService,
 						sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
 					}),
 				);

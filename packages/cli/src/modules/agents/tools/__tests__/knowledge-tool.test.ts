@@ -1,5 +1,9 @@
-import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import type { ExecuteCommandOptions, SandboxFilesystem } from '@n8n/ai-utilities/sandbox';
+
+import { resolveKnowledgeCsvRunnerArgs } from '../../__tests__/knowledge-csv-runner-test-utils';
+import { AgentKnowledgeSandboxCsvService } from '../../agent-knowledge-sandbox-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
+import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 import type {
 	AgentKnowledgeSandboxWorkspaceService,
 	KnowledgeSandboxWorkspace,
@@ -18,6 +22,7 @@ const projectId = 'project-1';
 describe('search_knowledge tool', () => {
 	let hostCommandService: AgentKnowledgeCommandService;
 	let sandboxCommandService: AgentKnowledgeSandboxCommandService;
+	let sandboxCsvService: AgentKnowledgeSandboxCsvService;
 	let sandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService;
 	let knowledgeService: jest.Mocked<
 		Pick<
@@ -38,14 +43,15 @@ describe('search_knowledge tool', () => {
 			agentId,
 			projectId,
 			knowledgeService: mockKnowledgeService(),
-			hostCommandService,
 			sandboxCommandService,
+			sandboxCsvService,
 			sandboxWorkspaceService,
 		});
 	}
 
 	beforeEach(() => {
 		hostCommandService = new AgentKnowledgeCommandService();
+		sandboxCsvService = new AgentKnowledgeSandboxCsvService();
 		sandboxCommandService = {
 			run: jest.fn(async (workspace, request) =>
 				hostCommandService.run(workspace.knowledgeRoot, request),
@@ -53,23 +59,75 @@ describe('search_knowledge tool', () => {
 		} as unknown as AgentKnowledgeSandboxCommandService;
 		sandboxWorkspaceService = {
 			withCachedWorkspace: jest.fn(async (_cacheKey, operation) => {
-				const { mkdtemp, rm } = await import('node:fs/promises');
+				const { mkdtemp, mkdir, rm, writeFile } = await import('node:fs/promises');
+				const { spawn } = await import('node:child_process');
 				const { tmpdir } = await import('node:os');
 				const nodePath = await import('node:path');
 				const knowledgeRoot = await mkdtemp(nodePath.join(tmpdir(), 'sandbox-knowledge-'));
+				const internalRoot = nodePath.join(knowledgeRoot, '.internal');
 				const workspace: KnowledgeSandboxWorkspace = {
 					sandbox: {
 						id: 'test-sandbox',
 						name: 'Test Sandbox',
 						provider: 'n8n-sandbox',
 						status: 'running',
+						executeCommand: async (
+							command: string,
+							args: string[],
+							options: ExecuteCommandOptions,
+						) => {
+							return await new Promise((resolve) => {
+								const child = spawn(command, resolveKnowledgeCsvRunnerArgs(args), {
+									cwd: options.cwd,
+									env: { ...process.env, ...options.env },
+								});
+								let stdout = '';
+								let stderr = '';
+								let timedOut = false;
+								child.stdout.on('data', (chunk: Buffer) => {
+									const text = chunk.toString();
+									stdout += text;
+									options.onStdout?.(text);
+								});
+								child.stderr.on('data', (chunk: Buffer) => {
+									const text = chunk.toString();
+									stderr += text;
+									options.onStderr?.(text);
+								});
+								const timer =
+									options.timeout !== undefined
+										? setTimeout(() => {
+												timedOut = true;
+												child.kill();
+											}, options.timeout)
+										: undefined;
+								child.on('close', (exitCode) => {
+									if (timer) clearTimeout(timer);
+									resolve({
+										exitCode: exitCode ?? 1,
+										stdout,
+										stderr,
+										timedOut,
+									});
+								});
+							});
+						},
 					},
-					filesystem: {} as KnowledgeSandboxWorkspace['filesystem'],
+					filesystem: {
+						writeFile: async (
+							filePath: string,
+							content: string | Buffer,
+							options?: { recursive?: boolean; overwrite?: boolean },
+						) => {
+							await mkdir(nodePath.dirname(filePath), { recursive: true });
+							await writeFile(filePath, content, { flag: options?.overwrite ? 'w' : 'wx' });
+						},
+					} as SandboxFilesystem,
 					provider: 'n8n-sandbox',
 					workspaceRoot: knowledgeRoot,
 					knowledgeRoot,
-					internalRoot: nodePath.join(knowledgeRoot, '.internal'),
-					manifestPath: nodePath.join(knowledgeRoot, '.internal/manifest.json'),
+					internalRoot,
+					manifestPath: nodePath.join(internalRoot, 'manifest.json'),
 				};
 				try {
 					return await operation(workspace);
@@ -1429,7 +1487,7 @@ describe('search_knowledge tool', () => {
 		expect(sandboxCommandService.run).not.toHaveBeenCalled();
 	});
 
-	it('keeps csv operations on host materialization path', async () => {
+	it('routes csv operations through sandbox workspace and materialization', async () => {
 		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
 			files: [
 				{
@@ -1442,11 +1500,14 @@ describe('search_knowledge tool', () => {
 			],
 			cacheSignature: 'signature-a',
 		});
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
 				const { writeFile } = await import('node:fs/promises');
-				const path = await import('node:path');
-				await writeFile(path.join(workspaceRoot, 'file-1.csv'), 'country,year\nGermany,2022\n');
+				const nodePath = await import('node:path');
+				await writeFile(
+					nodePath.join(target.knowledgeRoot, 'file-1.csv'),
+					'country,year\nGermany,2022\n',
+				);
 				return [
 					{
 						id: 'file-1',
@@ -1458,7 +1519,6 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const hostWithCachedWorkspace = jest.spyOn(hostCommandService, 'withCachedWorkspace');
 		const tool = createTool();
 
 		await tool.handler?.(
@@ -1470,9 +1530,8 @@ describe('search_knowledge tool', () => {
 			{} as never,
 		);
 
-		expect(hostWithCachedWorkspace).toHaveBeenCalled();
-		expect(knowledgeService.materializeWorkspace).toHaveBeenCalled();
-		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
-		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
 	});
 });

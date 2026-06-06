@@ -1,9 +1,5 @@
-import { createReadStream } from 'node:fs';
-import path from 'node:path';
-
 import { distance } from 'fastest-levenshtein';
 
-import { resolveFileReference, type WorkspaceFiles } from './file-references';
 import type { CsvAggregateInput, CsvFilter } from './schemas';
 
 export const CSV_SAMPLE_VALUE_LIMIT = 5;
@@ -11,67 +7,6 @@ export const CSV_PROFILE_DISTINCT_LIMIT = 100;
 export const CSV_DISTINCT_TRACK_LIMIT = 10_000;
 /** Cap distinct aggregate groups to bound memory on high-cardinality group-by. */
 export const CSV_MAX_AGGREGATE_GROUPS = 50_000;
-/** Wall-clock safety net for a single CSV operation (files are upload-size-capped). */
-const CSV_OPERATION_TIMEOUT_MS = 15_000;
-
-function isCsvFile(file: WorkspaceFiles[number]) {
-	return file.mimeType === 'text/csv' || file.relativePath.toLowerCase().endsWith('.csv');
-}
-
-export function resolveCsvFile(files: WorkspaceFiles, reference: string) {
-	const resolvedFile = resolveFileReference(files, reference);
-	if (resolvedFile.status !== 'found') {
-		throw new Error(resolvedFile.error);
-	}
-	const { file } = resolvedFile;
-	if (!isCsvFile(file)) {
-		throw new Error(`File "${file.fileName}" is not queryable as CSV.`);
-	}
-	return file;
-}
-
-export async function streamCsvRecords(
-	workspaceRoot: string,
-	file: WorkspaceFiles[number],
-	handlers: {
-		onHeaders?: (headers: string[]) => void;
-		onRecord: (record: { record: Record<string, unknown>; fileLineNumber: number }) => void;
-	},
-) {
-	const filePath = path.join(workspaceRoot, file.relativePath);
-	const { parse } = await import('csv-parse');
-	const readStream = createReadStream(filePath);
-	const parser = readStream.pipe(
-		parse({
-			columns: (parsedHeaders: string[]) => {
-				handlers.onHeaders?.(parsedHeaders);
-				return parsedHeaders;
-			},
-			skip_empty_lines: true,
-			bom: true,
-			info: true,
-			relax_column_count: true,
-		}),
-	);
-	// Safety net: destroying the parser rejects the async iterator below so a
-	// pathologically slow file can't tie up the event loop indefinitely.
-	const timeout = setTimeout(() => {
-		parser.destroy(new Error('CSV operation exceeded the time limit'));
-		readStream.destroy();
-	}, CSV_OPERATION_TIMEOUT_MS);
-	try {
-		for await (const { record, info } of parser as AsyncIterable<{
-			record: Record<string, unknown>;
-			info: { lines: number };
-		}>) {
-			handlers.onRecord({ record, fileLineNumber: info.lines });
-		}
-	} finally {
-		clearTimeout(timeout);
-		readStream.destroy();
-		parser.destroy();
-	}
-}
 
 export function validateCsvColumns(headers: string[], fileName: string, columns: string[]) {
 	for (const column of columns) {

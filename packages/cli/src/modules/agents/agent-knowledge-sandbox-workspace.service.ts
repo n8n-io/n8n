@@ -15,6 +15,7 @@ import path from 'node:path/posix';
 import pLimit from 'p-limit';
 
 import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
+import { AgentKnowledgeSandboxImageService } from './agent-knowledge-sandbox-image.service';
 
 const MAX_CONCURRENT_KNOWLEDGE_SANDBOX_WORKSPACES = 4;
 const KNOWLEDGE_SANDBOX_WORKSPACE_CACHE_TTL_MS = 10 * 60_000;
@@ -48,6 +49,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly sandboxConfigService: AgentKnowledgeSandboxConfigService,
+		private readonly sandboxImageService: AgentKnowledgeSandboxImageService,
 	) {}
 
 	async withCachedWorkspace<T>(
@@ -122,7 +124,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	private async createKnowledgeSandboxWorkspace(
 		cacheKey: string,
 	): Promise<KnowledgeSandboxWorkspace> {
-		const config = this.buildSandboxConfig(this.sandboxConfigService.resolveConfig(), cacheKey);
+		const config = await this.buildSandboxConfig(
+			this.sandboxConfigService.resolveConfig(),
+			cacheKey,
+		);
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox) {
 			throw new Error('Agent knowledge sandbox is disabled');
@@ -155,14 +160,21 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 	}
 
-	private buildSandboxConfig(baseConfig: SandboxConfig, cacheKey: string): SandboxConfig {
+	private async buildSandboxConfig(
+		baseConfig: SandboxConfig,
+		cacheKey: string,
+	): Promise<SandboxConfig> {
 		if (!baseConfig.enabled) {
 			return baseConfig;
 		}
 
 		if (baseConfig.provider === 'daytona') {
+			const bakedImage = await this.sandboxImageService.prepareDaytonaImage(
+				typeof baseConfig.image === 'string' ? baseConfig.image : undefined,
+			);
 			return {
 				...baseConfig,
+				image: bakedImage,
 				name: baseConfig.name ?? `knowledge-${this.shortHash(cacheKey)}`,
 				labels: {
 					...baseConfig.labels,
