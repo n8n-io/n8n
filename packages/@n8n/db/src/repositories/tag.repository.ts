@@ -16,6 +16,7 @@ export class TagRepository extends Repository<TagEntity> {
 		return await this.find({
 			select: ['id', 'name'],
 			where: { id: In(tagIds) },
+			order: { name: 'ASC' },
 		});
 	}
 

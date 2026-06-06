@@ -88,6 +88,9 @@ export async function getWorkflowTags(workflowId: string) {
 				...(workflowId && { workflowId }),
 			},
 		},
+		order: {
+			name: 'ASC',
+		},
 	});
 }
 
