@@ -2598,6 +2598,9 @@ importers:
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
+      ibm_db:
+        specifier: ^3.2.4
+        version: 3.3.5
       ignore:
         specifier: ^5.2.0
         version: 5.3.2
@@ -15174,6 +15177,10 @@ packages:
     resolution: {integrity: sha512-YhtS+7hGNO61h/4jNShHxbbuJ1TnDqiFKQzfEaqePnonOvv8NnxWxOk92FlKKCCzZNOT34Gnd7WCLVJTntwEFQ==}
     engines: {node: '>=18'}
 
+  ibm_db@3.3.5:
+    resolution: {integrity: sha512-u1tFDySl51Egqsx1KOsCHkaOcLS+J1AhmehyMAT4HWFUCFBYRi1aZIJv5qn89Dt4BwBMmHrGkdBcQWdAwEoK2Q==}
+    engines: {node: '>=6.0'}
+
   iconv-corefoundation@1.1.7:
     resolution: {integrity: sha512-T10qvkw0zz4wnm560lOEg0PovVqUXuOFhhHAkixw8/sycy7TJt7v/RrkEKEQnAw2viPSJu6iAkErxnzR0g8PpQ==}
     engines: {node: ^8.11.2 || >=10}
@@ -17245,6 +17252,9 @@ packages:
   nan@2.20.0:
     resolution: {integrity: sha512-bk3gXBZDGILuuo/6sKtr0DQmSThYHLtNCdSdXk9YkxD/jK6X2vmCyyXBBxyqZ4XcnzTyYEAThfX3DCEnLf6igw==}
 
+  nan@2.27.0:
+    resolution: {integrity: sha512-hC+0LidcL3XE4rp1C4H54KujgXKzbfyTngZTwBByQxsOxCEKZT0MPQ4hOKUH2jU1OYstqdDH4onyHPDzcV0XdQ==}
+
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
@@ -18544,6 +18554,14 @@ packages:
 
   python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
+
+  q@1.5.1:
+    resolution: {integrity: sha512-kV/CThkXo6xyFEZUugw/+pIOywXcDbFYgSct5cT3gqlbkBE1SJdwy6UQoZvodiWF/ckQLZyDE/Bu1M6gVu5lVw==}
+    engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
+    deprecated: |-
+      You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
+
+      (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   q@2.0.3:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
@@ -19876,6 +19894,9 @@ packages:
   tar@7.5.11:
     resolution: {integrity: sha512-ChjMH33/KetonMTAtpYdgUFr0tbz69Fp2v7zWxQfYZX4g5ZN2nOBXm1R2xyA+lMIKrLKIoKAwFj93jE/avX9cQ==}
     engines: {node: '>=18'}
+
+  targz@1.0.1:
+    resolution: {integrity: sha512-6q4tP9U55mZnRuMTBqnqc3nwYQY3kv+QthCFZuMk+Tn1qYUnMPmL/JZ/mzgXINzFpSqfU+242IFmFU9VPvqaQw==}
 
   tarn@3.0.2:
     resolution: {integrity: sha512-51LAVKUSZSVfI05vjPESNc5vwqqZpbXCsU+/+wxlOrUjk2SnFTt97v9ZgQrD4YmxYW1Px6w2KjaDitCfkvgxMQ==}
@@ -33641,6 +33662,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  ibm_db@3.3.5:
+    dependencies:
+      adm-zip: 0.5.16
+      axios: 1.16.1(debug@4.4.3)
+      big-integer: 1.6.52
+      bindings: 1.5.0
+      fs-extra: 11.3.5
+      lodash: 4.18.1
+      nan: 2.27.0
+      q: 1.5.1
+      targz: 1.0.1
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   iconv-corefoundation@1.1.7:
     dependencies:
       cli-truncate: 2.1.0
@@ -36260,6 +36296,8 @@ snapshots:
   nan@2.20.0:
     optional: true
 
+  nan@2.27.0: {}
+
   nanoclone@0.2.1: {}
 
   nanoid@3.3.11: {}
@@ -37699,6 +37737,8 @@ snapshots:
   python-struct@1.1.3:
     dependencies:
       long: 4.0.0
+
+  q@1.5.1: {}
 
   q@2.0.3:
     dependencies:
@@ -39425,6 +39465,10 @@ snapshots:
       minipass: 7.1.3
       minizlib: 3.1.0
       yallist: 5.0.0
+
+  targz@1.0.1:
+    dependencies:
+      tar-fs: 2.1.4
 
   tarn@3.0.2: {}
 

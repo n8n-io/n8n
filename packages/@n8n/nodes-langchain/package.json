@@ -55,6 +55,7 @@
       "dist/credentials/ChromaCloudApi.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/DaytonaApi.credentials.js",
+      "dist/credentials/Db2Api.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
       "dist/credentials/GroqApi.credentials.js",
@@ -204,6 +205,7 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.js",
+      "dist/nodes/vector_store/VectorStoreDb2/VectorStoreDb2.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
       "dist/nodes/ModelSelector/ModelSelector.node.js",
       "dist/nodes/Guardrails/Guardrails.node.js"
@@ -285,6 +287,7 @@
     "cheerio": "1.0.0",
     "chromadb": "^3.0.15",
     "cohere-ai": "7.14.0",
+    "ibm_db": "^3.2.4",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
     "form-data": "catalog:",
