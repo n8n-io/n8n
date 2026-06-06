@@ -1,4 +1,9 @@
 import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
+import type {
+	AgentKnowledgeSandboxWorkspaceService,
+	KnowledgeSandboxWorkspace,
+} from '../../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 import { createSearchKnowledgeTool } from '../knowledge/tool';
 import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
@@ -11,11 +16,16 @@ const agentId = 'agent-1';
 const projectId = 'project-1';
 
 describe('search_knowledge tool', () => {
-	let commandService: AgentKnowledgeCommandService;
+	let hostCommandService: AgentKnowledgeCommandService;
+	let sandboxCommandService: AgentKnowledgeSandboxCommandService;
+	let sandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService;
 	let knowledgeService: jest.Mocked<
 		Pick<
 			AgentKnowledgeService,
-			'listWorkspaceFiles' | 'materializeWorkspace' | 'resolveWorkspaceFilesForRuntime'
+			| 'listWorkspaceFiles'
+			| 'materializeWorkspace'
+			| 'materializeWorkspaceIntoSandbox'
+			| 'resolveWorkspaceFilesForRuntime'
 		>
 	>;
 
@@ -23,14 +33,63 @@ describe('search_knowledge tool', () => {
 		return knowledgeService as unknown as AgentKnowledgeService;
 	}
 
+	function createTool() {
+		return createSearchKnowledgeTool({
+			agentId,
+			projectId,
+			knowledgeService: mockKnowledgeService(),
+			hostCommandService,
+			sandboxCommandService,
+			sandboxWorkspaceService,
+		});
+	}
+
 	beforeEach(() => {
-		commandService = new AgentKnowledgeCommandService();
+		hostCommandService = new AgentKnowledgeCommandService();
+		sandboxCommandService = {
+			run: jest.fn(async (workspace, request) =>
+				hostCommandService.run(workspace.knowledgeRoot, request),
+			),
+		} as unknown as AgentKnowledgeSandboxCommandService;
+		sandboxWorkspaceService = {
+			withCachedWorkspace: jest.fn(async (_cacheKey, operation) => {
+				const { mkdtemp, rm } = await import('node:fs/promises');
+				const { tmpdir } = await import('node:os');
+				const nodePath = await import('node:path');
+				const knowledgeRoot = await mkdtemp(nodePath.join(tmpdir(), 'sandbox-knowledge-'));
+				const workspace: KnowledgeSandboxWorkspace = {
+					sandbox: {
+						id: 'test-sandbox',
+						name: 'Test Sandbox',
+						provider: 'n8n-sandbox',
+						status: 'running',
+					},
+					filesystem: {} as KnowledgeSandboxWorkspace['filesystem'],
+					provider: 'n8n-sandbox',
+					workspaceRoot: knowledgeRoot,
+					knowledgeRoot,
+					internalRoot: nodePath.join(knowledgeRoot, '.internal'),
+					manifestPath: nodePath.join(knowledgeRoot, '.internal/manifest.json'),
+				};
+				try {
+					return await operation(workspace);
+				} finally {
+					await rm(knowledgeRoot, { recursive: true, force: true }).catch(() => {});
+				}
+			}),
+		} as unknown as AgentKnowledgeSandboxWorkspaceService;
 		knowledgeService = {
 			listWorkspaceFiles: jest.fn(),
 			materializeWorkspace: jest.fn(),
-			// The real method does a metadata-only DB query. For tests we mirror
-			// whatever materializeWorkspace is configured to produce (using a
-			// throwaway dir) so the tool's cache key reflects the same file set.
+			materializeWorkspaceIntoSandbox: jest.fn(
+				async (materializeAgentId, materializeProjectId, target, options) =>
+					knowledgeService.materializeWorkspace(
+						materializeAgentId,
+						materializeProjectId,
+						target.knowledgeRoot,
+						options,
+					),
+			),
 			resolveWorkspaceFilesForRuntime: jest.fn(
 				async (resolveAgentId, resolveProjectId, fileReferences) => {
 					const { mkdtemp, rm } = await import('node:fs/promises');
@@ -62,12 +121,7 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('describes a top-level object input schema for providers', () => {
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		expect(tool.inputSchema).toMatchObject({
 			type: 'object',
@@ -116,12 +170,7 @@ describe('search_knowledge tool', () => {
 				relativePath: 'file-1-notes.txt',
 			},
 		]);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(tool.handler?.({ operation: 'list' }, {} as never)).resolves.toMatchObject({
 			operation: 'list',
@@ -137,12 +186,7 @@ describe('search_knowledge tool', () => {
 
 	it('returns a tool error when workspace materialization fails', async () => {
 		knowledgeService.materializeWorkspace.mockRejectedValue(new Error('storage unavailable'));
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'search', query: 'needle' }, {} as never),
@@ -170,12 +214,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		const result = await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
@@ -217,18 +256,13 @@ describe('search_knowledge tool', () => {
 				return files;
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
 		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
 		expect(knowledgeService.resolveWorkspaceFilesForRuntime).toHaveBeenCalledTimes(2);
-		expect(knowledgeService.materializeWorkspace).toHaveBeenCalledTimes(2);
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledTimes(2);
 	});
 
 	it('accepts a singular file reference for search', async () => {
@@ -256,12 +290,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		const result = await tool.handler?.(
 			{ operation: 'search', query: 'needle', file: 'notes.txt' },
@@ -284,12 +313,7 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('rejects search file references when the file alias would exceed the cap', async () => {
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -338,12 +362,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		const result = await tool.handler?.(
 			{
@@ -392,12 +411,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'search', query: 'needle', output_mode: 'content' }, {} as never),
@@ -450,12 +464,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		const result = await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
@@ -507,12 +516,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'search', query: 'needle', output_mode: 'count' }, {} as never),
@@ -545,12 +549,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -590,12 +589,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'search', query: 'needle', output_mode: 'content' }, {} as never),
@@ -633,12 +627,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -685,12 +674,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -753,12 +737,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -783,12 +762,7 @@ describe('search_knowledge tool', () => {
 		});
 	});
 	it('rejects public command operations without materializing files', async () => {
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -822,12 +796,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'read', file: 'file-1' }, {} as never),
@@ -873,12 +842,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'read', file: 'Moby Dick.md' }, {} as never),
@@ -925,12 +889,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -982,12 +941,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1031,12 +985,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.({ operation: 'csv_profile', file: 'file-1', sampleSize: 2 }, {} as never),
@@ -1114,12 +1063,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1178,12 +1122,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1243,12 +1182,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1298,12 +1232,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1366,12 +1295,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1409,12 +1333,7 @@ describe('search_knowledge tool', () => {
 				];
 			},
 		);
-		const tool = createSearchKnowledgeTool({
-			agentId,
-			projectId,
-			knowledgeService: mockKnowledgeService(),
-			commandService,
-		});
+		const tool = createTool();
 
 		await expect(
 			tool.handler?.(
@@ -1436,5 +1355,124 @@ describe('search_knowledge tool', () => {
 				truncated: false,
 			},
 		});
+	});
+
+	it('routes search through sandbox workspace and materialization', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue([
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+		]);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'git_grep',
+			exitCode: 0,
+			stdout: 'file-1-notes.txt:1\n',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+
+		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
+		expect(sandboxCommandService.run).toHaveBeenCalled();
+	});
+
+	it('returns a tool error for missing search file references before command execution', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue([
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+		]);
+		const tool = createTool();
+
+		await expect(
+			tool.handler?.({ operation: 'search', query: 'needle', files: ['missing.txt'] }, {} as never),
+		).resolves.toMatchObject({
+			operation: 'search',
+			error: 'File "missing.txt" not found',
+		});
+		expect(sandboxCommandService.run).not.toHaveBeenCalled();
+	});
+
+	it('keeps csv operations on host materialization path', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'data.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 20,
+					relativePath: 'file-1.csv',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		knowledgeService.materializeWorkspace.mockImplementation(
+			async (_agentId, _projectId, workspaceRoot) => {
+				const { writeFile } = await import('node:fs/promises');
+				const path = await import('node:path');
+				await writeFile(path.join(workspaceRoot, 'file-1.csv'), 'country,year\nGermany,2022\n');
+				return [
+					{
+						id: 'file-1',
+						fileName: 'data.csv',
+						mimeType: 'text/csv',
+						fileSizeBytes: 20,
+						relativePath: 'file-1.csv',
+					},
+				];
+			},
+		);
+		const hostWithCachedWorkspace = jest.spyOn(hostCommandService, 'withCachedWorkspace');
+		const tool = createTool();
+
+		await tool.handler?.(
+			{
+				operation: 'csv_query',
+				file: 'file-1',
+				select: ['country', 'year'],
+			},
+			{} as never,
+		);
+
+		expect(hostWithCachedWorkspace).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspace).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
 	});
 });

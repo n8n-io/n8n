@@ -27,6 +27,8 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
+import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
@@ -109,6 +111,8 @@ function makeRuntimeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
 		mock<AgentKnowledgeCommandService>(),
+		mock<AgentKnowledgeSandboxCommandService>(),
+		mock<AgentKnowledgeSandboxWorkspaceService>(),
 	);
 }
 

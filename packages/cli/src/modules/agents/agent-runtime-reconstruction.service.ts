@@ -53,6 +53,8 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
+import { AgentKnowledgeSandboxCommandService } from './agent-knowledge-sandbox-command.service';
+import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
@@ -103,6 +105,8 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
+		private readonly agentKnowledgeSandboxCommandService: AgentKnowledgeSandboxCommandService,
+		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -355,7 +359,9 @@ export class AgentRuntimeReconstructionService {
 						agentId,
 						projectId,
 						knowledgeService: this.agentKnowledgeService,
-						commandService: this.agentKnowledgeCommandService,
+						hostCommandService: this.agentKnowledgeCommandService,
+						sandboxCommandService: this.agentKnowledgeSandboxCommandService,
+						sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
 					}),
 				);
 			} catch (toolError) {

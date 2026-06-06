@@ -2,6 +2,9 @@ import { Tool } from '@n8n/agents/tool';
 import { createHash } from 'node:crypto';
 
 import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
+import type { AgentKnowledgeSandboxWorkspaceService } from '../../agent-knowledge-sandbox-workspace.service';
+import type { KnowledgeSandboxWorkspace } from '../../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 
 import { aggregateCsv, distinctCsv, profileCsv, queryCsv } from './csv.operation';
@@ -21,12 +24,16 @@ export function createSearchKnowledgeTool({
 	agentId,
 	projectId,
 	knowledgeService,
-	commandService,
+	hostCommandService,
+	sandboxCommandService,
+	sandboxWorkspaceService,
 }: {
 	agentId: string;
 	projectId: string;
 	knowledgeService: AgentKnowledgeService;
-	commandService: AgentKnowledgeCommandService;
+	hostCommandService: AgentKnowledgeCommandService;
+	sandboxCommandService: AgentKnowledgeSandboxCommandService;
+	sandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService;
 }) {
 	return new Tool('search_knowledge')
 		.description(
@@ -82,16 +89,40 @@ export function createSearchKnowledgeTool({
 				);
 				files = resolution.files;
 				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, resolution.cacheSignature);
-				return await commandService.withCachedWorkspace(
-					cacheKey,
-					async (workspaceRoot) => {
-						await knowledgeService.materializeWorkspace(agentId, projectId, workspaceRoot, {
+
+				if (isSandboxOperation(parsedInput)) {
+					return await sandboxWorkspaceService.withCachedWorkspace(cacheKey, async (workspace) => {
+						await knowledgeService.materializeWorkspaceIntoSandbox(agentId, projectId, workspace, {
 							fileReferences,
 						});
-					},
-					async (workspaceRoot) =>
-						await handleKnowledgeOperation(parsedInput, workspaceRoot, files, commandService),
-				);
+						return await handleSandboxKnowledgeOperation(
+							parsedInput,
+							workspace,
+							files,
+							sandboxCommandService,
+						);
+					});
+				}
+
+				if (isCsvOperation(parsedInput)) {
+					return await hostCommandService.withCachedWorkspace(
+						cacheKey,
+						async (workspaceRoot) => {
+							await knowledgeService.materializeWorkspace(agentId, projectId, workspaceRoot, {
+								fileReferences,
+							});
+						},
+						async (workspaceRoot) =>
+							await handleHostKnowledgeOperation(
+								parsedInput,
+								workspaceRoot,
+								files,
+								hostCommandService,
+							),
+					);
+				}
+
+				throw new Error(`Unsupported knowledge operation: ${parsedInput.operation}`);
 			} catch (error) {
 				return {
 					operation: parsedInput.operation,
@@ -126,22 +157,42 @@ function toToolErrorMessage(error: unknown): string {
 	return message.replace(/(^|[\s'"(])\/(?:[^\s'"()]+\/)*[^\s'"()]+/g, '$1[path]');
 }
 
-async function handleKnowledgeOperation(
+function isSandboxOperation(
+	input: ParsedSearchKnowledgeInput,
+): input is Extract<ParsedSearchKnowledgeInput, { operation: 'search' | 'read' }> {
+	return input.operation === 'search' || input.operation === 'read';
+}
+
+function isCsvOperation(input: ParsedSearchKnowledgeInput): boolean {
+	return (
+		input.operation === 'csv_query' ||
+		input.operation === 'csv_profile' ||
+		input.operation === 'csv_distinct' ||
+		input.operation === 'csv_aggregate'
+	);
+}
+
+async function handleSandboxKnowledgeOperation(
+	input: Extract<ParsedSearchKnowledgeInput, { operation: 'search' | 'read' }>,
+	workspace: KnowledgeSandboxWorkspace,
+	files: WorkspaceFiles,
+	commandService: AgentKnowledgeSandboxCommandService,
+): Promise<SearchKnowledgeOutput> {
+	switch (input.operation) {
+		case 'search':
+			return await runSearchOperation(input, workspace, files, commandService);
+		case 'read':
+			return await runReadOperation(input, workspace, files, commandService);
+	}
+}
+
+async function handleHostKnowledgeOperation(
 	input: ParsedSearchKnowledgeInput,
 	workspaceRoot: string,
 	files: WorkspaceFiles,
-	commandService: AgentKnowledgeCommandService,
+	_commandService: AgentKnowledgeCommandService,
 ): Promise<SearchKnowledgeOutput> {
 	switch (input.operation) {
-		case 'list':
-			return {
-				operation: 'list',
-				files,
-			};
-		case 'search':
-			return await runSearchOperation(input, workspaceRoot, files, commandService);
-		case 'read':
-			return await runReadOperation(input, workspaceRoot, files, commandService);
 		case 'csv_query':
 			return {
 				operation: 'csv_query',
@@ -166,5 +217,7 @@ async function handleKnowledgeOperation(
 				files,
 				csvAggregate: await aggregateCsv(workspaceRoot, files, input),
 			};
+		default:
+			throw new Error('Unsupported host knowledge operation');
 	}
 }

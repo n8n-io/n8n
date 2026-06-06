@@ -40,9 +40,23 @@ export function getRequiredFileReferences(input: ParsedSearchKnowledgeInput) {
 	return undefined;
 }
 
-export function mapFileReferences(files: WorkspaceFiles, requestedFiles?: string[]) {
-	return requestedFiles?.map((file) => {
-		const resolvedFile = resolveFileReference(files, file);
-		return resolvedFile.status === 'found' ? resolvedFile.file.relativePath : file;
-	});
+export type FileReferenceMapResult =
+	| { status: 'ok'; files: string[] | undefined }
+	| { status: 'error'; error: string };
+
+export function mapFileReferences(
+	files: WorkspaceFiles,
+	requestedFiles?: string[],
+): FileReferenceMapResult {
+	if (!requestedFiles) return { status: 'ok', files: undefined };
+
+	const mapped: string[] = [];
+	for (const requestedFile of requestedFiles) {
+		const resolvedFile = resolveFileReference(files, requestedFile);
+		if (resolvedFile.status !== 'found') {
+			return { status: 'error', error: resolvedFile.error };
+		}
+		mapped.push(resolvedFile.file.relativePath);
+	}
+	return { status: 'ok', files: mapped };
 }

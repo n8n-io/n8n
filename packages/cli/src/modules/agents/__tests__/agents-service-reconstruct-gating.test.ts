@@ -25,6 +25,8 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
+import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 
@@ -80,6 +82,8 @@ function makeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
 		mock<AgentKnowledgeCommandService>(),
+		mock<AgentKnowledgeSandboxCommandService>(),
+		mock<AgentKnowledgeSandboxWorkspaceService>(),
 	);
 }
 

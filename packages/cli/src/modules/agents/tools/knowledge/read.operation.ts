@@ -1,7 +1,5 @@
-import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
-
 import { resolveFileReference, type WorkspaceFiles } from './file-references';
-import { runInternalCommand } from './search.operation';
+import { runInternalCommand, type KnowledgeCommandRunner } from './search.operation';
 import type {
 	InternalKnowledgeCommandRequest,
 	ParsedSearchKnowledgeInput,
@@ -10,11 +8,11 @@ import type {
 
 type ReadInput = Extract<ParsedSearchKnowledgeInput, { operation: 'read' }>;
 
-export async function runReadOperation(
+export async function runReadOperation<TWorkspace>(
 	input: ReadInput,
-	workspaceRoot: string,
+	workspace: TWorkspace,
 	files: WorkspaceFiles,
-	commandService: AgentKnowledgeCommandService,
+	commandService: KnowledgeCommandRunner<TWorkspace>,
 ): Promise<SearchKnowledgeOutput> {
 	const resolvedFile = resolveFileReference(files, input.file);
 	if (resolvedFile.status !== 'found') {
@@ -33,7 +31,7 @@ export async function runReadOperation(
 				endLine: input.lineRange.end,
 			}
 		: { command: 'cat', file: file.relativePath };
-	const result = await runInternalCommand(commandService, workspaceRoot, request);
+	const result = await runInternalCommand(commandService, workspace, request);
 	return {
 		operation: 'read',
 		files,

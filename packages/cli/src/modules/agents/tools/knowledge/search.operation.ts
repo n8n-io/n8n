@@ -1,4 +1,3 @@
-import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 import type {
 	InternalKnowledgeCommandRequest,
 	InternalKnowledgeCommandResult,
@@ -18,20 +17,27 @@ const DEFAULT_READ_RANGE_CONTEXT = 6;
 const MAX_SEARCH_MATCH_TEXT_LENGTH = 500;
 const MULTI_QUERY_WINDOW_LINES = 3;
 
-export async function runInternalCommand(
-	commandService: AgentKnowledgeCommandService,
-	workspaceRoot: string,
+export interface KnowledgeCommandRunner<TWorkspace> {
+	run(
+		workspace: TWorkspace,
+		request: InternalKnowledgeCommandRequest,
+	): Promise<InternalKnowledgeCommandResult>;
+}
+
+export async function runInternalCommand<TWorkspace>(
+	commandService: KnowledgeCommandRunner<TWorkspace>,
+	workspace: TWorkspace,
 	request: InternalKnowledgeCommandRequest,
 ): Promise<InternalKnowledgeCommandResult> {
-	const result = await commandService.run(workspaceRoot, request);
+	const result = await commandService.run(workspace, request);
 	return { ...result, command: request.command };
 }
 
-export async function runSearchOperation(
+export async function runSearchOperation<TWorkspace>(
 	input: SearchInput,
-	workspaceRoot: string,
+	workspace: TWorkspace,
 	files: WorkspaceFiles,
-	commandService: AgentKnowledgeCommandService,
+	commandService: KnowledgeCommandRunner<TWorkspace>,
 ): Promise<SearchKnowledgeOutput> {
 	if (input.query === undefined && input.queries === undefined) {
 		return {
@@ -41,28 +47,35 @@ export async function runSearchOperation(
 		};
 	}
 	const requestedFiles = mapFileReferences(files, input.files);
+	if (requestedFiles.status === 'error') {
+		return {
+			operation: 'search',
+			files,
+			error: requestedFiles.error,
+		};
+	}
 	const primaryPattern = getPrimarySearchPattern(input);
 	const commandPattern = getSearchCommandPattern(input);
 	const commandFixedStrings = getSearchCommandFixedStrings(input);
 	let contentResult: InternalKnowledgeCommandResult | undefined;
-	const countResult = await runInternalCommand(commandService, workspaceRoot, {
+	const countResult = await runInternalCommand(commandService, workspace, {
 		command: 'git_grep',
 		pattern: commandPattern,
 		outputMode: 'count',
 		caseInsensitive: input.caseInsensitive,
 		fixedStrings: commandFixedStrings,
-		files: requestedFiles,
+		files: requestedFiles.files,
 	});
 	let counts = parseCountOutput(countResult.stdout, files);
 	let multiQueryMatches: InternalSearchMatch[] | undefined;
 	if (input.queries) {
-		contentResult = await runInternalCommand(commandService, workspaceRoot, {
+		contentResult = await runInternalCommand(commandService, workspace, {
 			command: 'git_grep',
 			pattern: commandPattern,
 			caseInsensitive: input.caseInsensitive,
 			fixedStrings: commandFixedStrings,
 			context: input.context,
-			files: requestedFiles,
+			files: requestedFiles.files,
 		});
 		multiQueryMatches = filterMultiQueryMatches(
 			parseSearchMatches(contentResult.stdout, files),
@@ -121,13 +134,13 @@ export async function runSearchOperation(
 		};
 	}
 
-	contentResult ??= await runInternalCommand(commandService, workspaceRoot, {
+	contentResult ??= await runInternalCommand(commandService, workspace, {
 		command: 'git_grep',
 		pattern: commandPattern,
 		caseInsensitive: input.caseInsensitive,
 		fixedStrings: commandFixedStrings,
 		context: input.context,
-		files: requestedFiles,
+		files: requestedFiles.files,
 	});
 	const parsedMatches = parseSearchMatches(contentResult.stdout, files);
 	const matches = multiQueryMatches ?? parsedMatches;
