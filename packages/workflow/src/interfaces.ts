@@ -2793,11 +2793,11 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
 /**
  * Defines how and when response should be sent:
  *
- * onReceived: Response is sent immidiatly after node done executing
+ * onReceived: Response is sent immediately after node is done executing
  *
  * lastNode: Response is sent after the last node finishes executing
  *
- * responseNode: Response is sent from the Responde to Webhook node
+ * responseNode: Response is sent from the Respond to Webhook node
  *
  * formPage: Special response with executionId sent to the form trigger node
  *
