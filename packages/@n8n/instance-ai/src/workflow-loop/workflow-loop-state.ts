@@ -28,6 +28,40 @@ export const remediationMetadataSchema = z.object({
 export type RemediationCategory = z.infer<typeof remediationCategorySchema>;
 export type RemediationMetadata = z.infer<typeof remediationMetadataSchema>;
 
+// ── WorkflowBuildOwner ──────────────────────────────────────────────────────
+
+export const workflowBuildOwnerSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('direct') }),
+	z.object({ type: z.literal('planned'), taskId: z.string() }),
+]);
+
+export type WorkflowBuildOwner = z.infer<typeof workflowBuildOwnerSchema>;
+
+type WorkflowBuildOwnerSource = {
+	owner?: WorkflowBuildOwner;
+	plannedTaskId?: string;
+};
+
+export function resolveWorkflowBuildOwner(
+	...sources: Array<WorkflowBuildOwnerSource | undefined>
+): WorkflowBuildOwner {
+	for (const source of sources) {
+		if (source?.owner) return source.owner;
+		if (source?.plannedTaskId) return { type: 'planned', taskId: source.plannedTaskId };
+	}
+	return { type: 'direct' };
+}
+
+export function plannedTaskIdFromWorkflowBuildOwner(
+	owner: WorkflowBuildOwner | undefined,
+): string | undefined {
+	return owner?.type === 'planned' ? owner.taskId : undefined;
+}
+
+export function isPlannedWorkflowBuildOwner(owner: WorkflowBuildOwner | undefined): boolean {
+	return owner?.type === 'planned';
+}
+
 // ── WorkflowLoopState ───────────────────────────────────────────────────────
 
 export const workflowLoopStateSchema = z.object({
@@ -38,6 +72,10 @@ export const workflowLoopStateSchema = z.object({
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
 	source: workflowLoopSourceSchema,
+	/** Canonical owner of this workflow build. Defaults to direct for legacy records. */
+	owner: workflowBuildOwnerSchema.optional(),
+	/** Planned task that owns this workflow build, when the build came from an approved plan. */
+	plannedTaskId: z.string().optional(),
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
@@ -51,6 +89,18 @@ export const workflowLoopStateSchema = z.object({
 	preSaveSubmitFailures: z.number().int().min(0).optional(),
 	postSubmitRemediationSubmitsUsed: z.number().int().min(0).optional(),
 	lastRemediation: remediationMetadataSchema.optional(),
+	/**
+	 * Set once the service has routed this work item to post-verification setup.
+	 * Guards the deterministic setup follow-up so it fires at most once per build.
+	 */
+	setupRoutedAt: z.string().optional(),
+	/**
+	 * Short-lived service claim while a setup follow-up run is being started.
+	 * Prevents concurrent scheduler re-entries from opening duplicate setup runs.
+	 */
+	setupRoutingClaimId: z.string().optional(),
+	setupRoutingClaimedAt: z.string().optional(),
+	setupRoutingClaimExpiresAt: z.string().optional(),
 });
 
 export type WorkflowLoopPhase = z.infer<typeof workflowLoopPhaseSchema>;
@@ -161,6 +211,10 @@ export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
 	taskId: z.string(),
+	/** Canonical owner of this workflow build. Defaults to direct for legacy outcomes. */
+	owner: workflowBuildOwnerSchema.optional(),
+	/** Planned task that owns this build outcome, when the build came from an approved plan. */
+	plannedTaskId: z.string().optional(),
 	workflowId: z.string().optional(),
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
@@ -206,6 +260,55 @@ export const workflowBuildOutcomeSchema = z.object({
 
 export type TriggerType = z.infer<typeof triggerTypeSchema>;
 export type WorkflowBuildOutcome = z.infer<typeof workflowBuildOutcomeSchema>;
+
+// ── WorkflowVerificationObligation ─────────────────────────────────────────
+
+export const workflowVerificationObligationStatusSchema = z.enum([
+	'pending_build',
+	'ready_to_verify',
+	'verifying',
+	'verified',
+	'needs_setup',
+	'not_verifiable',
+	'blocked',
+]);
+
+export const workflowVerificationObligationPolicySchema = z.enum([
+	'required',
+	'best_effort',
+	'manual',
+]);
+
+export const workflowVerificationObligationSourceSchema = z.enum(['direct', 'planned']);
+
+export const workflowVerificationObligationSchema = z.object({
+	workItemId: z.string(),
+	threadId: z.string(),
+	runId: z.string().optional(),
+	taskId: z.string().optional(),
+	owner: workflowBuildOwnerSchema.optional(),
+	plannedTaskId: z.string().optional(),
+	workflowId: z.string().optional(),
+	source: workflowVerificationObligationSourceSchema,
+	policy: workflowVerificationObligationPolicySchema,
+	status: workflowVerificationObligationStatusSchema,
+	readiness: workflowVerificationReadinessSchema.optional(),
+	setupRequirement: workflowSetupRequirementSchema.optional(),
+	evidence: workflowVerificationEvidenceSchema.optional(),
+	blockingReason: z.string().optional(),
+	updatedAt: z.string(),
+});
+
+export type WorkflowVerificationObligationStatus = z.infer<
+	typeof workflowVerificationObligationStatusSchema
+>;
+export type WorkflowVerificationObligationPolicy = z.infer<
+	typeof workflowVerificationObligationPolicySchema
+>;
+export type WorkflowVerificationObligationSource = z.infer<
+	typeof workflowVerificationObligationSourceSchema
+>;
+export type WorkflowVerificationObligation = z.infer<typeof workflowVerificationObligationSchema>;
 
 // ── VerificationResult ──────────────────────────────────────────────────────
 

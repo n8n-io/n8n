@@ -2,7 +2,7 @@
 /**
  * Configure one agent tool entry (node/workflow/custom) or one MCP server.
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
@@ -22,6 +22,7 @@ import {
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
 import AgentJsonEditor from './AgentJsonEditor.vue';
+import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigModalHeader from './AgentToolConfigModalHeader.vue';
 import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
@@ -74,6 +75,7 @@ const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null
 const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
 const isValid = ref(false);
 const activeView = ref<'config' | 'raw'>('config');
+const approvalRequired = ref(false);
 
 const initialNode = computed<INode | null>(() =>
 	isMcpTool.value
@@ -124,6 +126,16 @@ const viewOptions = computed(() => [
 const canRender = computed(
 	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
 );
+const canSave = computed(() => isCustomTool.value || isValid.value);
+const showApprovalSetting = computed(() => !isMcpTool.value && toolModalData.value !== null);
+
+watch(
+	() => toolModalData.value?.toolRef,
+	(toolRef) => {
+		approvalRequired.value = Boolean(toolRef?.requireApproval);
+	},
+	{ immediate: true },
+);
 
 const headerKind = computed<'node' | 'workflow' | 'custom' | 'mcp'>(() => {
 	if (isCustomTool.value) return 'custom';
@@ -152,8 +164,21 @@ function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
 
+function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
+	const updatedRef = { ...ref };
+	if (approvalRequired.value) {
+		updatedRef.requireApproval = true;
+	} else {
+		delete updatedRef.requireApproval;
+	}
+	return updatedRef;
+}
+
 function handleConfirm() {
 	if (isCustomTool.value) {
+		const toolData = toolModalData.value;
+		if (!toolData) return;
+		toolData.onConfirm(withApprovalRequirement(toolData.toolRef));
 		closeDialog();
 		return;
 	}
@@ -179,7 +204,7 @@ function handleConfirm() {
 			description: wc.getDescription(),
 			allOutputs: wc.getAllOutputs(),
 		});
-		toolData.onConfirm(updatedRef);
+		toolData.onConfirm(withApprovalRequirement(updatedRef));
 		closeDialog();
 		return;
 	}
@@ -189,7 +214,7 @@ function handleConfirm() {
 	if (!currentNode) return;
 	if (!toolData) return;
 	const updatedRef = updateToolRefFromNode(toolData.toolRef, currentNode);
-	toolData.onConfirm(updatedRef);
+	toolData.onConfirm(withApprovalRequirement(updatedRef));
 	closeDialog();
 }
 
@@ -251,6 +276,10 @@ function handleNodeNameUpdate(name: string) {
 					:code="customToolCode"
 					:class="$style.customToolViewer"
 				/>
+				<AgentToolConfigApprovalSetting
+					v-if="isCustomTool && showApprovalSetting"
+					v-model="approvalRequired"
+				/>
 				<template v-else>
 					<N8nRadioButtons
 						:model-value="activeView"
@@ -271,8 +300,11 @@ function handleNodeNameUpdate(name: string) {
 							v-if="workflowInitialRef"
 							ref="workflowContentRef"
 							:initial-ref="workflowInitialRef"
+							:show-approval-setting="showApprovalSetting"
+							:approval-required="approvalRequired"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
+							@update:approval-required="approvalRequired = $event"
 						/>
 						<AgentToolConfigNodeContent
 							v-else-if="isMcpTool && initialNode"
@@ -294,6 +326,10 @@ function handleNodeNameUpdate(name: string) {
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
 						/>
+						<AgentToolConfigApprovalSetting
+							v-if="!isMcpTool && initialNode && showApprovalSetting"
+							v-model="approvalRequired"
+						/>
 					</div>
 				</template>
 			</div>
@@ -311,16 +347,11 @@ function handleNodeNameUpdate(name: string) {
 				</N8nButton>
 				<div :class="$style.footerActions">
 					<N8nButton variant="subtle" @click="handleCancel">
-						{{
-							isCustomTool
-								? i18n.baseText('generic.close')
-								: i18n.baseText('agents.toolConfig.cancel')
-						}}
+						{{ i18n.baseText('agents.toolConfig.cancel') }}
 					</N8nButton>
 					<N8nButton
-						v-if="!isCustomTool"
 						variant="solid"
-						:disabled="!isValid"
+						:disabled="!canSave"
 						data-test-id="agent-tool-config-save"
 						@click="handleConfirm"
 					>
@@ -355,7 +386,8 @@ function handleNodeNameUpdate(name: string) {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	max-height: var(--agent-tool-config-content-max-height);
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding: var(--spacing--md) 0;
 
@@ -368,13 +400,14 @@ function handleNodeNameUpdate(name: string) {
 	height: var(--agent-tool-config-content-max-height);
 	margin-right: 0;
 	padding-bottom: 0;
+	overflow: hidden;
 }
 
 .configureTab {
 	display: flex;
-	flex: 1;
 	min-height: 0;
 	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
 .viewToggle {
