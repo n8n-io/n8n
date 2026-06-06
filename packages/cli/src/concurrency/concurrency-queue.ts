@@ -46,10 +46,12 @@ export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 		const index = this.queue.findIndex((item) => item.executionId === executionId);
 
 		if (index > -1) {
+			const item = this.queue[index];
 			this.queue.splice(index, 1);
 
 			this.capacity++;
 
+			item.resolve();
 			this.resolveNext();
 		}
 	}

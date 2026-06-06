@@ -1,7 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
@@ -23,6 +20,7 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
+	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
@@ -189,6 +187,7 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		responseMode?: WebhookResponseMode,
 	): Promise<string> {
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
@@ -235,93 +234,141 @@ export class WorkflowRunner {
 		}
 
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+		const executionId = await this.activeExecutions.add(data, restartExecutionId, responseMode);
 
-		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
-			return executionId;
-		}
-
-		const { id: workflowId, nodes } = data.workflowData;
-
-		try {
-			await this.credentialsPermissionChecker.check(workflowId, nodes);
-		} catch (error) {
-			await this.failExecution(data, executionId, error, responsePromise);
-			return executionId;
-		}
-
-		if (responsePromise) {
-			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
-		}
-
-		// Set up streaming heartbeat on the main process that holds the HTTP response.
-		// This must happen BEFORE the queue/local decision because in queue mode the
-		// execution runs on a worker process that has no access to the HTTP response.
-		let heartbeatInterval: NodeJS.Timeout | undefined;
-		if (data.streamingEnabled === true && data.httpResponse) {
-			const res = data.httpResponse;
-			heartbeatInterval = setInterval(() => {
-				if (!res.writableEnded) {
-					res.write(STREAMING_KEEPALIVE_CHUNK);
-					flushResponse(res);
-				}
-			}, STREAMING_HEARTBEAT_INTERVAL_MS);
-		}
-
-		// @TODO: Reduce to true branch once feature is stable
-		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
-
-		if (shouldEnqueue) {
-			await this.enqueueExecution(
-				executionId,
-				workflowId,
+		if (responseMode === 'onReceived') {
+			void this.startExecution(
 				data,
+				executionId,
 				loadStaticData,
 				realtime,
 				restartExecutionId,
-			);
-		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
-		}
-
-		// only run these when not in queue mode or when the execution is manual,
-		// since these calls are now done by the worker directly
-		if (
-			this.executionsConfig.mode !== 'queue' ||
-			this.instanceSettings.instanceType === 'worker' ||
-			data.executionMode === 'manual' ||
-			data.executionMode === 'chat'
-		) {
-			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			postExecutePromise.catch((error) => {
-				if (error instanceof ExecutionCancelledError) return;
-				this.errorReporter.error(error, {
-					extra: { executionId, workflowId },
-				});
-				this.logger.error('There was an error in the post-execution promise', {
-					error,
+				responsePromise,
+				establishContextError,
+			).catch((error) => {
+				this.logger.error('Background execution start failed for onReceived webhook', {
 					executionId,
-					workflowId,
-					workflowName: data.workflowData.name,
-					...(data.projectId && { projectId: data.projectId }),
-					...(data.projectName && { projectName: data.projectName }),
+					error,
 				});
 			});
+			return executionId;
 		}
 
-		// Clean up the streaming heartbeat when the execution finishes
-		if (heartbeatInterval) {
-			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-			void postExecutePromise.finally(() => {
-				clearInterval(heartbeatInterval);
-			});
-		}
+		// For all other modes, run execution synchronously
+		await this.startExecution(
+			data,
+			executionId,
+			loadStaticData,
+			realtime,
+			restartExecutionId,
+			responsePromise,
+			establishContextError,
+		);
 
 		return executionId;
+	}
+
+	private async startExecution(
+		data: IWorkflowExecutionDataProcess,
+		executionId: string,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		restartExecutionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		establishContextError?: ExecutionError & { node?: INode },
+	): Promise<void> {
+		await this.activeExecutions.waitForActivation(executionId);
+		if (!this.activeExecutions.has(executionId)) {
+			return;
+		}
+
+		if (establishContextError) {
+			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			return;
+		}
+
+		try {
+			await this.credentialsPermissionChecker.check(data.workflowData.id, data.workflowData.nodes);
+		} catch (error) {
+			await this.failExecution(
+				data,
+				executionId,
+				error as ExecutionError & { node?: INode },
+				responsePromise,
+			);
+			return;
+		}
+
+		try {
+			if (responsePromise) {
+				this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+			}
+
+			let heartbeatInterval: NodeJS.Timeout | undefined;
+			if (data.streamingEnabled === true && data.httpResponse) {
+				const res = data.httpResponse;
+				heartbeatInterval = setInterval(() => {
+					if (!res.writableEnded) {
+						res.write(STREAMING_KEEPALIVE_CHUNK);
+						flushResponse(res);
+					}
+				}, STREAMING_HEARTBEAT_INTERVAL_MS);
+			}
+
+			const shouldEnqueue =
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+					? this.executionsConfig.mode === 'queue'
+					: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
+
+			if (shouldEnqueue) {
+				await this.enqueueExecution(
+					executionId,
+					data.workflowData.id,
+					data,
+					loadStaticData,
+					realtime,
+					restartExecutionId,
+				);
+			} else {
+				await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
+			}
+
+			if (
+				this.executionsConfig.mode !== 'queue' ||
+				this.instanceSettings.instanceType === 'worker' ||
+				data.executionMode === 'manual' ||
+				data.executionMode === 'chat'
+			) {
+				const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+				postExecutePromise.catch((error) => {
+					if (error instanceof ExecutionCancelledError) return;
+					this.errorReporter.error(error, {
+						extra: { executionId, workflowId: data.workflowData.id },
+					});
+					this.logger.error('There was an error in the post-execution promise', {
+						error,
+						executionId,
+						workflowId: data.workflowData.id,
+						workflowName: data.workflowData.name,
+					});
+				});
+			}
+
+			if (heartbeatInterval) {
+				const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+				void postExecutePromise.finally(() => {
+					clearInterval(heartbeatInterval);
+				});
+			}
+		} catch (error) {
+			await this.failExecution(
+				data,
+				executionId,
+				error as ExecutionError & { node?: INode },
+				responsePromise,
+			);
+			return;
+		}
 	}
 
 	/** Run the workflow in current process */
@@ -384,7 +431,12 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		await this.executionRepository.setRunning(executionId); // write
+
+		// Prevent double setRunning for executions already activated in the background (e.g. onReceived)
+		const status = this.activeExecutions.getStatus(executionId);
+		if (status !== 'running') {
+			await this.executionRepository.setRunning(executionId);
+		}
 
 		try {
 			const lifecycleHooks = getLifecycleHooksForRegularMain(data, executionId);
@@ -566,13 +618,14 @@ export class WorkflowRunner {
 
 				try {
 					await job.finished();
-				} catch (error) {
+				} catch (error: unknown) {
+					let jobError = error as ExecutionError | ExecutionNotFoundError;
 					if (
 						error instanceof Error &&
 						typeof error.message === 'string' &&
 						error.message.includes('job stalled more than maxStalledCount')
 					) {
-						error = new MaxStalledCountError(error);
+						jobError = new MaxStalledCountError(error);
 						this.eventService.emit('job-stalled', {
 							executionId: job.data.executionId,
 							workflowId: job.data.workflowId,
@@ -586,7 +639,7 @@ export class WorkflowRunner {
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 
 					await this.processError(
-						error,
+						jobError,
 						new Date(),
 						data.executionMode,
 						executionId,
@@ -595,7 +648,7 @@ export class WorkflowRunner {
 
 					this.scalingService.popJobResult(executionId);
 
-					return reject(error);
+					return reject(jobError);
 				}
 
 				const jobResult = this.scalingService.popJobResult(executionId);

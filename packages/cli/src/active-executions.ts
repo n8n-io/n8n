@@ -14,6 +14,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
+	ensureError,
 	ExecutionCancelledError,
 	sleep,
 	SystemShutdownExecutionCancelledError,
@@ -21,15 +22,16 @@ import {
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
+import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
-import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 
 @Service()
 export class ActiveExecutions {
@@ -39,6 +41,8 @@ export class ActiveExecutions {
 	private activeExecutions: {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
+
+	private activationPromises = new Map<string, Promise<void>>();
 
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
@@ -59,9 +63,11 @@ export class ActiveExecutions {
 	/**
 	 * Add a new active execution
 	 */
+	// eslint-disable-next-line complexity
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
 		maybeExecutionId?: string,
+		responseMode?: WebhookResponseMode,
 	): Promise<string> {
 		let executionStatus: ExecutionStatus = maybeExecutionId ? 'running' : 'new';
 		const mode = executionData.executionMode;
@@ -78,6 +84,23 @@ export class ActiveExecutions {
 		// reservation for evaluation mode; `release()` below is a no-op when
 		// nothing was reserved.
 		const shouldReserveCapacity = mode !== 'evaluation';
+		const shouldActivateInBackground =
+			responseMode === 'onReceived' && maybeExecutionId === undefined;
+
+		if (shouldActivateInBackground) {
+			const pendingOnReceived = Object.values(this.activeExecutions).filter(
+				(e) => e.status === 'new' && e.executionData.executionMode === 'webhook',
+			).length;
+			const maxPending = parseInt(process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT ?? '10000', 10);
+			if (Number.isNaN(maxPending)) {
+				throw new Error(
+					`Invalid N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT value: "${process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT}"`,
+				);
+			}
+			if (pendingOnReceived >= maxPending) {
+				throw new AdmissionLimitError();
+			}
+		}
 
 		try {
 			if (maybeExecutionId === undefined) {
@@ -101,14 +124,16 @@ export class ActiveExecutions {
 				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
 				assert(maybeExecutionId);
 
-				if (shouldReserveCapacity) {
-					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
-				}
+				if (!shouldActivateInBackground) {
+					if (shouldReserveCapacity) {
+						await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+					}
 
-				if (this.executionsConfig.mode === 'regular') {
-					await this.executionRepository.setRunning(maybeExecutionId);
+					if (this.executionsConfig.mode === 'regular') {
+						await this.executionRepository.setRunning(maybeExecutionId);
+					}
+					executionStatus = 'running';
 				}
-				executionStatus = 'running';
 			} else {
 				// Is an existing execution we want to finish so update in DB
 
@@ -155,25 +180,32 @@ export class ActiveExecutions {
 		};
 		this.activeExecutions[executionId] = execution;
 
-		// Automatically remove execution once the postExecutePromise settles
-		void postExecutePromise.promise
-			.catch((error) => {
-				if (error instanceof ExecutionCancelledError) return;
-				throw error;
-			})
-			.finally(() => {
-				capacityReservation.release();
-				if (execution.status === 'waiting') {
-					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
-					delete execution.workflowExecution;
-				} else {
-					delete this.activeExecutions[executionId];
-					this.responseModes.delete(executionId);
-					this.logger.debug('Execution removed', { executionId });
-				}
-			});
+		this.attachCleanupHandlers(executionId, execution, capacityReservation);
 
 		this.logger.debug('Execution added', { executionId });
+
+		if (shouldActivateInBackground) {
+			const activationPromise = this.reserveCapacityAndActivate(
+				executionId,
+				executionData,
+				capacityReservation,
+				shouldReserveCapacity,
+			)
+				.catch((error: unknown) => {
+					const executionError = ensureError(error);
+					this.logger.error('Failed to reserve capacity for onReceived execution', {
+						executionId,
+						error: executionError,
+					});
+					execution.postExecutePromise.reject(executionError);
+					throw executionError;
+				})
+				.finally(() => {
+					this.activationPromises.delete(executionId);
+				});
+
+			this.activationPromises.set(executionId, activationPromise);
+		}
 
 		return executionId;
 	}
@@ -184,6 +216,69 @@ export class ActiveExecutions {
 
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
+	}
+
+	async waitForActivation(executionId: string): Promise<void> {
+		await this.activationPromises.get(executionId);
+	}
+
+	private async reserveCapacityAndActivate(
+		executionId: string,
+		executionData: IWorkflowExecutionDataProcess,
+		capacityReservation: ConcurrencyCapacityReservation,
+		shouldReserveCapacity: boolean,
+	): Promise<void> {
+		const mode = executionData.executionMode;
+		if (!this.has(executionId)) {
+			return;
+		}
+		if (shouldReserveCapacity) {
+			await capacityReservation.reserve({ mode, executionId });
+		}
+
+		if (!this.has(executionId)) {
+			capacityReservation.release();
+			return;
+		}
+
+		try {
+			if (this.executionsConfig.mode === 'regular') {
+				await this.executionRepository.setRunning(executionId);
+			}
+			if (this.has(executionId)) {
+				this.activeExecutions[executionId].status = 'running';
+			}
+		} catch (error) {
+			if (this.has(executionId)) {
+				delete this.activeExecutions[executionId];
+			}
+			throw error;
+		}
+	}
+
+	private attachCleanupHandlers(
+		executionId: string,
+		execution: IExecutingWorkflowData,
+		capacityReservation: ConcurrencyCapacityReservation,
+	): void {
+		void execution.postExecutePromise.promise
+			.catch((error) => {
+				if (error instanceof ExecutionCancelledError) return;
+				this.logger.error('There was an error in the post-execution promise', {
+					error,
+					executionId,
+				});
+			})
+			.finally(() => {
+				capacityReservation.release();
+				if (execution.status === 'waiting') {
+					delete execution.workflowExecution;
+				} else {
+					delete this.activeExecutions[executionId];
+					this.responseModes.delete(executionId);
+					this.logger.debug('Execution removed', { executionId });
+				}
+			});
 	}
 
 	attachResponsePromise(
@@ -324,11 +419,6 @@ export class ActiveExecutions {
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
 		const isRegularMode = this.executionsConfig.mode === 'regular';
-		if (isRegularMode) {
-			// removal of active executions will no longer release capacity back,
-			// so that throttled executions cannot resume during shutdown
-			this.concurrencyControl.disable();
-		}
 
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
@@ -344,6 +434,12 @@ export class ActiveExecutions {
 		}
 
 		await this.concurrencyControl.removeAll(toCancel);
+
+		if (isRegularMode) {
+			// removal of active executions will no longer release capacity back,
+			// so that throttled executions cannot resume during shutdown
+			this.concurrencyControl.disable();
+		}
 
 		let count = 0;
 		executionIds = Object.keys(this.activeExecutions);
