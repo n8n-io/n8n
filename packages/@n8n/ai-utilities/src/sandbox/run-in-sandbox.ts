@@ -6,6 +6,7 @@ interface SandboxCommandResult {
 
 export interface SandboxCommandTarget {
 	sandbox?: {
+		provider?: string;
 		executeCommand?: (
 			command: string,
 			args?: string[],

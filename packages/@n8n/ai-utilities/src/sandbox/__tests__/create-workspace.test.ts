@@ -15,6 +15,16 @@ function getPrivateOptions(value: unknown): Record<string, unknown> {
 	return options && typeof options === 'object' ? (options as Record<string, unknown>) : {};
 }
 
+type DaytonaCreateCandidate = { params: { labels?: Record<string, string> } };
+
+function getPrivateCreateParams(value: unknown): DaytonaCreateCandidate[] {
+	if (!(value instanceof DaytonaSandbox)) return [];
+	const createSandboxParams = (
+		value as unknown as { createSandboxParams: () => DaytonaCreateCandidate[] }
+	).createSandboxParams;
+	return createSandboxParams.call(value);
+}
+
 describe('createSandbox', () => {
 	it('returns undefined when sandbox is disabled', async () => {
 		const config: SandboxConfig = { enabled: false, provider: 'n8n-sandbox' };
@@ -54,6 +64,7 @@ describe('createSandbox', () => {
 				createTimeoutSeconds: 900,
 			}),
 		);
+		expect(getPrivateCreateParams(result)[0]?.params).not.toHaveProperty('labels');
 	});
 
 	it('preserves Daytona labels and default create timeout', async () => {
@@ -81,6 +92,11 @@ describe('createSandbox', () => {
 				},
 			}),
 		);
+		expect(getPrivateCreateParams(result)[0]?.params.labels).toEqual({
+			'n8n-builder': 'instance-ai-thread-thread-1',
+			thread_id: 'thread-1',
+			run_id: 'run-1',
+		});
 	});
 
 	it('passes getAuthToken through to DaytonaSandbox in proxy mode', async () => {

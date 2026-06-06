@@ -44,6 +44,16 @@ async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<vo
 	await filesystem.init?.();
 }
 
+function getFallbackHome(workspace: SandboxWorkspace): string {
+	switch (workspace.sandbox?.provider) {
+		case 'n8n-sandbox':
+			return N8N_SANDBOX_HOME;
+		case 'daytona':
+		default:
+			return DAYTONA_HOME;
+	}
+}
+
 export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
@@ -62,7 +72,7 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 	}
 
 	const result = await runInSandbox(workspace, 'echo $HOME');
-	const home = result.stdout.trim() || DAYTONA_HOME;
+	const home = result.stdout.trim() || getFallbackHome(workspace);
 	const root = `${home}/${WORKSPACE_DIR}`;
 	workspaceRootCache.set(workspace, root);
 	return root;

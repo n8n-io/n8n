@@ -430,13 +430,10 @@ export class DaytonaSandbox extends BaseSandbox {
 	}> {
 		const base: CreateSandboxBaseParams = {
 			language: this.language,
-			labels: {
-				...this.options.labels,
-				'n8n-instance-ai-sandbox-id': this.id,
-			},
 			autoStopInterval: this.options.autoStopInterval ?? 15,
 			name: this.sandboxName,
 		};
+		if (this.options.labels !== undefined) base.labels = this.options.labels;
 		if (this.options.ephemeral !== undefined) base.ephemeral = this.options.ephemeral;
 		if (this.options.autoArchiveInterval !== undefined) {
 			base.autoArchiveInterval = this.options.autoArchiveInterval;
@@ -489,7 +486,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	private reportCreateError(error: unknown, strategy: 'snapshot' | 'image'): void {
 		this.options.errorReporter?.error(error, {
 			tags: {
-				component: 'builder-sandbox-factory',
+				component: 'daytona-sandbox-factory',
 				strategy,
 				...(this.options.createStrategyMode ? { mode: this.options.createStrategyMode } : {}),
 			},
