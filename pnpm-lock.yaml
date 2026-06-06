@@ -1961,9 +1961,6 @@ importers:
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
-      '@n8n/sandbox-client':
-        specifier: 0.0.4
-        version: 0.0.4
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils

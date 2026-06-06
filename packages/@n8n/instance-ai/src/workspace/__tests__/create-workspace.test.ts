@@ -57,6 +57,8 @@ import {
 	createWorkspace,
 } from '../create-workspace';
 
+type DaytonaSandboxConfig = Extract<SandboxConfig, { enabled: true; provider: 'daytona' }>;
+
 const sandbox = {
 	id: 'sandbox-1',
 	name: 'Sandbox',
@@ -202,11 +204,12 @@ describe('createSandbox', () => {
 	});
 
 	it('does not pass a Daytona image descriptor back into SnapshotManager as a base image', async () => {
+		const image = { dockerfile: 'FROM node:20' } as NonNullable<DaytonaSandboxConfig['image']>;
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
 			daytonaApiKey: 'test-key',
-			image: { dockerfile: 'FROM node:20' },
+			image,
 			n8nVersion: '1.2.3',
 		};
 

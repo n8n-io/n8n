@@ -309,9 +309,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		this.sandbox = undefined;
 		this.lastClientGeneration = -1;
 		this.workingDirectory = undefined;
-		if (this.status !== 'destroyed' && this.status !== 'destroying') {
-			this.status = 'pending';
-		}
+		this.markNeedsStart();
 	}
 
 	/**
