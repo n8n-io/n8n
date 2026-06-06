@@ -91,9 +91,27 @@ export function createSearchKnowledgeTool({
 				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, resolution.cacheSignature);
 
 				return await sandboxWorkspaceService.withCachedWorkspace(cacheKey, async (workspace) => {
-					await knowledgeService.materializeWorkspaceIntoSandbox(agentId, projectId, workspace, {
-						fileReferences,
-					});
+					const expectedManifest = knowledgeService.buildExpectedSandboxManifest(
+						agentId,
+						projectId,
+						resolution.cacheSignature,
+						files,
+					);
+
+					await sandboxWorkspaceService.ensureWorkspaceMaterialized(
+						workspace,
+						expectedManifest,
+						async () =>
+							await knowledgeService.materializeWorkspaceIntoSandbox(
+								agentId,
+								projectId,
+								workspace,
+								{
+									fileReferences,
+								},
+							),
+					);
+
 					return await handleSandboxKnowledgeOperation(
 						parsedInput,
 						workspace,

@@ -27,6 +27,7 @@ describe('search_knowledge tool', () => {
 	let knowledgeService: jest.Mocked<
 		Pick<
 			AgentKnowledgeService,
+			| 'buildExpectedSandboxManifest'
 			| 'listWorkspaceFiles'
 			| 'materializeWorkspace'
 			| 'materializeWorkspaceIntoSandbox'
@@ -58,6 +59,10 @@ describe('search_knowledge tool', () => {
 			),
 		} as unknown as AgentKnowledgeSandboxCommandService;
 		sandboxWorkspaceService = {
+			ensureWorkspaceMaterialized: jest.fn(async (_workspace, _expected, materialize) => {
+				await materialize();
+				return { files: undefined, freshness: { status: 'stale', reason: 'manifest-missing' } };
+			}),
 			withCachedWorkspace: jest.fn(async (_cacheKey, operation) => {
 				const { mkdtemp, mkdir, rm, writeFile } = await import('node:fs/promises');
 				const { spawn } = await import('node:child_process');
@@ -137,6 +142,19 @@ describe('search_knowledge tool', () => {
 			}),
 		} as unknown as AgentKnowledgeSandboxWorkspaceService;
 		knowledgeService = {
+			buildExpectedSandboxManifest: jest.fn(
+				(manifestAgentId, manifestProjectId, cacheSignature, files) => ({
+					version: 1,
+					agentId: manifestAgentId,
+					projectId: manifestProjectId,
+					cacheSignatureSha1: `sha1-${cacheSignature}`,
+					files: files.map((file) => ({
+						id: file.id,
+						relativePath: file.relativePath,
+						fileSizeBytes: file.fileSizeBytes,
+					})),
+				}),
+			),
 			listWorkspaceFiles: jest.fn(),
 			materializeWorkspace: jest.fn(),
 			materializeWorkspaceIntoSandbox: jest.fn(
@@ -1413,6 +1431,80 @@ describe('search_knowledge tool', () => {
 				truncated: false,
 			},
 		});
+	});
+
+	it('skips sandbox materialization when cached manifest is fresh', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		(sandboxWorkspaceService.ensureWorkspaceMaterialized as jest.Mock).mockResolvedValue({
+			files: undefined,
+			freshness: { status: 'fresh' },
+		});
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'git_grep',
+			exitCode: 0,
+			stdout: 'file-1-notes.txt:1\n',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+
+		expect(sandboxWorkspaceService.ensureWorkspaceMaterialized).toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
+		expect(sandboxCommandService.run).toHaveBeenCalled();
+	});
+
+	it('materializes when workspace service reports stale', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue([
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+		]);
+		const tool = createTool();
+
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+
+		expect(sandboxWorkspaceService.ensureWorkspaceMaterialized).toHaveBeenCalled();
+		expect(knowledgeService.buildExpectedSandboxManifest).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			'signature-a',
+			expect.any(Array),
+		);
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
+			{ fileReferences: undefined },
+		);
 	});
 
 	it('routes search through sandbox workspace and materialization', async () => {

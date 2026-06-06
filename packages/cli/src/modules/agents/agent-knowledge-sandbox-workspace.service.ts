@@ -16,6 +16,11 @@ import pLimit from 'p-limit';
 
 import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import { AgentKnowledgeSandboxImageService } from './agent-knowledge-sandbox-image.service';
+import type {
+	KnowledgeSandboxExpectedManifest,
+	KnowledgeWorkspaceFile,
+} from './agent-knowledge.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 
 const MAX_CONCURRENT_KNOWLEDGE_SANDBOX_WORKSPACES = 4;
 const KNOWLEDGE_SANDBOX_WORKSPACE_CACHE_TTL_MS = 10 * 60_000;
@@ -36,6 +41,8 @@ export interface KnowledgeSandboxWorkspace {
 	manifestPath: string;
 }
 
+export type KnowledgeWorkspaceFreshness = { status: 'fresh' } | { status: 'stale'; reason: string };
+
 interface CachedKnowledgeSandboxWorkspace {
 	workspace: KnowledgeSandboxWorkspace;
 	lastUsedAt: number;
@@ -50,7 +57,26 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		private readonly logger: Logger,
 		private readonly sandboxConfigService: AgentKnowledgeSandboxConfigService,
 		private readonly sandboxImageService: AgentKnowledgeSandboxImageService,
+		private readonly knowledgeService: AgentKnowledgeService,
 	) {}
+
+	async ensureWorkspaceMaterialized(
+		workspace: KnowledgeSandboxWorkspace,
+		expectedManifest: KnowledgeSandboxExpectedManifest,
+		materialize: () => Promise<KnowledgeWorkspaceFile[]>,
+	): Promise<{
+		files: KnowledgeWorkspaceFile[] | undefined;
+		freshness: KnowledgeWorkspaceFreshness;
+	}> {
+		const freshness = await this.checkWorkspaceFreshness(workspace, expectedManifest);
+		if (freshness.status === 'fresh') {
+			return { files: undefined, freshness };
+		}
+
+		await this.clearStaleWorkspaceState(workspace);
+		const files = await materialize();
+		return { files, freshness };
+	}
 
 	async withCachedWorkspace<T>(
 		cacheKey: string,
@@ -215,6 +241,92 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	private async destroyWorkspace(workspace: KnowledgeSandboxWorkspace): Promise<void> {
 		await this.destroySandbox(workspace.sandbox);
+	}
+
+	private async checkWorkspaceFreshness(
+		workspace: KnowledgeSandboxWorkspace,
+		expected: KnowledgeSandboxExpectedManifest,
+	): Promise<KnowledgeWorkspaceFreshness> {
+		let rawContent: unknown;
+		try {
+			rawContent = await workspace.filesystem.readFile(workspace.manifestPath);
+		} catch {
+			return { status: 'stale', reason: 'manifest-missing' };
+		}
+
+		const content = this.normalizeFileContent(rawContent);
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(content);
+		} catch {
+			return { status: 'stale', reason: 'manifest-invalid-json' };
+		}
+
+		if (!parsed || typeof parsed !== 'object') {
+			return { status: 'stale', reason: 'manifest-invalid' };
+		}
+
+		const manifest = parsed as Record<string, unknown>;
+		if (manifest.version !== expected.version) {
+			return { status: 'stale', reason: 'manifest-version' };
+		}
+		if (manifest.agentId !== expected.agentId) {
+			return { status: 'stale', reason: 'manifest-agent' };
+		}
+		if (manifest.projectId !== expected.projectId) {
+			return { status: 'stale', reason: 'manifest-project' };
+		}
+		if (manifest.cacheSignatureSha1 !== expected.cacheSignatureSha1) {
+			return { status: 'stale', reason: 'manifest-cache-signature' };
+		}
+		if (!Array.isArray(manifest.files)) {
+			return { status: 'stale', reason: 'manifest-files' };
+		}
+
+		if (!this.knowledgeService.isSandboxManifestFresh(parsed, expected)) {
+			return { status: 'stale', reason: 'manifest-files-mismatch' };
+		}
+
+		if (!(await workspace.filesystem.exists(workspace.knowledgeRoot))) {
+			return { status: 'stale', reason: 'knowledge-root-missing' };
+		}
+
+		return { status: 'fresh' };
+	}
+
+	private async clearStaleWorkspaceState(workspace: KnowledgeSandboxWorkspace): Promise<void> {
+		await this.deleteIfPresent(workspace, workspace.knowledgeRoot, {
+			recursive: true,
+			force: true,
+		});
+		await this.deleteIfPresent(workspace, workspace.manifestPath, { force: true });
+		await workspace.filesystem.mkdir(workspace.knowledgeRoot, { recursive: true });
+		await workspace.filesystem.mkdir(workspace.internalRoot, { recursive: true });
+	}
+
+	private async deleteIfPresent(
+		workspace: KnowledgeSandboxWorkspace,
+		targetPath: string,
+		options: { recursive?: boolean; force?: boolean },
+	): Promise<void> {
+		try {
+			await workspace.filesystem.deleteFile(targetPath, options);
+		} catch (error) {
+			if (await workspace.filesystem.exists(targetPath)) {
+				throw error;
+			}
+		}
+	}
+
+	private normalizeFileContent(content: unknown): string {
+		if (typeof content === 'string') return content;
+		if (Buffer.isBuffer(content)) return content.toString('utf8');
+		if (content && typeof content === 'object' && 'content' in content) {
+			const value = (content as { content?: unknown }).content;
+			if (typeof value === 'string') return value;
+			if (Buffer.isBuffer(value)) return value.toString('utf8');
+		}
+		return String(content);
 	}
 
 	private async destroySandbox(sandbox: SandboxInstance): Promise<void> {

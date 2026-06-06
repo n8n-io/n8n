@@ -5,6 +5,9 @@ import { mock } from 'jest-mock-extended';
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import type { AgentKnowledgeSandboxImageService } from '../agent-knowledge-sandbox-image.service';
 import { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
+import { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 const prepareDaytonaImageMock = jest.fn<
 	Promise<CreateSandboxFromImageParams['image']>,
@@ -44,6 +47,40 @@ function makeFilesystem(provider: 'n8n-sandbox' | 'daytona' = 'n8n-sandbox') {
 		provider,
 		status: 'ready' as const,
 		mkdir: jest.fn(async () => {}),
+		readFile: jest.fn<Promise<string>, [string]>(async () => {
+			throw new Error('manifest missing');
+		}),
+		writeFile: jest.fn(async () => {}),
+		deleteFile: jest.fn(async () => {}),
+		exists: jest.fn<Promise<boolean>, [string]>(async () => true),
+	};
+}
+
+function makeWorkspace(filesystem: ReturnType<typeof makeFilesystem>) {
+	return {
+		sandbox: makeSandbox('n8n-sandbox'),
+		filesystem,
+		provider: 'n8n-sandbox' as const,
+		workspaceRoot: '/home/user/workspace',
+		knowledgeRoot: '/home/user/workspace/agent-knowledge',
+		internalRoot: '/home/user/workspace/.agent-knowledge-internal',
+		manifestPath: '/home/user/workspace/.agent-knowledge-internal/manifest.json',
+	};
+}
+
+function buildExpectedManifest() {
+	return {
+		version: 1,
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		cacheSignatureSha1: 'abc123',
+		files: [
+			{
+				id: 'file-1',
+				relativePath: 'file-1.txt',
+				fileSizeBytes: 10,
+			},
+		],
 	};
 }
 
@@ -65,6 +102,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let configService: AgentKnowledgeSandboxConfigService;
 	let imageService: AgentKnowledgeSandboxImageService;
+	let knowledgeService: AgentKnowledgeService;
 	let service: AgentKnowledgeSandboxWorkspaceService;
 
 	beforeEach(() => {
@@ -82,7 +120,17 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		imageService = {
 			prepareDaytonaImage: prepareDaytonaImageMock,
 		} as unknown as AgentKnowledgeSandboxImageService;
-		service = new AgentKnowledgeSandboxWorkspaceService(logger, configService, imageService);
+		knowledgeService = new AgentKnowledgeService(
+			mock<AgentRepository>(),
+			mock<AgentFileRepository>(),
+			mock(),
+		);
+		service = new AgentKnowledgeSandboxWorkspaceService(
+			logger,
+			configService,
+			imageService,
+			knowledgeService,
+		);
 	});
 
 	function mockN8nSandboxWorkspace() {
@@ -100,6 +148,19 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		createFilesystemMock.mockReturnValue(filesystem);
 		return { sandbox, filesystem };
 	}
+
+	it('keeps internal root outside knowledge root', async () => {
+		const { filesystem } = mockN8nSandboxWorkspace();
+
+		const workspace = await service.withCachedWorkspace('key-1', async (entry) => entry);
+
+		expect(workspace.internalRoot.startsWith(`${workspace.knowledgeRoot}/`)).toBe(false);
+		expect(workspace.manifestPath.startsWith(`${workspace.internalRoot}/`)).toBe(true);
+		expect(filesystem.mkdir).toHaveBeenCalledWith(
+			'/home/user/workspace/.agent-knowledge-internal',
+			{ recursive: true },
+		);
+	});
 
 	it('creates n8n sandbox workspace under /home/user/workspace/agent-knowledge', async () => {
 		const { sandbox, filesystem } = mockN8nSandboxWorkspace();
@@ -277,6 +338,169 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		expect(sandbox.destroy).toHaveBeenCalledTimes(1);
 		expect(service.getCachedWorkspaceCount()).toBe(0);
+	});
+
+	it('ensureWorkspaceMaterialized returns fresh without materializing when manifest matches', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		const materialize = jest.fn(async () => []);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(result).toEqual({ files: undefined, freshness: { status: 'fresh' } });
+		expect(materialize).not.toHaveBeenCalled();
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
+	});
+
+	it('ensureWorkspaceMaterialized clears and materializes when manifest is missing', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		const materialize = jest.fn(async () => [
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				relativePath: 'file-1.txt',
+			},
+		]);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-missing' });
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
+			recursive: true,
+			force: true,
+		});
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.manifestPath, { force: true });
+		expect(filesystem.mkdir).toHaveBeenCalledWith(workspace.knowledgeRoot, { recursive: true });
+		expect(filesystem.mkdir).toHaveBeenCalledWith(workspace.internalRoot, { recursive: true });
+		expect(materialize).toHaveBeenCalledTimes(1);
+	});
+
+	it('ensureWorkspaceMaterialized clears and materializes when manifest signature is stale', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				cacheSignatureSha1: 'stale-signature',
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		const materialize = jest.fn(async () => []);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-cache-signature' });
+		expect(materialize).toHaveBeenCalledTimes(1);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
+			recursive: true,
+			force: true,
+		});
+	});
+
+	it('ensureWorkspaceMaterialized treats invalid JSON as stale', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue('not json');
+		const materialize = jest.fn(async () => []);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-invalid-json' });
+		expect(materialize).toHaveBeenCalledTimes(1);
+	});
+
+	it('ensureWorkspaceMaterialized treats file list mismatch as stale', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				files: [
+					{
+						id: 'file-1',
+						relativePath: 'file-1-renamed.txt',
+						fileSizeBytes: 10,
+					},
+				],
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		const materialize = jest.fn(async () => []);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-files-mismatch' });
+		expect(materialize).toHaveBeenCalledTimes(1);
+	});
+
+	it('ensureWorkspaceMaterialized treats malformed manifest files as stale', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				files: [{}],
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		const materialize = jest.fn(async () => []);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-files-mismatch' });
+		expect(materialize).toHaveBeenCalledTimes(1);
+	});
+
+	it('ensureWorkspaceMaterialized re-materializes when knowledge root is missing', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		filesystem.exists.mockResolvedValueOnce(false);
+		const materialize = jest.fn(async () => []);
+
+		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+
+		expect(filesystem.exists).toHaveBeenCalledWith(workspace.knowledgeRoot);
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'knowledge-root-missing' });
+		expect(materialize).toHaveBeenCalledTimes(1);
+	});
+
+	it('ensureWorkspaceMaterialized fails when stale knowledge root cannot be cleared', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		const cleanupError = new Error('delete failed');
+		filesystem.deleteFile.mockRejectedValueOnce(cleanupError);
+		filesystem.exists.mockResolvedValueOnce(true);
+		const materialize = jest.fn(async () => []);
+
+		await expect(
+			service.ensureWorkspaceMaterialized(workspace, expected, materialize),
+		).rejects.toThrow(cleanupError);
+
+		expect(filesystem.exists).toHaveBeenCalledWith(workspace.knowledgeRoot);
+		expect(materialize).not.toHaveBeenCalled();
 	});
 
 	it('destroyAll destroys cached sandboxes and clears cache', async () => {

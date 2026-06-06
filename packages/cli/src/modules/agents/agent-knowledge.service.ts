@@ -42,6 +42,27 @@ export interface KnowledgeWorkspaceResolution {
 	cacheSignature: string;
 }
 
+export interface KnowledgeSandboxManifestFile {
+	id: string;
+	relativePath: string;
+	fileSizeBytes: number;
+	binaryDataIdSha1?: string;
+}
+
+export interface KnowledgeSandboxManifest {
+	version: number;
+	agentId: string;
+	projectId: string;
+	cacheSignatureSha1: string;
+	files: KnowledgeSandboxManifestFile[];
+	materializedAt: string;
+}
+
+export type KnowledgeSandboxExpectedManifest = Pick<
+	KnowledgeSandboxManifest,
+	'version' | 'agentId' | 'projectId' | 'cacheSignatureSha1' | 'files'
+>;
+
 export interface KnowledgeSandboxMaterializationTarget {
 	sandbox: SandboxInstance;
 	filesystem: SandboxFilesystem;
@@ -215,6 +236,70 @@ export class AgentKnowledgeService {
 		return materializedFiles;
 	}
 
+	buildExpectedSandboxManifest(
+		agentId: string,
+		projectId: string,
+		cacheSignature: string,
+		files: KnowledgeWorkspaceFile[],
+	): KnowledgeSandboxExpectedManifest {
+		return {
+			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
+			agentId,
+			projectId,
+			cacheSignatureSha1: createHash('sha1').update(cacheSignature).digest('hex'),
+			files: files.map((file) => ({
+				id: file.id,
+				relativePath: file.relativePath,
+				fileSizeBytes: file.fileSizeBytes,
+			})),
+		};
+	}
+
+	isSandboxManifestFresh(actual: unknown, expected: KnowledgeSandboxExpectedManifest): boolean {
+		if (!actual || typeof actual !== 'object') {
+			return false;
+		}
+
+		const manifest = actual as Partial<KnowledgeSandboxManifest>;
+		if (manifest.version !== expected.version) return false;
+		if (manifest.agentId !== expected.agentId) return false;
+		if (manifest.projectId !== expected.projectId) return false;
+		if (manifest.cacheSignatureSha1 !== expected.cacheSignatureSha1) return false;
+		if (!Array.isArray(manifest.files)) return false;
+		if (!manifest.files.every((file) => this.isSandboxManifestFile(file))) return false;
+
+		const sortFiles = (files: KnowledgeSandboxManifestFile[]) =>
+			[...files].sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+
+		const actualFiles = sortFiles(manifest.files);
+		const expectedFiles = sortFiles(expected.files);
+		if (actualFiles.length !== expectedFiles.length) return false;
+
+		for (let index = 0; index < expectedFiles.length; index++) {
+			const actualFile = actualFiles[index];
+			const expectedFile = expectedFiles[index];
+			if (
+				actualFile.id !== expectedFile.id ||
+				actualFile.relativePath !== expectedFile.relativePath ||
+				actualFile.fileSizeBytes !== expectedFile.fileSizeBytes
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private isSandboxManifestFile(value: unknown): value is KnowledgeSandboxManifestFile {
+		if (!value || typeof value !== 'object') return false;
+		const file = value as Record<string, unknown>;
+		return (
+			typeof file.id === 'string' &&
+			typeof file.relativePath === 'string' &&
+			typeof file.fileSizeBytes === 'number'
+		);
+	}
+
 	async materializeWorkspaceIntoSandbox(
 		agentId: string,
 		projectId: string,
@@ -351,13 +436,20 @@ export class AgentKnowledgeService {
 			.join('|');
 	}
 
-	private buildSandboxManifest(agentId: string, projectId: string, files: StoredAgentFile[]) {
+	private buildSandboxManifest(
+		agentId: string,
+		projectId: string,
+		files: StoredAgentFile[],
+	): KnowledgeSandboxManifest {
 		const cacheSignature = this.buildWorkspaceCacheSignature(files);
-		return {
-			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
+		const expected = this.buildExpectedSandboxManifest(
 			agentId,
 			projectId,
-			cacheSignatureSha1: createHash('sha1').update(cacheSignature).digest('hex'),
+			cacheSignature,
+			files.map((file) => this.toWorkspaceFile(file)),
+		);
+		return {
+			...expected,
 			files: files.map((file) => ({
 				id: file.id,
 				relativePath: this.getWorkspaceRelativePath(file),

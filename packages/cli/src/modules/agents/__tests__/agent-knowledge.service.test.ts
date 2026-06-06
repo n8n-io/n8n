@@ -528,6 +528,41 @@ describe('AgentKnowledgeService', () => {
 		expect(files[0]).not.toHaveProperty('binaryDataId');
 	});
 
+	it('buildExpectedSandboxManifest hashes cache signature and omits raw binary ids', () => {
+		const files = [
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				relativePath: 'file-1.txt',
+			},
+		];
+
+		const manifest = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			'binary-1:10:file-1.txt',
+			files,
+		);
+
+		expect(manifest).toMatchObject({
+			version: 1,
+			agentId,
+			projectId,
+			cacheSignatureSha1: expect.any(String),
+			files: [
+				{
+					id: 'file-1',
+					relativePath: 'file-1.txt',
+					fileSizeBytes: 10,
+				},
+			],
+		});
+		expect(JSON.stringify(manifest)).not.toContain('binary-1');
+		expect(manifest.files[0]).not.toHaveProperty('binaryDataIdSha1');
+	});
+
 	it('streams selected files into sandbox knowledge root', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
