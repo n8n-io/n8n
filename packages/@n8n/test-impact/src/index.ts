@@ -12,6 +12,6 @@ export * from './map-build.js';
 export type { DiscoveredSpec } from './types.js';
 
 // Strategy + Pipeline selection layer.
-export type { Selector } from './select/selector.js';
-export { V8MapSelector } from './select/v8-map-selector.js';
-export { selectAffected } from './select/pipeline.js';
+export type { SelectionStrategy } from './select/strategy.js';
+export { CoverageMapStrategy } from './select/coverage-map-strategy.js';
+export { selectImpactedTests } from './select/pipeline.js';

@@ -18,8 +18,8 @@ import {
 	type ResolveResult,
 	decodeImpactMap,
 } from './coverage-map.js';
-import { selectAffected } from './select/pipeline.js';
-import { V8MapSelector } from './select/v8-map-selector.js';
+import { selectImpactedTests } from './select/pipeline.js';
+import { CoverageMapStrategy } from './select/coverage-map-strategy.js';
 
 export interface SelectE2eInput {
 	/** Changed files (file paths). */
@@ -71,8 +71,8 @@ export function selectE2e(input: SelectE2eInput): SelectE2eResult {
 	// The live V8 selection runs through the pipeline as the single selection
 	// mechanism; the AST / dep-graph selectors join this array later. Sibling
 	// fallback scopes a new/unmapped file to its nearest covered directory.
-	const result = selectAffected(changed, [
-		new V8MapSelector(map, { allSpecs, siblingFallback: true }),
+	const result = selectImpactedTests(changed, [
+		new CoverageMapStrategy(map, { allSpecs, siblingFallback: true }),
 	]);
 	return { ...result, failOpen };
 }

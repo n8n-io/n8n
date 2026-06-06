@@ -1,5 +1,5 @@
 import type { ChangedFile, ResolveResult } from '../coverage-map.js';
-import type { Selector } from './selector.js';
+import type { SelectionStrategy } from './strategy.js';
 
 /**
  * Run every selector over the changed files and combine, biased to OVER-select:
@@ -12,7 +12,10 @@ import type { Selector } from './selector.js';
  * `V8 ∪ AST` union that `distribute-tests` previously did inline, so adding a
  * dep-graph or AST selector needs no change here.
  */
-export function selectAffected(changed: ChangedFile[], selectors: Selector[]): ResolveResult {
+export function selectImpactedTests(
+	changed: ChangedFile[],
+	selectors: SelectionStrategy[],
+): ResolveResult {
 	const specs = new Set<string>();
 	const unmapped = new Set<string>();
 	const viaSibling = new Set<string>();

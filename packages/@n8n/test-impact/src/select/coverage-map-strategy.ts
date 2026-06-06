@@ -1,6 +1,6 @@
 import type { ChangedFile, ImpactMap, ResolveResult } from '../coverage-map.js';
 import { resolveImpact } from '../coverage-map.js';
-import type { Selector } from './selector.js';
+import type { SelectionStrategy } from './strategy.js';
 
 /**
  * Selection via the runtime V8 coverage map: a changed source file resolves to
@@ -8,8 +8,8 @@ import type { Selector } from './selector.js';
  * supplied, whole-file otherwise). Thin Strategy wrapper around the pure
  * {@link resolveImpact}; the fail-open-to-broad contract lives there.
  */
-export class V8MapSelector implements Selector {
-	readonly name = 'v8-map';
+export class CoverageMapStrategy implements SelectionStrategy {
+	readonly name = 'coverage-map';
 
 	constructor(
 		private readonly map: ImpactMap,
