@@ -39,8 +39,9 @@ const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
 /**
  * Judge author-written natural-language expectations about the build conversation +
- * resulting workflow. Informational only — never feeds verify_pass@k. Never throws:
- * on total judge failure it returns an all-fail verdict so the report stays complete.
+ * resulting workflow. Informational only — never feeds verify_pass@k. On judge failure
+ * (errors or timeouts across all attempts) it returns an all-fail verdict so the report
+ * stays complete; callers additionally guard with `.catch()`.
  */
 export async function verifyBuildExpectations(
 	expectations: string[],
@@ -92,17 +93,13 @@ export async function verifyBuildExpectations(
 			clearTimeout(timer);
 		}
 
-		const parsed = result.structuredOutput as z.infer<typeof expectationResultSchema> | undefined;
+		const parsed = expectationResultSchema.safeParse(result.structuredOutput);
 		const byIndex = new Map<number, { pass: boolean; reason: string }>();
-		if (parsed?.results) {
-			for (const entry of parsed.results) {
-				if (
-					typeof entry.index === 'number' &&
-					entry.index >= 0 &&
-					entry.index < expectations.length &&
-					typeof entry.pass === 'boolean'
-				) {
-					byIndex.set(entry.index, { pass: entry.pass, reason: entry.reason ?? '' });
+		if (parsed.success) {
+			for (const entry of parsed.data.results) {
+				// Schema validated index/pass/reason types; only the range needs checking.
+				if (entry.index >= 0 && entry.index < expectations.length) {
+					byIndex.set(entry.index, { pass: entry.pass, reason: entry.reason });
 				}
 			}
 		}

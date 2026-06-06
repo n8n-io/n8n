@@ -470,7 +470,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
 	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
 		const expectations = conversationByFileSlug.get(fileSlug)?.buildExpectations;
-		if (!build.threadId || !build.success || !expectations?.length || !build.transcript?.length) {
+		// Judge whenever there's a transcript — even on build failure, matching the
+		// direct-loop runner; the judge prompt handles the "no workflow produced" case.
+		if (!build.threadId || !expectations?.length || !build.transcript?.length) {
 			return;
 		}
 		buildExpectationsByThreadId.set(
@@ -562,6 +564,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					buildDurationMs,
 					execDurationMs: Date.now() - execStart,
 					nodeCount,
+					threadId: build.threadId,
 					workflowChecks: build.workflowChecks,
 				};
 			}

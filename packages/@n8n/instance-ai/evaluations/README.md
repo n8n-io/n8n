@@ -195,6 +195,34 @@ Operational details:
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
 - LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
+### Build expectations (per test case)
+
+A test case can declare optional natural-language assertions about *how the build went* — `buildExpectations: string[]` in its JSON. Each is graded by a separate Sonnet judge (`build-expectations/verifier.ts`) against the **conversation transcript + final workflow + conversation metrics**, and is **informational only** — it never affects `scenario_pass`, pass@k, or the score badge.
+
+Use it for things the binary checks and `successCriteria` don't cover:
+
+- **Process / conversational** — `"Before building, the agent asked which Slack channel to use."` (judged from the transcript)
+- **Outcome tied to the conversation** — `"The final workflow reflects the user's follow-up to split the records envelope before posting."` (judged from the workflow)
+
+```json
+"buildExpectations": [
+  "Before building, the agent asked which Airtable table and which Slack channel to use.",
+  "The agent honored the user's instruction to fetch via an HTTP Request node, not the Airtable node."
+]
+```
+
+The signal surfaces in:
+
+- **HTML report** — a "Build expectations" disclosure on the test case: per-expectation &#10003;/&#10007; with a one-line judge reason.
+- **`eval-results.json`** — `buildExpectationResultsPerRun` (per-iteration verdicts), so pass rates are queryable.
+
+Operational details:
+
+- Judged **once per build** (not per scenario), fired concurrently with the scenario batch — ~0 added wall-clock in the common case.
+- Runs on both eval paths (direct loop + LangSmith). Requires a build transcript, so it's judged even when the build fails, and skipped only when no transcript was captured.
+- The judge never affects scoring, retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
+- Absent the field, it's a complete no-op.
+
 ## Environment variables
 
 | Variable | Required | Description |
