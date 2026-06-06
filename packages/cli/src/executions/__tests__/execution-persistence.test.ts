@@ -10,6 +10,8 @@ import {
 	type ExecutionRepository,
 } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
+import fc from 'fast-check';
+import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -975,6 +977,278 @@ describe('ExecutionPersistence', () => {
 
 			expect(result?.data).not.toEqual(bundle.data);
 			expect(result?.data).toBeTruthy();
+		});
+
+		it('should produce JSON-safe output when execution data contains a circular reference', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+
+			const runData = createEmptyRunExecutionData();
+			const circularObj: Record<string, unknown> = { value: 'http-response' };
+			circularObj.socket = circularObj;
+			(runData.resultData.runData as Record<string, unknown>)['HTTP Node'] = [
+				{ data: { main: [[{ json: circularObj }]] } },
+			];
+
+			dbStore.read.mockResolvedValue({ ...bundle, data: stringify(runData) });
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(() => JSON.stringify(result)).not.toThrow();
+		});
+
+		it('should replace circular references with the "[Circular Reference]" sentinel', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+
+			const runData = createEmptyRunExecutionData();
+			const circularObj: Record<string, unknown> = { key: 'value' };
+			circularObj.back = circularObj;
+			(runData.resultData.runData as Record<string, unknown>)['Some Node'] = [
+				{ data: { main: [[{ json: circularObj }]] } },
+			];
+
+			dbStore.read.mockResolvedValue({ ...bundle, data: stringify(runData) });
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			const nodeRun = (
+				result?.data?.resultData.runData['Some Node'] as unknown as Array<{
+					data: { main: Array<Array<{ json: Record<string, unknown> }>> };
+				}>
+			)[0];
+			expect(nodeRun.data.main[0][0].json.back).toBe('[Circular Reference]');
+		});
+
+		it('should keep engine-relevant fields intact when contextData contains circular references', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+
+			const runData = createEmptyRunExecutionData();
+			(runData.resultData.runData as Record<string, unknown>)['HTTP Request'] = [
+				{ data: { main: [[{ json: { statusCode: 200, body: 'ok' } }]] } },
+			];
+
+			const socketRef: Record<string, unknown> = { type: 'TLSSocket' };
+			socketRef._httpMessage = { res: socketRef };
+			runData.executionData = {
+				contextData: {
+					'node:HTTP Request': {
+						socket: socketRef,
+					} as unknown as import('n8n-workflow').IContextObject,
+				},
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			dbStore.read.mockResolvedValue({ ...bundle, data: stringify(runData) });
+
+			const result = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(result?.data?.resultData.runData['HTTP Request']).toBeDefined();
+			expect(
+				(
+					result?.data?.resultData.runData['HTTP Request'] as unknown as Array<{
+						data: { main: Array<Array<{ json: { statusCode: number; body: string } }>> };
+					}>
+				)[0].data.main[0][0].json.statusCode,
+			).toBe(200);
+			expect(result?.data?.executionData?.contextData).toBeDefined();
+
+			const ctx = result?.data?.executionData?.contextData?.['node:HTTP Request'] as Record<
+				string,
+				unknown
+			>;
+			const socket = ctx?.socket as Record<string, unknown>;
+			const httpMessage = socket?._httpMessage as Record<string, unknown>;
+			expect(httpMessage?.res).toBe('[Circular Reference]');
+			expect(() => JSON.stringify(result)).not.toThrow();
+		});
+
+		// Property-based tests — fast-check finds unknowns example tests miss.
+		describe('property: circular reference sanitisation (fix-specific)', () => {
+			// Excludes __proto__/constructor/prototype: valid JSON keys that break object
+			// copy semantics unrelated to circular refs.
+			const arbSafeKey = fc
+				.string({ minLength: 1 })
+				.filter((k) => !['__proto__', 'constructor', 'prototype'].includes(k));
+
+			const arbJsonValue = fc.jsonValue({ depthSize: 'small' });
+			const arbNodeItem = fc.record({ json: fc.dictionary(arbSafeKey, arbJsonValue) });
+			const arbRunData = fc.dictionary(
+				arbSafeKey,
+				fc.array(
+					fc.record({
+						data: fc.record({ main: fc.array(fc.array(arbNodeItem)) }),
+					}),
+					{ minLength: 1, maxLength: 3 },
+				),
+			);
+
+			// NOTE: the test below passes even without the CAT-3121 fix (no circulars in
+			// clean data). It guards general round-trip correctness, not the specific fix.
+			it('should be JSON.stringify-safe for arbitrary clean execution data', async () => {
+				await fc.assert(
+					fc.asyncProperty(arbRunData, async (runData) => {
+						const execData = createEmptyRunExecutionData();
+						Object.assign(execData.resultData.runData, runData);
+
+						const executionPersistence = createPersistenceService('db');
+						executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+						dbStore.read.mockResolvedValue({ ...bundle, data: stringify(execData) });
+
+						const result = await executionPersistence.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+
+						expect(() => JSON.stringify(result)).not.toThrow();
+					}),
+					{ numRuns: 50 },
+				);
+			});
+
+			it('should be JSON.stringify-safe when circular refs are injected at arbitrary depth', async () => {
+				const arbWithCircular = arbRunData.map((runData) => {
+					const nodeNames = Object.keys(runData);
+					if (nodeNames.length === 0) return runData;
+					const target = runData[nodeNames[0]];
+					if (!target?.length || !target[0]?.data?.main?.[0]?.[0]) return runData;
+					const item = target[0].data.main[0][0] as Record<string, unknown>;
+					const circ: Record<string, unknown> = { extra: 'data' };
+					circ.self = circ;
+					item.circular = circ;
+					return runData;
+				});
+
+				await fc.assert(
+					fc.asyncProperty(arbWithCircular, async (runData) => {
+						const execData = createEmptyRunExecutionData();
+						Object.assign(execData.resultData.runData, runData);
+
+						const executionPersistence = createPersistenceService('db');
+						executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+						dbStore.read.mockResolvedValue({ ...bundle, data: stringify(execData) });
+
+						const result = await executionPersistence.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+
+						expect(() => JSON.stringify(result)).not.toThrow();
+					}),
+					{ numRuns: 50 },
+				);
+			});
+
+			// NOTE: passes without the fix — guards round-trip value preservation.
+			it('should preserve non-circular node output values exactly', async () => {
+				await fc.assert(
+					fc.asyncProperty(
+						arbSafeKey,
+						fc.dictionary(arbSafeKey, arbJsonValue),
+						async (nodeName, nodeJson) => {
+							const execData = createEmptyRunExecutionData();
+							(execData.resultData.runData as Record<string, unknown>)[nodeName] = [
+								{ data: { main: [[{ json: nodeJson }]] } },
+							];
+
+							const executionPersistence = createPersistenceService('db');
+							executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+							dbStore.read.mockResolvedValue({ ...bundle, data: stringify(execData) });
+
+							const result = await executionPersistence.findSingleExecution(executionId, {
+								includeData: true,
+								unflattenData: true,
+							});
+
+							const output = (
+								result?.data?.resultData.runData[nodeName] as unknown as Array<{
+									data: { main: Array<Array<{ json: unknown }>> };
+								}>
+							)?.[0]?.data?.main?.[0]?.[0]?.json;
+
+							expect(output).toEqual(nodeJson);
+						},
+					),
+					{ numRuns: 100 },
+				);
+			});
+
+			// NOTE: passes without the fix — guards replaceCircularReferences DAG safety.
+			it('should not mark shared (non-circular) objects as circular references', async () => {
+				await fc.assert(
+					fc.asyncProperty(fc.dictionary(arbSafeKey, arbJsonValue), async (sharedJson) => {
+						const execData = createEmptyRunExecutionData();
+						(execData.resultData.runData as Record<string, unknown>)['Node A'] = [
+							{ data: { main: [[{ json: sharedJson }]] } },
+						];
+						(execData.resultData.runData as Record<string, unknown>)['Node B'] = [
+							{ data: { main: [[{ json: sharedJson }]] } },
+						];
+
+						const executionPersistence = createPersistenceService('db');
+						executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+						dbStore.read.mockResolvedValue({ ...bundle, data: stringify(execData) });
+
+						const result = await executionPersistence.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+
+						// Neither copy should be replaced with the sentinel
+						const getJson = (node: string) =>
+							(
+								result?.data?.resultData.runData[node] as unknown as Array<{
+									data: { main: Array<Array<{ json: unknown }>> };
+								}>
+							)?.[0]?.data?.main?.[0]?.[0]?.json;
+
+						expect(getJson('Node A')).toEqual(sharedJson);
+						expect(getJson('Node B')).toEqual(sharedJson);
+						expect(() => JSON.stringify(result)).not.toThrow();
+					}),
+					{ numRuns: 50 },
+				);
+			});
+
+			// NOTE: passes without the fix — guards idempotency of replaceCircularReferences.
+			it('should be idempotent: replaceCircularReferences applied twice equals once', async () => {
+				const { replaceCircularReferences } = await import('n8n-workflow');
+
+				await fc.assert(
+					fc.asyncProperty(arbRunData, async (runData) => {
+						const execData = createEmptyRunExecutionData();
+						Object.assign(execData.resultData.runData, runData);
+
+						const executionPersistence = createPersistenceService('db');
+						executionRepository.findOne.mockResolvedValue(mockEntity('db'));
+						dbStore.read.mockResolvedValue({ ...bundle, data: stringify(execData) });
+
+						const result = await executionPersistence.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+
+						const once = replaceCircularReferences(result?.data);
+						const twice = replaceCircularReferences(replaceCircularReferences(result?.data));
+
+						expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
+					}),
+					{ numRuns: 50 },
+				);
+			});
 		});
 
 		it('should pass the annotation relation when requested', async () => {

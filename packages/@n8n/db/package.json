@@ -51,6 +51,7 @@
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "express": "5.1.0",
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

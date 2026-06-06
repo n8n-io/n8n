@@ -17,7 +17,7 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
-import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { migrateRunExecutionData, replaceCircularReferences, UnexpectedError } from 'n8n-workflow';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
@@ -650,7 +650,10 @@ export class ExecutionPersistence {
 		try {
 			const deserialized: unknown = await parseFlatted(data);
 			if (!deserialized) return undefined;
-			return migrateRunExecutionData(deserialized as IRunExecutionDataAll);
+			const migrated = migrateRunExecutionData(deserialized as IRunExecutionDataAll);
+			// Nodes can leak live socket objects (e.g. TLSSocket → _httpMessage → res)
+			// into output; flatted stores them faithfully but JSON.stringify then throws.
+			return replaceCircularReferences(migrated);
 		} catch (error) {
 			throw new CorruptedExecutionDataError(ref, error);
 		}

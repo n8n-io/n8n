@@ -32,7 +32,7 @@ import type {
 	IRunExecutionData,
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
-import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { migrateRunExecutionData, replaceCircularReferences, UnexpectedError } from 'n8n-workflow';
 
 import {
 	AnnotationTagEntity,
@@ -723,17 +723,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
-	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: false,
-			includeAnnotation: true,
-		});
-	}
-
 	async findIfAccessible(executionId: string, accessibleWorkflowIds: string[]) {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(accessibleWorkflowIds) },
@@ -1148,9 +1137,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (options.unflattenData) {
 			// Parse the serialized data (async for large payloads to avoid blocking the event loop).
 			const deserializedData: unknown = await parseFlatted(data);
-			// If it parses to an object, migrate and return it.
 			if (deserializedData) {
-				return migrateRunExecutionData(deserializedData as IRunExecutionDataAll);
+				const migrated = migrateRunExecutionData(deserializedData as IRunExecutionDataAll);
+				return replaceCircularReferences(migrated);
 			}
 			return undefined;
 		}

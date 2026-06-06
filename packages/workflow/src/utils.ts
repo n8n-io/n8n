@@ -216,7 +216,19 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
 		try {
-			copy[key] = replaceCircularReferences(value[key], knownObjects);
+			const sanitized = replaceCircularReferences(value[key], knownObjects);
+			// `__proto__` via bracket assignment modifies the prototype chain rather than
+			// creating an own property. defineProperty keeps it as a regular data property.
+			if (key === '__proto__') {
+				Object.defineProperty(copy, '__proto__', {
+					value: sanitized,
+					writable: true,
+					configurable: true,
+					enumerable: true,
+				});
+			} else {
+				copy[key] = sanitized;
+			}
 		} catch (error: unknown) {
 			if (
 				error instanceof TypeError &&

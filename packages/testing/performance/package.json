@@ -14,6 +14,7 @@
     "@codspeed/vitest-plugin": "^5.2.0",
     "@n8n/expression-runtime": "workspace:*",
     "vitest": "catalog:",
+    "fast-check": "catalog:",
     "n8n-workflow": "workspace:*"
   },
   "license": "LicenseRef-n8n-sustainable-use"

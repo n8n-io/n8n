@@ -1559,6 +1559,9 @@ importers:
       express:
         specifier: 5.1.0
         version: 5.1.0
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -3472,6 +3475,9 @@ importers:
       esbuild:
         specifier: ^0.25.0
         version: 0.25.10
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       ioredis-mock:
         specifier: ^8.8.1
         version: 8.8.1(@types/ioredis-mock@8.2.2)(ioredis@5.3.2)
@@ -5143,6 +5149,9 @@ importers:
       '@n8n/expression-runtime':
         specifier: workspace:*
         version: link:../../@n8n/expression-runtime
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
