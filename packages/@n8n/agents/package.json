@@ -64,7 +64,7 @@
     "@ai-sdk/provider-utils": "^4.0.21",
     "@ai-sdk/xai": "^3.0.67",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@n8n/ai-utilities": "workspace:*",
+    "@n8n/text-editor": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",

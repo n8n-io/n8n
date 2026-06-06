@@ -1,4 +1,4 @@
-import { Workspace, type WorkspaceFilesystem, type WorkspaceSandbox } from '@n8n/agents';
+import { Workspace } from '@n8n/agents';
 import {
 	createFilesystem,
 	createSandbox as createSharedSandbox,
@@ -89,7 +89,7 @@ export function createWorkspace(sandbox: SandboxInstance | undefined): Workspace
 	if (!filesystem) return undefined;
 
 	return new Workspace({
-		sandbox: sandbox as unknown as WorkspaceSandbox,
-		filesystem: filesystem as unknown as WorkspaceFilesystem,
+		sandbox,
+		filesystem,
 	});
 }

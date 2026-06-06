@@ -66,6 +66,7 @@
     "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/text-editor": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",

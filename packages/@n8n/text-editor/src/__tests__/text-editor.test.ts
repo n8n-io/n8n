@@ -1,10 +1,12 @@
+import { describe, expect, it } from 'vitest';
+
 import {
 	MultipleMatchesError,
 	NoMatchFoundError,
 	TextEditorDocument,
 	findDivergenceContext,
 	parseStrReplacements,
-} from '../../utils/text-editor';
+} from '..';
 
 describe('TextEditorDocument', () => {
 	it('views text with line numbers', () => {

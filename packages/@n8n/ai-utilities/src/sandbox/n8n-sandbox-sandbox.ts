@@ -1,14 +1,13 @@
 import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
-import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-
 import {
 	BaseSandbox,
 	type CommandResult,
 	type ExecuteCommandOptions,
 	type ProviderStatus,
 	type SandboxInfo,
-} from './types';
+} from '@n8n/agents';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 
 export interface N8nSandboxServiceSandboxOptions {
 	id?: string;

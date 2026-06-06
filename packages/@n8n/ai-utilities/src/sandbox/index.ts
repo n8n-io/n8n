@@ -15,13 +15,7 @@ export {
 } from './workspace-root';
 export { runInSandbox } from './run-in-sandbox';
 export { createFilesystem, createSandbox } from './create-workspace';
-export { DaytonaSandbox } from './daytona-sandbox';
-export { DaytonaFilesystem } from './daytona-filesystem';
-export { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
-export { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 export type {
-	BaseFilesystemOptions,
-	BaseSandboxOptions,
 	CommandResult,
 	CopyOptions,
 	SandboxProvider,
@@ -37,7 +31,9 @@ export type {
 	FileEntry,
 	FileStat,
 	ListOptions,
+	MountConfig,
 	ProcessHandle,
+	ProcessInfo,
 	ProviderStatus,
 	ReadOptions,
 	RemoveOptions,
@@ -48,5 +44,4 @@ export type {
 	WorkspaceSandbox,
 	WriteOptions,
 } from './types';
-export { BaseFilesystem, BaseSandbox, shellQuote } from './types';
 export type { Logger, ErrorReporter } from './logger';

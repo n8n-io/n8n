@@ -8,18 +8,18 @@ import type {
 	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
-import { randomUUID } from 'node:crypto';
-
-import { DaytonaAuthManager } from './daytona-auth-manager';
-import { loadDaytona } from './lazy-daytona';
-import type { ErrorReporter, Logger } from './logger';
 import {
 	BaseSandbox,
 	type CommandResult,
 	type ExecuteCommandOptions,
 	type ProviderStatus,
 	type SandboxInfo,
-} from './types';
+} from '@n8n/agents';
+import { randomUUID } from 'node:crypto';
+
+import { DaytonaAuthManager } from './daytona-auth-manager';
+import { loadDaytona } from './lazy-daytona';
+import type { ErrorReporter, Logger } from './logger';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';

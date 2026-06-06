@@ -7,7 +7,7 @@ export {
 	FileExistsError,
 	FileNotFoundError,
 	BatchReplacementError,
-} from '@n8n/ai-utilities/text-editor';
+} from '@n8n/text-editor';
 
 export type {
 	ViewCommand,
@@ -19,4 +19,4 @@ export type {
 	TextEditorResult,
 	StrReplacement,
 	BatchReplaceResult,
-} from '@n8n/ai-utilities/text-editor';
+} from '@n8n/text-editor';

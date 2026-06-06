@@ -98,6 +98,7 @@
   "dependencies": {
     "@daytonaio/sdk": "catalog:",
     "@n8n/sandbox-client": "0.0.4",
+    "@n8n/agents": "workspace:*",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
@@ -107,6 +108,7 @@
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
+    "@n8n/text-editor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "tmp-promise": "3.0.3",
