@@ -10,7 +10,12 @@ import {
 import { filterLlmMessages } from '../sdk/message';
 import { Tool } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
-import type { FinishReason, GenerateResult, TokenUsage } from '../types/sdk/agent';
+import type {
+	AgentExecutionCounter,
+	FinishReason,
+	GenerateResult,
+	TokenUsage,
+} from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
 import type { BuiltTool, ToolContext } from '../types/sdk/tool';
 
@@ -113,6 +118,8 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	 * cancelling the parent run also cancels the delegated work.
 	 */
 	parentAbortSignal?: AbortSignal;
+	/** Parent aggregate execution counter (`ctx.executionCounter`) for inline child accounting. */
+	parentExecutionCounter?: AgentExecutionCounter;
 	/** How many siblings the parent already spawned before this one (0-based). */
 	childCount: number;
 	/** Effective policy for this delegation. */
@@ -352,6 +359,9 @@ async function handleDelegateSubAgent(
 				: {}),
 			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
 			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
+			...(ctx.executionCounter !== undefined
+				? { parentExecutionCounter: ctx.executionCounter }
+				: {}),
 			...(options.policy !== undefined ? { policy: options.policy } : {}),
 		};
 

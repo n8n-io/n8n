@@ -381,6 +381,145 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
 		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
 	});
+
+	it('keeps delegate_subagent output usage per tool call without adding it to generate result usage', async () => {
+		const delegateTool: BuiltTool = {
+			name: DELEGATE_SUB_AGENT_TOOL_NAME,
+			description: 'Delegate work',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					answer: 'child answer',
+					usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
+				}),
+		};
+		const counter = makeExecutionCounter();
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-delegate',
+						toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+						args: { value: 'research' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('delegate', { executionCounter: counter });
+
+		expect(result.usage).toMatchObject({
+			promptTokens: 20,
+			completionTokens: 10,
+			totalTokens: 30,
+		});
+		expect(result.toolCalls?.[0]?.output).toEqual(
+			expect.objectContaining({
+				usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
+			}),
+		);
+		expect(counter.incrementTokenCount).toHaveBeenCalledTimes(2);
+		expect(counter.incrementTokenCount).toHaveBeenNthCalledWith(1, 15);
+		expect(counter.incrementTokenCount).toHaveBeenNthCalledWith(2, 15);
+	});
+
+	it('does not roll normal tool output usage-like fields into generate result usage', async () => {
+		const normalTool: BuiltTool = {
+			name: 'normal_tool',
+			description: 'Normal tool',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () =>
+				await Promise.resolve({
+					usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7 },
+				}),
+		};
+		const { runtime } = createRuntimeWithTools([normalTool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-normal', toolName: 'normal_tool', args: { value: 'run' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('use normal tool');
+
+		expect(result.usage).toMatchObject({
+			promptTokens: 20,
+			completionTokens: 10,
+			totalTokens: 30,
+		});
+	});
+
+	it('keeps delegate_subagent output usage per stream tool result without adding it to finish usage', async () => {
+		const delegateTool: BuiltTool = {
+			name: DELEGATE_SUB_AGENT_TOOL_NAME,
+			description: 'Delegate work',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					answer: 'child answer',
+					usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
+				}),
+		};
+		const { runtime } = createRuntimeWithTools([delegateTool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-delegate',
+									toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+									args: { value: 'research' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{
+						toolCallId: 'tc-delegate',
+						toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+						input: { value: 'research' },
+					},
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('done'));
+
+		const result = await runtime.stream('delegate');
+		const chunks = await collectChunks(result.stream);
+		const finishChunks = chunks.filter((chunk) => chunk.type === 'finish');
+		const finish = finishChunks[finishChunks.length - 1] as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		const toolResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolName === DELEGATE_SUB_AGENT_TOOL_NAME,
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 20,
+			completionTokens: 10,
+			totalTokens: 30,
+		});
+		expect(toolResult?.output).toEqual(
+			expect.objectContaining({
+				usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7, cost: 0.01 },
+			}),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
