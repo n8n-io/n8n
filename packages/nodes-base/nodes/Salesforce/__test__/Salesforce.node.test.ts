@@ -1,6 +1,12 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
@@ -3109,7 +3115,17 @@ describe('Salesforce', () => {
 		});
 
 		describe('Error Handling', () => {
-			it('should handle errors with continueOnFail true', async () => {
+			beforeEach(() => {
+				(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
+					(data: object) => [{ json: data }],
+				);
+				(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+					(data: INodeExecutionData[], { itemData }: { itemData: { item: number } }) =>
+						data.map((item) => ({ ...item, pairedItem: { item: itemData.item } })),
+				);
+			});
+
+			it('should output full error details with continueOnFail true', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
 						resource: 'lead',
@@ -3122,12 +3138,112 @@ describe('Salesforce', () => {
 				});
 
 				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
-				salesforceApiRequestSpy.mockRejectedValue(new Error('API Error'));
 
-				await node.execute.call(mockExecuteFunctions);
+				const testError = new NodeApiError(mockExecuteFunctions.getNode(), {
+					message: 'Bad request - please check your parameters',
+					description: "No such column 'Fake_Field__c' on sobject of type Lead",
+					httpCode: '400',
+					error: [
+						{
+							fields: [],
+							message: "No such column 'Fake_Field__c' on sobject of type Lead",
+							errorCode: 'INVALID_FIELD',
+						},
+					],
+				});
+				testError.context = {
+					errorCode: 'INVALID_FIELD',
+					fields: null,
+				};
+
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Bad request - please check your parameters',
+					description: "No such column 'Fake_Field__c' on sobject of type Lead",
+					httpCode: '400',
+					errorCode: 'INVALID_FIELD',
+					fields: null,
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
 			});
 
-			it('should throw error with continueOnFail false', async () => {
+			it('should output fields as comma-separated string when SF returns field-level errors', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+				const testError = new NodeApiError(mockExecuteFunctions.getNode(), {
+					message: 'Bad request - please check your parameters',
+					description: 'Annual Revenue cannot be negative.',
+					httpCode: '400',
+					error: [
+						{
+							fields: ['AnnualRevenue'],
+							message: 'Annual Revenue cannot be negative.',
+							errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+						},
+					],
+				});
+				testError.context = {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue',
+				};
+
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Bad request - please check your parameters',
+					description: 'Annual Revenue cannot be negative.',
+					httpCode: '400',
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue',
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should output null for all optional fields when error lacks them', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('Generic Error'));
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Generic Error',
+					description: null,
+					httpCode: null,
+					errorCode: null,
+					fields: null,
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should throw error when continueOnFail is false', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
 						resource: 'lead',
@@ -3140,8 +3256,8 @@ describe('Salesforce', () => {
 				});
 
 				mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-				const testError = new Error('API Error');
-				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('API Error'));
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('API Error');
 			});

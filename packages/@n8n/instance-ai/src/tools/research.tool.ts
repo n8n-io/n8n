@@ -214,7 +214,7 @@ async function handleFetchUrl(
 	}
 
 	// ── Execute fetch ──────────────────────────────────────────────
-	// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match authorizeUrl signature
+
 	const authorizeUrl = async (targetUrl: string) => {
 		const redirectCheck = checkDomainAccess({
 			url: targetUrl,

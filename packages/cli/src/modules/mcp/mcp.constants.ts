@@ -6,9 +6,17 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 
+/**
+ * TELEMETRY EVENTS - backend
+ * Frontend events are defined in @n8n/mcp-apps package
+ */
 export const USER_CONNECTED_TO_MCP_EVENT = 'User connected to MCP server';
 export const USER_CALLED_MCP_TOOL_EVENT = 'User called mcp tool';
+export const MCP_PREVIEW_RENDER_REQUESTED_EVENT = 'MCP App preview render requested';
 
+/**
+ * Message constants
+ */
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';

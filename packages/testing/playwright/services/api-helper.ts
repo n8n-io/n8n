@@ -40,6 +40,13 @@ export interface InstanceAiBackgroundTimeoutSimulation {
 	timeoutAt: number;
 }
 
+export interface InstanceAiThreadStatus {
+	backgroundTasks: Array<{
+		taskId?: string;
+		status?: string;
+	}>;
+}
+
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
 export type TestState = 'fresh' | 'reset' | 'signin-only';
 
@@ -337,6 +344,18 @@ export class ApiHelpers {
 		return body.data.thread;
 	}
 
+	async getInstanceAiThreadStatus(threadId: string): Promise<InstanceAiThreadStatus> {
+		const response = await this.request.get(`/rest/instance-ai/threads/${threadId}/status`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/threads/${threadId}/status failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: Partial<InstanceAiThreadStatus> };
+		return { backgroundTasks: body.data?.backgroundTasks ?? [] };
+	}
+
 	async startInstanceAiBackgroundTimeoutSimulation(
 		userId: string,
 		threadId?: string,
@@ -352,6 +371,17 @@ export class ApiHelpers {
 
 		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
 		return body.data;
+	}
+
+	async cancelInstanceAiTask(threadId: string, taskId: string): Promise<void> {
+		const response = await this.request.post(
+			`/rest/instance-ai/chat/${threadId}/tasks/${taskId}/cancel`,
+		);
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/chat/${threadId}/tasks/${taskId}/cancel failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	async runInstanceAiLivenessSweep(now?: number): Promise<void> {

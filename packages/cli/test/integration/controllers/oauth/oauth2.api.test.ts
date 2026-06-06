@@ -235,6 +235,132 @@ describe('OAuth2 API', () => {
 			...credentialData,
 			oauthTokenData: { access_token: 'updated_token' },
 		});
+		// CSRF/PKCE state must never be persisted on the credential.
+		expect(await updatedCredential.getData()).not.toHaveProperty('csrfSecret');
+		expect(await updatedCredential.getData()).not.toHaveProperty('codeVerifier');
+	});
+
+	describe('per-flow state isolation', () => {
+		const renderCallback = () =>
+			jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+		// IAM-719: when two users on the same shared credential start OAuth concurrently,
+		// neither flow may clobber the other's CSRF/PKCE state.
+		// We use a project-scoped credential with two editors — both have credential:update,
+		// which is the realistic setup where multiple users connect their own account to
+		// the same shared blueprint.
+		it('lets two users complete concurrent OAuth flows on the same credential', async () => {
+			const teamProject = await createTeamProject(undefined, owner);
+			const editorA = await createMember();
+			const editorB = await createMember();
+			await linkUserToProject(editorA, teamProject, 'project:editor');
+			await linkUserToProject(editorB, teamProject, 'project:editor');
+			const projectCredential = await saveCredential(
+				{ name: 'Project OAuth2', type: 'testOAuth2Api', data: credentialData },
+				{ project: teamProject, role: 'credential:owner' },
+			);
+			const editorAAgent = testServer.authAgentFor(editorA);
+			const editorBAgent = testServer.authAgentFor(editorB);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			renderCallback();
+
+			// Both users initiate /auth back-to-back. Under the old behavior the second
+			// init would overwrite the first user's csrfSecret on the shared credential
+			// and the first user's callback would fail.
+			await editorAAgent
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id })
+				.expect(200);
+			await editorBAgent
+				.get('/oauth2-credential/auth')
+				.query({ id: projectCredential.id })
+				.expect(200);
+
+			const [, stateA] = await csrfSpy.mock.results[0].value;
+			const [, stateB] = await csrfSpy.mock.results[1].value;
+			expect(stateA).not.toBe(stateB);
+
+			nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'token_A' });
+			nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'token_B' });
+
+			// Editor A completes first; editor B's flow must still succeed afterwards.
+			await editorAAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'code_A', state: stateA })
+				.expect(200);
+
+			await editorBAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'code_B', state: stateB })
+				.expect(200);
+		});
+
+		it('rejects a replayed callback (state token already consumed)', async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = renderCallback();
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			nock('https://test.domain').post('/oauth2/token').reply(200, { access_token: 'first_token' });
+
+			// First callback consumes the state.
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+			expect(renderSpy).toHaveBeenLastCalledWith('oauth-callback');
+
+			// Replay with the same state must be rejected.
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+			expect(renderSpy).toHaveBeenLastCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'The OAuth callback state is invalid!' }),
+				}),
+			);
+		});
+
+		it('rejects a callback whose state has no matching entry in the cache', async () => {
+			const oauthService = Container.get(OauthService);
+			const renderSpy = renderCallback();
+
+			// Build a syntactically valid encoded state — same shape as createCsrfState
+			// produces — but never stored in the cache. Must be rejected.
+			const fakeState = {
+				token: 'forged-token',
+				createdAt: Date.now(),
+				data: oauthService['cipher'].encrypt(
+					JSON.stringify({
+						cid: credential.id,
+						origin: 'static-credential',
+						userId: owner.id,
+					}),
+				),
+			};
+			const encodedState = Buffer.from(JSON.stringify(fakeState)).toString('base64');
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state: encodedState })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenLastCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'The OAuth callback state is invalid!' }),
+				}),
+			);
+		});
 	});
 
 	describe('OAuth reconnect authorization', () => {

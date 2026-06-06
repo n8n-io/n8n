@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { LanguageModel } from 'ai';
+import type { LanguageModel, smoothStream } from 'ai';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentMessage, ContentMetadata } from './message';
@@ -13,6 +13,8 @@ import type {
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONValue } from '../utils/json';
+
+export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
 export type FinishReason =
 	| 'stop'
@@ -117,6 +119,7 @@ export type StreamChunk = ContentMetadata &
 				toolName: string;
 				output: unknown;
 				isError?: boolean;
+				canceled?: boolean;
 		  }
 		| {
 				type: 'tool-call-suspended';
@@ -156,6 +159,8 @@ export interface ExecutionOptions {
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
 	providerOptions?: ProviderOptions;
+	/** AI SDK `smoothStream` transform. Enabled by default; pass `false` to disable. */
+	smoothStream?: SmoothStreamOptions | false;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
@@ -171,6 +176,7 @@ export interface ToolResultEntry {
 	input: unknown;
 	output: unknown;
 	transformed?: boolean;
+	canceled?: boolean;
 }
 
 export interface GenerateResult {
@@ -204,6 +210,8 @@ export interface GenerateResult {
 	 * callers can handle them without try/catch.
 	 */
 	error?: unknown;
+	/** Return a snapshot of the agent state for this run. */
+	getState(): SerializableAgentState;
 }
 
 export interface StreamResult {
@@ -211,6 +219,11 @@ export interface StreamResult {
 	runId: string;
 	/** The readable stream of chunks. */
 	stream: ReadableStream<StreamChunk>;
+	/**
+	 * Return the current agent state for this run.
+	 * May be called while streaming or after the stream closes.
+	 */
+	getState(): SerializableAgentState;
 }
 
 export interface ResumeOptions {
@@ -231,8 +244,6 @@ export interface BuiltAgent {
 	): Promise<StreamResult>;
 
 	on(event: AgentEvent, handler: AgentEventHandler): void;
-
-	getState(): SerializableAgentState;
 
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
 	abort(): void;
@@ -261,11 +272,11 @@ export interface BuiltAgent {
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 
-	/** Approve a tool that uses requiresApproval or needsApprovalFn */
+	/** Approve a tool that uses requireApproval or needsApprovalFn */
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 
-	/** Deny a tool that uses requiresApproval or needsApprovalFn */
+	/** Deny a tool that uses requireApproval or needsApprovalFn */
 	deny(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	deny(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 }

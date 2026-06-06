@@ -117,7 +117,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 						<div :class="$style.iconCard"><N8nIcon icon="user" /></div>
 					</div>
 					<N8nHeading tag="h2" size="medium" align="center" class="mb-2xs">
-						Resolve dynamic credentials from user identity
+						Resolve private credentials from user identity
 					</N8nHeading>
 					<div>
 						{{ i18n.baseText('credentialResolver.view.description') }}
