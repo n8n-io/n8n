@@ -6,7 +6,7 @@ import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
-import { formatNodeCatalogLine, getPromptWorkspaceRoot, getWorkspaceRoot } from '../sandbox-setup';
+import { formatNodeCatalogLine } from '../sandbox-setup';
 
 type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
 type LinkWorkspaceSdkIfEnabled = (
@@ -179,7 +179,6 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.tsx).toBeDefined();
 	});
 });
-
 describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
@@ -331,7 +330,12 @@ describe('setupSandboxWorkspace', () => {
 					...args: [SandboxWorkspace, string, string?]
 				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
 			>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		runInSandbox.mockImplementation(async (_workspace, command) => {
+			if (command.startsWith('cat ')) {
+				return { exitCode: 1, stdout: '', stderr: '' };
+			}
+			return { exitCode: 0, stdout: '/home/daytona\n', stderr: '' };
+		});
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
@@ -520,37 +524,6 @@ describe('setupSandboxWorkspace', () => {
 		});
 	});
 });
-
-describe('getWorkspaceRoot', () => {
-	it('uses the resolved filesystem base path for lazy workspaces', async () => {
-		let initialized = false;
-		const executeCommand = vi.fn();
-		const init = vi.fn<(...args: []) => Promise<void>>(async () => {
-			await Promise.resolve();
-			initialized = true;
-		});
-		const workspace = {
-			filesystem: {
-				provider: 'lazy',
-				get basePath() {
-					return initialized ? '/sandbox' : undefined;
-				},
-				init,
-				writeFile: vi.fn(),
-				mkdir: vi.fn(),
-			},
-			sandbox: {
-				executeCommand,
-			},
-		} as unknown as SandboxWorkspace;
-
-		await expect(getWorkspaceRoot(workspace)).resolves.toBe('/sandbox');
-
-		expect(init).toHaveBeenCalledTimes(1);
-		expect(executeCommand).not.toHaveBeenCalled();
-	});
-});
-
 describe('formatNodeCatalogLine', () => {
 	it('should format a basic node with a string version', () => {
 		const node: SearchableNodeDescription = {
@@ -671,12 +644,5 @@ describe('formatNodeCatalogLine', () => {
 		const result = formatNodeCatalogLine(node);
 
 		expect(result).toBe('n8n-nodes-base.code | Code | Run custom JavaScript code | v2');
-	});
-});
-
-describe('getPromptWorkspaceRoot', () => {
-	it('returns the provider-specific workspace root used in agent prompts', () => {
-		expect(getPromptWorkspaceRoot('daytona')).toBe('/home/daytona/workspace');
-		expect(getPromptWorkspaceRoot('n8n-sandbox')).toBe('/home/user/workspace');
 	});
 });

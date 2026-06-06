@@ -423,7 +423,7 @@ export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEve
 export const findAgentNodeInTree: typeof AgentTreeMod.findAgentNodeInTree = lazyFunction(
 	() => loadAgentTree().findAgentNodeInTree,
 );
-export type { SandboxConfig } from '@n8n/ai-utilities/sandbox';
+export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';

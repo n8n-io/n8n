@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 
 // The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s
 // @daytonaio/sdk — a path the test runner can't resolve in this monorepo), so we
-// mock the first-party `lazy-daytona` module. The mock classes live in vi.hoisted
+// mock the shared sandbox module. The mock classes live in vi.hoisted
 // so they are shared between the mock factory and the test (`instanceof` checks in
 // source must see the same DaytonaError the test constructs).
 const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
@@ -44,7 +44,8 @@ const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
 	return { DaytonaError, DaytonaNotFoundError, Image };
 });
 
-vi.mock('../lazy-daytona', () => ({
+vi.mock('@n8n/ai-utilities/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities/sandbox')>()),
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 

@@ -3,16 +3,32 @@ import {
 	createFilesystem,
 	createSandbox as createSharedSandbox,
 	type CreateSandboxOptions,
-	type SandboxConfig,
+	type DaytonaSandboxConfig,
+	type DisabledSandboxConfig,
+	type N8nSandboxConfig,
+	type SandboxConfig as SharedSandboxConfig,
 	type SandboxInstance,
 	type SandboxProvider,
+	loadDaytona,
 } from '@n8n/ai-utilities/sandbox';
 
 import type { Logger } from '../logger';
-import { loadDaytona } from './lazy-daytona';
 import { SnapshotManager } from './snapshot-manager';
 
-export { type SandboxConfig, type SandboxInstance, type SandboxProvider };
+export type InstanceAiDaytonaSandboxConfig = DaytonaSandboxConfig & {
+	/** Running n8n version, used to resolve a versioned prebuilt snapshot. */
+	n8nVersion?: string;
+	/** Prefix prepended to the Daytona sandbox name and surfaced as a label. */
+	namePrefix?: string;
+};
+
+export type InstanceAiSandboxConfig =
+	| DisabledSandboxConfig
+	| InstanceAiDaytonaSandboxConfig
+	| N8nSandboxConfig;
+
+export type SandboxConfig = InstanceAiSandboxConfig;
+export { type SandboxInstance, type SandboxProvider };
 
 export interface InstanceAiCreateSandboxOptions extends CreateSandboxOptions {
 	useSnapshotFallback?: boolean;
@@ -25,6 +41,20 @@ const NOOP_LOGGER: Logger = {
 	debug: () => {},
 };
 
+function toSharedDaytonaSandboxConfig(
+	config: InstanceAiDaytonaSandboxConfig,
+): DaytonaSandboxConfig {
+	const sharedConfig = { ...config };
+	delete sharedConfig.n8nVersion;
+	delete sharedConfig.namePrefix;
+	return sharedConfig;
+}
+
+function toSharedSandboxConfig(config: InstanceAiSandboxConfig): SharedSandboxConfig {
+	if (!config.enabled || config.provider !== 'daytona') return config;
+	return toSharedDaytonaSandboxConfig(config);
+}
+
 /**
  * Create a sandbox instance based on config.
  * Returns undefined when sandbox is disabled.
@@ -33,13 +63,13 @@ const NOOP_LOGGER: Logger = {
  * - 'n8n-sandbox': n8n sandbox service-backed container.
  */
 export async function createSandbox(
-	config: SandboxConfig,
+	config: InstanceAiSandboxConfig,
 	options: InstanceAiCreateSandboxOptions = {},
 ): Promise<SandboxInstance | undefined> {
 	if (!config.enabled) return undefined;
 
 	if (config.provider !== 'daytona' || options.useSnapshotFallback !== true) {
-		return await createSharedSandbox(config, {
+		return await createSharedSandbox(toSharedSandboxConfig(config), {
 			logger: options.logger,
 			errorReporter: options.errorReporter,
 		});
@@ -68,7 +98,7 @@ export async function createSandbox(
 
 	return await createSharedSandbox(
 		{
-			...config,
+			...toSharedDaytonaSandboxConfig(config),
 			image,
 			...(snapshot ? { snapshot } : {}),
 		},
@@ -86,7 +116,6 @@ export function createWorkspace(sandbox: SandboxInstance | undefined): Workspace
 	if (!sandbox) return undefined;
 
 	const filesystem = createFilesystem(sandbox);
-	if (!filesystem) return undefined;
 
 	return new Workspace({
 		sandbox,

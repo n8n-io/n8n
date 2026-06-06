@@ -22,6 +22,13 @@ vi.mock('@n8n/ai-utilities/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof SharedSandboxMod>()),
 	createSandbox: mockCreateSharedSandbox,
 	createFilesystem: mockCreateFilesystem,
+	loadDaytona: () => ({
+		Daytona: class {
+			constructor(config: unknown) {
+				mockDaytonaConstructor(config);
+			}
+		},
+	}),
 }));
 
 vi.mock('../snapshot-manager', () => ({
@@ -38,16 +45,6 @@ vi.mock('../snapshot-manager', () => ({
 		ensureSnapshot = mockEnsureSnapshot;
 		ensureImage = mockEnsureImage;
 	},
-}));
-
-vi.mock('../lazy-daytona', () => ({
-	loadDaytona: () => ({
-		Daytona: class {
-			constructor(config: unknown) {
-				mockDaytonaConstructor(config);
-			}
-		},
-	}),
 }));
 
 import {
@@ -177,7 +174,10 @@ describe('createSandbox', () => {
 		expect(mockEnsureImage).toHaveBeenCalledWith();
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
 			{
-				...config,
+				enabled: true,
+				provider: 'daytona',
+				daytonaApiUrl: 'https://api.daytona.io',
+				daytonaApiKey: 'test-key',
 				image: { dockerfile: 'FROM node:20' },
 				snapshot: 'snapshot-name',
 			},
@@ -247,7 +247,10 @@ describe('createSandbox', () => {
 		expect(mockEnsureImage).toHaveBeenCalledWith();
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
 			{
-				...config,
+				enabled: true,
+				provider: 'daytona',
+				daytonaApiUrl: 'https://proxy.example.com',
+				getAuthToken,
 				image: { dockerfile: 'FROM node:20' },
 				snapshot: 'snapshot-name',
 			},

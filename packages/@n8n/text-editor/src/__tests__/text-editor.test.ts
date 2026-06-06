@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	FileNotFoundError,
+	InvalidLineNumberError,
+	InvalidPathError,
+	InvalidViewRangeError,
 	MultipleMatchesError,
 	NoMatchFoundError,
 	TextEditorDocument,
@@ -112,12 +116,51 @@ describe('TextEditorDocument', () => {
 	});
 });
 
+describe('text editor errors', () => {
+	it('formats matching and line errors', () => {
+		expect(new NoMatchFoundError('search string').message).toContain('No exact match found');
+		expect(new MultipleMatchesError(3).message).toContain('Found 3 matches');
+		expect(new InvalidLineNumberError(10, 5).message).toContain('Invalid line number 10');
+		expect(new InvalidViewRangeError(4, 2, 10).message).toContain('end (2)');
+	});
+
+	it('formats path and missing-file errors without workflow-specific defaults', () => {
+		const pathError = new InvalidPathError('/bad/path.ts', '/file.ts');
+		expect(pathError.message).toContain('/bad/path.ts');
+		expect(pathError.message).toContain('/file.ts');
+		expect(new FileNotFoundError().message).toContain('No file content exists');
+	});
+});
+
 describe('text editor helpers', () => {
 	it('finds useful divergence context', () => {
 		const result = findDivergenceContext('line1\nline2\nline3', 'line1\nline2\nwrong');
 
 		expect(result).toContain('line 3');
 		expect(result).toContain('line3');
+	});
+
+	it('returns undefined when divergence prefix is too short', () => {
+		const result = findDivergenceContext('abcdefghij\nklmnop', 'xyz_completely_different');
+
+		expect(result).toBeUndefined();
+	});
+
+	it('escapes whitespace and includes match percentage', () => {
+		const result = findDivergenceContext('hello world\nfoo bar\n', 'hello world\nfoo baz\t');
+
+		expect(result).toContain('\\t');
+		expect(result).toMatch(/\d+%/);
+	});
+
+	it('shows nearby file lines around the divergence point', () => {
+		const code = '  function foo() {\n    return 1;\n  }\n  function bar() {\n    return 2;\n  }';
+		const searchStr =
+			'  function foo() {\n    return 1;\n  }\n  function bar() {\n    return WRONG;\n  }';
+
+		const result = findDivergenceContext(code, searchStr);
+
+		expect(result).toContain('return 2;');
 	});
 
 	it('parses replacements from arrays and JSON strings', () => {

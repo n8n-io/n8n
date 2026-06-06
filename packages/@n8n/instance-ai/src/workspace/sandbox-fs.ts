@@ -8,30 +8,13 @@
  * command fallback keeps setup compatible with command-only providers.
  */
 
-interface SandboxCommandResult {
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-}
+import {
+	runInSandbox as runInSharedSandbox,
+	type SandboxCommandTarget,
+	type SandboxWorkspace as SharedSandboxWorkspace,
+} from '@n8n/ai-utilities/sandbox';
 
-interface SandboxCommandTarget {
-	sandbox?: {
-		provider?: string;
-		executeCommand?: (
-			command: string,
-			args?: string[],
-			options?: { cwd?: string },
-		) => Promise<SandboxCommandResult>;
-		processes?: {
-			spawn: (
-				command: string,
-				options?: { cwd?: string },
-			) => Promise<{ wait: () => Promise<SandboxCommandResult> }>;
-		};
-	};
-}
-
-export interface SandboxWorkspace extends SandboxCommandTarget {
+export interface SandboxWorkspace extends SharedSandboxWorkspace {
 	filesystem?: {
 		provider?: string;
 		basePath?: string;
@@ -42,7 +25,7 @@ export interface SandboxWorkspace extends SandboxCommandTarget {
 			options?: { recursive?: boolean },
 		) => Promise<void>;
 		mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>;
-	};
+	} & NonNullable<SharedSandboxWorkspace['filesystem']>;
 }
 
 import { getTemplateTelemetrySession } from './template-telemetry';
@@ -62,20 +45,7 @@ export async function runInSandbox(
 	command: string,
 	cwd?: string,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-	const sandbox = workspace.sandbox;
-	if (!sandbox) throw new Error('Workspace has no sandbox');
-
-	let result: { exitCode: number; stdout: string; stderr: string };
-	if (sandbox.executeCommand) {
-		const r = await sandbox.executeCommand(command, [], { cwd });
-		result = { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr };
-	} else if (sandbox.processes) {
-		const handle = await sandbox.processes.spawn(command, { cwd });
-		const r = await handle.wait();
-		result = { exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr };
-	} else {
-		throw new Error('Sandbox has neither executeCommand nor processes available');
-	}
+	const result = await runInSharedSandbox(workspace, command, cwd);
 
 	const session = getTemplateTelemetrySession(workspace);
 	if (session) {

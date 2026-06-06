@@ -1,6 +1,5 @@
 export {
 	DEFAULT_SANDBOX_PROVIDER,
-	isSandboxProvider,
 	normalizeSandboxProvider,
 } from './provider';
 export {
@@ -13,7 +12,8 @@ export {
 	getWorkspaceRoot,
 	type SandboxWorkspace,
 } from './workspace-root';
-export { runInSandbox } from './run-in-sandbox';
+export { runInSandbox, type SandboxCommandTarget } from './run-in-sandbox';
+export { loadDaytona } from './lazy-daytona';
 export { createFilesystem, createSandbox } from './create-workspace';
 export type {
 	CommandResult,

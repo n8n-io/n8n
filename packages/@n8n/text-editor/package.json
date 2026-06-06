@@ -18,10 +18,17 @@
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
-  "types": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
-    "dist/**/*",
-    "src/**/*"
+    "dist/**/*"
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

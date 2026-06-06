@@ -29,15 +29,7 @@
  *         *.ts                        # SDK workflow examples
  */
 
-import {
-	DAYTONA_HOME,
-	DAYTONA_WORKSPACE_ROOT,
-	N8N_SANDBOX_HOME,
-	N8N_SANDBOX_WORKSPACE_ROOT,
-	WORKSPACE_DIR,
-	getPromptWorkspaceRoot,
-	getWorkspaceRoot,
-} from '@n8n/ai-utilities/sandbox';
+import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
@@ -63,17 +55,6 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
-
-export {
-	DAYTONA_HOME,
-	DAYTONA_WORKSPACE_ROOT,
-	N8N_SANDBOX_HOME,
-	N8N_SANDBOX_WORKSPACE_ROOT,
-	WORKSPACE_DIR,
-	getPromptWorkspaceRoot,
-	getWorkspaceRoot,
-};
-export type { SandboxProvider } from '@n8n/ai-utilities/sandbox';
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'

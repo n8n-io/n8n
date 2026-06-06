@@ -49,6 +49,8 @@ export async function createSandbox(
 	throw new Error(`Unsupported sandbox provider: ${JSON.stringify(exhaustiveProvider)}`);
 }
 
+export function createFilesystem(sandbox: undefined): undefined;
+export function createFilesystem(sandbox: SandboxInstance): SandboxFilesystem;
 export function createFilesystem(
 	sandbox: SandboxInstance | undefined,
 ): SandboxFilesystem | undefined {

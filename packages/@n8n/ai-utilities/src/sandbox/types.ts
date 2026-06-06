@@ -2,13 +2,6 @@ import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
 
 import type { ErrorReporter, Logger } from './logger';
 
-export {
-	BaseFilesystem,
-	BaseSandbox,
-	ProcessHandle,
-	SandboxProcessManager,
-} from '@n8n/agents';
-
 export type {
 	BaseFilesystemOptions,
 	BaseSandboxOptions,
@@ -21,11 +14,13 @@ export type {
 	FileStat,
 	ListOptions,
 	MountConfig,
+	ProcessHandle,
 	ProcessInfo,
 	ProviderStatus,
 	ReadOptions,
 	RemoveOptions,
 	SandboxInfo,
+	SandboxProcessManager,
 	SpawnProcessOptions,
 	WorkspaceFilesystem,
 	WorkspaceSandbox,
@@ -53,8 +48,6 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 	daytonaApiKey?: string;
 	image?: CreateSandboxFromImageParams['image'];
 	snapshot?: string;
-	n8nVersion?: string;
-	namePrefix?: string;
 	createTimeoutSeconds?: number;
 	getAuthToken?: () => Promise<string>;
 	refreshSkewMs?: number;
