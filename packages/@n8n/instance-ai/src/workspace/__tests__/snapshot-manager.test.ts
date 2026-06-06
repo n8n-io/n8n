@@ -1,4 +1,5 @@
 /* eslint-disable import-x/order */
+import type * as SharedSandboxMod from '@n8n/ai-utilities/sandbox';
 import type { Mock } from 'vitest';
 
 // The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s
@@ -45,7 +46,7 @@ const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
 });
 
 vi.mock('@n8n/ai-utilities/sandbox', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/ai-utilities/sandbox')>()),
+	...(await importOriginal<typeof SharedSandboxMod>()),
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 
