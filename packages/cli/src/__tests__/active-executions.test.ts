@@ -408,6 +408,49 @@ describe('ActiveExecutions', () => {
 			await activeExecutions.waitForActivation(FAKE_EXECUTION_ID);
 		});
 
+		test('rejects admission atomically without creating orphaned DB records (TOCTOU fix)', async () => {
+			const queueLimitConfig = mockInstance(ExecutionsConfig, {
+				mode: 'regular',
+				onReceivedWebhookQueueLimit: 1,
+			});
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				queueLimitConfig,
+			);
+
+			// First request passes the limit check
+			const firstPromise = activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+
+			// Second concurrent request should be rejected WITHOUT creating a DB record
+			const secondPromise = activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+
+			// Wait for both to complete
+			const [firstId] = await Promise.allSettled([firstPromise, secondPromise]).then((results) => {
+				return results.map((r) => (r.status === 'fulfilled' ? r.value : null)).filter(Boolean);
+			});
+
+			// First should succeed
+			expect(firstId).toBe(FAKE_EXECUTION_ID);
+
+			// Second should be rejected
+			await expect(secondPromise).rejects.toThrow('Too many pending onReceived executions');
+
+			// Only ONE DB record should be created (no orphaned records from TOCTOU)
+			expect(executionPersistence.create).toHaveBeenCalledTimes(1);
+
+			// Only ONE execution should be in activeExecutions
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+
+			// Clean up
+			realConcurrencyControl.release({ mode: 'webhook' });
+			await activeExecutions.waitForActivation(firstId);
+		});
+
 		test('does not add an execution or release capacity when DB creation fails', async () => {
 			executionPersistence.create.mockRejectedValueOnce(new Error('create failed'));
 

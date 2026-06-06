@@ -21,6 +21,7 @@ import {
 } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
+import { v4 as uuid } from 'uuid';
 
 import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
@@ -87,14 +88,24 @@ export class ActiveExecutions {
 		const shouldActivateInBackground =
 			responseMode === 'onReceived' && maybeExecutionId === undefined;
 
-		if (shouldActivateInBackground) {
-			const maxPending = this.executionsConfig.onReceivedWebhookQueueLimit;
-			if (this.activationPromises.size >= maxPending) {
-				throw new AdmissionLimitError();
-			}
-		}
+		let tempReservationId: string | undefined;
 
 		try {
+			// For onReceived webhooks, atomically reserve a slot in activationPromises before DB operations
+			// to prevent TOCTOU race conditions and orphaned DB records.
+			if (shouldActivateInBackground) {
+				const maxPending = this.executionsConfig.onReceivedWebhookQueueLimit;
+				// Use a temporary UUID to reserve the slot
+				tempReservationId = uuid();
+				this.activationPromises.set(tempReservationId, Promise.resolve());
+
+				if (this.activationPromises.size > maxPending) {
+					// Limit exceeded - clean up and reject immediately
+					this.activationPromises.delete(tempReservationId);
+					throw new AdmissionLimitError();
+				}
+			}
+
 			if (maybeExecutionId === undefined) {
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
@@ -154,6 +165,10 @@ export class ActiveExecutions {
 			}
 		} catch (error) {
 			capacityReservation.release();
+			// Clean up temporary reservation if it was created
+			if (tempReservationId) {
+				this.activationPromises.delete(tempReservationId);
+			}
 			throw error;
 		}
 
@@ -170,13 +185,13 @@ export class ActiveExecutions {
 			responsePromise: resumingExecution?.responsePromise,
 			httpResponse: executionData.httpResponse ?? undefined,
 		};
+
 		this.activeExecutions[executionId] = execution;
 
 		this.attachCleanupHandlers(executionId, execution, capacityReservation);
 
-		this.logger.debug('Execution added', { executionId });
-
-		if (shouldActivateInBackground) {
+		if (shouldActivateInBackground && tempReservationId) {
+			// Replace temporary reservation with actual activation promise
 			const activationPromise = this.reserveCapacityAndActivate(
 				executionId,
 				executionData,
@@ -189,14 +204,18 @@ export class ActiveExecutions {
 						executionId,
 						error: executionError,
 					});
-					execution.postExecutePromise.reject(executionError);
+					postExecutePromise.reject(executionError);
 				})
 				.finally(() => {
 					this.activationPromises.delete(executionId);
 				});
 
+			// Replace temp reservation with real promise using executionId
+			this.activationPromises.delete(tempReservationId);
 			this.activationPromises.set(executionId, activationPromise);
 		}
+
+		this.logger.debug('Execution added', { executionId });
 
 		return executionId;
 	}
