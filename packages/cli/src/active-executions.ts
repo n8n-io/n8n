@@ -423,12 +423,21 @@ export class ActiveExecutions {
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { status } = this.activeExecutions[executionId];
+			const execution = this.activeExecutions[executionId];
+			const { status } = execution;
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
-			} else if (status === 'waiting' || status === 'new') {
-				// Remove waiting and new executions to not block shutdown
+			} else if (status === 'new') {
+				// Reject the post-execute promise so that attachCleanupHandlers fires
+				// (releasing any reserved capacity) and any caller of
+				// getPostExecutePromise() is unblocked rather than hung forever.
+				execution.postExecutePromise.reject(new SystemShutdownExecutionCancelledError(executionId));
+				// The .finally() in attachCleanupHandlers will remove the entry from
+				// activeExecutions once the rejection propagates; we do not delete here.
+			} else if (status === 'waiting') {
+				// Waiting executions have no valid workflowExecution or live
+				// postExecutePromise (consistent with stopExecution), so delete directly.
 				delete this.activeExecutions[executionId];
 			}
 		}

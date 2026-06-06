@@ -493,7 +493,9 @@ describe('ActiveExecutions', () => {
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 			expect(removeAllSpy).toHaveBeenCalledWith([]);
-			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
+			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
+				ManualExecutionCancelledError,
+			);
 		});
 	});
 
@@ -731,6 +733,30 @@ describe('ActiveExecutions', () => {
 
 			await new Promise(setImmediate);
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+
+		test('Should reject postExecutePromise for status=new executions so getPostExecutePromise callers are unblocked', async () => {
+			// Callers (e.g. executeWebhook parentExecution chain) await getPostExecutePromise.
+			// Before the fix, shutdown() deleted the entry without settling the promise,
+			// leaving those callers hung indefinitely. Now it rejects with
+			// SystemShutdownExecutionCancelledError, which triggers attachCleanupHandlers to
+			// fire, release capacity, and remove the entry.
+
+			// Grab post-execute promises BEFORE shutdown so we hold a reference even
+			// after the entry is removed from activeExecutions.
+			const promise1 = activeExecutions.getPostExecutePromise(newExecutionId1);
+			const promise2 = activeExecutions.getPostExecutePromise(newExecutionId2);
+
+			await activeExecutions.shutdown();
+
+			// Both promises must reject (not hang) with the shutdown cancellation error.
+			await expect(promise1).rejects.toBeInstanceOf(SystemShutdownExecutionCancelledError);
+			await expect(promise2).rejects.toBeInstanceOf(SystemShutdownExecutionCancelledError);
+
+			// After microtasks flush the .finally() cleanup, the entries must be gone.
+			await new Promise(setImmediate);
+			expect(activeExecutions.has(newExecutionId1)).toBe(false);
+			expect(activeExecutions.has(newExecutionId2)).toBe(false);
 		});
 
 		test('Should cancel all executions when cancelAll is true', async () => {
