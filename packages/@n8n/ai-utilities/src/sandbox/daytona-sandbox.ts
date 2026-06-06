@@ -8,18 +8,18 @@ import type {
 	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
+import { randomUUID } from 'node:crypto';
+
+import { DaytonaAuthManager } from './daytona-auth-manager';
+import { loadDaytona } from './lazy-daytona';
+import type { ErrorReporter, Logger } from './logger';
 import {
 	BaseSandbox,
 	type CommandResult,
 	type ExecuteCommandOptions,
 	type ProviderStatus,
 	type SandboxInfo,
-} from '@n8n/agents';
-import { randomUUID } from 'node:crypto';
-
-import { DaytonaAuthManager } from './daytona-auth-manager';
-import { loadDaytona } from './lazy-daytona';
-import type { ErrorReporter, Logger } from '../logger';
+} from './types';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
@@ -309,7 +309,9 @@ export class DaytonaSandbox extends BaseSandbox {
 		this.sandbox = undefined;
 		this.lastClientGeneration = -1;
 		this.workingDirectory = undefined;
-		this.markNeedsStart();
+		if (this.status !== 'destroyed' && this.status !== 'destroying') {
+			this.status = 'pending';
+		}
 	}
 
 	/**

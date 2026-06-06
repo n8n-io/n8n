@@ -11,6 +11,7 @@ import {
 	type RuntimeSkillSource,
 	type Workspace,
 } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';
@@ -18,7 +19,6 @@ import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
 } from '../workspace/prebaked-workspace-bundle';
-import { getWorkspaceRoot } from '../workspace/sandbox-setup';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
 import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 

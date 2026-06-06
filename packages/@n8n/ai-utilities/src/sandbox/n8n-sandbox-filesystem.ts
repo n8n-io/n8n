@@ -1,19 +1,19 @@
-import type {
-	CopyOptions,
-	FileContent,
-	FileEntry,
-	FileStat,
-	ListOptions,
-	ProviderStatus,
-	ReadOptions,
-	RemoveOptions,
-	WriteOptions,
-} from '@n8n/agents';
-import { BaseFilesystem } from '@n8n/agents';
 import { SandboxServiceError } from '@n8n/sandbox-client';
 import { dirname } from 'node:path/posix';
 
 import type { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
+import {
+	BaseFilesystem,
+	type CopyOptions,
+	type FileContent,
+	type FileEntry,
+	type FileStat,
+	type ListOptions,
+	type ProviderStatus,
+	type ReadOptions,
+	type RemoveOptions,
+	type WriteOptions,
+} from './types';
 
 function getParentDirectory(path: string): string | null {
 	const parent = dirname(path);

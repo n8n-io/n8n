@@ -56,7 +56,11 @@ function createFilesystemWorkspace(
 				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(async () => {}),
 		},
 		sandbox: {
-			executeCommand: vi.fn(),
+			executeCommand: vi.fn().mockResolvedValue({
+				exitCode: 0,
+				stdout: '/home/daytona\n',
+				stderr: '',
+			}),
 		},
 	};
 }
@@ -487,6 +491,13 @@ describe('setupSandboxWorkspace', () => {
 			filesystem: {
 				provider: 'daytona',
 				writeFile,
+			},
+			sandbox: {
+				executeCommand: vi.fn().mockResolvedValue({
+					exitCode: 0,
+					stdout: '',
+					stderr: '',
+				}),
 			},
 		} as unknown as SandboxWorkspace;
 

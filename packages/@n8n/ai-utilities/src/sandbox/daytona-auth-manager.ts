@@ -3,7 +3,7 @@ import { getJwtExpiry } from '@n8n/utils';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { loadDaytona } from './lazy-daytona';
-import type { Logger } from '../logger';
+import type { Logger } from './logger';
 
 const DEFAULT_REFRESH_SKEW_MS = 5 * 60 * 1000;
 const DECODE_FALLBACK_TTL_MS = 30 * 60 * 1000;

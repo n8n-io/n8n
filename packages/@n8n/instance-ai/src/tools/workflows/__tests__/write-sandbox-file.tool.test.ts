@@ -1,9 +1,9 @@
+import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
 import type { MockedFunction } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import { writeFileViaSandbox } from '../../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../../workspace/sandbox-setup';
 import { createWriteSandboxFileTool } from '../write-sandbox-file.tool';
 
 // ---------------------------------------------------------------------------
@@ -14,7 +14,7 @@ vi.mock('../../../workspace/sandbox-fs', () => ({
 	writeFileViaSandbox: vi.fn(),
 }));
 
-vi.mock('../../../workspace/sandbox-setup', () => ({
+vi.mock('@n8n/ai-utilities/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(),
 }));
 

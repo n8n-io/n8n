@@ -29,11 +29,19 @@
  *         *.ts                        # SDK workflow examples
  */
 
+import {
+	DAYTONA_HOME,
+	DAYTONA_WORKSPACE_ROOT,
+	N8N_SANDBOX_HOME,
+	N8N_SANDBOX_WORKSPACE_ROOT,
+	WORKSPACE_DIR,
+	getPromptWorkspaceRoot,
+	getWorkspaceRoot,
+} from '@n8n/ai-utilities/sandbox';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
-import type { SandboxProvider } from './create-workspace';
 import {
 	isLinkWorkspaceSdkEnabled,
 	packWorkspaceSdk,
@@ -55,6 +63,17 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
+
+export {
+	DAYTONA_HOME,
+	DAYTONA_WORKSPACE_ROOT,
+	N8N_SANDBOX_HOME,
+	N8N_SANDBOX_WORKSPACE_ROOT,
+	WORKSPACE_DIR,
+	getPromptWorkspaceRoot,
+	getWorkspaceRoot,
+};
+export type { SandboxProvider } from '@n8n/ai-utilities/sandbox';
 
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
@@ -85,30 +104,6 @@ async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promi
 		return await action();
 	} catch (error) {
 		throw new SandboxWorkspaceSetupError(step, error);
-	}
-}
-
-export const WORKSPACE_DIR = 'workspace';
-
-/** Default home directory inside the Daytona sandbox container. */
-export const DAYTONA_HOME = '/home/daytona';
-
-/** Absolute workspace root inside the Daytona sandbox container. */
-export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
-
-/** Default home directory inside the n8n sandbox service container. */
-export const N8N_SANDBOX_HOME = '/home/user';
-
-/** Absolute workspace root inside the n8n sandbox service container. */
-export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
-
-/** Resolve the `<workspace_root>` path shown in agent system prompts for a sandbox provider. */
-export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
-	switch (provider) {
-		case 'daytona':
-			return DAYTONA_WORKSPACE_ROOT;
-		case 'n8n-sandbox':
-			return N8N_SANDBOX_WORKSPACE_ROOT;
 	}
 }
 
@@ -424,30 +419,6 @@ async function writeWorkspaceFile(
 	}
 }
 
-/**
- * Resolve the absolute workspace root by querying $HOME from the sandbox.
- * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
- */
-const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
-
-function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
-	const filesystem = workspace.filesystem;
-	if (!filesystem) return null;
-
-	const provider = filesystem.provider;
-	if (provider !== 'local' && provider !== 'lazy') return null;
-
-	const basePath = Reflect.get(filesystem, 'basePath');
-	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
-}
-
-async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<void> {
-	const filesystem = workspace.filesystem;
-	if (filesystem?.provider !== 'lazy') return;
-
-	await filesystem.init?.();
-}
-
 async function materializeKnowledgeBaseStep(
 	workspace: SandboxWorkspace,
 	root: string,
@@ -462,30 +433,6 @@ async function materializeKnowledgeBaseStep(
 			templatesArchive: templatesBundle?.archive ?? null,
 		});
 	});
-}
-
-export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
-	const cached = workspaceRootCache.get(workspace);
-	if (cached) return cached;
-
-	const localRoot = getLocalFilesystemRoot(workspace);
-	if (localRoot) {
-		workspaceRootCache.set(workspace, localRoot);
-		return localRoot;
-	}
-
-	await initializeLazyFilesystem(workspace);
-	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
-	if (initializedLocalRoot) {
-		workspaceRootCache.set(workspace, initializedLocalRoot);
-		return initializedLocalRoot;
-	}
-
-	const result = await runInSandbox(workspace, 'echo $HOME');
-	const home = result.stdout.trim() || DAYTONA_HOME;
-	const root = `${home}/${WORKSPACE_DIR}`;
-	workspaceRootCache.set(workspace, root);
-	return root;
 }
 
 /**
