@@ -91,7 +91,7 @@ catalog:
   csv-parse: 6.2.1
   eslint: 9.29.0
   eslint-plugin-oxlint: ^1.61.0
-  fast-check: ^3.23.2
+  fast-check: ^4.8.0
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16

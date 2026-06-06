@@ -232,8 +232,8 @@ catalogs:
       specifier: ^1.61.0
       version: 1.61.0
     fast-check:
-      specifier: ^3.23.2
-      version: 3.23.2
+      specifier: ^4.8.0
+      version: 4.8.0
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -1561,7 +1561,7 @@ importers:
         version: 5.1.0
       fast-check:
         specifier: 'catalog:'
-        version: 3.23.2
+        version: 4.8.0
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -3477,7 +3477,7 @@ importers:
         version: 0.25.10
       fast-check:
         specifier: 'catalog:'
-        version: 3.23.2
+        version: 4.8.0
       ioredis-mock:
         specifier: ^8.8.1
         version: 8.8.1(@types/ioredis-mock@8.2.2)(ioredis@5.3.2)
@@ -5127,7 +5127,7 @@ importers:
         version: 4.1.1(vitest@4.1.1)
       fast-check:
         specifier: 'catalog:'
-        version: 3.23.2
+        version: 4.8.0
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -5151,7 +5151,7 @@ importers:
         version: link:../../@n8n/expression-runtime
       fast-check:
         specifier: 'catalog:'
-        version: 3.23.2
+        version: 4.8.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -5415,7 +5415,7 @@ importers:
         version: 0.4.14
       fast-check:
         specifier: 'catalog:'
-        version: 3.23.2
+        version: 4.8.0
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -14558,9 +14558,9 @@ packages:
   fake-xml-http-request@2.1.2:
     resolution: {integrity: sha512-HaFMBi7r+oEC9iJNpc3bvcW7Z7iLmM26hPDmlb0mFwyANSsOQAtJxbdWsXITKOzZUyMYK0zYCv3h5yDj9TsiXg==}
 
-  fast-check@3.23.2:
-    resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
-    engines: {node: '>=8.0.0'}
+  fast-check@4.8.0:
+    resolution: {integrity: sha512-GOJ158CUMnN6cSahsv4+ExARvIDuzzinFjkp0E9WtiBa5zcVeLozVkWaE4IzFcc+Y48Wp1EDlUZsXRyAztQcSg==}
+    engines: {node: '>=12.17.0'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -18717,6 +18717,9 @@ packages:
 
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
+
+  pure-rand@8.4.0:
+    resolution: {integrity: sha512-IoM8YF/jY0hiugFo/wOWqfmarlE6J0wc6fDK1PhftMk7MGhVZl88sZimmqBBFomLOCSmcCCpsfj7wXASCpvK9A==}
 
   python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
@@ -33555,9 +33558,9 @@ snapshots:
 
   fake-xml-http-request@2.1.2: {}
 
-  fast-check@3.23.2:
+  fast-check@4.8.0:
     dependencies:
-      pure-rand: 6.1.0
+      pure-rand: 8.4.0
 
   fast-deep-equal@3.1.3: {}
 
@@ -38700,6 +38703,8 @@ snapshots:
       - utf-8-validate
 
   pure-rand@6.1.0: {}
+
+  pure-rand@8.4.0: {}
 
   python-struct@1.1.3:
     dependencies:
