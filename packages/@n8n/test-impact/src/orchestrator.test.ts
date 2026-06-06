@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { orchestrate } from './orchestrator.js';
-import type { DiscoveredSpec } from './test-discovery-analyzer.js';
+import type { DiscoveredSpec } from './types.js';
 
 const DEFAULT_CONFIG = { defaultDuration: 60_000, maxGroupDuration: 300_000 };
 

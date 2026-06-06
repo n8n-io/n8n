@@ -45,7 +45,7 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import { encodeImpactMap, mergeCoverage } from './core/coverage-map.js';
+import { encodeImpactMap, mergeCoverage, orchestrate, selectE2e } from '@n8n/test-impact';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -71,12 +71,10 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
-import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
-import { selectE2e } from './core/select-e2e.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { runTestScoped } from './core/test-scoped-runner.js';

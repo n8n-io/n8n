@@ -11,12 +11,12 @@ import { getConfig } from '../config.js';
 import { getSourceFiles } from './project-loader.js';
 import { getRelativePath } from '../utils/paths.js';
 
-export interface DiscoveredSpec {
-	/** Spec file path relative to rootDir */
-	path: string;
-	/** Capabilities extracted from tags matching capabilityPrefix */
-	capabilities: string[];
-}
+// DiscoveredSpec is owned by @n8n/test-impact (the framework-free orchestrator
+// consumes it); re-exported here so this module's DiscoveryReport + existing
+// importers keep their API.
+import type { DiscoveredSpec } from '@n8n/test-impact';
+
+export type { DiscoveredSpec };
 
 export interface DiscoveryReport {
 	/** Active specs (specs with all tests skipped are excluded) */

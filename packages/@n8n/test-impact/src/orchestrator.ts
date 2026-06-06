@@ -6,7 +6,7 @@
  * 4. Greedy bin-packing: assign heaviest items to lightest shard
  */
 
-import type { DiscoveredSpec } from './test-discovery-analyzer.js';
+import type { DiscoveredSpec } from './types.js';
 
 export interface ShardAssignment {
 	shard: number;
