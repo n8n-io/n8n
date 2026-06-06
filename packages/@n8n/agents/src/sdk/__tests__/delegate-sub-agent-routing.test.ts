@@ -178,6 +178,8 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
+	});
+
 	it('preserves required approval when completing inline delegate tools', async () => {
 		const agent = new Agent('parent')
 			.model('openai', 'gpt-4o-mini')
