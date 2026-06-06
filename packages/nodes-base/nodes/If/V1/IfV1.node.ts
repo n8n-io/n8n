@@ -476,7 +476,7 @@ export class IfV1 implements INodeType {
 				// so it passes.
 				returnDataTrue.push(item);
 			} else {
-				// If the operation is "any" it means the the item did not match any condition.
+				// If the operation is "any" it means the item did not match any condition.
 				returnDataFalse.push(item);
 			}
 		}

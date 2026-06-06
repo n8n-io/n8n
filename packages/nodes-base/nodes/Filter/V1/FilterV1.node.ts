@@ -364,7 +364,7 @@ export class FilterV1 implements INodeType {
 			if (combineConditions === 'AND') {
 				returnDataTrue.push(item);
 			} else {
-				// If the operation is "OR" it means the the item did not match any condition.
+				// If the operation is "OR" it means the item did not match any condition.
 				returnDataFalse.push(item);
 			}
 		}

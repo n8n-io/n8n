@@ -305,7 +305,7 @@ export class PostgresV1 implements INodeType {
 				try {
 					const { db } = await configurePostgres.call(this, credentials, {});
 
-					// Acquires a new connection that can be used to to run multiple
+					// Acquires a new connection that can be used to run multiple
 					// queries on the same connection and must be released again
 					// manually.
 					connection = await db.connect();
