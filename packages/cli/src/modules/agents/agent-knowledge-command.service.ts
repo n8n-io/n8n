@@ -60,6 +60,8 @@ export interface AgentKnowledgeCommandResult {
 
 type SafePathOptions = { allowRoot?: boolean };
 
+// TODO: Phase 2+ will replace host temp workspace execution with AgentKnowledgeSandboxWorkspaceService.
+
 @Service()
 export class AgentKnowledgeCommandService {
 	private readonly cachedWorkspaces = new Map<string, CachedWorkspace>();
