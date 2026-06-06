@@ -69,6 +69,28 @@ describe('createSandbox', () => {
 		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
 		expect(result?.provider).toBe('n8n-sandbox');
 	});
+
+	it('does not include sandbox secrets in unsupported provider errors', async () => {
+		const config = {
+			enabled: true,
+			provider: 'unsupported',
+			daytonaApiKey: 'daytona-secret',
+			apiKey: 'sandbox-secret',
+		} as unknown as SandboxConfig;
+
+		let error: unknown;
+		try {
+			await createSandbox(config);
+		} catch (caught) {
+			error = caught;
+		}
+
+		expect(error).toBeInstanceOf(Error);
+		if (!(error instanceof Error)) return;
+		expect(error.message).toBe('Unsupported sandbox provider: unsupported');
+		expect(error.message).not.toContain('daytona-secret');
+		expect(error.message).not.toContain('sandbox-secret');
+	});
 });
 
 describe('createFilesystem', () => {

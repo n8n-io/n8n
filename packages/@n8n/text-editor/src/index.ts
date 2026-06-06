@@ -118,6 +118,10 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isUnknownArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
+
 export function formatTextWithLineNumbers(text: string): string {
 	const lines = text.split('\n');
 	return lines.map((line, i) => `${i + 1}: ${line}`).join('\n');
@@ -169,7 +173,7 @@ export function parseStrReplacements(raw: unknown): StrReplacement[] {
 
 	if (typeof parsed === 'string') {
 		try {
-			parsed = JSON.parse(parsed);
+			parsed = JSON.parse(parsed) as unknown;
 		} catch {
 			throw new Error(
 				'replacements must be a JSON array of {old_str, new_str} objects, but received an invalid JSON string.',
@@ -177,7 +181,7 @@ export function parseStrReplacements(raw: unknown): StrReplacement[] {
 		}
 	}
 
-	if (!Array.isArray(parsed)) {
+	if (!isUnknownArray(parsed)) {
 		throw new Error(
 			'replacements must be an array of {old_str, new_str} objects. Example: {"replacements": [{"old_str": "foo", "new_str": "bar"}]}',
 		);

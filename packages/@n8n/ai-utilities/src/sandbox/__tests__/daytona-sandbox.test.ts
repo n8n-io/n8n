@@ -164,9 +164,9 @@ vi.mock('../lazy-daytona', () => ({
 	loadDaytona: () => ({ Daytona, DaytonaError, DaytonaNotFoundError }),
 }));
 
-import type { ErrorReporter, Logger } from '../logger';
 import { DaytonaFilesystem } from '../daytona-filesystem';
 import { DaytonaSandbox } from '../daytona-sandbox';
+import type { ErrorReporter, Logger } from '../logger';
 
 function base64url(input: string): string {
 	return Buffer.from(input, 'utf8').toString('base64url');

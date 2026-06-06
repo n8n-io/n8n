@@ -1,4 +1,3 @@
-import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
 import {
 	BaseSandbox,
 	type CommandResult,
@@ -6,6 +5,7 @@ import {
 	type ProviderStatus,
 	type SandboxInfo,
 } from '@n8n/agents';
+import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 

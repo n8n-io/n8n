@@ -1,4 +1,3 @@
-import { SandboxServiceError } from '@n8n/sandbox-client';
 import {
 	BaseFilesystem,
 	type CopyOptions,
@@ -11,6 +10,7 @@ import {
 	type RemoveOptions,
 	type WriteOptions,
 } from '@n8n/agents';
+import { SandboxServiceError } from '@n8n/sandbox-client';
 import { dirname } from 'node:path/posix';
 
 import type { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';

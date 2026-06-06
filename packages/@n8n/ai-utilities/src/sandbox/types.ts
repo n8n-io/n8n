@@ -1,4 +1,28 @@
 import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
+import type {
+	BaseFilesystemOptions,
+	BaseSandboxOptions,
+	CommandOptions,
+	CommandResult,
+	CopyOptions,
+	ExecuteCommandOptions,
+	FileContent,
+	FileEntry,
+	FileStat,
+	ListOptions,
+	MountConfig,
+	ProcessHandle,
+	ProcessInfo,
+	ProviderStatus,
+	ReadOptions,
+	RemoveOptions,
+	SandboxInfo,
+	SandboxProcessManager,
+	SpawnProcessOptions,
+	WorkspaceFilesystem,
+	WorkspaceSandbox,
+	WriteOptions,
+} from '@n8n/agents';
 
 import type { ErrorReporter, Logger } from './logger';
 
@@ -25,7 +49,7 @@ export type {
 	WorkspaceFilesystem,
 	WorkspaceSandbox,
 	WriteOptions,
-} from '@n8n/agents';
+};
 
 export type SandboxProvider = 'daytona' | 'n8n-sandbox';
 
@@ -63,8 +87,8 @@ export interface N8nSandboxConfig extends SandboxConfigBase {
 
 export type SandboxConfig = DisabledSandboxConfig | DaytonaSandboxConfig | N8nSandboxConfig;
 
-export type SandboxInstance = import('@n8n/agents').WorkspaceSandbox;
-export type SandboxFilesystem = import('@n8n/agents').WorkspaceFilesystem;
+export type SandboxInstance = WorkspaceSandbox;
+export type SandboxFilesystem = WorkspaceFilesystem;
 
 export interface CreateSandboxOptions {
 	logger?: Logger;

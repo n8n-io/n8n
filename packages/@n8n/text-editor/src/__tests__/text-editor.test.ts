@@ -94,16 +94,21 @@ describe('TextEditorDocument', () => {
 			{ old_str: 'const c = 3;', new_str: 'const c = 30;' },
 		]);
 
+		expect(result).not.toBe('All 3 replacements applied successfully.');
+		if (typeof result === 'string') {
+			throw new Error(`Expected batch result details, got: ${result}`);
+		}
 		expect(result).toEqual([
 			{ index: 0, old_str: 'const a = 1;', status: 'success' },
 			{
 				index: 1,
 				old_str: 'const missing = 0;',
 				status: 'failed',
-				error: expect.stringContaining('No exact match found'),
+				error: result[1]?.error,
 			},
 			{ index: 2, old_str: 'const c = 3;', status: 'not_attempted' },
 		]);
+		expect(result[1]?.error).toContain('No exact match found');
 		expect(editor.getText()).toBe(original);
 	});
 

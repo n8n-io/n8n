@@ -15,7 +15,9 @@ export async function createSandbox(
 ): Promise<SandboxInstance | undefined> {
 	if (!config.enabled) return undefined;
 
-	if (config.provider === 'daytona') {
+	const provider = config.provider;
+
+	if (provider === 'daytona') {
 		const mode = config.getAuthToken ? 'proxy' : 'direct';
 		const logger = options.logger ?? config.logger;
 		return new DaytonaSandbox({
@@ -37,7 +39,7 @@ export async function createSandbox(
 		});
 	}
 
-	if (config.provider === 'n8n-sandbox') {
+	if (provider === 'n8n-sandbox') {
 		return new N8nSandboxServiceSandbox({
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,
@@ -45,8 +47,8 @@ export async function createSandbox(
 		});
 	}
 
-	const exhaustiveProvider: never = config;
-	throw new Error(`Unsupported sandbox provider: ${JSON.stringify(exhaustiveProvider)}`);
+	const exhaustiveProvider: never = provider;
+	throw new Error(`Unsupported sandbox provider: ${String(exhaustiveProvider)}`);
 }
 
 export function createFilesystem(sandbox: undefined): undefined;

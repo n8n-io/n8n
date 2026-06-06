@@ -1,11 +1,52 @@
-export * from '@n8n/text-editor';
-
-import type {
+import {
+	findDivergenceContext,
+	FileNotFoundError as BaseFileNotFoundError,
+	formatTextWithLineNumbers,
+	InvalidLineNumberError,
+	InvalidPathError as BaseInvalidPathError,
+	InvalidViewRangeError,
 	MultipleMatchesError,
 	NoMatchFoundError,
+	parseStrReplacements,
+	type StrReplacement,
+	TextEditorDocument,
+	type TextEditorCommand,
+} from '@n8n/text-editor';
+
+export {
+	findDivergenceContext,
+	formatTextWithLineNumbers,
+	InvalidLineNumberError,
+	InvalidViewRangeError,
+	MultipleMatchesError,
+	NoMatchFoundError,
+	parseStrReplacements,
+	TextEditorDocument,
+};
+
+export type {
+	BatchReplaceResult,
+	CreateCommand,
+	InsertCommand,
+	StrReplaceCommand,
 	StrReplacement,
 	TextEditorCommand,
+	TextEditorDocumentOptions,
+	TextEditorResult,
+	ViewCommand,
 } from '@n8n/text-editor';
+
+export class InvalidPathError extends BaseInvalidPathError {
+	constructor(path: string, supportedPath = '/workflow.js', message?: string) {
+		super(path, supportedPath, message);
+	}
+}
+
+export class FileNotFoundError extends BaseFileNotFoundError {
+	constructor(message = 'No workflow code exists yet. Use create first.') {
+		super(message);
+	}
+}
 
 export interface BatchStrReplaceCommand {
 	command: 'batch_str_replace';
