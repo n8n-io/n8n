@@ -915,6 +915,17 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-node-status-success');
 	}
 
+	/**
+	 * Nodes that show either a success OR a pinned indicator after execution.
+	 * The two test IDs are mutually exclusive in `CanvasNodeStatusIcons` (pinned
+	 * wins), so the combined count equals "nodes traversed during execution".
+	 */
+	getAllNodeExecutedIndicators(): Locator {
+		return this.page.locator(
+			'[data-test-id="canvas-node-status-success"], [data-test-id="canvas-node-status-pinned"]',
+		);
+	}
+
 	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
 		return this.page
 			.locator(
@@ -1050,6 +1061,45 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-name-input');
 	}
 
+	getTidyUpButton(): Locator {
+		return this.page.getByTestId('tidy-up-button');
+	}
+
+	async clickTidyUpButton(): Promise<void> {
+		await this.getTidyUpButton().click();
+	}
+
+	async duplicateSelectedNodes(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+d');
+	}
+
+	async nudgeSelectedNodes(
+		direction: 'left' | 'right' | 'up' | 'down',
+		repeats = 1,
+	): Promise<void> {
+		const keyMap = {
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+		};
+		for (let press = 0; press < repeats; press++) {
+			await this.page.keyboard.press(keyMap[direction]);
+		}
+	}
+
+	async panBy(deltaX: number, deltaY: number): Promise<void> {
+		const pane = this.canvasPane();
+		const box = await pane.boundingBox();
+		if (!box) throw new Error('Canvas pane not visible');
+		const startX = box.x + box.width / 2;
+		const startY = box.y + box.height / 2;
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down({ button: 'middle' });
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 20 });
+		await this.page.mouse.up({ button: 'middle' });
+	}
+
 	// Workflow History methods
 	getWorkflowHistoryButton(): Locator {
 		return this.page.getByTestId('workflow-history-button');
@@ -1065,5 +1115,78 @@ export class CanvasPage extends BasePage {
 
 	async closeWorkflowHistory(): Promise<void> {
 		await this.getWorkflowHistoryCloseButton().click();
+	}
+
+	// Canvas node groups (selection toolbar + group overlay)
+	readonly selectionToolbar = {
+		root: () => this.page.getByTestId('canvas-selection-toolbar'),
+		groupButton: () => this.page.getByTestId('canvas-selection-toolbar-group'),
+		extractSubWorkflowButton: () => this.page.getByTestId('canvas-selection-toolbar-extract'),
+	};
+
+	getNodeGroupHeader(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-header');
+	}
+
+	groupUngroupButton(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-ungroup');
+	}
+
+	getNodeGroups(): Locator {
+		return this.page.getByTestId('canvas-node-group');
+	}
+
+	getNodeGroupByTitle(title: string): Locator {
+		return this.getNodeGroups().filter({
+			has: this.page.getByTestId('canvas-node-group-title').getByText(title, { exact: true }),
+		});
+	}
+
+	getNodeGroupTitle(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-title');
+	}
+
+	async getNodeGroupBoundingBox(
+		title: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeGroupByTitle(title).boundingBox();
+		if (!box) throw new Error(`Node group with title "${title}" not found or not visible`);
+		return box;
+	}
+
+	async editNodeGroupTitle(oldTitle: string, newTitle: string, commit: 'enter' | 'blur' = 'enter') {
+		const group = await this.lockNodeGroupByTitle(oldTitle);
+		await group.getByTestId('inline-edit-preview').click();
+		const input = group.getByTestId('inline-edit-input');
+		await input.fill(newTitle);
+		if (commit === 'enter') {
+			await input.press('Enter');
+		} else {
+			await this.canvasPane().click({ position: { x: 5, y: 5 } });
+		}
+	}
+
+	async cancelNodeGroupTitleEdit(title: string) {
+		const group = await this.lockNodeGroupByTitle(title);
+		await group.getByTestId('inline-edit-preview').click();
+		const input = group.getByTestId('inline-edit-input');
+		await input.fill('temporary');
+		await input.press('Escape');
+	}
+
+	// Resolve a node group to a locator keyed by data-group-id so it stays
+	// stable even when the title text changes during edit mode.
+	private async lockNodeGroupByTitle(title: string): Promise<Locator> {
+		const groupId = await this.getNodeGroupByTitle(title).getAttribute('data-group-id');
+		if (!groupId) throw new Error(`Node group with title "${title}" not found`);
+		return this.page.locator(`[data-test-id="canvas-node-group"][data-group-id="${groupId}"]`);
+	}
+
+	async selectNodes(nodeNames: string[]): Promise<void> {
+		if (nodeNames.length === 0) return;
+		await this.nodeByName(nodeNames[0]).click();
+		for (const name of nodeNames.slice(1)) {
+			await this.nodeByName(name).click({ modifiers: ['ControlOrMeta'] });
+		}
 	}
 }

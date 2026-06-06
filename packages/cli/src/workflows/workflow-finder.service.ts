@@ -29,24 +29,7 @@ export class WorkflowFinderService {
 			em?: EntityManager;
 		} = {},
 	) {
-		let where: FindOptionsWhere<SharedWorkflow> = {};
-
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const [projectRoles, workflowRoles] = await Promise.all([
-				this.roleService.rolesWithScope('project', scopes, options.em),
-				this.roleService.rolesWithScope('workflow', scopes, options.em),
-			]);
-
-			where = {
-				role: In(workflowRoles),
-				project: {
-					projectRelations: {
-						role: In(projectRoles),
-						userId: user.id,
-					},
-				},
-			};
-		}
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
@@ -61,6 +44,52 @@ export class WorkflowFinderService {
 		}
 
 		return sharedWorkflow.workflow;
+	}
+
+	/**
+	 * Read-access check that projects only `versionId` and `updatedAt` from the
+	 * workflow row — skips the heavyweight `nodes`/`connections`/`settings` JSON
+	 * columns. Use for cache-validity checks where the body isn't needed.
+	 */
+	async findWorkflowHeadForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+	): Promise<{ versionId: string; updatedAt: Date } | null> {
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
+		const sw = await this.sharedWorkflowRepository.findOne({
+			where: { workflowId, ...where },
+			relations: { workflow: true },
+			select: {
+				workflowId: true,
+				workflow: { id: true, versionId: true, updatedAt: true },
+			},
+		});
+		if (!sw?.workflow) return null;
+		return { versionId: sw.workflow.versionId, updatedAt: sw.workflow.updatedAt };
+	}
+
+	private async buildSingleWorkflowReadWhere(
+		user: User,
+		scopes: Scope[],
+		em?: EntityManager,
+	): Promise<FindOptionsWhere<SharedWorkflow>> {
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
+
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', scopes, em),
+			this.roleService.rolesWithScope('workflow', scopes, em),
+		]);
+
+		return {
+			role: In(workflowRoles),
+			project: {
+				projectRelations: {
+					role: In(projectRoles),
+					userId: user.id,
+				},
+			},
+		};
 	}
 
 	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {

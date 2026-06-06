@@ -24,10 +24,22 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 };
 
 // Shared MCP tool types
+export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
+	'updatedAt:desc',
+	'updatedAt:asc',
+	'createdAt:desc',
+	'createdAt:asc',
+	'name:asc',
+	'name:desc',
+] as const;
+
+export type SearchWorkflowsSortBy = (typeof SEARCH_WORKFLOWS_SORT_BY_VALUES)[number];
+
 export type SearchWorkflowsParams = {
 	limit?: number;
 	query?: string;
 	projectId?: string;
+	sortBy?: SearchWorkflowsSortBy;
 };
 
 export type SearchWorkflowsItem = {
@@ -66,6 +78,8 @@ export type JSONRPCRequest = {
 	id?: string | number | null;
 };
 
+export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
+
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
@@ -73,6 +87,8 @@ export type UserConnectedToMCPEventPayload = {
 	client_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
+	mcp_apps_enabled?: boolean;
+	mcp_apps_variant?: McpAppsTelemetryVariant;
 	error?: string;
 };
 

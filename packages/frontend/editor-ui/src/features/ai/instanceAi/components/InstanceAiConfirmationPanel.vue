@@ -359,35 +359,24 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
 
-const PLAN_REVIEW_OPTIONS = ['approve', 'request-changes', 'deny'] as const;
+const PLAN_REVIEW_OPTIONS = ['approve', 'ask-for-edits', 'deny'] as const;
 
 function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
 	trackInputCompleted(
 		conf,
 		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
 		[],
-		{ num_tasks: numTasks },
+		{ num_tasks: numTasks, plan_feedback_type: 'accept' },
 	);
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
-function handlePlanRequestChanges(
-	conf: InstanceAiConfirmation,
-	feedback: string,
-	numTasks: number,
-) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'request-changes' }],
-		[],
-		{ num_tasks: numTasks, feedback },
-	);
-	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, {
-		kind: 'approval',
-		approved: false,
-		userInput: feedback,
+function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
+	thread.startPlanEdit({
+		requestId: conf.requestId,
+		inputThreadId: conf.inputThreadId,
+		taskCount: numTasks,
 	});
 }
 
@@ -396,7 +385,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 		conf,
 		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
 		[],
-		{ num_tasks: numTasks },
+		{ num_tasks: numTasks, plan_feedback_type: 'deny' },
 	);
 	thread.resolveConfirmation(conf.requestId, 'denied');
 	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
@@ -462,13 +451,11 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 						)
 					"
-					@request-changes="
-						(feedback) =>
-							handlePlanRequestChanges(
-								chunk.item.toolCall.confirmation,
-								feedback,
-								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-							)
+					@ask-for-edits="
+						handlePlanAskForEdits(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
 					"
 					@deny="
 						handlePlanDeny(

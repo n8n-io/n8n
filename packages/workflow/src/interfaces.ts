@@ -7,6 +7,7 @@ import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
+import type { JSONSchema7 } from 'json-schema';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -213,6 +214,16 @@ export interface IHttpRequestHelper {
 export abstract class ICredentialsHelper {
 	abstract getParentTypes(name: string): string[];
 
+	/**
+	 * Returns false when the credential type sets `restrictToSupportedNodes: true`
+	 * and `nodeType` is not in its `supportedNodes` list. Returns true otherwise
+	 * — including when the credential type is unknown (caller will fail later).
+	 *
+	 * Used by both the execution-engine runtime guard and the workflow-save
+	 * validator so the policy is defined in exactly one place.
+	 */
+	abstract isCredentialUsableByNode(credentialType: string, nodeType: string): boolean;
+
 	abstract authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
@@ -379,6 +390,16 @@ export interface ICredentialType {
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
+
+	/**
+	 * If `true`, this credential can ONLY be used at runtime by nodes listed in
+	 * `supportedNodes`. The execution engine will refuse to decrypt the credential
+	 * for any other node — including the HTTP Request node and its tool variants,
+	 * which normally have full access to all credential types.
+	 *
+	 * Opt-in. Existing credentials without this flag are unaffected.
+	 */
+	restrictToSupportedNodes?: true;
 }
 
 export interface ICredentialTypes {
@@ -1347,7 +1368,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	validateCookieAuth(cookieValue: string): Promise<void>;
+	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1365,6 +1386,11 @@ export interface INodeCredentialsDetails {
 export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
+
+export type ICustomTelemetryTag = {
+	key: string;
+	value: string;
+};
 
 export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
@@ -1384,7 +1410,7 @@ export interface INode {
 	onError?: OnError;
 	continueOnFail?: boolean;
 	customTelemetryTags?: {
-		tag?: Array<{ key: string; value: string }>;
+		tag?: ICustomTelemetryTag[];
 	};
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
@@ -1979,6 +2005,12 @@ export interface ExecuteAgentInfo {
 	 * from the workflow execution id and item index.
 	 */
 	sessionId?: string;
+	/**
+	 * Optional JSON Schema describing the shape the agent should return. When
+	 * provided, it is applied to this call only, and the conforming object is
+	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
+	 */
+	outputSchema?: JSONSchema7;
 }
 
 export interface ExecuteAgentOptions {
@@ -3091,6 +3123,17 @@ export interface IDestinationNode {
 	mode: 'inclusive' | 'exclusive';
 }
 
+export type WorkflowExecutionSource = 'user' | 'instance_ai';
+
+export type WorkflowExecutionMockDataSource =
+	| 'trigger_input'
+	| 'verification_pin_data'
+	| 'workflow_pin_data';
+
+export interface IWorkflowExecutionTelemetryMetadata {
+	mockDataSources?: WorkflowExecutionMockDataSource[];
+}
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
@@ -3114,6 +3157,14 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	/**
+	 * Who initiated this run. Unset means a regular user-initiated run;
+	 * `'instance_ai'` when the AI assistant ran the workflow on the user's
+	 * behalf. Consumed by the execution push (so the editor can tell agent runs
+	 * apart) and by telemetry.
+	 */
+	source?: WorkflowExecutionSource;
+	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
 		name: string;
@@ -3209,6 +3260,8 @@ export interface IWorkflowExecuteAdditionalData {
 		executionId: string,
 		threadId: string,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executionMode: WorkflowExecuteMode,
+		outputSchema?: JSONSchema7,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3263,12 +3316,20 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
-	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * The n8n user a dynamically-resolved private credential belongs to, set during
+	 * credential resolution when the resolver maps the execution's identity to an n8n
+	 * user. Execution-scoped (one identity per execution), so it is not reset per node.
+	 * The execution engine copies it onto `runtimeData.executedByUserId` for the
+	 * redaction layer.
+	 */
+	dynamicCredentialsResolvedUserId?: string;
 	otel?: {
 		injectTraceHeaders: (
 			executionId: string,
@@ -3311,6 +3372,7 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
 export interface WorkflowFEMeta {

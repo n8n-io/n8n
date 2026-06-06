@@ -6,7 +6,8 @@ import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const mockImportWorkflowExact = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
@@ -85,6 +86,7 @@ vi.mock('@/features/execution/executions/executions.utils', async (importOrigina
 const mockRoute = vi.hoisted(() => ({
 	name: 'workflow' as string,
 	query: {} as Record<string, string>,
+	params: {} as Record<string, string>,
 }));
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
@@ -93,12 +95,6 @@ vi.mock('vue-router', async (importOriginal) => {
 		useRoute: vi.fn(() => mockRoute),
 	};
 });
-
-function createMockWorkflowState(): WorkflowState {
-	return {
-		setWorkflowExecutionData: vi.fn(),
-	} as unknown as WorkflowState;
-}
 
 function dispatchPostMessage(payload: Record<string, unknown>) {
 	window.dispatchEvent(
@@ -109,16 +105,22 @@ function dispatchPostMessage(payload: Record<string, unknown>) {
 }
 
 describe('usePostMessageHandler', () => {
-	let workflowState: WorkflowState;
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
 		mockIsProductionExecutionPreview.value = false;
 		mockRoute.name = 'workflow';
 		mockRoute.query = {};
-		workflowState = createMockWorkflowState();
+		mockRoute.params = {};
 	});
+
+	// The handler resolves the execution-state store via
+	// `currentWorkflowDocumentStore.value.documentId`. Tests pass a mock document
+	// store whose `documentId` is `createWorkflowDocumentId('')`, so this returns the
+	// same store instance the handler writes to.
+	function getExecutionStateStore() {
+		return useWorkflowExecutionStateStore(createWorkflowDocumentId(''));
+	}
 
 	afterEach(() => {
 		// Ensure listeners are cleaned up
@@ -128,9 +130,7 @@ describe('usePostMessageHandler', () => {
 		it('should add message event listener on setup', () => {
 			const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
 			const { setup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -141,9 +141,7 @@ describe('usePostMessageHandler', () => {
 		it('should remove message event listener on cleanup', () => {
 			const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -155,9 +153,7 @@ describe('usePostMessageHandler', () => {
 		it('should emit n8nReady postMessage on setup', () => {
 			const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -173,9 +169,7 @@ describe('usePostMessageHandler', () => {
 		it('should include pushRef in n8nReady postMessage', () => {
 			const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -194,9 +188,7 @@ describe('usePostMessageHandler', () => {
 	describe('openWorkflow command', () => {
 		it('should call importWorkflowExact when openWorkflow message is received', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -218,9 +210,7 @@ describe('usePostMessageHandler', () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
 			const uiStore = useUIStore();
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -250,9 +240,7 @@ describe('usePostMessageHandler', () => {
 			const uiStore = useUIStore();
 			uiStore.setNotificationsSuppressed(true, { allowErrors: true });
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -282,9 +270,7 @@ describe('usePostMessageHandler', () => {
 			const uiStore = useUIStore();
 			uiStore.setNotificationsSuppressed(true, { allowErrors: true });
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -311,9 +297,7 @@ describe('usePostMessageHandler', () => {
 			mockRoute.name = 'WorkflowDemo';
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -337,9 +321,7 @@ describe('usePostMessageHandler', () => {
 			mockRoute.query = { canExecute: 'true' };
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -360,9 +342,7 @@ describe('usePostMessageHandler', () => {
 
 		it('should emit tidyUp event when tidyUp is true', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -394,9 +374,7 @@ describe('usePostMessageHandler', () => {
 			});
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -431,9 +409,7 @@ describe('usePostMessageHandler', () => {
 
 			const storeRef = shallowRef(null);
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: storeRef,
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -463,9 +439,7 @@ describe('usePostMessageHandler', () => {
 			});
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -493,9 +467,7 @@ describe('usePostMessageHandler', () => {
 			mockOpenExecution.mockResolvedValue(null);
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -521,9 +493,7 @@ describe('usePostMessageHandler', () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
 			const uiStore = useUIStore();
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -567,9 +537,7 @@ describe('usePostMessageHandler', () => {
 			});
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -595,16 +563,20 @@ describe('usePostMessageHandler', () => {
 	describe('openExecutionPreview command', () => {
 		it('should call importWorkflowExact and set execution data', async () => {
 			const mockSetPinData = vi.fn();
-			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);
+			const storeRef = shallowRef({
+				documentId: createWorkflowDocumentId(''),
+				setPinData: mockSetPinData,
+			} as never);
 			const mockExecutionData = {
 				workflowData: { id: 'w1' },
 			} as unknown as IExecutionResponse;
 			mockBuildExecutionResponseFromSchema.mockReturnValue(mockExecutionData);
 
+			const executionStateStore = getExecutionStateStore();
+			const setWorkflowExecutionDataSpy = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
+
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: storeRef,
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -622,7 +594,7 @@ describe('usePostMessageHandler', () => {
 				expect(mockImportWorkflowExact).toHaveBeenCalled();
 			});
 
-			expect(workflowState.setWorkflowExecutionData).toHaveBeenCalledWith(mockExecutionData);
+			expect(setWorkflowExecutionDataSpy).toHaveBeenCalledWith(mockExecutionData);
 			expect(mockSetPinData).toHaveBeenCalledWith({});
 
 			cleanup();
@@ -640,12 +612,13 @@ describe('usePostMessageHandler', () => {
 			});
 
 			const mockSetPinData = vi.fn();
-			const storeRef = shallowRef({ setPinData: mockSetPinData } as never);
+			const storeRef = shallowRef({
+				documentId: createWorkflowDocumentId(''),
+				setPinData: mockSetPinData,
+			} as never);
 
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: storeRef,
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -679,9 +652,7 @@ describe('usePostMessageHandler', () => {
 
 		it('should throw if workflow has no nodes', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -707,9 +678,7 @@ describe('usePostMessageHandler', () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
 			const uiStore = useUIStore();
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -749,9 +718,7 @@ describe('usePostMessageHandler', () => {
 	describe('fitView command', () => {
 		it('should emit fitView on canvasEventBus when fitView message is received', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -768,9 +735,7 @@ describe('usePostMessageHandler', () => {
 	describe('message filtering', () => {
 		it('should ignore non-string messages', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -786,9 +751,7 @@ describe('usePostMessageHandler', () => {
 
 		it('should ignore messages without "command" in data', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
-				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
-				currentNDVStore: shallowRef(null),
 			});
 			setup();
 

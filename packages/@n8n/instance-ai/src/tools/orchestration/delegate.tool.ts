@@ -21,7 +21,7 @@ import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/co
 import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
-const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
+const FORBIDDEN_TOOL_NAMES = new Set(['create-tasks', 'delegate']);
 
 function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
@@ -178,6 +178,7 @@ export async function startDetachedDelegateTask(
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
 					tracing: traceContext,
+					runtimeSkills: context.runtimeSkills,
 					timeZone: context.timeZone,
 					checkpointStore: context.checkpointStore,
 				});
@@ -317,6 +318,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					modelId: context.modelId,
 					traceRun,
 					tracing: context.tracing,
+					runtimeSkills: context.runtimeSkills,
 					timeZone: context.timeZone,
 					checkpointStore: context.checkpointStore,
 				});

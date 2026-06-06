@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
+import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
@@ -10,6 +11,7 @@ import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
+	displayName: z.string().optional(),
 	args: z.unknown(),
 });
 
@@ -26,10 +28,30 @@ export interface ApprovalConfig {
 	needsApprovalFn?: (args: unknown) => Promise<boolean> | boolean;
 }
 
+function emitToolExecutionStart(
+	tool: BuiltTool,
+	input: unknown,
+	ctx: InterruptibleToolContext,
+): void {
+	if (!ctx.toolCallId) return;
+	ctx.emitEvent?.({
+		type: AgentEvent.ToolExecutionStart,
+		toolCallId: ctx.toolCallId,
+		toolName: tool.name,
+		args: input,
+	});
+}
+
+export function getToolApprovalDisplayName(tool: BuiltTool): string | undefined {
+	const metadata = tool.metadata;
+	const displayName = metadata?.displayName ?? metadata?.workflowName;
+	return typeof displayName === 'string' && displayName.length > 0 ? displayName : undefined;
+}
+
 /**
  * Wrap a BuiltTool with an approval gate that suspends before execution and
  * waits for human confirmation. Used by Tool.build() (when .requireApproval()
- * or .needsApprovalFn() is set) and by Agent.build() (for global approval).
+ * or .needsApprovalFn() is set) and per-tool JSON config reconstruction.
  *
  * The wrapped tool has suspendSchema/resumeSchema set, making it an
  * interruptible tool that uses the existing suspend/resume mechanism.
@@ -38,13 +60,18 @@ export interface ApprovalConfig {
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
 	const originalHandler = tool.handler!;
+	const hasConditionalApproval = config.needsApprovalFn !== undefined;
 
 	return {
 		...tool,
-		withDefaultApproval: true,
+		approval: {
+			required: config.requireApproval === true,
+			...(hasConditionalApproval ? { conditional: true } : {}),
+		},
 		suspendSchema: APPROVAL_SUSPEND_SCHEMA,
 		resumeSchema: APPROVAL_RESUME_SCHEMA,
-		handler: async (input, ctx) => {
+		async handler(this: BuiltTool | undefined, input, ctx) {
+			const currentTool = this ?? tool;
 			// This handler is always called with InterruptibleToolContext because
 			// wrapToolForApproval adds suspendSchema/resumeSchema.
 			const interruptCtx = ctx as InterruptibleToolContext;
@@ -54,20 +81,25 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 					needs = await config.needsApprovalFn(input);
 				}
 				if (needs) {
-					return await interruptCtx.suspend({ type: 'approval', toolName: tool.name, args: input });
+					const displayName = getToolApprovalDisplayName(currentTool);
+					return await interruptCtx.suspend({
+						type: 'approval',
+						toolName: currentTool.name,
+						...(displayName ? { displayName } : {}),
+						args: input,
+					});
 				}
-				return await originalHandler(input, {
-					parentTelemetry: interruptCtx.parentTelemetry,
-				} as ToolContext);
+				if (hasConditionalApproval) {
+					emitToolExecutionStart(currentTool, input, interruptCtx);
+				}
+				return await originalHandler(input, interruptCtx as ToolContext);
 			}
 
 			const { approved } = interruptCtx.resumeData as z.infer<typeof APPROVAL_RESUME_SCHEMA>;
 			if (!approved) {
-				return { declined: true, message: `Tool "${tool.name}" was not approved` };
+				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
 			}
-			return await originalHandler(input, {
-				parentTelemetry: interruptCtx.parentTelemetry,
-			} as ToolContext);
+			return await originalHandler(input, interruptCtx as ToolContext);
 		},
 	};
 }
@@ -124,6 +156,8 @@ export class Tool<
 	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
 	private providerOptionsValue?: Record<string, JSONObject>;
+
+	private handleCancellationValue?: boolean;
 
 	private requireApprovalValue?: boolean;
 
@@ -214,6 +248,15 @@ export class Tool<
 		return this;
 	}
 
+	/**
+	 * Opt in to handle cancellations in the tool handler (`ctx.cancellation`).
+	 * By default, the runtime bypasses the handler and injects the steering message directly.
+	 */
+	handleCancellation(): this {
+		this.handleCancellationValue = true;
+		return this;
+	}
+
 	/** Require human approval before this tool executes. Mutually exclusive with .suspend()/.resume(). */
 	requireApproval(): this {
 		this.requireApprovalValue = true;
@@ -281,6 +324,7 @@ export class Tool<
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
 			resumeSchema: this.resumeSchemaValue,
+			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			handler: this.handlerFn as (

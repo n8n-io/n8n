@@ -106,6 +106,32 @@ describe('InstanceAiTestController', () => {
 		});
 	});
 
+	describe('getIdleState', () => {
+		it('should report idle when there is no running work', () => {
+			instanceAiService.hasRunningWorkForTest.mockReturnValue(false);
+
+			const result = controller.getIdleState();
+
+			expect(instanceAiService.hasRunningWorkForTest).toHaveBeenCalled();
+			expect(result).toEqual({ idle: true });
+		});
+
+		it('should report non-idle when there is running work', () => {
+			instanceAiService.hasRunningWorkForTest.mockReturnValue(true);
+
+			const result = controller.getIdleState();
+
+			expect(instanceAiService.hasRunningWorkForTest).toHaveBeenCalled();
+			expect(result).toEqual({ idle: false });
+		});
+
+		it('should throw ForbiddenError when trace replay is not enabled', () => {
+			delete process.env.E2E_TESTS;
+
+			expect(() => controller.getIdleState()).toThrow(ForbiddenError);
+		});
+	});
+
 	describe('clearToolTrace', () => {
 		it('should clear trace events for slug', () => {
 			const req = mock<Request>();
@@ -173,6 +199,7 @@ describe('InstanceAiTestController', () => {
 			const result = await controller.reset();
 
 			expect(instanceAiService.cancelAllBackgroundTasks).toHaveBeenCalled();
+			expect(instanceAiService.clearTraceContextsForTest).toHaveBeenCalled();
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t1');
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith('t2');
 			expect(queryBuilder.delete).toHaveBeenCalled();

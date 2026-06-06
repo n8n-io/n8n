@@ -29,6 +29,23 @@ See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 
+### Fresh checkout / agent setup
+
+For a fresh checkout (cat-bot, a new hire, any agent verifying the repo
+builds), prefer `pnpm agent:setup` over running install + build + tests by
+hand. It chains them in one process, caps per-process memory and turbo
+concurrency so a 6GB box doesn't OOM, streams all output to
+`.agent-setup/<step>.log` (gitignored), and surfaces only a one-line summary
+per step plus the tail of the failing log. A machine-readable
+`.agent-setup/summary.json` is always written so a backgrounded run is
+readable in a single shot — no polling, no scrolling logs.
+
+```bash
+pnpm agent:setup                 # install → build → test (full suite)
+pnpm agent:setup install         # one step at a time
+pnpm agent:setup --json          # JSON summary on stdout (for scripts/agents)
+```
+
 ### Building
 Use `pnpm build` to build all packages. ALWAYS redirect the output of the
 build command to a file:
@@ -228,6 +245,7 @@ titles, test descriptions, and Linear URLs.
   `.github/pull_request_template.md` and
   `.github/pull_request_title_conventions.md`.
 - Use `gh pr create --draft` to create draft PRs.
-- Always reference the Linear ticket in the PR description,
-  use `https://linear.app/n8n/issue/[TICKET-ID]`
+- If there is a corresponding Linear ticket, reference it in the PR
+  description using `https://linear.app/n8n/issue/[TICKET-ID]`. Do not
+  create a Linear ticket on your own — ask first.
 - always link to the github issue if mentioned in the linear ticket.

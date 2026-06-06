@@ -8,9 +8,12 @@ import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('vue-router', async () => ({
@@ -29,6 +32,17 @@ vi.mock('@/app/composables/useToast', () => ({
 		showMessage: vi.fn(),
 	}),
 }));
+
+const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock }),
+}));
+
+vi.mock('@/features/resolvers/composables/useDynamicCredentials', async () => {
+	const { ref } = await vi.importActual<typeof import('vue')>('vue');
+	return { useDynamicCredentials: () => ({ isEnabled: ref(true) }) };
+});
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -587,7 +601,9 @@ describe('CredentialEdit', () => {
 				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
 			};
 
-			const ndvStore = mockedStore(useNDVStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.workflowId = 'test-workflow-id';
+			const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 			ndvStore.activeNode = {
 				name: 'DiscordTest',
 				type: 'n8n-nodes-base.discord',
@@ -721,7 +737,9 @@ describe('CredentialEdit', () => {
 		};
 		credStore.getNewCredentialName.mockResolvedValue('Beta API');
 
-		const ndvStore = mockedStore(useNDVStore);
+		const workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
+		const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 		ndvStore.activeNode = {
 			name: 'DualCredTest',
 			type: 'n8n-nodes-base.dualCredTest',
@@ -762,5 +780,271 @@ describe('CredentialEdit', () => {
 				credentialTypeName: 'betaApi',
 			}),
 		);
+	});
+
+	describe('per-user OAuth banner', () => {
+		const createPiniaForBannerTest = () =>
+			createTestingPinia({
+				initialState: {
+					[STORES.UI]: {
+						modalsById: {
+							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+						},
+					},
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+				},
+			});
+
+		const setupOAuthCredential = (overrides: Partial<Record<string, unknown>>) => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockResolvedValueOnce({
+				// @ts-expect-error data is decrypted
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+				},
+				createdAt: '2026-05-22T10:00:00.000Z',
+				updatedAt: '2026-05-22T10:00:00.000Z',
+				id: 'cred-banner',
+				name: 'Google BigQuery account',
+				type: 'googleBigQueryOAuth2Api',
+				isManaged: false,
+				sharedWithProjects: [],
+				scopes: ['credential:update'],
+				oauthTokenData: false,
+				...overrides,
+			});
+
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[googleOAuth2Api.name]: googleOAuth2Api,
+				[googleBigQueryOAuth2Api.name]: googleBigQueryOAuth2Api,
+			};
+
+			return credentialsStore;
+		};
+
+		test('shows banner for static OAuth credential when oauthTokenData is set', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+					oauthTokenData: { access_token: 'static-token' },
+				},
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).toBeVisible());
+		});
+
+		test('shows banner for resolvable credential when connectedByMe is true', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+				oauthTokenData: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).toBeVisible());
+		});
+
+		test('hides banner for resolvable credential when connectedByMe is false, even if shared oauthTokenData is set', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				data: {
+					clientId: 'client_id',
+					clientSecret: '__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da',
+					oauthTokenData: { access_token: 'shared-token' },
+				},
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible());
+		});
+
+		test('shows the not-connected warning banner for resolvable credential when connectedByMe is false', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+			expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+		});
+
+		test('hides the not-connected warning banner when the current user is connected', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: true,
+				connectedByMe: true,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+
+		test('does not show the not-connected warning banner for static OAuth credentials', async () => {
+			const pinia = createPiniaForBannerTest();
+			const credentialsStore = setupOAuthCredential({
+				isResolvable: false,
+			});
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					activeId: 'cred-banner',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				pinia,
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+
+		describe('switching a connected private credential to static', () => {
+			test('shows the confirmation modal when the current user just connected, even if the server count is stale', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				// connectedByMe reflects the in-session connection; connectedUserCount is the
+				// stale server value (0) that does not yet include the current user.
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: true,
+					connectedByMe: true,
+					connectedUserCount: 0,
+				});
+
+				const { getByRole } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+				await userEvent.click(getByRole('switch'));
+
+				await retry(() => expect(confirmMock).toHaveBeenCalled());
+				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
+			});
+
+			test('does not show the confirmation modal when no users are connected', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: true,
+					connectedByMe: false,
+					connectedUserCount: 0,
+				});
+
+				const { getByRole } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+				await userEvent.click(getByRole('switch'));
+
+				expect(confirmMock).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('switching a static credential to private', () => {
+			test('resets the connected state so no Disconnect button is shown', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				// A static credential whose per-user connection flag leaked over from a
+				// prior in-session connect. Switching it to private must not carry that
+				// connected state over, since no end-user connection exists yet.
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: false,
+					connectedByMe: true,
+					oauthTokenData: false,
+				});
+
+				const { queryByTestId, getByTestId } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+				await retry(() => expect(getByTestId('dynamic-credentials-toggle')).toBeVisible());
+
+				await userEvent.click(getByTestId('dynamic-credentials-toggle'));
+
+				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+				expect(queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

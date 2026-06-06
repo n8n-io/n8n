@@ -4,18 +4,18 @@ import type { OrchestrationContext, TaskStorage } from '../../../types';
 import type { WorkflowLoopAction } from '../../../workflow-loop/workflow-loop-state';
 import { createReportVerificationVerdictTool } from '../report-verification-verdict.tool';
 
-function createWorkflowTaskService(reportVerificationVerdict = jest.fn()) {
+function createWorkflowTaskService(reportVerificationVerdict = vi.fn()) {
 	return {
-		reportBuildOutcome: jest.fn(),
+		reportBuildOutcome: vi.fn(),
 		reportVerificationVerdict,
-		getBuildOutcome: jest.fn(),
-		getWorkflowLoopState: jest.fn(),
-		updateBuildOutcome: jest.fn(),
+		getBuildOutcome: vi.fn(),
+		getWorkflowLoopState: vi.fn(),
+		updateBuildOutcome: vi.fn(),
 	};
 }
 
 function createReportVerificationVerdictMock(action: WorkflowLoopAction) {
-	const reportVerificationVerdict = jest.fn<Promise<WorkflowLoopAction>, [unknown]>();
+	const reportVerificationVerdict = vi.fn<(...args: [unknown]) => Promise<WorkflowLoopAction>>();
 	reportVerificationVerdict.mockResolvedValue(action);
 	return reportVerificationVerdict;
 }
@@ -29,19 +29,19 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		modelId: 'test-model',
 		subAgentMaxSteps: 5,
 		eventBus: {
-			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
+			publish: vi.fn(),
+			subscribe: vi.fn(),
+			getEventsAfter: vi.fn(),
+			getNextEventId: vi.fn(),
+			getEventsForRun: vi.fn().mockReturnValue([]),
+			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
-		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
-			get: jest.fn(),
-			save: jest.fn(),
+			get: vi.fn(),
+			save: vi.fn(),
 		} as TaskStorage,
 		...overrides,
 	};
@@ -51,6 +51,8 @@ const baseInput = {
 	workItemId: 'wi_test1234',
 	workflowId: 'wf-123',
 	verdict: 'verified' as const,
+	workflowInspection:
+		'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 	summary: 'Workflow ran successfully',
 };
 
@@ -70,7 +72,7 @@ describe('report-verification-verdict tool', () => {
 			workflowId: 'wf-123',
 			summary: 'All good',
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(doneAction);
+		const reportVerificationVerdict = vi.fn().mockResolvedValue(doneAction);
 		const context = createMockContext({
 			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
 		});
@@ -83,6 +85,8 @@ describe('report-verification-verdict tool', () => {
 				workItemId: 'wi_test1234',
 				workflowId: 'wf-123',
 				verdict: 'verified',
+				workflowInspection:
+					'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 			}),
 		);
 		expect((result as { guidance: string }).guidance).toContain('verified successfully');
@@ -91,7 +95,7 @@ describe('report-verification-verdict tool', () => {
 
 	it('returns verify guidance when action is verify', async () => {
 		const verifyAction: WorkflowLoopAction = { type: 'verify', workflowId: 'wf-123' };
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(verifyAction);
+		const reportVerificationVerdict = vi.fn().mockResolvedValue(verifyAction);
 		const context = createMockContext({
 			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
 		});
@@ -182,7 +186,7 @@ describe('report-verification-verdict tool', () => {
 	});
 
 	it('refuses repair verdict when persisted remediation is terminal', async () => {
-		const reportVerificationVerdict = jest.fn();
+		const reportVerificationVerdict = vi.fn();
 		const workflowTaskService = createWorkflowTaskService(reportVerificationVerdict);
 		workflowTaskService.getWorkflowLoopState.mockResolvedValue({
 			workItemId: 'wi_test1234',
@@ -262,7 +266,7 @@ describe('report-verification-verdict tool', () => {
 	});
 
 	it('converts non-editable remediation into a terminal verdict', async () => {
-		const reportVerificationVerdict = jest.fn().mockResolvedValue({
+		const reportVerificationVerdict = vi.fn().mockResolvedValue({
 			type: 'blocked',
 			reason: 'Route to setup.',
 		} satisfies WorkflowLoopAction);
@@ -302,7 +306,7 @@ describe('report-verification-verdict tool', () => {
 			workflowId: 'wf-123',
 			failureDetails: 'Missing connection between nodes',
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(rebuildAction);
+		const reportVerificationVerdict = vi.fn().mockResolvedValue(rebuildAction);
 		const context = createMockContext({
 			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
 		});
@@ -315,7 +319,8 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('workflow-builder');
+		expect((result as { guidance: string }).guidance).toContain('build-workflow');
 		expect((result as { guidance: string }).guidance).toContain('workflowId: "wf-123"');
 	});
 
@@ -324,7 +329,7 @@ describe('report-verification-verdict tool', () => {
 			type: 'blocked',
 			reason: 'Repeated patch failure: TypeError',
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(blockedAction);
+		const reportVerificationVerdict = vi.fn().mockResolvedValue(blockedAction);
 		const context = createMockContext({
 			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
 		});
@@ -346,7 +351,7 @@ describe('report-verification-verdict tool', () => {
 			workflowId: 'wf-123',
 			summary: 'OK',
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(doneAction);
+		const reportVerificationVerdict = vi.fn().mockResolvedValue(doneAction);
 		const context = createMockContext({
 			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
 		});
@@ -372,6 +377,8 @@ describe('report-verification-verdict tool', () => {
 				workflowId: 'wf-123',
 				executionId: 'exec-456',
 				verdict: 'verified',
+				workflowInspection:
+					'Inspected persisted workflow wf-123; the saved graph matches the requested outcome.',
 				failureSignature: 'TypeError:null',
 				failedNodeName: 'Code',
 				diagnosis: 'Null reference',

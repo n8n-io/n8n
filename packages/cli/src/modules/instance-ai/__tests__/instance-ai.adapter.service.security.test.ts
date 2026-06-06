@@ -7,8 +7,18 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -111,7 +121,7 @@ const service = new InstanceAiAdapterService(
 	workflowRunner,
 	loadNodesAndCredentials,
 	nodeTypes,
-	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
+	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
 	dynamicNodeParametersService,
@@ -145,6 +155,7 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
+	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------

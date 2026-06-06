@@ -1,9 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AgentDbMessage } from '@n8n/instance-ai';
 import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../../entities/instance-ai-thread.entity';
 import type { InstanceAiMessageRepository } from '../../repositories/instance-ai-message.repository';
+import type { InstanceAiObservationCursorRepository } from '../../repositories/instance-ai-observation-cursor.repository';
+import type { InstanceAiObservationLockRepository } from '../../repositories/instance-ai-observation-lock.repository';
+import type { InstanceAiObservationRepository } from '../../repositories/instance-ai-observation.repository';
 import type { InstanceAiResourceRepository } from '../../repositories/instance-ai-resource.repository';
 import type { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../typeorm-agent-memory';
@@ -22,20 +26,46 @@ function makeMessageRow(overrides: Partial<InstanceAiMessage> = {}): InstanceAiM
 	} as InstanceAiMessage;
 }
 
-describe('TypeORMAgentMemory', () => {
-	it('logs and skips invalid native message rows', async () => {
-		const scopedLogger = mock<Logger>();
-		const logger = mock<Logger>({
+function createMemory(deps: {
+	threadRepo?: InstanceAiThreadRepository;
+	messageRepo?: InstanceAiMessageRepository;
+	resourceRepo?: InstanceAiResourceRepository;
+	observationRepo?: InstanceAiObservationRepository;
+	observationCursorRepo?: InstanceAiObservationCursorRepository;
+	observationLockRepo?: InstanceAiObservationLockRepository;
+	logger?: Logger;
+}) {
+	const scopedLogger = mock<Logger>();
+	const logger =
+		deps.logger ??
+		mock<Logger>({
 			scoped: jest.fn(() => scopedLogger),
 		});
+
+	return {
+		memory: new TypeORMAgentMemory(
+			deps.threadRepo ?? mock<InstanceAiThreadRepository>(),
+			deps.messageRepo ?? mock<InstanceAiMessageRepository>(),
+			deps.resourceRepo ?? mock<InstanceAiResourceRepository>(),
+			deps.observationRepo ?? mock<InstanceAiObservationRepository>(),
+			deps.observationCursorRepo ?? mock<InstanceAiObservationCursorRepository>(),
+			deps.observationLockRepo ?? mock<InstanceAiObservationLockRepository>(),
+			logger,
+		),
+		scopedLogger,
+	};
+}
+
+function getToolInputs(message: AgentDbMessage | undefined): unknown[] {
+	if (!message || !('content' in message)) return [];
+	return message.content.filter((part) => part.type === 'tool-call').map((part) => part.input);
+}
+
+describe('TypeORMAgentMemory', () => {
+	it('logs and skips invalid native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		messageRepo.find.mockResolvedValueOnce([makeMessageRow()]);
-		const memory = new TypeORMAgentMemory(
-			mock<InstanceAiThreadRepository>(),
-			messageRepo,
-			mock<InstanceAiResourceRepository>(),
-			logger,
-		);
+		const { memory, scopedLogger } = createMemory({ messageRepo });
 
 		await expect(memory.getMessages('thread-1')).resolves.toEqual([]);
 
@@ -49,10 +79,81 @@ describe('TypeORMAgentMemory', () => {
 		);
 	});
 
-	it('deletes hidden sub-agent threads and associated working-memory resources by resource prefix', async () => {
-		const logger = mock<Logger>({
-			scoped: jest.fn(() => mock<Logger>()),
+	it('normalizes persisted tool-call input when reading native message rows', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.find.mockResolvedValueOnce([
+			makeMessageRow({
+				content: JSON.stringify({
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-json',
+							toolName: 'nodes',
+							input: '{"action":"search"}',
+							state: 'resolved',
+							output: {},
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-array',
+							toolName: 'batch',
+							input: ['a', 'b'],
+							state: 'resolved',
+							output: {},
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-null',
+							toolName: 'noop',
+							input: null,
+							state: 'resolved',
+							output: {},
+						},
+					],
+				}),
+			}),
+		]);
+		const { memory } = createMemory({ messageRepo });
+
+		const [message] = await memory.getMessages('thread-1');
+		expect(getToolInputs(message)).toEqual([{ action: 'search' }, { value: ['a', 'b'] }, {}]);
+	});
+
+	it('normalizes tool-call input before saving native message rows', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.create.mockImplementation((entity) => entity as InstanceAiMessage);
+		const { memory } = createMemory({ messageRepo });
+		const message: AgentDbMessage = {
+			id: 'message-1',
+			createdAt: new Date('2026-06-04T09:00:00.000Z'),
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-string',
+					toolName: 'legacy',
+					input: 'plain-text',
+					state: 'resolved',
+					output: {},
+				},
+			],
+		};
+
+		await memory.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message],
 		});
+
+		const [createdEntity] = messageRepo.create.mock.calls[0] as Array<{ content?: string }>;
+		const persisted = JSON.parse(createdEntity.content ?? '{}') as AgentDbMessage;
+		expect(getToolInputs(persisted)[0]).toEqual({
+			value: 'plain-text',
+		});
+	});
+
+	it('deletes hidden sub-agent threads and associated working-memory resources by resource prefix', async () => {
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		const resourceRepo = mock<InstanceAiResourceRepository>();
 		threadRepo.find.mockResolvedValueOnce([
@@ -61,12 +162,7 @@ describe('TypeORMAgentMemory', () => {
 				resourceId: 'instance-ai-subagent:00000000-0000-4000-8000-000000000001:builder',
 			},
 		] as InstanceAiThread[]);
-		const memory = new TypeORMAgentMemory(
-			threadRepo,
-			mock<InstanceAiMessageRepository>(),
-			resourceRepo,
-			logger,
-		);
+		const { memory } = createMemory({ threadRepo, resourceRepo });
 
 		await memory.deleteThreadsByResourceIdPrefix(
 			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',

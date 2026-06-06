@@ -139,12 +139,13 @@ describe('update-workflow MCP tool', () => {
 		);
 
 	const callHandler = async (
-		input: { workflowId: string; operations: unknown[] },
+		input: { workflowId: string; skillsUsed?: string[]; operations: unknown[] },
 		tool = createTool(),
 	) =>
 		await tool.handler(
 			{
 				workflowId: input.workflowId,
+				skillsUsed: input.skillsUsed,
 				operations: input.operations as never,
 			},
 			{} as never,
@@ -185,6 +186,40 @@ describe('update-workflow MCP tool', () => {
 			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 			const b = saved.nodes.find((n) => n.name === 'B')!;
 			expect(b.parameters).toEqual({ url: 'https://new', method: 'GET' });
+		});
+
+		test('applies setNodeSettings and persists node-level settings', async () => {
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{
+						type: 'setNodeSettings',
+						nodeName: 'B',
+						settings: {
+							onError: 'continueErrorOutput',
+							retryOnFail: true,
+							maxTries: 3,
+							waitBetweenTries: 1000,
+							alwaysOutputData: true,
+							executeOnce: true,
+						},
+					},
+				],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.appliedOperations).toBe(1);
+
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			const b = saved.nodes.find((n) => n.name === 'B')!;
+			expect(b.onError).toBe('continueErrorOutput');
+			expect(b.retryOnFail).toBe(true);
+			expect(b.maxTries).toBe(3);
+			expect(b.waitBetweenTries).toBe(1000);
+			expect(b.alwaysOutputData).toBe(true);
+			expect(b.executeOnce).toBe(true);
+			expect(b.parameters).toEqual({ url: 'https://old', method: 'GET' });
 		});
 
 		test('returns error when workflow has active write lock', async () => {
@@ -366,6 +401,7 @@ describe('update-workflow MCP tool', () => {
 		test('tracks telemetry on success with op metadata', async () => {
 			await callHandler({
 				workflowId: 'wf-1',
+				skillsUsed: ['workflow-builder', 'node-selection'],
 				operations: [
 					{ type: 'setWorkflowMetadata', name: 'Renamed' },
 					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
@@ -379,12 +415,70 @@ describe('update-workflow MCP tool', () => {
 					tool_name: 'update_workflow',
 					parameters: expect.objectContaining({
 						workflowId: 'wf-1',
+						skillsUsed: ['workflow-builder', 'node-selection'],
 						opCount: 2,
 						opTypes: ['setWorkflowMetadata', 'updateNodeParameters'],
 					}),
 					results: expect.objectContaining({ success: true }),
 				}),
 			);
+		});
+
+		test('omits skillsUsed from telemetry when not provided', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: [],
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('normalizes skillsUsed before tracking telemetry', async () => {
+			await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: ['  Workflow-Builder  ', 'workflow-builder', 'has spaces', 'NODE-SELECTION'],
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder', 'node-selection'],
+					}),
+				}),
+			);
+		});
+
+		test('does not reject the call when skillsUsed overflows the cap', async () => {
+			const oversized = Array.from({ length: 60 }, (_, i) => `skill-${i}`);
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				skillsUsed: oversized,
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+				parameters: { skillsUsed: string[] };
+			};
+			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
 		});
 
 		test('tracks telemetry on failure', async () => {

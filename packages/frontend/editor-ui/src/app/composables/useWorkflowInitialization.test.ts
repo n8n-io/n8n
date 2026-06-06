@@ -6,7 +6,6 @@ import { render } from '@testing-library/vue';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
 
 const mockSetDocumentTitle = vi.hoisted(() => vi.fn());
@@ -40,6 +39,11 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 		openWorkflowTemplate: mockOpenWorkflowTemplate,
 		openWorkflowTemplateFromJSON: mockOpenWorkflowTemplateFromJSON,
 	})),
+}));
+
+vi.mock('@/app/api/workflows', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/api/workflows')>()),
+	getNewWorkflowData: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
 }));
 
 vi.mock('@/features/execution/executions/composables/useExecutionDebugging', () => ({
@@ -91,6 +95,7 @@ vi.mock('@/app/composables/useWorkflowId', () => ({
 const mockNDVStore = vi.hoisted(() => ({}));
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => mockNDVStore),
+	injectNDVStore: vi.fn(() => ({ value: mockNDVStore })),
 	disposeNDVStore: vi.fn(),
 }));
 
@@ -128,18 +133,12 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-function createWorkflowState(): WorkflowState {
-	return {
-		getNewWorkflowData: vi.fn().mockResolvedValue({ name: 'New Workflow', settings: {} }),
-	} as unknown as WorkflowState;
-}
-
 function renderWithComposable(
 	callback: (init: ReturnType<typeof useWorkflowInitialization>) => void,
 ) {
 	const TestComponent = defineComponent({
 		setup() {
-			const init = useWorkflowInitialization(createWorkflowState());
+			const init = useWorkflowInitialization();
 			callback(init);
 			return () => h('div');
 		},
