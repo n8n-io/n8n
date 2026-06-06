@@ -335,10 +335,10 @@ export type FrontendModuleSettings = {
 	 */
 	agents?: {
 		/**
-		 * Enabled agent sub-feature modules. Each token unlocks a specific
-		 * capability inside the agents module (see the backend's
+		 * Enabled opt-in agent sub-feature modules. Each token unlocks a
+		 * specific capability inside the agents module (see the backend's
 		 * `AGENTS_MODULE_NAMES` for the known set). Controlled via
-		 * `N8N_AGENTS_MODULES`
+		 * `N8N_AGENTS_MODULES`.
 		 */
 		modules: string[];
 	};

@@ -239,6 +239,47 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isAgentsNodeToolsFeatureEnabled', () => {
+		it('should return false when agents module is inactive', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: [],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { agents: { modules: ['node-tools-searcher'] } };
+
+			expect(settingsStore.isAgentsNodeToolsFeatureEnabled).toBe(false);
+		});
+
+		it('should return false when node-tools-searcher is not listed in agents modules', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['agents'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { agents: { modules: [] } };
+
+			expect(settingsStore.isAgentsNodeToolsFeatureEnabled).toBe(false);
+		});
+
+		it('should return true when agents module is active and node-tools-searcher is enabled', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['agents'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { agents: { modules: ['node-tools-searcher'] } };
+
+			expect(settingsStore.isAgentsNodeToolsFeatureEnabled).toBe(true);
+		});
+	});
+
 	describe('isOtelCustomSpanAttributesEnabled', () => {
 		it('should return false when otel module is not active', async () => {
 			getSettings.mockResolvedValueOnce({

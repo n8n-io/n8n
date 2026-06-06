@@ -51,6 +51,13 @@ jest.mock('../integrations/rich-interaction-tool', () => ({
 	createRichInteractionTool: () => ({ name: 'rich_interaction' }) as never,
 }));
 
+const createSearchKnowledgeToolMock = jest.fn((_options: unknown) => ({
+	name: 'search_knowledge',
+}));
+jest.mock('../tools/knowledge/tool', () => ({
+	createSearchKnowledgeTool: (options: unknown) => createSearchKnowledgeToolMock(options),
+}));
+
 beforeEach(() => {
 	Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
 });
@@ -105,6 +112,47 @@ function makeAgentEntity(
 		tools: {},
 	} as unknown as Agent;
 }
+
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowledge tool injection', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		builtAgent.tool.mockClear();
+		createSearchKnowledgeToolMock.mockClear();
+	});
+
+	function getInjectedToolNames(): string[] {
+		const names: string[] = [];
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as { name?: string };
+				if (tool.name) names.push(tool.name);
+			}
+		}
+		return names;
+	}
+
+	it.each([
+		{ name: 'no agents modules configured', modules: [] as string[] },
+		{ name: 'only node-tools-searcher configured', modules: ['node-tools-searcher'] },
+	])('injects search_knowledge when $name', async ({ modules }) => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, modules);
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(createSearchKnowledgeToolMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+			}),
+		);
+		expect(getInjectedToolNames()).toContain('search_knowledge');
+	});
+});
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — node tools gating', () => {
 	beforeEach(() => {

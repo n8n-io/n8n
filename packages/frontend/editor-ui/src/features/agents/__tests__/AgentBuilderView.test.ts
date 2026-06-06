@@ -81,6 +81,7 @@ const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
+const listAgentFilesMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
@@ -92,6 +93,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: createAgentSkillMock,
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
+	listAgentFiles: listAgentFilesMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 }));
 
@@ -411,6 +413,8 @@ describe('AgentBuilderView — preview routing', () => {
 		updateConfigMock.mockReset();
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 		fetchConfigMock.mockClear();
 	});
@@ -432,6 +436,16 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
 		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
+	});
+
+	it('loads agent files for the current project and agent on initialization', async () => {
+		await renderView();
+
+		expect(listAgentFilesMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {
@@ -627,6 +641,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockReset();
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
+		listAgentFilesMock.mockReset();
+		listAgentFilesMock.mockResolvedValue([]);
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 		fetchConfigMock.mockClear();
 	});

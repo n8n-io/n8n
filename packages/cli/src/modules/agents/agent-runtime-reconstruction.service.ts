@@ -287,10 +287,6 @@ export class AgentRuntimeReconstructionService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
-	}
-
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -351,25 +347,23 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (this.isKnowledgeBaseModuleEnabled()) {
-			try {
-				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-				agent.tool(
-					createSearchKnowledgeTool({
-						agentId,
-						projectId,
-						knowledgeService: this.agentKnowledgeService,
-						sandboxCommandService: this.agentKnowledgeSandboxCommandService,
-						sandboxCsvService: this.agentKnowledgeSandboxCsvService,
-						sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
-					}),
-				);
-			} catch (toolError) {
-				this.logger.warn('Failed to inject search_knowledge tool', {
+		try {
+			const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
+			agent.tool(
+				createSearchKnowledgeTool({
 					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
+					projectId,
+					knowledgeService: this.agentKnowledgeService,
+					sandboxCommandService: this.agentKnowledgeSandboxCommandService,
+					sandboxCsvService: this.agentKnowledgeSandboxCsvService,
+					sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
+				}),
+			);
+		} catch (toolError) {
+			this.logger.warn('Failed to inject search_knowledge tool', {
+				agentId,
+				error: toolError instanceof Error ? toolError.message : String(toolError),
+			});
 		}
 
 		if (runtimeProfile === 'top-level') {

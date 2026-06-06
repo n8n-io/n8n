@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = ['node-tools-searcher', 'knowledge-base'] as const;
+export const AGENTS_MODULE_NAMES = ['node-tools-searcher'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -41,17 +41,11 @@ export class AgentsConfig {
 	subAgentTimeoutMs: number = 5 * Time.minutes.toMilliseconds;
 
 	/**
-	 * Comma-separated list of agent sub-feature modules to enable. Each entry
-	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Currently known:
+	 * Comma-separated list of opt-in agent sub-feature modules to enable.
+	 * Each entry gates a specific frontend/runtime capability inside the
+	 * agents module. Currently known:
 	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
 	 *   the agent editor.
-	 * - `knowledge-base` — enables the agent knowledge base: file upload/list/
-	 *   delete endpoints, the files panel in the editor, and the
-	 *   `search_knowledge` runtime tool.
-	 *
-	 * Gates the UI surface only — existing agents persisted with a given
-	 * capability turned on continue to run even if its token is removed here.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];

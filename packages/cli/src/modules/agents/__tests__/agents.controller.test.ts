@@ -67,10 +67,6 @@ function makeController({
 		);
 	}
 
-	// Default the knowledge-base module to enabled so file-endpoint tests pass;
-	// the disabled-gating test overrides this on the returned mock.
-	agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(true);
-
 	const controller = new AgentsController(
 		agentsService,
 		mock<AgentsBuilderService>(),
@@ -275,36 +271,57 @@ describe('AgentsController file uploads', () => {
 	});
 });
 
-describe('AgentsController knowledge base gating', () => {
-	it('returns not found for file endpoints when the knowledge-base module is disabled', async () => {
-		const { controller, agentsService } = makeController();
-		agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(false);
+describe('AgentsController file endpoints', () => {
+	it('lists files via AgentKnowledgeService', async () => {
+		const { controller, agentKnowledgeService } = makeController();
+		const files = [{ id: 'file-1', fileName: 'notes.md' }] as never;
+		agentKnowledgeService.listFiles.mockResolvedValue(files);
 
-		await expect(
-			controller.listFiles(
-				{ params: { projectId: 'project-1' } } as never,
-				undefined as never,
-				'project-1',
-				'agent-1',
-			),
-		).rejects.toThrow(NotFoundError);
-		await expect(
-			controller.uploadFiles(
-				{ params: { projectId: 'project-1' }, files: [] } as never,
-				undefined as never,
-				'project-1',
-				'agent-1',
-			),
-		).rejects.toThrow(NotFoundError);
-		await expect(
-			controller.deleteFile(
-				{ params: { projectId: 'project-1' } } as never,
-				undefined as never,
-				'project-1',
-				'agent-1',
-				'file-1',
-			),
-		).rejects.toThrow(NotFoundError);
+		const result = await controller.listFiles(
+			{ params: { projectId: 'project-1' } } as never,
+			undefined as never,
+			'project-1',
+			'agent-1',
+		);
+
+		expect(agentKnowledgeService.listFiles).toHaveBeenCalledWith('agent-1', 'project-1');
+		expect(result).toBe(files);
+	});
+
+	it('uploads files via AgentKnowledgeService', async () => {
+		const { controller, agentKnowledgeService } = makeController();
+		const uploadedFiles = [{ originalname: 'notes.md' }] as never;
+		const storedFiles = [{ id: 'file-1', fileName: 'notes.md' }] as never;
+		agentKnowledgeService.uploadFiles.mockResolvedValue(storedFiles);
+
+		const result = await controller.uploadFiles(
+			{ params: { projectId: 'project-1' }, files: uploadedFiles } as never,
+			undefined as never,
+			'project-1',
+			'agent-1',
+		);
+
+		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			uploadedFiles,
+		);
+		expect(result).toBe(storedFiles);
+	});
+
+	it('deletes a file via AgentKnowledgeService and returns success', async () => {
+		const { controller, agentKnowledgeService } = makeController();
+
+		const result = await controller.deleteFile(
+			{ params: { projectId: 'project-1' } } as never,
+			undefined as never,
+			'project-1',
+			'agent-1',
+			'file-1',
+		);
+
+		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
+		expect(result).toEqual({ success: true });
 	});
 });
 

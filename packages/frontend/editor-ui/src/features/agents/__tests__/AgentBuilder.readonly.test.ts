@@ -36,7 +36,6 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				agentFiles: [],
 				agentFilesLoading: false,
 				agentFilesUploading: false,
-				knowledgeBaseEnabled: true,
 				appliedSkills: [],
 				connectedTriggers: [],
 				isBuildChatStreaming: false,
@@ -118,6 +117,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('disabled')).toBe(
 			true,
 		);
+		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).props('disabled')).toBe(true);
 	});
 
 	it('JSON editor receives readOnly=true when canEditAgent is false', async () => {
@@ -136,7 +136,6 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 				agentFiles: [],
 				agentFilesLoading: false,
 				agentFilesUploading: false,
-				knowledgeBaseEnabled: true,
 				appliedSkills: [],
 				connectedTriggers: [],
 				isBuildChatStreaming: false,

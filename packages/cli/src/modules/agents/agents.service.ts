@@ -295,15 +295,6 @@ export class AgentsService {
 	}
 
 	/**
-	 * Whether the agent knowledge base sub-feature is enabled via
-	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
-	 * runtime tool. Public so the controller can guard its file endpoints.
-	 */
-	isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
-	}
-
-	/**
 	 * Best-effort close of an agent instance. Delegates to `agent.close()`
 	 * which disposes the runtime and disconnects any attached MCP clients.
 	 * Errors are logged but never thrown.

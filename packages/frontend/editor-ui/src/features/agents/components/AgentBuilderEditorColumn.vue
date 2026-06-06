@@ -39,7 +39,6 @@ const props = defineProps<{
 	agentFiles: AgentFileDto[];
 	agentFilesLoading: boolean;
 	agentFilesUploading: boolean;
-	knowledgeBaseEnabled: boolean;
 	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
@@ -313,7 +312,7 @@ function onRemoveSubAgent(agentId: string) {
 						</div>
 					</N8nCard>
 
-					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
+					<N8nCard variant="outlined" :class="$style.card">
 						<AgentFilesPanel
 							:files="agentFiles"
 							:disabled="childrenDisabled"

@@ -399,13 +399,6 @@ export class AgentsController {
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
-	/** Knowledge base endpoints are gated behind the `knowledge-base` agents module. */
-	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
-			throw new NotFoundError('Agent knowledge base is not enabled');
-		}
-	}
-
 	@Get('/:agentId/files')
 	@ProjectScope('agent:read')
 	async listFiles(
@@ -414,7 +407,6 @@ export class AgentsController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
 		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
@@ -433,7 +425,6 @@ export class AgentsController {
 	) {
 		const files = req.files ?? [];
 		try {
-			this.assertKnowledgeBaseEnabled();
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
@@ -465,7 +456,6 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
-		this.assertKnowledgeBaseEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		return { success: true };
 	}

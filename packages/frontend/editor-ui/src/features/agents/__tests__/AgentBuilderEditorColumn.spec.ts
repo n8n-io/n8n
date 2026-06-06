@@ -135,7 +135,6 @@ async function mountColumn() {
 			agentFiles: [],
 			agentFilesLoading: false,
 			agentFilesUploading: false,
-			knowledgeBaseEnabled: true,
 			appliedSkills: [],
 			connectedTriggers: [],
 			isBuildChatStreaming: false,
@@ -161,6 +160,12 @@ describe('AgentBuilderEditorColumn', () => {
 		vi.clearAllMocks();
 		projectAgentsListRef.value = [];
 		ensureLoadedMock.mockResolvedValue([]);
+	});
+
+	it('always renders the agent files card on the agent tab', async () => {
+		const wrapper = await mountColumn();
+
+		expect(wrapper.find('[data-testid="agent-files-card"]').exists()).toBe(true);
 	});
 
 	it('renders only the episodic memory row in the builder memory card', async () => {
