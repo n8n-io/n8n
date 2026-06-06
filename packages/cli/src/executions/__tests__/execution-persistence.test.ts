@@ -1078,16 +1078,17 @@ describe('ExecutionPersistence', () => {
 
 		// Property-based tests — fast-check finds unknowns example tests miss.
 		describe('property: circular reference sanitisation (fix-specific)', () => {
-			// Excludes __proto__/constructor/prototype: valid JSON keys that break object
-			// copy semantics unrelated to circular refs.
-			const arbSafeKey = fc
-				.string({ minLength: 1 })
-				.filter((k) => !['__proto__', 'constructor', 'prototype'].includes(k));
+			// arbNodeName excludes __proto__ because it is used as an object property key
+			// during test setup (Object.assign into runData) — __proto__ there would mutate
+			// the prototype of runData itself. Value-level keys (arbValueKey) are unrestricted
+			// so that __proto__ handling in the actual deserialization path is exercised.
+			const arbNodeName = fc.string({ minLength: 1 }).filter((k) => k !== '__proto__');
+			const arbValueKey = fc.string({ minLength: 1 });
 
 			const arbJsonValue = fc.jsonValue({ depthSize: 'small' });
-			const arbNodeItem = fc.record({ json: fc.dictionary(arbSafeKey, arbJsonValue) });
+			const arbNodeItem = fc.record({ json: fc.dictionary(arbValueKey, arbJsonValue) });
 			const arbRunData = fc.dictionary(
-				arbSafeKey,
+				arbNodeName,
 				fc.array(
 					fc.record({
 						data: fc.record({ main: fc.array(fc.array(arbNodeItem)) }),
@@ -1153,11 +1154,13 @@ describe('ExecutionPersistence', () => {
 			});
 
 			// NOTE: passes without the fix — guards round-trip value preservation.
+			// arbValueKey is unrestricted: if __proto__ keys survive the round-trip this
+			// catches regressions in the defineProperty fix.
 			it('should preserve non-circular node output values exactly', async () => {
 				await fc.assert(
 					fc.asyncProperty(
-						arbSafeKey,
-						fc.dictionary(arbSafeKey, arbJsonValue),
+						arbNodeName,
+						fc.dictionary(arbValueKey, arbJsonValue),
 						async (nodeName, nodeJson) => {
 							const execData = createEmptyRunExecutionData();
 							(execData.resultData.runData as Record<string, unknown>)[nodeName] = [
@@ -1179,7 +1182,9 @@ describe('ExecutionPersistence', () => {
 								}>
 							)?.[0]?.data?.main?.[0]?.[0]?.json;
 
-							expect(output).toEqual(nodeJson);
+							// JSON.stringify is the actual production oracle (what res.json() uses).
+							// toEqual would silently pass for -0 vs 0 mismatches; stringify catches them.
+							expect(JSON.stringify(output)).toBe(JSON.stringify(nodeJson));
 						},
 					),
 					{ numRuns: 100 },
@@ -1189,7 +1194,7 @@ describe('ExecutionPersistence', () => {
 			// NOTE: passes without the fix — guards replaceCircularReferences DAG safety.
 			it('should not mark shared (non-circular) objects as circular references', async () => {
 				await fc.assert(
-					fc.asyncProperty(fc.dictionary(arbSafeKey, arbJsonValue), async (sharedJson) => {
+					fc.asyncProperty(fc.dictionary(arbValueKey, arbJsonValue), async (sharedJson) => {
 						const execData = createEmptyRunExecutionData();
 						(execData.resultData.runData as Record<string, unknown>)['Node A'] = [
 							{ data: { main: [[{ json: sharedJson }]] } },

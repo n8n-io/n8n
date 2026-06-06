@@ -317,10 +317,13 @@ describe('jsonStringify', () => {
 });
 
 describe('replaceCircularReferences', () => {
-	// Excludes __proto__/constructor/prototype: valid JSON keys that break object copy semantics.
-	const arbSafeKey = fc
-		.string({ minLength: 1 })
-		.filter((k) => !['__proto__', 'constructor', 'prototype'].includes(k));
+	// arbSafeKey excludes __proto__ only where a key is used as a live object property
+	// setter in test setup: circKey (obj[circKey] = obj would create a prototype cycle
+	// that breaks for..in) and baseObj spread (spread invokes __proto__ setter).
+	// arbValueKey is unrestricted — it goes into the data that replaceCircularReferences
+	// processes, so __proto__ keys are exercised and the defineProperty fix is tested.
+	const arbSafeKey = fc.string({ minLength: 1 }).filter((k) => k !== '__proto__');
+	const arbValueKey = fc.string({ minLength: 1 });
 
 	const arbJsonValue = fc.jsonValue({ depthSize: 'small' });
 
@@ -378,7 +381,7 @@ describe('replaceCircularReferences', () => {
 	describe('property: output invariants', () => {
 		it('should be JSON.stringify-safe for arbitrary plain objects', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (obj) => {
+				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (obj) => {
 					expect(() => JSON.stringify(replaceCircularReferences(obj))).not.toThrow();
 				}),
 				{ numRuns: 200 },
@@ -387,8 +390,10 @@ describe('replaceCircularReferences', () => {
 
 		it('should preserve all values in plain objects exactly', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (obj) => {
-					expect(replaceCircularReferences(obj)).toEqual(obj);
+				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (obj) => {
+					// JSON.stringify is the actual production oracle — catches -0 vs 0 and
+					// __proto__ key preservation (where toEqual would silently pass both).
+					expect(JSON.stringify(replaceCircularReferences(obj))).toBe(JSON.stringify(obj));
 				}),
 				{ numRuns: 200 },
 			);
@@ -396,13 +401,13 @@ describe('replaceCircularReferences', () => {
 
 		it('should not mark shared (non-circular) objects as circular — DAG safety', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (shared) => {
+				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (shared) => {
 					const result = replaceCircularReferences({ a: shared, b: shared }) as {
 						a: unknown;
 						b: unknown;
 					};
-					expect(result.a).toEqual(shared);
-					expect(result.b).toEqual(shared);
+					expect(JSON.stringify(result.a)).toBe(JSON.stringify(shared));
+					expect(JSON.stringify(result.b)).toBe(JSON.stringify(shared));
 				}),
 				{ numRuns: 100 },
 			);
@@ -410,7 +415,7 @@ describe('replaceCircularReferences', () => {
 
 		it('should be idempotent', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (obj) => {
+				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (obj) => {
 					const once = replaceCircularReferences(obj);
 					const twice = replaceCircularReferences(replaceCircularReferences(obj));
 					expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
