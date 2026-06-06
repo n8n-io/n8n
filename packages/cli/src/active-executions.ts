@@ -88,16 +88,8 @@ export class ActiveExecutions {
 			responseMode === 'onReceived' && maybeExecutionId === undefined;
 
 		if (shouldActivateInBackground) {
-			const pendingOnReceived = Object.values(this.activeExecutions).filter(
-				(e) => e.status === 'new' && e.executionData.executionMode === 'webhook',
-			).length;
-			const maxPending = parseInt(process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT ?? '10000', 10);
-			if (Number.isNaN(maxPending)) {
-				throw new Error(
-					`Invalid N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT value: "${process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT}"`,
-				);
-			}
-			if (pendingOnReceived >= maxPending) {
+			const maxPending = this.executionsConfig.onReceivedWebhookQueueLimit;
+			if (this.activationPromises.size >= maxPending) {
 				throw new AdmissionLimitError();
 			}
 		}
@@ -198,7 +190,6 @@ export class ActiveExecutions {
 						error: executionError,
 					});
 					execution.postExecutePromise.reject(executionError);
-					throw executionError;
 				})
 				.finally(() => {
 					this.activationPromises.delete(executionId);
@@ -432,6 +423,8 @@ export class ActiveExecutions {
 				// Reject the post-execute promise so that attachCleanupHandlers fires
 				// (releasing any reserved capacity) and any caller of
 				// getPostExecutePromise() is unblocked rather than hung forever.
+				// Note: The postExecutePromise from createDeferredPromise is idempotent on
+				// double-settle, so rejecting it again in the activation catch path is safe.
 				execution.postExecutePromise.reject(new SystemShutdownExecutionCancelledError(executionId));
 				// The .finally() in attachCleanupHandlers will remove the entry from
 				// activeExecutions once the rejection propagates; we do not delete here.

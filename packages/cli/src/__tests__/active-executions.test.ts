@@ -47,6 +47,7 @@ const concurrencyControl = mockInstance(ConcurrencyControlService, {
 
 const executionsConfig = mockInstance(ExecutionsConfig, {
 	mode: 'regular',
+	onReceivedWebhookQueueLimit: 10000,
 });
 
 const flushPromises = async () => await new Promise(setImmediate);
@@ -131,7 +132,6 @@ describe('ActiveExecutions', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
-		delete process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT;
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
@@ -381,7 +381,10 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('rejects admission when pending onReceived executions reach the configured limit', async () => {
-			process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT = '1';
+			const queueLimitConfig = mockInstance(ExecutionsConfig, {
+				mode: 'regular',
+				onReceivedWebhookQueueLimit: 1,
+			});
 			const realConcurrencyControl = buildProductionConcurrencyControl(1);
 			activeExecutions = new ActiveExecutions(
 				mock(),
@@ -389,7 +392,7 @@ describe('ActiveExecutions', () => {
 				executionPersistence,
 				realConcurrencyControl,
 				mock(),
-				executionsConfig,
+				queueLimitConfig,
 			);
 			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
 			await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
@@ -403,17 +406,6 @@ describe('ActiveExecutions', () => {
 
 			realConcurrencyControl.release({ mode: 'webhook' });
 			await activeExecutions.waitForActivation(FAKE_EXECUTION_ID);
-		});
-
-		test('rejects admission when the queue limit env var is invalid', async () => {
-			process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT = 'abc';
-
-			await expect(
-				activeExecutions.add(webhookExecutionData, undefined, 'onReceived'),
-			).rejects.toThrow('Invalid N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT value: "abc"');
-
-			expect(executionPersistence.create).not.toHaveBeenCalled();
-			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 		});
 
 		test('does not add an execution or release capacity when DB creation fails', async () => {
@@ -434,9 +426,7 @@ describe('ActiveExecutions', () => {
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
 			void activeExecutions.getPostExecutePromise(executionId).catch(() => {});
 
-			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
-				'reserve failed',
-			);
+			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
 			await flushPromises();
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
@@ -460,9 +450,7 @@ describe('ActiveExecutions', () => {
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
 			void activeExecutions.getPostExecutePromise(executionId).catch(() => {});
 
-			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
-				'set running failed',
-			);
+			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
 
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
@@ -493,9 +481,7 @@ describe('ActiveExecutions', () => {
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 			expect(removeAllSpy).toHaveBeenCalledWith([]);
-			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
-				ManualExecutionCancelledError,
-			);
+			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
 		});
 	});
 
@@ -791,6 +777,42 @@ describe('ActiveExecutions', () => {
 				waitingExecutionId2,
 				expect.any(SystemShutdownExecutionCancelledError),
 			);
+		});
+
+		test('shutdown with queued onReceived execution does not cause unhandled promise rejections', async () => {
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			const removeAllSpy = jest.spyOn(realConcurrencyControl, 'removeAll');
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+			await flushPromises();
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+
+			// Grab the post-execute promise before shutdown
+			const postExecutePromise = activeExecutions.getPostExecutePromise(executionId);
+
+			// Trigger shutdown while execution is queued in concurrency throttle
+			await activeExecutions.shutdown();
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(removeAllSpy).toHaveBeenCalledWith([]);
+
+			// The post-execute promise should be rejected with shutdown error, not hang
+			await expect(postExecutePromise).rejects.toBeInstanceOf(
+				SystemShutdownExecutionCancelledError,
+			);
+
+			// Verify no unhandled rejections occurred by checking all promises are settled
+			// This test passes if we reach here without unhandled rejection errors
 		});
 	});
 });
