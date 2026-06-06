@@ -27,3 +27,5 @@ export class If extends VersionedNodeType {
 		super(nodeVersions, baseDescription);
 	}
 }
+
+// DEVP-393 scoping assessment (backend) — no-op change to observe E2E selection. Do not merge.
