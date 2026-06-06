@@ -536,6 +536,117 @@ describe('Salesforce -> GenericFunctions', () => {
 		});
 	});
 
+	describe('salesforceApiRequest Error Context', () => {
+		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+		let mockRequest: jest.Mock;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockRequest = jest.fn();
+
+			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
+
+			mockExecuteFunctions.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.salesforce',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'authentication') return 'oAuth2';
+				return undefined;
+			});
+
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					instance_url: 'https://test.salesforce.com',
+				},
+			});
+		});
+
+		it('should aggregate fields from multiple SF errors onto context', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						fields: ['AnnualRevenue'],
+						message: 'Annual Revenue cannot be negative.',
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+					{
+						fields: ['Phone'],
+						message: 'Phone number is invalid.',
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue, Phone',
+				},
+			});
+		});
+
+		it('should set null fields when no field-level errors are present', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						message: 'Internal server error.',
+						errorCode: 'UNKNOWN_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: 'UNKNOWN_EXCEPTION',
+					fields: null,
+				},
+			});
+		});
+
+		it('should not treat Salesforce errorCode as httpCode', async () => {
+			mockRequest.mockRejectedValue({
+				error: [
+					{
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					},
+				],
+			});
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				httpCode: null,
+				context: {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: null,
+				},
+			});
+		});
+
+		it('should handle errors with no SF error array', async () => {
+			mockRequest.mockRejectedValue(new Error('Network Error'));
+
+			await expect(
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+			).rejects.toMatchObject({
+				context: {
+					errorCode: null,
+					fields: null,
+				},
+			});
+		});
+	});
+
 	describe('salesforceApiRequest - JWT Authentication', () => {
 		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
 		let mockRequest: jest.Mock;

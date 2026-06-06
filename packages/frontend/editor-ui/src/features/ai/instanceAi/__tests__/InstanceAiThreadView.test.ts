@@ -27,6 +27,25 @@ const planEditSubmitState = vi.hoisted(() => ({
 }));
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const localStorageState = vi.hoisted(() => ({
+	store: new Map<string, string>(),
+}));
+
+Object.defineProperty(globalThis, 'localStorage', {
+	configurable: true,
+	value: {
+		getItem: vi.fn((key: string) => localStorageState.store.get(key) ?? null),
+		setItem: vi.fn((key: string, value: string) => {
+			localStorageState.store.set(key, value);
+		}),
+		removeItem: vi.fn((key: string) => {
+			localStorageState.store.delete(key);
+		}),
+		clear: vi.fn(() => {
+			localStorageState.store.clear();
+		}),
+	},
+});
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
@@ -164,16 +183,16 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 };
 
 function makePlanReviewMessage(): InstanceAiMessage {
-	const planner: InstanceAiAgentNode = {
-		agentId: 'planner-1',
-		role: 'planner',
+	const orchestrator: InstanceAiAgentNode = {
+		agentId: 'root',
+		role: 'orchestrator',
 		status: 'completed',
 		textContent: '',
 		reasoning: '',
 		toolCalls: [
 			{
 				toolCallId: 'tc-plan',
-				toolName: 'submit-plan',
+				toolName: 'create-tasks',
 				args: {},
 				isLoading: true,
 				confirmationStatus: 'pending',
@@ -196,7 +215,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 			},
 		],
 		children: [],
-		timeline: [],
+		timeline: [{ type: 'tool-call', toolCallId: 'tc-plan' }],
 	};
 
 	return {
@@ -207,14 +226,8 @@ function makePlanReviewMessage(): InstanceAiMessage {
 		isStreaming: true,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		agentTree: {
-			agentId: 'root',
-			role: 'orchestrator',
+			...orchestrator,
 			status: 'active',
-			textContent: '',
-			reasoning: '',
-			toolCalls: [],
-			children: [planner],
-			timeline: [{ type: 'child', agentId: 'planner-1' }],
 		},
 	};
 }
@@ -587,7 +600,10 @@ describe('InstanceAiThreadView', () => {
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
 			'User finished providing input',
-			expect.objectContaining({ feedback: 'use [REDACTED] to call the API' }),
+			expect.objectContaining({
+				feedback: 'use [REDACTED] to call the API',
+				plan_feedback_type: 'changes_requested',
+			}),
 		);
 		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
 			kind: 'approval',

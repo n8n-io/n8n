@@ -7,24 +7,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
-import type {
-	ClientOAuth2Options,
-	ClientOAuth2RequestObject,
-	ClientOAuth2Token,
-	ClientOAuth2TokenData,
-	OAuth2CredentialData,
-} from '@n8n/client-oauth2';
-import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
-import type { AxiosError, AxiosHeaders, AxiosRequestConfig } from 'axios';
+import type { AxiosHeaders, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
-import crypto, { createHmac } from 'crypto';
+import crypto from 'crypto';
 import type FormData from 'form-data';
 import { IncomingMessage } from 'http';
 import { type AgentOptions } from 'https';
-import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
-import merge from 'lodash/merge';
 import pick from 'lodash/pick';
 import {
 	NodeApiError,
@@ -32,16 +22,12 @@ import {
 	NodeSslError,
 	isObjectEmpty,
 	ExecutionBaseError,
-	jsonParse,
-	ApplicationError,
-	sleep,
 } from 'n8n-workflow';
 import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
-	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IHttpRequestOptions,
@@ -54,21 +40,16 @@ import type {
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	Logger as WorkflowLogger,
 	NodeParameterValueType,
-	PaginationOptions,
 	RequestHelperFunctions,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { Token } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
 import type { SsrfBridge } from '@/execution-engine';
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
-import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
@@ -89,6 +70,8 @@ import {
 	tryParseUrl,
 } from './request-helpers';
 import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
+import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './request-helpers/oauth';
+import { requestWithAuthenticationPaginated } from './request-helpers/pagination';
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -692,466 +675,6 @@ export async function httpRequest(
 	return result.data;
 }
 
-export function applyPaginationRequestData(
-	requestData: IRequestOptions,
-	paginationRequestData: PaginationOptions['request'],
-): IRequestOptions {
-	const preparedPaginationData: Partial<IRequestOptions> = {
-		...paginationRequestData,
-		uri: paginationRequestData.url,
-	};
-
-	if ('formData' in requestData) {
-		preparedPaginationData.formData = paginationRequestData.body;
-		delete preparedPaginationData.body;
-	} else if ('form' in requestData) {
-		preparedPaginationData.form = paginationRequestData.body;
-		delete preparedPaginationData.body;
-	}
-
-	return merge({}, requestData, preparedPaginationData);
-}
-
-function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
-	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
-	const scopes = credentials.scope
-		?.split(' ')
-		.map((s) => s.trim())
-		.filter(Boolean);
-	return new ClientOAuth2({
-		clientId: credentials.clientId,
-		clientSecret: credentials.clientSecret,
-		accessTokenUri: credentials.accessTokenUrl,
-		scopes: scopes?.length ? scopes : undefined,
-		ignoreSSLIssues: credentials.ignoreSSLIssues,
-		authentication: credentials.authentication ?? 'header',
-		...(credentials.additionalBodyProperties && {
-			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
-				fallbackValue: {},
-			}),
-		}),
-	});
-}
-
-function buildSigningToken(
-	client: ClientOAuth2,
-	tokenData: ClientOAuth2TokenData,
-	oAuth2Options?: IOAuth2Options,
-): ClientOAuth2Token {
-	const accessToken = get(tokenData, oAuth2Options?.property as string) || tokenData.accessToken;
-	const refreshToken = tokenData.refreshToken;
-	return client.createToken(
-		{
-			...tokenData,
-			...(accessToken ? { access_token: accessToken } : {}),
-			...(refreshToken ? { refresh_token: refreshToken } : {}),
-		},
-		oAuth2Options?.tokenType || tokenData.tokenType,
-	);
-}
-
-interface RefreshOAuth2TokenContext {
-	credentials: OAuth2CredentialData;
-	token: ClientOAuth2Token;
-	credentialsType: string;
-	node: INode;
-	additionalData: IWorkflowExecuteAdditionalData;
-	oAuth2Options?: IOAuth2Options;
-	logger: WorkflowLogger;
-	helpers: IAllExecuteFunctions['helpers'];
-}
-
-async function decryptOAuth2TokenDataIfConfigured<T extends IDataObject | undefined>(
-	additionalData: IWorkflowExecuteAdditionalData,
-	tokenData: T,
-	jweEnabled: boolean,
-): Promise<T | IDataObject> {
-	if (!jweEnabled) return tokenData;
-	const proxy = additionalData['oauth-jwe']?.oauthJweProxyProvider;
-	if (!proxy || !tokenData) return tokenData;
-	return await proxy.decryptOAuth2TokenData(tokenData);
-}
-
-function isRevokedOAuth2GrantError(error: unknown): boolean {
-	if (!(error instanceof AuthError)) return false;
-	const body = error.body as { error?: unknown } | undefined;
-	return body?.error === 'invalid_grant';
-}
-
-function buildOAuth2ReconnectError(node: INode, credentialsType: string): NodeOperationError {
-	const credentialName = node.credentials?.[credentialsType]?.name;
-	const credentialLabel = credentialName ? `"${credentialName}"` : `of type "${credentialsType}"`;
-	return new NodeOperationError(
-		node,
-		`The credential ${credentialLabel} needs to be reconnected.`,
-		{
-			description:
-				'Access could not be refreshed because the connected account has revoked access, the refresh token expired, or the account password or permissions changed. Open the credential and reconnect it to continue.',
-			level: 'warning',
-		},
-	);
-}
-
-async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
-	const {
-		credentials,
-		token,
-		credentialsType,
-		node,
-		additionalData,
-		oAuth2Options,
-		logger,
-		helpers,
-	} = ctx;
-	const tokenRefreshOptions: IDataObject = {};
-	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-		const body: IDataObject = {
-			client_id: credentials.clientId,
-			...(credentials.grantType === 'authorizationCode' && {
-				client_secret: credentials.clientSecret as string,
-			}),
-		};
-		tokenRefreshOptions.body = body;
-		tokenRefreshOptions.headers = { Authorization: '' };
-	}
-
-	logger.debug(
-		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
-	);
-
-	let newToken;
-	try {
-		if (credentials.grantType === 'clientCredentials') {
-			newToken = await token.client.credentials.getToken();
-		} else {
-			newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
-		}
-	} catch (error) {
-		if (isRevokedOAuth2GrantError(error)) {
-			throw buildOAuth2ReconnectError(node, credentialsType);
-		}
-		throw error;
-	}
-
-	logger.debug(
-		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-	);
-
-	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
-		additionalData,
-		newToken.data,
-		credentials.jweEnabled === true,
-	);
-
-	credentials.oauthTokenData = refreshedTokenData as typeof credentials.oauthTokenData;
-
-	// Apply preAuthentication so custom credential types extending oAuth2Api can transform
-	// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
-	// runPreAuthentication runs on every refresh without persisting — the transformed
-	// oauthTokenData is persisted by the updateCredentialsOauthTokenData call below.
-	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
-		{ helpers },
-		credentials as unknown as ICredentialDataDecryptedObject,
-		credentialsType,
-	);
-	let signingToken = newToken;
-	if (preAuthData) {
-		Object.assign(credentials, preAuthData);
-		signingToken = buildSigningToken(
-			token.client,
-			credentials.oauthTokenData as ClientOAuth2TokenData,
-			oAuth2Options,
-		);
-	}
-
-	if (!node.credentials?.[credentialsType]) {
-		throw new ApplicationError('Node does not have credential type', {
-			extra: { nodeName: node.name, credentialType: credentialsType },
-		});
-	}
-
-	const nodeCredentials = node.credentials[credentialsType];
-	await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
-		nodeCredentials,
-		credentialsType,
-		credentials as unknown as ICredentialDataDecryptedObject,
-		additionalData,
-	);
-
-	return signingToken;
-}
-
-function resolveTokenExpiredStatusCode(
-	oAuth2Options?: IOAuth2Options,
-	credentials?: OAuth2CredentialData,
-): number {
-	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
-}
-
-/** @deprecated make these requests using httpRequestWithAuthentication */
-export async function requestOAuth2(
-	this: IAllExecuteFunctions,
-	credentialsType: string,
-	requestOptions: IHttpRequestOptions | IRequestOptions,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	oAuth2Options?: IOAuth2Options,
-	isN8nRequest = false,
-) {
-	removeEmptyBody(requestOptions);
-
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as unknown as OAuth2CredentialData;
-
-	// Only the OAuth2 with authorization code grant needs connection
-	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected');
-	}
-
-	const oAuthClient = createOAuth2Client(credentials);
-
-	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	// if it's the first time using the credentials, get the access token and save it into the DB.
-	if (
-		credentials.grantType === 'clientCredentials' &&
-		(oauthTokenData === undefined ||
-			Object.keys(oauthTokenData).length === 0 ||
-			oauthTokenData.access_token === '') // stub
-	) {
-		let tokenResult: Awaited<ReturnType<typeof oAuthClient.credentials.getToken>>;
-		try {
-			tokenResult = await oAuthClient.credentials.getToken();
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			throw new ApplicationError(`Failed to acquire OAuth2 access token: ${message}`, {
-				cause: error,
-			});
-		}
-		const { data } = tokenResult;
-		// Find the credentials
-		if (!node.credentials?.[credentialsType]) {
-			throw new ApplicationError('Node does not have credential type', {
-				extra: { nodeName: node.name },
-				tags: { credentialType: credentialsType },
-			});
-		}
-
-		const nodeCredentials = node.credentials[credentialsType];
-		const initialTokenData = (await decryptOAuth2TokenDataIfConfigured(
-			additionalData,
-			data,
-			credentials.jweEnabled === true,
-		)) as ClientOAuth2TokenData;
-		credentials.oauthTokenData = initialTokenData;
-
-		// Save the refreshed token
-		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
-			nodeCredentials,
-			credentialsType,
-			credentials as unknown as ICredentialDataDecryptedObject,
-			additionalData,
-		);
-
-		oauthTokenData = initialTokenData;
-	}
-
-	// Apply preAuthentication for custom OAuth2 credential types extending oAuth2Api.
-	// Enables transforming token data on every request (e.g. extracting a claim from a
-	// decrypted JWE/JWT) as a pure in-memory transform — no DB write per request.
-	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
-		{ helpers: this.helpers },
-		credentials as unknown as ICredentialDataDecryptedObject,
-		credentialsType,
-	);
-	if (preAuthData) {
-		Object.assign(credentials, preAuthData);
-		oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	}
-
-	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
-
-	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
-
-	// Signs the request by adding authorization headers or query parameters depending
-	// on the token-type used.
-	const newRequestOptions = token.sign(requestOptions as ClientOAuth2RequestObject);
-	const newRequestHeaders = (newRequestOptions.headers = newRequestOptions.headers ?? {});
-	// If keep bearer is false remove the it from the authorization header
-	if (oAuth2Options?.keepBearer === false && typeof newRequestHeaders.Authorization === 'string') {
-		newRequestHeaders.Authorization = newRequestHeaders.Authorization.split(' ')[1];
-	}
-	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-		Object.assign(newRequestHeaders, {
-			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-		});
-	}
-	const tokenExpiredStatusCode = resolveTokenExpiredStatusCode(oAuth2Options, credentials);
-	const shouldSkipTokenRefresh = oAuth2Options?.skipTokenRefresh === true;
-
-	const refreshCtx: RefreshOAuth2TokenContext = {
-		credentials,
-		token,
-		credentialsType,
-		node,
-		additionalData,
-		oAuth2Options,
-		logger: this.logger,
-		helpers: this.helpers,
-	};
-
-	const retryWithNewToken = async (
-		makeRequest: (opts: ClientOAuth2RequestObject) => Promise<any>,
-	) => {
-		const newToken = await refreshOrFetchToken(refreshCtx);
-		const refreshedRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
-		refreshedRequestOptions.headers = refreshedRequestOptions.headers ?? {};
-		if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-			Object.assign(refreshedRequestOptions.headers, {
-				[oAuth2Options.keyToIncludeInAccessTokenHeader]: newToken.accessToken,
-			});
-		}
-		return await makeRequest(refreshedRequestOptions);
-	};
-
-	if (isN8nRequest) {
-		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (!shouldSkipTokenRefresh && error.response?.status === tokenExpiredStatusCode) {
-				return await retryWithNewToken(async (opts) => await this.helpers.httpRequest(opts));
-			}
-			throw error;
-		});
-	}
-
-	return await this.helpers
-		.request(newRequestOptions as IRequestOptions)
-		.then((response) => {
-			const requestOptions = newRequestOptions as any;
-			if (
-				!shouldSkipTokenRefresh &&
-				requestOptions.resolveWithFullResponse === true &&
-				requestOptions.simple === false &&
-				response.statusCode === tokenExpiredStatusCode
-			) {
-				throw response;
-			}
-			return response;
-		})
-		.catch(async (error: IResponseError) => {
-			if (!shouldSkipTokenRefresh && error.statusCode === tokenExpiredStatusCode) {
-				return await retryWithNewToken(
-					async (opts) => await this.helpers.request(opts as IRequestOptions),
-				);
-			}
-			throw error;
-		});
-}
-
-/** @deprecated make these requests using httpRequestWithAuthentication */
-export async function requestOAuth1(
-	this: IAllExecuteFunctions,
-	credentialsType: string,
-	requestOptions: IHttpRequestOptions | IRequestOptions,
-	isN8nRequest = false,
-) {
-	removeEmptyBody(requestOptions);
-
-	const credentials = await this.getCredentials(credentialsType);
-
-	if (credentials === undefined) {
-		throw new ApplicationError('No credentials were returned');
-	}
-
-	if (credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected');
-	}
-
-	const oauth = new clientOAuth1({
-		consumer: {
-			key: credentials.consumerKey as string,
-			secret: credentials.consumerSecret as string,
-		},
-		signature_method: credentials.signatureMethod as string,
-		hash_function(base, key) {
-			let algorithm: string;
-			switch (credentials.signatureMethod) {
-				case 'HMAC-SHA256':
-					algorithm = 'sha256';
-					break;
-				case 'HMAC-SHA512':
-					algorithm = 'sha512';
-					break;
-				default:
-					algorithm = 'sha1';
-					break;
-			}
-			return createHmac(algorithm, key).update(base).digest('base64');
-		},
-	});
-
-	const oauthTokenData = credentials.oauthTokenData as IDataObject;
-
-	const token: Token = {
-		key: oauthTokenData.oauth_token as string,
-		secret: oauthTokenData.oauth_token_secret as string,
-	};
-
-	// @ts-expect-error @TECH_DEBT: Remove request library
-	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
-
-	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
-	if ('uri' in requestOptions && !requestOptions.url) {
-		requestOptions.url = requestOptions.uri;
-		delete requestOptions.uri;
-	}
-
-	requestOptions.headers = oauth.toHeader(
-		oauth.authorize(requestOptions as unknown as clientOAuth1.RequestOptions, token),
-	) as unknown as Record<string, string>;
-	if (isN8nRequest) {
-		return await this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
-	}
-
-	return await this.helpers
-		.request(requestOptions as IRequestOptions)
-		.catch(async (error: IResponseError) => {
-			// Unknown error so simply throw it
-			throw error;
-		});
-}
-
-export async function refreshOAuth2Token(
-	this: IAllExecuteFunctions,
-	credentialsType: string,
-	node: INode,
-	additionalData: IWorkflowExecuteAdditionalData,
-	oAuth2Options?: IOAuth2Options,
-) {
-	const credentials = (await this.getCredentials(
-		credentialsType,
-	)) as unknown as OAuth2CredentialData;
-	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected');
-	}
-
-	const oAuthClient = createOAuth2Client(credentials);
-	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
-
-	const newToken = await refreshOrFetchToken({
-		credentials,
-		token,
-		credentialsType,
-		node,
-		additionalData,
-		oAuth2Options,
-		logger: this.logger,
-		helpers: this.helpers,
-	});
-
-	return newToken.data;
-}
-
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -1435,219 +958,6 @@ export const getRequestHelperFunctions = (
 		return parameterValue;
 	};
 
-	// eslint-disable-next-line complexity
-	async function requestWithAuthenticationPaginated(
-		this: IExecuteFunctions,
-		requestOptions: IRequestOptions,
-		itemIndex: number,
-		paginationOptions: PaginationOptions,
-		credentialsType?: string,
-		additionalCredentialOptions?: IAdditionalCredentialOptions,
-	): Promise<any[]> {
-		const responseData = [];
-		if (!requestOptions.qs) {
-			requestOptions.qs = {};
-		}
-		requestOptions.resolveWithFullResponse = true;
-		requestOptions.simple = false;
-
-		let tempResponseData: IN8nHttpFullResponse;
-		let makeAdditionalRequest: boolean;
-		let paginateRequestData: PaginationOptions['request'];
-
-		const runIndex = 0;
-
-		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-			$request: requestOptions,
-			$response: {} as IN8nHttpFullResponse,
-			$version: node.typeVersion,
-			$pageCount: 0,
-		};
-
-		const executeData: IExecuteData = {
-			data: {},
-			node,
-			source: null,
-		};
-
-		const hashData = {
-			identicalCount: 0,
-			previousLength: 0,
-			previousHash: '',
-		};
-		do {
-			paginateRequestData = getResolvedValue(
-				paginationOptions.request as unknown as NodeParameterValueType,
-				itemIndex,
-				runIndex,
-				executeData,
-				additionalKeys,
-				false,
-			) as object as PaginationOptions['request'];
-
-			const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
-
-			if (!tryParseUrl(tempRequestOptions.uri as string)) {
-				throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
-					itemIndex,
-					runIndex,
-					type: 'invalid_url',
-				});
-			}
-
-			if (credentialsType) {
-				tempResponseData = await this.helpers.requestWithAuthentication.call(
-					this,
-					credentialsType,
-					tempRequestOptions,
-					additionalCredentialOptions,
-				);
-			} else {
-				tempResponseData = await this.helpers.request(tempRequestOptions);
-			}
-
-			const newResponse: IN8nHttpFullResponse = Object.assign(
-				{
-					body: {},
-					headers: {},
-					statusCode: 0,
-				},
-				pick(tempResponseData, ['body', 'headers', 'statusCode']),
-			);
-
-			let contentBody: Exclude<IN8nHttpResponse, Buffer>;
-
-			if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
-				// Keep the original string version that we can use it to hash if needed
-				contentBody = await binaryToString(newResponse.body as Buffer | Readable);
-
-				const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
-				if (responseContentType.includes('application/json')) {
-					newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
-				} else {
-					newResponse.body = contentBody;
-				}
-				tempResponseData.__bodyResolved = true;
-				tempResponseData.body = newResponse.body;
-			} else {
-				contentBody = newResponse.body;
-			}
-
-			if (paginationOptions.binaryResult !== true || tempResponseData.headers.etag) {
-				// If the data is not binary (and so not a stream), or an etag is present,
-				// we check via etag or hash if identical data is received
-
-				let contentLength = 0;
-				if ('content-length' in tempResponseData.headers) {
-					contentLength = parseInt(tempResponseData.headers['content-length'] as string) || 0;
-				}
-
-				if (hashData.previousLength === contentLength) {
-					let hash: string;
-					if (tempResponseData.headers.etag) {
-						// If an etag is provided, we use it as "hash"
-						hash = tempResponseData.headers.etag as string;
-					} else {
-						// If there is no etag, we calculate a hash from the data in the body
-						if (typeof contentBody !== 'string') {
-							contentBody = JSON.stringify(contentBody);
-						}
-						hash = crypto.createHash('md5').update(contentBody).digest('base64');
-					}
-
-					if (hashData.previousHash === hash) {
-						hashData.identicalCount += 1;
-						if (hashData.identicalCount > 2) {
-							// Length was identical 5x and hash 3x
-							throw new NodeOperationError(
-								node,
-								'The returned response was identical 5x, so requests got stopped',
-								{
-									itemIndex,
-									description:
-										'Check if "Pagination Completed When" has been configured correctly.',
-								},
-							);
-						}
-					} else {
-						hashData.identicalCount = 0;
-					}
-					hashData.previousHash = hash;
-				} else {
-					hashData.identicalCount = 0;
-				}
-				hashData.previousLength = contentLength;
-			}
-
-			responseData.push(tempResponseData);
-
-			additionalKeys.$response = newResponse;
-			additionalKeys.$pageCount = (additionalKeys.$pageCount ?? 0) + 1;
-
-			const maxRequests = getResolvedValue(
-				paginationOptions.maxRequests,
-				itemIndex,
-				runIndex,
-				executeData,
-				additionalKeys,
-				false,
-			) as number;
-
-			if (maxRequests && additionalKeys.$pageCount >= maxRequests) {
-				break;
-			}
-
-			makeAdditionalRequest = getResolvedValue(
-				paginationOptions.continue,
-				itemIndex,
-				runIndex,
-				executeData,
-				additionalKeys,
-				false,
-			) as boolean;
-
-			if (makeAdditionalRequest) {
-				if (paginationOptions.requestInterval) {
-					const requestInterval = getResolvedValue(
-						paginationOptions.requestInterval,
-						itemIndex,
-						runIndex,
-						executeData,
-						additionalKeys,
-						false,
-					) as number;
-
-					await sleep(requestInterval);
-				}
-				if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
-					// We have it configured to let all requests pass no matter the response code
-					// via "requestOptions.simple = false" to not by default fail if it is for example
-					// configured to stop on 404 response codes. For that reason we have to throw here
-					// now an error manually if the response code is not a success one.
-					let data = tempResponseData.body;
-					if (data instanceof Readable && paginationOptions.binaryResult !== true) {
-						data = await binaryToString(data as Buffer | Readable);
-					} else if (typeof data === 'object') {
-						data = JSON.stringify(data);
-					}
-
-					throw Object.assign(new Error(`${tempResponseData.statusCode} - "${data?.toString()}"`), {
-						statusCode: tempResponseData.statusCode,
-						error: data,
-						isAxiosError: true,
-						response: {
-							headers: tempResponseData.headers,
-							status: tempResponseData.statusCode,
-							statusText: tempResponseData.statusMessage,
-						},
-					});
-				}
-			}
-		} while (makeAdditionalRequest);
-
-		return responseData;
-	}
-
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
@@ -1672,7 +982,25 @@ export const getRequestHelperFunctions = (
 			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
-		requestWithAuthenticationPaginated,
+		async requestWithAuthenticationPaginated(
+			this: IExecuteFunctions,
+			requestOptions,
+			itemIndex,
+			paginationOptions,
+			credentialsType,
+			additionalCredentialOptions,
+		): Promise<any[]> {
+			return await requestWithAuthenticationPaginated.call(
+				this,
+				requestOptions,
+				itemIndex,
+				paginationOptions,
+				getResolvedValue,
+				node,
+				credentialsType,
+				additionalCredentialOptions,
+			);
+		},
 		async httpRequestWithAuthentication(
 			this,
 			credentialsType,

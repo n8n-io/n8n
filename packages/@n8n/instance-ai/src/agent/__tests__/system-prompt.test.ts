@@ -97,21 +97,28 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toMatch(/handle a single simple task directly/);
-			expect(prompt).toMatch(/call `create-tasks` for multiple dependent tasks/);
+			expect(prompt).toMatch(/call `create-tasks` with `planningContext\.source: "replan"`/);
 		});
 	});
 
-	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new and multi-workflow work through plan', () => {
+	describe('When to Plan — complexity axis', () => {
+		it('routes clear single-workflow builds directly and uses the planning skill for coordinated work', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
-			expect(prompt).toContain('call `plan` immediately');
-			expect(prompt).toContain('Do not load the `workflow-builder` skill');
-			expect(prompt).toContain('workflow tasks include any data table names');
-			expect(prompt).toContain('The planner sub-agent discovers credentials and data tables');
-			expect(prompt).not.toContain('discovers credentials, data tables, and best practices');
+			expect(prompt).toMatch(/Clear single-workflow build, including a new or one-off workflow/);
+			expect(prompt).toContain(
+				'load the `workflow-builder` skill and call `build-workflow` directly',
+			);
+			expect(prompt).toMatch(/Plan-worthy workflow work/);
+			expect(prompt).toContain('load the `planning` skill');
+			expect(prompt).toContain(
+				'call `create-tasks` with `planningContext.source: "planning-skill"`',
+			);
+			expect(prompt).toContain('multiple workflows');
+			expect(prompt).toContain('shared data-table schema');
+			expect(prompt).not.toContain('call `plan`');
+			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
 		it('routes standalone data-table work through direct tools and the skill', () => {
@@ -120,14 +127,14 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toMatch(/Standalone data-table work/);
 			expect(prompt).toContain('`data-table-manager` skill');
 			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
-			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
 		});
 
 		it('loads the data-table skill before planning workflows that use tables', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain(
-				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+				'If workflow work needs shared data tables, load the `data-table-manager` skill before `planning`',
 			);
 		});
 
@@ -153,6 +160,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toMatch(/Replan follow-up/);
 			expect(prompt).toMatch(/route, don't re-plan/);
+			expect(prompt).toContain('planningContext.source: "replan"');
 		});
 	});
 
@@ -214,6 +222,19 @@ describe('getSystemPrompt', () => {
 				'Only call `workflows(action="publish")` when the user explicitly asks',
 			);
 			expect(prompt).not.toContain('outcome.supportingWorkflowIds');
+		});
+	});
+
+	describe('planned synthesis verification handling', () => {
+		it('keeps setup handoff and warning states visible during final synthesis', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('<planned-task-follow-up type="synthesize">');
+			expect(prompt).toContain('verificationReadiness.status === "needs_setup"');
+			expect(prompt).toContain('workflows(action="setup")');
+			expect(prompt).toContain('verificationReadiness.status === "not_verifiable"');
+			expect(prompt).toContain('clear warning/manual-test note');
+			expect(prompt).toContain('do not call it verified');
 		});
 	});
 

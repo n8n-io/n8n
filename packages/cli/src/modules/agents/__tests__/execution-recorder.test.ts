@@ -265,6 +265,70 @@ describe('ExecutionRecorder', () => {
 			expect(record.assistantResponse).toBe('Hello world');
 		});
 	});
+
+	describe('secret scrubbing', () => {
+		it('sanitizes tool inputs and outputs in flat records and timeline entries', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(
+				makeToolCallChunk('lookup', {
+					query: 'project status',
+					password: 'plain-secret-password',
+					nested: { apiKey: 'secret-api-key' },
+				}),
+			);
+			recorder.record(
+				makeToolResultChunk('lookup', {
+					result: 'password=hunter2',
+					authorization: 'Bearer secret-token-value',
+				}),
+			);
+
+			const record = recorder.getMessageRecord();
+			const timelineEntry = record.timeline.find((e) => e.type === 'tool-call');
+
+			expect(record.toolCalls[0]).toEqual({
+				name: 'lookup',
+				input: {
+					query: 'project status',
+					password: '[REDACTED]',
+					nested: { apiKey: '[REDACTED]' },
+				},
+				output: {
+					result: '[REDACTED]',
+					authorization: '[REDACTED]',
+				},
+			});
+			expect(timelineEntry).toMatchObject({
+				input: {
+					query: 'project status',
+					password: '[REDACTED]',
+					nested: { apiKey: '[REDACTED]' },
+				},
+				output: {
+					result: '[REDACTED]',
+					authorization: '[REDACTED]',
+				},
+			});
+		});
+
+		it('sanitizes error outputs before recording them', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('lookup', { query: 'project status' }));
+			recorder.record({
+				type: 'tool-result',
+				toolCallId: 'tc1',
+				toolName: 'lookup',
+				output: new Error('password=hunter2'),
+				isError: true,
+			});
+
+			const record = recorder.getMessageRecord();
+
+			expect(record.toolCalls[0].output).toEqual({ error: '[REDACTED]' });
+		});
+	});
 });
 
 function wfTool(name: string, id: string, wfName: string, trigger = 'manual'): BuiltTool {
@@ -421,6 +485,45 @@ describe('ExecutionRecorder — node-tool $fromAI resolution', () => {
 
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect((tc.nodeParameters as Record<string, unknown>).field).toBe('={{ $fromAI(unbalanced ');
+	});
+
+	it('sanitizes resolved node parameters before recording them', () => {
+		const registry = buildToolRegistry([
+			nodeTool('send_secret', 'n8n-nodes-base.http', {
+				password: "={{ $fromAI('password', 'Password', 'string') }}",
+				body: {
+					apiKey: "={{ $fromAI('apiKey', 'API key', 'string') }}",
+					message: "={{ $fromAI('message', 'Message', 'string') }}",
+				},
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'send_secret',
+			input: {
+				password: 'plain-secret-password',
+				apiKey: 'secret-api-key',
+				message: 'visible',
+			},
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'send_secret',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.nodeParameters).toEqual({
+			password: '[REDACTED]',
+			body: {
+				apiKey: '[REDACTED]',
+				message: 'visible',
+			},
+		});
 	});
 });
 
