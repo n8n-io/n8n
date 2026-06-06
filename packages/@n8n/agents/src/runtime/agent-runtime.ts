@@ -143,9 +143,7 @@ function summarizeToolForTelemetry(tool: BuiltTool): Record<string, unknown> {
 		description: tool.description,
 		type: tool.mcpTool ? 'mcp' : 'local',
 		...(tool.mcpServerName ? { mcp_server: tool.mcpServerName } : {}),
-		...(tool.suspendSchema || tool.resumeSchema || tool.withDefaultApproval
-			? { approval: true }
-			: {}),
+		...(tool.suspendSchema || tool.resumeSchema || tool.approval ? { approval: true } : {}),
 		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
 	};
 }
@@ -159,6 +157,22 @@ function summarizeProviderToolForTelemetry(tool: BuiltProviderTool): Record<stri
 		args: tool.args,
 		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
 	};
+}
+
+function isDeniedApprovalResumeData(value: unknown): boolean {
+	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
+}
+
+function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
+	if (!tool.approval) return true;
+	if (!tool.approval.required && tool.approval.conditional !== true) return true;
+	if (resumeData === undefined) return false;
+	return !isDeniedApprovalResumeData(resumeData);
+}
+
+function getToolResumeJsonSchema(tool: BuiltTool): JsonSchema7Type | undefined {
+	if (!tool.resumeSchema) return undefined;
+	return isZodSchema(tool.resumeSchema) ? zodToJsonSchema(tool.resumeSchema) : tool.resumeSchema;
 }
 
 function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<string, AttributeValue> {
@@ -2130,13 +2144,6 @@ export class AgentRuntime {
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
 
-		this.eventBus.emit({
-			type: AgentEvent.ToolExecutionStart,
-			toolCallId,
-			toolName,
-			args: toolInput,
-		});
-
 		const makeToolError = (error: unknown): ToolCallOutcome => {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionEnd,
@@ -2219,6 +2226,15 @@ export class AgentRuntime {
 			toolInput = result.data as JSONValue;
 		}
 
+		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
+			this.eventBus.emit({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId,
+				toolName,
+				args: toolInput,
+			});
+		}
+
 		let toolResult: unknown;
 		try {
 			toolResult = await this.withTelemetryToolSpan(
@@ -2250,9 +2266,7 @@ export class AgentRuntime {
 				const error = new Error(`Tool ${toolName} has no resume schema`);
 				return makeToolError(error);
 			}
-			const resumeSchema = isZodSchema(builtTool.resumeSchema)
-				? zodToJsonSchema(builtTool.resumeSchema)
-				: builtTool.resumeSchema;
+			const resumeSchema = getToolResumeJsonSchema(builtTool);
 			if (!resumeSchema) {
 				return makeToolError(new Error('Invalid resume schema'));
 			}
