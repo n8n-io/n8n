@@ -9,13 +9,18 @@ describe('ConcurrencyQueue', () => {
 
 	it('should limit concurrency', async () => {
 		const queue = new ConcurrencyQueue(1);
-		const state: Record<string, 'started' | 'finished'> = {};
+		const state: Record<string, 'started' | 'finished' | 'rejected'> = {};
 
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		const sleepSpy = jest.fn(() => sleep(500));
 
 		const testFn = async (item: { executionId: string }) => {
-			await queue.enqueue(item.executionId);
+			try {
+				await queue.enqueue(item.executionId);
+			} catch (error) {
+				state[item.executionId] = 'rejected';
+				return;
+			}
 			state[item.executionId] = 'started';
 			await sleepSpy();
 			queue.dequeue();
@@ -49,45 +54,56 @@ describe('ConcurrencyQueue', () => {
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
-		// If the fourth promise is removed, its waiter is released and the fifth one starts.
+		// If the fourth promise is removed, it is rejected and never started.
+		// The fifth one remains queued until the third one finishes.
 		queue.remove('4');
 		await jest.advanceTimersByTimeAsync(1);
-		expect(sleepSpy).toHaveBeenCalledTimes(5);
+		expect(sleepSpy).toHaveBeenCalledTimes(3); // 4 was rejected, 5 is still waiting
 		expect(state).toEqual({
 			1: 'finished',
 			2: 'finished',
 			3: 'started',
-			4: 'started',
-			5: 'started',
+			4: 'rejected',
 		});
 
-		// at T+5 seconds, all promises should be resolved
-		await jest.advanceTimersByTimeAsync(4000);
-		expect(sleepSpy).toHaveBeenCalledTimes(5);
+		// At T+1.5 seconds, the third promise finishes, releasing the queue so the fifth one starts.
+		await jest.advanceTimersByTimeAsync(499);
+		expect(sleepSpy).toHaveBeenCalledTimes(4); // 5 has started
 		expect(state).toEqual({
 			1: 'finished',
 			2: 'finished',
 			3: 'finished',
-			4: 'finished',
+			4: 'rejected',
+			5: 'started',
+		});
+
+		// at T+2.5 seconds, all active/waiting promises should be resolved/finished
+		await jest.advanceTimersByTimeAsync(1000);
+		expect(sleepSpy).toHaveBeenCalledTimes(4);
+		expect(state).toEqual({
+			1: 'finished',
+			2: 'finished',
+			3: 'finished',
+			4: 'rejected',
 			5: 'finished',
 		});
 	});
 
-	it('should resolve the removed item promise', async () => {
+	it('should reject the removed item promise', async () => {
 		const queue = new ConcurrencyQueue(0);
-		let resolved = false;
+		let rejected = false;
 
-		const enqueuePromise = queue.enqueue('queued-execution').then(() => {
-			resolved = true;
+		const enqueuePromise = queue.enqueue('queued-execution').catch(() => {
+			rejected = true;
 		});
 
 		await jest.advanceTimersByTimeAsync(1);
-		expect(resolved).toBe(false);
+		expect(rejected).toBe(false);
 
 		queue.remove('queued-execution');
 		await enqueuePromise;
 
-		expect(resolved).toBe(true);
+		expect(rejected).toBe(true);
 	});
 
 	it('should debounce emitting of the `concurrency-check` event', async () => {
