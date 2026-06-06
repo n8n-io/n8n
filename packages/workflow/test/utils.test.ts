@@ -360,6 +360,20 @@ describe('replaceCircularReferences', () => {
 			expect(Object.getPrototypeOf(data)).toBe(Object.prototype);
 		});
 
+		it('should produce __proto__ with full data descriptor: writable, configurable, enumerable', () => {
+			const input = JSON.parse('{"__proto__": {"isAdmin": true}, "normal": "value"}');
+			const result = replaceCircularReferences(input);
+
+			const descriptor = Object.getOwnPropertyDescriptor(result, '__proto__');
+			expect(descriptor?.writable).toBe(true);
+			expect(descriptor?.configurable).toBe(true);
+			expect(descriptor?.enumerable).toBe(true);
+
+			// Behavioral: configurable means deletable
+			expect(delete (result as Record<string, unknown>).__proto__).toBe(true);
+			expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+		});
+
 		it('should handle __proto__ containing a circular reference', () => {
 			const circularValue: Record<string, unknown> = { type: 'socket' };
 			circularValue.self = circularValue;
