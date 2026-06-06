@@ -5,6 +5,7 @@ import { N8nSandboxServiceSandbox } from '../n8n-sandbox-sandbox';
 
 const mockMkdir = vi.fn();
 const mockWriteFile = vi.fn();
+const mockAppendFile = vi.fn();
 const mockReadFile = vi.fn();
 const mockStat = vi.fn();
 
@@ -24,6 +25,7 @@ vi.mock('@n8n/sandbox-client', () => {
 		SandboxClient: class {
 			mkdir = mockMkdir;
 			writeFile = mockWriteFile;
+			appendFile = mockAppendFile;
 			readFile = mockReadFile;
 			stat = mockStat;
 		},
@@ -36,8 +38,11 @@ function createFilesystem() {
 		apiKey: 'key',
 		serviceUrl: 'https://sandbox.test',
 	});
-	vi.spyOn(sandbox, 'ensureRunning').mockResolvedValue(undefined);
-	return new N8nSandboxFilesystem(sandbox);
+	const ensureRunning = vi.spyOn(sandbox, 'ensureRunning').mockResolvedValue(undefined);
+	return {
+		filesystem: new N8nSandboxFilesystem(sandbox),
+		ensureRunning,
+	};
 }
 
 describe('N8nSandboxFilesystem', () => {
@@ -45,6 +50,7 @@ describe('N8nSandboxFilesystem', () => {
 		vi.clearAllMocks();
 		mockMkdir.mockResolvedValue(undefined);
 		mockWriteFile.mockResolvedValue(undefined);
+		mockAppendFile.mockResolvedValue(undefined);
 		mockReadFile.mockResolvedValue(Buffer.from('file content'));
 		mockStat.mockResolvedValue({
 			name: 'file.txt',
@@ -56,8 +62,21 @@ describe('N8nSandboxFilesystem', () => {
 		});
 	});
 
+	it('appends bytes through the sandbox client after ensuring the sandbox is ready', async () => {
+		const { filesystem, ensureRunning } = createFilesystem();
+
+		await filesystem.appendFile('/workspace/file.txt', Buffer.from('part'));
+
+		expect(ensureRunning).toHaveBeenCalled();
+		expect(mockAppendFile).toHaveBeenCalledWith(
+			'sb-test',
+			'/workspace/file.txt',
+			Buffer.from('part'),
+		);
+	});
+
 	it('calls mkdir for parent directory before writeFile when recursive is true', async () => {
-		const filesystem = createFilesystem();
+		const { filesystem } = createFilesystem();
 
 		await filesystem.writeFile('/workspace/nested/file.txt', 'hello', { recursive: true });
 
@@ -71,7 +90,7 @@ describe('N8nSandboxFilesystem', () => {
 	});
 
 	it('returns string content when readFile is called with utf8 encoding', async () => {
-		const filesystem = createFilesystem();
+		const { filesystem } = createFilesystem();
 
 		const content = await filesystem.readFile('/workspace/file.txt', { encoding: 'utf8' });
 
@@ -81,7 +100,7 @@ describe('N8nSandboxFilesystem', () => {
 
 	it('returns false from exists on SandboxServiceError 404', async () => {
 		mockStat.mockRejectedValue(new SandboxServiceError('not found', 404));
-		const filesystem = createFilesystem();
+		const { filesystem } = createFilesystem();
 
 		await expect(filesystem.exists('/workspace/missing.txt')).resolves.toBe(false);
 	});
@@ -89,13 +108,13 @@ describe('N8nSandboxFilesystem', () => {
 	it('rethrows non-404 errors from exists', async () => {
 		const error = new SandboxServiceError('server error', 500);
 		mockStat.mockRejectedValue(error);
-		const filesystem = createFilesystem();
+		const { filesystem } = createFilesystem();
 
 		await expect(filesystem.exists('/workspace/file.txt')).rejects.toBe(error);
 	});
 
 	it('maps sandbox client stat fields into FileStat', async () => {
-		const filesystem = createFilesystem();
+		const { filesystem } = createFilesystem();
 
 		const result = await filesystem.stat('/workspace/file.txt');
 

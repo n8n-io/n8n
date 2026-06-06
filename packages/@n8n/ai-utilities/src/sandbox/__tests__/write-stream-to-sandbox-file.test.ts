@@ -13,7 +13,7 @@ function makeFilesystem(provider: 'n8n-sandbox' | 'daytona') {
 		writeFile: vi.fn(async () => {}),
 		appendFile: vi.fn(async () => {}),
 		deleteFile: vi.fn(async () => {}),
-	} satisfies Partial<SandboxFilesystem> as SandboxFilesystem;
+	} satisfies Partial<SandboxFilesystem> as unknown as SandboxFilesystem;
 }
 
 function makeSandbox(provider: 'n8n-sandbox' | 'daytona') {
@@ -29,6 +29,7 @@ function makeSandbox(provider: 'n8n-sandbox' | 'daytona') {
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
+			executionTimeMs: 1,
 		})),
 	} satisfies Partial<SandboxInstance> as SandboxInstance;
 }
@@ -151,11 +152,12 @@ describe('writeStreamToSandboxFile', () => {
 
 		expect(result).toEqual({ bytesWritten: 2500, chunksWritten: 3 });
 		expect(filesystem.appendFile).not.toHaveBeenCalled();
-		expect(sandbox.executeCommand).toHaveBeenCalledTimes(1);
-		const executeArgs = vi.mocked(sandbox.executeCommand).mock.calls[0];
-		expect(executeArgs[0]).toBe('sh');
-		expect(executeArgs[1]).toEqual(['-lc', expect.any(String)]);
-		const script = executeArgs[1]?.[1] ?? '';
+		const executeCommand = sandbox.executeCommand!;
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+		const executeArgs = vi.mocked(executeCommand).mock.calls[0];
+		expect(executeArgs?.[0]).toBe('sh');
+		expect(executeArgs?.[1]).toEqual(['-lc', expect.any(String)]);
+		const script = executeArgs?.[1]?.[1] ?? '';
 		expect(script).toContain('/home/daytona/workspace/agent-knowledge/file.txt');
 		expect(script).toContain('.part');
 		expect(script).not.toContain(content.toString('hex'));
@@ -183,13 +185,14 @@ describe('writeStreamToSandboxFile', () => {
 	it('cleans Daytona temp directory and target when concat fails', async () => {
 		const filesystem = makeFilesystem('daytona');
 		const sandbox = makeSandbox('daytona');
-		vi.mocked(sandbox.executeCommand).mockResolvedValueOnce({
+		vi.mocked(sandbox.executeCommand!).mockResolvedValueOnce({
 			command: 'sh',
 			args: [],
 			success: false,
 			exitCode: 1,
 			stdout: '',
 			stderr: 'concat failed',
+			executionTimeMs: 1,
 		});
 		const stream = Readable.from([Buffer.alloc(1500, 3)]);
 
@@ -230,5 +233,191 @@ describe('writeStreamToSandboxFile', () => {
 				{ chunkSizeBytes: 0 },
 			),
 		).rejects.toThrow('Sandbox write chunk size must be greater than 0');
+	});
+
+	it('creates nested target directories before writing', async () => {
+		const filesystem = makeFilesystem('n8n-sandbox');
+		const sandbox = makeSandbox('n8n-sandbox');
+		const stream = Readable.from([Buffer.from('nested')]);
+
+		await writeStreamToSandboxFile(
+			filesystem,
+			sandbox,
+			'/home/user/workspace/nested/dir/file.txt',
+			stream,
+		);
+
+		expect(filesystem.mkdir).toHaveBeenCalledWith('/home/user/workspace/nested/dir', {
+			recursive: true,
+		});
+	});
+
+	it('converts string stream chunks and counts bytes correctly', async () => {
+		const filesystem = makeFilesystem('n8n-sandbox');
+		const sandbox = makeSandbox('n8n-sandbox');
+		const stream = Readable.from(['abc', 'def', 'ghi']);
+
+		const result = await writeStreamToSandboxFile(
+			filesystem,
+			sandbox,
+			'/home/user/workspace/agent-knowledge/file.txt',
+			stream,
+			{ chunkSizeBytes: 4 },
+		);
+
+		expect(result).toEqual({ bytesWritten: 9, chunksWritten: 3 });
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			'/home/user/workspace/agent-knowledge/file.txt',
+			Buffer.from('abcd'),
+			{ recursive: true, overwrite: true },
+		);
+		const appendedChunks = vi
+			.mocked(filesystem.appendFile)
+			.mock.calls.map((call) => (Buffer.isBuffer(call[1]) ? call[1].toString() : String(call[1])));
+		expect(appendedChunks).toEqual(['efgh', 'i']);
+	});
+
+	it('cleans target file when the first n8n sandbox write fails', async () => {
+		const filesystem = makeFilesystem('n8n-sandbox');
+		const sandbox = makeSandbox('n8n-sandbox');
+		const error = new Error('write failed');
+		vi.mocked(filesystem.writeFile).mockRejectedValueOnce(error);
+		const stream = Readable.from([Buffer.from('hello')]);
+
+		await expect(
+			writeStreamToSandboxFile(
+				filesystem,
+				sandbox,
+				'/home/user/workspace/agent-knowledge/file.txt',
+				stream,
+				{ chunkSizeBytes: 1024 },
+			),
+		).rejects.toThrow(error);
+
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/user/workspace/agent-knowledge/file.txt',
+			{ force: true },
+		);
+		expect(filesystem.appendFile).not.toHaveBeenCalled();
+	});
+
+	it('writes Daytona stream parts within chunkSizeBytes', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const sandbox = makeSandbox('daytona');
+		const content = Buffer.alloc(2500, 'a');
+		const stream = Readable.from([content]);
+
+		const result = await writeStreamToSandboxFile(
+			filesystem,
+			sandbox,
+			'/home/daytona/workspace/agent-knowledge/file.txt',
+			stream,
+			{
+				chunkSizeBytes: 1024,
+				temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+			},
+		);
+
+		expect(result).toEqual({ bytesWritten: 2500, chunksWritten: 3 });
+		for (const [, payload] of vi.mocked(filesystem.writeFile).mock.calls) {
+			const buffer = Buffer.isBuffer(payload) ? payload : Buffer.from(payload);
+			expect(buffer.length).toBeLessThanOrEqual(1024);
+		}
+		const executeCommand = sandbox.executeCommand!;
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+		const script = vi.mocked(executeCommand).mock.calls[0]?.[1]?.[1] ?? '';
+		expect(script).toContain('.part');
+		expect(script).not.toContain(content.toString());
+	});
+
+	it('does not concatenate a whole oversized Daytona source chunk before splitting', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const sandbox = makeSandbox('daytona');
+		const oversizedChunk = Buffer.alloc(2500, 'b');
+		const concatSpy = vi.spyOn(Buffer, 'concat');
+
+		try {
+			await writeStreamToSandboxFile(
+				filesystem,
+				sandbox,
+				'/home/daytona/workspace/agent-knowledge/file.txt',
+				Readable.from([Buffer.from('hi'), oversizedChunk]),
+				{
+					chunkSizeBytes: 1024,
+					temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+				},
+			);
+
+			for (const [buffers] of concatSpy.mock.calls) {
+				for (const buffer of buffers) {
+					expect(buffer.length).toBeLessThanOrEqual(1024);
+				}
+			}
+		} finally {
+			concatSpy.mockRestore();
+		}
+	});
+
+	it('writes empty Daytona stream as an empty file without concat', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const sandbox = makeSandbox('daytona');
+		const stream = Readable.from([]);
+
+		const result = await writeStreamToSandboxFile(
+			filesystem,
+			sandbox,
+			'/home/daytona/workspace/agent-knowledge/empty.txt',
+			stream,
+			{
+				temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+			},
+		);
+
+		expect(result).toEqual({ bytesWritten: 0, chunksWritten: 0 });
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/empty.txt',
+			Buffer.alloc(0),
+			{ recursive: true, overwrite: true },
+		);
+		expect(sandbox.executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('cleans Daytona temp parts and target when a temp part upload fails', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const sandbox = makeSandbox('daytona');
+		const error = new Error('part upload failed');
+		let partWrites = 0;
+		vi.mocked(filesystem.writeFile).mockImplementation(async (filePath, _content) => {
+			if (String(filePath).includes('.part')) {
+				partWrites += 1;
+				if (partWrites === 2) {
+					throw error;
+				}
+			}
+		});
+		const stream = Readable.from([Buffer.alloc(2500, 'c')]);
+
+		await expect(
+			writeStreamToSandboxFile(
+				filesystem,
+				sandbox,
+				'/home/daytona/workspace/agent-knowledge/file.txt',
+				stream,
+				{
+					chunkSizeBytes: 1024,
+					temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+				},
+			),
+		).rejects.toThrow(error);
+
+		expect(sandbox.executeCommand).not.toHaveBeenCalled();
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/file.txt',
+			{ force: true },
+		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			expect.stringContaining('/upload-parts/stream-upload/'),
+			{ recursive: true, force: true },
+		);
 	});
 });

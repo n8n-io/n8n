@@ -257,7 +257,10 @@ describe('search_knowledge tool', () => {
 				},
 			],
 		});
+		expect(knowledgeService.listWorkspaceFiles).toHaveBeenCalledWith(agentId, projectId);
 		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
 	});
 
 	it('returns a tool error when workspace materialization fails', async () => {
@@ -1577,6 +1580,72 @@ describe('search_knowledge tool', () => {
 			error: 'File "missing.txt" not found',
 		});
 		expect(sandboxCommandService.run).not.toHaveBeenCalled();
+	});
+
+	it('routes read through sandbox command service', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue([
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+		]);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'cat',
+			exitCode: 0,
+			stdout: 'hello world',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.({ operation: 'read', file: 'file-1' }, {} as never);
+
+		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalled();
+		expect(sandboxCommandService.run).toHaveBeenCalledWith(
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
+			expect.objectContaining({ command: 'cat', file: 'file-1-notes.txt' }),
+		);
+	});
+
+	it('sanitizes internal sandbox paths from tool errors', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'signature-a',
+		});
+		knowledgeService.materializeWorkspaceIntoSandbox.mockRejectedValue(
+			new Error('Failed to write /home/daytona/workspace/.agent-knowledge-internal/secret/part-1'),
+		);
+		const tool = createTool();
+
+		await expect(
+			tool.handler?.({ operation: 'search', query: 'needle' }, {} as never),
+		).resolves.toMatchObject({
+			operation: 'search',
+			error: 'Failed to write [path]',
+		});
 	});
 
 	it('routes csv operations through sandbox workspace and materialization', async () => {

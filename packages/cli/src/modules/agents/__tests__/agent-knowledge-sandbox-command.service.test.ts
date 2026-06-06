@@ -238,6 +238,60 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		).rejects.toThrow('Agent knowledge sandbox requires rg or grep for search');
 	});
 
+	it('scopes search commands to the knowledge root cwd', async () => {
+		const executeCommand = jest
+			.fn()
+			.mockResolvedValueOnce(capabilityProbeResult(['rg']))
+			.mockResolvedValueOnce({
+				success: true,
+				exitCode: 0,
+				stdout: 'file-1-notes.txt:1:needle\n',
+				stderr: '',
+				executionTimeMs: 1,
+			});
+		const workspace = makeWorkspace(executeCommand);
+
+		await service.run(workspace, {
+			command: 'git_grep',
+			pattern: 'needle',
+			fixedStrings: true,
+		});
+
+		expect(executeCommand.mock.calls[0]?.[2]).toEqual(
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
+		expect(executeCommand.mock.calls[1]?.[2]).toEqual(
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
+		const rgArgs = executeCommand.mock.calls[1]?.[1];
+		expect(rgArgs).toEqual(expect.arrayContaining(['.', 'needle']));
+		expect(rgArgs).not.toContain(workspace.manifestPath);
+		expect(rgArgs).not.toContain(workspace.internalRoot);
+	});
+
+	it('clamps read line ranges to 500 lines', async () => {
+		const executeCommand = jest
+			.fn()
+			.mockResolvedValueOnce(capabilityProbeResult(['sed']))
+			.mockResolvedValueOnce({
+				success: true,
+				exitCode: 0,
+				stdout: 'line 2\n',
+				stderr: '',
+				executionTimeMs: 1,
+			});
+		const workspace = makeWorkspace(executeCommand);
+
+		await service.run(workspace, {
+			command: 'sed',
+			file: 'notes.txt',
+			startLine: 2,
+			endLine: 900,
+		});
+
+		expect(executeCommand.mock.calls[1]?.[1]).toEqual(['-n', '2,502p', 'notes.txt']);
+	});
+
 	it('throws clear error when executeCommand is missing', async () => {
 		const workspace = makeWorkspace();
 		workspace.sandbox = {

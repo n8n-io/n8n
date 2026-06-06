@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { dirname } from 'node:path/posix';
 
 import {
 	KNOWLEDGE_CSV_RUNNER_BAKE_ROOT,
@@ -16,6 +17,7 @@ import {
 } from './agent-knowledge-sandbox-image-context';
 
 const DEFAULT_DAYTONA_BASE_IMAGE = 'daytonaio/sandbox:0.5.0';
+const KNOWLEDGE_CSV_RUNNER_FILE_NAME = 'knowledge-csv-runner.cjs';
 
 type DaytonaImage = CreateSandboxFromImageParams['image'];
 
@@ -41,8 +43,8 @@ export class AgentKnowledgeSandboxImageService {
 
 	private async buildDaytonaImage(baseImage: string, cacheKey: string): Promise<DaytonaImage> {
 		const runnerContent = await readFile(getKnowledgeCsvRunnerAssetPath(), 'utf8');
-		const runnerRelativePath = KNOWLEDGE_CSV_RUNNER_PATH.replace(/^\//, '');
-		const files = new Map<string, string>([[runnerRelativePath, runnerContent]]);
+		const runnerDir = dirname(KNOWLEDGE_CSV_RUNNER_PATH);
+		const files = new Map<string, string>([[KNOWLEDGE_CSV_RUNNER_FILE_NAME, runnerContent]]);
 
 		const previousStagingDir = this.stagingDirByKey.get(cacheKey);
 		if (previousStagingDir) {
@@ -56,7 +58,7 @@ export class AgentKnowledgeSandboxImageService {
 		return Image.base(baseImage)
 			.addLocalDir(stagingDir, KNOWLEDGE_CSV_RUNNER_BAKE_ROOT)
 			.runCommands(
-				`mkdir -p $(dirname ${KNOWLEDGE_CSV_RUNNER_PATH}) && cp ${KNOWLEDGE_CSV_RUNNER_BAKE_ROOT}/${runnerRelativePath} ${KNOWLEDGE_CSV_RUNNER_PATH} && chmod 0555 ${KNOWLEDGE_CSV_RUNNER_PATH}`,
+				`mkdir -p ${runnerDir} && cp -a ${KNOWLEDGE_CSV_RUNNER_BAKE_ROOT}/. ${runnerDir}/ && chmod 0555 ${KNOWLEDGE_CSV_RUNNER_PATH}`,
 			);
 	}
 }

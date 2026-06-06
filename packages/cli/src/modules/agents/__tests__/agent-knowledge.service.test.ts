@@ -593,6 +593,8 @@ describe('AgentKnowledgeService', () => {
 			fileReferences: ['file-1'],
 		});
 
+		expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
+		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
 		expect(writeStreamToSandboxFileMock).toHaveBeenCalledTimes(1);
 		expect(writeStreamToSandboxFileMock).toHaveBeenCalledWith(
 			target.filesystem,
@@ -604,6 +606,7 @@ describe('AgentKnowledgeService', () => {
 			},
 		);
 		expect(files).toEqual([expect.objectContaining({ id: 'file-1' })]);
+		expect(files[0]).not.toHaveProperty('binaryDataId');
 	});
 
 	it('writes manifest after all sandbox files are streamed', async () => {
@@ -618,17 +621,35 @@ describe('AgentKnowledgeService', () => {
 				fileSizeBytes: 10,
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
+			{
+				id: 'file-2',
+				agentId,
+				binaryDataId: 'binary-2',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
 		] as never);
-		binaryDataService.getAsStream.mockResolvedValue(Readable.from(Buffer.from('hello')) as never);
+		binaryDataService.getAsStream
+			.mockResolvedValueOnce(Readable.from(Buffer.from('hello')) as never)
+			.mockResolvedValueOnce(Readable.from(Buffer.from('country,year\n')) as never);
 		const target = makeSandboxTarget();
+		const writeOrder: Array<'stream' | 'manifest'> = [];
+		writeStreamToSandboxFileMock.mockImplementation(async () => {
+			writeOrder.push('stream');
+			return { bytesWritten: 10, chunksWritten: 1 };
+		});
+		jest.mocked(target.filesystem.writeFile).mockImplementation(async (filePath) => {
+			if (filePath === target.manifestPath) {
+				writeOrder.push('manifest');
+			}
+		});
 
 		await service.materializeWorkspaceIntoSandbox(agentId, projectId, target);
 
-		expect(target.filesystem.writeFile).toHaveBeenCalledWith(
-			target.manifestPath,
-			expect.any(String),
-			{ recursive: true, overwrite: true },
-		);
+		expect(writeStreamToSandboxFileMock).toHaveBeenCalledTimes(2);
+		expect(writeOrder).toEqual(['stream', 'stream', 'manifest']);
 		const manifestCall = jest
 			.mocked(target.filesystem.writeFile)
 			.mock.calls.find((call) => call[0] === target.manifestPath);
@@ -645,9 +666,16 @@ describe('AgentKnowledgeService', () => {
 					fileSizeBytes: 10,
 					binaryDataIdSha1: expect.any(String),
 				}),
+				expect.objectContaining({
+					id: 'file-2',
+					relativePath: 'file-2.csv',
+					fileSizeBytes: 17,
+					binaryDataIdSha1: expect.any(String),
+				}),
 			],
 		});
 		expect(JSON.stringify(manifest)).not.toContain('binary-1');
+		expect(JSON.stringify(manifest)).not.toContain('binary-2');
 	});
 
 	it('rejects oversized sandbox materialization before opening binary streams', async () => {
@@ -702,6 +730,51 @@ describe('AgentKnowledgeService', () => {
 		expect(target.filesystem.deleteFile).toHaveBeenCalledWith(target.manifestPath, {
 			force: true,
 		});
+	});
+
+	it('materializes sandbox files requested by display file name', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		agentFileRepository.findByAgentId.mockResolvedValue([
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+			{
+				id: 'file-2',
+				agentId,
+				binaryDataId: 'binary-2',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never);
+		binaryDataService.getAsStream.mockResolvedValue(
+			Readable.from(Buffer.from('name,age\nAlice,30\n')) as never,
+		);
+		const target = makeSandboxTarget();
+
+		const files = await service.materializeWorkspaceIntoSandbox(agentId, projectId, target, {
+			fileReferences: ['data.csv'],
+		});
+
+		expect(files).toEqual([expect.objectContaining({ id: 'file-1', fileName: 'data.csv' })]);
+		expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
+		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
+		expect(writeStreamToSandboxFileMock).toHaveBeenCalledWith(
+			target.filesystem,
+			target.sandbox,
+			'/home/user/workspace/agent-knowledge/file-1.csv',
+			expect.any(Readable),
+			{
+				temporaryDirectory: '/home/user/workspace/.agent-knowledge-internal/upload-parts',
+			},
+		);
 	});
 
 	it('materializes files requested by display file name', async () => {

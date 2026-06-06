@@ -40,9 +40,19 @@ describe('AgentKnowledgeSandboxImageService', () => {
 		expect(loadDaytonaMock).toHaveBeenCalled();
 		expect(imageBase).toHaveBeenCalledWith('daytonaio/sandbox:0.5.0');
 		expect(addLocalDir).toHaveBeenCalledWith('/tmp/staged-runner', KNOWLEDGE_CSV_RUNNER_BAKE_ROOT);
+		const stagedFiles = (stageFilesForKnowledgeRunnerImage as jest.Mock).mock.calls[0][0] as Map<
+			string,
+			string
+		>;
+		expect([...stagedFiles.keys()]).toEqual(['knowledge-csv-runner.cjs']);
+		expect(stagedFiles.get('knowledge-csv-runner.cjs')).toEqual(expect.any(String));
+		expect(stagedFiles.get('knowledge-csv-runner.cjs')).not.toHaveLength(0);
+		expect(runCommands).toHaveBeenCalledWith(
+			expect.stringContaining('mkdir -p /opt/n8n/sandbox-runners'),
+		);
 		expect(runCommands).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`cp ${KNOWLEDGE_CSV_RUNNER_BAKE_ROOT}/opt/n8n/sandbox-runners/knowledge-csv-runner.cjs ${KNOWLEDGE_CSV_RUNNER_PATH}`,
+				`cp -a ${KNOWLEDGE_CSV_RUNNER_BAKE_ROOT}/. /opt/n8n/sandbox-runners/`,
 			),
 		);
 		expect(runCommands).toHaveBeenCalledWith(

@@ -67,6 +67,10 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
+		agentKnowledgeService?: AgentKnowledgeService;
+		agentKnowledgeSandboxCommandService?: AgentKnowledgeSandboxCommandService;
+		agentKnowledgeSandboxCsvService?: AgentKnowledgeSandboxCsvService;
+		agentKnowledgeSandboxWorkspaceService?: AgentKnowledgeSandboxWorkspaceService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -87,10 +91,11 @@ function makeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
-		mock<AgentKnowledgeService>(),
-		mock<AgentKnowledgeSandboxCommandService>(),
-		mock<AgentKnowledgeSandboxCsvService>(),
-		mock<AgentKnowledgeSandboxWorkspaceService>(),
+		overrides.agentKnowledgeService ?? mock<AgentKnowledgeService>(),
+		overrides.agentKnowledgeSandboxCommandService ?? mock<AgentKnowledgeSandboxCommandService>(),
+		overrides.agentKnowledgeSandboxCsvService ?? mock<AgentKnowledgeSandboxCsvService>(),
+		overrides.agentKnowledgeSandboxWorkspaceService ??
+			mock<AgentKnowledgeSandboxWorkspaceService>(),
 	);
 }
 
@@ -139,7 +144,16 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, modules);
+		const agentKnowledgeService = mock<AgentKnowledgeService>();
+		const agentKnowledgeSandboxCommandService = mock<AgentKnowledgeSandboxCommandService>();
+		const agentKnowledgeSandboxCsvService = mock<AgentKnowledgeSandboxCsvService>();
+		const agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>();
+		const service = makeReconstructionService(agentsToolsService, modules, {
+			agentKnowledgeService,
+			agentKnowledgeSandboxCommandService,
+			agentKnowledgeSandboxCsvService,
+			agentKnowledgeSandboxWorkspaceService,
+		});
 		const entity = makeAgentEntity();
 
 		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
@@ -148,9 +162,36 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 			expect.objectContaining({
 				agentId: 'agent-1',
 				projectId: 'project-1',
+				knowledgeService: agentKnowledgeService,
+				sandboxCommandService: agentKnowledgeSandboxCommandService,
+				sandboxCsvService: agentKnowledgeSandboxCsvService,
+				sandboxWorkspaceService: agentKnowledgeSandboxWorkspaceService,
 			}),
 		);
 		expect(getInjectedToolNames()).toContain('search_knowledge');
+	});
+
+	it('logs a warning but still reconstructs when search_knowledge tool creation fails', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const logger = mock<Logger>();
+		const service = makeReconstructionService(agentsToolsService, [], { logger });
+		const entity = makeAgentEntity();
+		const toolError = new Error('tool factory failed');
+		createSearchKnowledgeToolMock.mockImplementationOnce(() => {
+			throw toolError;
+		});
+
+		await expect(
+			service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1'),
+		).resolves.toBeDefined();
+
+		expect(logger.warn).toHaveBeenCalledWith('Failed to inject search_knowledge tool', {
+			agentId: 'agent-1',
+			error: 'tool factory failed',
+		});
+		expect(getInjectedToolNames()).not.toContain('search_knowledge');
 	});
 });
 
@@ -381,6 +422,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		});
 
 		const toolNames = getInjectedToolNames();
+		expect(toolNames).toContain('search_knowledge');
 		expect(toolNames).not.toContain('rich_interaction');
 		expect(toolNames.filter((name) => name.endsWith('_context'))).toHaveLength(0);
 		expect(toolNames.filter((name) => name.endsWith('_action'))).toHaveLength(0);
