@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -98,6 +99,7 @@ import type {
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
+import { lockAdditionalProperties } from '../utils/json-schema';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
 
@@ -146,9 +148,7 @@ function summarizeToolForTelemetry(tool: BuiltTool): Record<string, unknown> {
 		description: tool.description,
 		type: tool.mcpTool ? 'mcp' : 'local',
 		...(tool.mcpServerName ? { mcp_server: tool.mcpServerName } : {}),
-		...(tool.suspendSchema || tool.resumeSchema || tool.withDefaultApproval
-			? { approval: true }
-			: {}),
+		...(tool.suspendSchema || tool.resumeSchema || tool.approval ? { approval: true } : {}),
 		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
 	};
 }
@@ -162,6 +162,22 @@ function summarizeProviderToolForTelemetry(tool: BuiltProviderTool): Record<stri
 		args: tool.args,
 		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
 	};
+}
+
+function isDeniedApprovalResumeData(value: unknown): boolean {
+	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
+}
+
+function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
+	if (!tool.approval) return true;
+	if (!tool.approval.required && tool.approval.conditional !== true) return true;
+	if (resumeData === undefined) return false;
+	return !isDeniedApprovalResumeData(resumeData);
+}
+
+function getToolResumeJsonSchema(tool: BuiltTool): JsonSchema7Type | undefined {
+	if (!tool.resumeSchema) return undefined;
+	return isZodSchema(tool.resumeSchema) ? zodToJsonSchema(tool.resumeSchema) : tool.resumeSchema;
 }
 
 function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<string, AttributeValue> {
@@ -199,7 +215,7 @@ export interface AgentRuntimeConfig {
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
-	structuredOutput?: z.ZodType;
+	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
 	eventBus?: AgentEventBus;
@@ -2178,13 +2194,6 @@ export class AgentRuntime {
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
 
-		this.eventBus.emit({
-			type: AgentEvent.ToolExecutionStart,
-			toolCallId,
-			toolName,
-			args: toolInput,
-		});
-
 		const makeToolError = (error: unknown): ToolCallOutcome => {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionEnd,
@@ -2267,6 +2276,15 @@ export class AgentRuntime {
 			toolInput = result.data as JSONValue;
 		}
 
+		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
+			this.eventBus.emit({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId,
+				toolName,
+				args: toolInput,
+			});
+		}
+
 		let toolResult: unknown;
 		try {
 			toolResult = await this.withTelemetryToolSpan(
@@ -2299,9 +2317,7 @@ export class AgentRuntime {
 				const error = new Error(`Tool ${toolName} has no resume schema`);
 				return makeToolError(error);
 			}
-			const resumeSchema = isZodSchema(builtTool.resumeSchema)
-				? zodToJsonSchema(builtTool.resumeSchema)
-				: builtTool.resumeSchema;
+			const resumeSchema = getToolResumeJsonSchema(builtTool);
 			if (!resumeSchema) {
 				return makeToolError(new Error('Invalid resume schema'));
 			}
@@ -2348,17 +2364,60 @@ export class AgentRuntime {
 	private buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const { Output } = getAiSdk();
+		const { Output, jsonSchema } = getAiSdk();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
+		const outputSchema = this.config.structuredOutput;
+		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
+		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
+			this.buildCallProviderOptions(execOptions?.providerOptions),
+			isRawJsonSchemaOutput,
+		);
+
+		const outputSpec = outputSchema
+			? Output.object({
+					// Zod schemas pass through directly; a raw JSON Schema gets
+					// `additionalProperties: false` locked onto every object (required by Anthropic)
+					// and wrapped with the AI SDK's `jsonSchema()` helper.
+					schema: isZodSchema(outputSchema)
+						? outputSchema
+						: jsonSchema(lockAdditionalProperties(outputSchema)),
+				})
+			: undefined;
+
 		return {
 			model,
 			aiProviderTools,
-			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
-			outputSpec: this.config.structuredOutput
-				? Output.object({ schema: this.config.structuredOutput })
-				: undefined,
+			providerOptions,
+			outputSpec,
 		};
+	}
+
+	/**
+	 * When structured output is driven by a raw JSON Schema (e.g. one a user
+	 * typed into a workflow node), opt out of strict JSON Schema validation for
+	 * the providers that default to it (OpenAI, Groq). Their strict mode rejects
+	 * schemas whose objects don't list every property in `required` or that use
+	 * keywords it doesn't allow — common in hand-written schemas. With strict off
+	 * the provider still steers generation toward the schema, and the runtime
+	 * validates the model's output against it afterwards.
+	 *
+	 * Zod-defined output keeps strict mode (zod-to-json-schema already produces a
+	 * strict-compliant schema). Providers that hardcode strict (e.g. xAI) or use
+	 * a different namespace (e.g. Azure) are unaffected and remain strict.
+	 */
+	private relaxStrictJsonSchemaIfNeeded(
+		providerOptions: Record<string, Record<string, unknown>> | undefined,
+		isRawJsonSchemaOutput: boolean,
+	): Record<string, Record<string, unknown>> | undefined {
+		if (!isRawJsonSchemaOutput) return providerOptions;
+
+		const result: Record<string, Record<string, unknown>> = { ...providerOptions };
+		for (const provider of ['openai', 'groq']) {
+			// Keep any caller-provided value (spread last so it wins).
+			result[provider] = { strictJsonSchema: false, ...result[provider] };
+		}
+		return result;
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */

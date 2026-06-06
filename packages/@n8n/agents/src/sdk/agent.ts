@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
 import { getModelCost } from './catalog';
@@ -109,8 +110,6 @@ export interface AgentSnapshot {
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
-	/** Whether `.requireToolApproval()` was called. */
-	requireToolApproval: boolean;
 }
 
 /**
@@ -158,7 +157,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private agentEvals: BuiltEval[] = [];
 
-	private outputSchema?: z.ZodType;
+	private outputSchema?: z.ZodType | JSONSchema7;
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
@@ -171,8 +170,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private telemetryConfig?: BuiltTelemetry;
 
 	private middlewares: AgentMiddleware[] = [];
-
-	private requireToolApprovalValue = false;
 
 	private mcpClients: McpClient[] = [];
 
@@ -363,6 +360,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Set a structured output schema. When set, the agent's response will be
 	 * parsed into a typed object matching the schema, available as `result.output`.
 	 *
+	 * Accepts either a Zod schema or a raw JSON Schema. JSON Schema is useful
+	 * when the schema is supplied dynamically (e.g. entered in a workflow node)
+	 * and there is no Zod type to compile against.
+	 *
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('extractor')
@@ -377,7 +378,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * console.log(result.structuredOutput); // { code: '...', explanation: '...' }
 	 * ```
 	 */
-	structuredOutput(schema: z.ZodType): this {
+	structuredOutput(schema: z.ZodType | JSONSchema7): this {
 		this.outputSchema = schema;
 		return this;
 	}
@@ -434,16 +435,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
-		return this;
-	}
-
-	/**
-	 * Require human approval before any tool executes.
-	 * Tools that already have .suspend()/.resume() (suspendSchema) are skipped.
-	 * Requires .checkpoint() to be set.
-	 */
-	requireToolApproval(): this {
-		this.requireToolApprovalValue = true;
 		return this;
 	}
 
@@ -577,7 +568,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
-			requireToolApproval: this.requireToolApprovalValue,
 		};
 	}
 
@@ -811,27 +801,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalTools.push(...wsTools);
 		}
 
-		let finalStaticTools = finalTools;
-		let finalDeferredTools = configuredDeferredTools;
-		if (this.requireToolApprovalValue) {
-			finalStaticTools = finalTools.map((t) =>
-				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
-					? t
-					: wrapToolForApproval(t, { requireApproval: true }),
-			);
-			finalDeferredTools = configuredDeferredTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
-			);
-		}
+		const finalStaticTools = finalTools;
+		const finalDeferredTools = configuredDeferredTools;
 
 		// Validate checkpoint requirement from static tools and known MCP approval config
 		// before attempting any network connections (allows fast failure).
 		const staticNeedsCheckpoint =
 			finalStaticTools.some((t) => t.suspendSchema) ||
 			finalDeferredTools.some((t) => t.suspendSchema);
-		const mcpNeedsCheckpoint =
-			(this.requireToolApprovalValue && this.mcpClients.length > 0) ||
-			this.mcpClients.some((c) => c.declaresApproval());
+		const mcpNeedsCheckpoint = this.mcpClients.some((c) => c.declaresApproval());
 		if ((staticNeedsCheckpoint || mcpNeedsCheckpoint) && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools requiring approval or suspend/resume but no checkpoint storage. ` +
@@ -842,15 +820,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
-		let mcpTools = mcpToolLists.flat();
-
-		// Apply global requireToolApproval to MCP tools (per-server approval is already
-		// handled inside McpClient/McpConnection.listTools()).
-		if (this.requireToolApprovalValue) {
-			mcpTools = mcpTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
-			);
-		}
+		const mcpTools = mcpToolLists.flat();
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticCollisions = findDuplicateToolNames(finalStaticTools);
@@ -1019,7 +989,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				},
 			});
 
-			if (tool.withDefaultApproval) {
+			if (tool.approval?.required === true) {
 				return wrapToolForApproval(completedTool, { requireApproval: true });
 			}
 			return completedTool;

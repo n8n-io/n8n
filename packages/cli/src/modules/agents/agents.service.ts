@@ -31,6 +31,7 @@ import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import type { JSONSchema7 } from 'json-schema';
 import {
 	deepCopy,
 	OperationalError,
@@ -55,6 +56,7 @@ import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { streamAgentChunks } from './utils/agent-stream';
+import { describeStructuredOutputError } from './utils/structured-output-error';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
@@ -117,6 +119,10 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/** n8n user ID for in-app preview chat resumes. */
+	userId?: string;
+	/** Defaults to true for external integrations; preview chat passes false. */
+	usePublishedVersion?: boolean;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
 	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
@@ -865,7 +871,16 @@ export class AgentsService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
+		const {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			integrationType,
+			userId,
+			usePublishedVersion = true,
+		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -886,7 +901,8 @@ export class AgentsService {
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			usePublishedVersion: true,
+			...(userId ? { n8nUserId: userId } : {}),
+			usePublishedVersion,
 			integrationType,
 		});
 
@@ -896,7 +912,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter({ agentId }),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
 		for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -1322,6 +1338,7 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId: string,
+		outputSchema?: JSONSchema7,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1333,6 +1350,13 @@ export class AgentsService {
 				credentialProvider,
 				userId,
 			);
+			// Apply a per-call structured-output schema (e.g. supplied by a
+			// workflow node) before the builder is cast to its runtime view. The
+			// isolated agent is freshly built and uncached, so this never leaks
+			// into concurrent chat / integration executions.
+			if (outputSchema) {
+				reconstructed.structuredOutput(outputSchema);
+			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {
 			return {
@@ -1367,6 +1391,7 @@ export class AgentsService {
 		projectId: string,
 		telemetryUserId?: string,
 		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1384,7 +1409,12 @@ export class AgentsService {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
 
-		const compiled = await this.compileIsolated(agentData, credentialProvider, userId);
+		const compiled = await this.compileIsolated(
+			agentData,
+			credentialProvider,
+			userId,
+			outputSchema,
+		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
@@ -1454,11 +1484,22 @@ export class AgentsService {
 		}
 
 		if (messageRecord.error) {
+			if (outputSchema) {
+				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
+				if (structuredOutputError) {
+					throw new OperationalError(structuredOutputError);
+				}
+			}
 			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
 		}
 
 		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError('Agent execution finished with an error.');
+			throw new OperationalError(
+				outputSchema
+					? 'Agent execution finished with an error while producing structured output. ' +
+							"The agent's model or provider may not support JSON Schema structured output."
+					: 'Agent execution finished with an error.',
+			);
 		}
 
 		return {

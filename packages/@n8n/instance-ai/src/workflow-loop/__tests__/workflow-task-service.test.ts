@@ -93,6 +93,13 @@ describe('WorkflowTaskCoordinator', () => {
 				workflowId: 'wf-1',
 			}),
 		);
+		expect(await coordinator.getBuildOutcome('wi_1')).toEqual(
+			expect.objectContaining({
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+				mockedCredentialTypes: ['slackOAuth2Api'],
+			}),
+		);
 	});
 
 	it('ignores stale build outcomes without overwriting the current work item', async () => {

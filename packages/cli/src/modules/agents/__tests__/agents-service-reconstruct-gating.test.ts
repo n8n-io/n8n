@@ -9,7 +9,7 @@ import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -77,7 +77,6 @@ function makeReconstructionService(
 		mock<AgentRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
-		mock<ExecutionRepository>(),
 		mock<WorkflowRepository>(),
 		mock<UserRepository>(),
 		mock<WorkflowFinderService>(),
