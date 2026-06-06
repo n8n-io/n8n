@@ -479,6 +479,39 @@ describe('run', () => {
 			expect(failExecutionSpy).toHaveBeenCalledWith(data, 'execution-id', error, undefined);
 		});
 
+		it('clears streaming heartbeat on execution/startup failures', async () => {
+			mockRunnerStartDeps();
+			const error = new Error('startup failed');
+			jest
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
+				.mockRejectedValue(error);
+			jest.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution').mockResolvedValue();
+
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+			const mockResponse = mock<Response>({
+				writableEnded: false,
+			});
+			const data = {
+				...buildWebhookRunData(),
+				streamingEnabled: true,
+				httpResponse: mockResponse,
+			};
+
+			await expect(runner.run(data, false, false, undefined, undefined, 'lastNode')).resolves.toBe(
+				'execution-id',
+			);
+
+			await flushPromises();
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+			setIntervalSpy.mockRestore();
+			clearIntervalSpy.mockRestore();
+		});
+
 		it('does not set an already activated onReceived execution running a second time', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			jest.spyOn(activeExecutions, 'getStatus').mockReturnValue('running');

@@ -299,12 +299,19 @@ export class WorkflowRunner {
 			return;
 		}
 
+		let heartbeatInterval: NodeJS.Timeout | undefined;
+		const clearHeartbeat = () => {
+			if (heartbeatInterval) {
+				clearInterval(heartbeatInterval);
+				heartbeatInterval = undefined;
+			}
+		};
+
 		try {
 			if (responsePromise) {
 				this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 			}
 
-			let heartbeatInterval: NodeJS.Timeout | undefined;
 			if (data.streamingEnabled === true && data.httpResponse) {
 				const res = data.httpResponse;
 				heartbeatInterval = setInterval(() => {
@@ -356,11 +363,10 @@ export class WorkflowRunner {
 
 			if (heartbeatInterval) {
 				const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-				void postExecutePromise.finally(() => {
-					clearInterval(heartbeatInterval);
-				});
+				void postExecutePromise.finally(clearHeartbeat);
 			}
 		} catch (error) {
+			clearHeartbeat();
 			await this.failExecution(
 				data,
 				executionId,
