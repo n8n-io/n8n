@@ -23,7 +23,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			type: 'string',
 			default: '',
 			required: true,
-			description: 'The ID of record in table',
+			description: 'The ID of the record in the table',
 		},
 		{
 			displayName: 'Link Field Name or ID',
@@ -52,7 +52,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 			required: true,
 			description:
-				'Name of the fields of type \'link\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				'Name of the field of type \'link\' to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Return All',

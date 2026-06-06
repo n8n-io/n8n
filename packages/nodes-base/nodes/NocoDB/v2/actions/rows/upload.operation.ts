@@ -76,7 +76,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 			required: true,
 			description:
-				'Name of the fields of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				'Name of the field of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Upload Field Name or ID',
@@ -110,7 +110,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			],
 			required: true,
 			description:
-				'Name of the fields of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				'Name of the field of type \'attachment\' that will be uploaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Filename',
@@ -151,7 +151,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					uploadMode: ['base64'],
 				},
 			},
-			description: 'Base64 value of file that will be upload',
+			description: 'Base64 value of the file that will be uploaded',
 		},
 		{
 			displayName: 'File Url',
