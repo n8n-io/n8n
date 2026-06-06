@@ -1,4 +1,4 @@
-import { sleep } from 'n8n-workflow';
+import { sleep, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import { ConcurrencyQueue } from '../concurrency-queue';
 
@@ -18,6 +18,7 @@ describe('ConcurrencyQueue', () => {
 			try {
 				await queue.enqueue(item.executionId);
 			} catch (error) {
+				expect(error).toBeInstanceOf(ManualExecutionCancelledError);
 				state[item.executionId] = 'rejected';
 				return;
 			}
@@ -91,19 +92,19 @@ describe('ConcurrencyQueue', () => {
 
 	it('should reject the removed item promise', async () => {
 		const queue = new ConcurrencyQueue(0);
-		let rejected = false;
+		let rejectedError: Error | null = null;
 
-		const enqueuePromise = queue.enqueue('queued-execution').catch(() => {
-			rejected = true;
+		const enqueuePromise = queue.enqueue('queued-execution').catch((error) => {
+			rejectedError = error;
 		});
 
 		await jest.advanceTimersByTimeAsync(1);
-		expect(rejected).toBe(false);
+		expect(rejectedError).toBeNull();
 
 		queue.remove('queued-execution');
 		await enqueuePromise;
 
-		expect(rejected).toBe(true);
+		expect(rejectedError).toBeInstanceOf(ManualExecutionCancelledError);
 	});
 
 	it('should debounce emitting of the `concurrency-check` event', async () => {
