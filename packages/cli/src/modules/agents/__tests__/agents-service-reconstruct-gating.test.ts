@@ -26,6 +26,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
@@ -38,9 +39,7 @@ builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint inject
 
 const buildFromJsonMock = jest.fn().mockImplementation(async () => builtAgent);
 jest.mock('../json-config/from-json-config', () => {
-	const actual = jest.requireActual<typeof import('../json-config/from-json-config')>(
-		'../json-config/from-json-config',
-	);
+	const actual = jest.requireActual<typeof FromJsonConfig>('../json-config/from-json-config');
 	return {
 		...actual,
 		buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
