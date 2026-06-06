@@ -1112,3 +1112,5 @@ export function useNodeHelpers() {
 		getDefaultNodeName,
 	};
 }
+
+// DEVP-393 scoping assessment (frontend) — no-op change to observe E2E selection. Do not merge.
