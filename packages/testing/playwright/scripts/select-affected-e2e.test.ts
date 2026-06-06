@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildArgs, resolveMapPath } from './select-affected-e2e.mjs';
 
 // The wrapper is the bridge between CI (raw changed-files list) and janitor
-// select-e2e. Its only job is to keep selection FAIL-OPEN: any failure in
+// select. Its only job is to keep selection FAIL-OPEN: any failure in
 // locating the map must degrade to broad — never throw, never hide selection.
 
 describe('select-affected-e2e wrapper — fail-open contract', () => {
@@ -54,19 +54,14 @@ describe('select-affected-e2e wrapper — fail-open contract', () => {
 		// the janitor CLI — assert by absence, not by a placeholder value.
 		it('omits --map when mapPath is null (fail-open broad)', () => {
 			const args = buildArgs({ changedFiles: 'a.ts,b.ts', mapPath: null });
-			expect(args).toEqual(['select-e2e', '--changed-files=a.ts,b.ts']);
+			expect(args).toEqual(['select', '--changed-files=a.ts,b.ts']);
 			expect(args.some((a: string) => a.startsWith('--map='))).toBe(false);
 		});
 
 		it('passes --map and --all-specs through when provided', () => {
 			expect(
 				buildArgs({ changedFiles: 'a.ts', mapPath: '/tmp/m.json', allSpecs: '/tmp/s.txt' }),
-			).toEqual([
-				'select-e2e',
-				'--changed-files=a.ts',
-				'--map=/tmp/m.json',
-				'--all-specs=/tmp/s.txt',
-			]);
+			).toEqual(['select', '--changed-files=a.ts', '--map=/tmp/m.json', '--all-specs=/tmp/s.txt']);
 		});
 	});
 });

@@ -16,12 +16,12 @@ export interface ShardAssignment {
 	fixtureCount: number;
 }
 
-export interface OrchestrationResult {
+export interface ShardDistribution {
 	shards: ShardAssignment[];
 	totalTestTime: number;
 }
 
-interface OrchestrationConfig {
+interface DistributeConfig {
 	defaultDuration: number;
 	maxGroupDuration: number;
 }
@@ -150,12 +150,12 @@ function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
 	return buckets;
 }
 
-export function orchestrate(
+export function distributeShards(
 	specs: DiscoveredSpec[],
 	numShards: number,
 	metrics: Record<string, number>,
-	config: OrchestrationConfig,
-): OrchestrationResult {
+	config: DistributeConfig,
+): ShardDistribution {
 	const enriched = enrichWithDuration(specs, metrics, config.defaultDuration);
 	const { groups, standard } = groupByCapability(enriched);
 

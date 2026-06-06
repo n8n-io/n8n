@@ -16,7 +16,7 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
-import { encodeImpactMap, buildImpactMap, orchestrate, selectTests } from '@n8n/test-impact';
+import { encodeImpactMap, buildImpactMap, distributeShards, selectTests } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -484,7 +484,7 @@ async function runFilterShard(options: CliOptions): Promise<void> {
 	}
 }
 
-async function runOrchestrate(options: CliOptions): Promise<void> {
+async function runDistribute(options: CliOptions): Promise<void> {
 	const config = getConfig();
 
 	if (!options.shards || options.shards < 1) {
@@ -532,7 +532,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 	}
 
 	// Composable allowlist filter. distribute-tests.mjs pre-computes the union
-	// of AST + V8 selection and writes it here; orchestrate then balances shards
+	// of AST + V8 selection and writes it here; distributeShards then balances shards
 	// against that subset instead of the full discovered set.
 	if (options.includeSpecsFile) {
 		const includeRaw = fs.readFileSync(options.includeSpecsFile, 'utf-8');
@@ -575,7 +575,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
-	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
+	const result = distributeShards(specs, options.shards, metrics, config.orchestration);
 
 	if (options.shardIndex !== undefined) {
 		if (Number.isNaN(options.shardIndex) || options.shardIndex < 0) {
@@ -717,7 +717,7 @@ async function main(): Promise<void> {
 			case 'discover':
 				showDiscoverHelp();
 				break;
-			case 'orchestrate':
+			case 'distribute':
 				showOrchestrateHelp();
 				break;
 			case 'affected-packages':
@@ -794,8 +794,8 @@ async function main(): Promise<void> {
 		case 'discover':
 			runDiscover();
 			break;
-		case 'orchestrate':
-			await runOrchestrate(options);
+		case 'distribute':
+			await runDistribute(options);
 			break;
 		case 'filter-shard':
 			await runFilterShard(options);

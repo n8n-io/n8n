@@ -14,7 +14,7 @@ export type Command =
 	| 'baseline'
 	| 'rules'
 	| 'discover'
-	| 'orchestrate'
+	| 'distribute'
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
@@ -69,7 +69,7 @@ export interface CliOptions {
 	outMap?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
-	/** Path to a newline-separated allowlist of spec paths (orchestrate). */
+	/** Path to a newline-separated allowlist of spec paths (distribute). */
 	includeSpecsFile?: string;
 }
 
@@ -81,7 +81,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	baseline: 'baseline',
 	rules: 'rules',
 	discover: 'discover',
-	orchestrate: 'orchestrate',
+	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',

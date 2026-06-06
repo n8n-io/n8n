@@ -18,8 +18,8 @@ import {
 	type ResolveResult,
 	decodeImpactMap,
 } from './impact-map.js';
-import { selectImpactedTests } from './select/pipeline.js';
 import { CoverageMapStrategy } from './select/coverage-map-strategy.js';
+import { selectImpactedTests } from './select/pipeline.js';
 
 export interface SelectTestsInput {
 	/** Changed files (file paths). */
