@@ -20,7 +20,7 @@ export type Command =
 	| 'test-scoped'
 	| 'filter-shard'
 	| 'merge-coverage'
-	| 'select-e2e';
+	| 'select';
 
 export interface CliOptions {
 	command: Command;
@@ -63,7 +63,7 @@ export interface CliOptions {
 	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
-	// coverage map options (merge-coverage / select-e2e)
+	// coverage map options (merge-coverage / select)
 	inputsDir?: string;
 	outLcov?: string;
 	outMap?: string;
@@ -87,7 +87,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
 	'merge-coverage': 'merge-coverage',
-	'select-e2e': 'select-e2e',
+	select: 'select',
 };
 
 interface FlagHandler {

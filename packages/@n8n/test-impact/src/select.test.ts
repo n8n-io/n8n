@@ -4,18 +4,18 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { type ImpactMap, type InternedImpactMap, encodeImpactMap } from './impact-map.js';
-import { selectE2e } from './select-e2e.js';
+import { selectTests } from './select.js';
 
 // The handler's fail-open contract is its safety guarantee: every failure mode
 // of the map source must degrade to mode 'broad', never to an empty spec set
 // (which would silently skip real tests). These cases pin that contract so a
 // future refactor of resolveImpact / loadMap can't quietly invert it.
 
-describe('selectE2e — fail-open contract', () => {
+describe('selectTests — fail-open contract', () => {
 	let tempDir: string;
 
 	beforeEach(() => {
-		tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'select-e2e-')));
+		tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'select-')));
 	});
 
 	afterEach(() => {
@@ -31,7 +31,7 @@ describe('selectE2e — fail-open contract', () => {
 	};
 
 	it('no --map provided → broad with failOpen reason', () => {
-		const result = selectE2e({
+		const result = selectTests({
 			changedFiles: ['packages/cli/src/x.ts'],
 			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
 		});
@@ -42,7 +42,7 @@ describe('selectE2e — fail-open contract', () => {
 
 	it("map path that doesn't exist → broad with failOpen reason", () => {
 		const missing = path.join(tempDir, 'never-existed.json');
-		const result = selectE2e({
+		const result = selectTests({
 			changedFiles: ['packages/cli/src/x.ts'],
 			mapFile: missing,
 			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
@@ -55,7 +55,7 @@ describe('selectE2e — fail-open contract', () => {
 	it('corrupt / non-JSON map → broad with failOpen reason', () => {
 		const mapPath = path.join(tempDir, 'corrupt.json');
 		fs.writeFileSync(mapPath, '{not valid json,,,');
-		const result = selectE2e({
+		const result = selectTests({
 			changedFiles: ['packages/cli/src/x.ts'],
 			mapFile: mapPath,
 			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
@@ -71,7 +71,7 @@ describe('selectE2e — fail-open contract', () => {
 	it('empty map {} → broad (the fail-open collapse)', () => {
 		const mapPath = path.join(tempDir, 'empty.json');
 		fs.writeFileSync(mapPath, '{}');
-		const result = selectE2e({
+		const result = selectTests({
 			changedFiles: ['packages/cli/src/x.ts'],
 			mapFile: mapPath,
 			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
@@ -92,7 +92,7 @@ describe('selectE2e — fail-open contract', () => {
 		const mapPath = path.join(tempDir, 'interned.json');
 		fs.writeFileSync(mapPath, JSON.stringify(interned));
 
-		const result = selectE2e({
+		const result = selectTests({
 			changedFiles: ['packages/cli/src/x.ts'],
 			mapFile: mapPath,
 		});
@@ -103,7 +103,7 @@ describe('selectE2e — fail-open contract', () => {
 
 	describe('--all-specs parsing', () => {
 		const triggerBroad = (allSpecsFile: string) =>
-			selectE2e({
+			selectTests({
 				changedFiles: ['packages/never/covered.ts'],
 				allSpecsFile,
 			});

@@ -7,7 +7,7 @@
  */
 export * from './impact-map.js';
 export * from './orchestrator.js';
-export * from './select-e2e.js';
+export * from './select.js';
 export * from './map-build.js';
 export type { DiscoveredSpec } from './types.js';
 

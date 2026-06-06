@@ -16,7 +16,7 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
-import { encodeImpactMap, buildImpactMap, orchestrate, selectE2e } from '@n8n/test-impact';
+import { encodeImpactMap, buildImpactMap, orchestrate, selectTests } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -679,10 +679,10 @@ function runMergeCoverage(options: CliOptions): void {
 	);
 }
 
-/** select-e2e: changed files + impact map → spec list (JSON). I/O wrapper
- *  around {@link selectE2e}, where the fail-open safety contract lives. */
-function runSelectE2e(options: CliOptions): void {
-	const result = selectE2e({
+/** select: changed files + impact map → spec list (JSON). I/O wrapper
+ *  around {@link selectTests}, where the fail-open safety contract lives. */
+function runSelect(options: CliOptions): void {
+	const result = selectTests({
 		changedFiles: readChangedFiles(options) ?? [],
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
@@ -752,8 +752,8 @@ async function main(): Promise<void> {
 		runMergeCoverage(options);
 		return;
 	}
-	if (options.command === 'select-e2e') {
-		runSelectE2e(options);
+	if (options.command === 'select') {
+		runSelect(options);
 		return;
 	}
 
