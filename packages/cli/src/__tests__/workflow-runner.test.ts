@@ -25,6 +25,7 @@ import {
 	type StartNodeData,
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
+	type WebhookResponseMode,
 	Workflow,
 	ExecutionError,
 	TimeoutExecutionCancelledError,
@@ -50,6 +51,13 @@ let runner: WorkflowRunner;
 const globalConfig = Container.get(GlobalConfig);
 setupTestServer({ endpointGroups: [] });
 
+const flushPromises = async () => await new Promise(setImmediate);
+
+type WorkflowRunnerInternals = {
+	runMainProcess: (...args: unknown[]) => Promise<void>;
+	failExecution: (...args: unknown[]) => Promise<void>;
+};
+
 mockInstance(Telemetry);
 
 mockInstance(OwnershipService, {
@@ -68,8 +76,13 @@ afterAll(() => {
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	jest.restoreAllMocks();
 	jest.clearAllMocks();
 	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
+	const activeExecutions = Container.get(ActiveExecutions);
+	jest.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+	jest.spyOn(activeExecutions, 'has').mockReturnValue(true);
+	jest.spyOn(activeExecutions, 'getStatus').mockReturnValue('new');
 });
 
 describe('processError', () => {
@@ -336,6 +349,160 @@ describe('run', () => {
 			// Not setting data.configureAdditionalData
 
 			await expect(runner.run(data)).resolves.toBe('1');
+		});
+	});
+
+	describe('webhook response modes', () => {
+		const buildWebhookRunData = () =>
+			mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'webhook',
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Webhook workflow',
+					nodes: [],
+					connections: {},
+					active: true,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					settings: undefined,
+				},
+				executionData: undefined,
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+
+		const mockRunnerStartDeps = () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			jest.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			jest.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			jest.spyOn(activeExecutions, 'getPostExecutePromise').mockResolvedValue(undefined);
+			jest.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValue();
+
+			return { activeExecutions };
+		};
+
+		it('returns immediately for onReceived before activation completes', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			jest.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			jest
+				.spyOn(activeExecutions, 'waitForActivation')
+				.mockReturnValue(new Promise<void>(() => {}));
+			const permissionCheckSpy = jest.spyOn(Container.get(CredentialsPermissionChecker), 'check');
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+
+			expect(activeExecutions.add).toHaveBeenCalledWith(data, undefined, 'onReceived');
+			expect(permissionCheckSpy).not.toHaveBeenCalled();
+		});
+
+		it.each<WebhookResponseMode>(['responseNode', 'lastNode', 'formPage'])(
+			'keeps %s execution startup synchronous',
+			async (responseMode) => {
+				mockRunnerStartDeps();
+				let resolveRunMainProcess: () => void;
+				const runMainProcessPromise = new Promise<void>((resolve) => {
+					resolveRunMainProcess = resolve;
+				});
+				const runMainProcessSpy = jest
+					.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
+					.mockReturnValue(runMainProcessPromise);
+
+				const runPromise = runner.run(
+					buildWebhookRunData(),
+					false,
+					false,
+					undefined,
+					undefined,
+					responseMode,
+				);
+
+				await flushPromises();
+				let didResolve = false;
+				void runPromise.then(() => {
+					didResolve = true;
+				});
+				await flushPromises();
+
+				expect(didResolve).toBe(false);
+				expect(runMainProcessSpy).toHaveBeenCalledTimes(1);
+
+				resolveRunMainProcess!();
+
+				await expect(runPromise).resolves.toBe('execution-id');
+			},
+		);
+
+		it('fails the execution when credentials validation fails after activation', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			jest.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			jest.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			const error = new Error('credentials denied');
+			jest.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValue(error);
+			const failExecutionSpy = jest
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(runner.run(data, false, false, undefined, undefined, 'lastNode')).resolves.toBe(
+				'execution-id',
+			);
+
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(data, 'execution-id', error, undefined);
+		});
+
+		it('fails the execution when workflow startup throws', async () => {
+			mockRunnerStartDeps();
+			const error = new Error('start failed');
+			jest
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
+				.mockRejectedValue(error);
+			const failExecutionSpy = jest
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(runner.run(data, false, false, undefined, undefined, 'lastNode')).resolves.toBe(
+				'execution-id',
+			);
+
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(data, 'execution-id', error, undefined);
+		});
+
+		it('does not set an already activated onReceived execution running a second time', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			jest.spyOn(activeExecutions, 'getStatus').mockReturnValue('running');
+			jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+			const setRunningSpy = jest.spyOn(Container.get(ExecutionRepository), 'setRunning');
+			setRunningSpy.mockClear();
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			jest
+				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+				.mockReturnValue(mock<core.ExecutionLifecycleHooks>());
+			jest.spyOn(Container.get(ManualExecutionService), 'runManually').mockReturnValue(
+				new PCancelable(() => {
+					return mock<IRun>();
+				}),
+			);
+
+			await (runner as unknown as WorkflowRunnerInternals).runMainProcess(
+				'execution-id',
+				buildWebhookRunData(),
+			);
+
+			expect(setRunningSpy).not.toHaveBeenCalled();
 		});
 	});
 });

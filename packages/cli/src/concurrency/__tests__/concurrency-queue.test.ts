@@ -49,16 +49,45 @@ describe('ConcurrencyQueue', () => {
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
-		// If the fourth promise is removed, the fifth one is started in the next tick
+		// If the fourth promise is removed, its waiter is released and the fifth one starts.
 		queue.remove('4');
 		await jest.advanceTimersByTimeAsync(1);
-		expect(sleepSpy).toHaveBeenCalledTimes(4);
-		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started', 5: 'started' });
+		expect(sleepSpy).toHaveBeenCalledTimes(5);
+		expect(state).toEqual({
+			1: 'finished',
+			2: 'finished',
+			3: 'started',
+			4: 'started',
+			5: 'started',
+		});
 
-		// at T+5 seconds, all but the fourth promise should be resolved
+		// at T+5 seconds, all promises should be resolved
 		await jest.advanceTimersByTimeAsync(4000);
-		expect(sleepSpy).toHaveBeenCalledTimes(4);
-		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'finished', 5: 'finished' });
+		expect(sleepSpy).toHaveBeenCalledTimes(5);
+		expect(state).toEqual({
+			1: 'finished',
+			2: 'finished',
+			3: 'finished',
+			4: 'finished',
+			5: 'finished',
+		});
+	});
+
+	it('should resolve the removed item promise', async () => {
+		const queue = new ConcurrencyQueue(0);
+		let resolved = false;
+
+		const enqueuePromise = queue.enqueue('queued-execution').then(() => {
+			resolved = true;
+		});
+
+		await jest.advanceTimersByTimeAsync(1);
+		expect(resolved).toBe(false);
+
+		queue.remove('queued-execution');
+		await enqueuePromise;
+
+		expect(resolved).toBe(true);
 	});
 
 	it('should debounce emitting of the `concurrency-check` event', async () => {

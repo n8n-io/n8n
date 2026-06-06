@@ -22,6 +22,7 @@ import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ConcurrencyCapacityReservation } from '@/concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -47,6 +48,8 @@ const concurrencyControl = mockInstance(ConcurrencyControlService, {
 const executionsConfig = mockInstance(ExecutionsConfig, {
 	mode: 'regular',
 });
+
+const flushPromises = async () => await new Promise(setImmediate);
 
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
@@ -78,7 +81,36 @@ describe('ActiveExecutions', () => {
 		userId: uuid(),
 	};
 
+	const webhookExecutionData: IWorkflowExecutionDataProcess = {
+		...executionData,
+		executionMode: 'webhook',
+	};
+
+	const buildProductionConcurrencyControl = (productionLimit: number) =>
+		new ConcurrencyControlService(
+			mockLogger(),
+			executionRepository,
+			mock<Telemetry>(),
+			mock<EventService>(),
+			mock<GlobalConfig>({
+				executions: {
+					mode: 'regular',
+					concurrency: { productionLimit, evaluationLimit: -1 },
+				},
+				deployment: { type: 'default' },
+			}),
+			mock<License>(),
+		);
+
 	beforeEach(() => {
+		executionPersistence.create.mockReset();
+		executionRepository.updateExistingExecution.mockReset();
+		executionRepository.setRunning.mockReset();
+		concurrencyControl.throttle.mockReset();
+		concurrencyControl.release.mockReset();
+		concurrencyControl.disable.mockReset();
+		concurrencyControl.removeAll.mockReset();
+
 		activeExecutions = new ActiveExecutions(
 			mock(),
 			executionRepository,
@@ -99,6 +131,7 @@ describe('ActiveExecutions', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		delete process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT;
 	});
 
 	test('Should initialize activeExecutions with empty list', () => {
@@ -269,6 +302,198 @@ describe('ActiveExecutions', () => {
 			await evalActiveExecutions.add(evalExecutionData);
 
 			expect(throttleSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('onReceived webhook activation', () => {
+		test('returns an execution id immediately and activates in the background', async () => {
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+
+			expect(executionId).toBe(FAKE_EXECUTION_ID);
+			expect(activeExecutions.getStatus(executionId)).toBe('new');
+			expect(executionRepository.setRunning).not.toHaveBeenCalled();
+
+			await activeExecutions.waitForActivation(executionId);
+
+			expect(executionRepository.setRunning).toHaveBeenCalledWith(executionId);
+			expect(activeExecutions.getStatus(executionId)).toBe('running');
+		});
+
+		test('keeps a second onReceived execution new while production capacity is full', async () => {
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+			const activationPromise = activeExecutions.waitForActivation(executionId);
+
+			await flushPromises();
+
+			expect(activeExecutions.getActiveExecutions()).toEqual([
+				expect.objectContaining({ id: executionId, status: 'new', mode: 'webhook' }),
+			]);
+			expect(executionRepository.setRunning).not.toHaveBeenCalled();
+
+			realConcurrencyControl.release({ mode: 'webhook' });
+			await activationPromise;
+
+			expect(activeExecutions.getStatus(executionId)).toBe('running');
+			expect(executionRepository.setRunning).toHaveBeenCalledWith(executionId);
+		});
+
+		test('reports queued onReceived executions in getActiveExecutions()', async () => {
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+
+			expect(activeExecutions.getActiveExecutions()).toEqual([
+				expect.objectContaining({ id: executionId, status: 'new', mode: 'webhook' }),
+			]);
+
+			realConcurrencyControl.release({ mode: 'webhook' });
+			await activeExecutions.waitForActivation(executionId);
+		});
+
+		test('rejects admission when pending onReceived executions reach the configured limit', async () => {
+			process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT = '1';
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
+			await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+
+			await expect(
+				activeExecutions.add(webhookExecutionData, undefined, 'onReceived'),
+			).rejects.toThrow('Too many pending onReceived executions');
+
+			expect(executionPersistence.create).toHaveBeenCalledTimes(1);
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+
+			realConcurrencyControl.release({ mode: 'webhook' });
+			await activeExecutions.waitForActivation(FAKE_EXECUTION_ID);
+		});
+
+		test('rejects admission when the queue limit env var is invalid', async () => {
+			process.env.N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT = 'abc';
+
+			await expect(
+				activeExecutions.add(webhookExecutionData, undefined, 'onReceived'),
+			).rejects.toThrow('Invalid N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT value: "abc"');
+
+			expect(executionPersistence.create).not.toHaveBeenCalled();
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+
+		test('does not add an execution or release capacity when DB creation fails', async () => {
+			executionPersistence.create.mockRejectedValueOnce(new Error('create failed'));
+
+			await expect(
+				activeExecutions.add(webhookExecutionData, undefined, 'onReceived'),
+			).rejects.toThrow('create failed');
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(concurrencyControl.release).not.toHaveBeenCalled();
+		});
+
+		test('cleans up when background reservation fails', async () => {
+			const releaseSpy = jest.spyOn(ConcurrencyCapacityReservation.prototype, 'release');
+			concurrencyControl.throttle.mockRejectedValueOnce(new Error('reserve failed'));
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+			void activeExecutions.getPostExecutePromise(executionId).catch(() => {});
+
+			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
+				'reserve failed',
+			);
+			await flushPromises();
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(executionRepository.setRunning).not.toHaveBeenCalled();
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		test('releases capacity once and removes the execution if setRunning fails', async () => {
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			const releaseSpy = jest.spyOn(realConcurrencyControl, 'release');
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+			executionRepository.setRunning.mockRejectedValueOnce(new Error('set running failed'));
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+			void activeExecutions.getPostExecutePromise(executionId).catch(() => {});
+
+			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
+				'set running failed',
+			);
+
+			expect(releaseSpy).toHaveBeenCalledTimes(1);
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+
+			const nextExecutionId = 'next-webhook';
+			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: nextExecutionId });
+			realConcurrencyControl.release({ mode: 'webhook' });
+		});
+
+		test('shutdown removes queued onReceived executions before capacity is available', async () => {
+			const realConcurrencyControl = buildProductionConcurrencyControl(1);
+			const removeAllSpy = jest.spyOn(realConcurrencyControl, 'removeAll');
+			activeExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+			);
+			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: 'running-webhook' });
+
+			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+			await flushPromises();
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+			await activeExecutions.shutdown();
+
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(removeAllSpy).toHaveBeenCalledWith([]);
+			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
 		});
 	});
 

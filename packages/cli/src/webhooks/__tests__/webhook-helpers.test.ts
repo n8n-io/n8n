@@ -13,6 +13,8 @@ import type {
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -26,15 +28,24 @@ import {
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
+import { AuthService } from '@/auth/auth.service';
+import { AdmissionLimitError } from '@/errors/admission-limit.error';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
+
 import {
 	autoDetectResponseMode,
+	executeWebhook,
 	handleFormRedirectionCase,
 	setupResponseNodePromise,
 	prepareExecutionData,
 	handleHostedChatResponse,
 	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
-import type { IWebhookResponseCallbackData } from '../webhook.types';
+import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
 jest.mock('stream/promises', () => ({
 	finished: jest.fn(),
@@ -319,6 +330,110 @@ describe('setupResponseNodePromise', () => {
 			{ executionId, workflowId },
 		);
 		expect(responseCallback).toHaveBeenCalledWith(error, {});
+	});
+});
+
+describe('executeWebhook', () => {
+	beforeEach(() => {
+		jest.resetAllMocks();
+	});
+
+	it('maps pending onReceived admission limit errors to HTTP 429', async () => {
+		mockInstance(AuthService);
+		mockInstance(WebhookService, {
+			runWebhook: jest.fn().mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] }),
+		});
+		mockInstance(WorkflowStatisticsService, {
+			emit: jest.fn(),
+		});
+		mockInstance(OwnershipService, {
+			getWorkflowProjectCached: jest.fn().mockResolvedValue(undefined),
+		});
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue({} as IWorkflowExecuteAdditionalData);
+
+		// Mock WorkflowRunner.run via Container
+		const mockWorkflowRunner = mockInstance(WorkflowRunner);
+		mockWorkflowRunner.run.mockRejectedValue(new AdmissionLimitError());
+
+		const workflowStartNode = mock<INode>({
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 2,
+			parameters: {},
+		});
+		const workflow = mock<Workflow>({
+			id: 'workflow-id',
+			name: 'Webhook workflow',
+			nodes: { [workflowStartNode.name]: workflowStartNode },
+			nodeTypes: {
+				getByNameAndVersion: jest.fn().mockReturnValue({
+					description: { name: 'webhook' },
+				}),
+			},
+			expression: {
+				getSimpleParameterValue: jest
+					.fn()
+					.mockReturnValueOnce('onReceived')
+					.mockReturnValueOnce(200)
+					.mockReturnValue(undefined),
+				getComplexParameterValue: jest.fn().mockReturnValue('firstEntryJson'),
+			},
+		});
+		const workflowData = mock<IWorkflowBase>({
+			id: 'workflow-id',
+			name: 'Webhook workflow',
+			nodes: [workflowStartNode],
+			connections: {},
+			active: true,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		const webhookData = mock<IWebhookData>({
+			httpMethod: 'POST',
+			node: workflowStartNode.name,
+			path: 'test-webhook',
+			webhookDescription: {
+				responseMode: 'onReceived',
+				responseCode: '200',
+				responseData: 'firstEntryJson',
+			},
+			workflowId: workflowData.id,
+			workflowExecuteAdditionalData: {} as IWorkflowExecuteAdditionalData,
+			userId: 'user-id',
+		});
+		const req = mock<WebhookRequest>({
+			method: 'POST',
+			params: { path: 'test-webhook' },
+			headers: {},
+			contentType: '',
+		});
+		const res = mock<express.Response>({
+			headersSent: false,
+		});
+		const responseCallback = jest.fn();
+
+		await executeWebhook(
+			workflow,
+			webhookData,
+			workflowData,
+			workflowStartNode,
+			'webhook',
+			undefined,
+			undefined,
+			undefined,
+			req,
+			res,
+			responseCallback,
+		);
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: { message: 'Too many pending onReceived executions' },
+			responseCode: 429,
+		});
 	});
 });
 
