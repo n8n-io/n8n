@@ -2841,6 +2841,10 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
 
   packages/@n8n/test-impact:
+    dependencies:
+      monocart-coverage-reports:
+        specifier: ^2.12.0
+        version: 2.12.12
     devDependencies:
       '@types/node':
         specifier: ^20.17.50
@@ -5200,6 +5204,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
+      '@n8n/test-impact':
+        specifier: workspace:*
+        version: link:../../@n8n/test-impact
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../../@n8n/workflow-sdk

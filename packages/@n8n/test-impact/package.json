@@ -37,6 +37,9 @@
     "sharding"
   ],
   "license": "MIT",
+  "dependencies": {
+    "monocart-coverage-reports": "^2.12.0"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",

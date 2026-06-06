@@ -8,6 +8,7 @@
 export * from './coverage-map.js';
 export * from './orchestrator.js';
 export * from './select-e2e.js';
+export * from './map-build.js';
 export type { DiscoveredSpec } from './types.js';
 
 // Strategy + Pipeline selection layer.
