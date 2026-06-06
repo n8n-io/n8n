@@ -40,7 +40,7 @@ import type {
 	TaskStorage,
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-process-builder';
+import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, EventOutcome } from '../types';
@@ -111,7 +111,7 @@ export async function runDiscoveryScenario(
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `delegate`, `plan`, and runtime skills. We provide stubs for the heavy fields:
+		// `delegate`, `create-tasks`, and runtime skills. We provide stubs for the heavy fields:
 		// discovery scenarios measure first-step tool-call decisions, not background
 		// execution.
 		const orchestrationContext = createStubOrchestrationContext({

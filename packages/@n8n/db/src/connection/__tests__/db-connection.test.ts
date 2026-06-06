@@ -2,21 +2,25 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as migrationHelper from '../../migrations/migration-helpers';
 import type { Migration } from '../../migrations/migration-types';
 import { DbConnection } from '../db-connection';
+import { DbConnectionMonitor } from '../db-connection-monitor';
 import type { DbConnectionOptions } from '../db-connection-options';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-jest.mock('@n8n/typeorm', () => ({
+vi.mock('@n8n/typeorm', async () => ({
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	...(await vi.importActual<typeof import('@n8n/typeorm')>('@n8n/typeorm')),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	DataSource: jest.fn(),
-	...jest.requireActual('@n8n/typeorm'),
+	DataSource: vi.fn(),
 }));
+
+vi.mock('../db-connection-monitor');
 
 describe('DbConnection', () => {
 	let dbConnection: DbConnection;
@@ -36,11 +40,18 @@ describe('DbConnection', () => {
 		migrations,
 	};
 
+	const monitor = mock<DbConnectionMonitor>();
+
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
-		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
+		vi.mocked(DbConnectionMonitor).mockImplementation(function () {
+			return monitor;
+		});
+		(DataSource as unknown as Mock) = vi.fn(function () {
+			return dataSource;
+		});
 
 		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig, logger);
 	});
@@ -53,6 +64,14 @@ describe('DbConnection', () => {
 
 			expect(dataSource.initialize).toHaveBeenCalled();
 			expect(dbConnection.connectionState.connected).toBe(true);
+		});
+
+		it('should start the monitor after a successful init', async () => {
+			dataSource.initialize.mockResolvedValue(dataSource);
+
+			await dbConnection.init();
+
+			expect(monitor.start).toHaveBeenCalled();
 		});
 
 		it('should not reinitialize if already connected', async () => {
@@ -76,11 +95,9 @@ describe('DbConnection', () => {
 		});
 
 		it('should rethrow other errors', async () => {
-			// Arrange
 			const error = new Error('Some other error');
 			dataSource.initialize.mockRejectedValue(error);
 
-			// Act & Assert
 			await expect(dbConnection.init()).rejects.toThrow('Some other error');
 		});
 	});
@@ -89,7 +106,9 @@ describe('DbConnection', () => {
 		it('should wrap migrations and run them', async () => {
 			dataSource.runMigrations.mockResolvedValue([]);
 
-			const wrapMigrationSpy = jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+			const wrapMigrationSpy = vi
+				.spyOn(migrationHelper, 'wrapMigration')
+				.mockImplementation(() => {});
 
 			expect(dataSource.runMigrations).not.toHaveBeenCalled();
 			expect(dbConnection.connectionState.migrated).toBe(false);
@@ -103,16 +122,13 @@ describe('DbConnection', () => {
 	});
 
 	describe('close', () => {
-		it('should clear the ping timer', async () => {
-			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-			// @ts-expect-error private property
-			dbConnection.pingTimer = setTimeout(() => {}, 1000);
+		it('should stop the monitor', async () => {
+			dataSource.initialize.mockResolvedValue(dataSource);
+			await dbConnection.init();
 
 			await dbConnection.close();
 
-			expect(clearTimeoutSpy).toHaveBeenCalled();
-			// @ts-expect-error private property
-			expect(dbConnection.pingTimer).toBeUndefined();
+			expect(monitor.stop).toHaveBeenCalled();
 		});
 
 		it('should destroy the data source if initialized', async () => {
@@ -131,84 +147,6 @@ describe('DbConnection', () => {
 			await dbConnection.close();
 
 			expect(dataSource.destroy).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('ping', () => {
-		it('should update connection state on successful ping', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			dataSource.query.mockResolvedValue([{ '1': 1 }]);
-			dbConnection.connectionState.connected = false;
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(dataSource.query).toHaveBeenCalledWith('SELECT 1');
-			expect(dbConnection.connectionState.connected).toBe(true);
-		});
-
-		it('should report errors on failed ping', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			const error = new Error('Connection error');
-			dataSource.query.mockRejectedValue(error);
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(errorReporter.error).toHaveBeenCalledWith(error);
-		});
-
-		it('should schedule next ping after execution', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = true;
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			dataSource.query.mockResolvedValue([{ '1': 1 }]);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const scheduleNextPingSpy = jest.spyOn(dbConnection as any, 'scheduleNextPing');
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(scheduleNextPingSpy).toHaveBeenCalled();
-		});
-
-		it('should not query if data source is not initialized', async () => {
-			// @ts-expect-error readonly property
-			dataSource.isInitialized = false;
-
-			// @ts-expect-error private property
-			await dbConnection.ping();
-
-			expect(dataSource.query).not.toHaveBeenCalled();
-		});
-
-		it('should execute ping on schedule', () => {
-			jest.useFakeTimers();
-			try {
-				// ARRANGE
-				dbConnection = new DbConnection(
-					errorReporter,
-					connectionOptions,
-					mock<DatabaseConfig>({
-						pingIntervalSeconds: 1,
-					}),
-					logger,
-				);
-
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const pingSpy = jest.spyOn(dbConnection as any, 'ping');
-
-				// @ts-expect-error private property
-				dbConnection.scheduleNextPing();
-				jest.advanceTimersByTime(1000);
-
-				expect(pingSpy).toHaveBeenCalled();
-			} finally {
-				jest.useRealTimers();
-			}
 		});
 	});
 });

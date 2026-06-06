@@ -43,6 +43,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 			};
 
@@ -119,6 +120,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 			};
 
@@ -195,6 +197,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 			};
 
 			jest.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
@@ -264,6 +268,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
@@ -319,6 +324,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -359,6 +366,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
@@ -374,6 +383,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: '   ',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -390,6 +401,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 			};
 
@@ -405,6 +418,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: '   ',
 			};
@@ -421,6 +436,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: '  sts-access-key  ',
 				stsSecretAccessKey: '  sts-secret-key  ',
 				stsSessionToken: '  sts-session-token  ',
@@ -464,6 +481,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws-cn:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -503,6 +522,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -544,6 +565,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -564,6 +587,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -589,6 +614,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -613,6 +640,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -644,6 +673,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -669,52 +700,13 @@ describe('assumeRole', () => {
 	});
 
 	describe('default values', () => {
-		it('should use default role session name when not provided', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
-			await assumeRole(credentials, 'us-east-1');
-
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.us-east-1.amazonaws.com',
-				expect.objectContaining({
-					body: expect.stringContaining('RoleSessionName=n8n-session'),
-				}),
-			);
-		});
-
 		it('should default useSystemCredentialsForRole to false when not provided', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};

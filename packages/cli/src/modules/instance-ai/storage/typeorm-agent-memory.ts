@@ -11,6 +11,8 @@ import {
 	type ObservationLogScope,
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
+	type JSONObject,
+	type JSONValue,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -42,7 +44,7 @@ function parseJsonSafe(text: string): unknown {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {
@@ -76,10 +78,61 @@ function getMessageType(message: AgentDbMessage): string | null {
 	return null;
 }
 
+function parseJsonStringOrOriginal(value: string): unknown {
+	const parsed = parseJsonSafe(value);
+	return parsed === undefined ? value : parsed;
+}
+
+function toJsonValue(value: unknown): JSONValue {
+	if (
+		value === null ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	) {
+		return value;
+	}
+	if (Array.isArray(value)) return value.map(toJsonValue);
+	if (isRecord(value)) {
+		const jsonObject: JSONObject = {};
+		for (const [key, nestedValue] of Object.entries(value)) {
+			if (nestedValue !== undefined) jsonObject[key] = toJsonValue(nestedValue);
+		}
+		return jsonObject;
+	}
+	return String(value);
+}
+
+function toJsonObject(value: Record<string, unknown>): JSONObject {
+	const jsonObject: JSONObject = {};
+	for (const [key, nestedValue] of Object.entries(value)) {
+		if (nestedValue !== undefined) jsonObject[key] = toJsonValue(nestedValue);
+	}
+	return jsonObject;
+}
+
+function normalizeToolInput(input: unknown): JSONObject {
+	const parsed = typeof input === 'string' ? parseJsonStringOrOriginal(input) : input;
+	if (isRecord(parsed)) return toJsonObject(parsed);
+	if (parsed === null || parsed === undefined) return {};
+	return { value: toJsonValue(parsed) };
+}
+
+function normalizeAgentMessage(message: AgentDbMessage): AgentDbMessage {
+	if (message.type === 'custom') return message;
+
+	return {
+		...message,
+		content: message.content.map((part) =>
+			part.type === 'tool-call' ? { ...part, input: normalizeToolInput(part.input) } : part,
+		),
+	};
+}
+
 function toAgentMessage(entity: InstanceAiMessage): AgentDbMessage | undefined {
 	const parsed = parseJsonSafe(entity.content);
 	if (!isAgentMessage(parsed)) return undefined;
-	return { ...parsed, id: entity.id, createdAt: entity.createdAt };
+	return normalizeAgentMessage({ ...parsed, id: entity.id, createdAt: entity.createdAt });
 }
 
 function workingMemoryKey(params: {
@@ -295,18 +348,19 @@ export class TypeORMAgentMemory
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
 
-		const entities = args.messages.map((message) =>
-			this.messageRepo.create({
-				id: message.id,
+		const entities = args.messages.map((message) => {
+			const normalizedMessage = normalizeAgentMessage(message);
+			return this.messageRepo.create({
+				id: normalizedMessage.id,
 				threadId: args.threadId,
-				content: JSON.stringify(message),
-				role: getMessageRole(message),
-				type: getMessageType(message),
+				content: JSON.stringify(normalizedMessage),
+				role: getMessageRole(normalizedMessage),
+				type: getMessageType(normalizedMessage),
 				resourceId: args.resourceId,
-				createdAt: message.createdAt,
-				updatedAt: message.createdAt,
-			}),
-		);
+				createdAt: normalizedMessage.createdAt,
+				updatedAt: normalizedMessage.createdAt,
+			});
+		});
 
 		await this.messageRepo.save(entities);
 	}

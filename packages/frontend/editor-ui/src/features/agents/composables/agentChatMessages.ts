@@ -2,6 +2,7 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
 	askLlmInputSchema,
@@ -22,6 +23,7 @@ import {
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import type { ChatMessageStatus, ToolCallState } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 export { type ChatMessageStatus, type ToolCallState };
 
 // ---------------------------------------------------------------------------
@@ -34,7 +36,12 @@ export interface ToolCall {
 	toolCallId: string;
 	input?: unknown;
 	output?: unknown;
+	canceled?: boolean;
 	state: ToolCallState;
+	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
+	startTime?: number;
+	/** Epoch ms when the tool settled. Absent while still running. */
+	endTime?: number;
 	/**
 	 * One-line answer label rendered next to the tool name in
 	 * `AgentChatToolSteps`. Set when an interactive tool resolves so the user
@@ -59,14 +66,31 @@ interface InteractivePayloadBase {
 	runId?: string;
 	/** Wall-clock timestamp when the user submitted; absent when card is open. */
 	resolvedAt?: number;
+	/** Set when the tool was cancelled via a steering message rather than answered. */
+	cancelled?: boolean;
+}
+
+export interface ApprovalInput {
+	type: 'approval';
+	toolName: string;
+	displayName?: string;
+	args: unknown;
+}
+
+export interface ApprovalResume {
+	approved: boolean;
 }
 
 /**
- * Discriminated union describing the interactive card that a suspended builder
- * tool call renders in the chat. `toolName` is the discriminant (one of the
- * three canonical interactive tool names from `@n8n/api-types`).
+ * Discriminated union describing the interactive card that a suspended tool call
+ * renders in the chat. `toolName` is the discriminant.
  */
 export type InteractivePayload =
+	| (InteractivePayloadBase & {
+			toolName: typeof APPROVAL_TOOL_NAME;
+			input: ApprovalInput;
+			resolvedValue?: ApprovalResume;
+	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof ASK_CREDENTIAL_TOOL_NAME;
 			input: AskCredentialInput;
@@ -91,6 +115,27 @@ const INTERACTIVE_TOOL_NAMES = [
 
 export function isInteractiveToolName(v: unknown): v is InteractiveToolName {
 	return typeof v === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(v);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseApprovalInput(value: unknown): ApprovalInput | undefined {
+	if (!isRecord(value)) return undefined;
+	if (value.type !== 'approval') return undefined;
+	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
+	return {
+		type: 'approval',
+		toolName: value.toolName,
+		...(typeof value.displayName === 'string' &&
+			value.displayName.length > 0 && { displayName: value.displayName }),
+		args: value.args,
+	};
+}
+
+function isDeclinedToolOutput(value: unknown): boolean {
+	return isRecord(value) && value.declined === true;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +251,19 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
 export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
+	const approvalInput = parseApprovalInput(tc.input);
+	if (approvalInput) {
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			toolName: APPROVAL_TOOL_NAME,
+			input: approvalInput,
+			...(tc.output !== undefined && {
+				resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
+			}),
+		};
+	}
+
 	if (!isInteractiveToolName(tc.tool)) return undefined;
 
 	const base: InteractivePayloadBase = {
@@ -259,9 +317,9 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 /**
  * Convert persisted agent messages into the frontend ChatMessage format.
  *
- * Whenever a tool call is interactive (one of the ask_* tools), we attach a
- * reconstructed `InteractivePayload` so the UI re-renders the card in either
- * its open (awaiting user) or resolved (disabled) state.
+ * Whenever a tool call is interactive, we attach a reconstructed
+ * `InteractivePayload` so the UI re-renders the card in either its open
+ * (awaiting user) or resolved (disabled) state.
  */
 export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
 	const result: ChatMessage[] = [];
@@ -285,9 +343,16 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
+				const canceled = part.canceled === true;
 				if (part.state === 'resolved') {
-					state = TOOL_CALL_STATE.DONE;
 					output = part.output;
+					if (canceled) {
+						state = TOOL_CALL_STATE.CANCELLED;
+					} else if (isFailedDelegateOutput(part.toolName, part.output)) {
+						state = TOOL_CALL_STATE.ERROR;
+					} else {
+						state = TOOL_CALL_STATE.DONE;
+					}
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -301,7 +366,10 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					toolCallId: part.toolCallId ?? '',
 					input: part.input,
 					...(output !== undefined && { output }),
+					...(canceled && { canceled }),
 					state,
+					...(part.startTime !== undefined && { startTime: part.startTime }),
+					...(part.endTime !== undefined && { endTime: part.endTime }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				});
 			}

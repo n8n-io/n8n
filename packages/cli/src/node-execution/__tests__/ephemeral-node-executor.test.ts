@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { DynamicTool } from '@langchain/core/tools';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -549,11 +550,16 @@ describe('EphemeralNodeExecutor', () => {
 		});
 
 		it('returns null when the tool has no structured schema (base Tool/DynamicTool)', async () => {
+			const dynamicTool = new DynamicTool({
+				name: 'thinking_tool',
+				description: 'Think about something',
+				func: async (input) => input,
+			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({
 					description: toolDescription,
 					supplyData: jest.fn().mockResolvedValue({
-						response: { invoke: jest.fn() },
+						response: dynamicTool,
 					}),
 				}),
 			);

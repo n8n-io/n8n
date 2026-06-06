@@ -7,6 +7,8 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import { AGENT_NODE_TYPE, OPEN_AI_NODE_TYPE, WIKIPEDIA_TOOL_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, within } from '@testing-library/vue';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
@@ -91,7 +93,9 @@ describe('RunDataAi', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.setWorkflowExecutionData(executionResponse);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(executionResponse);
 	});
 
 	it('should render the log that belong to given run index', async () => {

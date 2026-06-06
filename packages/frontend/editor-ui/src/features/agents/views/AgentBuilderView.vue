@@ -46,6 +46,7 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { mcpServerToNode } from '../composables/useMcpServerAdapter';
+import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -478,6 +479,7 @@ async function onReverted(updated: AgentResource) {
 	tasksReloadKey.value += 1;
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
+	builderTelemetry.captureTasksBaseline();
 }
 
 /**
@@ -557,11 +559,12 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
 	onSaved: () => {
 		builderTelemetry.flushConfigEdits();
-		// Diff the saved tool/skill lists against the last baseline. No-op when
+		// Diff the saved capability lists against the last baseline. No-op when
 		// nothing new landed, so calling on every save also handles the build-chat
 		// path (which has already advanced both baselines via `onConfigUpdated`).
 		builderTelemetry.trackToolsAdded();
 		builderTelemetry.trackSkillsAdded();
+		builderTelemetry.trackTasksChanged();
 	},
 	onError: (error: unknown) => {
 		// Intentionally keep pending parts: `localConfig` still holds the
@@ -650,6 +653,7 @@ async function onConfigUpdated() {
 	tasksReloadKey.value += 1;
 	builderTelemetry.trackToolsAdded();
 	builderTelemetry.trackSkillsAdded();
+	builderTelemetry.trackTasksChanged();
 }
 
 const headerActions = computed(() =>
@@ -679,6 +683,7 @@ async function onHeaderAction(action: string) {
 
 		try {
 			await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
+			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 		} catch (error) {
 			showError(error, 'Could not delete agent');
 			return;
@@ -747,6 +752,7 @@ async function initialize() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value), fetchAgentFiles()]);
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
+	builderTelemetry.captureTasksBaseline();
 	// Keep agent credential pickers aligned with the workflow editor: load only
 	// credentials the current user can use in this project context.
 	credentialsStore.setCredentials([]);

@@ -69,6 +69,11 @@ function isVendorLlmSubNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
 }
 
+/** MCP registry nodes talk via the MCP SDK's own transport, not n8n's HTTP helper — the mock can't reach them, so their root must stay pinned. */
+function isMcpRegistryNode(nodeType: string): boolean {
+	return nodeType.startsWith('@n8n/mcp-registry.');
+}
+
 /** Non-empty `options.baseURL` on the LangChain OpenAI node beats credentials.url — credential rewrite isn't enough. */
 function hasUnsafeBaseUrlOverride(node: INode): boolean {
 	if (node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
@@ -495,6 +500,7 @@ function categorizeSubNodeIncompatibility(
 	sharedSupportedSubNodes: Set<string>,
 ): AutoPinReason | null {
 	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
+	if (isMcpRegistryNode(sourceNode.type)) return 'protocol_binary';
 	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
 		if (sharedSupportedSubNodes.has(sourceNode.name)) return 'shared_vendor_llm_subnode';
 		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;

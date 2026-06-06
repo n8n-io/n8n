@@ -22,10 +22,27 @@ import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from '../logger';
 
 const SANDBOX_STATE_STARTED = 'started';
+const SANDBOX_STATE_STOPPED = 'stopped';
+const SANDBOX_STATE_ARCHIVED = 'archived';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
 const SANDBOX_STATE_ERROR = 'error';
 const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
+
+/**
+ * States a failed operation may recover from by resuming the sandbox: an idle sandbox that
+ * Daytona auto-stopped, or one that was auto-archived. `start()` brings both back to
+ * 'started'. Deliberately narrow — it excludes:
+ *  - transient states (creating/starting/stopping/resizing/pending_build): a reset+restart
+ *    would race the in-flight transition;
+ *  - failed states (error/build_failed): those can be silently deleted and recreated, which
+ *    we don't want to trigger off an unrelated operation failure.
+ * Deletion is handled separately as a `DaytonaNotFoundError` fast-path.
+ */
+const RECOVERABLE_SANDBOX_STATES: ReadonlySet<string> = new Set([
+	SANDBOX_STATE_STOPPED,
+	SANDBOX_STATE_ARCHIVED,
+]);
 
 export interface DaytonaSandboxOptions {
 	id?: string;
@@ -108,6 +125,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	private lastClientGeneration = -1;
 	private sandbox?: Sandbox;
 	private workingDirectory?: string;
+	private recoveryPromise?: Promise<void>;
 
 	constructor(private readonly options: DaytonaSandboxOptions = {}) {
 		super();
@@ -182,28 +200,44 @@ export class DaytonaSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		await this.ensureRunning();
-		await this.ensureAuthFresh();
-		const startedAt = Date.now();
-		const fullCommand = toShellCommand(command, args);
-		const result = await this.instance.process.executeCommand(
-			fullCommand,
-			options?.cwd,
-			this.compactEnv(options?.env),
-			Math.ceil((options?.timeout ?? this.timeout) / 1000),
-		);
-		const stdout = result.artifacts?.stdout ?? result.result ?? '';
-		if (stdout) options?.onStdout?.(stdout);
+		return await this.recoverAndRetry(async () => {
+			await this.ensureRunning();
+			await this.ensureAuthFresh();
+			const startedAt = Date.now();
+			const fullCommand = toShellCommand(command, args);
+			const result = await this.instance.process.executeCommand(
+				fullCommand,
+				options?.cwd,
+				this.compactEnv(options?.env),
+				Math.ceil((options?.timeout ?? this.timeout) / 1000),
+			);
+			const stdout = result.artifacts?.stdout ?? result.result ?? '';
+			if (stdout) options?.onStdout?.(stdout);
 
-		return {
-			command,
-			args,
-			success: result.exitCode === 0,
-			exitCode: result.exitCode,
-			stdout,
-			stderr: '',
-			executionTimeMs: Date.now() - startedAt,
-		};
+			return {
+				command,
+				args,
+				success: result.exitCode === 0,
+				exitCode: result.exitCode,
+				stdout,
+				stderr: '',
+				executionTimeMs: Date.now() - startedAt,
+			};
+		});
+	}
+
+	/**
+	 * Run a filesystem operation against the live Daytona FileSystem handle, ensuring the
+	 * sandbox is running with fresh auth first, and recovering once if the remote was
+	 * stopped/deleted while idle. Lets `DaytonaFilesystem` reuse the same recovery as
+	 * `executeCommand` without reaching into private state.
+	 */
+	async withFilesystem<T>(op: (fs: Sandbox['fs']) => Promise<T>): Promise<T> {
+		return await this.recoverAndRetry(async () => {
+			await this.ensureRunning();
+			await this.ensureAuthFresh();
+			return await op(this.instance.fs);
+		});
 	}
 
 	/**
@@ -264,6 +298,81 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 		this.lastClientGeneration = generation;
 		return client;
+	}
+
+	/**
+	 * Drop the in-memory handle so the next `ensureRunning()`/`start()` re-resolves the
+	 * remote (resume if stopped, recreate if gone). The stale `status: 'running'` is the
+	 * reason a resume is otherwise skipped after a long idle.
+	 */
+	private resetLocalHandle(): void {
+		this.sandbox = undefined;
+		this.lastClientGeneration = -1;
+		this.workingDirectory = undefined;
+		this.markNeedsStart();
+	}
+
+	/**
+	 * Whether a failed operation can be recovered by re-resolving the remote.
+	 *
+	 * We don't infer "sandbox unusable" from the failed op's error code, because the code
+	 * isn't a reliable signal: a stopped container returns a 400 from the toolbox, a deleted
+	 * one is 404, auth is 401/403, and transport/proxy conditions vary. Instead we consult
+	 * the authoritative state via the management API — which responds even when the container
+	 * is stopped — and recover only when the sandbox is gone, or in an explicitly recoverable
+	 * state ({@link RECOVERABLE_SANDBOX_STATES}: stopped/archived). Any other state (running,
+	 * a transient transition, or a failed build) propagates the original error so we neither
+	 * mask real failures nor recreate a sandbox off an unrelated error.
+	 *
+	 * A genuine auth failure is handled implicitly: the probe's own `get()` fails too (it
+	 * uses the same credentials), so we fall through to `false` and never recreate.
+	 */
+	private async isRecoverable(error: unknown): Promise<boolean> {
+		if (isSandboxGone(error)) return true;
+		try {
+			const client = await this.auth.getClient();
+			const remote = await client.get(this.sandboxName);
+			return remote.state !== undefined && RECOVERABLE_SANDBOX_STATES.has(remote.state);
+		} catch (probeError) {
+			// Gone entirely → recreate; anything else (incl. auth) → don't mask the original.
+			return isSandboxGone(probeError);
+		}
+	}
+
+	/**
+	 * Run a sandbox operation, recovering once if the remote was stopped/archived/deleted out
+	 * from under us. On a recoverable failure the sandbox is resumed (or recreated if gone) and
+	 * the operation is retried exactly once; a second failure propagates.
+	 *
+	 * Replaying the operation is safe because recovery only triggers when the probe confirms
+	 * the remote was NOT running (stopped/archived/gone — see {@link isRecoverable}). In those
+	 * states the toolbox/exec request never reached a live container, so it could not have
+	 * partially executed. Operations on a running sandbox are never retried — their error
+	 * propagates untouched.
+	 */
+	private async recoverAndRetry<T>(op: () => Promise<T>): Promise<T> {
+		try {
+			return await op();
+		} catch (error) {
+			if (!(await this.isRecoverable(error))) throw error;
+			await this.recover();
+			return await op();
+		}
+	}
+
+	/**
+	 * Reset the stale handle and bring the sandbox back to 'started'. Serialized via
+	 * {@link recoveryPromise} so concurrent failed operations share a single resume/recreate
+	 * rather than racing multiple start flows.
+	 */
+	private async recover(): Promise<void> {
+		this.recoveryPromise ??= (async () => {
+			this.resetLocalHandle();
+			await this.ensureRunning();
+		})().finally(() => {
+			this.recoveryPromise = undefined;
+		});
+		await this.recoveryPromise;
 	}
 
 	private async findExistingSandbox(client: Daytona): Promise<Sandbox | null> {

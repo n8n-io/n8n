@@ -46,6 +46,7 @@ export const LOG_SCOPES = [
 	'encryption-key-manager',
 	'oauth-jwe',
 	'mcp-registry',
+	'workflow-publication',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

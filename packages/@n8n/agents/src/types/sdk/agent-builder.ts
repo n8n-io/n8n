@@ -23,7 +23,6 @@ export interface AgentBuilder {
 	providerTool(t: BuiltProviderTool): this;
 	thinking(provider: string, config?: Record<string, unknown>): this;
 	toolCallConcurrency(n: number): this;
-	requireToolApproval(): this;
 	memory(m: unknown): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;
 	inputGuardrail(g: BuiltGuardrail): this;

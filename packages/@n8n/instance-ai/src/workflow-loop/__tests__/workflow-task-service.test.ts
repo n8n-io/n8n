@@ -6,14 +6,14 @@ function createStorage() {
 	const records = new Map<string, Record<string, unknown>>();
 
 	const storage = {
-		getWorkItem: jest.fn(async (_threadId: string, workItemId: string) => {
+		getWorkItem: vi.fn(async (_threadId: string, workItemId: string) => {
 			return await Promise.resolve(
 				(records.get(workItemId) ?? null) as Awaited<
 					ReturnType<WorkflowLoopStorage['getWorkItem']>
 				>,
 			);
 		}),
-		saveWorkItem: jest.fn(
+		saveWorkItem: vi.fn(
 			async (
 				_threadId: string,
 				state: Record<string, unknown>,
@@ -91,6 +91,13 @@ describe('WorkflowTaskCoordinator', () => {
 			expect.objectContaining({
 				type: 'done',
 				workflowId: 'wf-1',
+			}),
+		);
+		expect(await coordinator.getBuildOutcome('wi_1')).toEqual(
+			expect.objectContaining({
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+				mockedCredentialTypes: ['slackOAuth2Api'],
 			}),
 		);
 	});
