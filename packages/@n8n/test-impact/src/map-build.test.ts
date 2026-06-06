@@ -1,7 +1,6 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { forceSpecTn, emitPerSpecLcovs, type EmitPerSpecLcovsOptions } from './map-build.js';

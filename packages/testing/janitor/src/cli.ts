@@ -16,6 +16,7 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
+import { encodeImpactMap, mergeCoverage, orchestrate, selectE2e } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -45,7 +46,6 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import { encodeImpactMap, mergeCoverage, orchestrate, selectE2e } from '@n8n/test-impact';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,

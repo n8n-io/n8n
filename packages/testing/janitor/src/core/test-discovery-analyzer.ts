@@ -5,6 +5,7 @@
  * Replaces the Playwright `--list` + regex approach used by distribute-tests.mjs.
  */
 
+import type { DiscoveredSpec } from '@n8n/test-impact';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
 
 import { getConfig } from '../config.js';
@@ -14,7 +15,6 @@ import { getRelativePath } from '../utils/paths.js';
 // DiscoveredSpec is owned by @n8n/test-impact (the framework-free orchestrator
 // consumes it); re-exported here so this module's DiscoveryReport + existing
 // importers keep their API.
-import type { DiscoveredSpec } from '@n8n/test-impact';
 
 export type { DiscoveredSpec };
 

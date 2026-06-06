@@ -1,7 +1,6 @@
+import { CoverageReport, type CoverageReportOptions } from 'monocart-coverage-reports';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-
-import { CoverageReport, type CoverageReportOptions } from 'monocart-coverage-reports';
 
 /**
  * Force every lcov record's `TN:` to the real spec id, so the impact-map merge
@@ -78,7 +77,7 @@ export async function emitPerSpecLcovs(opts: EmitPerSpecLcovsOptions): Promise<E
 
 		const result = await report.generate();
 		const lcovPath = join(dir, 'lcov.info');
-		if (!result || !result.files?.length || !existsSync(lcovPath)) continue;
+		if (!result?.files?.length || !existsSync(lcovPath)) continue;
 		writeFileSync(
 			join(outDir, `${slug}${suffix}.lcov`),
 			forceSpecTn(readFileSync(lcovPath, 'utf8'), spec),
