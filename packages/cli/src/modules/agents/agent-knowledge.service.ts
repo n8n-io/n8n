@@ -1,11 +1,18 @@
 import type { AgentFileDto } from '@n8n/api-types';
+import {
+	writeStreamToSandboxFile,
+	type SandboxFilesystem,
+	type SandboxInstance,
+} from '@n8n/ai-utilities/sandbox';
 import { Service } from '@n8n/di';
 import { generateNanoId, sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import posixPath from 'node:path/posix';
 import { pipeline } from 'node:stream/promises';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -30,6 +37,19 @@ export interface KnowledgeWorkspaceFile {
 	relativePath: string;
 }
 
+export interface KnowledgeWorkspaceResolution {
+	files: KnowledgeWorkspaceFile[];
+	cacheSignature: string;
+}
+
+export interface KnowledgeSandboxMaterializationTarget {
+	sandbox: SandboxInstance;
+	filesystem: SandboxFilesystem;
+	knowledgeRoot: string;
+	internalRoot: string;
+	manifestPath: string;
+}
+
 interface MaterializeWorkspaceOptions {
 	fileReferences?: string[];
 }
@@ -52,6 +72,7 @@ const MAX_AGENT_FILE_METADATA_LENGTH = 255;
  */
 const MAX_WORKSPACE_FILES = 2_000;
 const MAX_WORKSPACE_BYTES = 2 * 1024 * 1024 * 1024;
+const KNOWLEDGE_SANDBOX_MANIFEST_VERSION = 1;
 
 @Service()
 export class AgentKnowledgeService {
@@ -142,13 +163,24 @@ export class AgentKnowledgeService {
 		projectId: string,
 		fileReferences?: string[],
 	): Promise<KnowledgeWorkspaceFile[]> {
+		return (await this.resolveWorkspaceFilesForRuntime(agentId, projectId, fileReferences)).files;
+	}
+
+	async resolveWorkspaceFilesForRuntime(
+		agentId: string,
+		projectId: string,
+		fileReferences?: string[],
+	): Promise<KnowledgeWorkspaceResolution> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 		const files = this.filterFilesForWorkspace(
 			await this.agentFileRepository.findByAgentId(agentId),
 			fileReferences,
 		);
 		this.assertWorkspaceWithinLimits(files);
-		return files.map((file) => this.toWorkspaceFile(file));
+		return {
+			files: files.map((file) => this.toWorkspaceFile(file)),
+			cacheSignature: this.buildWorkspaceCacheSignature(files),
+		};
 	}
 
 	async materializeWorkspace(
@@ -181,6 +213,57 @@ export class AgentKnowledgeService {
 		}
 
 		return materializedFiles;
+	}
+
+	async materializeWorkspaceIntoSandbox(
+		agentId: string,
+		projectId: string,
+		target: KnowledgeSandboxMaterializationTarget,
+		options: MaterializeWorkspaceOptions = {},
+	): Promise<KnowledgeWorkspaceFile[]> {
+		await this.ensureAgentBelongsToProject(agentId, projectId);
+
+		const files = this.filterFilesForWorkspace(
+			await this.agentFileRepository.findByAgentId(agentId),
+			options.fileReferences,
+		);
+		this.assertWorkspaceWithinLimits(files);
+
+		try {
+			await target.filesystem.mkdir(target.knowledgeRoot, { recursive: true });
+			await target.filesystem.mkdir(target.internalRoot, { recursive: true });
+
+			const materializedFiles: KnowledgeWorkspaceFile[] = [];
+			for (const file of files) {
+				const relativePath = this.getWorkspaceRelativePath(file);
+				const targetPath = posixPath.join(target.knowledgeRoot, relativePath);
+				const contentStream = await this.binaryDataService.getAsStream(file.binaryDataId);
+				await writeStreamToSandboxFile(
+					target.filesystem,
+					target.sandbox,
+					targetPath,
+					contentStream,
+					{
+						temporaryDirectory: posixPath.join(target.internalRoot, 'upload-parts'),
+					},
+				);
+				materializedFiles.push(this.toWorkspaceFile(file));
+			}
+
+			const manifest = this.buildSandboxManifest(agentId, projectId, files);
+			await target.filesystem.writeFile(target.manifestPath, JSON.stringify(manifest, null, 2), {
+				recursive: true,
+				overwrite: true,
+			});
+
+			return materializedFiles;
+		} catch (error) {
+			await target.filesystem
+				.deleteFile(target.knowledgeRoot, { recursive: true, force: true })
+				.catch(() => {});
+			await target.filesystem.deleteFile(target.manifestPath, { force: true }).catch(() => {});
+			throw error;
+		}
 	}
 
 	private async ensureAgentBelongsToProject(agentId: string, projectId: string) {
@@ -256,6 +339,32 @@ export class AgentKnowledgeService {
 			mimeType: file.mimeType,
 			fileSizeBytes: file.fileSizeBytes,
 			createdAt: file.createdAt.toISOString(),
+		};
+	}
+
+	private buildWorkspaceCacheSignature(files: StoredAgentFile[]): string {
+		return files
+			.map((file) =>
+				[file.binaryDataId, file.fileSizeBytes, this.getWorkspaceRelativePath(file)].join(':'),
+			)
+			.sort()
+			.join('|');
+	}
+
+	private buildSandboxManifest(agentId: string, projectId: string, files: StoredAgentFile[]) {
+		const cacheSignature = this.buildWorkspaceCacheSignature(files);
+		return {
+			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
+			agentId,
+			projectId,
+			cacheSignatureSha1: createHash('sha1').update(cacheSignature).digest('hex'),
+			files: files.map((file) => ({
+				id: file.id,
+				relativePath: this.getWorkspaceRelativePath(file),
+				fileSizeBytes: file.fileSizeBytes,
+				binaryDataIdSha1: createHash('sha1').update(file.binaryDataId).digest('hex'),
+			})),
+			materializedAt: new Date().toISOString(),
 		};
 	}
 

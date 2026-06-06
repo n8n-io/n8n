@@ -1,8 +1,8 @@
-import type { AgentKnowledgeService } from '../../agent-knowledge.service';
+import type { KnowledgeWorkspaceFile } from '../../agent-knowledge.service';
 
 import type { ParsedSearchKnowledgeInput } from './schemas';
 
-export type WorkspaceFiles = Awaited<ReturnType<AgentKnowledgeService['materializeWorkspace']>>;
+export type WorkspaceFiles = KnowledgeWorkspaceFile[];
 
 export type FileReferenceResolution =
 	| { status: 'found'; file: WorkspaceFiles[number] }

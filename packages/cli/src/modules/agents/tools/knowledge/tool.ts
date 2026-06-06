@@ -75,8 +75,13 @@ export function createSearchKnowledgeTool({
 			let files: WorkspaceFiles = [];
 			try {
 				const fileReferences = getRequiredFileReferences(parsedInput);
-				files = await knowledgeService.resolveWorkspaceFiles(agentId, projectId, fileReferences);
-				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, files);
+				const resolution = await knowledgeService.resolveWorkspaceFilesForRuntime(
+					agentId,
+					projectId,
+					fileReferences,
+				);
+				files = resolution.files;
+				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, resolution.cacheSignature);
 				return await commandService.withCachedWorkspace(
 					cacheKey,
 					async (workspaceRoot) => {
@@ -103,12 +108,12 @@ export function createSearchKnowledgeTool({
  * exact set of files and their sizes, so a different file selection or an
  * add/delete invalidates the cache and forces re-materialization.
  */
-function buildWorkspaceCacheKey(projectId: string, agentId: string, files: WorkspaceFiles): string {
-	const signature = files
-		.map((file) => `${file.relativePath}:${file.fileSizeBytes}`)
-		.sort()
-		.join('|');
-	return `${projectId}:${agentId}:${createHash('sha1').update(signature).digest('hex')}`;
+function buildWorkspaceCacheKey(
+	projectId: string,
+	agentId: string,
+	cacheSignature: string,
+): string {
+	return `${projectId}:${agentId}:${createHash('sha1').update(cacheSignature).digest('hex')}`;
 }
 
 /**

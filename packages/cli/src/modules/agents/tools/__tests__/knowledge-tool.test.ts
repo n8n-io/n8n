@@ -15,7 +15,7 @@ describe('search_knowledge tool', () => {
 	let knowledgeService: jest.Mocked<
 		Pick<
 			AgentKnowledgeService,
-			'listWorkspaceFiles' | 'materializeWorkspace' | 'resolveWorkspaceFiles'
+			'listWorkspaceFiles' | 'materializeWorkspace' | 'resolveWorkspaceFilesForRuntime'
 		>
 	>;
 
@@ -31,24 +31,33 @@ describe('search_knowledge tool', () => {
 			// The real method does a metadata-only DB query. For tests we mirror
 			// whatever materializeWorkspace is configured to produce (using a
 			// throwaway dir) so the tool's cache key reflects the same file set.
-			resolveWorkspaceFiles: jest.fn(async (resolveAgentId, resolveProjectId, fileReferences) => {
-				const { mkdtemp, rm } = await import('node:fs/promises');
-				const { tmpdir } = await import('node:os');
-				const nodePath = await import('node:path');
-				const dir = await mkdtemp(nodePath.join(tmpdir(), 'resolve-'));
-				try {
-					return await knowledgeService.materializeWorkspace(
-						resolveAgentId,
-						resolveProjectId,
-						dir,
-						{
-							fileReferences,
-						},
-					);
-				} finally {
-					await rm(dir, { recursive: true, force: true });
-				}
-			}),
+			resolveWorkspaceFilesForRuntime: jest.fn(
+				async (resolveAgentId, resolveProjectId, fileReferences) => {
+					const { mkdtemp, rm } = await import('node:fs/promises');
+					const { tmpdir } = await import('node:os');
+					const nodePath = await import('node:path');
+					const dir = await mkdtemp(nodePath.join(tmpdir(), 'resolve-'));
+					try {
+						const files = await knowledgeService.materializeWorkspace(
+							resolveAgentId,
+							resolveProjectId,
+							dir,
+							{
+								fileReferences,
+							},
+						);
+						return {
+							files,
+							cacheSignature: files
+								.map((file) => `${file.relativePath}:${file.fileSizeBytes}:test-binary`)
+								.sort()
+								.join('|'),
+						};
+					} finally {
+						await rm(dir, { recursive: true, force: true });
+					}
+				},
+			),
 		};
 	});
 
@@ -185,6 +194,41 @@ describe('search_knowledge tool', () => {
 		const stdout = (result as { result: { stdout: string } }).result.stdout;
 		expect(stdout).toContain('notes.txt');
 		expect(stdout).not.toContain('needle');
+	});
+
+	it('re-materializes when runtime cache signature changes for the same public files', async () => {
+		const files = [
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+		];
+		knowledgeService.resolveWorkspaceFilesForRuntime
+			.mockResolvedValueOnce({ files, cacheSignature: 'signature-a' })
+			.mockResolvedValueOnce({ files, cacheSignature: 'signature-b' });
+		knowledgeService.materializeWorkspace.mockImplementation(
+			async (_agentId, _projectId, workspaceRoot) => {
+				const { writeFile } = await import('node:fs/promises');
+				const nodePath = await import('node:path');
+				await writeFile(nodePath.join(workspaceRoot, 'file-1-notes.txt'), 'hello\nneedle\n');
+				return files;
+			},
+		);
+		const tool = createSearchKnowledgeTool({
+			agentId,
+			projectId,
+			knowledgeService: mockKnowledgeService(),
+			commandService,
+		});
+
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+
+		expect(knowledgeService.resolveWorkspaceFilesForRuntime).toHaveBeenCalledTimes(2);
+		expect(knowledgeService.materializeWorkspace).toHaveBeenCalledTimes(2);
 	});
 
 	it('accepts a singular file reference for search', async () => {
