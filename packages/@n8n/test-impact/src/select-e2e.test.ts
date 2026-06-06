@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { type ImpactMap, type InternedImpactMap, encodeImpactMap } from './coverage-map.js';
+import { type ImpactMap, type InternedImpactMap, encodeImpactMap } from './impact-map.js';
 import { selectE2e } from './select-e2e.js';
 
 // The handler's fail-open contract is its safety guarantee: every failure mode

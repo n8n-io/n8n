@@ -1,5 +1,5 @@
-import type { ChangedFile, ImpactMap, ResolveResult } from '../coverage-map.js';
-import { resolveImpact } from '../coverage-map.js';
+import type { ChangedFile, ImpactMap, ResolveResult } from '../impact-map.js';
+import { resolveImpact } from '../impact-map.js';
 import type { SelectionStrategy } from './strategy.js';
 
 /**

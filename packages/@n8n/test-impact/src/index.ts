@@ -5,7 +5,7 @@
  * (shard bin-packing), and the V8 selection path. AST-based selection and
  * the Playwright fixture subpath land in later phases.
  */
-export * from './coverage-map.js';
+export * from './impact-map.js';
 export * from './orchestrator.js';
 export * from './select-e2e.js';
 export * from './map-build.js';

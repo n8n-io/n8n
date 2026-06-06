@@ -16,7 +16,7 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
-import { encodeImpactMap, mergeCoverage, orchestrate, selectE2e } from '@n8n/test-impact';
+import { encodeImpactMap, buildImpactMap, orchestrate, selectE2e } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -669,7 +669,7 @@ function runMergeCoverage(options: CliOptions): void {
 	const files = fs.existsSync(options.inputsDir) ? findLcovFiles(options.inputsDir) : [];
 	// spec attribution comes from each lcov's TN:; the path is only a fallback.
 	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
-	const result = mergeCoverage(inputs);
+	const result = buildImpactMap(inputs);
 	fs.writeFileSync(options.outLcov, result.lcov);
 	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
 	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));

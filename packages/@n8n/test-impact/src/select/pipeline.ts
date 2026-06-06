@@ -1,4 +1,4 @@
-import type { ChangedFile, ResolveResult } from '../coverage-map.js';
+import type { ChangedFile, ResolveResult } from '../impact-map.js';
 import type { SelectionStrategy } from './strategy.js';
 
 /**

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
-import type { ChangedFile, ImpactMap, ResolveResult } from '../coverage-map.js';
-import { resolveImpact } from '../coverage-map.js';
+import type { ChangedFile, ImpactMap, ResolveResult } from '../impact-map.js';
+import { resolveImpact } from '../impact-map.js';
 import { selectImpactedTests } from './pipeline.js';
 import type { SelectionStrategy } from './strategy.js';
 import { CoverageMapStrategy } from './coverage-map-strategy.js';

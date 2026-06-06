@@ -17,7 +17,7 @@ import {
 	type InternedImpactMap,
 	type ResolveResult,
 	decodeImpactMap,
-} from './coverage-map.js';
+} from './impact-map.js';
 import { selectImpactedTests } from './select/pipeline.js';
 import { CoverageMapStrategy } from './select/coverage-map-strategy.js';
 
