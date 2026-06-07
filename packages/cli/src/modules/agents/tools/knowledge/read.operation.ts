@@ -7,6 +7,7 @@ import type {
 } from './schemas';
 
 type ReadInput = Extract<ParsedSearchKnowledgeInput, { operation: 'read' }>;
+const DEFAULT_READ_LINE_RANGE = { start: 1, end: 500 };
 
 export async function runReadOperation<TWorkspace>(
 	input: ReadInput,
@@ -23,23 +24,23 @@ export async function runReadOperation<TWorkspace>(
 		};
 	}
 	const file = resolvedFile.file;
-	const request: InternalKnowledgeCommandRequest = input.lineRange
-		? {
-				command: 'read',
-				file: file.relativePath,
-				startLine: input.lineRange.start,
-				endLine: input.lineRange.end,
-			}
-		: { command: 'read', file: file.relativePath };
+	const lineRange = input.lineRange ?? DEFAULT_READ_LINE_RANGE;
+	const request: InternalKnowledgeCommandRequest = {
+		command: 'read',
+		file: file.relativePath,
+		startLine: lineRange.start,
+		endLine: lineRange.end,
+	};
 	const result = await runInternalCommand(commandService, workspace, request);
 	return {
 		operation: 'read',
 		files,
 		result: {
 			...result,
+			truncated: result.truncated || input.lineRange === undefined,
 			citation: {
 				fileName: file.fileName,
-				lineRange: input.lineRange,
+				lineRange,
 				instruction:
 					'Cite this source using only fileName and lineRange. Do not cite file ids, relative paths, binary ids, or storage ids.',
 			},

@@ -26,6 +26,7 @@ import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AgentKnowledgeCsvService } from '../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
+import type { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
@@ -72,6 +73,7 @@ function makeReconstructionService(
 		agentKnowledgeSandboxCommandService?: AgentKnowledgeSandboxCommandService;
 		agentKnowledgeCsvService?: AgentKnowledgeCsvService;
 		agentKnowledgeSandboxWorkspaceService?: AgentKnowledgeSandboxWorkspaceService;
+		agentKnowledgeSandboxConfigService?: AgentKnowledgeSandboxConfigService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -100,6 +102,8 @@ function makeReconstructionService(
 		overrides.agentKnowledgeCsvService ?? mock<AgentKnowledgeCsvService>(),
 		overrides.agentKnowledgeSandboxWorkspaceService ??
 			mock<AgentKnowledgeSandboxWorkspaceService>(),
+		overrides.agentKnowledgeSandboxConfigService ??
+			mock<AgentKnowledgeSandboxConfigService>({ isAvailable: jest.fn(() => true) }),
 	);
 }
 
@@ -175,12 +179,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		expect(getInjectedToolNames()).toContain('search_knowledge');
 	});
 
-	it('does not inject search_knowledge when agent AI sandbox is disabled', async () => {
+	it('does not inject search_knowledge when agent knowledge sandbox is unavailable', async () => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService(agentsToolsService, [], {
-			aiSandboxEnabled: false,
+			agentKnowledgeSandboxConfigService: mock<AgentKnowledgeSandboxConfigService>({
+				isAvailable: jest.fn(() => false),
+			}),
 		});
 		const entity = makeAgentEntity();
 

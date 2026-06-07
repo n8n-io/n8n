@@ -39,7 +39,6 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
@@ -51,6 +50,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
@@ -129,11 +129,11 @@ export class AgentsController {
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
-		private readonly agentsConfig: AgentsConfig,
+		private readonly agentKnowledgeSandboxConfigService: AgentKnowledgeSandboxConfigService,
 	) {}
 
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsConfig.aiSandboxEnabled) {
+		if (!this.agentKnowledgeSandboxConfigService.isAvailable()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}

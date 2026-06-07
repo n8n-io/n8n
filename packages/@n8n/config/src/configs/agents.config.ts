@@ -70,6 +70,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
 	aiSandboxImage: string = '';
 
+	/** n8n sandbox service base URL for agent knowledge operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_SERVICE_URL')
+	aiSandboxServiceUrl: string = '';
+
+	/** n8n sandbox service API key for agent knowledge operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_SERVICE_API_KEY')
+	aiSandboxServiceApiKey: string = '';
+
 	/** Agent knowledge sandbox command timeout in milliseconds. */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	aiSandboxTimeout: number = 300_000;

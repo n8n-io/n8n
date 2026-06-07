@@ -14,8 +14,8 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentTaskService } from '../agent-task.service';
-import type { AgentsConfig } from '@n8n/config';
 import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
+import type { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
@@ -49,7 +49,9 @@ function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
 	agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>(),
-	agentsConfig = { aiSandboxEnabled: true } as AgentsConfig,
+	agentKnowledgeSandboxConfigService = mock<AgentKnowledgeSandboxConfigService>({
+		isAvailable: jest.fn(() => true),
+	}),
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
@@ -60,7 +62,7 @@ function makeController({
 	agentTaskService?: jest.Mocked<AgentTaskService>;
 	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
 	agentKnowledgeSandboxWorkspaceService?: jest.Mocked<AgentKnowledgeSandboxWorkspaceService>;
-	agentsConfig?: AgentsConfig;
+	agentKnowledgeSandboxConfigService?: jest.Mocked<AgentKnowledgeSandboxConfigService>;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -85,7 +87,7 @@ function makeController({
 		agentTaskService,
 		agentKnowledgeService,
 		agentKnowledgeSandboxWorkspaceService,
-		agentsConfig,
+		agentKnowledgeSandboxConfigService,
 	);
 
 	return {
@@ -99,7 +101,7 @@ function makeController({
 		agentTaskService,
 		agentKnowledgeService,
 		agentKnowledgeSandboxWorkspaceService,
-		agentsConfig,
+		agentKnowledgeSandboxConfigService,
 	};
 }
 
@@ -284,7 +286,9 @@ describe('AgentsController file uploads', () => {
 describe('AgentsController file endpoints', () => {
 	it('returns not found when agent knowledge sandbox is disabled', async () => {
 		const { controller, agentKnowledgeService } = makeController({
-			agentsConfig: { aiSandboxEnabled: false } as AgentsConfig,
+			agentKnowledgeSandboxConfigService: mock<AgentKnowledgeSandboxConfigService>({
+				isAvailable: jest.fn(() => false),
+			}),
 		});
 
 		await expect(
@@ -496,7 +500,7 @@ describe('AgentsController integration credentials', () => {
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
 			mock<AgentKnowledgeSandboxWorkspaceService>(),
-			{ aiSandboxEnabled: true } as AgentsConfig,
+			mock<AgentKnowledgeSandboxConfigService>({ isAvailable: jest.fn(() => true) }),
 		);
 
 		await expect(
@@ -1042,7 +1046,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
 			mock<AgentKnowledgeSandboxWorkspaceService>(),
-			{ aiSandboxEnabled: true } as AgentsConfig,
+			mock<AgentKnowledgeSandboxConfigService>({ isAvailable: jest.fn(() => true) }),
 		);
 
 		const result = await controller.get(
@@ -1089,7 +1093,7 @@ describe('AgentsController agent resource', () => {
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
 			mock<AgentKnowledgeSandboxWorkspaceService>(),
-			{ aiSandboxEnabled: true } as AgentsConfig,
+			mock<AgentKnowledgeSandboxConfigService>({ isAvailable: jest.fn(() => true) }),
 		);
 
 		const result = await controller.get(
@@ -1125,7 +1129,7 @@ describe('AgentsController chat message history', () => {
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
 			mock<AgentKnowledgeSandboxWorkspaceService>(),
-			{ aiSandboxEnabled: true } as AgentsConfig,
+			mock<AgentKnowledgeSandboxConfigService>({ isAvailable: jest.fn(() => true) }),
 		);
 
 		return { controller, agentsService };

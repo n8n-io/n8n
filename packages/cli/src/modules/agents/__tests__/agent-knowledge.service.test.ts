@@ -6,6 +6,7 @@ import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import type { EntityManager } from '@n8n/typeorm';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -62,6 +63,7 @@ describe('AgentKnowledgeService', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentFileRepository: jest.Mocked<AgentFileRepository>;
 	let binaryDataService: jest.Mocked<BinaryDataService>;
+	let transactionManager: jest.Mocked<EntityManager>;
 	let service: AgentKnowledgeService;
 
 	function makeSandboxTarget() {
@@ -115,6 +117,12 @@ describe('AgentKnowledgeService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentFileRepository = mock<AgentFileRepository>();
 		binaryDataService = mock<BinaryDataService>();
+		transactionManager = mock<EntityManager>();
+		Object.assign(agentRepository, {
+			manager: {
+				transaction: jest.fn(),
+			},
+		});
 
 		agentFileRepository.create.mockImplementation((data?: Partial<unknown>) => data as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([]);
@@ -128,6 +136,23 @@ describe('AgentKnowledgeService', () => {
 		);
 		binaryDataService.getAsStream.mockImplementation(async () =>
 			Readable.from(Buffer.from('stored text')),
+		);
+		Object.assign(transactionManager, { connection: { options: { type: 'postgres' } } });
+		transactionManager.findOne.mockImplementation(
+			async (_entity, options: { where?: { id?: string; projectId?: string } }) =>
+				(await agentRepository.findByIdAndProjectId(
+					options.where?.id ?? '',
+					options.where?.projectId ?? '',
+				)) as never,
+		);
+		transactionManager.find.mockImplementation(
+			async (_entity, options: { where?: { agentId?: string } }) =>
+				(await agentFileRepository.findByAgentId(options.where?.agentId ?? '')) as never,
+		);
+		transactionManager.getRepository.mockReturnValue(agentFileRepository as never);
+		agentRepository.manager.transaction.mockImplementation(
+			async (runInTransaction: (manager: EntityManager) => Promise<unknown>) =>
+				await runInTransaction(transactionManager),
 		);
 		jest.mocked(generateNanoId).mockReset().mockReturnValue('file-1');
 		mockGetText.mockReset();
@@ -289,6 +314,23 @@ describe('AgentKnowledgeService', () => {
 			mimeType: 'text/plain',
 			fileSizeBytes: 5,
 			createdAt: '2026-05-24T12:00:00.000Z',
+		});
+	});
+
+	it('locks the agent row before checking the upload size cap', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+
+		await service.uploadFiles(agentId, projectId, [makeMulterFile()]);
+
+		expect(transactionManager.findOne).toHaveBeenCalledWith(
+			expect.any(Function),
+			expect.objectContaining({
+				where: { id: agentId, projectId },
+				lock: { mode: 'pessimistic_write' },
+			}),
+		);
+		expect(transactionManager.find).toHaveBeenCalledWith(expect.any(Function), {
+			where: { agentId },
 		});
 	});
 

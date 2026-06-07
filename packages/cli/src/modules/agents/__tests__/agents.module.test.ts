@@ -22,10 +22,10 @@ describe('AgentsModule', () => {
 	}
 
 	it('reports sandboxEnabled when sandbox config resolves', async () => {
-		const resolveConfig = jest.fn(() => ({ enabled: true, provider: 'n8n-sandbox' }));
+		const isAvailable = jest.fn(() => true);
 		setAgentsConfig({ modules: ['node-tools-searcher'] as AgentsConfig['modules'] });
 		Container.set(AgentKnowledgeSandboxConfigService, {
-			resolveConfig,
+			isAvailable,
 		} as unknown as AgentKnowledgeSandboxConfigService);
 
 		await expect(new AgentsModule().settings()).resolves.toEqual({
@@ -33,15 +33,13 @@ describe('AgentsModule', () => {
 			modules: ['node-tools-searcher'],
 			sandboxEnabled: true,
 		});
-		expect(resolveConfig).toHaveBeenCalledTimes(1);
+		expect(isAvailable).toHaveBeenCalledTimes(1);
 	});
 
 	it('hides sandbox features when sandbox config cannot be resolved', async () => {
 		setAgentsConfig();
 		Container.set(AgentKnowledgeSandboxConfigService, {
-			resolveConfig: jest.fn(() => {
-				throw new Error('N8N_SANDBOX_SERVICE_URL is required');
-			}),
+			isAvailable: jest.fn(() => false),
 		} as unknown as AgentKnowledgeSandboxConfigService);
 
 		await expect(new AgentsModule().settings()).resolves.toEqual({
@@ -62,5 +60,18 @@ describe('AgentsModule', () => {
 			sandboxEnabled: false,
 		});
 		expect(resolveConfig).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentKnowledgeSandboxConfigService', () => {
+	it('rejects Daytona config without an API key', () => {
+		const service = new AgentKnowledgeSandboxConfigService({
+			aiSandboxEnabled: true,
+			aiSandboxProvider: 'daytona',
+			daytonaApiKey: '',
+			aiSandboxTimeout: 300_000,
+		} as AgentsConfig);
+
+		expect(() => service.resolveConfig()).toThrow('DAYTONA_API_KEY is required');
 	});
 });

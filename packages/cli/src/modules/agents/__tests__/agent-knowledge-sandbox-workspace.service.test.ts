@@ -108,12 +108,10 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		jest.clearAllMocks();
 		logger = mock<Logger>();
 		configService = new AgentKnowledgeSandboxConfigService(
-			Object.assign(new (jest.requireActual('@n8n/config').InstanceAiConfig)(), {
-				n8nSandboxServiceUrl: 'https://sandbox.example.test',
-			}),
 			Object.assign(new (jest.requireActual('@n8n/config').AgentsConfig)(), {
 				aiSandboxEnabled: true,
 				aiSandboxNamePrefix: '',
+				aiSandboxServiceUrl: 'https://sandbox.example.test',
 			}),
 		);
 		service = new AgentKnowledgeSandboxWorkspaceService(
@@ -213,6 +211,31 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(started).toEqual([1]);
 		gate.resolve();
 		await expect(Promise.all([first, second])).resolves.toEqual(['first', 'second']);
+	});
+
+	it('does not evict a stale workspace while an operation is active', async () => {
+		const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(0);
+		const firstSandbox = makeSandbox();
+		const secondSandbox = makeSandbox();
+		createSandboxMock.mockResolvedValueOnce(firstSandbox).mockResolvedValueOnce(secondSandbox);
+		createFilesystemMock.mockReturnValue(makeFilesystem());
+		const started = createDeferred();
+		const release = createDeferred();
+
+		const activeOperation = service.withCachedWorkspace('active-key', async () => {
+			started.resolve();
+			await release.promise;
+			return 'active';
+		});
+		await started.promise;
+
+		nowSpy.mockReturnValue(10 * 60_000 + 1);
+		await service.withCachedWorkspace('other-key', async () => 'other');
+
+		expect(firstSandbox.destroy).not.toHaveBeenCalled();
+		release.resolve();
+		await expect(activeOperation).resolves.toBe('active');
+		nowSpy.mockRestore();
 	});
 
 	it('skips materialization when required files are present and current', async () => {

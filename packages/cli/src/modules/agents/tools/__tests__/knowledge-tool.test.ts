@@ -191,6 +191,26 @@ describe('search_knowledge tool', () => {
 		);
 	});
 
+	it('reports the default read range in citations', async () => {
+		const result = await createTool().handler?.({ operation: 'read', file: 'file-1' }, {} as never);
+
+		expect(commandService.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({
+				command: 'read',
+				file: 'file-1.txt',
+				startLine: 1,
+				endLine: 500,
+			}),
+		);
+		expect(result).toMatchObject({
+			result: {
+				truncated: true,
+				citation: { lineRange: { start: 1, end: 500 } },
+			},
+		});
+	});
+
 	it('resolves the full corpus for unscoped search', async () => {
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 

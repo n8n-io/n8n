@@ -28,6 +28,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { AgentKnowledgeCsvService } from '../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
+import type { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { AgentTaskService } from '../agent-task.service';
@@ -113,6 +114,7 @@ function makeRuntimeReconstructionService(
 		mock<AgentKnowledgeSandboxCommandService>(),
 		mock<AgentKnowledgeCsvService>(),
 		mock<AgentKnowledgeSandboxWorkspaceService>(),
+		mock<AgentKnowledgeSandboxConfigService>({ isAvailable: jest.fn(() => true) }),
 	);
 }
 

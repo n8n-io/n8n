@@ -92,8 +92,7 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentKnowledgeSandboxConfigService } = await import(
 				'./agent-knowledge-sandbox-config.service'
 			);
-			Container.get(AgentKnowledgeSandboxConfigService).resolveConfig();
-			return true;
+			return Container.get(AgentKnowledgeSandboxConfigService).isAvailable();
 		} catch {
 			return false;
 		}

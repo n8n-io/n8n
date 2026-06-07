@@ -55,6 +55,7 @@ interface CachedKnowledgeSandboxWorkspace {
 export class AgentKnowledgeSandboxWorkspaceService {
 	private readonly cachedWorkspaces = new Map<string, CachedKnowledgeSandboxWorkspace>();
 	private readonly workspaceLocks = new Map<string, Promise<unknown>>();
+	private readonly activeWorkspaceCounts = new Map<string, number>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -126,9 +127,14 @@ export class AgentKnowledgeSandboxWorkspaceService {
 			cacheKey,
 			async () =>
 				await workspaceLimit(async () => {
-					const entry = await this.ensureCachedWorkspace(cacheKey);
-					entry.lastUsedAt = Date.now();
-					return await operation(entry.workspace);
+					this.markWorkspaceActive(cacheKey);
+					try {
+						const entry = await this.ensureCachedWorkspace(cacheKey);
+						entry.lastUsedAt = Date.now();
+						return await operation(entry.workspace);
+					} finally {
+						this.markWorkspaceInactive(cacheKey);
+					}
 				}),
 		);
 	}
@@ -139,6 +145,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		const entries = [...this.cachedWorkspaces.values()];
 		this.cachedWorkspaces.clear();
 		this.workspaceLocks.clear();
+		this.activeWorkspaceCounts.clear();
 
 		await Promise.all(
 			entries.map(async (entry) => await this.destroySandbox(entry.workspace.sandbox)),
@@ -289,6 +296,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		const fresh: Array<[string, CachedKnowledgeSandboxWorkspace]> = [];
 
 		for (const entry of this.cachedWorkspaces) {
+			if (this.activeWorkspaceCounts.has(entry[0])) {
+				fresh.push(entry);
+				continue;
+			}
 			(now - entry[1].lastUsedAt > KNOWLEDGE_SANDBOX_WORKSPACE_CACHE_TTL_MS
 				? evictable
 				: fresh
@@ -296,14 +307,30 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 
 		if (fresh.length > MAX_CACHED_KNOWLEDGE_SANDBOX_WORKSPACES) {
-			fresh.sort((left, right) => left[1].lastUsedAt - right[1].lastUsedAt);
-			evictable.push(...fresh.slice(0, fresh.length - MAX_CACHED_KNOWLEDGE_SANDBOX_WORKSPACES));
+			const inactiveFresh = fresh.filter(([key]) => !this.activeWorkspaceCounts.has(key));
+			inactiveFresh.sort((left, right) => left[1].lastUsedAt - right[1].lastUsedAt);
+			evictable.push(
+				...inactiveFresh.slice(0, fresh.length - MAX_CACHED_KNOWLEDGE_SANDBOX_WORKSPACES),
+			);
 		}
 
 		for (const [key, entry] of evictable) {
 			this.cachedWorkspaces.delete(key);
 			await this.destroySandbox(entry.workspace.sandbox);
 		}
+	}
+
+	private markWorkspaceActive(cacheKey: string): void {
+		this.activeWorkspaceCounts.set(cacheKey, (this.activeWorkspaceCounts.get(cacheKey) ?? 0) + 1);
+	}
+
+	private markWorkspaceInactive(cacheKey: string): void {
+		const count = this.activeWorkspaceCounts.get(cacheKey);
+		if (!count || count <= 1) {
+			this.activeWorkspaceCounts.delete(cacheKey);
+			return;
+		}
+		this.activeWorkspaceCounts.set(cacheKey, count - 1);
 	}
 
 	private async readWorkspaceManifest(

@@ -9,6 +9,7 @@ import {
 	type SandboxInstance,
 } from '@n8n/ai-utilities/sandbox';
 import { Service } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import { generateNanoId, sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
@@ -22,6 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentFile } from './entities/agent-file.entity';
+import { Agent } from './entities/agent.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -116,19 +118,20 @@ export class AgentKnowledgeService {
 		projectId: string,
 		files: Express.Multer.File[],
 	): Promise<AgentFileDto[]> {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
-
 		return await this.serializeUploadForAgent(agentId, async () => {
 			const storedFiles: StoredAgentFile[] = [];
 
 			try {
-				await this.assertAgentKnowledgeBaseSizeWithinLimit(agentId, files);
-				// Process sequentially to bound peak memory: each file is read into
-				// a buffer and PDFs are parsed in-process, so storing the whole
-				// batch in parallel could spike RSS for large uploads.
-				for (const file of files) {
-					storedFiles.push(await this.storeFile(agentId, file));
-				}
+				await this.agentRepository.manager.transaction(async (trx) => {
+					await this.ensureAgentBelongsToProject(agentId, projectId, trx);
+					await this.assertAgentKnowledgeBaseSizeWithinLimit(agentId, files, trx);
+					// Process sequentially to bound peak memory: each file is read into
+					// a buffer and PDFs are parsed in-process, so storing the whole
+					// batch in parallel could spike RSS for large uploads.
+					for (const file of files) {
+						storedFiles.push(await this.storeFile(agentId, file, trx));
+					}
+				});
 			} catch (error) {
 				await this.cleanupStoredFiles(storedFiles).catch(() => {});
 				throw error;
@@ -363,16 +366,30 @@ export class AgentKnowledgeService {
 		});
 	}
 
-	private async ensureAgentBelongsToProject(agentId: string, projectId: string) {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	private async ensureAgentBelongsToProject(
+		agentId: string,
+		projectId: string,
+		trx?: EntityManager,
+	) {
+		const agent = trx
+			? await trx.findOne(Agent, {
+					where: { id: agentId, projectId },
+					...(this.shouldLockAgentForUpload(trx) ? { lock: { mode: 'pessimistic_write' } } : {}),
+				})
+			: await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 	}
 
-	private async storeFile(agentId: string, file: Express.Multer.File): Promise<StoredAgentFile> {
+	private async storeFile(
+		agentId: string,
+		file: Express.Multer.File,
+		trx?: EntityManager,
+	): Promise<StoredAgentFile> {
 		let storedBinaryDataId: string | undefined;
 		try {
+			const repository = trx?.getRepository(AgentFile) ?? this.agentFileRepository;
 			const fileId = generateNanoId();
 			const fileName = sanitizeFilename(
 				Buffer.from(file.originalname, 'latin1').toString('utf8'),
@@ -406,7 +423,7 @@ export class AgentKnowledgeService {
 			}
 			storedBinaryDataId = storedBinaryData.id;
 
-			const agentFile = this.agentFileRepository.create({
+			const agentFile = repository.create({
 				id: fileId,
 				agentId,
 				binaryDataId: storedBinaryDataId,
@@ -415,7 +432,7 @@ export class AgentKnowledgeService {
 				fileSizeBytes: buffer.length,
 			});
 
-			return await this.agentFileRepository.save(agentFile);
+			return await repository.save(agentFile);
 		} catch (error) {
 			if (storedBinaryDataId) {
 				await this.binaryDataService.deleteManyByBinaryDataId([storedBinaryDataId]);
@@ -516,8 +533,11 @@ export class AgentKnowledgeService {
 	private async assertAgentKnowledgeBaseSizeWithinLimit(
 		agentId: string,
 		incomingFiles: Express.Multer.File[],
+		trx?: EntityManager,
 	): Promise<void> {
-		const existingFiles = await this.agentFileRepository.findByAgentId(agentId);
+		const existingFiles = trx
+			? await trx.find(AgentFile, { where: { agentId } })
+			: await this.agentFileRepository.findByAgentId(agentId);
 		const existingBytes = existingFiles.reduce((total, file) => total + file.fileSizeBytes, 0);
 		const incomingBytes = incomingFiles.reduce(
 			(total, file) => total + this.getIncomingUploadSizeBytes(file),
@@ -530,6 +550,10 @@ export class AgentKnowledgeService {
 
 	private getIncomingUploadSizeBytes(file: Express.Multer.File): number {
 		return file.buffer?.length ?? file.size;
+	}
+
+	private shouldLockAgentForUpload(trx: EntityManager): boolean {
+		return trx.connection.options.type === 'postgres';
 	}
 
 	private async serializeUploadForAgent<T>(agentId: string, fn: () => Promise<T>): Promise<T> {

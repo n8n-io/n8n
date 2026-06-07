@@ -53,6 +53,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { AgentKnowledgeSandboxCommandService } from './agent-knowledge-sandbox-command.service';
+import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import { AgentKnowledgeCsvService } from './agent-knowledge-csv.service';
 import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
@@ -107,6 +108,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentKnowledgeSandboxCommandService: AgentKnowledgeSandboxCommandService,
 		private readonly agentKnowledgeCsvService: AgentKnowledgeCsvService,
 		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
+		private readonly agentKnowledgeSandboxConfigService: AgentKnowledgeSandboxConfigService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -347,7 +349,7 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (this.agentsConfig.aiSandboxEnabled) {
+		if (this.agentKnowledgeSandboxConfigService.isAvailable()) {
 			try {
 				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
 				agent.tool(
