@@ -2,12 +2,10 @@
 
 ## Posture
 
-**1525 components. 0 license failures. No copyleft in force.**
-
 Every component in the enriched release SBOM carries a valid SPDX license
 identifier. The two dual-licensed packages in the tree (`jszip`, `mailsplit`)
 offer MIT as an alternative to their copyleft option; n8n elects MIT for both,
-recorded as `cdx:license:elected` in the SBOM.
+recorded as `cdx:license:elected` in the SBOM. No copyleft license is in force.
 
 ---
 
