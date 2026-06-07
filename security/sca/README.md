@@ -73,6 +73,61 @@ jq '.components | length' sbom-source.cdx.json
 
 ---
 
+## License verification with Grant
+
+[Anchore Grant](https://github.com/anchore/grant) can be run directly against
+the Docker image or a downloaded SBOM for independent license verification.
+
+### Check for unlicensed packages
+
+```bash
+grant check --unlicensed ghcr.io/n8n-io/n8n:latest
+```
+
+Exit 0 = no unlicensed packages found. The npm layer should return zero
+unlicensed packages. Any `@UNKNOWN`-version entries in the output are phantom
+subpath export stubs from syft's filesystem scan — they are not real packages.
+
+### Check for copyleft licenses
+
+Grant's default policy denies everything not in an explicit allow list, so
+passing only permissive licenses will surface any copyleft automatically:
+
+```bash
+# .grant.yaml
+# allow:
+#   - MIT
+#   - Apache-2.0
+#   - ISC
+#   - BSD-2-Clause
+#   - BSD-3-Clause
+#   - LicenseRef-n8n-sustainable-use
+#   - LicenseRef-n8n-enterprise
+#   # ... other permissive licenses
+
+grant check --config .grant.yaml ghcr.io/n8n-io/n8n:latest
+```
+
+**What to expect in the output:**
+
+The Docker image will show GPL/LGPL entries — these come entirely from Alpine
+OS system packages (`busybox`, `git`, `libgcc`, `libstdc++`, etc.). GPL in an
+OS binary has no effect on n8n's licensing obligations or your use of n8n. They
+are inventoried in the SBOM for completeness but are not gated by the license
+pipeline.
+
+The npm layer contains no copyleft in force. The two dual-licensed packages
+(`jszip`: MIT OR GPL-3.0-or-later, `mailsplit`: MIT OR EUPL-1.1+) elect MIT;
+this election is recorded as `cdx:license:elected` in the SBOM.
+
+A quick risk-grouped summary with no config needed:
+
+```bash
+grant list --group-by risk ghcr.io/n8n-io/n8n:latest
+```
+
+---
+
 ## Tooling
 
 | Tool | Role |
