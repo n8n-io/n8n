@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
+import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -103,6 +104,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let configService: AgentKnowledgeSandboxConfigService;
 	let knowledgeService: AgentKnowledgeService;
+	let sandboxCommandService: jest.Mocked<AgentKnowledgeSandboxCommandService>;
 	let service: AgentKnowledgeSandboxWorkspaceService;
 
 	beforeEach(() => {
@@ -113,13 +115,22 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 				sandboxProvider: 'n8n-sandbox',
 				n8nSandboxServiceUrl: 'https://sandbox.example.test',
 			}),
+			Object.assign(new (jest.requireActual('@n8n/config').AgentsConfig)(), {
+				aiSandboxEnabled: true,
+			}),
 		);
 		knowledgeService = new AgentKnowledgeService(
 			mock<AgentRepository>(),
 			mock<AgentFileRepository>(),
 			mock(),
 		);
-		service = new AgentKnowledgeSandboxWorkspaceService(logger, configService, knowledgeService);
+		sandboxCommandService = mock<AgentKnowledgeSandboxCommandService>();
+		service = new AgentKnowledgeSandboxWorkspaceService(
+			logger,
+			configService,
+			knowledgeService,
+			sandboxCommandService,
+		);
 	});
 
 	function mockN8nSandboxWorkspace() {
@@ -311,6 +322,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		expect(createSandboxMock).toHaveBeenCalledTimes(2);
 		expect(firstSandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(sandboxCommandService.clearCapabilities).toHaveBeenCalledTimes(1);
 	});
 
 	it('destroys sandbox when workspace setup fails', async () => {
@@ -508,6 +520,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		expect(sandboxA.destroy).toHaveBeenCalledTimes(1);
 		expect(sandboxB.destroy).toHaveBeenCalledTimes(1);
+		expect(sandboxCommandService.clearCapabilities).toHaveBeenCalledTimes(2);
 		expect(service.getCachedWorkspaceCount()).toBe(0);
 	});
 });

@@ -569,6 +569,12 @@ describe('GlobalConfig', () => {
 			subAgentMaxChildren: 5,
 			subAgentTimeoutMs: 300000,
 			modules: [],
+			aiSandboxEnabled: true,
+			aiSandboxProvider: 'n8n-sandbox',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
+			aiSandboxImage: '',
+			aiSandboxTimeout: 300_000,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -793,6 +799,46 @@ describe('GlobalConfig', () => {
 			};
 			const config = Container.get(ExecutionsConfig);
 			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
+		});
+	});
+
+	describe('AgentsConfig', () => {
+		it('should read agent AI sandbox env vars', () => {
+			process.env = {
+				N8N_AGENTS_AI_SANDBOX_ENABLED: 'false',
+				N8N_AGENTS_AI_SANDBOX_PROVIDER: 'daytona',
+				DAYTONA_API_URL: 'https://app.daytona.io/api',
+				DAYTONA_API_KEY: 'dtn_',
+				N8N_AGENTS_AI_SANDBOX_IMAGE: 'daytonaio/sandbox:0.5.0',
+				N8N_AGENTS_AI_SANDBOX_TIMEOUT: '300000',
+			};
+			const config = Container.get(GlobalConfig);
+
+			expect(config.agents.aiSandboxEnabled).toBe(false);
+			expect(config.agents.aiSandboxProvider).toBe('daytona');
+			expect(config.agents.daytonaApiUrl).toBe('https://app.daytona.io/api');
+			expect(config.agents.daytonaApiKey).toBe('dtn_');
+			expect(config.agents.aiSandboxImage).toBe('daytonaio/sandbox:0.5.0');
+			expect(config.agents.aiSandboxTimeout).toBe(300_000);
+		});
+
+		it('should accept node-tools-searcher module token', () => {
+			process.env = {
+				N8N_AGENTS_MODULES: 'node-tools-searcher',
+			};
+			const config = Container.get(GlobalConfig);
+
+			expect([...config.agents.modules]).toEqual(['node-tools-searcher']);
+		});
+
+		it('should reject knowledge-base module token', () => {
+			process.env = {
+				N8N_AGENTS_MODULES: 'knowledge-base',
+			};
+
+			expect(() => Container.get(GlobalConfig)).toThrow(
+				'Unknown agents module: "knowledge-base". Valid tokens: node-tools-searcher.',
+			);
 		});
 	});
 });

@@ -347,23 +347,25 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		try {
-			const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-			agent.tool(
-				createSearchKnowledgeTool({
+		if (this.agentsConfig.aiSandboxEnabled) {
+			try {
+				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
+				agent.tool(
+					createSearchKnowledgeTool({
+						agentId,
+						projectId,
+						knowledgeService: this.agentKnowledgeService,
+						sandboxCommandService: this.agentKnowledgeSandboxCommandService,
+						csvService: this.agentKnowledgeCsvService,
+						sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
+					}),
+				);
+			} catch (toolError) {
+				this.logger.warn('Failed to inject search_knowledge tool', {
 					agentId,
-					projectId,
-					knowledgeService: this.agentKnowledgeService,
-					sandboxCommandService: this.agentKnowledgeSandboxCommandService,
-					csvService: this.agentKnowledgeCsvService,
-					sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
-				}),
-			);
-		} catch (toolError) {
-			this.logger.warn('Failed to inject search_knowledge tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
 		}
 
 		if (runtimeProfile === 'top-level') {

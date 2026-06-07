@@ -1,6 +1,6 @@
 import { distance } from 'fastest-levenshtein';
 
-import type { CsvAggregateInput, CsvFilter } from './schemas';
+import type { CsvAggregateInput, CsvFilter } from './tools/knowledge/schemas';
 
 export const CSV_SAMPLE_VALUE_LIMIT = 5;
 export const CSV_PROFILE_DISTINCT_LIMIT = 100;

@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -71,6 +72,8 @@ const route = useRoute();
 const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const knowledgeFilesEnabled = computed(() => settingsStore.isAgentsSandboxEnabled);
 const projectsStore = useProjectsStore();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
@@ -236,6 +239,12 @@ async function fetchAgentFiles(
 	targetProjectId: string = projectId.value,
 	targetAgentId: string = agentId.value,
 ) {
+	if (!knowledgeFilesEnabled.value) {
+		agentFiles.value = [];
+		agentFilesLoading.value = false;
+		return;
+	}
+
 	agentFilesLoading.value = true;
 	try {
 		const files = await listAgentFiles(rootStore.restApiContext, targetProjectId, targetAgentId);
@@ -251,6 +260,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
+	if (!knowledgeFilesEnabled.value) return;
 	if (files.length === 0) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
@@ -284,6 +294,12 @@ async function onUploadAgentFiles(files: File[]) {
 		agentFiles.value = Array.from(existingById.values()).sort(
 			(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 		);
+		telemetry.track('User uploaded agent knowledge files', {
+			agent_id: targetAgentId,
+			project_id: targetProjectId,
+			count: uploadedFiles.length,
+			total_size_bytes: filesWithinLimit.reduce((total, file) => total + file.size, 0),
+		});
 		showMessage({
 			title: locale.baseText('agents.builder.files.uploaded'),
 			type: 'success',
@@ -298,6 +314,7 @@ async function onUploadAgentFiles(files: File[]) {
 }
 
 async function onDeleteAgentFile(file: AgentFileDto) {
+	if (!knowledgeFilesEnabled.value) return;
 	if (deletingAgentFileId.value !== null) return;
 
 	const confirmed = await openAgentConfirmationModal({
@@ -319,6 +336,11 @@ async function onDeleteAgentFile(file: AgentFileDto) {
 		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
 		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 		agentFiles.value = agentFiles.value.filter((agentFile) => agentFile.id !== file.id);
+		telemetry.track('User deleted agent knowledge file', {
+			agent_id: targetAgentId,
+			project_id: targetProjectId,
+			file_id: file.id,
+		});
 		showMessage({
 			title: locale.baseText('agents.builder.files.deleted'),
 			type: 'success',
@@ -1173,6 +1195,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:knowledge-files-enabled="knowledgeFilesEnabled"
 				:agent-files="agentFiles"
 				:agent-files-loading="agentFilesLoading"
 				:agent-files-uploading="agentFilesUploading"

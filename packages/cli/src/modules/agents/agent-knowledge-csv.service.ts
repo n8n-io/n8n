@@ -21,7 +21,7 @@ import {
 	sortCsvAggregateResults,
 	toCsvRecordValues,
 	validateCsvColumns,
-} from './tools/knowledge/csv-helpers';
+} from './agent-knowledge-csv.helpers';
 import type {
 	CsvAggregateInput,
 	CsvAggregateResult,
@@ -49,6 +49,8 @@ interface CsvParseEntry {
 		lines: number;
 	};
 }
+
+const CSV_OPERATION_TIMEOUT_MS = 15_000;
 
 @Service()
 export class AgentKnowledgeCsvService {
@@ -322,6 +324,7 @@ async function streamCsvRecords(
 		onRecord: (event: CsvRecordEvent) => void;
 	},
 ): Promise<void> {
+	let timeoutId: NodeJS.Timeout | undefined;
 	const parser = contentStream.pipe(
 		parse({
 			bom: true,
@@ -336,11 +339,28 @@ async function streamCsvRecords(
 		}),
 	);
 
-	for await (const entry of parser as AsyncIterable<CsvParseEntry>) {
-		handlers.onRecord({
-			record: entry.record,
-			fileLineNumber: entry.info.lines,
-		});
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			if (!contentStream.destroyed) contentStream.destroy();
+			parser.destroy();
+			reject(new Error(`CSV operation timed out after ${CSV_OPERATION_TIMEOUT_MS}ms`));
+		}, CSV_OPERATION_TIMEOUT_MS);
+	});
+
+	try {
+		await Promise.race([
+			(async () => {
+				for await (const entry of parser as AsyncIterable<CsvParseEntry>) {
+					handlers.onRecord({
+						record: entry.record,
+						fileLineNumber: entry.info.lines,
+					});
+				}
+			})(),
+			timeoutPromise,
+		]);
+	} finally {
+		if (timeoutId) clearTimeout(timeoutId);
 	}
 }
 

@@ -341,6 +341,11 @@ export type FrontendModuleSettings = {
 		 * `N8N_AGENTS_MODULES`.
 		 */
 		modules: string[];
+		/**
+		 * Whether agent knowledge sandbox/file features are available.
+		 * Controlled via `N8N_AGENTS_AI_SANDBOX_ENABLED`.
+		 */
+		sandboxEnabled: boolean;
 	};
 };
 

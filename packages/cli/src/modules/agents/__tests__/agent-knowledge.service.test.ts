@@ -1,7 +1,7 @@
 import type { BinaryDataService } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils';
 import { mock } from 'jest-mock-extended';
-import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -418,7 +418,7 @@ describe('AgentKnowledgeService', () => {
 		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 
-	it('materializes stored PDF text as a text file', async () => {
+	it('materializes stored PDF text as a sandbox text file', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
 			{
@@ -431,64 +431,28 @@ describe('AgentKnowledgeService', () => {
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		binaryDataService.getAsStream.mockImplementation(async () =>
-			Readable.from(Buffer.from('stored PDF text')),
-		);
-		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
-		try {
-			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot);
+		const stream = Readable.from(Buffer.from('stored PDF text'));
+		binaryDataService.getAsStream.mockResolvedValue(stream as never);
+		const target = makeSandboxTarget();
 
-			expect(files).toEqual([
-				expect.objectContaining({
-					fileName: 'document.pdf',
-					mimeType: 'text/plain',
-					relativePath: 'file-1.pdf.txt',
-				}),
-			]);
-			await expect(readFile(path.join(workspaceRoot, 'file-1.pdf.txt'), 'utf8')).resolves.toBe(
-				'stored PDF text',
-			);
-		} finally {
-			await rm(workspaceRoot, { recursive: true, force: true });
-		}
-	});
-	it('materializes only requested files when file references are provided', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'data.csv',
-				mimeType: 'text/csv',
-				fileSizeBytes: 17,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-			{
-				id: 'file-2',
-				agentId,
-				binaryDataId: 'binary-2',
-				fileName: 'notes.txt',
+		const files = await service.materializeWorkspaceIntoSandbox(agentId, projectId, target);
+
+		expect(files).toEqual([
+			expect.objectContaining({
+				fileName: 'document.pdf',
 				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+				relativePath: 'file-1.pdf.txt',
+			}),
+		]);
+		expect(writeStreamToSandboxFileMock).toHaveBeenCalledWith(
+			target.filesystem,
+			target.sandbox,
+			'/home/user/workspace/agent-knowledge/file-1.pdf.txt',
+			stream,
+			{
+				temporaryDirectory: '/home/user/workspace/.agent-knowledge-internal/upload-parts',
 			},
-		] as never);
-		binaryDataService.getAsStream.mockImplementation(async () =>
-			Readable.from(Buffer.from('name,age\nAlice,30\n')),
 		);
-		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
-		try {
-			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot, {
-				fileReferences: ['file-1'],
-			});
-
-			expect(files).toEqual([expect.objectContaining({ id: 'file-1' })]);
-			expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
-			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
-		} finally {
-			await rm(workspaceRoot, { recursive: true, force: true });
-		}
 	});
 
 	it('resolves runtime files with private cache signature', async () => {
@@ -522,25 +486,6 @@ describe('AgentKnowledgeService', () => {
 		expect(first.files[0]).not.toHaveProperty('binaryDataId');
 		expect(second.files[0]).not.toHaveProperty('binaryDataId');
 		expect(first.cacheSignature).not.toBe(second.cacheSignature);
-	});
-
-	it('keeps resolveWorkspaceFiles returning only public workspace file metadata', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-
-		const files = await service.resolveWorkspaceFiles(agentId, projectId);
-
-		expect(files[0]).not.toHaveProperty('binaryDataId');
 	});
 
 	it('buildExpectedSandboxManifest hashes cache signature and omits raw binary ids', () => {
@@ -790,44 +735,5 @@ describe('AgentKnowledgeService', () => {
 				temporaryDirectory: '/home/user/workspace/.agent-knowledge-internal/upload-parts',
 			},
 		);
-	});
-
-	it('materializes files requested by display file name', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'data.csv',
-				mimeType: 'text/csv',
-				fileSizeBytes: 17,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-			{
-				id: 'file-2',
-				agentId,
-				binaryDataId: 'binary-2',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-		binaryDataService.getAsStream.mockImplementation(async () =>
-			Readable.from(Buffer.from('name,age\nAlice,30\n')),
-		);
-		const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-service-'));
-		try {
-			const files = await service.materializeWorkspace(agentId, projectId, workspaceRoot, {
-				fileReferences: ['data.csv'],
-			});
-
-			expect(files).toEqual([expect.objectContaining({ id: 'file-1', fileName: 'data.csv' })]);
-			expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
-			expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
-		} finally {
-			await rm(workspaceRoot, { recursive: true, force: true });
-		}
 	});
 });

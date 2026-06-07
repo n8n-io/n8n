@@ -1,4 +1,4 @@
-import { InstanceAiConfig } from '@n8n/config';
+import { AgentsConfig, InstanceAiConfig } from '@n8n/config';
 import { OperationalError } from 'n8n-workflow';
 
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
@@ -7,16 +7,43 @@ function createInstanceAiConfig(overrides: Partial<InstanceAiConfig> = {}): Inst
 	return Object.assign(new InstanceAiConfig(), overrides);
 }
 
+function createAgentsConfig(overrides: Partial<AgentsConfig> = {}): AgentsConfig {
+	return Object.assign(
+		new AgentsConfig(),
+		{
+			aiSandboxEnabled: true,
+			aiSandboxProvider: 'n8n-sandbox',
+			aiSandboxTimeout: 300_000,
+		},
+		overrides,
+	);
+}
+
 describe('AgentKnowledgeSandboxConfigService', () => {
-	it('resolves n8n sandbox config without requiring N8N_INSTANCE_AI_SANDBOX_ENABLED', () => {
-		const config = createInstanceAiConfig({
-			sandboxProvider: 'n8n-sandbox',
-			sandboxEnabled: false,
-			n8nSandboxServiceUrl: ' https://sandbox.example.test ',
-			n8nSandboxServiceApiKey: 'key',
-			sandboxTimeout: 1234,
+	it('returns disabled config when agent AI sandbox is disabled', () => {
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig(),
+			createAgentsConfig({ aiSandboxEnabled: false }),
+		);
+
+		expect(service.resolveConfig()).toEqual({
+			enabled: false,
+			provider: 'n8n-sandbox',
+			timeout: 300_000,
 		});
-		const service = new AgentKnowledgeSandboxConfigService(config);
+	});
+
+	it('resolves enabled n8n sandbox config from instance AI service URL', () => {
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig({
+				n8nSandboxServiceUrl: ' https://sandbox.example.test ',
+				n8nSandboxServiceApiKey: 'key',
+			}),
+			createAgentsConfig({
+				aiSandboxProvider: 'n8n-sandbox',
+				aiSandboxTimeout: 1234,
+			}),
+		);
 
 		expect(service.resolveConfig()).toEqual({
 			enabled: true,
@@ -27,12 +54,13 @@ describe('AgentKnowledgeSandboxConfigService', () => {
 		});
 	});
 
-	it('throws clear error when n8n sandbox service URL is missing', () => {
-		const config = createInstanceAiConfig({
-			sandboxProvider: 'n8n-sandbox',
-			n8nSandboxServiceUrl: '',
-		});
-		const service = new AgentKnowledgeSandboxConfigService(config);
+	it('throws clear error when enabled n8n sandbox service URL is missing', () => {
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig({
+				n8nSandboxServiceUrl: '',
+			}),
+			createAgentsConfig(),
+		);
 
 		expect(() => service.resolveConfig()).toThrow(OperationalError);
 		expect(() => service.resolveConfig()).toThrow(
@@ -40,33 +68,38 @@ describe('AgentKnowledgeSandboxConfigService', () => {
 		);
 	});
 
-	it('resolves daytona config', () => {
-		const config = createInstanceAiConfig({
-			sandboxProvider: 'daytona',
-			daytonaApiUrl: 'https://daytona.example.test',
-			daytonaApiKey: 'daytona-key',
-			sandboxImage: 'daytona-image',
-			sandboxTimeout: 5678,
-		});
-		const service = new AgentKnowledgeSandboxConfigService(config);
+	it('resolves enabled daytona config from agents config', () => {
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig(),
+			createAgentsConfig({
+				aiSandboxProvider: 'daytona',
+				daytonaApiUrl: 'https://app.daytona.io/api',
+				daytonaApiKey: 'dtn_',
+				aiSandboxImage: 'daytonaio/sandbox:0.5.0',
+				aiSandboxTimeout: 5678,
+			}),
+		);
 
 		expect(service.resolveConfig()).toEqual({
 			enabled: true,
 			provider: 'daytona',
-			daytonaApiUrl: 'https://daytona.example.test',
-			daytonaApiKey: 'daytona-key',
-			image: 'daytona-image',
+			daytonaApiUrl: 'https://app.daytona.io/api',
+			daytonaApiKey: 'dtn_',
+			image: 'daytonaio/sandbox:0.5.0',
 			timeout: 5678,
 			name: undefined,
 		});
 	});
 
 	it('falls back to n8n-sandbox for unknown provider', () => {
-		const config = createInstanceAiConfig({
-			sandboxProvider: 'unknown',
-			n8nSandboxServiceUrl: 'https://sandbox.example.test',
-		});
-		const service = new AgentKnowledgeSandboxConfigService(config);
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig({
+				n8nSandboxServiceUrl: 'https://sandbox.example.test',
+			}),
+			createAgentsConfig({
+				aiSandboxProvider: 'unknown',
+			}),
+		);
 
 		expect(service.resolveConfig()).toEqual({
 			enabled: true,

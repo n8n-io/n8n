@@ -4,7 +4,7 @@ import path from 'node:path/posix';
 import type {
 	AgentKnowledgeCommandRequest,
 	AgentKnowledgeCommandResult,
-} from './agent-knowledge-command.service';
+} from './agent-knowledge-command.types';
 import type { KnowledgeSandboxWorkspace } from './agent-knowledge-sandbox-workspace.service';
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
@@ -40,6 +40,24 @@ stream.on('error', (error) => {
 	console.error(error.message);
 	process.exitCode = 1;
 });
+`.trim();
+
+const CANONICALIZE_PATHS_SCRIPT = `
+const fs = require('node:fs');
+const path = require('node:path');
+const entries = JSON.parse(process.argv[1]);
+const cwd = process.cwd();
+const results = [];
+for (const entry of entries) {
+	const resolved = path.resolve(cwd, entry.path);
+	const actual = fs.realpathSync(resolved);
+	const relative = path.relative(cwd, actual);
+	if ((!entry.allowRoot && relative === '') || relative.startsWith('..') || path.isAbsolute(relative)) {
+		throw new Error('Path escapes the knowledge workspace');
+	}
+	results.push(relative || '.');
+}
+console.log(JSON.stringify(results));
 `.trim();
 
 const READ_RANGE_SCRIPT = `
@@ -86,7 +104,13 @@ export class AgentKnowledgeSandboxCommandService {
 		}
 	}
 
-	private getCapabilitiesCacheKey(workspace: KnowledgeSandboxWorkspace): string {
+	clearCapabilities(workspace: Pick<KnowledgeSandboxWorkspace, 'provider' | 'sandbox'>): void {
+		this.capabilitiesByWorkspace.delete(this.getCapabilitiesCacheKey(workspace));
+	}
+
+	private getCapabilitiesCacheKey(
+		workspace: Pick<KnowledgeSandboxWorkspace, 'provider' | 'sandbox'>,
+	): string {
 		return `${workspace.provider}:${workspace.sandbox.id}`;
 	}
 
@@ -214,14 +238,48 @@ export class AgentKnowledgeSandboxCommandService {
 		return false;
 	}
 
+	private async canonicalizeRelativePaths(
+		workspace: KnowledgeSandboxWorkspace,
+		paths: Array<{ path: string; allowRoot?: boolean }>,
+	): Promise<string[]> {
+		const sanitized = paths.map(({ path: requestedPath, allowRoot }) =>
+			this.safeRelativePath(requestedPath, { allowRoot }),
+		);
+		const capabilities = await this.getCapabilities(workspace);
+		if (!capabilities.node) {
+			return sanitized;
+		}
+
+		const payload = JSON.stringify(
+			sanitized.map((requestedPath, index) => ({
+				path: requestedPath,
+				allowRoot: paths[index]?.allowRoot ?? false,
+			})),
+		);
+		const result = await this.executeSandboxCommand(
+			workspace,
+			'node',
+			['-e', CANONICALIZE_PATHS_SCRIPT, payload],
+			'cat',
+		);
+		if (result.exitCode !== 0) {
+			throw new Error(
+				result.stderr.trim() || result.stdout.trim() || 'Path escapes the knowledge workspace',
+			);
+		}
+
+		return JSON.parse(result.stdout.trim()) as string[];
+	}
+
 	private async runSearch(
 		workspace: KnowledgeSandboxWorkspace,
 		request: Extract<AgentKnowledgeCommandRequest, { command: 'git_grep' }>,
 	): Promise<AgentKnowledgeCommandResult> {
 		if (request.pattern.trim() === '') throw new Error('Search pattern is required');
 
-		const files = (request.files ?? ['.']).map((file) =>
-			this.safeRelativePath(file, { allowRoot: true }),
+		const files = await this.canonicalizeRelativePaths(
+			workspace,
+			(request.files ?? ['.']).map((file) => ({ path: file, allowRoot: true })),
 		);
 		const capabilities = await this.getCapabilities(workspace);
 
@@ -257,7 +315,7 @@ export class AgentKnowledgeSandboxCommandService {
 		workspace: KnowledgeSandboxWorkspace,
 		request: Extract<AgentKnowledgeCommandRequest, { command: 'cat' }>,
 	): Promise<AgentKnowledgeCommandResult> {
-		const file = this.safeRelativePath(request.file);
+		const [file] = await this.canonicalizeRelativePaths(workspace, [{ path: request.file }]);
 		const capabilities = await this.getCapabilities(workspace);
 
 		if (capabilities.node) {
@@ -282,7 +340,7 @@ export class AgentKnowledgeSandboxCommandService {
 		workspace: KnowledgeSandboxWorkspace,
 		request: Extract<AgentKnowledgeCommandRequest, { command: 'sed' }>,
 	): Promise<AgentKnowledgeCommandResult> {
-		const file = this.safeRelativePath(request.file);
+		const [file] = await this.canonicalizeRelativePaths(workspace, [{ path: request.file }]);
 		const startLine = Math.max(1, request.startLine);
 		const endLine = Math.max(startLine, request.endLine);
 		const clampedEndLine = Math.min(endLine, startLine + MAX_READ_RANGE_LINES);

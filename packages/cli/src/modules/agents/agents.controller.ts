@@ -39,6 +39,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
@@ -126,7 +127,14 @@ export class AgentsController {
 		private readonly slackAppSetupService: SlackAppSetupService,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
+
+	private assertKnowledgeBaseEnabled() {
+		if (!this.agentsConfig.aiSandboxEnabled) {
+			throw new NotFoundError('Agent knowledge base is not enabled');
+		}
+	}
 
 	private async validateIntegration(dto: unknown) {
 		const integrationParseResult = await AgentIntegrationSchema.safeParseAsync(dto);
@@ -407,6 +415,7 @@ export class AgentsController {
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 	) {
+		this.assertKnowledgeBaseEnabled();
 		return await this.agentKnowledgeService.listFiles(agentId, projectId);
 	}
 
@@ -425,6 +434,7 @@ export class AgentsController {
 	) {
 		const files = req.files ?? [];
 		try {
+			this.assertKnowledgeBaseEnabled();
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
@@ -456,6 +466,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
+		this.assertKnowledgeBaseEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		return { success: true };
 	}

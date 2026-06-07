@@ -49,4 +49,28 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	/** Whether agent knowledge sandbox/file features are available. */
+	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
+	aiSandboxEnabled: boolean = true;
+
+	/** Sandbox provider for agent knowledge operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
+	aiSandboxProvider: string = 'n8n-sandbox';
+
+	/** Daytona API URL for agent knowledge sandboxing. */
+	@Env('DAYTONA_API_URL')
+	daytonaApiUrl: string = '';
+
+	/** Daytona API key for agent knowledge sandboxing. */
+	@Env('DAYTONA_API_KEY')
+	daytonaApiKey: string = '';
+
+	/** Sandbox image used by Daytona for agent knowledge operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
+	aiSandboxImage: string = '';
+
+	/** Agent knowledge sandbox command timeout in milliseconds. */
+	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
+	aiSandboxTimeout: number = 300_000;
 }

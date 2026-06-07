@@ -14,6 +14,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentTaskService } from '../agent-task.service';
+import type { AgentsConfig } from '@n8n/config';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
@@ -46,6 +47,7 @@ function makeController({
 	slackAppSetupService = mock<SlackAppSetupService>(),
 	agentTaskService = mock<AgentTaskService>(),
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
+	agentsConfig = { aiSandboxEnabled: true } as AgentsConfig,
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
 	credentialsService?: jest.Mocked<CredentialsService>;
@@ -55,6 +57,7 @@ function makeController({
 	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
 	agentTaskService?: jest.Mocked<AgentTaskService>;
 	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
+	agentsConfig?: AgentsConfig;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -78,6 +81,7 @@ function makeController({
 		slackAppSetupService,
 		agentTaskService,
 		agentKnowledgeService,
+		agentsConfig,
 	);
 
 	return {
@@ -90,6 +94,7 @@ function makeController({
 		slackAppSetupService,
 		agentTaskService,
 		agentKnowledgeService,
+		agentsConfig,
 	};
 }
 
@@ -272,6 +277,22 @@ describe('AgentsController file uploads', () => {
 });
 
 describe('AgentsController file endpoints', () => {
+	it('returns not found when agent knowledge sandbox is disabled', async () => {
+		const { controller, agentKnowledgeService } = makeController({
+			agentsConfig: { aiSandboxEnabled: false } as AgentsConfig,
+		});
+
+		await expect(
+			controller.listFiles(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(agentKnowledgeService.listFiles).not.toHaveBeenCalled();
+	});
+
 	it('lists files via AgentKnowledgeService', async () => {
 		const { controller, agentKnowledgeService } = makeController();
 		const files = [{ id: 'file-1', fileName: 'notes.md' }] as never;
@@ -286,6 +307,38 @@ describe('AgentsController file endpoints', () => {
 
 		expect(agentKnowledgeService.listFiles).toHaveBeenCalledWith('agent-1', 'project-1');
 		expect(result).toBe(files);
+	});
+
+	it('returns not found when uploading files while agent knowledge sandbox is disabled', async () => {
+		const { controller, agentKnowledgeService } = makeController({
+			agentsConfig: { aiSandboxEnabled: false } as AgentsConfig,
+		});
+		await expect(
+			controller.uploadFiles(
+				{ params: { projectId: 'project-1' }, files: [] } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(agentKnowledgeService.uploadFiles).not.toHaveBeenCalled();
+	});
+
+	it('returns not found when deleting a file while agent knowledge sandbox is disabled', async () => {
+		const { controller, agentKnowledgeService } = makeController({
+			agentsConfig: { aiSandboxEnabled: false } as AgentsConfig,
+		});
+
+		await expect(
+			controller.deleteFile(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+				'file-1',
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(agentKnowledgeService.deleteFile).not.toHaveBeenCalled();
 	});
 
 	it('uploads files via AgentKnowledgeService', async () => {
@@ -422,6 +475,7 @@ describe('AgentsController integration credentials', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
 		await expect(
@@ -966,6 +1020,7 @@ describe('AgentsController agent resource', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
 		const result = await controller.get(
@@ -1011,6 +1066,7 @@ describe('AgentsController agent resource', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
 		const result = await controller.get(
@@ -1045,6 +1101,7 @@ describe('AgentsController chat message history', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
 		return { controller, agentsService };

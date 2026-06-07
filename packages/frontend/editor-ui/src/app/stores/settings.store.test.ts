@@ -239,6 +239,47 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('isAgentsSandboxEnabled', () => {
+		it('should return false when agents module is inactive even if sandboxEnabled is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: [],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { agents: { modules: [], sandboxEnabled: true } };
+
+			expect(settingsStore.isAgentsSandboxEnabled).toBe(false);
+		});
+
+		it('should return false when agents module is active but sandboxEnabled is false', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['agents'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { agents: { modules: [], sandboxEnabled: false } };
+
+			expect(settingsStore.isAgentsSandboxEnabled).toBe(false);
+		});
+
+		it('should return true when agents module is active and sandboxEnabled is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['agents'],
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = { agents: { modules: [], sandboxEnabled: true } };
+
+			expect(settingsStore.isAgentsSandboxEnabled).toBe(true);
+		});
+	});
+
 	describe('isAgentsNodeToolsFeatureEnabled', () => {
 		it('should return false when agents module is inactive', async () => {
 			getSettings.mockResolvedValueOnce({
@@ -248,7 +289,9 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { agents: { modules: ['node-tools-searcher'] } };
+			settingsStore.moduleSettings = {
+				agents: { modules: ['node-tools-searcher'], sandboxEnabled: true },
+			};
 
 			expect(settingsStore.isAgentsNodeToolsFeatureEnabled).toBe(false);
 		});
@@ -261,7 +304,7 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { agents: { modules: [] } };
+			settingsStore.moduleSettings = { agents: { modules: [], sandboxEnabled: true } };
 
 			expect(settingsStore.isAgentsNodeToolsFeatureEnabled).toBe(false);
 		});
@@ -274,7 +317,9 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { agents: { modules: ['node-tools-searcher'] } };
+			settingsStore.moduleSettings = {
+				agents: { modules: ['node-tools-searcher'], sandboxEnabled: true },
+			};
 
 			expect(settingsStore.isAgentsNodeToolsFeatureEnabled).toBe(true);
 		});

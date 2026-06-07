@@ -1,4 +1,4 @@
-import { InstanceAiConfig } from '@n8n/config';
+import { AgentsConfig, InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { normalizeSandboxProvider, type SandboxConfig } from '@n8n/ai-utilities/sandbox';
 import { OperationalError } from 'n8n-workflow';
@@ -8,11 +8,18 @@ const N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE =
 
 @Service()
 export class AgentKnowledgeSandboxConfigService {
-	constructor(private readonly instanceAiConfig: InstanceAiConfig) {}
+	constructor(
+		private readonly instanceAiConfig: InstanceAiConfig,
+		private readonly agentsConfig: AgentsConfig,
+	) {}
 
 	resolveConfig(): SandboxConfig {
-		const provider = normalizeSandboxProvider(this.instanceAiConfig.sandboxProvider);
-		const timeout = this.instanceAiConfig.sandboxTimeout;
+		const provider = normalizeSandboxProvider(this.agentsConfig.aiSandboxProvider);
+		const timeout = this.agentsConfig.aiSandboxTimeout;
+
+		if (!this.agentsConfig.aiSandboxEnabled) {
+			return { enabled: false, provider, timeout };
+		}
 
 		if (provider === 'n8n-sandbox') {
 			const serviceUrl = this.instanceAiConfig.n8nSandboxServiceUrl.trim();
@@ -32,9 +39,9 @@ export class AgentKnowledgeSandboxConfigService {
 		return {
 			enabled: true,
 			provider: 'daytona',
-			daytonaApiUrl: this.instanceAiConfig.daytonaApiUrl || undefined,
-			daytonaApiKey: this.instanceAiConfig.daytonaApiKey || undefined,
-			image: this.instanceAiConfig.sandboxImage || undefined,
+			daytonaApiUrl: this.agentsConfig.daytonaApiUrl || undefined,
+			daytonaApiKey: this.agentsConfig.daytonaApiKey || undefined,
+			image: this.agentsConfig.aiSandboxImage || undefined,
 			timeout,
 			name: undefined,
 		};

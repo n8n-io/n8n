@@ -9,7 +9,6 @@ import type {
 } from '../../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 
-import { aggregateCsv, distinctCsv, profileCsv, queryCsv } from './csv.operation';
 import { getRequiredFileReferences, type WorkspaceFiles } from './file-references';
 import { runReadOperation } from './read.operation';
 import { runSearchOperation } from './search.operation';
@@ -197,25 +196,25 @@ async function handleCsvKnowledgeOperation(
 			return {
 				operation: 'csv_query',
 				files,
-				csv: await queryCsv(agentId, projectId, input, csvService),
+				csv: await csvService.queryCsv(agentId, projectId, input),
 			};
 		case 'csv_profile':
 			return {
 				operation: 'csv_profile',
 				files,
-				csvProfile: await profileCsv(agentId, projectId, input, csvService),
+				csvProfile: await csvService.profileCsv(agentId, projectId, input),
 			};
 		case 'csv_distinct':
 			return {
 				operation: 'csv_distinct',
 				files,
-				csvDistinct: await distinctCsv(agentId, projectId, input, csvService),
+				csvDistinct: await csvService.distinctCsv(agentId, projectId, input),
 			};
 		case 'csv_aggregate':
 			return {
 				operation: 'csv_aggregate',
 				files,
-				csvAggregate: await aggregateCsv(agentId, projectId, input, csvService),
+				csvAggregate: await csvService.aggregateCsv(agentId, projectId, input),
 			};
 	}
 }

@@ -29,6 +29,16 @@ function capabilityProbeResult(tools: string[]) {
 	};
 }
 
+function canonicalizeResult(paths: string[]) {
+	return {
+		success: true,
+		exitCode: 0,
+		stdout: JSON.stringify(paths),
+		stderr: '',
+		executionTimeMs: 1,
+	};
+}
+
 describe('AgentKnowledgeSandboxCommandService', () => {
 	let service: AgentKnowledgeSandboxCommandService;
 
@@ -40,6 +50,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		const executeCommand = jest
 			.fn()
 			.mockResolvedValueOnce(capabilityProbeResult(['rg', 'grep', 'sed', 'node', 'cat']))
+			.mockResolvedValueOnce(canonicalizeResult(['.']))
 			.mockResolvedValueOnce({
 				success: true,
 				exitCode: 0,
@@ -58,9 +69,9 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		expect(result.command).toBe('git_grep');
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain('needle');
-		expect(executeCommand).toHaveBeenCalledTimes(2);
-		expect(executeCommand.mock.calls[1]?.[0]).toBe('rg');
-		const rgArgs = executeCommand.mock.calls[1]?.[1];
+		expect(executeCommand).toHaveBeenCalledTimes(3);
+		expect(executeCommand.mock.calls[2]?.[0]).toBe('rg');
+		const rgArgs = executeCommand.mock.calls[2]?.[1];
 		expect(rgArgs).toEqual(
 			expect.arrayContaining([
 				'--no-heading',
@@ -79,6 +90,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		const executeCommand = jest
 			.fn()
 			.mockResolvedValueOnce(capabilityProbeResult(['grep', 'sed', 'node', 'cat']))
+			.mockResolvedValueOnce(canonicalizeResult(['.']))
 			.mockResolvedValueOnce({
 				success: true,
 				exitCode: 0,
@@ -95,8 +107,8 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		});
 
 		expect(result.command).toBe('git_grep');
-		expect(executeCommand.mock.calls[1]?.[0]).toBe('grep');
-		expect(executeCommand.mock.calls[1]?.[1]).toEqual(
+		expect(executeCommand.mock.calls[2]?.[0]).toBe('grep');
+		expect(executeCommand.mock.calls[2]?.[1]).toEqual(
 			expect.arrayContaining(['-R', '-n', '-I', '-H', '-F', '--', 'needle', '.']),
 		);
 	});
@@ -151,6 +163,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		const executeCommand = jest
 			.fn()
 			.mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']))
+			.mockResolvedValueOnce(canonicalizeResult(['notes.txt']))
 			.mockResolvedValueOnce({
 				success: true,
 				exitCode: 0,
@@ -166,7 +179,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		});
 
 		expect(result.command).toBe('cat');
-		expect(executeCommand.mock.calls[1]?.[0]).toBe('node');
+		expect(executeCommand.mock.calls[2]?.[0]).toBe('node');
 	});
 
 	it('line range read uses sed fallback when node is unavailable', async () => {
@@ -210,10 +223,29 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
 
+	it('rejects symlink escapes during canonicalization', async () => {
+		const executeCommand = jest
+			.fn()
+			.mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']))
+			.mockResolvedValueOnce({
+				success: false,
+				exitCode: 1,
+				stdout: '',
+				stderr: 'Error: Path escapes the knowledge workspace',
+				executionTimeMs: 1,
+			});
+		const workspace = makeWorkspace(executeCommand);
+
+		await expect(
+			service.run(workspace, { command: 'cat', file: 'escape-link.txt' }),
+		).rejects.toThrow('Path escapes the knowledge workspace');
+	});
+
 	it('truncates stdout without breaking UTF-8', async () => {
 		const executeCommand = jest
 			.fn()
 			.mockResolvedValueOnce(capabilityProbeResult(['node']))
+			.mockResolvedValueOnce(canonicalizeResult(['notes.txt']))
 			.mockResolvedValueOnce({
 				success: true,
 				exitCode: 0,
@@ -230,7 +262,10 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 	});
 
 	it('throws clear error when sandbox lacks search tools', async () => {
-		const executeCommand = jest.fn().mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']));
+		const executeCommand = jest
+			.fn()
+			.mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']))
+			.mockResolvedValueOnce(canonicalizeResult(['.']));
 		const workspace = makeWorkspace(executeCommand);
 
 		await expect(

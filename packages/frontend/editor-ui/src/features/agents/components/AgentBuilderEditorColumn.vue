@@ -36,6 +36,7 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	projectId: string;
 	agentId: string;
+	knowledgeFilesEnabled: boolean;
 	agentFiles: AgentFileDto[];
 	agentFilesLoading: boolean;
 	agentFilesUploading: boolean;
@@ -312,14 +313,18 @@ function onRemoveSubAgent(agentId: string) {
 						</div>
 					</N8nCard>
 
-					<N8nCard variant="outlined" :class="$style.card">
+					<N8nCard
+						v-if="knowledgeFilesEnabled"
+						variant="outlined"
+						:class="$style.card"
+						data-testid="agent-files-card"
+					>
 						<AgentFilesPanel
 							:files="agentFiles"
 							:disabled="childrenDisabled"
 							:loading="agentFilesLoading"
 							:uploading="agentFilesUploading"
 							:deleting-file-id="deletingAgentFileId"
-							data-testid="agent-files-card"
 							@upload-files="emit('upload-files', $event)"
 							@delete-file="emit('delete-file', $event)"
 						/>

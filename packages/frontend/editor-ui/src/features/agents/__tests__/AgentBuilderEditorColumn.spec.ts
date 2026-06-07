@@ -115,7 +115,7 @@ const publishedSubAgent: AgentResource = {
 	activeVersionId: 'version-2',
 } as AgentResource;
 
-async function mountColumn() {
+async function mountColumn(knowledgeFilesEnabled = true) {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
@@ -132,6 +132,7 @@ async function mountColumn() {
 			agent: null,
 			projectId: 'project-1',
 			agentId: 'agent-1',
+			knowledgeFilesEnabled,
 			agentFiles: [],
 			agentFilesLoading: false,
 			agentFilesUploading: false,
@@ -162,10 +163,18 @@ describe('AgentBuilderEditorColumn', () => {
 		ensureLoadedMock.mockResolvedValue([]);
 	});
 
-	it('always renders the agent files card on the agent tab', async () => {
+	it('renders the agent files card when knowledge files are enabled', async () => {
 		const wrapper = await mountColumn();
 
 		expect(wrapper.find('[data-testid="agent-files-card"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-files-panel"]').exists()).toBe(true);
+	});
+
+	it('hides the agent files card when knowledge files are disabled', async () => {
+		const wrapper = await mountColumn(false);
+
+		expect(wrapper.find('[data-testid="agent-files-card"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-files-panel"]').exists()).toBe(false);
 	});
 
 	it('renders only the episodic memory row in the builder memory card', async () => {

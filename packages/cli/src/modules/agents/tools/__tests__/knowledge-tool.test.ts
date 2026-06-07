@@ -1,8 +1,8 @@
 import type { SandboxFilesystem } from '@n8n/ai-utilities/sandbox';
+import { spawn } from 'node:child_process';
 
 import { AgentKnowledgeCsvService } from '../../agent-knowledge-csv.service';
-import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
-import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
 import type {
 	AgentKnowledgeSandboxWorkspaceService,
 	KnowledgeSandboxWorkspace,
@@ -17,9 +17,75 @@ jest.unmock('node:fs/promises');
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+const COMMAND_TIMEOUT_MS = 5_000;
+
+async function executeLocalSandboxCommand(
+	command: string,
+	args: string[],
+	options: {
+		cwd?: string;
+		timeout?: number;
+		onStdout?: (chunk: string) => void;
+		onStderr?: (chunk: string) => void;
+	} = {},
+): Promise<{
+	success: boolean;
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+	executionTimeMs: number;
+	timedOut?: boolean;
+}> {
+	const cwd = options.cwd ?? process.cwd();
+	const timeout = options.timeout ?? COMMAND_TIMEOUT_MS;
+	const startedAt = Date.now();
+
+	return await new Promise((resolve, reject) => {
+		const child = spawn(command, args, {
+			cwd,
+			shell: false,
+			env: {
+				PATH: process.env.PATH,
+				HOME: cwd,
+				GIT_CONFIG_NOSYSTEM: '1',
+				GIT_CONFIG_GLOBAL: '/dev/null',
+				GIT_TERMINAL_PROMPT: '0',
+			},
+		});
+		let stdout = '';
+		let stderr = '';
+		let timedOut = false;
+		const timer = setTimeout(() => {
+			timedOut = true;
+			child.kill('SIGKILL');
+		}, timeout);
+
+		child.stdout.on('data', (chunk: Buffer) => {
+			const text = chunk.toString('utf8');
+			stdout += text;
+			options.onStdout?.(text);
+		});
+		child.stderr.on('data', (chunk: Buffer) => {
+			const text = chunk.toString('utf8');
+			stderr += text;
+			options.onStderr?.(text);
+		});
+		child.on('error', reject);
+		child.on('close', (exitCode) => {
+			clearTimeout(timer);
+			resolve({
+				success: exitCode === 0,
+				exitCode: exitCode ?? 1,
+				stdout,
+				stderr,
+				executionTimeMs: Date.now() - startedAt,
+				timedOut,
+			});
+		});
+	});
+}
 
 describe('search_knowledge tool', () => {
-	let hostCommandService: AgentKnowledgeCommandService;
 	let sandboxCommandService: AgentKnowledgeSandboxCommandService;
 	let csvService: AgentKnowledgeCsvService;
 	let sandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService;
@@ -28,7 +94,6 @@ describe('search_knowledge tool', () => {
 			AgentKnowledgeService,
 			| 'buildExpectedSandboxManifest'
 			| 'listWorkspaceFiles'
-			| 'materializeWorkspace'
 			| 'materializeWorkspaceIntoSandbox'
 			| 'openWorkspaceFileStream'
 			| 'resolveWorkspaceFilesForRuntime'
@@ -51,12 +116,8 @@ describe('search_knowledge tool', () => {
 	}
 
 	beforeEach(() => {
-		hostCommandService = new AgentKnowledgeCommandService();
-		sandboxCommandService = {
-			run: jest.fn(async (workspace, request) => {
-				return await hostCommandService.run(workspace.knowledgeRoot, request);
-			}),
-		} as unknown as AgentKnowledgeSandboxCommandService;
+		sandboxCommandService = new AgentKnowledgeSandboxCommandService();
+		jest.spyOn(sandboxCommandService, 'run');
 		sandboxWorkspaceService = {
 			ensureWorkspaceMaterialized: jest.fn(async (_workspace, _expected, materialize) => {
 				await materialize();
@@ -74,7 +135,13 @@ describe('search_knowledge tool', () => {
 						name: 'Test Sandbox',
 						provider: 'n8n-sandbox',
 						status: 'running',
-						executeCommand: jest.fn(),
+						executeCommand: async (command, args = [], options) =>
+							await executeLocalSandboxCommand(command, args, {
+								cwd: options?.cwd ?? knowledgeRoot,
+								timeout: options?.timeout,
+								onStdout: options?.onStdout,
+								onStderr: options?.onStderr,
+							}),
 					},
 					filesystem: {
 						writeFile: async (
@@ -114,28 +181,25 @@ describe('search_knowledge tool', () => {
 				}),
 			),
 			listWorkspaceFiles: jest.fn(),
-			materializeWorkspace: jest.fn(),
-			materializeWorkspaceIntoSandbox: jest.fn(
-				async (materializeAgentId, materializeProjectId, target, options) => {
-					return await knowledgeService.materializeWorkspace(
-						materializeAgentId,
-						materializeProjectId,
-						target.knowledgeRoot,
-						options,
-					);
-				},
-			),
+			materializeWorkspaceIntoSandbox: jest.fn(),
 			openWorkspaceFileStream: jest.fn(async (streamAgentId, streamProjectId, fileReference) => {
 				const { mkdtemp, readFile, rm } = await import('node:fs/promises');
 				const { tmpdir } = await import('node:os');
 				const nodePath = await import('node:path');
 				const { Readable } = await import('node:stream');
 				const dir = await mkdtemp(nodePath.join(tmpdir(), 'csv-stream-'));
+				const target = {
+					knowledgeRoot: dir,
+					internalRoot: nodePath.join(dir, '.internal'),
+					manifestPath: nodePath.join(dir, '.internal', 'manifest.json'),
+					filesystem: {} as SandboxFilesystem,
+					sandbox: {} as KnowledgeSandboxWorkspace['sandbox'],
+				};
 				try {
-					const files = await knowledgeService.materializeWorkspace(
+					const files = await knowledgeService.materializeWorkspaceIntoSandbox(
 						streamAgentId,
 						streamProjectId,
-						dir,
+						target,
 						{
 							fileReferences: [fileReference],
 						},
@@ -161,11 +225,18 @@ describe('search_knowledge tool', () => {
 					const { tmpdir } = await import('node:os');
 					const nodePath = await import('node:path');
 					const dir = await mkdtemp(nodePath.join(tmpdir(), 'resolve-'));
+					const target = {
+						knowledgeRoot: dir,
+						internalRoot: nodePath.join(dir, '.internal'),
+						manifestPath: nodePath.join(dir, '.internal', 'manifest.json'),
+						filesystem: {} as SandboxFilesystem,
+						sandbox: {} as KnowledgeSandboxWorkspace['sandbox'],
+					};
 					try {
-						const files = await knowledgeService.materializeWorkspace(
+						const files = await knowledgeService.materializeWorkspaceIntoSandbox(
 							resolveAgentId,
 							resolveProjectId,
-							dir,
+							target,
 							{
 								fileReferences,
 							},
@@ -248,13 +319,14 @@ describe('search_knowledge tool', () => {
 			],
 		});
 		expect(knowledgeService.listWorkspaceFiles).toHaveBeenCalledWith(agentId, projectId);
-		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
-		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
 		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
 	});
 
 	it('returns a tool error when workspace materialization fails', async () => {
-		knowledgeService.materializeWorkspace.mockRejectedValue(new Error('storage unavailable'));
+		knowledgeService.materializeWorkspaceIntoSandbox.mockRejectedValue(
+			new Error('storage unavailable'),
+		);
 		const tool = createTool();
 
 		await expect(
@@ -267,8 +339,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('searches materialized text files', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1-notes.txt'), 'hello\nneedle\n');
@@ -317,8 +390,9 @@ describe('search_knowledge tool', () => {
 		knowledgeService.resolveWorkspaceFilesForRuntime
 			.mockResolvedValueOnce({ files, cacheSignature: 'signature-a' })
 			.mockResolvedValueOnce({ files, cacheSignature: 'signature-b' });
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const nodePath = await import('node:path');
 				await writeFile(nodePath.join(workspaceRoot, 'file-1-notes.txt'), 'hello\nneedle\n');
@@ -335,8 +409,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('accepts a singular file reference for search', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1-notes.txt'), 'needle\n');
@@ -373,10 +448,10 @@ describe('search_knowledge tool', () => {
 			},
 		});
 		expect((result as { search: { files: unknown[] } }).search.files).toHaveLength(1);
-		expect(knowledgeService.materializeWorkspace).toHaveBeenCalledWith(
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledWith(
 			agentId,
 			projectId,
-			expect.any(String),
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
 			{ fileReferences: ['notes.txt'] },
 		);
 	});
@@ -399,12 +474,13 @@ describe('search_knowledge tool', () => {
 			files: [],
 			error: expect.stringContaining('Search can target at most 10 files.'),
 		});
-		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
 	});
 
 	it('limits content results with head_limit', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				const repeatedNeedles = Array.from(
@@ -464,8 +540,9 @@ describe('search_knowledge tool', () => {
 		expect(stdout).toContain('Continue with offset=20 and head_limit=20');
 	});
 	it('returns content matches only when requested', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'first\nneedle\n');
@@ -503,8 +580,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('defaults broad searches to matching files without line dumps', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -561,8 +639,9 @@ describe('search_knowledge tool', () => {
 		expect((result as { result: { stdout: string } }).result.stdout).not.toContain('file-1.md');
 	});
 	it('returns per-file counts', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'needle\nneedle\n');
@@ -602,8 +681,9 @@ describe('search_knowledge tool', () => {
 		});
 	});
 	it('uses extended regex for non-fixed search patterns', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'freedom\nnecessity\n');
@@ -642,8 +722,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('trims very long content match lines while preserving read ranges', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.md'), `needle ${'x'.repeat(700)}\n`);
@@ -680,8 +761,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('supports multi-query any search without hand-written regex', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'necessity\nfreedom\n');
@@ -724,8 +806,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('filters multi-query matches using full line text before display truncation', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -770,8 +853,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('supports multi-query all_within_lines search without hand-written regex', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -845,12 +929,13 @@ describe('search_knowledge tool', () => {
 			files: [],
 			error: expect.stringContaining('Invalid discriminator value'),
 		});
-		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
 	});
 
 	it('reads extracted PDF text when materialized as text', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.pdf.txt'), 'extracted PDF text\n');
@@ -886,17 +971,18 @@ describe('search_knowledge tool', () => {
 				},
 			},
 		});
-		expect(knowledgeService.materializeWorkspace).toHaveBeenCalledWith(
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledWith(
 			agentId,
 			projectId,
-			expect.any(String),
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
 			{ fileReferences: ['file-1'] },
 		);
 	});
 
 	it('reads materialized files by display file name', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.md'), 'book text\n');
@@ -925,17 +1011,18 @@ describe('search_knowledge tool', () => {
 				},
 			},
 		});
-		expect(knowledgeService.materializeWorkspace).toHaveBeenCalledWith(
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledWith(
 			agentId,
 			projectId,
-			expect.any(String),
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
 			{ fileReferences: ['Moby Dick.md'] },
 		);
 	});
 
 	it('queries CSV rows with selected columns in one operation', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -991,8 +1078,9 @@ describe('search_knowledge tool', () => {
 		});
 	});
 	it('queries CSV columns with quoted commas in their header names', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -1030,8 +1118,9 @@ describe('search_knowledge tool', () => {
 		});
 	});
 	it('profiles CSV schemas with sample rows, inferred types, and disambiguating columns', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -1107,8 +1196,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('returns CSV row metadata and ambiguity guidance for repeated filters', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -1172,8 +1262,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('fetches exact CSV rows by row number with file-line metadata', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -1226,8 +1317,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('returns distinct CSV values for filtered rows', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -1275,8 +1367,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('computes CSV aggregates from all streamed matches', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(
@@ -1348,8 +1441,9 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('suggests close CSV column names for bad column requests', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				await writeFile(path.join(workspaceRoot, 'file-1.csv'), 'country,year\nGermany,2022\n');
@@ -1381,8 +1475,9 @@ describe('search_knowledge tool', () => {
 		});
 	});
 	it('continues streaming CSV queries past ten thousand rows', async () => {
-		knowledgeService.materializeWorkspace.mockImplementation(
-			async (_agentId, _projectId, workspaceRoot) => {
+		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
+			async (_agentId, _projectId, target) => {
+				const workspaceRoot = target.knowledgeRoot;
 				const { writeFile } = await import('node:fs/promises');
 				const path = await import('node:path');
 				const rows = ['country,year'];
@@ -1535,7 +1630,6 @@ describe('search_knowledge tool', () => {
 
 		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalled();
 		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalled();
-		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
 		expect(sandboxCommandService.run).toHaveBeenCalled();
 	});
 
@@ -1673,6 +1767,5 @@ describe('search_knowledge tool', () => {
 			'file-1',
 		);
 		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
-		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
 	});
 });

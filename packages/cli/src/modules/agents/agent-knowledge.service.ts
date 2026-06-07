@@ -9,12 +9,10 @@ import { generateNanoId, sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, unlink } from 'node:fs/promises';
+import { readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import posixPath from 'node:path/posix';
 import type { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -26,8 +24,8 @@ import { AgentRepository } from './repositories/agent.repository';
 /**
  * A knowledge file as seen by the agent runtime's `search_knowledge` tool.
  * Carries the stored metadata plus `relativePath`, the path the file is
- * written to inside the materialized workspace (see {@link
- * AgentKnowledgeService.materializeWorkspace}). This is distinct from the
+ * written to inside the materialized sandbox workspace (see {@link
+ * AgentKnowledgeService.materializeWorkspaceIntoSandbox}). This is distinct from the
  * API-facing `AgentFileDto`, which instead exposes `createdAt` for the UI.
  */
 export interface KnowledgeWorkspaceFile {
@@ -179,20 +177,6 @@ export class AgentKnowledgeService {
 		await this.agentFileRepository.delete({ agentId });
 	}
 
-	/**
-	 * Resolve the workspace-file metadata that {@link materializeWorkspace}
-	 * would write for these references, without touching the binary store. Used
-	 * to build a stable workspace cache key and to drive operations against a
-	 * reused workspace.
-	 */
-	async resolveWorkspaceFiles(
-		agentId: string,
-		projectId: string,
-		fileReferences?: string[],
-	): Promise<KnowledgeWorkspaceFile[]> {
-		return (await this.resolveWorkspaceFilesForRuntime(agentId, projectId, fileReferences)).files;
-	}
-
 	async openWorkspaceFileStream(
 		agentId: string,
 		projectId: string,
@@ -225,38 +209,6 @@ export class AgentKnowledgeService {
 			files: files.map((file) => this.toWorkspaceFile(file)),
 			cacheSignature: this.buildWorkspaceCacheSignature(files),
 		};
-	}
-
-	async materializeWorkspace(
-		agentId: string,
-		projectId: string,
-		workspaceRoot: string,
-		options: MaterializeWorkspaceOptions = {},
-	) {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
-		await mkdir(workspaceRoot, { recursive: true });
-
-		const files = this.filterFilesForWorkspace(
-			await this.agentFileRepository.findByAgentId(agentId),
-			options.fileReferences,
-		);
-		this.assertWorkspaceWithinLimits(files);
-		const materializedFiles: KnowledgeWorkspaceFile[] = [];
-
-		for (const file of files) {
-			const relativePath = this.getWorkspaceRelativePath(file);
-			const targetPath = path.join(workspaceRoot, relativePath);
-
-			// Stream the stored content straight to the workspace file rather
-			// than buffering the whole file in memory — knowledge files can be
-			// up to the upload size limit.
-			const contentStream = await this.binaryDataService.getAsStream(file.binaryDataId);
-			await pipeline(contentStream, createWriteStream(targetPath));
-
-			materializedFiles.push(this.toWorkspaceFile(file));
-		}
-
-		return materializedFiles;
 	}
 
 	buildExpectedSandboxManifest(

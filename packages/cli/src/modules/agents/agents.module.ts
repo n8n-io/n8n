@@ -81,6 +81,7 @@ export class AgentsModule implements ModuleInterface {
 		return {
 			enabled: true,
 			modules: [...config.modules],
+			sandboxEnabled: config.aiSandboxEnabled,
 		};
 	}
 

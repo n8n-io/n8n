@@ -9,11 +9,13 @@ import {
 	type SandboxInstance,
 	type SandboxProvider,
 } from '@n8n/ai-utilities/sandbox';
+import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createHash } from 'node:crypto';
 import path from 'node:path/posix';
 import pLimit from 'p-limit';
 
+import { AgentKnowledgeSandboxCommandService } from './agent-knowledge-sandbox-command.service';
 import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import type {
 	KnowledgeSandboxExpectedManifest,
@@ -56,6 +58,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		private readonly logger: Logger,
 		private readonly sandboxConfigService: AgentKnowledgeSandboxConfigService,
 		private readonly knowledgeService: AgentKnowledgeService,
+		private readonly sandboxCommandService: AgentKnowledgeSandboxCommandService,
 	) {}
 
 	async ensureWorkspaceMaterialized(
@@ -91,6 +94,8 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		);
 	}
 
+	@OnLeaderStepdown()
+	@OnShutdown()
 	async destroyAll(): Promise<void> {
 		const entries = [...this.cachedWorkspaces.values()];
 		this.cachedWorkspaces.clear();
@@ -238,6 +243,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	}
 
 	private async destroyWorkspace(workspace: KnowledgeSandboxWorkspace): Promise<void> {
+		this.sandboxCommandService.clearCapabilities(workspace);
 		await this.destroySandbox(workspace.sandbox);
 	}
 

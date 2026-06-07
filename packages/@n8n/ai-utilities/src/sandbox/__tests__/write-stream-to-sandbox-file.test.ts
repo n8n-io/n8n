@@ -35,6 +35,22 @@ function makeSandbox(provider: 'n8n-sandbox' | 'daytona') {
 }
 
 describe('writeStreamToSandboxFile', () => {
+	it('rejects mismatched filesystem and sandbox providers', async () => {
+		const filesystem = makeFilesystem('n8n-sandbox');
+		const sandbox = makeSandbox('daytona');
+
+		await expect(
+			writeStreamToSandboxFile(
+				filesystem,
+				sandbox,
+				'/home/user/workspace/agent-knowledge/file.txt',
+				Readable.from(['hello']),
+			),
+		).rejects.toThrow(
+			'Sandbox filesystem provider n8n-sandbox does not match sandbox provider daytona',
+		);
+	});
+
 	it('writes n8n sandbox stream in bounded chunks', async () => {
 		const filesystem = makeFilesystem('n8n-sandbox');
 		const sandbox = makeSandbox('n8n-sandbox');

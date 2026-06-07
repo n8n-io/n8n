@@ -67,6 +67,7 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
+		aiSandboxEnabled?: boolean;
 		agentKnowledgeService?: AgentKnowledgeService;
 		agentKnowledgeSandboxCommandService?: AgentKnowledgeSandboxCommandService;
 		agentKnowledgeCsvService?: AgentKnowledgeCsvService;
@@ -90,7 +91,10 @@ function makeReconstructionService(
 		agentsToolsService,
 		mock<N8nMemory>(),
 		mock<OauthService>(),
-		{ modules } as unknown as AgentsConfig,
+		{
+			modules,
+			aiSandboxEnabled: overrides.aiSandboxEnabled ?? true,
+		} as unknown as AgentsConfig,
 		overrides.agentKnowledgeService ?? mock<AgentKnowledgeService>(),
 		overrides.agentKnowledgeSandboxCommandService ?? mock<AgentKnowledgeSandboxCommandService>(),
 		overrides.agentKnowledgeCsvService ?? mock<AgentKnowledgeCsvService>(),
@@ -140,7 +144,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 	it.each([
 		{ name: 'no agents modules configured', modules: [] as string[] },
 		{ name: 'only node-tools-searcher configured', modules: ['node-tools-searcher'] },
-	])('injects search_knowledge when $name', async ({ modules }) => {
+	])('injects search_knowledge when $name and sandbox is enabled', async ({ modules }) => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
@@ -169,6 +173,21 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 			}),
 		);
 		expect(getInjectedToolNames()).toContain('search_knowledge');
+	});
+
+	it('does not inject search_knowledge when agent AI sandbox is disabled', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, [], {
+			aiSandboxEnabled: false,
+		});
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(createSearchKnowledgeToolMock).not.toHaveBeenCalled();
+		expect(getInjectedToolNames()).not.toContain('search_knowledge');
 	});
 
 	it('logs a warning but still reconstructs when search_knowledge tool creation fails', async () => {

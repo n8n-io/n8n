@@ -95,6 +95,12 @@ export async function writeStreamToSandboxFile(
 	stream: Readable,
 	options: WriteStreamToSandboxFileOptions = {},
 ): Promise<WriteStreamToSandboxFileResult> {
+	if (filesystem.provider !== sandbox.provider) {
+		throw new Error(
+			`Sandbox filesystem provider ${filesystem.provider} does not match sandbox provider ${sandbox.provider}`,
+		);
+	}
+
 	const chunkSizeBytes = options.chunkSizeBytes ?? DEFAULT_SANDBOX_WRITE_CHUNK_BYTES;
 	if (chunkSizeBytes <= 0) {
 		throw new Error('Sandbox write chunk size must be greater than 0');
@@ -105,18 +111,20 @@ export async function writeStreamToSandboxFile(
 		await filesystem.mkdir(parent, { recursive: true });
 	}
 
-	const provider = filesystem.provider;
-	if (provider === 'daytona') {
-		return await writeDaytonaStream(filesystem, sandbox, targetPath, stream, {
-			...options,
-			chunkSizeBytes,
-		});
+	switch (filesystem.provider) {
+		case 'daytona':
+			return await writeDaytonaStream(filesystem, sandbox, targetPath, stream, {
+				...options,
+				chunkSizeBytes,
+			});
+		case 'n8n-sandbox':
+			return await writeN8nSandboxStream(filesystem, targetPath, stream, {
+				...options,
+				chunkSizeBytes,
+			});
+		default:
+			throw new Error(`Unsupported sandbox provider: ${String(filesystem.provider)}`);
 	}
-
-	return await writeN8nSandboxStream(filesystem, targetPath, stream, {
-		...options,
-		chunkSizeBytes,
-	});
 }
 
 async function writeN8nSandboxStream(

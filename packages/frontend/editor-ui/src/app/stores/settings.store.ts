@@ -185,6 +185,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive('node-tools-searcher'),
 	);
 
+	const isAgentsSandboxEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.sandboxEnabled === true,
+	);
+
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,
 	);
@@ -480,6 +484,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
 		isAgentsNodeToolsFeatureEnabled,
+		isAgentsSandboxEnabled,
 		isPublicChatTriggerDisabled,
 	};
 });

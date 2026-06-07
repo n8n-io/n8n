@@ -137,4 +137,89 @@ describe('AgentKnowledgeCsvService', () => {
 		).rejects.toThrow('csv_query requires select unless rowNumber is provided.');
 		expect(destroySpy).toHaveBeenCalledTimes(1);
 	});
+
+	it('rejects CSV parsing when it exceeds the operation timeout', async () => {
+		jest.useFakeTimers();
+		const stream = new Readable({
+			read() {
+				// Never push data so parsing waits until timeout.
+			},
+		});
+		const destroySpy = jest.spyOn(stream, 'destroy');
+		const { service } = makeServiceWithStream(stream);
+
+		const promise = service.queryCsv('agent-1', 'project-1', {
+			operation: 'csv_query',
+			file: 'file-1',
+			select: ['country'],
+			limit: 20,
+		});
+		const assertion = expect(promise).rejects.toThrow('CSV operation timed out after 15000ms');
+
+		await jest.advanceTimersByTimeAsync(15_000);
+		await assertion;
+		expect(destroySpy).toHaveBeenCalled();
+		jest.useRealTimers();
+	});
+
+	it('returns distinct values with truncation metadata', async () => {
+		const { service } = makeService(
+			['country,year', 'Germany,2022', 'France,2022', 'Spain,2022', 'Italy,2022'].join('\n'),
+		);
+
+		await expect(
+			service.distinctCsv('agent-1', 'project-1', {
+				operation: 'csv_distinct',
+				file: 'file-1',
+				column: 'country',
+				where: [{ column: 'year', op: 'eq', value: '2022' }],
+				limit: 2,
+			}),
+		).resolves.toMatchObject({
+			fileName: 'data.csv',
+			column: 'country',
+			values: ['Germany', 'France'],
+			distinctCount: 4,
+			truncated: true,
+		});
+	});
+
+	it('aggregates grouped metrics and reports skipped non-numeric values', async () => {
+		const { service } = makeService(
+			[
+				'country,population,notes',
+				'Germany,84086227,ok',
+				'Germany,not-a-number,ok',
+				'France,66277412,ok',
+			].join('\n'),
+		);
+
+		await expect(
+			service.aggregateCsv('agent-1', 'project-1', {
+				operation: 'csv_aggregate',
+				file: 'file-1',
+				groupBy: ['country'],
+				metrics: ['population'],
+				functions: ['count', 'sum', 'avg'],
+				limit: 50,
+			}),
+		).resolves.toMatchObject({
+			fileName: 'data.csv',
+			results: [
+				expect.objectContaining({
+					country: 'Germany',
+					count: 2,
+					sum_population: 84_086_227,
+					avg_population: 84_086_227,
+				}),
+				expect.objectContaining({
+					country: 'France',
+					count: 1,
+					sum_population: 66_277_412,
+					avg_population: 66_277_412,
+				}),
+			],
+			skippedNonNumeric: { population: 1 },
+		});
+	});
 });
