@@ -202,7 +202,10 @@ export function useCanvasMapping({
 				position: applyOffset(node.position, offset),
 				data,
 				...additionalProperties[node.id],
-				draggable: node.draggable,
+				draggable:
+					data.render.type === CanvasNodeRenderType.Default && data.render.options.deprecated
+						? false
+						: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};
 		});

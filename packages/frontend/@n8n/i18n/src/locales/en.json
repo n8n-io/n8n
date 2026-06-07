@@ -2626,8 +2626,6 @@
 	"nodeView.showMessage.importWorkflowTags.message": "You don't have permission to create tags, so the workflow's tags were not added.",
 	"nodeView.showMessage.showMaxNodeTypeError.message": "Only one '{nodeTypeDataDisplayName}' node is allowed in a workflow | Only {count} '{nodeTypeDataDisplayName}' nodes are allowed in a workflow",
 	"nodeView.showMessage.showMaxNodeTypeError.title": "Could not insert node",
-	"nodeView.showMessage.deprecatedNodesReplaced.title": "Deprecated nodes replaced",
-	"nodeView.showMessage.deprecatedNodesReplaced.message": "These deprecated nodes were replaced with a supported alternative and need to be reviewed: {nodeNames}",
 	"nodeView.showMessage.stopExecutionCatch.unsaved.message": "This execution was canceled",
 	"nodeView.showMessage.stopExecutionCatch.unsaved.title": "Execution canceled",
 	"nodeView.showMessage.stopExecutionCatch.message": "It completed before it could be stopped",

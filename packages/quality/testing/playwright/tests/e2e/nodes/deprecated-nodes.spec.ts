@@ -14,8 +14,7 @@ const FUNCTION_NODE_NAME = 'Function';
 
 /**
  * Builds a saved workflow containing a manual trigger connected to a legacy
- * (deprecated) Function node, seeded via the API (importing/pasting a deprecated
- * node in the editor would replace it with its successor instead).
+ * (deprecated) Function node, seeded via the API.
  */
 function createDeprecatedFunctionWorkflow(): Partial<IWorkflowBase> {
 	return {
