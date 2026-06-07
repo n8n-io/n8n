@@ -289,11 +289,14 @@ describe('POST /workflows/:workflowId/test-runs/new', () => {
 
 		expect(resp.statusCode).toBe(202);
 		expect(resp.body).toEqual({ success: true, testRunId: 'test-run-id' });
+		// 4th arg is `options` (evaluation config id + compileFromConfig flag);
+		// the controller forwards it from the request body even when absent, so
+		// the mock sees `undefined` rather than no value.
 		expect(testRunner.startTestRun).toHaveBeenCalledWith(
 			expect.objectContaining({ id: ownerShell.id }),
 			workflowUnderTest.id,
 			1,
-			false,
+			undefined,
 		);
 	});
 

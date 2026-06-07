@@ -30,7 +30,7 @@ page.clickButton();
 		);
 
 		const pageFile = project.getSourceFile('/pages/TestPage.ts')!;
-		const violations = rule.analyze(project, [pageFile]);
+		const violations = rule.analyzeProject(project, [pageFile]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -55,7 +55,7 @@ page.usedMethod();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('unusedMethod');
@@ -82,7 +82,7 @@ console.log(page.usedProp);
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('unusedProp');
@@ -98,7 +98,7 @@ export class DeadPage {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('Dead class');
@@ -127,7 +127,7 @@ page.publicMethod();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -152,7 +152,7 @@ page.publicMethod();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -189,7 +189,7 @@ const h = new MyHelper();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		// archive() should NOT be flagged — text fallback finds '.archive('
 		// reallyUnused() SHOULD be flagged — no text match anywhere
@@ -225,7 +225,7 @@ const p = new TestPage();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('deadProp');
@@ -251,7 +251,7 @@ thing.saveAll();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('save');
@@ -279,7 +279,7 @@ const arr = [obj.usedInArray, other];
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -306,7 +306,7 @@ thing.$reset();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -329,7 +329,7 @@ const page = new TestPage();
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		const fixData = violations[0].fixData;

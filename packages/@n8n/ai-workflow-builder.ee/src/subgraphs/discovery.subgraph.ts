@@ -11,6 +11,11 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
 import { Annotation, END, START, StateGraph, type BaseCheckpointSaver } from '@langchain/langgraph';
+import {
+	createResourceCacheKey,
+	extractResourceOperations,
+	type ResourceOperationInfo,
+} from '@n8n/ai-utilities/node-catalog';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
@@ -27,6 +32,7 @@ import {
 } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import { createPassthroughSsrfGuard, type SsrfGuard } from '@/tools/utils/ssrf-guard';
 import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
@@ -45,11 +51,6 @@ import {
 	buildSelectedNodesSummary,
 	createContextMessage,
 } from '@/utils/context-builders';
-import {
-	createResourceCacheKey,
-	extractResourceOperations,
-	type ResourceOperationInfo,
-} from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
 import {
 	executeSubgraphTools,
@@ -247,6 +248,8 @@ export interface DiscoverySubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Optional checkpointer for interrupt/resume support (used in integration tests) */
 	checkpointer?: BaseCheckpointSaver;
+	/** SSRF guard for web_fetch. Defaults to a passthrough guard when omitted. */
+	ssrf?: SsrfGuard;
 }
 
 export class DiscoverySubgraph extends BaseSubgraph<
@@ -262,7 +265,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
 	private parsedNodeTypes!: INodeTypeDescription[];
-	private featureFlags?: BuilderFeatureFlags;
 
 	/** Mutable state for planner web_fetch hooks, updated before each planner invocation */
 	private plannerWebFetchState: MutableWebFetchState = {
@@ -275,28 +277,24 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 		this.parsedNodeTypes = config.parsedNodeTypes;
-		this.featureFlags = config.featureFlags;
 
 		// Check feature flags
 		const includeExamples = config.featureFlags?.templateExamples === true;
-		const includePlanMode = config.featureFlags?.planMode === true;
 		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
 		// Create security manager factories for web_fetch in each context
 		const discoverySecurityFactory = createLangGraphSecurityManagerFactory();
 		const plannerSecurityFactory = createMutableSecurityManagerFactory(this.plannerWebFetchState);
 
+		// SSRF guard for web_fetch; passthrough when SSRF protection is disabled/unset.
+		const ssrf = config.ssrf ?? createPassthroughSsrfGuard();
+
 		// Create base tools - search_nodes provides all data needed for discovery
-		const baseTools: StructuredTool[] = includePlanMode
-			? [
-					createNodeSearchTool(config.parsedNodeTypes).tool,
-					submitQuestionsTool,
-					createWebFetchTool(discoverySecurityFactory).tool,
-				]
-			: [
-					createNodeSearchTool(config.parsedNodeTypes).tool,
-					createWebFetchTool(discoverySecurityFactory).tool,
-				];
+		const baseTools: StructuredTool[] = [
+			createNodeSearchTool(config.parsedNodeTypes).tool,
+			submitQuestionsTool,
+			createWebFetchTool(discoverySecurityFactory, ssrf).tool,
+		];
 
 		// Conditionally add introspect tool if feature flag is enabled
 		if (enableIntrospection) {
@@ -324,7 +322,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Generate prompt based on feature flags
 		const discoveryPrompt = buildDiscoveryPrompt({
 			includeExamples,
-			includeQuestions: includePlanMode,
 		});
 
 		// Create agent with tools bound (including submit tool)
@@ -354,7 +351,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
 		this.plannerAgent = createPlannerAgent({
 			llm: config.plannerLLM,
-			tools: [createGetDocumentationTool().tool, createWebFetchTool(plannerSecurityFactory).tool],
+			tools: [
+				createGetDocumentationTool().tool,
+				createWebFetchTool(plannerSecurityFactory, ssrf).tool,
+			],
 		});
 
 		// Build the subgraph
@@ -409,7 +409,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		state: typeof DiscoverySubgraphState.State,
 		runnableConfig?: RunnableConfig,
 	) {
-		if (!this.featureFlags?.planMode || state.mode !== 'plan' || state.planOutput) {
+		if (state.mode !== 'plan' || state.planOutput) {
 			return {};
 		}
 
@@ -450,7 +450,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	}
 
 	private shouldPlan(state: typeof DiscoverySubgraphState.State): 'planner' | typeof END {
-		if (!this.featureFlags?.planMode) return END;
 		if (state.mode !== 'plan') return END;
 		return state.planOutput ? END : 'planner';
 	}

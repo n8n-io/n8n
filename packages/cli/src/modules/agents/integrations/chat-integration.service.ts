@@ -1,6 +1,5 @@
 import {
-	AgentCredentialIntegrationConfig,
-	isAgentCredentialIntegration,
+	AgentIntegrationConfig,
 	type AgentIntegrationSettings,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
@@ -10,6 +9,7 @@ import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { Channel, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -25,6 +25,7 @@ import {
 } from './agent-chat-integration';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
+import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -40,23 +41,45 @@ type WebhookHandler = (
 	options?: { waitUntil?: (task: Promise<unknown>) => void },
 ) => Promise<Response>;
 
-interface ChatInstance {
+export interface ChatInstance {
 	initialize(): Promise<void>;
 	shutdown(): Promise<void>;
 	webhooks: Record<string, WebhookHandler>;
 	onNewMention: (handler: unknown) => void;
 	onSubscribedMessage: (handler: unknown) => void;
 	onAction: (handler: unknown) => void;
+	getAdapter(name: string): unknown;
+	openDM(user: string): Promise<Thread>;
+	thread(threadId: string): Thread;
+	channel(channelId: string): Channel;
+	getUser(user: string): Promise<UserInfo | null>;
 }
 
 interface ChatAgentConnection {
 	chat: ChatInstance;
 	bridge: AgentChatBridge;
+	/**
+	 * Context captured at connect time. Used by `disconnectOne` to invoke
+	 * `onBeforeDisconnect` hooks with the same decrypted credential the connect
+	 * ran with — re-decrypting at disconnect time would fail if the credential
+	 * was rotated or deleted in between.
+	 */
+	context: AgentChatIntegrationContext;
 }
 
 interface ConnectOptions {
 	skipExternalHooks?: boolean;
 	settings?: AgentIntegrationSettings;
+}
+
+interface DisconnectOptions {
+	/**
+	 * Skip integration-defined external teardown.
+	 * Mirror of `ConnectOptions.skipExternalHooks` — set true on peer mains
+	 * reacting to a PubSub broadcast, in graceful-shutdown paths, and during
+	 * leader-stepdown so the cluster-wide remote release happens exactly once.
+	 */
+	skipExternalHooks?: boolean;
 }
 
 /**
@@ -92,7 +115,7 @@ export class ChatIntegrationService {
 	 */
 	async broadcastIntegrationChange(
 		agentId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
@@ -126,16 +149,14 @@ export class ChatIntegrationService {
 	 * and wires up the AgentChatBridge for event handling.
 	 *
 	 * `options.skipExternalHooks` skips `onBeforeConnect` and `onAfterConnect`.
-	 * These hooks touch external services (DB validation, Telegram `setWebhook`)
-	 * and must run exactly once per cluster — by the originator on a
-	 * user-initiated connect, or by the leader on startup. Peer mains reacting
-	 * to a PubSub broadcast pass `true` so we don't, for example, race two
-	 * `setWebhook` calls into Telegram's 1/sec rate limit and 429 ourselves out
-	 * of a healthy connection.
+	 * These hooks can touch external services and must run exactly once per
+	 * cluster — by the originator on a user-initiated connect, or by the leader
+	 * on startup. Peer mains reacting to a PubSub broadcast pass `true` so they
+	 * only build local runtime state.
 	 */
 	async connect(
 		agentId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		userId: string,
 		projectId: string,
 		options: ConnectOptions = {},
@@ -229,6 +250,7 @@ export class ChatIntegrationService {
 		this.connections.set(key, {
 			chat: chatInstance,
 			bridge,
+			context: ctx,
 		});
 		this.logger.info(`[ChatIntegrationService] Connected: ${key}`);
 	}
@@ -237,19 +259,25 @@ export class ChatIntegrationService {
 	 * Disconnect one or all integrations for an agent.
 	 * If `type` and `credentialId` are provided, disconnects only that integration.
 	 * Otherwise disconnects all integrations for the agent.
+	 *
+	 * `options.skipExternalHooks` skips `onBeforeDisconnect` — set this on peer
+	 * mains reacting to a PubSub broadcast so the cluster-wide remote release
+	 * happens exactly once.
 	 */
 	async disconnect(
 		agentId: string,
 		integration?: { credentialId: string; type: string },
+		options: DisconnectOptions = {},
 	): Promise<void> {
 		if (integration) {
 			await this.disconnectOne(
 				this.connectionKey(agentId, integration.type, integration.credentialId),
+				options,
 			);
 		} else {
 			const keysToRemove = [...this.connections.keys()].filter((k) => k.startsWith(`${agentId}:`));
 			for (const k of keysToRemove) {
-				await this.disconnectOne(k);
+				await this.disconnectOne(k, options);
 			}
 		}
 	}
@@ -263,7 +291,9 @@ export class ChatIntegrationService {
 	async disconnectAll(): Promise<void> {
 		const keys = [...this.connections.keys()];
 		for (const key of keys) {
-			await this.disconnectOne(key);
+			// Graceful shutdown should only clear local runtime state. Cluster-wide
+			// remote state must survive so another main can keep receiving events.
+			await this.disconnectOne(key, { skipExternalHooks: true });
 		}
 	}
 
@@ -280,7 +310,7 @@ export class ChatIntegrationService {
 			if (!type) continue;
 			const integration = this.integrationRegistry.get(type);
 			if (integration?.requiresLeader()) {
-				await this.disconnectOne(key);
+				await this.disconnectOne(key, { skipExternalHooks: true });
 			}
 		}
 	}
@@ -294,7 +324,7 @@ export class ChatIntegrationService {
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-
 	 * editing works). Connects of newly-added integrations are gated on
-	 * `agent.publishedVersion` — matching the controller's connect endpoint,
+	 * `agent.activeVersionId` — matching the controller's connect endpoint,
 	 * which rejects unpublished agents, and `reconnectAll`, which only restores
 	 * published agents. The integration entry stays persisted on the entity so
 	 * it can be picked up later by `publishAgent` calling this method again.
@@ -305,15 +335,14 @@ export class ChatIntegrationService {
 	 */
 	async syncToConfig(
 		agent: Agent,
-		previous: AgentCredentialIntegrationConfig[],
-		next: AgentCredentialIntegrationConfig[],
+		previous: AgentIntegrationConfig[],
+		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const key = (i: AgentCredentialIntegrationConfig) => `${i.type}:${i.credentialId}`;
-		const previousKeys = new Set(previous.map(key));
-		const nextKeys = new Set(next.map(key));
+		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
+		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
 
 		for (const integration of previous) {
-			if (!nextKeys.has(key(integration))) {
+			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
 				try {
 					await this.disconnect(agent.id, integration);
 					await this.broadcastIntegrationChange(agent.id, integration, 'disconnect');
@@ -325,9 +354,9 @@ export class ChatIntegrationService {
 			}
 		}
 
-		const additions = next.filter((i) => !previousKeys.has(key(i)));
+		const additions = next.filter((i) => !previousKeys.has(buildIntegrationConnectionId(i)));
 
-		if (additions.length > 0 && !agent.publishedVersion) {
+		if (additions.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(
 				'[ChatIntegrationService] Skipping connect for unpublished agent — entry persisted, will connect on publish',
 				{ agentId: agent.id, pendingTypes: additions.map((i) => i.type) },
@@ -335,7 +364,7 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		// TODO: AgentCredentialIntegration has no record of *who* connected the
+		// TODO: AgentIntegration has no record of *who* connected the
 		// integration, so we have no anchor user identity to decrypt credentials
 		// with on reconnect / sync. We fall back to probing project members until
 		// one has `credential:read` on the integration credential.
@@ -396,7 +425,15 @@ export class ChatIntegrationService {
 	/**
 	 * Return the first Chat instance for an agent, or undefined if not connected.
 	 */
-	getChatInstance(agentId: string): ChatInstance | undefined {
+	getChatInstance(
+		agentId: string,
+		integration?: { type: string; credentialId: string },
+	): ChatInstance | undefined {
+		if (integration) {
+			return this.connections.get(
+				this.connectionKey(agentId, integration.type, integration.credentialId),
+			)?.chat;
+		}
 		for (const [k, conn] of this.connections) {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
@@ -441,10 +478,6 @@ export class ChatIntegrationService {
 		for (const agent of agents) {
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {
-				if (!isAgentCredentialIntegration(integration)) {
-					continue;
-				}
-
 				const definition = this.integrationRegistry.get(integration.type);
 				if (definition?.requiresLeader() && !this.instanceSettings.isLeader) {
 					this.logger.debug(
@@ -466,10 +499,8 @@ export class ChatIntegrationService {
 					continue;
 				}
 
-				// External setup (Telegram setWebhook, etc.) runs once per cluster —
-				// the leader claims that role on startup; followers only build local
-				// state so a stampede of reconnecting mains doesn't trip remote rate
-				// limits.
+				// External setup runs once per cluster — the leader claims that role
+				// on startup; followers only build local runtime state.
 				const skipExternalHooks = !this.instanceSettings.isLeader;
 				const options = this.connectOptionsFor(integration, skipExternalHooks);
 
@@ -515,7 +546,9 @@ export class ChatIntegrationService {
 		const { type, credentialId } = integration;
 
 		if (action === 'disconnect') {
-			await this.disconnect(agentId, integration);
+			// The originating main already ran integration-defined external teardown.
+			// Peers only clear local runtime state to avoid duplicate external side effects.
+			await this.disconnect(agentId, integration, { skipExternalHooks: true });
 			return;
 		}
 
@@ -543,10 +576,9 @@ export class ChatIntegrationService {
 		);
 		for (const userId of userIds) {
 			try {
-				// The originating main already ran external setup (DB validation,
-				// Telegram setWebhook). We only need local state here — skipping
-				// the hooks also avoids racing the originator into Telegram's 1/sec
-				// rate limit.
+				// The originating main already ran integration-defined external setup.
+				// Peers only build local runtime state to avoid duplicate external
+				// side effects.
 				const options: ConnectOptions = { skipExternalHooks: true };
 				await this.connect(agentId, integration, userId, agent.projectId, options);
 				return;
@@ -565,9 +597,27 @@ export class ChatIntegrationService {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	private async disconnectOne(key: string): Promise<void> {
+	private async disconnectOne(key: string, options: DisconnectOptions = {}): Promise<void> {
 		const conn = this.connections.get(key);
 		if (!conn) return;
+
+		// External teardown runs while the chat is still live — symmetric with
+		// `onAfterConnect`, which runs after `chat.initialize()`. Errors are
+		// logged but never re-thrown: local teardown must always complete so a
+		// transient remote failure can't leak in-process resources.
+		if (!options.skipExternalHooks) {
+			const type = this.connectionTypeFromKey(key);
+			const integration = type ? this.integrationRegistry.get(type) : undefined;
+			if (integration?.onBeforeDisconnect) {
+				try {
+					await integration.onBeforeDisconnect(conn.context);
+				} catch (error) {
+					this.logger.warn(
+						`[ChatIntegrationService] onBeforeDisconnect failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			}
+		}
 
 		try {
 			await conn.chat.shutdown();
@@ -618,7 +668,7 @@ export class ChatIntegrationService {
 	}
 
 	private connectOptionsFor(
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		skipExternalHooks: boolean,
 	): ConnectOptions {
 		return 'settings' in integration

@@ -1,15 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
+import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	Workflow,
+	createRunExecutionData,
+	mergeRunsPerBranch,
+} from 'n8n-workflow';
 import type {
 	AiEvent,
 	IDataObject,
@@ -32,6 +37,7 @@ import type {
 	ExecuteWorkflowData,
 	ExecuteAgentData,
 	RelatedExecution,
+	IRun,
 	IRunExecutionData,
 } from 'n8n-workflow';
 
@@ -40,8 +46,9 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -49,12 +56,14 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
 import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -196,6 +205,57 @@ export async function getPublishedWorkflowData(
 }
 
 /**
+ * Determines a workflow's deadline given its start time, its settings
+ * and global execution config.
+ */
+function determineWorkflowDeadline(
+	startTime: number,
+	workflowSettings: IWorkflowSettings | undefined,
+	executionsConfig: ExecutionsConfig,
+): number | undefined {
+	const effectiveMaxTimeout =
+		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
+	if (workflowSettings?.executionTimeout !== undefined) {
+		// A defined timeout of <= 0 means the workflow's own timeout is explicitly
+		// disabled, so it runs unbounded rather than falling back to the global
+		// default. Otherwise it is clamped to the configurable maximum. This mirrors
+		// the main-workflow path in workflow-runner.ts and job-processor.ts.
+		if (workflowSettings.executionTimeout <= 0) {
+			return undefined;
+		}
+		return (
+			startTime +
+			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	if (executionsConfig.timeout > 0) {
+		return (
+			startTime +
+			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	return undefined;
+}
+
+/**
+ * Resolves a sub-workflow deadline depending on its parent.
+ */
+function resolveSubworkflowDeadline(
+	subWorkflowDeadline: number | undefined,
+	parentDeadline: number | undefined,
+	doNotWaitToFinish: boolean | undefined,
+): number | undefined {
+	if (doNotWaitToFinish) {
+		return subWorkflowDeadline;
+	}
+	if (parentDeadline !== undefined && subWorkflowDeadline !== undefined) {
+		return Math.min(parentDeadline, subWorkflowDeadline);
+	}
+	return parentDeadline ?? subWorkflowDeadline;
+}
+
+/**
  * Executes the workflow with the given ID
  */
 export async function executeWorkflow(
@@ -260,8 +320,11 @@ export async function executeAgent(
 	executionId: string,
 	threadId: string,
 	additionalData: IWorkflowExecuteAdditionalData,
+	executionMode: WorkflowExecuteMode,
+	outputSchema?: JSONSchema7,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
+	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
 
 	// Trigger-fired and webhook executions build `additionalData` without a
@@ -292,6 +355,8 @@ export async function executeAgent(
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
 
+	const useDraftVersion = isManualOrChatExecution(executionMode);
+
 	return await agentsService.executeForWorkflow(
 		agentId,
 		message,
@@ -299,18 +364,64 @@ export async function executeAgent(
 		threadId,
 		userId,
 		projectId,
+		telemetryUserId,
+		useDraftVersion,
+		outputSchema,
 	);
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
-	// Only published agents are runnable from a workflow — see the publish
-	// guard in `executeForWorkflow`. Filtering here keeps unpublished agents
-	// out of the MessageAnAgent dropdown so users don't pick one that would
-	// fail at execution time.
-	const agents = await agentsService.findPublishedByUser(userId);
-	return agents.map((agent) => ({ id: agent.id, name: agent.name }));
+	// Only published agents are runnable from a published workflow.
+	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.
+	const agents = await agentsService.findByUser(userId);
+	return agents.map((agent) => ({
+		id: agent.id,
+		name: agent.name,
+	}));
+}
+
+/**
+ * Whether the sub-workflow's `Execute Workflow Trigger` wants the legacy single-run output.
+ * v1.2+ triggers always opt into the new merged-runs default;
+ * pre-1.2 triggers can opt in via the `returnOutput` parameter
+ * and otherwise stay on `lastRunOnly` for backward compatibility.
+ * Sub-workflows without an `Execute Workflow Trigger` keep the legacy output too.
+ * See n8n-io/n8n#9989
+ */
+export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
+	const trigger = nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
+	const triggerVersion = trigger?.typeVersion ?? 1;
+	return triggerVersion < 1.2 && trigger?.parameters?.returnOutput !== 'allRuns';
+}
+
+/**
+ * Returns the items the parent workflow gets back from the sub-workflow's last node.
+ * By default, items from every run of the terminal node are concatenated per output branch.
+ * The trigger declares its preference.
+ * The caller can additionally force the legacy single-run output via `returnLastRunOnly`
+ * (used by LangChain tool/retriever callers that need a single-answer output).
+ * Pinned data on the last node always wins in manual mode.
+ * See n8n-io/n8n#9989.
+ */
+export function buildSubWorkflowOutput(
+	data: IRun,
+	workflowNodes: INode[],
+	callerReturnsLastRunOnly: boolean,
+): Array<INodeExecutionData[] | null> {
+	const lastRunOnly = callerReturnsLastRunOnly || triggerReturnsLastRunOnly(workflowNodes);
+	const runs = WorkflowHelpers.getLastExecutedNodeRuns(data);
+	const { lastNodeExecuted, pinData = {} } = data.data.resultData;
+	const manualPinDataOverride =
+		data.mode === 'manual' &&
+		lastNodeExecuted !== undefined &&
+		pinData[lastNodeExecuted] !== undefined;
+
+	if (!lastRunOnly && runs.length > 0 && !manualPinDataOverride) {
+		return mergeRunsPerBranch(runs);
+	}
+	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
 async function startExecution(
@@ -388,18 +499,15 @@ async function startExecution(
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
-		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			// We might have received a max timeout timestamp from the parent workflow
-			// If we did, then we get the minimum time between the two timeouts
-			// If no timeout was given from the parent, then we use our timeout.
-			subworkflowTimeout = Math.min(
-				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				startTime + workflowSettings.executionTimeout * 1000,
-			);
-		}
+		const executionsConfig = Container.get(ExecutionsConfig);
 
-		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		const subworkflowDeadline = resolveSubworkflowDeadline(
+			determineWorkflowDeadline(startTime, workflowSettings, executionsConfig),
+			additionalData.executionTimeoutTimestamp,
+			options.doNotWaitToFinish,
+		);
+
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowDeadline;
 
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
@@ -441,7 +549,10 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
+		await Container.get(ExecutionPersistence).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
 		throw objectToError(
 			{
 				...executionError,
@@ -459,10 +570,10 @@ async function startExecution(
 		// Workflow did finish successfully
 
 		activeExecutions.finalizeExecution(executionId, data);
-		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+
 		return {
 			executionId,
-			data: returnData!.data!.main,
+			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 		};
 	}
@@ -566,9 +677,15 @@ export async function getBase({
 		setExecutionStatus,
 		variables,
 		workflowSettings,
+		async getRuntimeCredential(runExecutionData, alias) {
+			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredential(
+				runExecutionData,
+				alias,
+			);
+		},
 		async getRunExecutionData(executionId) {
-			const executionRepository = Container.get(ExecutionRepository);
-			const executionData = await executionRepository.findSingleExecution(executionId, {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionData = await executionPersistence.findSingleExecution(executionId, {
 				unflattenData: true,
 				includeData: true,
 			});

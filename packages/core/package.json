@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.21.0",
+  "version": "2.25.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -14,15 +14,17 @@
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:dev": "vitest --silent=false"
   },
   "files": [
     "dist",
@@ -30,6 +32,7 @@
   ],
   "devDependencies": {
     "@n8n/errors": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
@@ -38,6 +41,11 @@
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "jest-mock-extended": "^3.0.4",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {

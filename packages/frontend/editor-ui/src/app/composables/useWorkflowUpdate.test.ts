@@ -58,14 +58,6 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
 }));
 
-// Mock useWorkflowState - using hoisted for proper initialization
-const mockWorkflowState = vi.hoisted(() => ({
-	touchParametersLastUpdatedAt: vi.fn(),
-}));
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => mockWorkflowState),
-}));
-
 // Mock useCanvasOperations - using hoisted for proper initialization
 const mockCanvasOperations = vi.hoisted(() => ({
 	deleteNode: vi.fn(),

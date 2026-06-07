@@ -1,9 +1,11 @@
-import { generateText, type LanguageModel } from 'ai';
+import type { LanguageModel } from 'ai';
 
+import { incrementTokenCountFromUsage } from './execution-counter';
+import { loadAi } from './lazy-ai';
 import type { BuiltMemory, BuiltTelemetry, TitleGenerationConfig } from '../types';
 import { createFilteredLogger } from './logger';
 import { createModel } from './model-factory';
-import type { ModelConfig } from '../types/sdk/agent';
+import type { AgentExecutionCounter, ModelConfig } from '../types/sdk/agent';
 import type { AgentDbMessage } from '../types/sdk/message';
 
 const logger = createFilteredLogger();
@@ -50,6 +52,7 @@ const MAX_TITLE_LENGTH = 80;
 interface GenerateTitleFromMessageOptions {
 	instructions?: string;
 	telemetry?: BuiltTelemetry;
+	executionCounter?: AgentExecutionCounter;
 }
 
 function buildTelemetryOptions(telemetry: BuiltTelemetry | undefined): Record<string, unknown> {
@@ -129,7 +132,7 @@ export async function generateTitleFromMessage(
 		return null;
 	}
 
-	const result = await generateText({
+	const result = await loadAi().generateText({
 		model,
 		messages: [
 			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS },
@@ -140,6 +143,7 @@ export async function generateTitleFromMessage(
 		],
 		...buildTelemetryOptions(opts?.telemetry),
 	});
+	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 
 	const raw = result.text?.trim();
 	if (!raw) return null;
@@ -160,7 +164,7 @@ export async function generateTitleFromMessage(
 export async function generateTitleAndEmojiFromMessage(
 	model: LanguageModel,
 	userMessage: string,
-	opts?: { instructions?: string },
+	opts?: { instructions?: string; executionCounter?: AgentExecutionCounter },
 ): Promise<{ title: string; emoji?: string } | null> {
 	const trimmed = userMessage.trim();
 	if (!trimmed) return null;
@@ -169,13 +173,14 @@ export async function generateTitleAndEmojiFromMessage(
 		return null;
 	}
 
-	const result = await generateText({
+	const result = await loadAi().generateText({
 		model,
 		messages: [
 			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS },
 			{ role: 'user', content: trimmed },
 		],
 	});
+	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 
 	let text = result.text?.trim();
 	if (!text) return null;
@@ -224,6 +229,7 @@ export async function generateThreadTitle(opts: {
 	agentModel: ModelConfig;
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
+	executionCounter?: AgentExecutionCounter;
 }): Promise<void> {
 	try {
 		const thread = await opts.memory.getThread(opts.threadId);
@@ -242,6 +248,7 @@ export async function generateThreadTitle(opts: {
 		const titleModel = createModel(titleModelId);
 		const generated = await generateTitleAndEmojiFromMessage(titleModel, userText, {
 			instructions: opts.titleConfig.instructions,
+			executionCounter: opts.executionCounter,
 		});
 		if (!generated) return;
 

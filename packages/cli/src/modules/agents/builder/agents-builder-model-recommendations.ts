@@ -1,4 +1,4 @@
-import { fetchProviderCatalog, type ModelInfo, type ProviderCatalog } from '@n8n/agents';
+import { fetchProviderCatalog, type ModelInfo, type ProviderCatalog } from '@n8n/agents/catalog';
 
 const MODEL_RECOMMENDATION_FETCH_TIMEOUT_MS = 5000;
 const MAX_RECOMMENDED_MODELS_PER_PROVIDER = 3;
@@ -73,7 +73,7 @@ export function buildModelRecommendationsSection(catalog: ProviderCatalog): stri
 	if (rows.length === 0) return null;
 
 	return `\
-## Recommended LLM models
+### Recommended LLM Models
 
 These recommendations are derived from the live models.dev catalog exposed by the agents SDK.
 The provider lists are selected by newest release_date first, limited to

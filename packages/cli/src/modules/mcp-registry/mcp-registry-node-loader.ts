@@ -23,8 +23,9 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	serverToCredentialDescription,
 	serverToNodeDescription,
+	type IsKnownCredentialType,
 } from './node-description-transform';
-import type { McpRegistryService } from './registry/mcp-registry.service';
+import type { McpRegistryServer } from './registry/mcp-registry.types';
 
 /**
  * Synthetic node loader: turns each registry server into a node type, all
@@ -46,11 +47,16 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	private typesReleased = true;
 
+	private servers: McpRegistryServer[] = [];
+
 	constructor(
-		private readonly registry: McpRegistryService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly logger: Logger,
 	) {}
+
+	setServers(servers: McpRegistryServer[]): void {
+		this.servers = servers;
+	}
 
 	async loadAll(): Promise<void> {
 		this.reset();
@@ -62,9 +68,16 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
-		for (const server of this.registry.getAll({ includeDeprecated: true })) {
-			const nodeDescription = serverToNodeDescription(server, baseDescription);
-			const credentialDescription = serverToCredentialDescription(server);
+		const isKnownCredentialType: IsKnownCredentialType = (name) =>
+			Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name);
+
+		for (const server of this.servers) {
+			const nodeDescription = serverToNodeDescription(
+				server,
+				baseDescription,
+				isKnownCredentialType,
+			);
+			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
 			if (!nodeDescription || !credentialDescription) continue;
 
 			const bareName = camelCase(server.slug);

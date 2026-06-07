@@ -1,4 +1,4 @@
-import { computed, reactive, ref, triggerRef } from 'vue';
+import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -32,8 +32,15 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
+import { getLatestBuildResult } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
+
+export interface PlanEditContext {
+	requestId: string;
+	inputThreadId?: string;
+	taskCount: number;
+}
 
 export interface PendingConfirmationItem {
 	toolCall: InstanceAiToolCallState & { confirmation: InstanceAiConfirmation };
@@ -53,8 +60,6 @@ const MAX_DEBUG_EVENTS = 1000;
  * side effects reach back into store-owned state without a circular import.
  */
 export interface ThreadRuntimeHooks {
-	/** Read at `sendMessage` time — the instance-level UI pref. */
-	getResearchMode: () => boolean;
 	/** SSE delivered a `thread-title-updated` event for the active thread. */
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
@@ -65,7 +70,7 @@ export interface ThreadRuntimeHooks {
 function collectPendingConfirmations(
 	node: InstanceAiAgentNode,
 	messageId: string,
-	resolved: Map<string, 'approved' | 'denied' | 'deferred'>,
+	resolved: Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>,
 	out: PendingConfirmationItem[],
 ): void {
 	for (const tc of node.toolCalls) {
@@ -75,6 +80,11 @@ function collectPendingConfirmations(
 			tc.confirmationStatus !== 'approved' &&
 			tc.confirmationStatus !== 'denied' &&
 			!resolved.has(tc.confirmation.requestId) &&
+			// Expired cards render as a terminal "this action has expired" state
+			// in their inline slot; surfacing them in the floating/inline panel
+			// would block the chat input on a confirmation the user can no
+			// longer act on.
+			!tc.confirmation.expired &&
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
@@ -239,12 +249,16 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
-	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
+	const resolvedConfirmationIds = reactive(
+		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
+	);
 	const pendingMessageCount = ref(0);
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	const activePlanEdit = ref<PlanEditContext | null>(null);
+	const updatingPlanRequestIds = reactive(new Set<string>());
 
 	// --- Non-reactive runtime state ---
 	let runStateByGroupId: Record<string, AgentRunState> = {};
@@ -280,6 +294,44 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
 	);
 
+	// --- Telemetry: 'User viewed new builder workflow' ---
+	// FE counterpart of the backend 'Builder created workflow' event, which carries
+	// no session id and so can't filter PostHog session recordings — this FE-sent
+	// event does. It fires the moment the builder produces a workflow, i.e. when the
+	// canvas preview opens: `latestBuildResult.toolCallId` changes only on a live
+	// build, so re-hydrating past messages or rebuilding the same workflow won't
+	// re-fire. Emitted once per workflow id for this runtime.
+	const latestBuildResult = computed(() => {
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const tree = messages.value[i].agentTree;
+			if (tree) {
+				const result = getLatestBuildResult(tree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+	const reportedBuiltWorkflowIds = new Set<string>();
+
+	watch(
+		() => latestBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			// `flush: 'sync'` mirrors useCanvasPreview: hydration assigns messages and
+			// flips hydrationStatus to 'ready' within the same tick, so only a
+			// synchronous callback still sees the hydrating flag and skips past builds.
+			if (!toolCallId || isHydratingThread.value) return;
+			const workflowId = latestBuildResult.value?.workflowId;
+			if (!workflowId || reportedBuiltWorkflowIds.has(workflowId)) return;
+			reportedBuiltWorkflowIds.add(workflowId);
+			telemetry.track('User viewed new builder workflow', {
+				thread_id: threadId,
+				instance_id: rootStore.instanceId,
+				workflow_id: workflowId,
+			});
+		},
+		{ flush: 'sync' },
+	);
+
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
 	 * assistant message. Shown as the input placeholder + Tab to autocomplete.
@@ -300,11 +352,6 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				: 'Add error handling to the workflow';
 		}
 
-		const dataChild = tree.children.find((c) => c.role === 'data-table-manager');
-		if (dataChild) {
-			return 'Query the data table to show recent entries';
-		}
-
 		return null;
 	});
 
@@ -313,7 +360,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		const items: PendingConfirmationItem[] = [];
 		for (const msg of messages.value) {
 			if (msg.role !== 'assistant' || !msg.agentTree) continue;
-			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
+			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds, items);
 		}
 		return items;
 	});
@@ -323,11 +370,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 	function resolveConfirmation(
 		requestId: string,
-		action: 'approved' | 'denied' | 'deferred',
+		action: 'approved' | 'changes-requested' | 'denied' | 'deferred',
 	): void {
-		const next = new Map(resolvedConfirmationIds.value);
-		next.set(requestId, action);
-		resolvedConfirmationIds.value = next;
+		resolvedConfirmationIds.set(requestId, action);
 	}
 
 	/** Find a tool call by its confirmation requestId across all messages. */
@@ -339,6 +384,86 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 		return undefined;
 	}
+
+	// --- Session "Always allow" ---
+	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
+	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
+	// for most tools; `submit-workflow` is keyed on `workflowId` presence so a
+	// create grant doesn't silently auto-approve later updates (the backend
+	// distinguishes createWorkflow vs updateWorkflow by that field).
+	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
+
+	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+		if (toolName === 'submit-workflow') {
+			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
+			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
+		}
+		const action = typeof args.action === 'string' ? args.action : '';
+		return `${toolName}:${action}`;
+	}
+
+	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+		const next = new Set(sessionAlwaysAllowKeys.value);
+		next.add(buildAlwaysAllowKey(toolName, args));
+		sessionAlwaysAllowKeys.value = next;
+	}
+
+	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
+		const conf = item.toolCall.confirmation;
+		if (conf.severity === 'destructive') return false;
+		if (conf.domainAccess) return false;
+		if (conf.inputType) return false;
+		if (conf.setupRequests?.length) return false;
+		if (conf.credentialRequests?.length) return false;
+		if (conf.questions?.length) return false;
+		return true;
+	}
+
+	// In-flight guard for the auto-approve watcher. We can't rely on
+	// `resolvedConfirmationIds` to skip duplicates here because we only mark
+	// resolved *after* `confirmAction` succeeds — otherwise a failed request
+	// would hide the card while the backend still waits for approval.
+	const autoApproveInFlight = new Set<string>();
+
+	watch(
+		pendingConfirmations,
+		async (items) => {
+			if (sessionAlwaysAllowKeys.value.size === 0) return;
+			for (const item of items) {
+				const conf = item.toolCall.confirmation;
+				if (resolvedConfirmationIds.has(conf.requestId)) continue;
+				if (autoApproveInFlight.has(conf.requestId)) continue;
+				if (!isGenericApprovalEligible(item)) continue;
+				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+
+				autoApproveInFlight.add(conf.requestId);
+				try {
+					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
+					if (!ok) continue;
+					resolveConfirmation(conf.requestId, 'approved');
+					telemetry.track('User finished providing input', {
+						thread_id: threadId,
+						input_thread_id: conf.inputThreadId ?? '',
+						instance_id: rootStore.instanceId,
+						type: 'approval',
+						provided_inputs: [
+							{
+								label: conf.message,
+								options: ['approve', 'deny', 'approve_always'],
+								option_chosen: 'approve_auto',
+							},
+						],
+						skipped_inputs: [],
+						auto_resolved: true,
+					});
+				} finally {
+					autoApproveInFlight.delete(conf.requestId);
+				}
+			}
+		},
+		{ deep: true },
+	);
 
 	// --- SSE lifecycle ---
 
@@ -555,7 +680,8 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
-		resolvedConfirmationIds.value = new Map();
+		resolvedConfirmationIds.clear();
+		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		lastEventId.value = undefined;
@@ -676,15 +802,11 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		}
 	}
 
-	function trackUserMessageSent(optimistic: InstanceAiMessage): void {
-		// The first user message in the array is the first the thread has ever
-		// seen. `find` short-circuits at the first match, so this is O(1) once
-		// the user has sent more than one message.
-		const firstUser = messages.value.find((m) => m.role === 'user');
+	function trackUserMessageSent(isFirstMessage: boolean): void {
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
-			is_first_message: firstUser === optimistic,
+			is_first_message: isFirstMessage,
 		});
 	}
 
@@ -694,15 +816,18 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		pushRef?: string,
 	): Promise<boolean> {
 		try {
-			await postMessage(
+			const { runId } = await postMessage(
 				rootStore.restApiContext,
 				threadId,
 				message,
-				hooks.getResearchMode() || undefined,
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 			);
+
+			if (runId) {
+				activeRunId.value = runId;
+			}
 			return true;
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
@@ -733,8 +858,9 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
+			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
 			const optimistic = pushOptimisticUserMessage(message, attachments);
-			trackUserMessageSent(optimistic);
+			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
 				removeOptimisticMessage(optimistic);
@@ -773,6 +899,32 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		amendContext.value = { agentId, role };
 	}
 
+	// --- Plan edit mode ---
+
+	function startPlanEdit(context: PlanEditContext): void {
+		activePlanEdit.value = context;
+	}
+
+	function cancelPlanEdit(): void {
+		activePlanEdit.value = null;
+	}
+
+	function markPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.add(requestId);
+	}
+
+	function clearPlanUpdatePending(requestId: string): void {
+		updatingPlanRequestIds.delete(requestId);
+	}
+
+	// Defensive cleanup: if a stream ends without a matching clear, drop the
+	// pending markers so we don't leave a card stuck in "Updating plan…".
+	watch(isStreaming, (streaming) => {
+		if (!streaming && updatingPlanRequestIds.size > 0) {
+			updatingPlanRequestIds.clear();
+		}
+	});
+
 	// --- Confirmations ---
 
 	async function confirmAction(
@@ -782,8 +934,25 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		try {
 			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
-		} catch {
-			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+		} catch (error: unknown) {
+			// Surface the server's UserError text when present (e.g. "This
+			// confirmation was lost when the assistant restarted") so the user
+			// sees the actual reason instead of a generic "Try again". UserError
+			// from `n8n-workflow` is mapped to a 400 with the message in the
+			// response body — `ResponseError.message` exposes that here.
+			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+			if (status === 400) {
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The confirmation could not be processed.'),
+					'Confirmation failed',
+				);
+			} else {
+				toast.showError(
+					new Error('Failed to send confirmation. Try again.'),
+					'Confirmation failed',
+				);
+			}
 			return false;
 		}
 	}
@@ -821,11 +990,14 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		latestTasks,
 		debugEvents,
 		resolvedConfirmationIds,
+		sessionAlwaysAllowKeys,
 		pendingMessageCount,
 		hydrationStatus,
 		sseState,
 		lastEventId,
 		amendContext,
+		activePlanEdit,
+		updatingPlanRequestIds,
 
 		// computeds
 		isStreaming,
@@ -852,9 +1024,14 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		cancelRun,
 		cancelBackgroundTask,
 		amendAgent,
+		startPlanEdit,
+		cancelPlanEdit,
+		markPlanUpdatePending,
+		clearPlanUpdatePending,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		addAlwaysAllowKey,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

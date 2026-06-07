@@ -358,7 +358,31 @@ interface BuildOutcome {
 	durationMs: number;
 }
 
-const testCaseSchema = z.object({ prompt: z.string() }).passthrough();
+const testCaseSchema = z
+	.object({
+		conversation: z.array(z.object({ role: z.string(), text: z.string() })).min(1),
+	})
+	.passthrough();
+
+function buildPromptFromConversation(
+	conversation: z.infer<typeof testCaseSchema>['conversation'],
+): string {
+	const [firstUserTurn, ...remainingUserTurns] = conversation
+		.filter((turn) => turn.role === 'user')
+		.map((turn) => turn.text.trim())
+		.filter((text) => text.length > 0);
+
+	if (!firstUserTurn) return conversation[0].text;
+	if (remainingUserTurns.length === 0) return firstUserTurn;
+
+	return [
+		firstUserTurn,
+		'Additional details from the user:',
+		...remainingUserTurns.map((turn, index) => `${String(index + 1)}. ${turn}`),
+		'',
+		"Use all details above as requirements. Configure all nodes as completely as possible and don't ask me for credentials; I'll set them up later.",
+	].join('\n\n');
+}
 
 function tailWorkflowId(text: string): string | null {
 	const matches = [...text.matchAll(/WORKFLOW_ID=([A-Za-z0-9_-]+)/g)];
@@ -384,7 +408,7 @@ async function buildOne(
 		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${args.projectId}' so the workflow is created in that n8n project.`
 		: '';
 
-	const userMessage = `${testCase.prompt}${projectInstruction}
+	const userMessage = `${buildPromptFromConversation(testCase.conversation)}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:

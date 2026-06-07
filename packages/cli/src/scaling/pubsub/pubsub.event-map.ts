@@ -1,5 +1,5 @@
 import type {
-	AgentCredentialIntegrationConfig,
+	AgentIntegrationConfig,
 	ChatHubMessageStatus,
 	PushMessage,
 	WorkerStatus,
@@ -32,6 +32,8 @@ export type PubSubCommandMap = {
 	// #endregion
 
 	'reload-source-control-config': never;
+
+	'reload-mcp-registry': never;
 
 	// #region Community packages
 
@@ -200,7 +202,7 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		integration: AgentCredentialIntegrationConfig;
+		integration: AgentIntegrationConfig;
 		action: 'connect' | 'disconnect';
 	};
 
@@ -216,6 +218,16 @@ export type PubSubCommandMap = {
 	 * 30-minute TTL evicts the entry.
 	 */
 	'agent-config-changed': {
+		agentId: string;
+	};
+
+	/**
+	 * Reconcile an agent's scheduled task cron jobs across main instances.
+	 * Published by the main that handled a publish/unpublish/delete after the
+	 * change is persisted. Only the leader owns task crons, so every main runs
+	 * the same reconcile but registration is a no-op on followers.
+	 */
+	'agent-tasks-changed': {
 		agentId: string;
 	};
 

@@ -19,7 +19,8 @@ import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey } from '../session-timeline.utils';
+import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const i18n = useI18n();
@@ -40,7 +41,7 @@ const fullExecutionHref = computed((): string => {
 	return router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
 		params: {
-			name: props.item.workflowId,
+			workflowId: props.item.workflowId,
 			executionId: props.item.workflowExecutionId,
 		},
 	}).href;
@@ -127,13 +128,37 @@ const toolDisplayName = computed((): string => {
 	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
 });
 
+const isSubAgent = computed((): boolean =>
+	props.item ? isSubAgentTimelineItem(props.item) : false,
+);
+
+/**
+ * For an agent (assistant) message the persisted content is the raw response
+ * text. When that text is a JSON object/array — i.e. the agent produced
+ * structured output — parse it so it can be pretty-printed instead of shown as
+ * a raw one-line string. Plain-text answers return `undefined` and keep their
+ * markdown rendering.
+ */
+const agentStructuredContent = computed((): unknown => {
+	const item = props.item;
+	if (!item || item.kind !== 'agent') return undefined;
+	const content = item.content?.trim();
+	if (!content || (!content.startsWith('{') && !content.startsWith('['))) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(content);
+		return parsed !== null && typeof parsed === 'object' ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+});
+
 const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
+	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'working-memory') return i18n.baseText('agentSessions.timeline.memory');
 	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
 	return i18n.baseText('agentSessions.timeline.suspended');
@@ -142,10 +167,10 @@ const headerTitle = computed((): string => {
 const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
+	if (isSubAgent.value) return 'bot';
 	if (item.kind === 'workflow') return 'workflow';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
-	if (item.kind === 'working-memory') return 'brain';
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
 	return 'clock';
@@ -238,8 +263,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 									<N8nTooltip
 										:content="
 											copiedBlock === 'workflow-output'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
 										"
 									>
 										<N8nButton
@@ -249,8 +274,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 											:icon="copiedBlock === 'workflow-output' ? 'check' : 'copy'"
 											:aria-label="
 												copiedBlock === 'workflow-output'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 											@click="copyJsonBlock('workflow-output', item.toolOutput)"
 										/>
@@ -275,8 +300,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 										<N8nTooltip
 											:content="
 												copiedBlock === 'tool-input'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 										>
 											<N8nButton
@@ -286,8 +311,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 												:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
 												:aria-label="
 													copiedBlock === 'tool-input'
-														? i18n.baseText('agents.builder.addTrigger.copied')
-														: i18n.baseText('agents.builder.addTrigger.copy')
+														? i18n.baseText('generic.copied')
+														: i18n.baseText('generic.copy')
 												"
 												@click="copyJsonBlock('tool-input', item.toolInput)"
 											/>
@@ -307,8 +332,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 										<N8nTooltip
 											:content="
 												copiedBlock === 'tool-output'
-													? i18n.baseText('agents.builder.addTrigger.copied')
-													: i18n.baseText('agents.builder.addTrigger.copy')
+													? i18n.baseText('generic.copied')
+													: i18n.baseText('generic.copy')
 											"
 										>
 											<N8nButton
@@ -318,8 +343,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 												:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
 												:aria-label="
 													copiedBlock === 'tool-output'
-														? i18n.baseText('agents.builder.addTrigger.copied')
-														: i18n.baseText('agents.builder.addTrigger.copy')
+														? i18n.baseText('generic.copied')
+														: i18n.baseText('generic.copy')
 												"
 												@click="copyJsonBlock('tool-output', item.toolOutput)"
 											/>
@@ -346,31 +371,33 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						/>
 					</template>
 
-					<template v-else-if="item.kind === 'working-memory'">
+					<template v-else-if="item.kind === 'agent' && agentStructuredContent !== undefined">
 						<div :class="$style.codeBlock">
 							<div :class="$style.codeBlockCopy">
 								<N8nTooltip
 									:content="
-										copiedBlock === 'working-memory'
-											? i18n.baseText('agents.builder.addTrigger.copied')
-											: i18n.baseText('agents.builder.addTrigger.copy')
+										copiedBlock === 'agent-output'
+											? i18n.baseText('generic.copied')
+											: i18n.baseText('generic.copy')
 									"
 								>
 									<N8nButton
 										variant="outline"
 										size="small"
 										icon-only
-										:icon="copiedBlock === 'working-memory' ? 'check' : 'copy'"
+										:icon="copiedBlock === 'agent-output' ? 'check' : 'copy'"
 										:aria-label="
-											copiedBlock === 'working-memory'
-												? i18n.baseText('agents.builder.addTrigger.copied')
-												: i18n.baseText('agents.builder.addTrigger.copy')
+											copiedBlock === 'agent-output'
+												? i18n.baseText('generic.copied')
+												: i18n.baseText('generic.copy')
 										"
-										@click="copyJsonBlock('working-memory', item.content)"
+										@click="copyJsonBlock('agent-output', agentStructuredContent)"
 									/>
 								</N8nTooltip>
 							</div>
-							<pre :class="$style.json">{{ item.content }}</pre>
+							<!-- eslint-disable vue/no-v-html -->
+							<pre :class="$style.json" v-html="highlightJson(agentStructuredContent)" />
+							<!-- eslint-enable vue/no-v-html -->
 						</div>
 					</template>
 

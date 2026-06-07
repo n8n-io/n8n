@@ -1,13 +1,13 @@
 import type { CallToolResult } from '../types';
 import { BUILTIN_PATTERNS, type SecretPattern } from './patterns';
 
-const MAX_DEPTH = 10;
-
 export interface SecretHit {
 	type: string;
 	value: string;
 	ref?: string;
 }
+
+type RedactionMarkerHit = Pick<SecretHit, 'type' | 'value' | 'ref'>;
 
 const GLOBAL_PATTERNS: ReadonlyArray<{ slug: string; regex: RegExp }> = BUILTIN_PATTERNS.map(
 	(p: SecretPattern) => ({
@@ -19,8 +19,26 @@ const GLOBAL_PATTERNS: ReadonlyArray<{ slug: string; regex: RegExp }> = BUILTIN_
 	}),
 );
 
-export function formatRedactionMarker(hit: Pick<SecretHit, 'type' | 'ref'>): string {
-	return `[REDACTED:${hit.type}]${hit.ref ? `@${hit.ref}` : ''}`;
+export function formatRedactionMarker(
+	hit: Pick<SecretHit, 'type' | 'ref'> & { index?: number },
+): string {
+	const suffix = hit.index === undefined ? '' : `:${hit.index}`;
+	return `[REDACTED:${hit.type}${suffix}]${hit.ref ? `@${hit.ref}` : ''}`;
+}
+
+function hitKey(hit: RedactionMarkerHit): string {
+	return `${hit.type}:${hit.value}:${hit.ref ?? ''}`;
+}
+
+export function createRedactionMarkerFormatter(
+	hits: RedactionMarkerHit[],
+): (hit: RedactionMarkerHit) => string {
+	const indexes = new Map<string, number>();
+	for (const hit of hits) {
+		const key = hitKey(hit);
+		if (!indexes.has(key)) indexes.set(key, indexes.size + 1);
+	}
+	return (hit) => formatRedactionMarker({ ...hit, index: indexes.get(hitKey(hit)) });
 }
 
 export function findRegexSecretHits(input: string): SecretHit[] {
@@ -39,8 +57,10 @@ export function findRegexSecretHits(input: string): SecretHit[] {
 
 export function redactString(input: string): string {
 	let output = input;
-	for (const hit of findRegexSecretHits(input)) {
-		output = replaceLiteral(output, hit.value, formatRedactionMarker(hit));
+	const hits = findRegexSecretHits(input);
+	const marker = createRedactionMarkerFormatter(hits);
+	for (const hit of hits) {
+		output = replaceLiteral(output, hit.value, marker(hit));
 	}
 	return output;
 }
@@ -55,14 +75,32 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return Object.getPrototypeOf(value) === Object.prototype;
 }
 
-export function redactValue(value: unknown, depth = 0): unknown {
-	if (depth > MAX_DEPTH || value === null || value === undefined) return value;
-	if (typeof value === 'string') return redactString(value);
-	if (Array.isArray(value)) return value.map((entry) => redactValue(entry, depth + 1));
+function collectStrings(value: unknown): string[] {
+	if (value === null || value === undefined) return [];
+	if (typeof value === 'string') return [value];
+	if (Array.isArray(value)) return value.flatMap((entry) => collectStrings(entry));
+	if (isPlainObject(value)) {
+		return Object.values(value).flatMap((entry) => collectStrings(entry));
+	}
+	return [];
+}
+
+export function redactValue(
+	value: unknown,
+	hits = findRegexSecretHits(collectStrings(value).join('\n')),
+	marker = createRedactionMarkerFormatter(hits),
+): unknown {
+	if (value === null || value === undefined) return value;
+	if (typeof value === 'string') {
+		let output = value;
+		for (const hit of hits) output = replaceLiteral(output, hit.value, marker(hit));
+		return output;
+	}
+	if (Array.isArray(value)) return value.map((entry) => redactValue(entry, hits, marker));
 	if (isPlainObject(value)) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value)) {
-			out[k] = redactValue(v, depth + 1);
+			out[k] = redactValue(v, hits, marker);
 		}
 		return out;
 	}
@@ -70,13 +108,23 @@ export function redactValue(value: unknown, depth = 0): unknown {
 }
 
 export function redactCallToolResult(result: CallToolResult): CallToolResult {
+	const hits = findRegexSecretHits(
+		[
+			...result.content.flatMap((item) =>
+				item.type === 'text' && typeof item.text === 'string' ? [item.text] : [],
+			),
+			...collectStrings(result.structuredContent),
+		].join('\n'),
+	);
+	const marker = createRedactionMarkerFormatter(hits);
+
 	for (const item of result.content) {
 		if (item.type === 'text' && typeof item.text === 'string') {
-			item.text = redactString(item.text);
+			for (const hit of hits) item.text = replaceLiteral(item.text, hit.value, marker(hit));
 		}
 	}
 	if (result.structuredContent !== undefined) {
-		const redacted = redactValue(result.structuredContent);
+		const redacted = redactValue(result.structuredContent, hits, marker);
 		if (isPlainObject(redacted)) result.structuredContent = redacted;
 	}
 	return result;

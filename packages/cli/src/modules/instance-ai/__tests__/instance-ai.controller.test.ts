@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 jest.mock('@n8n/instance-ai', () => ({
-	createMemory: jest.fn(),
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
@@ -18,15 +17,11 @@ jest.mock('@n8n/instance-ai', () => ({
 }));
 
 // The controller imports validation helpers via the parsers subpath so they
-// don't pull in Mastra. Re-export the real implementation for the test.
+// don't pull in native agent. Re-export the real implementation for the test.
 jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
 
 jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
-}));
-
-jest.mock('../eval/sub-agent-eval.service', () => ({
-	SubAgentEvalService: jest.fn(),
 }));
 
 import type {
@@ -43,12 +38,10 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -58,11 +51,11 @@ import { mock } from 'jest-mock-extended';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
-import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -98,18 +91,20 @@ describe('InstanceAiController', () => {
 		port: 5678,
 	});
 
-	const subAgentEvalService = mock<SubAgentEvalService>();
+	const userRepository = mock<UserRepository>();
+	const credentialsService = mock<CredentialsService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
-		subAgentEvalService,
 		eventBus,
 		moduleRegistry,
 		push,
 		urlService,
+		userRepository,
+		credentialsService,
 		globalConfig,
 	);
 
@@ -124,7 +119,6 @@ describe('InstanceAiController', () => {
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
-			researchMode: false,
 			timeZone: 'Europe/Helsinki',
 		});
 
@@ -144,7 +138,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payload.message,
-				payload.researchMode,
 				payload.attachments,
 				payload.timeZone,
 				payload.pushRef,
@@ -177,7 +170,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payloadWithPushRef.message,
-				payloadWithPushRef.researchMode,
 				payloadWithPushRef.attachments,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
@@ -266,28 +258,17 @@ describe('InstanceAiController', () => {
 					textContent: '',
 					reasoning: '',
 					toolCalls: [],
-					children: [
+					children: [],
+					timeline: [],
+					planItems: [
 						{
-							agentId: 'agent-planner-1',
-							role: 'planner',
-							status: 'active',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							children: [],
-							timeline: [],
-							planItems: [
-								{
-									id: 'task-1',
-									title: 'Build workflow',
-									kind: 'build-workflow',
-									spec: 'Create the workflow',
-									deps: [],
-								},
-							],
+							id: 'task-1',
+							title: 'Build workflow',
+							kind: 'build-workflow',
+							spec: 'Create the workflow',
+							deps: [],
 						},
 					],
-					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
 				},
 			});
 
@@ -316,7 +297,7 @@ describe('InstanceAiController', () => {
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
 
-			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
 		});
 
@@ -836,55 +817,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('runSubAgentEval', () => {
-		const originalNodeEnv = process.env.NODE_ENV;
-		const originalE2ETests = process.env.E2E_TESTS;
-
-		afterEach(() => {
-			process.env.NODE_ENV = originalNodeEnv;
-			if (originalE2ETests === undefined) {
-				delete process.env.E2E_TESTS;
-			} else {
-				process.env.E2E_TESTS = originalE2ETests;
-			}
-		});
-
-		it('should delegate to SubAgentEvalService.run and return the response', async () => {
-			process.env.NODE_ENV = 'test';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-			const expectedResponse = mock<InstanceAiEvalSubAgentResponse>({
-				text: 'done',
-				toolCalls: [],
-				toolResults: [],
-				capturedWorkflowIds: [],
-				durationMs: 100,
-			});
-			subAgentEvalService.run.mockResolvedValue(expectedResponse);
-
-			const result = await controller.runSubAgentEval(req, res, payload);
-
-			expect(subAgentEvalService.run).toHaveBeenCalledWith(req.user, payload);
-			expect(result).toBe(expectedResponse);
-		});
-
-		it('should throw ForbiddenError when E2E_TESTS is not set', async () => {
-			process.env.NODE_ENV = 'test';
-			delete process.env.E2E_TESTS;
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should throw ForbiddenError when NODE_ENV is production', async () => {
-			process.env.NODE_ENV = 'production';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
-		});
-	});
-
 	describe('createGatewayLink', () => {
 		it('should require instanceAi:gateway scope', () => {
 			expect(scopeOf('createGatewayLink')).toEqual({
@@ -1150,6 +1082,69 @@ describe('InstanceAiController', () => {
 				[USER_ID],
 			);
 			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('gatewayCreateCredential', () => {
+		const makeGatewayReq = (key: string) =>
+			({ headers: { 'x-gateway-key': key } }) as unknown as Request;
+
+		const payload = {
+			name: 'My Slack Cred',
+			type: 'slackApi',
+			data: { accessToken: 'xoxb-token' },
+		};
+
+		it('should have no access scope (skipAuth)', () => {
+			expect(scopeOf('gatewayCreateCredential')).toBeUndefined();
+		});
+
+		it('should create credential and return credentialId', async () => {
+			const user = mock<User>({ id: USER_ID });
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			credentialsService.createUnmanagedCredential.mockResolvedValue(
+				mock<Awaited<ReturnType<CredentialsService['createUnmanagedCredential']>>>({
+					id: 'cred-1',
+				}),
+			);
+
+			const result = await controller.gatewayCreateCredential(
+				makeGatewayReq('session-key'),
+				res,
+				payload,
+			);
+
+			expect(result).toEqual({ credentialId: 'cred-1' });
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(payload, user);
+		});
+
+		it('should throw ForbiddenError when using the static env-var key', async () => {
+			const gatewayReq = makeGatewayReq('static-key');
+
+			await expect(controller.gatewayCreateCredential(gatewayReq, res, payload)).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('should throw ForbiddenError when the user is not found', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should throw ForbiddenError when the gateway is disabled', async () => {
+			const user = mock<User>({ id: USER_ID });
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 

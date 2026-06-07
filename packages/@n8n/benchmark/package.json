@@ -1,10 +1,12 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "2.8.0",
+  "version": "2.10.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -20,7 +22,7 @@
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "engines": {
-    "node": ">=22.16"
+    "node": ">=22.22"
   },
   "keywords": [
     "automate",

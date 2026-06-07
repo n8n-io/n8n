@@ -264,11 +264,7 @@ export function validateIdentifier(
 	sourceCode: string,
 ): void {
 	if (DANGEROUS_GLOBALS.has(name)) {
-		throw new SecurityError(
-			`Access to '${name}' is not allowed`,
-			node.loc ?? undefined,
-			sourceCode,
-		);
+		throw new SecurityError(name, node.loc ?? undefined, sourceCode);
 	}
 }
 
@@ -330,11 +326,7 @@ export function validateMemberExpression(node: MemberExpression, sourceCode: str
 		propName !== undefined &&
 		(propName === '__proto__' || propName === 'prototype' || propName === 'constructor')
 	) {
-		throw new SecurityError(
-			`Access to '${propName}' is not allowed`,
-			node.loc ?? undefined,
-			sourceCode,
-		);
+		throw new SecurityError(propName, node.loc ?? undefined, sourceCode);
 	}
 }
 

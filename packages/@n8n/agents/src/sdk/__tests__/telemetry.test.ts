@@ -35,23 +35,20 @@ describe('Telemetry builder', () => {
 	});
 
 	it('accepts a pre-built tracer', async () => {
-		const fakeTracer = { startSpan: jest.fn() };
+		const fakeTracer = { startSpan: vi.fn() };
 		const built = await new Telemetry().tracer(fakeTracer).build();
 		expect(built.tracer).toBe(fakeTracer);
 	});
 
 	it('throws when both .tracer() and .otlpEndpoint() are set', async () => {
 		await expect(
-			new Telemetry()
-				.tracer({ startSpan: jest.fn() })
-				.otlpEndpoint('http://localhost:4318')
-				.build(),
+			new Telemetry().tracer({ startSpan: vi.fn() }).otlpEndpoint('http://localhost:4318').build(),
 		).rejects.toThrow('Cannot set both .tracer() and .otlpEndpoint()');
 	});
 
 	it('collects multiple integrations', async () => {
-		const int1: TelemetryIntegration = { onStart: jest.fn() };
-		const int2: TelemetryIntegration = { onFinish: jest.fn() };
+		const int1: TelemetryIntegration = { onStart: vi.fn() };
+		const int2: TelemetryIntegration = { onFinish: vi.fn() };
 		const built = await new Telemetry().integration(int1).integration(int2).build();
 		expect(built.integrations).toHaveLength(2);
 	});
@@ -89,7 +86,7 @@ describe('Telemetry — redaction wrapping', () => {
 	});
 
 	it('does not wrap integrations when .redact() is not set', async () => {
-		const integration: TelemetryIntegration = { onStart: jest.fn() };
+		const integration: TelemetryIntegration = { onStart: vi.fn() };
 		const built = await new Telemetry().integration(integration).build();
 		// The integration should be a copy (not the same reference due to spread) but functionally identical
 		expect(built.integrations[0].onStart).toBe(integration.onStart);
@@ -154,12 +151,12 @@ describe('Telemetry — redaction wrapping', () => {
 
 describe('Telemetry.shutdown()', () => {
 	it('calls provider.shutdown() when provider exists', async () => {
-		const shutdownMock = jest.fn().mockResolvedValue(undefined);
+		const shutdownMock = vi.fn().mockResolvedValue(undefined);
 		const built = await new Telemetry().build();
 		// Manually inject a mock provider
 		const withProvider = {
 			...built,
-			provider: { forceFlush: jest.fn(), shutdown: shutdownMock },
+			provider: { forceFlush: vi.fn(), shutdown: shutdownMock },
 		};
 		await Telemetry.shutdown(withProvider);
 		expect(shutdownMock).toHaveBeenCalled();
@@ -169,5 +166,39 @@ describe('Telemetry.shutdown()', () => {
 		const built = await new Telemetry().build();
 		// Should not throw
 		await Telemetry.shutdown(built);
+	});
+});
+
+describe('Telemetry.forceFlush()', () => {
+	it('calls provider.forceFlush() when provider exists', async () => {
+		const forceFlushMock = vi.fn().mockResolvedValue(undefined);
+		const built = await new Telemetry().build();
+		const withProvider = {
+			...built,
+			provider: { forceFlush: forceFlushMock, shutdown: vi.fn() },
+		};
+
+		await Telemetry.forceFlush(withProvider);
+
+		expect(forceFlushMock).toHaveBeenCalled();
+	});
+
+	it('swallows provider.forceFlush() errors', async () => {
+		const built = await new Telemetry().build();
+		const withProvider = {
+			...built,
+			provider: {
+				forceFlush: vi.fn().mockRejectedValue(new Error('flush failed')),
+				shutdown: vi.fn(),
+			},
+		};
+
+		await expect(Telemetry.forceFlush(withProvider)).resolves.toBeUndefined();
+	});
+
+	it('does nothing when no provider exists', async () => {
+		const built = await new Telemetry().build();
+
+		await expect(Telemetry.forceFlush(built)).resolves.toBeUndefined();
 	});
 });

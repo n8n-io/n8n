@@ -36,23 +36,23 @@ on:
 jobs:
   run-discovery-evals:
     name: 'Run Discovery Evals'
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 15
+    env:
+      NODE_OPTIONS: '--max-old-space-size=7168'
     permissions:
       contents: read
       pull-requests: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
 
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: 'pnpm build'
 
       - name: Export Node Types
         run: |
@@ -67,23 +67,23 @@ jobs:
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.head_ref || github.ref_name }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           FILTER: ${{ inputs.filter }}
           TRIALS: ${{ inputs.trials || 3 }}
         run: |
           set -o pipefail
+          EVAL_ARGS=(--trials "$TRIALS" --fail-on-zero-pass)
           if [ -n "$FILTER" ]; then
-            pnpm eval:discovery --filter "$FILTER" --trials "$TRIALS" 2>&1 | tee discovery-eval-output.txt
-          else
-            pnpm eval:discovery --trials "$TRIALS" 2>&1 | tee discovery-eval-output.txt
+            EVAL_ARGS+=(--filter "$FILTER")
           fi
+          pnpm eval:discovery "${EVAL_ARGS[@]}" 2>&1 | tee discovery-eval-output.txt
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event_name == 'pull_request' && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
+        if: ${{ always() && github.event.pull_request.number && hashFiles('packages/@n8n/instance-ai/discovery-eval-output.txt') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVAL_OUTCOME: ${{ steps.eval.outcome }}
-          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           if [ "$EVAL_OUTCOME" = "success" ]; then

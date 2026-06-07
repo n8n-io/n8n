@@ -57,6 +57,8 @@ describe('execution-to-message-mapper', () => {
 						toolName: 'search_tool',
 						toolCallId: 'call-1',
 						input: { query: 'n8n' },
+						startTime: 111,
+						endTime: 120,
 						state: 'resolved',
 						output: { items: [1] },
 					},
@@ -100,6 +102,8 @@ describe('execution-to-message-mapper', () => {
 						toolName: 'failing_tool',
 						toolCallId: 'call-1',
 						input: { id: '123' },
+						startTime: 100,
+						endTime: 120,
 						state: 'rejected',
 						error: 'Tool failed',
 					},
@@ -170,28 +174,6 @@ describe('execution-to-message-mapper', () => {
 						output: { message: 'Tool failed before timeline recording was available' },
 					},
 				],
-			},
-		]);
-	});
-
-	it('does not expose raw working-memory timeline events as chat message content', () => {
-		const result = executionToMessagesDto(
-			execution({
-				assistantResponse: 'Done.',
-				timeline: [{ type: 'working-memory', content: 'private memory', timestamp: 100 }],
-			}),
-		);
-
-		expect(result).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Done.' }],
 			},
 		]);
 	});

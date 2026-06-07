@@ -36,6 +36,7 @@ export interface WorkflowSetupContext {
 	credentialSelections: Ref<CredentialSelectionsMap>;
 	terminalState: Ref<TerminalState | null>;
 	isReady: Ref<boolean>;
+	workflowId: ComputedRef<string | undefined>;
 	projectId: ComputedRef<string | undefined>;
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	isActionPending: Ref<boolean>;
@@ -92,6 +93,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	const inputsState = useWorkflowSetupInputs({ sections });
 
+	const workflowId = computed(() => opts.workflowId.value);
 	const projectId = computed(() => opts.projectId.value);
 	const credentialFlow = computed(() => opts.credentialFlow.value);
 
@@ -171,6 +173,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		credentialSelections: inputsState.credentialSelections,
 		terminalState: applyMachine.terminalState,
 		isReady: bootstrap.isReady,
+		workflowId,
 		projectId,
 		credentialFlow,
 		isActionPending: actions.isActionPending,

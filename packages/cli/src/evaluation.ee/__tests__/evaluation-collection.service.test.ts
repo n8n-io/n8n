@@ -240,7 +240,6 @@ describe('EvaluationCollectionService', () => {
 				user,
 				'wf-1',
 				expect.any(Number),
-				expect.any(Boolean),
 				expect.objectContaining({
 					workflowVersionId: 'wfv-2',
 					evaluationConfigId: 'cfg-1',
@@ -265,7 +264,6 @@ describe('EvaluationCollectionService', () => {
 				user,
 				'wf-1',
 				expect.any(Number),
-				expect.any(Boolean),
 				expect.objectContaining({ workflowVersionId: 'wfv-snap' }),
 			);
 		});
@@ -368,6 +366,54 @@ describe('EvaluationCollectionService', () => {
 			);
 
 			expect(collectionRepo.addRunsToCollection).not.toHaveBeenCalled();
+		});
+
+		it('busts the insights cache after attaching a run (membership changed)', async () => {
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(makeCollection());
+			testRunRepo.findOneBy.mockResolvedValueOnce(
+				makeTestRun({ id: 'tr-add', workflowVersionId: 'wfv-x', evaluationConfigId: 'cfg-1' }),
+			);
+			// Stub the post-write `getCollectionDetail` chain — service calls
+			// `getDetailByIdAndWorkflowId` to build the response.
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [],
+			});
+
+			await service.addRunToCollection('wf-1', 'col-1', 'tr-add');
+
+			expect(collectionRepo.addRunsToCollection).toHaveBeenCalledWith('col-1', ['tr-add']);
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
+		});
+	});
+
+	describe('removeRunFromCollection', () => {
+		it('busts the insights cache after detaching a run', async () => {
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(makeCollection());
+			collectionRepo.removeRunFromCollection.mockResolvedValueOnce(1);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [],
+			});
+
+			await service.removeRunFromCollection('wf-1', 'col-1', 'tr-removed');
+
+			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledWith('col-1', 'tr-removed');
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
+		});
+
+		it('does not bust the cache when the run was never part of the collection', async () => {
+			// 404s land before the cache-bust path — guards against
+			// inadvertently clearing valid caches when a stale FE retries
+			// a removal that's already happened.
+			collectionRepo.findByIdAndWorkflowId.mockResolvedValueOnce(makeCollection());
+			collectionRepo.removeRunFromCollection.mockResolvedValueOnce(0);
+
+			await expect(service.removeRunFromCollection('wf-1', 'col-1', 'tr-missing')).rejects.toThrow(
+				NotFoundError,
+			);
+
+			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();
 		});
 	});
 
