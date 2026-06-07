@@ -1,0 +1,83 @@
+# Test harness for the SBOM generation + license-gate pipeline.
+#
+# Mirrors sbom-generation-callable.yml but:
+#   - workflow_dispatch only (no release machinery needed)
+#   - git ref defaults to the branch you're on
+#   - skips gh release upload and Slack notification
+#
+# Use this to verify the full pipeline end-to-end on any branch:
+#   1. pnpm build:deploy with N8N_GENERATE_LICENSES=true
+#   2. check-sbom-licenses.mjs gate (fails if any component has a non-SPDX license)
+#   3. actions/attest SBOM (proves the attest step works without a real release)
+#
+# "No licensed calls" = check-sbom-licenses.mjs exits 0 (all npm components
+# carry a valid SPDX identifier or the allowed LicenseRef-n8n-sustainable-use).
+
+name: 'Test: SBOM Pipeline'
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build (branch, tag, or SHA). Defaults to the branch this workflow lives on.'
+        required: false
+        type: string
+        default: ''
+      n8n_version:
+        description: 'Fake version string stamped into the build (e.g. "test-sbom")'
+        required: false
+        type: string
+        default: 'test-sbom'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  test-sbom:
+    name: 'Build → Generate SBOM → Gate Licenses → Attest'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+
+      - name: Build production deployment artifact (SBOM generation enabled)
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build:deploy'
+        env:
+          RELEASE: ${{ inputs.n8n_version }}
+          # This env var is what turns on sbom-source.cdx.json + THIRD_PARTY_LICENSES.md
+          # generation inside build-n8n.mjs / generate-licenses.mjs.
+          # Regular CI Docker builds intentionally skip it; only this job and the
+          # real sbom-generation-callable.yml set it.
+          N8N_GENERATE_LICENSES: 'true'
+
+      - name: Gate SBOM on resolved SPDX licenses
+        # Exit 1 = at least one component has a missing or non-SPDX license.
+        # Exit 0 = "no licensed calls" — every npm component in the shipped
+        # artifact carries a valid SPDX identifier (or the single allowed LicenseRef).
+        run: |
+          node scripts/licenses/check-sbom-licenses.mjs \
+            sbom-source.cdx.json \
+            --allow-ref=LicenseRef-n8n-sustainable-use
+
+      - name: Show SBOM summary
+        if: always()
+        run: |
+          COMPONENTS=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
+          echo "SBOM component count: $COMPONENTS"
+          echo "Top 10 components:"
+          jq -r '.components[:10] | .[] | "\(.name)@\(.version // "?") — \((.licenses // [{}])[0].expression // (.licenses // [{}])[0].license.id // "NO LICENSE")"' \
+            sbom-source.cdx.json 2>/dev/null || true
+
+      - name: Attest SBOM
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: './package.json'
+          sbom-path: 'sbom-source.cdx.json'
