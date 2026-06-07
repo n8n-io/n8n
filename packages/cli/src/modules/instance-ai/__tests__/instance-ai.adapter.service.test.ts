@@ -1999,6 +1999,64 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('strips id-less credential references before creating a workflow', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.5,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						slackApi: { name: 'Slack' },
+						gmailOAuth2Api: { id: '', name: 'Gmail' },
+						openAiApi: { id: null, name: 'OpenAI' },
+						httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
+					},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		await adapter.createFromWorkflowJSON(workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodes: INode[] };
+		expect(updateData.nodes[0].credentials).toEqual({
+			httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
+		});
+	});
+
+	it('removes the credentials object when every reference lacks an id during update', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		const workflow = {
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.5,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						slackApi: { name: 'Slack' },
+						gmailOAuth2Api: { id: '  ', name: 'Gmail' },
+					},
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		await adapter.updateFromWorkflowJSON('wf-new', workflow);
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodes: INode[] };
+		expect(updateData.nodes[0].credentials).toBeUndefined();
+	});
+
 	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
 		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
 			createWorkflowAdapterForTests();
@@ -2565,6 +2623,42 @@ describe('createExecutionAdapter run()', () => {
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
+		});
+	});
+
+	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: {},
+					position: [0, 0],
+				},
+			],
+			pinData: {
+				Existing: [{ json: { id: 'existing' } }],
+			},
+		});
+
+		await adapter.run(
+			'wf-1',
+			{ id: 'input' },
+			{
+				pinData: {
+					Mocked: [{ id: 'mocked' }],
+				},
+			},
+		);
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+
+		expect(runData.source).toBe('instance_ai');
+		expect(runData.telemetryMetadata).toEqual({
+			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
 		});
 	});
 

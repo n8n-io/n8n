@@ -7,8 +7,17 @@
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
+		"build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
+			"outputs": ["dist/**"]
+		},
 		"n8n-editor-ui#build": {
 			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"env": ["RELEASE"]
+		},
+		"n8n-editor-ui#build:unchecked": {
+			"dependsOn": ["^build:unchecked"],
 			"outputs": ["dist/**"],
 			"env": ["RELEASE"]
 		},
@@ -63,6 +72,12 @@
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
 			"env": ["COVERAGE_ENABLED"]
+		},
+		"test:integration:changed": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"cache": false
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },

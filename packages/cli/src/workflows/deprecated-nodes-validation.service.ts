@@ -14,7 +14,7 @@ import { NodeTypes } from '@/node-types';
  * version — adding a new deprecated node, or modifying one in place, is
  * refused. Edits to other nodes in the workflow are unaffected.
  *
- * Gated by `N8N_DEPRECATED_NODES_BLOCK` (default on); a no-op when off.
+ * Gated by `N8N_DEPRECATED_NODES_BLOCK` (default off); a no-op when off.
  */
 @Service()
 export class DeprecatedNodesValidationService {

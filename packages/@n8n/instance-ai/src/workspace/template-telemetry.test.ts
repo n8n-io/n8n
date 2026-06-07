@@ -31,11 +31,11 @@ function makeOpts(): {
 }
 
 describe('createTemplateTelemetrySession', () => {
-	it('emits a search event when grep targets examples/index.txt', () => {
+	it('emits a search event when grep targets knowledge-base/templates/index.json', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		session.observe(
-			'grep -i "slack" /home/sandbox/workspace/examples/index.txt',
+			'grep -i "slack" /home/sandbox/workspace/knowledge-base/templates/index.json',
 			'slack-daily-summary.ts | Daily Slack ...\nother.ts | ...\n',
 		);
 
@@ -54,11 +54,11 @@ describe('createTemplateTelemetrySession', () => {
 		expect(calls.find((c) => c.name === 'Builder template search')).toBeUndefined();
 	});
 
-	it('emits a read event when cat targets examples/<file>.ts', () => {
+	it('emits a read event when cat targets knowledge-base/templates/<file>.ts', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		session.observe(
-			'cat /home/sandbox/workspace/examples/slack-daily-summary.ts',
+			'cat /home/sandbox/workspace/knowledge-base/templates/slack-daily-summary.ts',
 			'/* file content here */',
 		);
 
@@ -71,8 +71,11 @@ describe('createTemplateTelemetrySession', () => {
 	it('handles head/sed/less/more in addition to cat', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
-		session.observe('head -50 /workspace/examples/slack-daily-summary.ts', 'lines');
-		session.observe('sed -n 1,30p /workspace/examples/build-your-first-ai-agent-6270.ts', 'lines');
+		session.observe('head -50 /workspace/knowledge-base/templates/slack-daily-summary.ts', 'lines');
+		session.observe(
+			'sed -n 1,30p /workspace/knowledge-base/templates/build-your-first-ai-agent-6270.ts',
+			'lines',
+		);
 
 		const reads = calls.filter((c) => c.name === 'Builder template read');
 		expect(reads.length).toBe(2);
@@ -88,9 +91,9 @@ describe('createTemplateTelemetrySession', () => {
 	it('emits a session rollup on flush', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
-		session.observe('grep -i "slack" /workspace/examples/index.txt', 'a\nb\n');
-		session.observe('cat /workspace/examples/slack-daily-summary.ts', 'X');
-		session.observe('cat /workspace/examples/slack-daily-summary.ts', 'X');
+		session.observe('grep -i "slack" /workspace/knowledge-base/templates/index.json', 'a\nb\n');
+		session.observe('cat /workspace/knowledge-base/templates/slack-daily-summary.ts', 'X');
+		session.observe('cat /workspace/knowledge-base/templates/slack-daily-summary.ts', 'X');
 		session.flush();
 
 		const rollup = calls.find((c) => c.name === 'Builder template session');
@@ -115,7 +118,7 @@ describe('createTemplateTelemetrySession', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		session.flush();
-		session.observe('cat /workspace/examples/foo.ts', 'X');
+		session.observe('cat /workspace/knowledge-base/templates/foo.ts', 'X');
 		session.flush();
 		expect(calls.filter((c) => c.name === 'Builder template session').length).toBe(1);
 		expect(calls.filter((c) => c.name === 'Builder template read').length).toBe(0);
@@ -167,21 +170,23 @@ describe('createTemplateTelemetrySession', () => {
 
 describe('extractGrepQuery', () => {
 	it('extracts double-quoted patterns', () => {
-		expect(extractGrepQuery('grep -i "slack post" examples/index.txt')).toBe('slack post');
+		expect(extractGrepQuery('grep -i "slack post" knowledge-base/templates/index.json')).toBe(
+			'slack post',
+		);
 	});
 
 	it('extracts single-quoted patterns', () => {
-		expect(extractGrepQuery("grep -i 'gmail' examples/index.txt")).toBe('gmail');
+		expect(extractGrepQuery("grep -i 'gmail' knowledge-base/templates/index.json")).toBe('gmail');
 	});
 
 	it('extracts bare patterns when unquoted', () => {
-		expect(extractGrepQuery('grep slack examples/index.txt')).toBe('slack');
-		expect(extractGrepQuery('grep -i slack examples/index.txt')).toBe('slack');
+		expect(extractGrepQuery('grep slack knowledge-base/templates/index.json')).toBe('slack');
+		expect(extractGrepQuery('grep -i slack knowledge-base/templates/index.json')).toBe('slack');
 	});
 
 	it('caps the query at 200 characters', () => {
 		const long = 'x'.repeat(300);
-		const result = extractGrepQuery(`grep -i "${long}" examples/index.txt`);
+		const result = extractGrepQuery(`grep -i "${long}" knowledge-base/templates/index.json`);
 		expect(result.length).toBe(200);
 	});
 
@@ -265,7 +270,7 @@ describe('observeTypedRead / observeTypedSearch', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		session.observe(
-			'grep -i "sk-proj-abcdef0123456789xyz" /workspace/examples/index.txt',
+			'grep -i "sk-proj-abcdef0123456789xyz" /workspace/knowledge-base/templates/index.json',
 			'nothing\n',
 		);
 
@@ -306,19 +311,20 @@ describe('createTypedToolObserver', () => {
 		};
 	}
 
-	it('emits typed read for workspace_read_file targeting examples/<slug>.ts', () => {
+	it('emits typed read for workspace_read_file targeting knowledge-base/templates/<slug>.ts', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
 		observe(
 			toolCall('tc-1', 'workspace_read_file', {
-				path: '/workspace/examples/slack-daily-summary.ts',
+				path: '/workspace/knowledge-base/templates/slack-daily-summary.ts',
 			}),
 		);
 		observe(
 			toolResult('tc-1', {
-				content: '/workspace/examples/slack-daily-summary.ts (200 bytes)\nfile content here\n',
+				content:
+					'/workspace/knowledge-base/templates/slack-daily-summary.ts (200 bytes)\nfile content here\n',
 			}),
 		);
 
@@ -333,7 +339,11 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-legacy-read', 'workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(
+			toolCall('tc-legacy-read', 'workspace_read_file', {
+				path: 'knowledge-base/templates/foo.ts',
+			}),
+		);
 		observe(toolResult('tc-legacy-read', 'file content here'));
 
 		const read = calls.find((c) => c.name === 'Builder template read');
@@ -342,15 +352,18 @@ describe('createTypedToolObserver', () => {
 		expect(read!.props.bytes_read).toBe('file content here'.length);
 	});
 
-	it('emits typed search for workspace_grep targeting examples/', () => {
+	it('emits typed search for workspace_grep targeting knowledge-base/templates/', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-2', 'workspace_grep', { pattern: 'slack', path: 'examples/' }));
+		observe(
+			toolCall('tc-2', 'workspace_grep', { pattern: 'slack', path: 'knowledge-base/templates/' }),
+		);
 		observe(
 			toolResult('tc-2', {
-				content: 'examples/a.ts:1:1: slack\nexamples/b.ts:5:1: slack\n',
+				content:
+					'knowledge-base/templates/a.ts:1:1: slack\nknowledge-base/templates/b.ts:5:1: slack\n',
 			}),
 		);
 
@@ -360,19 +373,24 @@ describe('createTypedToolObserver', () => {
 		expect(search!.props.result_count).toBe(2);
 	});
 
-	it('emits typed search for grep targeting examples/index.txt', () => {
+	it('emits typed search for grep targeting knowledge-base/templates/index.json', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-3', 'workspace_grep', { pattern: 'slack', path: 'examples/index.txt' }));
+		observe(
+			toolCall('tc-3', 'workspace_grep', {
+				pattern: 'slack',
+				path: 'knowledge-base/templates/index.json',
+			}),
+		);
 		observe(toolResult('tc-3', 'slack-daily.ts | Daily Slack\nslack-onboard.ts | Onboard\n'));
 
 		const search = calls.find((c) => c.name === 'Builder template search');
 		expect(search!.props.result_count).toBe(2);
 	});
 
-	it('ignores read_file outside examples/', () => {
+	it('ignores read_file outside knowledge-base/templates/', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
@@ -383,7 +401,7 @@ describe('createTypedToolObserver', () => {
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
 	});
 
-	it('ignores grep that does not target examples/', () => {
+	it('ignores grep that does not target knowledge-base/templates/', () => {
 		const { opts, calls } = makeOpts();
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
@@ -399,7 +417,12 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-z', 'workspace_write_file', { path: 'examples/foo.ts', content: 'x' }));
+		observe(
+			toolCall('tc-z', 'workspace_write_file', {
+				path: 'knowledge-base/templates/foo.ts',
+				content: 'x',
+			}),
+		);
 		observe(toolResult('tc-z', 'ok'));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
@@ -411,7 +434,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-e', 'workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolCall('tc-e', 'workspace_read_file', { path: 'knowledge-base/templates/foo.ts' }));
 		observe(toolError('tc-e', 'permission denied'));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();
@@ -422,7 +445,7 @@ describe('createTypedToolObserver', () => {
 		const session = createTemplateTelemetrySession(opts);
 		const observe = createTypedToolObserver(session);
 
-		observe(toolCall('tc-n', 'workspace_read_file', { path: 'examples/foo.ts' }));
+		observe(toolCall('tc-n', 'workspace_read_file', { path: 'knowledge-base/templates/foo.ts' }));
 		observe(toolResult('tc-n', { not: 'a string' }));
 
 		expect(calls.find((c) => c.name === 'Builder template read')).toBeUndefined();

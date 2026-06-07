@@ -784,7 +784,7 @@ export class SourceControlImportService {
 			this.deprecatedNodesValidationService.validateOnCreate(nodes);
 		}
 
-		this.redactionEnforcementService.assertPolicyChangeAllowed(
+		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			existingWorkflow?.settings?.redactionPolicy,
 			importedWorkflow.settings?.redactionPolicy,
 		);

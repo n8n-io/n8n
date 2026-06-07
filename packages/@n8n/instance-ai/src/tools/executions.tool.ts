@@ -160,6 +160,39 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	return await context.executionService.getStatus(input.executionId);
 }
 
+function normalizeWorkflowName(name: string): string {
+	return name.trim().toLowerCase();
+}
+
+function hasWorkflowName(
+	allowList: ReadonlySet<string>,
+	workflowName: string | undefined,
+): boolean {
+	if (!workflowName) return false;
+
+	const normalizedWorkflowName = normalizeWorkflowName(workflowName);
+	for (const allowedName of allowList) {
+		if (normalizeWorkflowName(allowedName) === normalizedWorkflowName) return true;
+	}
+
+	return false;
+}
+
+async function findAllowedWorkflowByName(
+	context: InstanceAiContext,
+	allowList: ReadonlySet<string> | undefined,
+): Promise<{ id: string; name: string } | undefined> {
+	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
+
+	for (const allowedName of allowList) {
+		const workflows = await context.workflowService.list({ query: allowedName, limit: 10 });
+		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
+		if (match) return { id: match.id, name: match.name };
+	}
+
+	return undefined;
+}
+
 async function handleRun(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'run' }>,
@@ -180,17 +213,42 @@ async function handleRun(
 	// is verifying). When the allow-list is unset, `always_allow` applies broadly,
 	// matching the legacy behavior.
 	const allowList = context.allowedRunWorkflowIds;
-	const allowedByScope =
+	const workflowNameAllowList = context.allowedRunWorkflowNames;
+	let workflowName: string | undefined;
+	let workflowId = input.workflowId;
+	const getWorkflowName = async () => {
+		workflowName ??= await context.workflowService
+			.get(workflowId)
+			.then((wf) => wf.name)
+			.catch(() => undefined);
+		return workflowName;
+	};
+	let allowedByName =
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowList === undefined || allowList.has(input.workflowId));
+		workflowNameAllowList !== undefined &&
+		hasWorkflowName(workflowNameAllowList, await getWorkflowName());
+	if (
+		context.permissions?.runWorkflow === 'always_allow' &&
+		workflowNameAllowList !== undefined &&
+		!allowedByName &&
+		workflowName === undefined
+	) {
+		const fallbackWorkflow = await findAllowedWorkflowByName(context, workflowNameAllowList);
+		if (fallbackWorkflow) {
+			workflowId = fallbackWorkflow.id;
+			workflowName = fallbackWorkflow.name;
+			allowedByName = true;
+		}
+	}
+	const allowedByScope =
+		context.requireRunWorkflowApproval !== true &&
+		context.permissions?.runWorkflow === 'always_allow' &&
+		(allowList === undefined || allowList.has(workflowId) || allowedByName);
 	const needsApproval = !allowedByScope;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const workflowName = await context.workflowService
-			.get(input.workflowId)
-			.then((wf) => wf.name)
-			.catch(() => input.workflowId);
+		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
 			message: `Execute ${workflowName} (ID: ${input.workflowId})`,
@@ -209,7 +267,7 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(input.workflowId, input.inputData, {
+	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
 	});
 }

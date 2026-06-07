@@ -1,12 +1,8 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { injectStrict } from '@/app/utils/injectStrict';
-import {
-	NDVStoreKey,
-	WorkflowDocumentStoreKey,
-	WorkflowStateKey,
-} from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
 import NodeView from '@/app/views/NodeView.vue';
@@ -26,17 +22,15 @@ const emit = defineEmits<{
 	'workflow-loaded': [workflowId: string];
 }>();
 
-// Inject the host's scoped provides. Workflow id / state / document store all
-// resolve to the host's local refs, not the app-level globals.
-const workflowState = injectStrict(WorkflowStateKey);
+// Inject the host's scoped provides. Workflow id / document store resolve to the
+// host's local refs, not the app-level globals.
 const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
 
 const canvasStore = useCanvasStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const workflowSaveStore = useWorkflowSaveStore();
 
-const { isLoading, currentNDVStore, initializeData, initializeWorkflow, cleanup } =
-	useWorkflowInitialization(workflowState);
+const { isLoading, initializeData, initializeWorkflow, cleanup } = useWorkflowInitialization();
 
 // NOTE: push-connection handlers (executionStarted, nodeExecuteAfter, etc.) are
 // initialized today via MainHeader's onBeforeMount calling
@@ -46,11 +40,6 @@ const { isLoading, currentNDVStore, initializeData, initializeWorkflow, cleanup 
 // events would silently stop landing on the canvas. Calling initialize() here
 // would double-register the listener and double-process every event.
 // Decoupling push init from MainHeader is a follow-up.
-
-// NodeView's children (NDV, FocusSidebar, etc.) inject this. We bridge the
-// composable's internal ref through provide so descendants see the same
-// store the init flow writes to.
-provide(NDVStoreKey, currentNDVStore);
 
 async function loadWorkflow(force: boolean) {
 	await initializeWorkflow(force);

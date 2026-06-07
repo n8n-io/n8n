@@ -42,6 +42,67 @@ const FIXTURES: Array<{ slug: string; secret: string }> = [
 	{ slug: 'sentry_user_token', secret: `sntryu_${'s'.repeat(64)}` },
 	{ slug: 'grafana_api_key', secret: `eyJrIjoi${'t'.repeat(70)}` },
 	{ slug: 'jwt', secret: `eyJ${'u'.repeat(10)}.eyJ${'v'.repeat(10)}.${'w'.repeat(10)}` },
+
+	// AI providers
+	{ slug: 'openai_service_account_key', secret: `sk-svcacct-${'a'.repeat(40)}` },
+	{ slug: 'groq_api_key', secret: `gsk_${'b'.repeat(52)}` },
+	{ slug: 'perplexity_api_key', secret: `pplx-${'c'.repeat(48)}` },
+	{ slug: 'xai_api_key', secret: `xai-${'d'.repeat(80)}` },
+	{ slug: 'fireworks_api_key', secret: `fw_${'e'.repeat(24)}` },
+	{ slug: 'replicate_api_token', secret: `r8_${'f'.repeat(37)}` },
+	{ slug: 'langsmith_api_key_v1', secret: `ls__${'a'.repeat(32)}` },
+	{
+		slug: 'langsmith_api_key_v2',
+		secret: `lsv2_pt_${'a'.repeat(40)}_${'b'.repeat(16)}`,
+	},
+
+	// Cloud / infra
+	{ slug: 'google_oauth_client_secret', secret: `GOCSPX-${'g'.repeat(30)}` },
+	{ slug: 'digitalocean_pat', secret: `dop_v1_${'a'.repeat(64)}` },
+	{ slug: 'digitalocean_oauth_token', secret: `doo_v1_${'b'.repeat(64)}` },
+	{ slug: 'digitalocean_refresh_token', secret: `dor_v1_${'c'.repeat(64)}` },
+	{ slug: 'hashicorp_vault_service_token', secret: `hvs.${'h'.repeat(95)}` },
+	{ slug: 'hashicorp_vault_batch_token', secret: `hvb.${'i'.repeat(95)}` },
+	{ slug: 'pulumi_access_token', secret: `pul-${'a'.repeat(40)}` },
+	{
+		slug: 'terraform_cloud_api_token',
+		secret: `${'a'.repeat(14)}.atlasv1.${'b'.repeat(65)}`,
+	},
+	{ slug: 'databricks_pat', secret: `dapi${'a'.repeat(32)}` },
+	{ slug: 'doppler_token', secret: `dp.pt.${'z'.repeat(43)}` },
+
+	// Source / CI
+	{ slug: 'gitlab_pipeline_trigger_token', secret: `glptt-${'a'.repeat(40)}` },
+	{ slug: 'gitlab_runner_registration_token', secret: `GR1348941${'b'.repeat(25)}` },
+	{ slug: 'gitlab_feed_token', secret: `glft-${'c'.repeat(25)}` },
+	{ slug: 'clojars_token', secret: `CLOJARS_${'d'.repeat(60)}` },
+	{ slug: 'readme_api_key', secret: `rdme_${'e'.repeat(70)}` },
+
+	// Messaging / social
+	{
+		slug: 'discord_bot_token',
+		secret: `M${'a'.repeat(23)}.${'b'.repeat(6)}.${'c'.repeat(30)}`,
+	},
+	{ slug: 'telegram_bot_token', secret: `123456789:A${'a'.repeat(34)}` },
+	{ slug: 'twitter_bearer_token', secret: `${'A'.repeat(21)}${'b'.repeat(80)}` },
+	{ slug: 'facebook_access_token', secret: `EAACEdEose0cBA${'x'.repeat(40)}` },
+
+	// Payments / commerce
+	{ slug: 'shopify_access_token', secret: `shpat_${'a'.repeat(32)}` },
+	{ slug: 'shopify_custom_access_token', secret: `shpca_${'b'.repeat(32)}` },
+	{ slug: 'shopify_private_app_token', secret: `shppa_${'c'.repeat(32)}` },
+	{ slug: 'shopify_shared_secret', secret: `shpss_${'d'.repeat(32)}` },
+
+	// SaaS / dev tools
+	{ slug: 'atlassian_api_token', secret: `ATATT3x${'a'.repeat(185)}` },
+	{ slug: 'sendgrid_api_key', secret: `SG.${'a'.repeat(22)}.${'b'.repeat(43)}` },
+	{ slug: 'mailgun_api_key', secret: `key-${'a'.repeat(32)}` },
+	{ slug: 'mailchimp_api_key', secret: `${'a'.repeat(32)}-us12` },
+	{ slug: 'postman_api_key', secret: `PMAK-${'a'.repeat(24)}-${'b'.repeat(34)}` },
+	{ slug: 'linear_api_key', secret: `lin_api_${'a'.repeat(40)}` },
+	{ slug: 'notion_integration_token', secret: `secret_${'a'.repeat(43)}` },
+	{ slug: 'figma_pat', secret: `figd_${'a'.repeat(40)}` },
+	{ slug: 'dropbox_long_lived_token', secret: `sl.${'a'.repeat(135)}` },
 ];
 
 describe('BUILTIN_PATTERNS coverage', () => {
@@ -95,6 +156,13 @@ describe('redactString', () => {
 		'https://example.com/?utm_source=newsletter&fbclid=IwAR0xQ8mN1kJyZpQrStUvWxYzAbCdEf',
 		'Press the Enter key to submit',
 		'group "Account" [ref=e1]\n  text "Bernhard" [ref=e2]\n  link "Sign out" [ref=e3]',
+		// Bare 32-char hex string (no recognisable provider prefix) must not
+		// be redacted by any of the new rules.
+		'hash=0123456789abcdef0123456789abcdef',
+		// UUID shape — Heroku/Cloudflare-like — intentionally not matched.
+		'request-id: 550e8400-e29b-41d4-a716-446655440000',
+		// Long base64 chunk inside a data URL preview — must remain intact.
+		'src="data:application/octet-stream;base64,QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5Kys="',
 	])('does not falsely redact %j', (input) => {
 		expect(redactString(input)).toBe(input);
 	});

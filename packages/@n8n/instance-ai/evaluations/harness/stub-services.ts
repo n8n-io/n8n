@@ -48,6 +48,12 @@ import type {
 // Public API
 // ---------------------------------------------------------------------------
 
+// Single version id reported for every stubbed workflow. The stub doesn't model
+// version increments, so create/update, getWorkflowHead, and getWorkflowSnapshot
+// must all report the same value — otherwise the build-workflow patch cache
+// always sees a version mismatch and the cache-hit path is never exercised.
+const EVAL_WORKFLOW_VERSION_ID = 'eval-version';
+
 export interface StubServiceHandle {
 	context: InstanceAiContext;
 	/** Every WorkflowJSON passed to `workflowService.createFromWorkflowJSON`. */
@@ -58,7 +64,7 @@ export interface CreateStubServicesOptions {
 	/**
 	 * Absolute path to the nodes.json file produced by
 	 * `ai-workflow-builder.ee/pnpm export:nodes`. Required — the agent's
-	 * builder sub-agent needs a non-empty node catalogue.
+	 * workflow-builder skill path needs a non-empty node catalogue.
 	 */
 	nodesJsonPath: string;
 	/** Optional user id. */
@@ -82,6 +88,17 @@ export async function createStubServices(
 		async getAsWorkflowJSON(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
+		},
+		async getWorkflowHead() {
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
+		},
+		async getWorkflowSnapshot(workflowId: string) {
+			const latest = capturedWorkflows[capturedWorkflows.length - 1];
+			return {
+				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				updatedAt: 0,
+			};
 		},
 		async createFromWorkflowJSON(json: WorkflowJSON) {
 			capturedWorkflows.push(json);
@@ -189,14 +206,10 @@ export async function createStubServices(
 		async list() {
 			return [];
 		},
-		// `verify-built-workflow` invokes `executionService.run()` after
-		// `submit-workflow` has captured the TS-compiled workflow JSON. The eval
-		// has no execution backend, but we want the builder agent's submit →
-		// verify → done sequence to complete cleanly so the production briefing
-		// (`DETACHED_BUILDER_REQUIREMENTS`) reads coherently. Returning a
-		// synthetic success here lets the agent terminate after submit. The
-		// eval's `buildSuccess` metric is derived from `submit-workflow` capture
-		// — never from this synthetic verdict — so this can't inflate the score.
+		// `verify-built-workflow` invokes `executionService.run()` after the
+		// eval has captured a built workflow JSON. The eval has no execution
+		// backend, so return a synthetic success to keep discovery runs focused
+		// on tool dispatch rather than workflow execution fidelity.
 		async run(workflowId) {
 			return {
 				executionId: 'eval-exec-' + nanoid(),
@@ -518,7 +531,7 @@ function emptyWorkflowDetail(id: string): WorkflowDetail {
 	return {
 		id,
 		name: 'eval-workflow',
-		versionId: 'v1',
+		versionId: EVAL_WORKFLOW_VERSION_ID,
 		activeVersionId: null,
 		isArchived: false,
 		createdAt: now,
