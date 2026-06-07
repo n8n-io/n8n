@@ -46,12 +46,15 @@ function attest({ label, image, digest }) {
 
 	// Pull the (host-arch) image and scan its filesystem: OS packages + npm.
 	run('docker', ['pull', ref]);
+	// FETCH_LICENSE=true would make cdxgen call the npm registry for every package
+	// to resolve missing license data. In practice it resolves nothing — packages
+	// without a license field in their tarball also have no license in the registry —
+	// and adds hundreds of sequential HTTP requests. License gaps are covered by
+	// enrich-sbom.mjs (license-overrides.json + first-party detection) below.
 	run(
 		CDXGEN,
 		['-t', 'docker', '--no-install-deps', '--profile', 'license-compliance', '-o', out, ref],
-		{
-			FETCH_LICENSE: 'true',
-		},
+		{ CDXGEN_NO_BANNER: '1' },
 	);
 
 	// Resolve first-party + override licenses (lenient: this image holds only a
