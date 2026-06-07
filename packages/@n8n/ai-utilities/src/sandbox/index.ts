@@ -18,7 +18,6 @@ export { createFilesystem, createSandbox } from './create-workspace';
 export {
 	writeStreamToSandboxFile,
 	type WriteStreamToSandboxFileOptions,
-	type WriteStreamToSandboxFileResult,
 } from './write-stream-to-sandbox-file';
 export type {
 	CommandResult,

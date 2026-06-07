@@ -133,7 +133,7 @@ describe('AgentKnowledgeService', () => {
 		mockGetText.mockReset();
 		mockDestroy.mockReset().mockResolvedValue(undefined);
 
-		writeStreamToSandboxFileMock.mockResolvedValue({ bytesWritten: 10, chunksWritten: 1 });
+		writeStreamToSandboxFileMock.mockResolvedValue(undefined);
 		service = new AgentKnowledgeService(agentRepository, agentFileRepository, binaryDataService);
 	});
 
@@ -485,7 +485,11 @@ describe('AgentKnowledgeService', () => {
 
 	it('materializes stored PDF text as a sandbox text file', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
+		const stream = Readable.from(Buffer.from('stored PDF text'));
+		binaryDataService.getAsStream.mockResolvedValue(stream as never);
+		const target = makeSandboxTarget();
+
+		const files = await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
 			{
 				id: 'file-1',
 				agentId,
@@ -496,11 +500,6 @@ describe('AgentKnowledgeService', () => {
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		const stream = Readable.from(Buffer.from('stored PDF text'));
-		binaryDataService.getAsStream.mockResolvedValue(stream as never);
-		const target = makeSandboxTarget();
-
-		const files = await service.materializeWorkspaceIntoSandbox(agentId, projectId, target);
 
 		expect(files).toEqual([
 			expect.objectContaining({
@@ -522,7 +521,7 @@ describe('AgentKnowledgeService', () => {
 
 	it('streams selected files into sandbox knowledge root', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
+		const filesToMaterialize = [
 			{
 				id: 'file-1',
 				agentId,
@@ -532,23 +531,17 @@ describe('AgentKnowledgeService', () => {
 				fileSizeBytes: 17,
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
-			{
-				id: 'file-2',
-				agentId,
-				binaryDataId: 'binary-2',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
+		] as never;
 		const stream = Readable.from(Buffer.from('name,age\nAlice,30\n'));
 		binaryDataService.getAsStream.mockResolvedValue(stream as never);
 		const target = makeSandboxTarget();
 
-		const files = await service.materializeWorkspaceIntoSandbox(agentId, projectId, target, {
-			fileReferences: ['file-1'],
-		});
+		const files = await service.materializeWorkspaceFilesIntoSandbox(
+			agentId,
+			projectId,
+			target,
+			filesToMaterialize,
+		);
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
@@ -568,7 +561,21 @@ describe('AgentKnowledgeService', () => {
 
 	it('writes manifest after all sandbox files are streamed', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
+		binaryDataService.getAsStream
+			.mockResolvedValueOnce(Readable.from(Buffer.from('hello')) as never)
+			.mockResolvedValueOnce(Readable.from(Buffer.from('country,year\n')) as never);
+		const target = makeSandboxTarget();
+		const writeOrder: Array<'stream' | 'manifest'> = [];
+		writeStreamToSandboxFileMock.mockImplementation(async () => {
+			writeOrder.push('stream');
+		});
+		jest.mocked(target.filesystem.writeFile).mockImplementation(async (filePath) => {
+			if (filePath === target.manifestPath) {
+				writeOrder.push('manifest');
+			}
+		});
+
+		await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
 			{
 				id: 'file-1',
 				agentId,
@@ -588,22 +595,6 @@ describe('AgentKnowledgeService', () => {
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		binaryDataService.getAsStream
-			.mockResolvedValueOnce(Readable.from(Buffer.from('hello')) as never)
-			.mockResolvedValueOnce(Readable.from(Buffer.from('country,year\n')) as never);
-		const target = makeSandboxTarget();
-		const writeOrder: Array<'stream' | 'manifest'> = [];
-		writeStreamToSandboxFileMock.mockImplementation(async () => {
-			writeOrder.push('stream');
-			return { bytesWritten: 10, chunksWritten: 1 };
-		});
-		jest.mocked(target.filesystem.writeFile).mockImplementation(async (filePath) => {
-			if (filePath === target.manifestPath) {
-				writeOrder.push('manifest');
-			}
-		});
-
-		await service.materializeWorkspaceIntoSandbox(agentId, projectId, target);
 
 		expect(writeStreamToSandboxFileMock).toHaveBeenCalledTimes(2);
 		expect(writeOrder).toEqual(['stream', 'stream', 'manifest']);
@@ -615,7 +606,6 @@ describe('AgentKnowledgeService', () => {
 			version: 1,
 			agentId,
 			projectId,
-			cacheSignatureSha1: '',
 			files: [
 				expect.objectContaining({
 					id: 'file-1',
@@ -707,24 +697,23 @@ describe('AgentKnowledgeService', () => {
 
 	it('cleans only the failed sandbox file when streaming fails', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
 		binaryDataService.getAsStream.mockResolvedValue(Readable.from(Buffer.from('hello')) as never);
 		const error = new Error('stream failed');
 		writeStreamToSandboxFileMock.mockRejectedValueOnce(error);
 		const target = makeSandboxTarget();
 
 		await expect(
-			service.materializeWorkspaceIntoSandbox(agentId, projectId, target),
+			service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
+				{
+					id: 'file-1',
+					agentId,
+					binaryDataId: 'binary-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 10,
+					createdAt: new Date('2026-05-24T12:00:00.000Z'),
+				},
+			] as never),
 		).rejects.toThrow(error);
 
 		expect(target.filesystem.deleteFile).toHaveBeenCalledWith(

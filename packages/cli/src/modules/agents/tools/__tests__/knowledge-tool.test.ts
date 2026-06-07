@@ -118,7 +118,6 @@ describe('search_knowledge tool', () => {
 					version: 1,
 					agentId,
 					projectId,
-					cacheSignatureSha1: '',
 					files: storedFiles.map((storedFile: { id: string; fileSizeBytes: number }) => ({
 						id: storedFile.id,
 						relativePath: storedFile.id === 'file-2' ? 'file-2.txt' : 'file-1.txt',

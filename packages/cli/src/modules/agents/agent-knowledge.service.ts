@@ -28,9 +28,8 @@ import { AgentRepository } from './repositories/agent.repository';
 /**
  * A knowledge file as seen by the agent runtime's `search_knowledge` tool.
  * Carries the stored metadata plus `relativePath`, the path the file is
- * written to inside the materialized sandbox workspace (see {@link
- * AgentKnowledgeService.materializeWorkspaceIntoSandbox}). This is distinct from the
- * API-facing `AgentFileDto`, which instead exposes `createdAt` for the UI.
+ * written to inside the materialized sandbox workspace. This is distinct from
+ * the API-facing `AgentFileDto`, which instead exposes `createdAt` for the UI.
  */
 export interface KnowledgeWorkspaceFile {
 	id: string;
@@ -65,14 +64,13 @@ export interface KnowledgeSandboxManifest {
 	version: number;
 	agentId: string;
 	projectId: string;
-	cacheSignatureSha1: string;
 	files: KnowledgeSandboxManifestFile[];
 	materializedAt: string;
 }
 
 export type KnowledgeSandboxExpectedManifest = Pick<
 	KnowledgeSandboxManifest,
-	'version' | 'agentId' | 'projectId' | 'cacheSignatureSha1' | 'files'
+	'version' | 'agentId' | 'projectId' | 'files'
 >;
 
 export interface KnowledgeSandboxMaterializationTarget {
@@ -81,10 +79,6 @@ export interface KnowledgeSandboxMaterializationTarget {
 	knowledgeRoot: string;
 	internalRoot: string;
 	manifestPath: string;
-}
-
-interface MaterializeWorkspaceOptions {
-	fileReferences?: string[];
 }
 
 interface StoredFileContent {
@@ -218,14 +212,6 @@ export class AgentKnowledgeService {
 		};
 	}
 
-	async resolveStoredFilesForMaterialization(
-		agentId: string,
-		projectId: string,
-		fileReferences?: string[],
-	): Promise<StoredAgentFile[]> {
-		return await this.loadScopedStoredFiles(agentId, projectId, fileReferences);
-	}
-
 	async resolveWorkspaceForSandboxOperation(
 		agentId: string,
 		projectId: string,
@@ -247,7 +233,6 @@ export class AgentKnowledgeService {
 			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
 			agentId,
 			projectId,
-			cacheSignatureSha1: '',
 			files: storedFiles.map((file) => this.toManifestFileEntry(file)),
 		};
 	}
@@ -266,8 +251,6 @@ export class AgentKnowledgeService {
 			version: manifest.version,
 			agentId: manifest.agentId,
 			projectId: manifest.projectId,
-			cacheSignatureSha1:
-				typeof manifest.cacheSignatureSha1 === 'string' ? manifest.cacheSignatureSha1 : '',
 			files: manifest.files,
 			materializedAt:
 				typeof manifest.materializedAt === 'string'
@@ -330,20 +313,6 @@ export class AgentKnowledgeService {
 			typeof file.fileSizeBytes === 'number' &&
 			typeof file.binaryDataIdSha1 === 'string'
 		);
-	}
-
-	async materializeWorkspaceIntoSandbox(
-		agentId: string,
-		projectId: string,
-		target: KnowledgeSandboxMaterializationTarget,
-		options: MaterializeWorkspaceOptions = {},
-	): Promise<KnowledgeWorkspaceFile[]> {
-		const files = await this.resolveStoredFilesForMaterialization(
-			agentId,
-			projectId,
-			options.fileReferences,
-		);
-		return await this.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, files);
 	}
 
 	async materializeWorkspaceFilesIntoSandbox(
@@ -522,7 +491,6 @@ export class AgentKnowledgeService {
 			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
 			agentId,
 			projectId,
-			cacheSignatureSha1: '',
 			files: [...mergedById.values()].sort((left, right) =>
 				left.relativePath.localeCompare(right.relativePath),
 			),

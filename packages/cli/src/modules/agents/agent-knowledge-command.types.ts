@@ -1,7 +1,3 @@
-export const AGENT_KNOWLEDGE_COMMANDS = ['search', 'read'] as const;
-
-export type AgentKnowledgeCommand = (typeof AGENT_KNOWLEDGE_COMMANDS)[number];
-
 export type AgentKnowledgeCommandRequest =
 	| {
 			command: 'search';

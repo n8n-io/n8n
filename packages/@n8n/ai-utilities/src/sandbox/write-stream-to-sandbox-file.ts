@@ -12,11 +12,6 @@ export interface WriteStreamToSandboxFileOptions {
 	overwrite?: boolean;
 }
 
-export interface WriteStreamToSandboxFileResult {
-	bytesWritten: number;
-	chunksWritten: number;
-}
-
 function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\\''")}'`;
 }
@@ -42,14 +37,12 @@ async function writeStreamInChunks(
 	stream: Readable,
 	chunkSizeBytes: number,
 	writeOutputChunk: (chunk: Buffer) => Promise<void>,
-): Promise<WriteStreamToSandboxFileResult> {
-	let bytesWritten = 0;
+): Promise<number> {
 	let chunksWritten = 0;
 	let pending = Buffer.alloc(0);
 
 	const writeChunk = async (chunk: Buffer) => {
 		await writeOutputChunk(chunk);
-		bytesWritten += chunk.length;
 		chunksWritten += 1;
 	};
 
@@ -85,7 +78,7 @@ async function writeStreamInChunks(
 		await writeChunk(pending);
 	}
 
-	return { bytesWritten, chunksWritten };
+	return chunksWritten;
 }
 
 export async function writeStreamToSandboxFile(
@@ -94,7 +87,7 @@ export async function writeStreamToSandboxFile(
 	targetPath: string,
 	stream: Readable,
 	options: WriteStreamToSandboxFileOptions = {},
-): Promise<WriteStreamToSandboxFileResult> {
+): Promise<void> {
 	if (filesystem.provider !== sandbox.provider) {
 		throw new Error(
 			`Sandbox filesystem provider ${filesystem.provider} does not match sandbox provider ${sandbox.provider}`,
@@ -132,7 +125,7 @@ async function writeN8nSandboxStream(
 	targetPath: string,
 	stream: Readable,
 	options: WriteStreamToSandboxFileOptions & { chunkSizeBytes: number },
-): Promise<WriteStreamToSandboxFileResult> {
+): Promise<void> {
 	let chunksWritten = 0;
 	let targetWritten = false;
 
@@ -150,16 +143,18 @@ async function writeN8nSandboxStream(
 	};
 
 	try {
-		const result = await writeStreamInChunks(stream, options.chunkSizeBytes, writeOutputChunk);
-		if (result.chunksWritten === 0) {
+		const writtenChunks = await writeStreamInChunks(
+			stream,
+			options.chunkSizeBytes,
+			writeOutputChunk,
+		);
+		if (writtenChunks === 0) {
 			await filesystem.writeFile(targetPath, Buffer.alloc(0), {
 				recursive: true,
 				overwrite: options.overwrite ?? true,
 			});
 			targetWritten = true;
 		}
-
-		return result;
 	} catch (error) {
 		if (targetWritten) {
 			await bestEffortDelete(filesystem, targetPath, { force: true });
@@ -174,7 +169,7 @@ async function writeDaytonaStream(
 	targetPath: string,
 	stream: Readable,
 	options: WriteStreamToSandboxFileOptions & { chunkSizeBytes: number },
-): Promise<WriteStreamToSandboxFileResult> {
+): Promise<void> {
 	if (!options.temporaryDirectory) {
 		throw new Error('temporaryDirectory is required for Daytona sandbox stream writes');
 	}
@@ -194,18 +189,18 @@ async function writeDaytonaStream(
 	try {
 		await filesystem.mkdir(uploadDirectory, { recursive: true });
 
-		const streamResult = await writeStreamInChunks(
+		const writtenChunks = await writeStreamInChunks(
 			stream,
 			options.chunkSizeBytes,
 			writeOutputChunk,
 		);
 
-		if (streamResult.chunksWritten === 0) {
+		if (writtenChunks === 0) {
 			await filesystem.writeFile(targetPath, Buffer.alloc(0), {
 				recursive: true,
 				overwrite: options.overwrite ?? true,
 			});
-			return { bytesWritten: 0, chunksWritten: 0 };
+			return;
 		}
 
 		if (!sandbox.executeCommand) {
@@ -231,8 +226,6 @@ async function writeDaytonaStream(
 				`Failed to assemble Daytona sandbox file: ${commandResult.stderr || commandResult.stdout || 'unknown error'}`,
 			);
 		}
-
-		return streamResult;
 	} finally {
 		await bestEffortDelete(filesystem, uploadDirectory, { recursive: true, force: true });
 	}

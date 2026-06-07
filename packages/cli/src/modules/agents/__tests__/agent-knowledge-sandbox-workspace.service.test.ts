@@ -74,7 +74,6 @@ function buildExpectedManifest() {
 		version: 1,
 		agentId: 'agent-1',
 		projectId: 'project-1',
-		cacheSignatureSha1: '',
 		files: [
 			{
 				id: 'file-1',
@@ -262,7 +261,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		);
 		const materialize = jest.fn(async () => []);
 
-		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
+		const result = await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
 
 		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-identity' });
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {

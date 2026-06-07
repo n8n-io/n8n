@@ -64,21 +64,6 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		private readonly knowledgeService: AgentKnowledgeService,
 	) {}
 
-	async ensureWorkspaceMaterialized(
-		workspace: KnowledgeSandboxWorkspace,
-		expectedManifest: KnowledgeSandboxExpectedManifest,
-		materialize: () => Promise<KnowledgeWorkspaceFile[]>,
-	): Promise<{
-		files: KnowledgeWorkspaceFile[] | undefined;
-		freshness: KnowledgeWorkspaceFreshness;
-	}> {
-		return await this.ensureWorkspaceContainsFiles(
-			workspace,
-			expectedManifest,
-			async () => await materialize(),
-		);
-	}
-
 	async ensureWorkspaceContainsFiles(
 		workspace: KnowledgeSandboxWorkspace,
 		requiredManifest: KnowledgeSandboxExpectedManifest,
@@ -161,7 +146,9 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		this.cachedWorkspaces.clear();
 		this.workspaceLocks.clear();
 
-		await Promise.all(entries.map(async (entry) => await this.destroyWorkspace(entry.workspace)));
+		await Promise.all(
+			entries.map(async (entry) => await this.destroySandbox(entry.workspace.sandbox)),
+		);
 	}
 
 	getCachedWorkspaceCount(): number {
@@ -184,7 +171,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 
 		await Promise.all(
-			toDestroy.map(async ([, entry]) => await this.destroyWorkspace(entry.workspace)),
+			toDestroy.map(async ([, entry]) => await this.destroySandbox(entry.workspace.sandbox)),
 		);
 	}
 
@@ -223,13 +210,14 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	private async ensureCachedWorkspace(cacheKey: string): Promise<CachedKnowledgeSandboxWorkspace> {
 		const existing = this.cachedWorkspaces.get(cacheKey);
-		if (existing && this.isWorkspaceHealthy(existing.workspace)) {
+		const status = existing?.workspace.sandbox.status;
+		if (existing && status !== 'destroyed' && status !== 'destroying') {
 			return existing;
 		}
 
 		if (existing) {
 			this.cachedWorkspaces.delete(cacheKey);
-			await this.destroyWorkspace(existing.workspace);
+			await this.destroySandbox(existing.workspace.sandbox);
 		}
 
 		const workspace = await this.createKnowledgeSandboxWorkspace(cacheKey);
@@ -242,18 +230,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		return entry;
 	}
 
-	private isWorkspaceHealthy(workspace: KnowledgeSandboxWorkspace): boolean {
-		const status = workspace.sandbox.status;
-		return status !== 'destroyed' && status !== 'destroying';
-	}
-
 	private async createKnowledgeSandboxWorkspace(
 		cacheKey: string,
 	): Promise<KnowledgeSandboxWorkspace> {
-		const config = await this.buildSandboxConfig(
-			this.sandboxConfigService.resolveConfig(),
-			cacheKey,
-		);
+		const config = this.buildSandboxConfig(this.sandboxConfigService.resolveConfig(), cacheKey);
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox) {
 			throw new Error('Agent knowledge sandbox is disabled');
@@ -286,10 +266,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 	}
 
-	private async buildSandboxConfig(
-		baseConfig: SandboxConfig,
-		cacheKey: string,
-	): Promise<SandboxConfig> {
+	private buildSandboxConfig(baseConfig: SandboxConfig, cacheKey: string): SandboxConfig {
 		if (!baseConfig.enabled) {
 			return baseConfig;
 		}
@@ -331,12 +308,8 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 		for (const [key, entry] of evictable) {
 			this.cachedWorkspaces.delete(key);
-			await this.destroyWorkspace(entry.workspace);
+			await this.destroySandbox(entry.workspace.sandbox);
 		}
-	}
-
-	private async destroyWorkspace(workspace: KnowledgeSandboxWorkspace): Promise<void> {
-		await this.destroySandbox(workspace.sandbox);
 	}
 
 	private async readWorkspaceManifest(
@@ -420,17 +393,16 @@ function slugifySandboxLabel(value: string, maxLen: number): string {
 		.replace(/[-.]+$/, '');
 }
 
-function getAgentsKnowledgeSandboxBaseName(): string {
-	return `${AGENTS_KNOWLEDGE_SANDBOX_BASE_NAME}-${randomUUID()}`;
-}
-
 function buildAgentsKnowledgeSandboxName(namePrefix: string | undefined): string {
 	const parts: string[] = [];
 	if (namePrefix) {
 		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
 		if (prefixSlug) parts.push(prefixSlug);
 	}
-	const baseSlug = slugifySandboxName(getAgentsKnowledgeSandboxBaseName(), SANDBOX_NAME_MAX_LEN);
+	const baseSlug = slugifySandboxName(
+		`${AGENTS_KNOWLEDGE_SANDBOX_BASE_NAME}-${randomUUID()}`,
+		SANDBOX_NAME_MAX_LEN,
+	);
 	if (baseSlug) parts.push(baseSlug);
 	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
 	if (!name) {
