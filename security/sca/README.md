@@ -80,13 +80,18 @@ the Docker image or a downloaded SBOM for independent license verification.
 
 ### Check for unlicensed packages
 
+Run against the enriched release SBOM for a clean result — all licenses are
+resolved before the SBOM is published:
+
 ```bash
-grant check --unlicensed ghcr.io/n8n-io/n8n:latest
+gh release download n8n@<version> --repo n8n-io/n8n --pattern sbom-source.cdx.json
+grant check --unlicensed sbom-source.cdx.json
 ```
 
-Exit 0 = no unlicensed packages found. The npm layer should return zero
-unlicensed packages. Any `@UNKNOWN`-version entries in the output are phantom
-subpath export stubs from syft's filesystem scan — they are not real packages.
+Running directly against the Docker image will show some unlicensed entries
+because grant uses syft internally, which picks up npm subpath export stubs and
+packages where the registry has no license metadata. These are resolved in the
+published SBOM by the enrichment pipeline.
 
 ### Check for copyleft licenses
 
