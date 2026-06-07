@@ -235,5 +235,6 @@
     "yargs-parser": "21.1.1",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

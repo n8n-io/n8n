@@ -31,5 +31,6 @@
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "@n8n/typescript-config": "workspace:*"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

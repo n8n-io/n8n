@@ -60,5 +60,6 @@
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

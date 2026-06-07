@@ -75,5 +75,6 @@
   },
   "peerDependencies": {
     "eslint": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

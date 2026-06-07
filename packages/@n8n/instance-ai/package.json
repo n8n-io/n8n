@@ -93,5 +93,6 @@
     "tsx": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

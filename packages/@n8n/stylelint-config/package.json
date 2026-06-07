@@ -44,5 +44,6 @@
   },
   "peerDependencies": {
     "stylelint": ">= 16"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

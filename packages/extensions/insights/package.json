@@ -60,5 +60,6 @@
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

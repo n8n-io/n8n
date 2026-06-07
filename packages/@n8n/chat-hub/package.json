@@ -30,5 +30,6 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

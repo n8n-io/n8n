@@ -92,5 +92,6 @@
     "p-limit": "^3.1.0",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

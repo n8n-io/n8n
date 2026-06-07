@@ -45,5 +45,6 @@
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "zod": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

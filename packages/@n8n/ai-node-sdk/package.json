@@ -38,5 +38,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

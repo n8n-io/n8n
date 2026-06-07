@@ -109,5 +109,6 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

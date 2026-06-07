@@ -2,7 +2,7 @@
   "name": "@n8n/scan-community-package",
   "version": "0.21.0",
   "description": "Static code analyser for n8n community packages",
-  "license": "none",
+  "license": "SEE LICENSE IN LICENSE.md",
   "bin": "scanner/cli.mjs",
   "scripts": {
     "test": "vitest run",

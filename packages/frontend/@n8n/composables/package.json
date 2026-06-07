@@ -49,5 +49,5 @@
     "@vueuse/core": "catalog:frontend",
     "vue": "catalog:frontend"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "SEE LICENSE IN LICENSE.md"
 }

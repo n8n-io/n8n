@@ -66,5 +66,6 @@
   "files": [
     "README.md",
     "dist"
-  ]
+  ],
+  "license": "SEE LICENSE IN LICENSE.md"
 }

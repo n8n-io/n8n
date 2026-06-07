@@ -53,5 +53,6 @@
     "bin": "n8n-benchmark",
     "commands": "./dist/commands",
     "topicSeparator": " "
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

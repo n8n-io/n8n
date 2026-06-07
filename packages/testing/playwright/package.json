@@ -83,5 +83,6 @@
     "tsx": "catalog:",
     "zod": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

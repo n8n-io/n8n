@@ -101,5 +101,6 @@
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",
     "zod": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

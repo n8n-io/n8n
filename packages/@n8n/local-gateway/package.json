@@ -38,5 +38,6 @@
     "electron-builder": "^26.9.0",
     "rimraf": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

@@ -35,5 +35,6 @@
     "@types/quoted-printable": "^1.0.2",
     "@types/utf8": "^3.0.3",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

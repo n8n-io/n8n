@@ -51,5 +51,6 @@
     "extends": [
       "plugin:storybook/recommended"
     ]
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }

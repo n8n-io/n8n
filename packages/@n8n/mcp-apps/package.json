@@ -60,5 +60,6 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "catalog:"
-  }
+  },
+  "license": "SEE LICENSE IN LICENSE.md"
 }
