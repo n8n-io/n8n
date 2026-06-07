@@ -59,7 +59,7 @@ export async function runSearchOperation<TWorkspace>(
 	const commandFixedStrings = getSearchCommandFixedStrings(input);
 	let contentResult: InternalKnowledgeCommandResult | undefined;
 	const countResult = await runInternalCommand(commandService, workspace, {
-		command: 'git_grep',
+		command: 'search',
 		pattern: commandPattern,
 		outputMode: 'count',
 		caseInsensitive: input.caseInsensitive,
@@ -70,7 +70,7 @@ export async function runSearchOperation<TWorkspace>(
 	let multiQueryMatches: InternalSearchMatch[] | undefined;
 	if (input.queries) {
 		contentResult = await runInternalCommand(commandService, workspace, {
-			command: 'git_grep',
+			command: 'search',
 			pattern: commandPattern,
 			caseInsensitive: input.caseInsensitive,
 			fixedStrings: commandFixedStrings,
@@ -135,7 +135,7 @@ export async function runSearchOperation<TWorkspace>(
 	}
 
 	contentResult ??= await runInternalCommand(commandService, workspace, {
-		command: 'git_grep',
+		command: 'search',
 		pattern: commandPattern,
 		caseInsensitive: input.caseInsensitive,
 		fixedStrings: commandFixedStrings,

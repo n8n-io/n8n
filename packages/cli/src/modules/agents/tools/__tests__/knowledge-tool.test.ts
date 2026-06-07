@@ -363,7 +363,7 @@ describe('search_knowledge tool', () => {
 		expect(result).toMatchObject({
 			operation: 'search',
 			result: {
-				command: 'git_grep',
+				command: 'search',
 				exitCode: 0,
 			},
 			search: {
@@ -921,7 +921,7 @@ describe('search_knowledge tool', () => {
 			tool.handler?.(
 				{
 					operation: 'command',
-					request: { command: 'cat', file: 'file-1' },
+					request: { command: 'read', file: 'file-1' },
 				},
 				{} as never,
 			),
@@ -963,7 +963,7 @@ describe('search_knowledge tool', () => {
 				}),
 			],
 			result: {
-				command: 'cat',
+				command: 'read',
 				stdout: 'extracted PDF text\n',
 				citation: {
 					fileName: 'document.pdf',
@@ -1004,7 +1004,7 @@ describe('search_knowledge tool', () => {
 		).resolves.toMatchObject({
 			operation: 'read',
 			result: {
-				command: 'cat',
+				command: 'read',
 				stdout: 'book text\n',
 				citation: {
 					fileName: 'Moby Dick.md',
@@ -1539,7 +1539,7 @@ describe('search_knowledge tool', () => {
 			freshness: { status: 'fresh' },
 		});
 		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
-			command: 'git_grep',
+			command: 'search',
 			exitCode: 0,
 			stdout: 'file-1-notes.txt:1\n',
 			stderr: '',
@@ -1618,7 +1618,7 @@ describe('search_knowledge tool', () => {
 			},
 		]);
 		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
-			command: 'git_grep',
+			command: 'search',
 			exitCode: 0,
 			stdout: 'file-1-notes.txt:1\n',
 			stderr: '',
@@ -1689,7 +1689,7 @@ describe('search_knowledge tool', () => {
 			},
 		]);
 		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
-			command: 'cat',
+			command: 'read',
 			exitCode: 0,
 			stdout: 'hello world',
 			stderr: '',
@@ -1702,7 +1702,7 @@ describe('search_knowledge tool', () => {
 		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalled();
 		expect(sandboxCommandService.run).toHaveBeenCalledWith(
 			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
-			expect.objectContaining({ command: 'cat', file: 'file-1-notes.txt' }),
+			expect.objectContaining({ command: 'read', file: 'file-1-notes.txt' }),
 		);
 	});
 

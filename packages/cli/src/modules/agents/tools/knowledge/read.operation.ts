@@ -25,12 +25,12 @@ export async function runReadOperation<TWorkspace>(
 	const file = resolvedFile.file;
 	const request: InternalKnowledgeCommandRequest = input.lineRange
 		? {
-				command: 'sed',
+				command: 'read',
 				file: file.relativePath,
 				startLine: input.lineRange.start,
 				endLine: input.lineRange.end,
 			}
-		: { command: 'cat', file: file.relativePath };
+		: { command: 'read', file: file.relativePath };
 	const result = await runInternalCommand(commandService, workspace, request);
 	return {
 		operation: 'read',

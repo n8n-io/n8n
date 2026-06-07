@@ -19,23 +19,14 @@ function makeWorkspace(executeCommand = jest.fn()): KnowledgeSandboxWorkspace {
 	};
 }
 
-function capabilityProbeResult(tools: string[]) {
+function commandResult(stdout: string, options: { timedOut?: boolean } = {}) {
 	return {
 		success: true,
 		exitCode: 0,
-		stdout: tools.join('\n'),
+		stdout,
 		stderr: '',
 		executionTimeMs: 1,
-	};
-}
-
-function canonicalizeResult(paths: string[]) {
-	return {
-		success: true,
-		exitCode: 0,
-		stdout: JSON.stringify(paths),
-		stderr: '',
-		executionTimeMs: 1,
+		timedOut: options.timedOut ?? false,
 	};
 }
 
@@ -46,285 +37,221 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		service = new AgentKnowledgeSandboxCommandService();
 	});
 
-	it('search prefers rg when available', async () => {
+	it('search invokes rg with default args', async () => {
 		const executeCommand = jest
 			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['rg', 'grep', 'sed', 'node', 'cat']))
-			.mockResolvedValueOnce(canonicalizeResult(['.']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'file-1-notes.txt:2:needle\n',
-				stderr: '',
-				executionTimeMs: 1,
-			});
+			.mockResolvedValueOnce(commandResult('file-1-notes.txt:2:needle\n'));
 		const workspace = makeWorkspace(executeCommand);
 
 		const result = await service.run(workspace, {
-			command: 'git_grep',
+			command: 'search',
 			pattern: 'needle',
 			fixedStrings: true,
 		});
 
-		expect(result.command).toBe('git_grep');
+		expect(result.command).toBe('search');
 		expect(result.exitCode).toBe(0);
 		expect(result.stdout).toContain('needle');
-		expect(executeCommand).toHaveBeenCalledTimes(3);
-		expect(executeCommand.mock.calls[2]?.[0]).toBe('rg');
-		const rgArgs = executeCommand.mock.calls[2]?.[1];
-		expect(rgArgs).toEqual(
-			expect.arrayContaining([
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+		expect(executeCommand).toHaveBeenCalledWith(
+			'rg',
+			[
 				'--no-heading',
 				'--line-number',
 				'--with-filename',
+				'--color',
+				'never',
 				'-F',
 				'--',
 				'needle',
 				'.',
-			]),
-		);
-		expect(rgArgs).not.toContain('-I');
-	});
-
-	it('search falls back to grep when rg is unavailable', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['grep', 'sed', 'node', 'cat']))
-			.mockResolvedValueOnce(canonicalizeResult(['.']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'file-1-notes.txt:2:needle\n',
-				stderr: '',
-				executionTimeMs: 1,
-			});
-		const workspace = makeWorkspace(executeCommand);
-
-		const result = await service.run(workspace, {
-			command: 'git_grep',
-			pattern: 'needle',
-			fixedStrings: true,
-		});
-
-		expect(result.command).toBe('git_grep');
-		expect(executeCommand.mock.calls[2]?.[0]).toBe('grep');
-		expect(executeCommand.mock.calls[2]?.[1]).toEqual(
-			expect.arrayContaining(['-R', '-n', '-I', '-H', '-F', '--', 'needle', '.']),
+			],
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
 		);
 	});
 
-	it('search count uses count flags', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['rg', 'grep']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'file-1-notes.txt:1\n',
-				stderr: '',
-				executionTimeMs: 1,
-			});
+	it('search supports count, case-insensitive, context, and explicit files', async () => {
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('a.txt:1\n'));
 		const workspace = makeWorkspace(executeCommand);
 
 		await service.run(workspace, {
-			command: 'git_grep',
+			command: 'search',
 			pattern: 'needle',
 			outputMode: 'count',
-			fixedStrings: true,
+			caseInsensitive: true,
+			context: 3,
+			fixedStrings: false,
+			files: ['a.txt'],
 		});
 
-		expect(executeCommand.mock.calls[1]?.[1]).toEqual(expect.arrayContaining(['--count']));
+		expect(executeCommand).toHaveBeenCalledWith(
+			'rg',
+			[
+				'--no-heading',
+				'--line-number',
+				'--with-filename',
+				'--color',
+				'never',
+				'-i',
+				'--count',
+				'-C',
+				'3',
+				'--',
+				'needle',
+				'a.txt',
+			],
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
+	});
+
+	it('search rejects an empty pattern', async () => {
+		const executeCommand = jest.fn();
+		const workspace = makeWorkspace(executeCommand);
+
+		await expect(service.run(workspace, { command: 'search', pattern: '   ' })).rejects.toThrow(
+			'Search pattern is required',
+		);
+		expect(executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('search rejects absolute paths and parent segments', async () => {
+		const executeCommand = jest.fn();
+		const workspace = makeWorkspace(executeCommand);
+
+		await expect(
+			service.run(workspace, { command: 'search', pattern: 'needle', files: ['/etc/passwd'] }),
+		).rejects.toThrow('Absolute paths are not allowed');
+		await expect(
+			service.run(workspace, { command: 'search', pattern: 'needle', files: ['../secret.txt'] }),
+		).rejects.toThrow('Parent path segments are not allowed');
+		expect(executeCommand).not.toHaveBeenCalled();
 	});
 
 	it('search clamps context to 0-5', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['rg']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: '',
-				stderr: '',
-				executionTimeMs: 1,
-			});
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult(''));
 		const workspace = makeWorkspace(executeCommand);
 
 		await service.run(workspace, {
-			command: 'git_grep',
+			command: 'search',
 			pattern: 'needle',
 			context: 9,
 			fixedStrings: true,
 		});
 
-		expect(executeCommand.mock.calls[1]?.[1]).toEqual(expect.arrayContaining(['-C', '5']));
+		expect(executeCommand.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['-C', '5']));
 	});
 
-	it('read uses node when available', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']))
-			.mockResolvedValueOnce(canonicalizeResult(['notes.txt']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'hello world',
-				stderr: '',
-				executionTimeMs: 1,
-			});
+	it('read without range invokes sed for the first 500 lines', async () => {
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('hello world'));
 		const workspace = makeWorkspace(executeCommand);
 
 		const result = await service.run(workspace, {
-			command: 'cat',
+			command: 'read',
 			file: 'notes.txt',
 		});
 
-		expect(result.command).toBe('cat');
-		expect(executeCommand.mock.calls[2]?.[0]).toBe('node');
+		expect(result.command).toBe('read');
+		expect(executeCommand).toHaveBeenCalledWith(
+			'sed',
+			['-n', '1,500p', 'notes.txt'],
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
 	});
 
-	it('line range read uses sed fallback when node is unavailable', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['sed', 'cat']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'line 2\nline 3\n',
-				stderr: '',
-				executionTimeMs: 1,
-			});
+	it('read with line range invokes sed for the requested window', async () => {
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('line 2\nline 3\n'));
 		const workspace = makeWorkspace(executeCommand);
 
 		const result = await service.run(workspace, {
-			command: 'sed',
+			command: 'read',
 			file: 'notes.txt',
-			startLine: 2,
-			endLine: 3,
+			startLine: 10,
+			endLine: 12,
 		});
 
-		expect(result.command).toBe('sed');
-		expect(executeCommand.mock.calls[1]?.[0]).toBe('sed');
-		expect(executeCommand.mock.calls[1]?.[1]).toEqual(['-n', '2,3p', 'notes.txt']);
+		expect(result.command).toBe('read');
+		expect(executeCommand).toHaveBeenCalledWith(
+			'sed',
+			['-n', '10,12p', 'notes.txt'],
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
 	});
 
-	it('rejects absolute paths, parent segments, and control characters', async () => {
+	it('read clamps oversized line ranges and marks the result truncated', async () => {
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('line 2\n'));
+		const workspace = makeWorkspace(executeCommand);
+
+		const result = await service.run(workspace, {
+			command: 'read',
+			file: 'notes.txt',
+			startLine: 10,
+			endLine: 1000,
+		});
+
+		expect(executeCommand).toHaveBeenCalledWith(
+			'sed',
+			['-n', '10,509p', 'notes.txt'],
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
+		expect(result.truncated).toBe(true);
+	});
+
+	it('rejects absolute paths, parent segments, and control characters for read', async () => {
 		const executeCommand = jest.fn();
 		const workspace = makeWorkspace(executeCommand);
 
-		await expect(service.run(workspace, { command: 'cat', file: '/etc/passwd' })).rejects.toThrow(
+		await expect(service.run(workspace, { command: 'read', file: '/etc/passwd' })).rejects.toThrow(
 			'Absolute paths are not allowed',
 		);
-		await expect(service.run(workspace, { command: 'cat', file: '../secret.txt' })).rejects.toThrow(
-			'Parent path segments are not allowed',
-		);
 		await expect(
-			service.run(workspace, { command: 'cat', file: 'notes\u0000.txt' }),
+			service.run(workspace, { command: 'read', file: '../secret.txt' }),
+		).rejects.toThrow('Parent path segments are not allowed');
+		await expect(
+			service.run(workspace, { command: 'read', file: 'notes\u0000.txt' }),
 		).rejects.toThrow('Invalid path');
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
 
-	it('rejects symlink escapes during canonicalization', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']))
-			.mockResolvedValueOnce({
-				success: false,
-				exitCode: 1,
-				stdout: '',
-				stderr: 'Error: Path escapes the knowledge workspace',
-				executionTimeMs: 1,
-			});
-		const workspace = makeWorkspace(executeCommand);
-
-		await expect(
-			service.run(workspace, { command: 'cat', file: 'escape-link.txt' }),
-		).rejects.toThrow('Path escapes the knowledge workspace');
-	});
-
 	it('truncates stdout without breaking UTF-8', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['node']))
-			.mockResolvedValueOnce(canonicalizeResult(['notes.txt']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'é'.repeat(40_000),
-				stderr: '',
-				executionTimeMs: 1,
-			});
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('é'.repeat(40_000)));
 		const workspace = makeWorkspace(executeCommand);
 
-		const result = await service.run(workspace, { command: 'cat', file: 'notes.txt' });
+		const result = await service.run(workspace, { command: 'read', file: 'notes.txt' });
 
 		expect(result.truncated).toBe(true);
 		expect(Buffer.byteLength(result.stdout)).toBeLessThanOrEqual(64 * 1024);
 	});
 
-	it('throws clear error when sandbox lacks search tools', async () => {
+	it('marks timed out commands as truncated', async () => {
 		const executeCommand = jest
 			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['node', 'cat']))
-			.mockResolvedValueOnce(canonicalizeResult(['.']));
+			.mockResolvedValueOnce(commandResult('hello', { timedOut: true }));
 		const workspace = makeWorkspace(executeCommand);
 
-		await expect(
-			service.run(workspace, { command: 'git_grep', pattern: 'needle', fixedStrings: true }),
-		).rejects.toThrow('Agent knowledge sandbox requires rg or grep for search');
+		const result = await service.run(workspace, { command: 'read', file: 'notes.txt' });
+
+		expect(result.truncated).toBe(true);
 	});
 
 	it('scopes search commands to the knowledge root cwd', async () => {
 		const executeCommand = jest
 			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['rg']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'file-1-notes.txt:1:needle\n',
-				stderr: '',
-				executionTimeMs: 1,
-			});
+			.mockResolvedValueOnce(commandResult('file-1-notes.txt:1:needle\n'));
 		const workspace = makeWorkspace(executeCommand);
 
 		await service.run(workspace, {
-			command: 'git_grep',
+			command: 'search',
 			pattern: 'needle',
 			fixedStrings: true,
 		});
 
+		const rgArgs = executeCommand.mock.calls[0]?.[1];
 		expect(executeCommand.mock.calls[0]?.[2]).toEqual(
 			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
 		);
-		expect(executeCommand.mock.calls[1]?.[2]).toEqual(
-			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
-		);
-		const rgArgs = executeCommand.mock.calls[1]?.[1];
 		expect(rgArgs).toEqual(expect.arrayContaining(['.', 'needle']));
 		expect(rgArgs).not.toContain(workspace.manifestPath);
 		expect(rgArgs).not.toContain(workspace.internalRoot);
-	});
-
-	it('clamps read line ranges to 500 lines', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(capabilityProbeResult(['sed']))
-			.mockResolvedValueOnce({
-				success: true,
-				exitCode: 0,
-				stdout: 'line 2\n',
-				stderr: '',
-				executionTimeMs: 1,
-			});
-		const workspace = makeWorkspace(executeCommand);
-
-		await service.run(workspace, {
-			command: 'sed',
-			file: 'notes.txt',
-			startLine: 2,
-			endLine: 900,
-		});
-
-		expect(executeCommand.mock.calls[1]?.[1]).toEqual(['-n', '2,502p', 'notes.txt']);
 	});
 
 	it('throws clear error when executeCommand is missing', async () => {
@@ -334,7 +261,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 			executeCommand: undefined,
 		};
 
-		await expect(service.run(workspace, { command: 'cat', file: 'notes.txt' })).rejects.toThrow(
+		await expect(service.run(workspace, { command: 'read', file: 'notes.txt' })).rejects.toThrow(
 			'Agent knowledge sandbox does not support command execution',
 		);
 	});

@@ -15,7 +15,6 @@ import { createHash } from 'node:crypto';
 import path from 'node:path/posix';
 import pLimit from 'p-limit';
 
-import { AgentKnowledgeSandboxCommandService } from './agent-knowledge-sandbox-command.service';
 import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import type {
 	KnowledgeSandboxExpectedManifest,
@@ -58,7 +57,6 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		private readonly logger: Logger,
 		private readonly sandboxConfigService: AgentKnowledgeSandboxConfigService,
 		private readonly knowledgeService: AgentKnowledgeService,
-		private readonly sandboxCommandService: AgentKnowledgeSandboxCommandService,
 	) {}
 
 	async ensureWorkspaceMaterialized(
@@ -243,7 +241,6 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	}
 
 	private async destroyWorkspace(workspace: KnowledgeSandboxWorkspace): Promise<void> {
-		this.sandboxCommandService.clearCapabilities(workspace);
 		await this.destroySandbox(workspace.sandbox);
 	}
 

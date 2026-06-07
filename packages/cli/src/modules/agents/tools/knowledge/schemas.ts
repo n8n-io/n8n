@@ -332,7 +332,7 @@ const knowledgeFileOutputSchema = z.object({
 });
 
 const commandResultOutputSchema = z.object({
-	command: z.enum(['git_grep', 'cat', 'sed']),
+	command: z.enum(['search', 'read']),
 	exitCode: z.number().nullable(),
 	stdout: z.string(),
 	stderr: z.string(),
@@ -473,7 +473,7 @@ export type SearchMatchOutput = z.infer<typeof searchMatchOutputSchema>;
 export type SearchResultOutput = z.infer<typeof searchResultOutputSchema>;
 export type InternalKnowledgeCommandRequest = Extract<
 	AgentKnowledgeCommandRequest,
-	{ command: 'git_grep' | 'cat' | 'sed' }
+	{ command: 'search' | 'read' }
 >;
 export type InternalKnowledgeCommandResult = Omit<AgentKnowledgeCommandResult, 'command'> & {
 	command: InternalKnowledgeCommandRequest['command'];
