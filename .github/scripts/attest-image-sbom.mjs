@@ -53,7 +53,7 @@ function attest({ label, image, digest }) {
 	// enrich-sbom.mjs (license-overrides.json + first-party detection) below.
 	run(
 		CDXGEN,
-		['-t', 'docker', '--no-install-deps', '--profile', 'license-compliance', '-o', out, ref],
+		['-t', 'docker', '--no-install-deps', '--profile', 'license-compliance', '--spec-version', '1.6', '-o', out, ref],
 		{ CDXGEN_NO_BANNER: '1' },
 	);
 
