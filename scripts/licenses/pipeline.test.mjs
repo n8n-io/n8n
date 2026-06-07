@@ -19,7 +19,10 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(scriptDir, '__fixtures__', 'sample.cdx.json');
 const ENRICH = path.join(scriptDir, 'enrich-sbom.mjs');
 const CHECK = path.join(scriptDir, 'check-sbom-licenses.mjs');
-const ALLOW_REF = '--allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise';
+const ALLOW_REFS = [
+	'--allow-ref=LicenseRef-n8n-sustainable-use',
+	'--allow-ref=LicenseRef-n8n-enterprise',
+];
 
 const run = (script, args) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf-8' });
 
@@ -36,7 +39,7 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 	});
 
 	it('rejects the raw (un-enriched) SBOM at the gate (exit 1)', () => {
-		const r = run(CHECK, [raw, ALLOW_REF]);
+		const r = run(CHECK, [raw, ...ALLOW_REFS]);
 		assert.equal(r.status, 1, r.stderr);
 		assert.match(r.stderr, /binascii/); // empty-license component is named
 	});
@@ -66,7 +69,7 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 	});
 
 	it('passes the gate on the enriched SBOM (exit 0, dual-license warning only)', () => {
-		const r = run(CHECK, [enriched, ALLOW_REF]);
+		const r = run(CHECK, [enriched, ...ALLOW_REFS]);
 		assert.equal(r.status, 0, r.stderr);
 		assert.match(r.stderr, /jszip/); // surfaced as a dual-license warning, not a failure
 	});
