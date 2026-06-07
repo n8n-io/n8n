@@ -5,7 +5,7 @@
     "generate-sbom": "FETCH_LICENSE=true cdxgen -t pnpm --no-install-deps --profile license-compliance -o ../../sbom-source.cdx.json ../../compiled/",
     "enrich-sbom": "node ../../scripts/licenses/enrich-sbom.mjs ../../sbom-source.cdx.json",
     "render-licenses-md": "node ../../scripts/licenses/render-licenses-md.mjs ../../sbom-source.cdx.json ../../packages/cli/THIRD_PARTY_LICENSES.md ../../compiled/node_modules",
-    "check-licenses": "node ../../scripts/licenses/check-sbom-licenses.mjs ../../sbom-source.cdx.json --allow-ref=LicenseRef-n8n-sustainable-use",
+    "check-licenses": "node ../../scripts/licenses/check-sbom-licenses.mjs ../../sbom-source.cdx.json --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise",
     "generate-licenses": "pnpm generate-sbom && pnpm enrich-sbom && pnpm render-licenses-md && pnpm check-licenses"
   },
   "dependencies": {

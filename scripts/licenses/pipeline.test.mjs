@@ -19,7 +19,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(scriptDir, '__fixtures__', 'sample.cdx.json');
 const ENRICH = path.join(scriptDir, 'enrich-sbom.mjs');
 const CHECK = path.join(scriptDir, 'check-sbom-licenses.mjs');
-const ALLOW_REF = '--allow-ref=LicenseRef-n8n-sustainable-use';
+const ALLOW_REF = '--allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise';
 
 const run = (script, args) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf-8' });
 

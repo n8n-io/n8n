@@ -1,6 +1,16 @@
 {
   "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. 'overrides' are PURL-pinned (pkg:npm/<name>@<version>, exact match) and drive the release-closure SBOM — a pin that stops matching fails loudly so the license is re-verified on the bump. 'byName' is version-agnostic (keyed by package name) for licenses stable across versions; it resolves the same package at whatever version a container image installed (e.g. ssh2 ships both 1.15.0 and 1.16.0 in the image, both MIT). 'elections' record which license n8n elects for a validly dual-licensed (OR) dependency so a copyleft policy gate reads the elected term. 'source' records where each was verified. Optional 'skipDiskText: true' opts out of on-disk LICENSE text lookup when the file disagrees with the overridden id.",
   "overrides": {
+    "pkg:npm/%40n8n_io/license-sdk@2.25.0": {
+      "license": "LicenseRef-n8n-enterprise",
+      "source": "n8n-io/license-management — ships LICENSE_EE.md (n8n Enterprise License). This SDK is a proprietary runtime component required for enterprise license validation; it is not under the Sustainable Use License. FIRST_PARTY_PATTERNS would otherwise incorrectly stamp it as LicenseRef-n8n-sustainable-use.",
+      "skipDiskText": true
+    },
+    "pkg:npm/%40n8n_io/ai-assistant-sdk@1.21.0": {
+      "license": "LicenseRef-n8n-enterprise",
+      "source": "n8n-io/ai-assistant-service — ships LICENSE_EE.md (n8n Enterprise License). AI assistant SDK is an enterprise-only component not covered by the Sustainable Use License.",
+      "skipDiskText": true
+    },
     "pkg:npm/wa-sqlite@1.0.9": {
       "license": "MIT",
       "source": "https://github.com/rhashimoto/wa-sqlite — LICENSE file in published tarball confirms MIT. Package is installed via GitHub tarball URL so npm registry metadata is absent; no license field in package.json."

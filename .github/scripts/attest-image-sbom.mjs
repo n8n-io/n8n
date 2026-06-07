@@ -19,7 +19,7 @@ const REPO_ROOT = path.resolve(scriptDir, '..', '..');
 const CDXGEN = path.join(scriptDir, 'node_modules', '.bin', 'cdxgen');
 const ENRICH = path.join(REPO_ROOT, 'scripts', 'licenses', 'enrich-sbom.mjs');
 const CHECK = path.join(REPO_ROOT, 'scripts', 'licenses', 'check-sbom-licenses.mjs');
-const ALLOW_REF = '--allow-ref=LicenseRef-n8n-sustainable-use';
+const ALLOW_REF = '--allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise';
 
 export function parseTargets(env) {
 	return [
