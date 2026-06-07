@@ -1,6 +1,10 @@
 {
   "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. 'overrides' are PURL-pinned (pkg:npm/<name>@<version>, exact match) and drive the release-closure SBOM — a pin that stops matching fails loudly so the license is re-verified on the bump. 'byName' is version-agnostic (keyed by package name) for licenses stable across versions; it resolves the same package at whatever version a container image installed (e.g. ssh2 ships both 1.15.0 and 1.16.0 in the image, both MIT). 'elections' record which license n8n elects for a validly dual-licensed (OR) dependency so a copyleft policy gate reads the elected term. 'source' records where each was verified. Optional 'skipDiskText: true' opts out of on-disk LICENSE text lookup when the file disagrees with the overridden id.",
   "overrides": {
+    "pkg:npm/wa-sqlite@1.0.9": {
+      "license": "MIT",
+      "source": "https://github.com/rhashimoto/wa-sqlite — LICENSE file in published tarball confirms MIT. Package is installed via GitHub tarball URL so npm registry metadata is absent; no license field in package.json."
+    },
     "pkg:npm/nub@0.0.0": {
       "license": "MIT",
       "source": "https://www.npmjs.com/package/nub — package.json declares non-SPDX 'MIT/X11'; X11 is the historical alias for the MIT license. Normalised to the canonical SPDX id."
