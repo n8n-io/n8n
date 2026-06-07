@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
@@ -15,8 +14,6 @@ import { ensureError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-
-const POLL_INTERVAL_MS = 1 * Time.minutes.toMilliseconds;
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It polls for
@@ -88,7 +85,7 @@ export class WorkflowPublicationOutboxConsumer {
 			}
 
 			if (this.shouldKeepPolling()) this.schedulePollCycle();
-		}, POLL_INTERVAL_MS);
+		}, this.workflowsConfig.publicationOutboxPollIntervalMs);
 	}
 
 	private async pollCycle() {

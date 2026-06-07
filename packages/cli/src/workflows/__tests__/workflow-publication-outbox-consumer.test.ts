@@ -26,8 +26,13 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
+	const POLL_INTERVAL_MS = 15_000;
+
 	function createConsumer(useWorkflowPublicationService = true) {
-		const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService });
+		const workflowsConfig = mock<WorkflowsConfig>({
+			useWorkflowPublicationService,
+			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
+		});
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
 			workflowsConfig,
@@ -107,7 +112,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		test('polling schedules the next cycle after a timer fires', async () => {
 			consumer.startPolling();
 
-			await jest.advanceTimersByTimeAsync(60_000);
+			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
 			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
 			expect(jest.getTimerCount()).toBe(1);
@@ -120,7 +125,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			});
 			consumer.startPolling();
 
-			await jest.advanceTimersByTimeAsync(60_000);
+			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
 			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
 			expect(jest.getTimerCount()).toBe(0);
@@ -131,12 +136,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
 			consumer.startPolling();
 
-			await jest.advanceTimersByTimeAsync(60_000);
+			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
 			expect(jest.getTimerCount()).toBe(1);
 
-			await jest.advanceTimersByTimeAsync(60_000);
+			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(2);
 		});
 
