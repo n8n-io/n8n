@@ -65,7 +65,7 @@ async function writeStreamInChunks(
 		}
 
 		while (offset + chunkSizeBytes <= incoming.length) {
-			await writeChunk(incoming.subarray(offset, offset + chunkSizeBytes));
+			await writeChunk(Buffer.from(incoming.subarray(offset, offset + chunkSizeBytes)));
 			offset += chunkSizeBytes;
 		}
 
