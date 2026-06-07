@@ -1,17 +1,9 @@
-# Test harness: build + push n8n Docker image to GHCR, then run syft against it.
+# Test harness for the full SBOM pipeline.
 #
-# Steps:
-#   1. pnpm build:n8n  → ./compiled/
-#   2. Docker build + push  → ghcr.io/n8n-io/n8n:test-sbom-<sha7>
-#   3. syft scan the pushed image  → sbom-syft.cdx.json
-#   4. check-sbom-licenses.mjs gate on the syft output (npm components only)
-#
-# To run syft locally against the same image after this job:
-#   docker pull ghcr.io/n8n-io/n8n:test-sbom-<sha7>
-#   syft ghcr.io/n8n-io/n8n:test-sbom-<sha7> -o cyclonedx-json > sbom-local.json
-#   node scripts/licenses/check-sbom-licenses.mjs sbom-local.json \
-#     --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise \
-#     --enforce-prefix=pkg:npm/
+# Calls docker-build-push.yml with release_type=nightly so the sbom-attestation
+# job fires — the same cdxgen → enrich-sbom → check-sbom-licenses → cosign attest
+# path that runs on every production release. Use this to verify end-to-end SBOM
+# output before merging changes to the license pipeline.
 
 name: 'Test: Docker Build + syft SBOM'
 
@@ -21,107 +13,13 @@ on:
       - chore/sca-license-posture
 
   workflow_dispatch:
-    inputs:
-      ref:
-        description: 'Git ref to build. Defaults to the branch this workflow runs on.'
-        required: false
-        type: string
-        default: ''
-
-env:
-  NODE_VERSION: '24.15.0'
-
-permissions:
-  contents: read
-  packages: write
-  id-token: write
 
 jobs:
-  build-push-syft:
-    name: 'Build → Push → syft'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    timeout-minutes: 45
-    outputs:
-      image_tag: ${{ steps.tag.outputs.image_tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
-
-      - name: Compute image tag
-        id: tag
-        run: |
-          SHA7="${GITHUB_SHA::7}"
-          echo "image_tag=ghcr.io/n8n-io/n8n:test-sbom-${SHA7}" >> "$GITHUB_OUTPUT"
-          echo "image_tag=ghcr.io/n8n-io/n8n:test-sbom-${SHA7}"
-
-      - name: Build n8n app
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: 'pnpm build:n8n'
-          enable-docker-cache: 'true'
-        env:
-          RELEASE: 'test-sbom'
-
-      - name: Login to GHCR
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: 'true'
-
-      - name: Login to DHI (for n8nio/base pull)
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: 'false'
-          login-dhi: 'true'
-          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
-          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push Docker image
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=test-sbom
-            N8N_RELEASE_TYPE=dev
-          platforms: linux/amd64
-          provenance: false
-          sbom: false
-          push: true
-          tags: ${{ steps.tag.outputs.image_tag }}
-
-      - name: Install syft
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-            | sh -s -- -b /usr/local/bin v1.27.1
-
-      - name: Pull image and run syft
-        env:
-          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
-        run: |
-          docker pull "$IMAGE_TAG"
-          syft "$IMAGE_TAG" \
-            --output cyclonedx-json=sbom-syft.cdx.json \
-            --output table
-          echo ""
-          echo "Component count: $(jq '.components | length' sbom-syft.cdx.json)"
-
-      - name: Gate npm components on SPDX licenses
-        # OS packages carry upstream-distro license strings; we only gate npm.
-        # Exit 0 = no licensed calls — every npm dep has a valid SPDX id.
-        run: |
-          node scripts/licenses/check-sbom-licenses.mjs \
-            sbom-syft.cdx.json \
-            --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise \
-            --enforce-prefix=pkg:npm/
-
-      - name: Upload syft SBOM
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: sbom-syft-${{ github.sha }}
-          path: sbom-syft.cdx.json
-          retention-days: 7
+  test-sbom:
+    name: 'Build + Push + SBOM Attestation (nightly path)'
+    uses: ./.github/workflows/docker-build-push.yml
+    with:
+      n8n_version: 'test-sbom'
+      release_type: 'nightly'
+      push_enabled: true
+    secrets: inherit
