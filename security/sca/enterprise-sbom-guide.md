@@ -1,33 +1,35 @@
-# Enterprise SBOM Compliance Guide
+# SBOM Compliance Guide
 
-This document is intended for enterprise customers and their security/procurement
-teams who need to perform SBOM-based license compliance reviews of n8n.
+This document describes the artifacts n8n produces for SBOM-based license
+compliance review and how to verify them.
 
 ---
 
 ## TL;DR
 
-Do not run `syft docker.io/n8nio/n8n` and use the raw output as a compliance
-gate. Use n8n's **published, enriched, and signed SBOM** attached to each
-GitHub release instead.
+Use n8n's **published, enriched, and signed SBOM** attached to each GitHub
+release. Do not use a raw syft scan of the Docker image as a compliance
+artifact — see `syft-research.md` for why raw syft output is not designed
+to serve that role.
 
 ---
 
-## The right artifact: n8n's release SBOM
+## The authoritative artifact: n8n's release SBOM
 
-Every n8n release publishes a `sbom-source.cdx.json` to the GitHub release
-page. This artifact:
+Every n8n release publishes `sbom-source.cdx.json` to the GitHub release page.
+This artifact:
 
 - **Covers the full npm production closure** — every package shipped in the
-  deployment bundle
-- **Has resolved SPDX licenses** for every component — including n8n's own
-  packages (via `LicenseRef-n8n-sustainable-use`) and third-party packages
-  with non-standard license strings (via `scripts/licenses/license-overrides.json`)
-- **Passes the SPDX gate** — `check-sbom-licenses.mjs` runs as a release-blocking
-  step; the SBOM is only attached if every npm component has a valid SPDX
-  identifier
+  deployment bundle, resolved from the actual compiled output
+- **Has resolved SPDX licenses for every component** — first-party packages
+  carry `LicenseRef-n8n-sustainable-use` or `LicenseRef-n8n-enterprise`;
+  third-party packages with non-standard license strings are normalised via
+  `scripts/licenses/license-overrides.json`
+- **Passes the SPDX gate** — `check-sbom-licenses.mjs` runs as a
+  release-blocking step; the SBOM is only attached if every npm component has
+  a valid SPDX identifier or allowed LicenseRef
 - **Is cryptographically signed** — attested via GitHub's `actions/attest`
-  (SLSA-compatible sigstore attestation), verifiable with `gh attestation verify`
+  (SLSA-compatible sigstore attestation)
 
 ### Downloading and verifying
 
@@ -37,7 +39,7 @@ gh release download n8n@2.25.0 \
   --repo n8n-io/n8n \
   --pattern sbom-source.cdx.json
 
-# Verify the attestation (confirms it was produced by n8n's CI, not tampered)
+# Verify the attestation (confirms it was produced by n8n's CI, not tampered with)
 gh attestation verify sbom-source.cdx.json \
   --repo n8n-io/n8n \
   --owner n8n-io
@@ -50,87 +52,68 @@ jq -r '.components[] | "\(.name)@\(.version) — \((.licenses[0].expression // .
 
 ---
 
-## Why raw syft output is not the right artifact
-
-Syft is an SBOM **generator** — its role is to inventory what is present in an
-image or directory. It is not a compliance tool. Anchore (syft's author) built
-a separate tool (**Grant**) for license policy enforcement because raw SBOM
-output always has gaps that require policy interpretation.
-
-When an enterprise security scanner runs `syft docker.io/n8nio/n8n`, it will
-encounter several categories of entries that appear as "no license declared"
-or "non-SPDX license" in the raw output:
-
-| Category | Example | Reality |
-|---|---|---|
-| First-party packages | `@n8n/config`, `n8n-workflow` | Licensed under n8n Sustainable Use License — `LicenseRef-n8n-sustainable-use` |
-| Subpath export stubs | `@google/genai/node@UNKNOWN` | Not a real package — a filesystem artefact of npm subpath exports |
-| Free-text license strings | `"Apache 2.0"` in `qrcode-terminal` | Valid Apache-2.0 license, non-standard string format |
-| Third-party missing fields | `@getzep/zep-cloud` | Published without a `license` field — resolvable from LICENSE file |
-
-None of these represent actual license gaps. They are artifacts of how npm
-packages are published combined with syft's filesystem-level scanning approach.
-
-n8n's release SBOM pipeline resolves all of these before the SBOM is published.
-
----
-
 ## n8n's license picture
-
-### First-party packages
-
-All n8n-owned packages (`@n8n/*`, `n8n`, `n8n-core`, `n8n-nodes-base`,
-`n8n-workflow`, `n8n-editor-ui`) are published under the
-**n8n Sustainable Use License** — `LicenseRef-n8n-sustainable-use` in SPDX
-LicenseRef notation. The full license text is at
-https://docs.n8n.io/sustainable-use-license/ and in `LICENSE.md` at the root
-of the repository.
-
-Packages intentionally under different OSI licenses (community tooling,
-codemirror extensions) carry their own identifiers (`MIT`, `Apache-2.0`, `ISC`).
-
-### Private SDKs
-
-`@n8n_io/license-sdk` and `@n8n_io/ai-assistant-sdk` are closed-source
-internal SDKs not distributed to end-users. They appear in the Docker image
-as runtime dependencies but are not part of the open-source distribution.
-Their `UNLICENSED` status in raw scans is correct and intentional.
 
 ### Third-party dependencies
 
-All third-party npm dependencies are OSI-licensed. The resolved license for
-each is recorded in the SBOM. A rendered human-readable version is available
-at `/rest/third-party-licenses` on any running n8n instance, and as
-`THIRD_PARTY_LICENSES.md` attached to each GitHub release.
+All third-party npm dependencies are OSI-licensed. The two dual-licensed
+packages in the tree (`jszip`, `mailsplit`) offer MIT as an alternative to
+their copyleft option; n8n elects MIT for both, recorded as
+`cdx:license:elected` in the SBOM. **There is no copyleft license in force
+anywhere in the dependency tree.**
+
+A human-readable rendering is available at `/rest/third-party-licenses` on any
+running n8n instance and as `THIRD_PARTY_LICENSES.md` attached to each GitHub
+release.
+
+### First-party packages
+
+All `@n8n/*`, `n8n`, `n8n-core`, `n8n-nodes-base`, `n8n-workflow`, and
+`n8n-editor-ui` packages are under the **n8n Sustainable Use License**
+(`LicenseRef-n8n-sustainable-use`). The full license text is at
+https://docs.n8n.io/sustainable-use-license/ and in `LICENSE.md` at the root
+of the repository.
+
+Packages intentionally under a different OSI license (community tooling,
+codemirror extensions) carry their own identifiers (`MIT`, `Apache-2.0`, `ISC`).
+
+### Enterprise SDK components
+
+`@n8n_io/license-sdk` and `@n8n_io/ai-assistant-sdk` are closed-source
+components present in the Docker image as runtime dependencies. They are
+licensed under the **n8n Enterprise License** (`LicenseRef-n8n-enterprise`),
+which requires a valid n8n Enterprise contract. Their presence in the SBOM is
+correct and intentional.
 
 ---
 
-## For procurement / contract review
+## Why raw syft output differs from the release SBOM
 
-If you need n8n to provide an SBOM as part of a contract or procurement
-process:
+Syft is designed as an SBOM generator, not a compliance tool. When run against
+the Docker image directly, it produces a raw inventory that includes:
 
-1. **Point your team at the GitHub release page** for the version under review.
-   The `sbom-source.cdx.json` and `THIRD_PARTY_LICENSES.md` artifacts are
-   attached to every release.
+| What syft reports | What it actually is |
+|---|---|
+| `@n8n/config — no license` | Licensed under `LicenseRef-n8n-sustainable-use`; syft reads the npm registry which has the old metadata |
+| `@google/genai/node@UNKNOWN` | A subpath export stub, not a real package |
+| `"Apache 2.0"` on `qrcode-terminal` | Valid Apache-2.0, non-SPDX string format |
+| `@n8n_io/license-sdk — UNLICENSED` | Licensed under `LicenseRef-n8n-enterprise`; `UNLICENSED` was the old `package.json` value |
 
-2. **Verify the attestation** to confirm the SBOM was produced by n8n's
-   official CI pipeline and has not been modified.
-
-3. **For questions about specific packages**, the `THIRD_PARTY_LICENSES.md`
-   rendered document is more human-readable than the raw CycloneDX JSON and
-   covers the same set of components.
-
-4. **For Docker image scanning specifically**, note that syft is designed as a
-   generation tool — the recommended compliance workflow is:
-   `syft (generate) → Grant/FOSSA/Snyk (apply policy)`. If your scanner is
-   using raw syft output as a compliance gate, ask your security vendor about
-   integrating with Anchore Grant or a commercial equivalent for the policy
-   enforcement layer.
+The release SBOM resolves all of these. Raw syft output should be fed into a
+policy tool (Anchore Grant, FOSSA, Snyk) rather than used directly as a
+compliance gate — see `syft-research.md` for the full explanation.
 
 ---
 
-## Contacts
+## For contract or procurement review
 
-For SBOM and license compliance questions, contact n8n's security team via the
-channels listed in `SECURITY.md` at the root of the repository.
+1. Download `sbom-source.cdx.json` from the GitHub release for the version
+   under review.
+
+2. Verify the attestation to confirm the SBOM was produced by n8n's official
+   CI pipeline.
+
+3. Use `THIRD_PARTY_LICENSES.md` for a human-readable rendering of the same
+   component set.
+
+4. For questions, contact n8n's security team via the channels in `SECURITY.md`.

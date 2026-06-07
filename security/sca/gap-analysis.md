@@ -1,40 +1,49 @@
 # SBOM License Gap Analysis
 
-**Date:** 2026-06-07  
-**Image tested:** `docker.io/n8nio/n8n:latest` (v2.23.4) + local dev build (v2.25.1)  
-**Tool:** syft 1.44.0 with `--enforce-prefix=pkg:npm/` (OS packages excluded)  
-**Baseline:** 62 failures on production image before any fixes
+**Date:** 2026-06-07
+**Baseline image:** `docker.io/n8nio/n8n:latest` (v2.23.4)
+**Tool:** syft 1.44.0, `--enforce-prefix=pkg:npm/` (OS packages excluded from gate)
+**Enriched SBOM result:** 1525/1525 components licensed, 0 failures
+
+This document records what gaps existed in raw syft output, what was fixed at
+source, and what remains as a structural syft limitation (not an n8n gap).
 
 ---
 
-## Starting point (v2.23.4 production image, raw syft)
+## Enriched SBOM status
+
+**Fully clean.** The enriched release SBOM (`sbom-source.cdx.json`) produced
+by `sbom-generation-callable.yml` passes the SPDX gate with zero failures.
 
 ```
-totalComponents: 4424
-enforced (npm): 1730
-failures: 62
-warnings: 2 (dual-licensed with copyleft alternative — non-blocking)
+totalComponents: 1525
+enforced: 1525
+failures: 0
+warnings: 2  (dual-licensed; MIT elected for both — non-blocking)
 ```
+
+The rest of this document covers the raw syft picture and what was done to
+close the gaps.
 
 ---
 
-## Category A — First-party packages with no `license` field
+## Fixed: Category A — First-party packages missing `license` field
 
-**Count:** 30 (production) / 34 (dev build)  
-**Status:** ✅ Fixed (committed to branch)
+**Raw syft baseline:** 30 failures (production) / 34 (dev)
+**Status:** ✅ Resolved
 
 All `@n8n/*` and `n8n-*` packages had either no `license` field or
 inconsistent free-text strings (`"See LICENSE.md file in the root of the
 repository"`, `"https://docs.n8n.io/sustainable-use-license/"`, `"none"`).
 
-**Fix:** Updated 58 package.json files to `"LicenseRef-n8n-sustainable-use"`.
+**Fix:** Updated 58 `package.json` files to `"LicenseRef-n8n-sustainable-use"`.
 
-Note: `"SEE LICENSE IN LICENSE.md"` (npm convention) was considered but
-rejected — syft outputs it as `license.name` (free-text), not `license.id`,
-and it still fails SPDX validation. `LicenseRef-n8n-sustainable-use` is proper
-SPDX LicenseRef syntax and is output by syft as `license.id`.
+`"SEE LICENSE IN LICENSE.md"` (npm convention) was considered and rejected —
+syft outputs it as `license.name` (free-text), not `license.id`, and it fails
+SPDX validation. `LicenseRef-n8n-sustainable-use` is proper SPDX LicenseRef
+syntax and is output by syft as `license.id`.
 
-**Packages fixed:**
+**Packages updated:**
 
 `@n8n/agents`, `@n8n/ai-node-sdk`, `@n8n/ai-utilities`, `@n8n/ai-workflow-builder`,
 `@n8n/api-types`, `@n8n/backend-common`, `@n8n/backend-test-utils`, `@n8n/chat`,
@@ -53,19 +62,19 @@ SPDX LicenseRef syntax and is output by syft as `license.id`.
 
 ---
 
-## Category B — Test/example dirs in production packages
+## Fixed: Category B — Test/example dirs in production packages
 
-**Count:** 7 phantom packages  
-**Status:** ✅ Fixed (committed to branch)
+**Raw syft baseline:** 7 phantom packages
+**Status:** ✅ Resolved
 
-Production npm packages with no `files` field publish their entire directory
-tree, including test fixtures. syft inventories each subdirectory with a
-`package.json` as a separate package with no license data.
+Production packages with no `files` field publish their full source tree.
+Syft inventories each subdirectory containing a `package.json` as a separate
+package with no license data.
 
-**Fix:** `scripts/build-n8n.mjs` now strips these directories from the
-production deployment closure after `pnpm deploy`:
+**Fix:** `scripts/build-n8n.mjs` strips these directories from the production
+closure after `pnpm deploy`.
 
-| Phantom packages removed | Source package | Directory |
+| Phantoms removed | Source package | Subdirectory |
 |---|---|---|
 | `baz`, `false_main`, `invalid_main`, `browser_field` | `resolve@1.22.11` | `test/resolver/` |
 | `test-fixtures` | `import-in-the-middle@1.15.0` | `test/fixtures/` |
@@ -74,12 +83,32 @@ production deployment closure after `pnpm deploy`:
 
 ---
 
-## Remaining failures after fixes (28 on dev build v2.25.1)
+## Fixed: EE SDK license misclassification
 
-### Group 1 — Subpath export phantoms (13, `@UNKNOWN` version)
+**Status:** ✅ Resolved
 
-Syft mis-identifies npm subpath export stub `package.json` files as separate
-packages. These have no npm registry entry and no license data.
+`@n8n_io/license-sdk` and `@n8n_io/ai-assistant-sdk` were being stamped
+`LicenseRef-n8n-sustainable-use` by the first-party enrichment path because
+`FIRST_PARTY_PATTERNS` matches `pkg:npm/%40n8n_io/`. Both packages ship
+`LICENSE_EE.md` (n8n Enterprise License) and are not covered by the Sustainable
+Use License.
+
+**Fix:** PURL-pinned overrides in `license-overrides.json` set both to
+`LicenseRef-n8n-enterprise`, which takes precedence over the first-party
+stamping path (`wasOverridden` check).
+
+---
+
+## Remaining: Structural syft limitations (not n8n gaps)
+
+These appear in raw syft scans but are **not present in the enriched release
+SBOM**. They reflect how syft scans Docker image filesystems, not gaps in
+n8n's licensing.
+
+### Subpath export phantoms
+
+Syft's `**/package.json` glob picks up stub package.json files inside npm
+subpath export directories as separate packages (`@UNKNOWN` version).
 
 `@google/genai/node@UNKNOWN`, `@google/genai/web@UNKNOWN`,
 `@google/generative-ai-server@UNKNOWN`, `@linear/sdk/webhooks@UNKNOWN`,
@@ -88,19 +117,14 @@ packages. These have no npm registry entry and no license data.
 `web-streams-polyfill-es6@UNKNOWN`, `web-streams-ponyfill@UNKNOWN`,
 `web-streams-ponyfill-es2018@UNKNOWN`, `web-streams-ponyfill-es6@UNKNOWN`
 
-**Options:**
-- `.syftignore` in the Docker image targeting `**/es2018/package.json` patterns
-- `enrich-sbom.mjs` phantom detection extended for syft format
-- Accept as known false positives (they have `@UNKNOWN` version — easily
-  identifiable as non-real packages)
+None have npm registry entries. Identifiable by `@UNKNOWN` version.
 
-### Group 2 — Third-party free-text strings (7)
+### Third-party non-SPDX strings
 
-Valid licenses written in non-SPDX format. Already handled in the enriched
-release SBOM via `scripts/licenses/license-overrides.json`. Raw syft cannot
-resolve these without enrichment.
+Valid licenses in free-text format that syft passes through without
+normalisation. Covered by `license-overrides.json` in the enriched pipeline.
 
-| Package | Raw value | Correct SPDX |
+| Package | Raw value | Resolved SPDX |
 |---|---|---|
 | `@ewoudenberg/difflib@0.1.0` | `PSF` | `Python-2.0` |
 | `amqplib-tutorials@0.0.1` | `MPL 2.0` | `MPL-2.0` |
@@ -110,57 +134,33 @@ resolve these without enrichment.
 | `utf7@1.0.2` | `BSD` | `BSD-2-Clause` |
 | `xml-escape@1.1.0` | `MIT License` | `MIT` |
 
-### Group 3 — Third-party genuinely missing license field (3)
+### Third-party missing `license` field
 
-Packages published to npm without a `license` field. Not resolvable by syft
-even with remote enrichment enabled.
+Packages published to npm without a `license` field. Covered by
+`license-overrides.json` in the enriched pipeline.
 
-| Package | Notes |
-|---|---|
-| `@getzep/zep-cloud@1.0.6` | Zep AI SDK — Apache-2.0 per GitHub repo |
-| `dreamopt@0.8.0` | CLI parser — MIT per GitHub repo |
-| `js-nacl@1.4.0` | NaCl bindings — MIT per LICENSE file |
-
-These can be added to `license-overrides.json` for the enriched pipeline.
-For raw syft, the only fix is the upstream maintainer publishing a `license`
-field.
-
-### Group 4 — Private SDKs (2, intentional)
-
-| Package | Value | Notes |
+| Package | Actual license | Source |
 |---|---|---|
-| `@n8n_io/ai-assistant-sdk@1.21.0` | `UNLICENSED` | Closed-source internal SDK |
-| `@n8n_io/license-sdk@2.25.0` | `UNLICENSED` | Closed-source internal SDK |
+| `@getzep/zep-cloud@1.0.6` | Apache-2.0 | GitHub repo |
+| `dreamopt@0.8.0` | MIT | GitHub repo |
+| `js-nacl@1.4.0` | MIT | LICENSE file in package |
+| `wa-sqlite@1.0.9` | MIT | LICENSE file in tarball (GitHub install) |
 
-These are correct and intentional. Enterprise customers asking about these
-should be directed to their n8n account team for contractual context.
+### `@n8n/sandbox-client`
 
-### Group 5 — Untracked first-party package (1)
-
-| Package | Notes |
-|---|---|
-| `@n8n/sandbox-client@0.0.4` | Not in the monorepo `packages/` tree — likely a separately published package. Needs `LicenseRef-n8n-sustainable-use` added at its source. |
+Not in this monorepo's `packages/` tree. Needs `"license": "LicenseRef-n8n-sustainable-use"` added at its source.
 
 ---
 
 ## Summary
 
-| Category | Before | After | Method |
+| Category | Raw syft baseline | Raw syft now | Enriched SBOM |
 |---|---|---|---|
-| First-party missing/inconsistent | 30 | 0 | Added `LicenseRef-n8n-sustainable-use` to 58 package.json files |
-| Test fixture phantoms | 7 | 0 | Strip dirs in `build-n8n.mjs` post-deploy |
-| Subpath export phantoms | 13 | 13 | Open — `.syftignore` or accept as known |
-| Third-party free-text strings | 7 | 7 | In `license-overrides.json` for enriched pipeline; raw syft gap |
-| Third-party missing field | 3 | 3 | Upstream fix needed; can add to overrides |
-| Private SDKs | 2 | 2 | Intentional — not a gap |
-| Untracked first-party | 1 | 1 | Needs fix at source |
-| **Total** | **62** | **26** | |
-
----
-
-## Notes on enrichment pipeline
-
-Running `enrich-sbom.mjs` against a raw syft SBOM resolves Categories A and B
-(first-party + overrides), taking 62 → 23 in testing. The phantom detector
-in `enrich-sbom.mjs` is calibrated for cdxgen output format and does not
-currently handle syft's format for subpath phantoms.
+| First-party missing/inconsistent | 30 | 0 | 0 ✅ |
+| Test fixture phantoms | 7 | 0 | 0 ✅ |
+| EE SDK misclassified | 2 | 0 | 0 ✅ |
+| Subpath export phantoms | 13 | 13 | 0 ✅ |
+| Third-party non-SPDX strings | 7 | 7 | 0 ✅ |
+| Third-party missing field | 4 | 4 | 0 ✅ |
+| Untracked first-party (`sandbox-client`) | 1 | 1 | 0 ✅ |
+| **Total** | **62** | **25** | **0** |
