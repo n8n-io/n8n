@@ -1,8 +1,8 @@
 import { Tool } from '@n8n/agents/tool';
 import { createHash } from 'node:crypto';
 
+import type { AgentKnowledgeCsvService } from '../../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
-import type { AgentKnowledgeSandboxCsvService } from '../../agent-knowledge-sandbox-csv.service';
 import type {
 	AgentKnowledgeSandboxWorkspaceService,
 	KnowledgeSandboxWorkspace,
@@ -27,14 +27,14 @@ export function createSearchKnowledgeTool({
 	projectId,
 	knowledgeService,
 	sandboxCommandService,
-	sandboxCsvService,
+	csvService,
 	sandboxWorkspaceService,
 }: {
 	agentId: string;
 	projectId: string;
 	knowledgeService: AgentKnowledgeService;
 	sandboxCommandService: AgentKnowledgeSandboxCommandService;
-	sandboxCsvService: AgentKnowledgeSandboxCsvService;
+	csvService: AgentKnowledgeCsvService;
 	sandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService;
 }) {
 	return new Tool('search_knowledge')
@@ -90,6 +90,15 @@ export function createSearchKnowledgeTool({
 					fileReferences,
 				);
 				files = resolution.files;
+				if (isCsvOperation(parsedInput)) {
+					return await handleCsvKnowledgeOperation(
+						parsedInput,
+						agentId,
+						projectId,
+						files,
+						csvService,
+					);
+				}
 				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, resolution.cacheSignature);
 
 				return await sandboxWorkspaceService.withCachedWorkspace(cacheKey, async (workspace) => {
@@ -119,7 +128,6 @@ export function createSearchKnowledgeTool({
 						workspace,
 						files,
 						sandboxCommandService,
-						sandboxCsvService,
 					);
 				});
 			} catch (error) {
@@ -157,42 +165,71 @@ function toToolErrorMessage(error: unknown): string {
 }
 
 type SandboxKnowledgeOperationInput = Exclude<ParsedSearchKnowledgeInput, { operation: 'list' }>;
+type CsvKnowledgeOperationInput = Extract<
+	ParsedSearchKnowledgeInput,
+	{ operation: 'csv_query' | 'csv_profile' | 'csv_distinct' | 'csv_aggregate' }
+>;
+type CommandKnowledgeOperationInput = Extract<
+	ParsedSearchKnowledgeInput,
+	{ operation: 'search' | 'read' }
+>;
+
+function isCsvOperation(
+	input: SandboxKnowledgeOperationInput,
+): input is CsvKnowledgeOperationInput {
+	return (
+		input.operation === 'csv_query' ||
+		input.operation === 'csv_profile' ||
+		input.operation === 'csv_distinct' ||
+		input.operation === 'csv_aggregate'
+	);
+}
+
+async function handleCsvKnowledgeOperation(
+	input: CsvKnowledgeOperationInput,
+	agentId: string,
+	projectId: string,
+	files: WorkspaceFiles,
+	csvService: AgentKnowledgeCsvService,
+): Promise<SearchKnowledgeOutput> {
+	switch (input.operation) {
+		case 'csv_query':
+			return {
+				operation: 'csv_query',
+				files,
+				csv: await queryCsv(agentId, projectId, input, csvService),
+			};
+		case 'csv_profile':
+			return {
+				operation: 'csv_profile',
+				files,
+				csvProfile: await profileCsv(agentId, projectId, input, csvService),
+			};
+		case 'csv_distinct':
+			return {
+				operation: 'csv_distinct',
+				files,
+				csvDistinct: await distinctCsv(agentId, projectId, input, csvService),
+			};
+		case 'csv_aggregate':
+			return {
+				operation: 'csv_aggregate',
+				files,
+				csvAggregate: await aggregateCsv(agentId, projectId, input, csvService),
+			};
+	}
+}
 
 async function handleSandboxKnowledgeOperation(
-	input: SandboxKnowledgeOperationInput,
+	input: CommandKnowledgeOperationInput,
 	workspace: KnowledgeSandboxWorkspace,
 	files: WorkspaceFiles,
 	commandService: AgentKnowledgeSandboxCommandService,
-	csvService: AgentKnowledgeSandboxCsvService,
 ): Promise<SearchKnowledgeOutput> {
 	switch (input.operation) {
 		case 'search':
 			return await runSearchOperation(input, workspace, files, commandService);
 		case 'read':
 			return await runReadOperation(input, workspace, files, commandService);
-		case 'csv_query':
-			return {
-				operation: 'csv_query',
-				files,
-				csv: await queryCsv(workspace, files, input, csvService),
-			};
-		case 'csv_profile':
-			return {
-				operation: 'csv_profile',
-				files,
-				csvProfile: await profileCsv(workspace, files, input, csvService),
-			};
-		case 'csv_distinct':
-			return {
-				operation: 'csv_distinct',
-				files,
-				csvDistinct: await distinctCsv(workspace, files, input, csvService),
-			};
-		case 'csv_aggregate':
-			return {
-				operation: 'csv_aggregate',
-				files,
-				csvAggregate: await aggregateCsv(workspace, files, input, csvService),
-			};
 	}
 }

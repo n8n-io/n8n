@@ -1,7 +1,5 @@
-import type { AgentKnowledgeSandboxCsvService } from '../../agent-knowledge-sandbox-csv.service';
-import type { KnowledgeSandboxWorkspace } from '../../agent-knowledge-sandbox-workspace.service';
+import type { AgentKnowledgeCsvService } from '../../agent-knowledge-csv.service';
 
-import type { WorkspaceFiles } from './file-references';
 import type {
 	CsvAggregateInput,
 	CsvDistinctInput,
@@ -10,37 +8,37 @@ import type {
 } from './schemas';
 
 export async function queryCsv(
-	workspace: KnowledgeSandboxWorkspace,
-	files: WorkspaceFiles,
+	agentId: string,
+	projectId: string,
 	input: CsvQueryInput,
-	csvService: AgentKnowledgeSandboxCsvService,
+	csvService: AgentKnowledgeCsvService,
 ) {
-	return await csvService.queryCsv(workspace, files, input);
+	return await csvService.queryCsv(agentId, projectId, input);
 }
 
 export async function profileCsv(
-	workspace: KnowledgeSandboxWorkspace,
-	files: WorkspaceFiles,
+	agentId: string,
+	projectId: string,
 	input: CsvProfileInput,
-	csvService: AgentKnowledgeSandboxCsvService,
+	csvService: AgentKnowledgeCsvService,
 ) {
-	return await csvService.profileCsv(workspace, files, input);
+	return await csvService.profileCsv(agentId, projectId, input);
 }
 
 export async function distinctCsv(
-	workspace: KnowledgeSandboxWorkspace,
-	files: WorkspaceFiles,
+	agentId: string,
+	projectId: string,
 	input: CsvDistinctInput,
-	csvService: AgentKnowledgeSandboxCsvService,
+	csvService: AgentKnowledgeCsvService,
 ) {
-	return await csvService.distinctCsv(workspace, files, input);
+	return await csvService.distinctCsv(agentId, projectId, input);
 }
 
 export async function aggregateCsv(
-	workspace: KnowledgeSandboxWorkspace,
-	files: WorkspaceFiles,
+	agentId: string,
+	projectId: string,
 	input: CsvAggregateInput,
-	csvService: AgentKnowledgeSandboxCsvService,
+	csvService: AgentKnowledgeCsvService,
 ) {
-	return await csvService.aggregateCsv(workspace, files, input);
+	return await csvService.aggregateCsv(agentId, projectId, input);
 }

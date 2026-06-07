@@ -53,7 +53,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { AgentKnowledgeSandboxCommandService } from './agent-knowledge-sandbox-command.service';
-import { AgentKnowledgeSandboxCsvService } from './agent-knowledge-sandbox-csv.service';
+import { AgentKnowledgeCsvService } from './agent-knowledge-csv.service';
 import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentsToolsService } from './agents-tools.service';
@@ -105,7 +105,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentKnowledgeSandboxCommandService: AgentKnowledgeSandboxCommandService,
-		private readonly agentKnowledgeSandboxCsvService: AgentKnowledgeSandboxCsvService,
+		private readonly agentKnowledgeCsvService: AgentKnowledgeCsvService,
 		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
 	) {}
 
@@ -355,7 +355,7 @@ export class AgentRuntimeReconstructionService {
 					projectId,
 					knowledgeService: this.agentKnowledgeService,
 					sandboxCommandService: this.agentKnowledgeSandboxCommandService,
-					sandboxCsvService: this.agentKnowledgeSandboxCsvService,
+					csvService: this.agentKnowledgeCsvService,
 					sandboxWorkspaceService: this.agentKnowledgeSandboxWorkspaceService,
 				}),
 			);

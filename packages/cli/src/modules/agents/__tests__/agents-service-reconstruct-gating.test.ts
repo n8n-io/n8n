@@ -24,7 +24,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AgentKnowledgeSandboxCsvService } from '../agent-knowledge-sandbox-csv.service';
+import type { AgentKnowledgeCsvService } from '../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
 import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -69,7 +69,7 @@ function makeReconstructionService(
 		logger?: Logger;
 		agentKnowledgeService?: AgentKnowledgeService;
 		agentKnowledgeSandboxCommandService?: AgentKnowledgeSandboxCommandService;
-		agentKnowledgeSandboxCsvService?: AgentKnowledgeSandboxCsvService;
+		agentKnowledgeCsvService?: AgentKnowledgeCsvService;
 		agentKnowledgeSandboxWorkspaceService?: AgentKnowledgeSandboxWorkspaceService;
 	} = {},
 ): AgentRuntimeReconstructionService {
@@ -93,7 +93,7 @@ function makeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		overrides.agentKnowledgeService ?? mock<AgentKnowledgeService>(),
 		overrides.agentKnowledgeSandboxCommandService ?? mock<AgentKnowledgeSandboxCommandService>(),
-		overrides.agentKnowledgeSandboxCsvService ?? mock<AgentKnowledgeSandboxCsvService>(),
+		overrides.agentKnowledgeCsvService ?? mock<AgentKnowledgeCsvService>(),
 		overrides.agentKnowledgeSandboxWorkspaceService ??
 			mock<AgentKnowledgeSandboxWorkspaceService>(),
 	);
@@ -146,12 +146,12 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		const credentialProvider = mock<CredentialProvider>();
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
 		const agentKnowledgeSandboxCommandService = mock<AgentKnowledgeSandboxCommandService>();
-		const agentKnowledgeSandboxCsvService = mock<AgentKnowledgeSandboxCsvService>();
+		const agentKnowledgeCsvService = mock<AgentKnowledgeCsvService>();
 		const agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>();
 		const service = makeReconstructionService(agentsToolsService, modules, {
 			agentKnowledgeService,
 			agentKnowledgeSandboxCommandService,
-			agentKnowledgeSandboxCsvService,
+			agentKnowledgeCsvService,
 			agentKnowledgeSandboxWorkspaceService,
 		});
 		const entity = makeAgentEntity();
@@ -164,7 +164,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 				projectId: 'project-1',
 				knowledgeService: agentKnowledgeService,
 				sandboxCommandService: agentKnowledgeSandboxCommandService,
-				sandboxCsvService: agentKnowledgeSandboxCsvService,
+				csvService: agentKnowledgeCsvService,
 				sandboxWorkspaceService: agentKnowledgeSandboxWorkspaceService,
 			}),
 		);

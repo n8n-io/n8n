@@ -1,11 +1,6 @@
-import type {
-	CommandResult,
-	ExecuteCommandOptions,
-	SandboxFilesystem,
-} from '@n8n/ai-utilities/sandbox';
+import type { SandboxFilesystem } from '@n8n/ai-utilities/sandbox';
 
-import { resolveKnowledgeCsvRunnerArgs } from '../../__tests__/knowledge-csv-runner-test-utils';
-import { AgentKnowledgeSandboxCsvService } from '../../agent-knowledge-sandbox-csv.service';
+import { AgentKnowledgeCsvService } from '../../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
 import { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 import type {
@@ -26,7 +21,7 @@ const projectId = 'project-1';
 describe('search_knowledge tool', () => {
 	let hostCommandService: AgentKnowledgeCommandService;
 	let sandboxCommandService: AgentKnowledgeSandboxCommandService;
-	let sandboxCsvService: AgentKnowledgeSandboxCsvService;
+	let csvService: AgentKnowledgeCsvService;
 	let sandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService;
 	let knowledgeService: jest.Mocked<
 		Pick<
@@ -35,6 +30,7 @@ describe('search_knowledge tool', () => {
 			| 'listWorkspaceFiles'
 			| 'materializeWorkspace'
 			| 'materializeWorkspaceIntoSandbox'
+			| 'openWorkspaceFileStream'
 			| 'resolveWorkspaceFilesForRuntime'
 		>
 	>;
@@ -49,14 +45,13 @@ describe('search_knowledge tool', () => {
 			projectId,
 			knowledgeService: mockKnowledgeService(),
 			sandboxCommandService,
-			sandboxCsvService,
+			csvService,
 			sandboxWorkspaceService,
 		});
 	}
 
 	beforeEach(() => {
 		hostCommandService = new AgentKnowledgeCommandService();
-		sandboxCsvService = new AgentKnowledgeSandboxCsvService();
 		sandboxCommandService = {
 			run: jest.fn(async (workspace, request) => {
 				return await hostCommandService.run(workspace.knowledgeRoot, request);
@@ -69,7 +64,6 @@ describe('search_knowledge tool', () => {
 			}),
 			withCachedWorkspace: jest.fn(async (_cacheKey, operation) => {
 				const { mkdtemp, mkdir, rm, writeFile } = await import('node:fs/promises');
-				const { spawn } = await import('node:child_process');
 				const { tmpdir } = await import('node:os');
 				const nodePath = await import('node:path');
 				const knowledgeRoot = await mkdtemp(nodePath.join(tmpdir(), 'sandbox-knowledge-'));
@@ -80,46 +74,7 @@ describe('search_knowledge tool', () => {
 						name: 'Test Sandbox',
 						provider: 'n8n-sandbox',
 						status: 'running',
-						executeCommand: async (
-							command: string,
-							args: string[],
-							options: ExecuteCommandOptions,
-						) => {
-							return await new Promise<CommandResult>((resolve) => {
-								const child = spawn(command, resolveKnowledgeCsvRunnerArgs(args), {
-									cwd: options.cwd,
-									env: { ...process.env, ...options.env },
-								});
-								let stdout = '';
-								let stderr = '';
-								child.stdout.on('data', (chunk: Buffer) => {
-									const text = chunk.toString();
-									stdout += text;
-									options.onStdout?.(text);
-								});
-								child.stderr.on('data', (chunk: Buffer) => {
-									const text = chunk.toString();
-									stderr += text;
-									options.onStderr?.(text);
-								});
-								const timer =
-									options.timeout !== undefined
-										? setTimeout(() => {
-												child.kill();
-											}, options.timeout)
-										: undefined;
-								child.on('close', (exitCode) => {
-									if (timer) clearTimeout(timer);
-									resolve({
-										success: exitCode === 0,
-										exitCode: exitCode ?? 1,
-										stdout,
-										stderr,
-										executionTimeMs: 0,
-									});
-								});
-							});
-						},
+						executeCommand: jest.fn(),
 					},
 					filesystem: {
 						writeFile: async (
@@ -170,6 +125,36 @@ describe('search_knowledge tool', () => {
 					);
 				},
 			),
+			openWorkspaceFileStream: jest.fn(async (streamAgentId, streamProjectId, fileReference) => {
+				const { mkdtemp, readFile, rm } = await import('node:fs/promises');
+				const { tmpdir } = await import('node:os');
+				const nodePath = await import('node:path');
+				const { Readable } = await import('node:stream');
+				const dir = await mkdtemp(nodePath.join(tmpdir(), 'csv-stream-'));
+				try {
+					const files = await knowledgeService.materializeWorkspace(
+						streamAgentId,
+						streamProjectId,
+						dir,
+						{
+							fileReferences: [fileReference],
+						},
+					);
+					const file = files.find(
+						(candidate) =>
+							candidate.id === fileReference ||
+							candidate.relativePath === fileReference ||
+							candidate.fileName === fileReference,
+					);
+					if (!file) throw new Error(`File "${fileReference}" not found`);
+					return {
+						file,
+						contentStream: Readable.from([await readFile(nodePath.join(dir, file.relativePath))]),
+					};
+				} finally {
+					await rm(dir, { recursive: true, force: true });
+				}
+			}),
 			resolveWorkspaceFilesForRuntime: jest.fn(
 				async (resolveAgentId, resolveProjectId, fileReferences) => {
 					const { mkdtemp, rm } = await import('node:fs/promises');
@@ -198,6 +183,7 @@ describe('search_knowledge tool', () => {
 				},
 			),
 		};
+		csvService = new AgentKnowledgeCsvService(mockKnowledgeService());
 	});
 
 	it('describes a top-level object input schema for providers', () => {
@@ -1652,38 +1638,23 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
-	it('routes csv operations through sandbox workspace and materialization', async () => {
+	it('routes csv operations through backend file streaming without sandbox materialization', async () => {
+		const file = {
+			id: 'file-1',
+			fileName: 'data.csv',
+			mimeType: 'text/csv',
+			fileSizeBytes: 20,
+			relativePath: 'file-1.csv',
+		};
 		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
-			files: [
-				{
-					id: 'file-1',
-					fileName: 'data.csv',
-					mimeType: 'text/csv',
-					fileSizeBytes: 20,
-					relativePath: 'file-1.csv',
-				},
-			],
+			files: [file],
 			cacheSignature: 'signature-a',
 		});
-		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
-			async (_agentId, _projectId, target) => {
-				const { writeFile } = await import('node:fs/promises');
-				const nodePath = await import('node:path');
-				await writeFile(
-					nodePath.join(target.knowledgeRoot, 'file-1.csv'),
-					'country,year\nGermany,2022\n',
-				);
-				return [
-					{
-						id: 'file-1',
-						fileName: 'data.csv',
-						mimeType: 'text/csv',
-						fileSizeBytes: 20,
-						relativePath: 'file-1.csv',
-					},
-				];
-			},
-		);
+		const { Readable } = await import('node:stream');
+		knowledgeService.openWorkspaceFileStream.mockResolvedValue({
+			file,
+			contentStream: Readable.from(['country,year\nGermany,2022\n']),
+		});
 		const tool = createTool();
 
 		await tool.handler?.(
@@ -1695,8 +1666,13 @@ describe('search_knowledge tool', () => {
 			{} as never,
 		);
 
-		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalled();
-		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
+		expect(knowledgeService.openWorkspaceFileStream).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			'file-1',
+		);
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).not.toHaveBeenCalled();
 		expect(knowledgeService.materializeWorkspace).not.toHaveBeenCalled();
 	});
 });

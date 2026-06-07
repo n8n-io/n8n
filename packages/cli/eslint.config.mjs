@@ -22,7 +22,6 @@ export default defineConfig(
 		'jest.config*.js',
 		'test/*-testcontainers.js',
 		'coverage/**',
-		'src/modules/agents/sandbox-runners/*.cjs',
 	]),
 	nodeConfig,
 	{

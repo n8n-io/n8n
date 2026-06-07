@@ -13,6 +13,7 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import posixPath from 'node:path/posix';
+import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -40,6 +41,11 @@ export interface KnowledgeWorkspaceFile {
 export interface KnowledgeWorkspaceResolution {
 	files: KnowledgeWorkspaceFile[];
 	cacheSignature: string;
+}
+
+export interface KnowledgeWorkspaceFileContent {
+	file: KnowledgeWorkspaceFile;
+	contentStream: Readable;
 }
 
 export interface KnowledgeSandboxManifestFile {
@@ -185,6 +191,23 @@ export class AgentKnowledgeService {
 		fileReferences?: string[],
 	): Promise<KnowledgeWorkspaceFile[]> {
 		return (await this.resolveWorkspaceFilesForRuntime(agentId, projectId, fileReferences)).files;
+	}
+
+	async openWorkspaceFileStream(
+		agentId: string,
+		projectId: string,
+		fileReference: string,
+	): Promise<KnowledgeWorkspaceFileContent> {
+		await this.ensureAgentBelongsToProject(agentId, projectId);
+		const file = this.resolveStoredWorkspaceFile(
+			await this.agentFileRepository.findByAgentId(agentId),
+			fileReference,
+		);
+
+		return {
+			file: this.toWorkspaceFile(file),
+			contentStream: await this.binaryDataService.getAsStream(file.binaryDataId),
+		};
 	}
 
 	async resolveWorkspaceFilesForRuntime(
@@ -493,6 +516,21 @@ export class AgentKnowledgeService {
 				requested.has(file.id) ||
 				requested.has(this.getWorkspaceRelativePath(file)) ||
 				requested.has(file.fileName),
+		);
+	}
+
+	private resolveStoredWorkspaceFile(files: AgentFile[], fileReference: string): AgentFile {
+		const matches = files.filter(
+			(file) =>
+				file.id === fileReference ||
+				this.getWorkspaceRelativePath(file) === fileReference ||
+				file.fileName === fileReference,
+		);
+
+		if (matches.length === 1) return matches[0];
+		if (matches.length === 0) throw new Error(`File "${fileReference}" not found`);
+		throw new Error(
+			`File "${fileReference}" matches multiple uploaded files. Use the file id or relative path instead.`,
 		);
 	}
 
