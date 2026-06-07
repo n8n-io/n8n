@@ -44,7 +44,6 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
-	NO_OP_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -1417,7 +1416,7 @@ describe('useCanvasOperations', () => {
 		const deprecatedType = 'n8n-nodes-base.function';
 		const replacementType = 'n8n-nodes-base.code';
 
-		it('should replace a deprecated node with its configured successor when added', async () => {
+		it('should add a deprecated node unchanged instead of replacing it', async () => {
 			const toast = useToast();
 			const nodeTypesStore = useNodeTypesStore();
 
@@ -1437,53 +1436,13 @@ describe('useCanvasOperations', () => {
 			const { addNodes } = useCanvasOperations();
 			const added = await addNodes([{ type: deprecatedType }], {});
 
-			// The node that actually lands on the canvas uses the replacement type.
+			// The deprecated node lands on the canvas as-is; it is not swapped for
+			// its replacement (or the No-Op fallback).
 			expect(addNodeSpy).toHaveBeenCalledTimes(1);
-			expect(addNodeSpy.mock.calls[0][0].type).toBe(replacementType);
-			expect(added[0].type).toBe(replacementType);
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(deprecatedType);
+			expect(added[0].type).toBe(deprecatedType);
 
-			// Exactly one warning toast is shown for the replacement.
-			expect(toast.showMessage).toHaveBeenCalledTimes(1);
-			expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
-		});
-
-		it('should fall back to the No-Op node when no replacedByNodeType is configured', async () => {
-			const toast = useToast();
-			const nodeTypesStore = useNodeTypesStore();
-
-			nodeTypesStore.nodeTypes = {
-				[deprecatedType]: {
-					1: mockNodeTypeDescription({ name: deprecatedType, deprecated: true }),
-				},
-				[NO_OP_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: NO_OP_NODE_TYPE }) },
-			};
-
-			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
-
-			const { addNodes } = useCanvasOperations();
-			const added = await addNodes([{ type: deprecatedType }], {});
-
-			expect(addNodeSpy.mock.calls[0][0].type).toBe(NO_OP_NODE_TYPE);
-			expect(added[0].type).toBe(NO_OP_NODE_TYPE);
-			expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
-		});
-
-		it('should not replace a non-deprecated node nor show a warning toast', async () => {
-			const toast = useToast();
-			const nodeTypesStore = useNodeTypesStore();
-			const normalType = 'type';
-
-			nodeTypesStore.nodeTypes = {
-				[normalType]: { 1: mockNodeTypeDescription({ name: normalType }) },
-			};
-
-			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
-
-			const { addNodes } = useCanvasOperations();
-			const added = await addNodes([{ type: normalType }], {});
-
-			expect(addNodeSpy.mock.calls[0][0].type).toBe(normalType);
-			expect(added[0].type).toBe(normalType);
+			// No "deprecated nodes replaced" warning toast is shown.
 			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});

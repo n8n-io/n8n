@@ -12,6 +12,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -29,6 +30,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -45,6 +47,7 @@ describe('useContextMenu', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
 	const testWorkflowId = 'test-workflow-id';
@@ -66,12 +69,15 @@ describe('useContextMenu', () => {
 		workflowDocumentStore.setScopes(['workflow:update']);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
+		nodeTypesStore = useNodeTypesStore();
+
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
 	});
 
 	afterEach(() => {
 		useContextMenu().close();
+		nodeTypesStore.nodeTypes = {};
 		vi.clearAllMocks();
 	});
 
@@ -339,6 +345,30 @@ describe('useContextMenu', () => {
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(targetNodeIds.value).toEqual([node.id]);
+	});
+
+	describe('Deprecated node', () => {
+		it('should disable mutating actions when the node type is deprecated', () => {
+			const node = nodeFactory();
+			nodeTypesStore.nodeTypes = {
+				[node.type]: { [node.typeVersion]: { deprecated: true } as INodeTypeDescription },
+			};
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
+
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([node.id]);
+			for (const id of [
+				'extract_sub_workflow',
+				'toggle_activation',
+				'execute',
+				'rename',
+			] as const) {
+				expect(actions.value.find((action) => action.id === id)?.disabled).toBe(true);
+			}
+		});
 	});
 
 	describe('Read-only mode', () => {

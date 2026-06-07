@@ -726,7 +726,9 @@ function handleSelectAction(params: INodeParameters) {
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="
+				props.hideExecute || !isExecutable || blockUI || !node || !nodeValid || isDeprecated
+			"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
