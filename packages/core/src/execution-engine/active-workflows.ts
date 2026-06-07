@@ -283,7 +283,18 @@ export class ActiveWorkflows {
 						);
 
 						if (pollResponse !== null) {
-							pollFunctions.__emit(pollResponse);
+							// Guard against stale poll results: if the workflow was
+							// deactivated (and optionally reactivated with a new version)
+							// while this poll was in-flight, discard the results to
+							// prevent executions from using the old workflow structure.
+							if (this.isActive(workflow.id)) {
+								pollFunctions.__emit(pollResponse);
+							} else {
+								this.logger.debug(
+									`Discarding poll results for deactivated workflow "${workflow.name}"`,
+									{ workflowId: workflow.id },
+								);
+							}
 						}
 
 						span.setStatus({ code: SpanStatus.ok });
