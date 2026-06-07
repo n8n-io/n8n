@@ -54,7 +54,11 @@ export async function runSearchOperation<TWorkspace>(
 			error: requestedFiles.error,
 		};
 	}
+	const commandFiles = requestedFiles.files ?? files.map((file) => file.relativePath);
 	const primaryPattern = getPrimarySearchPattern(input);
+	if (commandFiles.length === 0) {
+		return buildEmptySearchOutput(input, files, primaryPattern);
+	}
 	const commandPattern = getSearchCommandPattern(input);
 	const commandFixedStrings = getSearchCommandFixedStrings(input);
 	let contentResult: InternalKnowledgeCommandResult | undefined;
@@ -64,7 +68,7 @@ export async function runSearchOperation<TWorkspace>(
 		outputMode: 'count',
 		caseInsensitive: input.caseInsensitive,
 		fixedStrings: commandFixedStrings,
-		files: requestedFiles.files,
+		files: commandFiles,
 	});
 	let counts = parseCountOutput(countResult.stdout, files);
 	let multiQueryMatches: InternalSearchMatch[] | undefined;
@@ -75,7 +79,7 @@ export async function runSearchOperation<TWorkspace>(
 			caseInsensitive: input.caseInsensitive,
 			fixedStrings: commandFixedStrings,
 			context: input.context,
-			files: requestedFiles.files,
+			files: commandFiles,
 		});
 		multiQueryMatches = filterMultiQueryMatches(
 			parseSearchMatches(contentResult.stdout, files),
@@ -88,13 +92,14 @@ export async function runSearchOperation<TWorkspace>(
 
 	if (input.output_mode === 'files_with_matches') {
 		const slicedCounts = sliceResults(counts, input.offset, input.head_limit);
+		const sourceTruncated = countResult.truncated || (contentResult?.truncated ?? false);
 		return {
 			operation: 'search',
 			files,
 			result: toDisplayResult(
 				countResult,
 				formatSearchFiles(counts, input.offset, input.head_limit),
-				slicedCounts.truncated,
+				slicedCounts.truncated || sourceTruncated,
 			),
 			search: buildSearchResult({
 				mode: input.output_mode,
@@ -105,20 +110,27 @@ export async function runSearchOperation<TWorkspace>(
 				matches: [],
 				offset: input.offset,
 				headLimit: input.head_limit,
-				hint: buildSearchHint('files_with_matches', slicedCounts, input.head_limit),
+				hint: buildSearchHint(
+					'files_with_matches',
+					slicedCounts,
+					input.head_limit,
+					sourceTruncated,
+				),
+				sourceTruncated,
 			}),
 		};
 	}
 
 	if (input.output_mode === 'count') {
 		const slicedCounts = sliceResults(counts, input.offset, input.head_limit);
+		const sourceTruncated = countResult.truncated || (contentResult?.truncated ?? false);
 		return {
 			operation: 'search',
 			files,
 			result: toDisplayResult(
 				countResult,
 				formatSearchCounts(counts, input.offset, input.head_limit),
-				slicedCounts.truncated,
+				slicedCounts.truncated || sourceTruncated,
 			),
 			search: buildSearchResult({
 				mode: input.output_mode,
@@ -129,7 +141,8 @@ export async function runSearchOperation<TWorkspace>(
 				matches: [],
 				offset: input.offset,
 				headLimit: input.head_limit,
-				hint: buildSearchHint('count', slicedCounts, input.head_limit),
+				hint: buildSearchHint('count', slicedCounts, input.head_limit, sourceTruncated),
+				sourceTruncated,
 			}),
 		};
 	}
@@ -140,7 +153,7 @@ export async function runSearchOperation<TWorkspace>(
 		caseInsensitive: input.caseInsensitive,
 		fixedStrings: commandFixedStrings,
 		context: input.context,
-		files: requestedFiles.files,
+		files: commandFiles,
 	});
 	const parsedMatches = parseSearchMatches(contentResult.stdout, files);
 	const matches = multiQueryMatches ?? parsedMatches;
@@ -156,7 +169,8 @@ export async function runSearchOperation<TWorkspace>(
 		offset: input.offset,
 		headLimit: input.head_limit,
 		nextOffset: slicedMatches.nextOffset,
-		hint: buildSearchHint('content', slicedMatches, input.head_limit),
+		hint: buildSearchHint('content', slicedMatches, input.head_limit, contentResult.truncated),
+		sourceTruncated: contentResult.truncated,
 	});
 	return {
 		operation: 'search',
@@ -179,6 +193,36 @@ function toDisplayResult(
 		...result,
 		stdout,
 		truncated: result.truncated || truncated,
+	};
+}
+
+function buildEmptySearchOutput(
+	input: SearchInput,
+	files: WorkspaceFiles,
+	primaryPattern: string,
+): SearchKnowledgeOutput {
+	const result: InternalKnowledgeCommandResult = {
+		command: 'search',
+		exitCode: 0,
+		stdout: '',
+		stderr: '',
+		truncated: false,
+	};
+	return {
+		operation: 'search',
+		files,
+		result,
+		search: buildSearchResult({
+			mode: input.output_mode,
+			query: primaryPattern,
+			queries: input.queries,
+			matchMode: input.queries ? input.match_mode : undefined,
+			counts: [],
+			matches: [],
+			offset: input.offset,
+			headLimit: input.head_limit,
+			hint: buildSearchHint(input.output_mode, { truncated: false }, input.head_limit),
+		}),
 	};
 }
 
@@ -360,6 +404,7 @@ function buildSearchResult({
 	headLimit,
 	nextOffset,
 	hint,
+	sourceTruncated,
 }: {
 	mode: SearchOutputMode;
 	query: string;
@@ -371,6 +416,7 @@ function buildSearchResult({
 	headLimit: number;
 	nextOffset?: number;
 	hint?: string;
+	sourceTruncated?: boolean;
 }): SearchResultOutput {
 	const slicedCounts = sliceResults(counts, offset, headLimit);
 	const totalMatchingLines = counts.reduce((total, count) => total + count.matchCount, 0);
@@ -384,7 +430,8 @@ function buildSearchResult({
 		totalMatchingLines,
 		files: slicedCounts.items,
 		matches,
-		truncated: slicedCounts.truncated || effectiveNextOffset !== undefined,
+		truncated:
+			Boolean(sourceTruncated) || slicedCounts.truncated || effectiveNextOffset !== undefined,
 		appliedLimit:
 			(mode === 'content' && effectiveNextOffset !== undefined) || slicedCounts.truncated
 				? headLimit
@@ -408,7 +455,11 @@ function buildSearchHint(
 	mode: SearchOutputMode,
 	sliced: { nextOffset?: number; truncated: boolean },
 	headLimit: number,
+	sourceTruncated = false,
 ) {
+	if (sourceTruncated) {
+		return 'Search output was truncated before all matches could be evaluated. Narrow the query or target specific files.';
+	}
 	if (sliced.nextOffset !== undefined) {
 		return `Additional ${mode === 'files_with_matches' ? 'files' : mode === 'count' ? 'counts' : 'matches'} omitted. Continue with offset=${sliced.nextOffset} and head_limit=${headLimit}, or ${mode === 'content' ? 'read one of the returned ranges' : 'switch to output_mode=content after choosing a file'}.`;
 	}

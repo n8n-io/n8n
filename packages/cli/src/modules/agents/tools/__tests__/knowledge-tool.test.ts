@@ -209,7 +209,7 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
-	it('resolves the full corpus for unscoped search', async () => {
+	it('searches only current workspace files for unscoped search', async () => {
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
 		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(
@@ -219,8 +219,40 @@ describe('search_knowledge tool', () => {
 		);
 		expect(commandService.run).toHaveBeenCalledWith(
 			expect.any(Object),
-			expect.objectContaining({ command: 'search', files: undefined }),
+			expect.objectContaining({ command: 'search', files: ['file-1.txt'] }),
 		);
+	});
+
+	it('reports truncation when multi-query file results come from truncated content output', async () => {
+		commandService.run
+			.mockResolvedValueOnce({
+				command: 'search',
+				exitCode: 0,
+				stdout: 'file-1.txt:2\n',
+				stderr: '',
+				truncated: false,
+			})
+			.mockResolvedValueOnce({
+				command: 'search',
+				exitCode: 0,
+				stdout: 'file-1.txt:1:alpha beta\n',
+				stderr: '',
+				truncated: true,
+			});
+
+		const result = await createTool().handler?.(
+			{ operation: 'search', queries: ['alpha', 'beta'], match_mode: 'all_on_same_line' },
+			{} as never,
+		);
+
+		expect(result).toMatchObject({
+			operation: 'search',
+			result: { truncated: true },
+			search: {
+				truncated: true,
+				hint: expect.stringContaining('truncated before all matches'),
+			},
+		});
 	});
 
 	it('skips materialization when the cached manifest is fresh', async () => {
