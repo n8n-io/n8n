@@ -18,6 +18,7 @@ import pLimit from 'p-limit';
 import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import type {
 	KnowledgeSandboxExpectedManifest,
+	KnowledgeSandboxManifest,
 	KnowledgeWorkspaceFile,
 } from './agent-knowledge.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
@@ -71,14 +72,71 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		files: KnowledgeWorkspaceFile[] | undefined;
 		freshness: KnowledgeWorkspaceFreshness;
 	}> {
-		const freshness = await this.checkWorkspaceFreshness(workspace, expectedManifest);
-		if (freshness.status === 'fresh') {
-			return { files: undefined, freshness };
+		return await this.ensureWorkspaceContainsFiles(
+			workspace,
+			expectedManifest,
+			async () => await materialize(),
+		);
+	}
+
+	async ensureWorkspaceContainsFiles(
+		workspace: KnowledgeSandboxWorkspace,
+		requiredManifest: KnowledgeSandboxExpectedManifest,
+		materialize: (missingFiles: KnowledgeWorkspaceFile[]) => Promise<KnowledgeWorkspaceFile[]>,
+	): Promise<{
+		files: KnowledgeWorkspaceFile[] | undefined;
+		freshness: KnowledgeWorkspaceFreshness;
+	}> {
+		const actualManifest = await this.readWorkspaceManifest(workspace);
+		if (
+			actualManifest &&
+			!this.knowledgeService.isSandboxManifestIdentityValid(actualManifest, requiredManifest)
+		) {
+			await this.clearStaleWorkspaceState(workspace);
+			const files = await materialize(
+				requiredManifest.files.map((file) => ({
+					id: file.id,
+					fileName: '',
+					mimeType: '',
+					fileSizeBytes: file.fileSizeBytes,
+					relativePath: file.relativePath,
+				})),
+			);
+			return { files, freshness: { status: 'stale', reason: 'manifest-identity' } };
 		}
 
-		await this.clearStaleWorkspaceState(workspace);
-		const files = await materialize();
-		return { files, freshness };
+		if (!(await workspace.filesystem.exists(workspace.knowledgeRoot))) {
+			await this.clearStaleWorkspaceState(workspace);
+			const files = await materialize(
+				requiredManifest.files.map((file) => ({
+					id: file.id,
+					fileName: '',
+					mimeType: '',
+					fileSizeBytes: file.fileSizeBytes,
+					relativePath: file.relativePath,
+				})),
+			);
+			return { files, freshness: { status: 'stale', reason: 'knowledge-root-missing' } };
+		}
+
+		const missingFiles = await this.knowledgeService.findRequiredFilesNeedingMaterialization(
+			{
+				sandbox: workspace.sandbox,
+				filesystem: workspace.filesystem,
+				knowledgeRoot: workspace.knowledgeRoot,
+				internalRoot: workspace.internalRoot,
+				manifestPath: workspace.manifestPath,
+			},
+			actualManifest,
+			requiredManifest,
+		);
+
+		if (missingFiles.length === 0) {
+			return { files: undefined, freshness: { status: 'fresh' } };
+		}
+
+		const files = await materialize(missingFiles);
+		return { files, freshness: { status: 'stale', reason: 'missing-required-files' } };
 	}
 
 	async withCachedWorkspace<T>(
@@ -130,6 +188,11 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		);
 	}
 
+	/**
+	 * Best-effort teardown after knowledge deletes. When this fails, previously
+	 * materialized files can remain searchable via unscoped search until the
+	 * workspace is evicted or recreated.
+	 */
 	async invalidateCachedWorkspacesForAgent(projectId: string, agentId: string): Promise<void> {
 		try {
 			await this.destroyCachedWorkspacesForAgent(projectId, agentId);
@@ -276,55 +339,17 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		await this.destroySandbox(workspace.sandbox);
 	}
 
-	private async checkWorkspaceFreshness(
+	private async readWorkspaceManifest(
 		workspace: KnowledgeSandboxWorkspace,
-		expected: KnowledgeSandboxExpectedManifest,
-	): Promise<KnowledgeWorkspaceFreshness> {
-		let rawContent: unknown;
+	): Promise<KnowledgeSandboxManifest | null> {
 		try {
-			rawContent = await workspace.filesystem.readFile(workspace.manifestPath);
+			const rawContent = await workspace.filesystem.readFile(workspace.manifestPath);
+			return this.knowledgeService.parseSandboxManifest(
+				JSON.parse(this.normalizeFileContent(rawContent)),
+			);
 		} catch {
-			return { status: 'stale', reason: 'manifest-missing' };
+			return null;
 		}
-
-		const content = this.normalizeFileContent(rawContent);
-		let parsed: unknown;
-		try {
-			parsed = JSON.parse(content);
-		} catch {
-			return { status: 'stale', reason: 'manifest-invalid-json' };
-		}
-
-		if (!parsed || typeof parsed !== 'object') {
-			return { status: 'stale', reason: 'manifest-invalid' };
-		}
-
-		const manifest = parsed as Record<string, unknown>;
-		if (manifest.version !== expected.version) {
-			return { status: 'stale', reason: 'manifest-version' };
-		}
-		if (manifest.agentId !== expected.agentId) {
-			return { status: 'stale', reason: 'manifest-agent' };
-		}
-		if (manifest.projectId !== expected.projectId) {
-			return { status: 'stale', reason: 'manifest-project' };
-		}
-		if (manifest.cacheSignatureSha1 !== expected.cacheSignatureSha1) {
-			return { status: 'stale', reason: 'manifest-cache-signature' };
-		}
-		if (!Array.isArray(manifest.files)) {
-			return { status: 'stale', reason: 'manifest-files' };
-		}
-
-		if (!this.knowledgeService.isSandboxManifestFresh(parsed, expected)) {
-			return { status: 'stale', reason: 'manifest-files-mismatch' };
-		}
-
-		if (!(await workspace.filesystem.exists(workspace.knowledgeRoot))) {
-			return { status: 'stale', reason: 'knowledge-root-missing' };
-		}
-
-		return { status: 'fresh' };
 	}
 
 	private async clearStaleWorkspaceState(workspace: KnowledgeSandboxWorkspace): Promise<void> {

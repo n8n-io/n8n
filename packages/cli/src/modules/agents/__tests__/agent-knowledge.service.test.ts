@@ -565,7 +565,7 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
-	it('resolves runtime files with private cache signature', async () => {
+	it('resolves runtime files without exposing stored binary ids', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
 			{
@@ -579,58 +579,46 @@ describe('AgentKnowledgeService', () => {
 			},
 		] as never);
 
-		const first = await service.resolveWorkspaceFilesForRuntime(agentId, projectId);
-		agentFileRepository.findByAgentId.mockResolvedValue([
+		const runtimeFiles = await service.resolveWorkspaceFilesForRuntime(agentId, projectId);
+		const sandboxResolution = await service.resolveWorkspaceForSandboxOperation(agentId, projectId);
+
+		expect(runtimeFiles.files[0]).not.toHaveProperty('binaryDataId');
+		expect(sandboxResolution.files[0]).not.toHaveProperty('binaryDataId');
+		expect(sandboxResolution.storedFiles[0]).toMatchObject({
+			id: 'file-1',
+			binaryDataId: 'binary-1',
+		});
+		expect(agentFileRepository.findByAgentId).toHaveBeenCalledTimes(2);
+	});
+
+	it('buildExpectedSandboxManifest includes hashed binary ids without exposing raw binary ids', () => {
+		const manifest = service.buildExpectedSandboxManifest(agentId, projectId, [
 			{
 				id: 'file-1',
 				agentId,
-				binaryDataId: 'binary-2',
+				binaryDataId: 'binary-1',
 				fileName: 'notes.txt',
 				mimeType: 'text/plain',
 				fileSizeBytes: 10,
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
 		] as never);
-		const second = await service.resolveWorkspaceFilesForRuntime(agentId, projectId);
-
-		expect(first.files[0]).not.toHaveProperty('binaryDataId');
-		expect(second.files[0]).not.toHaveProperty('binaryDataId');
-		expect(first.cacheSignature).not.toBe(second.cacheSignature);
-	});
-
-	it('buildExpectedSandboxManifest hashes cache signature and omits raw binary ids', () => {
-		const files = [
-			{
-				id: 'file-1',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				relativePath: 'file-1.txt',
-			},
-		];
-
-		const manifest = service.buildExpectedSandboxManifest(
-			agentId,
-			projectId,
-			'binary-1:10:file-1.txt',
-			files,
-		);
 
 		expect(manifest).toMatchObject({
 			version: 1,
 			agentId,
 			projectId,
-			cacheSignatureSha1: expect.any(String),
+			cacheSignatureSha1: '',
 			files: [
 				{
 					id: 'file-1',
 					relativePath: 'file-1.txt',
 					fileSizeBytes: 10,
+					binaryDataIdSha1: expect.any(String),
 				},
 			],
 		});
 		expect(JSON.stringify(manifest)).not.toContain('binary-1');
-		expect(manifest.files[0]).not.toHaveProperty('binaryDataIdSha1');
 	});
 
 	it('streams selected files into sandbox knowledge root', async () => {
@@ -728,7 +716,7 @@ describe('AgentKnowledgeService', () => {
 			version: 1,
 			agentId,
 			projectId,
-			cacheSignatureSha1: expect.any(String),
+			cacheSignatureSha1: '',
 			files: [
 				expect.objectContaining({
 					id: 'file-1',
@@ -746,6 +734,76 @@ describe('AgentKnowledgeService', () => {
 		});
 		expect(JSON.stringify(manifest)).not.toContain('binary-1');
 		expect(JSON.stringify(manifest)).not.toContain('binary-2');
+	});
+
+	it('merges manifest entries when materializing an additional file', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const storedFiles = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+			{
+				id: 'file-2',
+				agentId,
+				binaryDataId: 'binary-2',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+		agentFileRepository.findByAgentId.mockResolvedValue(storedFiles);
+		const target = makeSandboxTarget();
+		const existingManifest = service.buildExpectedSandboxManifest(agentId, projectId, [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never);
+		jest.mocked(target.filesystem.readFile).mockResolvedValue(
+			JSON.stringify({
+				...existingManifest,
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		binaryDataService.getAsStream.mockResolvedValueOnce(
+			Readable.from(Buffer.from('country,year\n')) as never,
+		);
+
+		await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
+			{
+				id: 'file-2',
+				agentId,
+				binaryDataId: 'binary-2',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never);
+
+		const manifestCall = jest
+			.mocked(target.filesystem.writeFile)
+			.mock.calls.find((call) => call[0] === target.manifestPath);
+		const manifest = JSON.parse(String(manifestCall?.[1] ?? ''));
+		expect(manifest.files).toHaveLength(2);
+		expect(manifest.files).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
+				expect.objectContaining({ id: 'file-2', relativePath: 'file-2.csv' }),
+			]),
+		);
 	});
 
 	it('rejects oversized sandbox materialization before opening binary streams', async () => {
@@ -771,7 +829,7 @@ describe('AgentKnowledgeService', () => {
 		expect(writeStreamToSandboxFileMock).not.toHaveBeenCalled();
 	});
 
-	it('cleans sandbox knowledge root and manifest when streaming fails', async () => {
+	it('cleans only the failed sandbox file when streaming fails', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
 			{
@@ -793,11 +851,11 @@ describe('AgentKnowledgeService', () => {
 			service.materializeWorkspaceIntoSandbox(agentId, projectId, target),
 		).rejects.toThrow(error);
 
-		expect(target.filesystem.deleteFile).toHaveBeenCalledWith(target.knowledgeRoot, {
-			recursive: true,
-			force: true,
-		});
-		expect(target.filesystem.deleteFile).toHaveBeenCalledWith(target.manifestPath, {
+		expect(target.filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/user/workspace/agent-knowledge/file-1.txt',
+			{ force: true },
+		);
+		expect(target.filesystem.deleteFile).not.toHaveBeenCalledWith(target.manifestPath, {
 			force: true,
 		});
 	});

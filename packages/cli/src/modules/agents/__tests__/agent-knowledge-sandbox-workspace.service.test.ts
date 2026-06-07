@@ -74,12 +74,13 @@ function buildExpectedManifest() {
 		version: 1,
 		agentId: 'agent-1',
 		projectId: 'project-1',
-		cacheSignatureSha1: 'abc123',
+		cacheSignatureSha1: '',
 		files: [
 			{
 				id: 'file-1',
 				relativePath: 'file-1.txt',
 				fileSizeBytes: 10,
+				binaryDataIdSha1: 'abc123',
 			},
 		],
 	};
@@ -445,7 +446,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(filesystem.deleteFile).not.toHaveBeenCalled();
 	});
 
-	it('ensureWorkspaceMaterialized clears and materializes when manifest is missing', async () => {
+	it('ensureWorkspaceMaterialized materializes missing files when manifest is missing', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);
 		const expected = buildExpectedManifest();
@@ -461,25 +462,26 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-missing' });
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
-			recursive: true,
-			force: true,
-		});
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.manifestPath, { force: true });
-		expect(filesystem.mkdir).toHaveBeenCalledWith(workspace.knowledgeRoot, { recursive: true });
-		expect(filesystem.mkdir).toHaveBeenCalledWith(workspace.internalRoot, { recursive: true });
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'missing-required-files' });
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
 		expect(materialize).toHaveBeenCalledTimes(1);
 	});
 
-	it('ensureWorkspaceMaterialized clears and materializes when manifest signature is stale', async () => {
+	it('ensureWorkspaceMaterialized rematerializes when required file binary hash changes', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);
 		const expected = buildExpectedManifest();
 		filesystem.readFile.mockResolvedValue(
 			JSON.stringify({
 				...expected,
-				cacheSignatureSha1: 'stale-signature',
+				files: [
+					{
+						id: 'file-1',
+						relativePath: 'file-1.txt',
+						fileSizeBytes: 10,
+						binaryDataIdSha1: 'stale-hash',
+					},
+				],
 				materializedAt: '2026-06-06T12:00:00.000Z',
 			}),
 		);
@@ -487,15 +489,12 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-cache-signature' });
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'missing-required-files' });
 		expect(materialize).toHaveBeenCalledTimes(1);
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
-			recursive: true,
-			force: true,
-		});
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
 	});
 
-	it('ensureWorkspaceMaterialized treats invalid JSON as stale', async () => {
+	it('ensureWorkspaceMaterialized treats invalid JSON as missing manifest', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);
 		const expected = buildExpectedManifest();
@@ -504,11 +503,11 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-invalid-json' });
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'missing-required-files' });
 		expect(materialize).toHaveBeenCalledTimes(1);
 	});
 
-	it('ensureWorkspaceMaterialized treats file list mismatch as stale', async () => {
+	it('ensureWorkspaceMaterialized rematerializes when required file path changes', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);
 		const expected = buildExpectedManifest();
@@ -520,6 +519,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 						id: 'file-1',
 						relativePath: 'file-1-renamed.txt',
 						fileSizeBytes: 10,
+						binaryDataIdSha1: 'abc123',
 					},
 				],
 				materializedAt: '2026-06-06T12:00:00.000Z',
@@ -529,11 +529,11 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-files-mismatch' });
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'missing-required-files' });
 		expect(materialize).toHaveBeenCalledTimes(1);
 	});
 
-	it('ensureWorkspaceMaterialized treats malformed manifest files as stale', async () => {
+	it('ensureWorkspaceMaterialized treats malformed manifest files as missing manifest', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);
 		const expected = buildExpectedManifest();
@@ -548,7 +548,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		const result = await service.ensureWorkspaceMaterialized(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-files-mismatch' });
+		expect(result.freshness).toEqual({ status: 'stale', reason: 'missing-required-files' });
 		expect(materialize).toHaveBeenCalledTimes(1);
 	});
 
@@ -572,11 +572,18 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(materialize).toHaveBeenCalledTimes(1);
 	});
 
-	it('ensureWorkspaceMaterialized fails when stale knowledge root cannot be cleared', async () => {
+	it('ensureWorkspaceMaterialized fails when unrecoverable workspace state cannot be cleared', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);
 		const expected = buildExpectedManifest();
 		const cleanupError = new Error('delete failed');
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				agentId: 'other-agent',
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
 		filesystem.deleteFile.mockRejectedValueOnce(cleanupError);
 		filesystem.exists.mockResolvedValueOnce(true);
 		const materialize = jest.fn(async () => []);
@@ -585,7 +592,10 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			service.ensureWorkspaceMaterialized(workspace, expected, materialize),
 		).rejects.toThrow(cleanupError);
 
-		expect(filesystem.exists).toHaveBeenCalledWith(workspace.knowledgeRoot);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
+			recursive: true,
+			force: true,
+		});
 		expect(materialize).not.toHaveBeenCalled();
 	});
 

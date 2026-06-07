@@ -1,5 +1,5 @@
 import { Tool } from '@n8n/agents/tool';
-import { createHash } from 'node:crypto';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentKnowledgeCsvService } from '../../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
@@ -83,44 +83,55 @@ export function createSearchKnowledgeTool({
 			let files: WorkspaceFiles = [];
 			try {
 				const fileReferences = getRequiredFileReferences(parsedInput);
-				const scopedResolution = await knowledgeService.resolveWorkspaceFilesForRuntime(
-					agentId,
-					projectId,
-					fileReferences,
-				);
-				files = scopedResolution.files;
 				if (isCsvOperation(parsedInput)) {
+					const resolution = await knowledgeService.resolveWorkspaceFilesForRuntime(
+						agentId,
+						projectId,
+						fileReferences,
+					);
 					return await handleCsvKnowledgeOperation(
 						parsedInput,
 						agentId,
 						projectId,
-						files,
+						resolution.files,
 						csvService,
 					);
 				}
-				const workspaceResolution =
-					fileReferences === undefined
-						? scopedResolution
-						: await knowledgeService.resolveWorkspaceFilesForRuntime(agentId, projectId);
-				const cacheKey = buildWorkspaceCacheKey(
-					projectId,
+				const workspaceResolution = await knowledgeService.resolveWorkspaceForSandboxOperation(
 					agentId,
-					workspaceResolution.cacheSignature,
+					projectId,
+					fileReferences,
 				);
+				files = workspaceResolution.files;
+				const { storedFiles } = workspaceResolution;
+				const cacheKey = buildWorkspaceCacheKey(projectId, agentId);
+				const expectedManifest = knowledgeService.buildExpectedSandboxManifest(
+					agentId,
+					projectId,
+					storedFiles,
+				);
+				const storedFilesById = new Map(storedFiles.map((file) => [file.id, file] as const));
 
 				return await sandboxWorkspaceService.withCachedWorkspace(cacheKey, async (workspace) => {
-					const expectedManifest = knowledgeService.buildExpectedSandboxManifest(
-						agentId,
-						projectId,
-						workspaceResolution.cacheSignature,
-						workspaceResolution.files,
-					);
-
-					await sandboxWorkspaceService.ensureWorkspaceMaterialized(
+					await sandboxWorkspaceService.ensureWorkspaceContainsFiles(
 						workspace,
 						expectedManifest,
-						async () =>
-							await knowledgeService.materializeWorkspaceIntoSandbox(agentId, projectId, workspace),
+						async (missingFiles) => {
+							const filesToMaterialize = missingFiles
+								.map((file) => storedFilesById.get(file.id))
+								.filter((file): file is NonNullable<typeof file> => file !== undefined);
+							if (filesToMaterialize.length !== missingFiles.length) {
+								throw new UnexpectedError(
+									'Failed to resolve stored knowledge files for sandbox materialization',
+								);
+							}
+							return await knowledgeService.materializeWorkspaceFilesIntoSandbox(
+								agentId,
+								projectId,
+								workspace,
+								filesToMaterialize,
+							);
+						},
 					);
 
 					return await handleSandboxKnowledgeOperation(
@@ -141,17 +152,9 @@ export function createSearchKnowledgeTool({
 		.build();
 }
 
-/**
- * Stable cache key for a materialized workspace. Encodes the agent plus the
- * full current knowledge corpus signature, so add/delete/update invalidates
- * the cache and forces re-materialization.
- */
-function buildWorkspaceCacheKey(
-	projectId: string,
-	agentId: string,
-	cacheSignature: string,
-): string {
-	return `${projectId}:${agentId}:${createHash('sha1').update(cacheSignature).digest('hex')}`;
+/** Stable cache key for a materialized workspace per agent. */
+function buildWorkspaceCacheKey(projectId: string, agentId: string): string {
+	return `${projectId}:${agentId}:workspace`;
 }
 
 /**

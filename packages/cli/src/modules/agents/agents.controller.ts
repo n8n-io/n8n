@@ -449,12 +449,7 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			const uploaded = await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
-			await this.agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent(
-				projectId,
-				agentId,
-			);
-			return uploaded;
+			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
