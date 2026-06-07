@@ -54,5 +54,5 @@
     "commands": "./dist/commands",
     "topicSeparator": " "
   },
-  "license": "SEE LICENSE IN LICENSE.md"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

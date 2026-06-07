@@ -58,7 +58,7 @@
     "zod-to-json-schema": "catalog:",
     "tsx": "catalog:"
   },
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
     "zod": "catalog:"
   }

@@ -36,5 +36,5 @@
     "@types/utf8": "^3.0.3",
     "vitest-mock-extended": "catalog:"
   },
-  "license": "SEE LICENSE IN LICENSE.md"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

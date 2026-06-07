@@ -155,5 +155,5 @@
     "vue-tsc": "catalog:frontend",
     "z-vue-scan": "^0.0.35"
   },
-  "license": "SEE LICENSE IN LICENSE.md"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -22,5 +22,5 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
   },
-  "license": "SEE LICENSE IN LICENSE.md"
+  "license": "LicenseRef-n8n-sustainable-use"
 }
