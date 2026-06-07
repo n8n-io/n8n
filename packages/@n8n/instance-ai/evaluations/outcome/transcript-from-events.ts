@@ -139,7 +139,7 @@ function interpretToolCall(
 	// ask-user is rendered from the confirmation-request (which has the answers).
 	if (toolName === 'ask-user') return null;
 
-	if (toolName === 'plan' || toolName === 'add-plan-item') {
+	if (toolName === 'create-tasks') {
 		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
 		if (tasks.length > 0) return { kind: 'plan', tasks };
 		// Empty plan: fall through and render as a plain tool-call so the call

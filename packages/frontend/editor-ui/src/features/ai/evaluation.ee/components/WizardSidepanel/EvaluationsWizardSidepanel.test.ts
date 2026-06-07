@@ -77,6 +77,23 @@ vi.mock('@/app/stores/nodeTypes.store', async (importOriginal) => {
 	};
 });
 
+vi.mock('@/app/composables/useRunWorkflow', () => ({
+	useRunWorkflow: () => ({
+		runEntireWorkflow: vi.fn(),
+	}),
+}));
+
+const mockRouterPush = vi.fn();
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	return {
+		...actual,
+		useRouter: () => ({
+			push: mockRouterPush,
+		}),
+	};
+});
+
 const renderComponent = createComponentRenderer(EvaluationsWizardSidepanel);
 
 describe('EvaluationsWizardSidepanel', () => {
@@ -84,6 +101,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		createTestingPinia({ stubActions: false });
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
+		mockRouterPush.mockReset();
 	});
 
 	// The wizard now lives as a tab inside FocusSidebar — visibility is
@@ -104,31 +122,15 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(store.activeStep).toBe(0);
 	});
 
-	it('renders every canned metric option from the Set Metrics operation', () => {
-		const store = useEvaluationsWizardSidepanelStore();
-		store.open(0);
-
+	it('shows 4 progress segments', () => {
 		const { getByTestId } = renderComponent();
-		for (const metric of CANNED_METRICS) {
-			expect(getByTestId(`evaluations-wizard-sidepanel-metric-${metric.key}`)).toBeInTheDocument();
-		}
+		const progressBar = getByTestId('evaluations-wizard-sidepanel-progress');
+		expect(progressBar.children).toHaveLength(4);
 	});
 
-	it('toggles selection when a check card is clicked', async () => {
+	it('shows the AI-node picker by default on step 0 (Choose your test system)', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(0);
-
-		const { getByTestId } = renderComponent();
-		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
-		expect(store.selectedMetricKeys).toContain('correctness');
-
-		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
-		expect(store.selectedMetricKeys).not.toContain('correctness');
-	});
-
-	it('shows the AI-node picker by default on step 2', () => {
-		const store = useEvaluationsWizardSidepanelStore();
-		store.open(1);
 		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
@@ -140,7 +142,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(queryByTestId('evaluations-wizard-sidepanel-slice-picker')).not.toBeInTheDocument();
 	});
 
-	it('defaults aiNodeName to the first AI root node when step 2 opens', () => {
+	it('defaults aiNodeName to the first AI root node when step 0 opens', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
@@ -148,19 +150,19 @@ describe('EvaluationsWizardSidepanel', () => {
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 			{ name: 'Chain LLM', type: '@n8n/n8n-nodes-langchain.chainLlm' },
 		];
-		store.open(1);
+		store.open(0);
 
 		renderComponent();
 		expect(store.aiNodeName).toBe('AI Agent');
 	});
 
-	it('swaps to the slice picker after Extend to a slice and back via Reset', async () => {
+	it('swaps to the slice picker after "Select multiple nodes" and back via Reset', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		mocks.allNodes = [
 			{ name: 'When clicking ‘Test workflow’', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
-		store.open(1);
+		store.open(0);
 
 		const { getByTestId, queryByTestId } = renderComponent();
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-extend-to-slice'));
@@ -194,7 +196,7 @@ describe('EvaluationsWizardSidepanel', () => {
 			'@n8n/n8n-nodes-langchain.agent': ['main'],
 			'@n8n/n8n-nodes-langchain.lmChatOpenAi': ['ai_languageModel'],
 		};
-		store.open(1);
+		store.open(0);
 
 		const { getByTestId } = renderComponent();
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-extend-to-slice'));
@@ -213,6 +215,28 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(docHtml).not.toContain('OpenAI Chat Model');
 	});
 
+	it('renders every canned metric option on step 1 (Setup Checks)', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+
+		const { getByTestId } = renderComponent();
+		for (const metric of CANNED_METRICS) {
+			expect(getByTestId(`evaluations-wizard-sidepanel-metric-${metric.key}`)).toBeInTheDocument();
+		}
+	});
+
+	it('toggles selection when a check card is clicked on step 1', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+
+		const { getByTestId } = renderComponent();
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
+		expect(store.selectedMetricKeys).toContain('correctness');
+
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
+		expect(store.selectedMetricKeys).not.toContain('correctness');
+	});
+
 	it('closes when the Cancel button is clicked', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(0);
@@ -223,9 +247,21 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(store.isOpen).toBe(false);
 	});
 
-	it('advances from Step 1 to Step 2 when Next is clicked and a check is selected', async () => {
+	it('advances from step 0 to step 1 when Next is clicked and a node is selected', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(0);
+		store.setAiNodeName('AI Agent');
+
+		const { getByTestId } = renderComponent();
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-next'));
+
+		expect(store.activeStep).toBe(1);
+		expect(store.isOpen).toBe(true);
+	});
+
+	it('advances from step 1 to step 2 when Next is clicked and a check is selected', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
 		// stringSimilarity is a non-LLM-judge metric — no model picker required,
 		// so the Next button enables purely on selection.
 		store.selectedMetricKeys = ['stringSimilarity'];
@@ -233,7 +269,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		const { getByTestId } = renderComponent();
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-next'));
 
-		expect(store.activeStep).toBe(1);
+		expect(store.activeStep).toBe(2);
 		expect(store.isOpen).toBe(true);
 	});
 
@@ -243,9 +279,7 @@ describe('EvaluationsWizardSidepanel', () => {
 	it('Next advances the step but does NOT close the wizard, unlike Cancel', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(0);
-		// stringSimilarity is a non-LLM-judge metric — no model picker required,
-		// so the Next button enables purely on selection.
-		store.selectedMetricKeys = ['stringSimilarity'];
+		store.setAiNodeName('AI Agent');
 
 		const { getByTestId, findByTestId } = renderComponent();
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-next'));
@@ -260,7 +294,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(store.isOpen).toBe(false);
 	});
 
-	it('shows Back instead of Cancel on Step 2 and returns to Step 1', async () => {
+	it('shows Back instead of Cancel on step 1 and returns to step 0', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
 
@@ -271,17 +305,46 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(store.isOpen).toBe(true);
 	});
 
-	it('disables Next on Step 1 when no check is selected', () => {
+	it('shows Back on step 2 and returns to step 1', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(2);
+
+		const { getByTestId, queryByTestId } = renderComponent();
+		expect(queryByTestId('evaluations-wizard-sidepanel-cancel')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-back'));
+		expect(store.activeStep).toBe(1);
+		expect(store.isOpen).toBe(true);
+	});
+
+	it('disables Next on step 0 when no node is selected', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(0);
+		store.setAiNodeName('');
 
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('evaluations-wizard-sidepanel-next')).toBeDisabled();
 	});
 
-	it('enables Next on Step 1 when only a custom check is added (no canned metric)', () => {
+	it('enables Next on step 0 when an AI node is selected', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(0);
+		store.setAiNodeName('AI Agent');
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('evaluations-wizard-sidepanel-next')).toBeEnabled();
+	});
+
+	it('disables Next on step 1 when no check is selected', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('evaluations-wizard-sidepanel-next')).toBeDisabled();
+	});
+
+	it('enables Next on step 1 when only a custom check is added (no canned metric)', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
 		store.addCustomCheck({
 			name: 'Has output',
 			expression: '$json.output.length > 0',
@@ -291,18 +354,18 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(getByTestId('evaluations-wizard-sidepanel-next')).toBeEnabled();
 	});
 
-	it('disables Next when an LLM-judge metric is selected but no model is picked', () => {
+	it('disables Next when an LLM-judge metric is selected on step 1 but no model is picked', () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		store.open(0);
+		store.open(1);
 		store.selectedMetricKeys = ['correctness'];
 
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('evaluations-wizard-sidepanel-next')).toBeDisabled();
 	});
 
-	it('enables Next once an LLM-judge metric has a model picked', () => {
+	it('enables Next once an LLM-judge metric has a model picked on step 1', () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		store.open(0);
+		store.open(1);
 		store.selectedMetricKeys = ['correctness'];
 		store.setJudgeSelection('correctness', {
 			provider: 'openai',
@@ -318,10 +381,7 @@ describe('EvaluationsWizardSidepanel', () => {
 	// store: when the wizard opens against a workflow that already has an
 	// lmChat sub-node with a valid credential, every LLM-judge slot should be
 	// pre-filled from that sub-node so the user doesn't have to repeat
-	// themselves. Composable-level edge cases (resourceLocator vs string,
-	// missing creds, canvas-order tie-breaks) live in
-	// `useDefaultJudgeSelection.test.ts`; this test only proves the watcher
-	// actually runs.
+	// themselves.
 	it('seeds LLM-judge slots from the first lmChat sub-node when the wizard opens', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		mocks.allNodes = [
@@ -336,11 +396,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		];
 
 		// Seed the credentials store so the composable's "credential must be
-		// readable by the current user" gate passes. `$patch` lets us mutate
-		// store state directly in tests without going through fetch APIs.
-		// `setCredentials` is the only path that writes into `state.credentials`
-		// without going through the network; using it keeps the test honest
-		// about the store contract rather than reaching into private state.
+		// readable by the current user" gate passes.
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.setCredentials([
 			{
@@ -380,9 +436,6 @@ describe('EvaluationsWizardSidepanel', () => {
 				credentials: { openAiApi: { id: 'cred-openai', name: 'OpenAI account' } },
 			},
 		];
-		// `setCredentials` is the only path that writes into `state.credentials`
-		// without going through the network; using it keeps the test honest
-		// about the store contract rather than reaching into private state.
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.setCredentials([
 			{
@@ -422,10 +475,10 @@ describe('EvaluationsWizardSidepanel', () => {
 		});
 	});
 
-	it('shows loading skeletons on Step 3 while the run is in progress', () => {
+	it('shows loading skeletons on step 3 (Results) while the run is in progress', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		const evalStore = useEvaluationStore();
-		store.open(2);
+		store.open(3);
 		store.selectedMetricKeys = ['correctness', 'stringSimilarity'];
 		evalStore.testRunsById = {
 			'run-1': {
@@ -449,7 +502,7 @@ describe('EvaluationsWizardSidepanel', () => {
 	it('treats the brief `new` status as in-progress (covers the queued window)', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		const evalStore = useEvaluationStore();
-		store.open(2);
+		store.open(3);
 		store.selectedMetricKeys = ['correctness'];
 		evalStore.testRunsById = {
 			'run-1': {
@@ -467,10 +520,10 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(getByTestId('evaluations-wizard-sidepanel-loading-skeletons')).toBeInTheDocument();
 	});
 
-	it('swaps loading for results once the run completes', () => {
+	it('swaps loading for results once the run completes on step 3', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		const evalStore = useEvaluationStore();
-		store.open(2);
+		store.open(3);
 		store.selectedMetricKeys = ['correctness'];
 		evalStore.testRunsById = {
 			'run-1': {
@@ -491,33 +544,55 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(getByTestId('evaluations-wizard-sidepanel-results')).toBeInTheDocument();
 	});
 
-	it('shows the Done button on Step 3 and closes the wizard', async () => {
+	it('shows "View Results" button on step 3 and closes the wizard on click', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		store.open(2);
+		store.open(3);
 
 		const { getByTestId } = renderComponent();
-		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-done'));
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-view-results'));
 
 		expect(store.isOpen).toBe(false);
 	});
 
-	it('opens the custom check modal when the + New custom check CTA is clicked', async () => {
+	it('"View Results" navigates to EVALUATION_RUNS_DETAIL when a runId is pinned', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		store.open(0);
+		store.open(3);
+		store.setActiveRunId('run-42');
+
+		const { getByTestId } = renderComponent();
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-view-results'));
+
+		expect(mockRouterPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				params: expect.objectContaining({ runId: 'run-42' }),
+			}),
+		);
+		expect(store.isOpen).toBe(false);
+	});
+
+	it('shows "Run again" button on step 3', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(3);
+
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('evaluations-wizard-sidepanel-run-again')).toBeInTheDocument();
+	});
+
+	it('opens the custom check modal when the + New custom check CTA is clicked on step 1', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
 
 		const { getByTestId, findByTestId } = renderComponent();
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-new-custom-check'));
 
 		expect(store.isCustomCheckModalOpen).toBe(true);
 		// Verify the modal actually rendered (and didn't silently mount as an empty wrapper).
-		// findByTestId waits for the dialog portal to attach. If the dialog content fails
-		// to render — e.g. because the slot tree is malformed — this will throw.
 		await findByTestId('evaluations-wizard-sidepanel-custom-check-modal');
 	});
 
 	it('renders added custom checks in the check list and removes them on click', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		store.open(0);
+		store.open(1);
 		store.addCustomCheck({
 			name: 'Has output',
 			expression: '{{ $json.output.length > 0 }}',

@@ -191,6 +191,7 @@ async function main(): Promise<void> {
 			outcome,
 			commitSha,
 			slugByTestCase,
+			ciRunUrl(),
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -968,6 +969,13 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	return rates.join(' / ');
 }
 
+// GitHub Actions run URL (for the PR comment's re-run link); undefined outside CI.
+function ciRunUrl(): string | undefined {
+	const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+	if (!GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !GITHUB_RUN_ID) return undefined;
+	return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+}
+
 function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
@@ -976,6 +984,7 @@ function writeEvalResults(
 	outcome: ComparisonOutcome | undefined,
 	commitSha: string | undefined,
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
+	runUrl: string | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1049,7 +1058,7 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase }),
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl }),
 	);
 
 	return { jsonPath, prCommentPath };
