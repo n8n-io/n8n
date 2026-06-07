@@ -17,10 +17,14 @@ function makeFile(overrides: Partial<KnowledgeWorkspaceFile> = {}): KnowledgeWor
 }
 
 function makeService(content: string, file = makeFile()) {
+	return makeServiceWithStream(Readable.from([content]), file);
+}
+
+function makeServiceWithStream(contentStream: Readable, file = makeFile()) {
 	const knowledgeService = mock<AgentKnowledgeService>();
 	knowledgeService.openWorkspaceFileStream.mockResolvedValue({
 		file,
-		contentStream: Readable.from([content]),
+		contentStream,
 	});
 
 	return {
@@ -97,8 +101,10 @@ describe('AgentKnowledgeCsvService', () => {
 	});
 
 	it('rejects non-CSV files before parsing', async () => {
-		const { service } = makeService(
-			'plain text',
+		const stream = Readable.from(['plain text']);
+		const destroySpy = jest.spyOn(stream, 'destroy');
+		const { service } = makeServiceWithStream(
+			stream,
 			makeFile({
 				fileName: 'notes.txt',
 				mimeType: 'text/plain',
@@ -114,5 +120,21 @@ describe('AgentKnowledgeCsvService', () => {
 				limit: 20,
 			}),
 		).rejects.toThrow('File "notes.txt" is not queryable as CSV.');
+		expect(destroySpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('closes the stored file stream when csv_query validation fails before parsing', async () => {
+		const stream = Readable.from(['country,year\nGermany,2022\n']);
+		const destroySpy = jest.spyOn(stream, 'destroy');
+		const { service } = makeServiceWithStream(stream);
+
+		await expect(
+			service.queryCsv('agent-1', 'project-1', {
+				operation: 'csv_query',
+				file: 'file-1',
+				limit: 20,
+			}),
+		).rejects.toThrow('csv_query requires select unless rowNumber is provided.');
+		expect(destroySpy).toHaveBeenCalledTimes(1);
 	});
 });

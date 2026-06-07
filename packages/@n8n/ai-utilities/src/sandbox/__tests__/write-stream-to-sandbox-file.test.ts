@@ -182,7 +182,7 @@ describe('writeStreamToSandboxFile', () => {
 		).rejects.toThrow('temporaryDirectory is required for Daytona sandbox stream writes');
 	});
 
-	it('cleans Daytona temp directory and target when concat fails', async () => {
+	it('cleans Daytona temp directory without deleting target when assembly fails', async () => {
 		const filesystem = makeFilesystem('daytona');
 		const sandbox = makeSandbox('daytona');
 		vi.mocked(sandbox.executeCommand!).mockResolvedValueOnce({
@@ -209,9 +209,9 @@ describe('writeStreamToSandboxFile', () => {
 			),
 		).rejects.toThrow(/^Failed to assemble Daytona sandbox file:/);
 
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(
 			'/home/daytona/workspace/agent-knowledge/file.txt',
-			{ force: true },
+			expect.anything(),
 		);
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(
 			expect.stringContaining('/upload-parts/stream-upload/'),
@@ -277,7 +277,7 @@ describe('writeStreamToSandboxFile', () => {
 		expect(appendedChunks).toEqual(['efgh', 'i']);
 	});
 
-	it('cleans target file when the first n8n sandbox write fails', async () => {
+	it('does not clean target file when the first n8n sandbox write fails', async () => {
 		const filesystem = makeFilesystem('n8n-sandbox');
 		const sandbox = makeSandbox('n8n-sandbox');
 		const error = new Error('write failed');
@@ -294,10 +294,33 @@ describe('writeStreamToSandboxFile', () => {
 			),
 		).rejects.toThrow(error);
 
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
+		expect(filesystem.appendFile).not.toHaveBeenCalled();
+	});
+
+	it('does not delete existing target when n8n sandbox overwrite is false', async () => {
+		const filesystem = makeFilesystem('n8n-sandbox');
+		const sandbox = makeSandbox('n8n-sandbox');
+		const error = new Error('file already exists');
+		vi.mocked(filesystem.writeFile).mockRejectedValueOnce(error);
+		const stream = Readable.from([Buffer.from('hello')]);
+
+		await expect(
+			writeStreamToSandboxFile(
+				filesystem,
+				sandbox,
+				'/home/user/workspace/agent-knowledge/file.txt',
+				stream,
+				{ chunkSizeBytes: 1024, overwrite: false },
+			),
+		).rejects.toThrow(error);
+
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
 			'/home/user/workspace/agent-knowledge/file.txt',
-			{ force: true },
+			Buffer.from('hello'),
+			{ recursive: true, overwrite: false },
 		);
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
 		expect(filesystem.appendFile).not.toHaveBeenCalled();
 	});
 
@@ -382,7 +405,7 @@ describe('writeStreamToSandboxFile', () => {
 		expect(sandbox.executeCommand).not.toHaveBeenCalled();
 	});
 
-	it('cleans Daytona temp parts and target when a temp part upload fails', async () => {
+	it('cleans Daytona temp parts without deleting target when a temp part upload fails', async () => {
 		const filesystem = makeFilesystem('daytona');
 		const sandbox = makeSandbox('daytona');
 		const error = new Error('part upload failed');
@@ -411,10 +434,44 @@ describe('writeStreamToSandboxFile', () => {
 		).rejects.toThrow(error);
 
 		expect(sandbox.executeCommand).not.toHaveBeenCalled();
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(
 			'/home/daytona/workspace/agent-knowledge/file.txt',
-			{ force: true },
+			expect.anything(),
 		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			expect.stringContaining('/upload-parts/stream-upload/'),
+			{ recursive: true, force: true },
+		);
+	});
+
+	it('does not overwrite or delete existing Daytona target when overwrite is false', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const sandbox = makeSandbox('daytona');
+		vi.mocked(sandbox.executeCommand!).mockResolvedValueOnce({
+			command: 'sh',
+			args: [],
+			success: false,
+			exitCode: 1,
+			stdout: '',
+			stderr: 'Target file already exists',
+			executionTimeMs: 1,
+		});
+		const stream = Readable.from([Buffer.from('hello')]);
+		const targetPath = '/home/daytona/workspace/agent-knowledge/file.txt';
+
+		await expect(
+			writeStreamToSandboxFile(filesystem, sandbox, targetPath, stream, {
+				chunkSizeBytes: 1024,
+				temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+				overwrite: false,
+			}),
+		).rejects.toThrow(/^Failed to assemble Daytona sandbox file:/);
+
+		const script = vi.mocked(sandbox.executeCommand!).mock.calls[0]?.[1]?.[1] ?? '';
+		expect(script).toContain(`[ -e '${targetPath}' ]`);
+		expect(script).toContain('/assembled');
+		expect(script).not.toContain(`> '${targetPath}'`);
+		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(targetPath, expect.anything());
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(
 			expect.stringContaining('/upload-parts/stream-upload/'),
 			{ recursive: true, force: true },

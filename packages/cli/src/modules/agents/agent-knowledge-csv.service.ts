@@ -302,10 +302,16 @@ export class AgentKnowledgeCsvService {
 			projectId,
 			fileReference,
 		);
-		if (!isCsvFile(csvFile.file)) {
-			throw new Error(`File "${csvFile.file.fileName}" is not queryable as CSV.`);
+		try {
+			if (!isCsvFile(csvFile.file)) {
+				throw new Error(`File "${csvFile.file.fileName}" is not queryable as CSV.`);
+			}
+			return await operation(csvFile);
+		} finally {
+			if (!csvFile.contentStream.destroyed) {
+				csvFile.contentStream.destroy();
+			}
 		}
-		return await operation(csvFile);
 	}
 }
 

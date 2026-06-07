@@ -126,6 +126,7 @@ async function writeN8nSandboxStream(
 	options: WriteStreamToSandboxFileOptions & { chunkSizeBytes: number },
 ): Promise<WriteStreamToSandboxFileResult> {
 	let chunksWritten = 0;
+	let targetWritten = false;
 
 	const writeOutputChunk = async (chunk: Buffer) => {
 		if (chunksWritten === 0) {
@@ -133,6 +134,7 @@ async function writeN8nSandboxStream(
 				recursive: true,
 				overwrite: options.overwrite ?? true,
 			});
+			targetWritten = true;
 		} else {
 			await filesystem.appendFile(targetPath, chunk);
 		}
@@ -146,11 +148,14 @@ async function writeN8nSandboxStream(
 				recursive: true,
 				overwrite: options.overwrite ?? true,
 			});
+			targetWritten = true;
 		}
 
 		return result;
 	} catch (error) {
-		await bestEffortDelete(filesystem, targetPath, { force: true });
+		if (targetWritten) {
+			await bestEffortDelete(filesystem, targetPath, { force: true });
+		}
 		throw error;
 	}
 }
@@ -167,6 +172,7 @@ async function writeDaytonaStream(
 	}
 
 	const uploadDirectory = path.join(options.temporaryDirectory, 'stream-upload', randomUUID());
+	const assembledPath = path.join(uploadDirectory, 'assembled');
 	const partPaths: string[] = [];
 	let chunksWritten = 0;
 
@@ -199,9 +205,18 @@ async function writeDaytonaStream(
 		}
 
 		const parent = getParentDirectory(targetPath);
-		const script = parent
-			? `mkdir -p ${shellQuote(parent)} && cat ${partPaths.map(shellQuote).join(' ')} > ${shellQuote(targetPath)}`
-			: `cat ${partPaths.map(shellQuote).join(' ')} > ${shellQuote(targetPath)}`;
+		const commands = parent ? [`mkdir -p ${shellQuote(parent)}`] : [];
+		commands.push(`cat ${partPaths.map(shellQuote).join(' ')} > ${shellQuote(assembledPath)}`);
+		if (options.overwrite === false) {
+			const quotedTargetPath = shellQuote(targetPath);
+			const targetExistsMessage = shellQuote(`Target file already exists: ${targetPath}`);
+			commands.push(
+				`if [ -e ${quotedTargetPath} ]; then ` +
+					`printf '%s\\n' ${targetExistsMessage} >&2; exit 1; fi`,
+			);
+		}
+		commands.push(`mv -f ${shellQuote(assembledPath)} ${shellQuote(targetPath)}`);
+		const script = `set -e; ${commands.join('; ')}`;
 		const commandResult = await sandbox.executeCommand('sh', ['-lc', script]);
 		if (commandResult.exitCode !== 0) {
 			throw new Error(
@@ -210,9 +225,6 @@ async function writeDaytonaStream(
 		}
 
 		return streamResult;
-	} catch (error) {
-		await bestEffortDelete(filesystem, targetPath, { force: true });
-		throw error;
 	} finally {
 		await bestEffortDelete(filesystem, uploadDirectory, { recursive: true, force: true });
 	}
