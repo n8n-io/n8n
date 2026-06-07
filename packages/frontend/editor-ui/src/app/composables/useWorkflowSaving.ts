@@ -96,6 +96,14 @@ function getHttpStatusCode(error: unknown): number | undefined {
 	return undefined;
 }
 
+/**
+ * A save error that will fail identically on every retry.
+ */
+function isNonRetryableSaveError(error: unknown): boolean {
+	const meta = (error as { meta?: { violations?: unknown } } | null | undefined)?.meta;
+	return Array.isArray(meta?.violations);
+}
+
 function shouldRetryAutoSaveFailure(error: unknown): boolean {
 	const statusCode = getHttpStatusCode(error);
 
@@ -329,6 +337,11 @@ export function useWorkflowSaving({
 			return false;
 		}
 
+		// Don't schedule while blocked by a non-retryable error with no new changes
+		if (saveStore.isAutoSaveBlocked(uiStore.dirtyStateSetCount)) {
+			return false;
+		}
+
 		return true;
 	});
 
@@ -542,6 +555,16 @@ export function useWorkflowSaving({
 						redirect,
 						autosaved,
 					});
+				}
+
+				// Don't retry non-retryable errors. Block autosave until the next
+				// change and surface the error once.
+				if (isNonRetryableSaveError(error)) {
+					saveStore.setLastError(errorMessage);
+					saveStore.setAutoSaveBlocked(uiStore.dirtyStateSetCount);
+					showSaveErrorToast(error, errorMessage, currentWorkflow);
+
+					return false;
 				}
 
 				if (autosaved) {
@@ -786,6 +809,11 @@ export function useWorkflowSaving({
 		} catch (e) {
 			if (autosaved && createRequestFailed) {
 				throw e;
+			}
+
+			// Block autosave on non-retryable errors so it isn't retried in a loop.
+			if (isNonRetryableSaveError(e)) {
+				saveStore.setAutoSaveBlocked(uiStore.dirtyStateSetCount);
 			}
 
 			if (autosaved) {

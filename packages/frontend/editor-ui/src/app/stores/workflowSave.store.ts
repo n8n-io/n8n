@@ -23,6 +23,10 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 	const lastError = ref<string | null>(null);
 	const conflictModalShown = ref(false);
 
+	// `dirtyStateSetCount` at which a non-retryable error blocked autosave. Any
+	// later change increments that count and lifts the block. Null = not blocked.
+	const blockedAtDirtyCount = ref<number | null>(null);
+
 	function setAutoSaveState(state: AutoSaveState) {
 		autoSaveState.value = state;
 	}
@@ -52,12 +56,22 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 		conflictModalShown.value = value;
 	}
 
+	function setAutoSaveBlocked(dirtyCount: number) {
+		blockedAtDirtyCount.value = dirtyCount;
+	}
+
+	/** True while blocked by a non-retryable error with no change since. */
+	function isAutoSaveBlocked(currentDirtyCount: number) {
+		return blockedAtDirtyCount.value !== null && currentDirtyCount <= blockedAtDirtyCount.value;
+	}
+
 	function resetRetry() {
 		retryCount.value = 0;
 		retryDelay.value = RETRY_START_DELAY;
 		isRetrying.value = false;
 		lastError.value = null;
 		conflictModalShown.value = false;
+		blockedAtDirtyCount.value = null;
 	}
 
 	function reset() {
@@ -74,6 +88,7 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 		isRetrying,
 		lastError,
 		conflictModalShown,
+		blockedAtDirtyCount,
 		setAutoSaveState,
 		setPendingSave,
 		incrementRetry,
@@ -81,6 +96,8 @@ export const useWorkflowSaveStore = defineStore('workflowSave', () => {
 		setRetrying,
 		setLastError,
 		setConflictModalShown,
+		setAutoSaveBlocked,
+		isAutoSaveBlocked,
 		resetRetry,
 		reset,
 	};
