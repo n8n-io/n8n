@@ -95,8 +95,6 @@ describe('search_knowledge tool', () => {
 				const missingFiles = expected.files.map(
 					(manifestFile: KnowledgeSandboxExpectedManifest['files'][number]) => ({
 						id: manifestFile.id,
-						fileName: '',
-						mimeType: '',
 						fileSizeBytes: manifestFile.fileSizeBytes,
 						relativePath: manifestFile.relativePath,
 					}),
@@ -240,8 +238,6 @@ describe('search_knowledge tool', () => {
 				await materialize([
 					{
 						id: 'missing',
-						fileName: '',
-						mimeType: '',
 						fileSizeBytes: 1,
 						relativePath: 'missing.txt',
 					},

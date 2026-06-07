@@ -62,6 +62,11 @@ export interface KnowledgeSandboxManifestFile {
 	binaryDataIdSha1: string;
 }
 
+export type KnowledgeSandboxRequiredFile = Pick<
+	KnowledgeSandboxManifestFile,
+	'id' | 'relativePath' | 'fileSizeBytes'
+>;
+
 export interface KnowledgeSandboxManifest {
 	version: number;
 	agentId: string;
@@ -277,11 +282,11 @@ export class AgentKnowledgeService {
 		target: KnowledgeSandboxMaterializationTarget,
 		actualManifest: KnowledgeSandboxManifest | null,
 		required: KnowledgeSandboxExpectedManifest,
-	): Promise<KnowledgeWorkspaceFile[]> {
+	): Promise<KnowledgeSandboxRequiredFile[]> {
 		const materializedById = new Map(
 			(actualManifest?.files ?? []).map((file) => [file.id, file] as const),
 		);
-		const missing: KnowledgeWorkspaceFile[] = [];
+		const missing: KnowledgeSandboxRequiredFile[] = [];
 
 		for (const requiredFile of required.files) {
 			const materialized = materializedById.get(requiredFile.id);
@@ -296,8 +301,6 @@ export class AgentKnowledgeService {
 			if (needsMaterialization) {
 				missing.push({
 					id: requiredFile.id,
-					fileName: '',
-					mimeType: '',
 					fileSizeBytes: requiredFile.fileSizeBytes,
 					relativePath: requiredFile.relativePath,
 				});

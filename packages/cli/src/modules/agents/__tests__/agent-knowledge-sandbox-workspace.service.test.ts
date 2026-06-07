@@ -238,6 +238,31 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		nowSpy.mockRestore();
 	});
 
+	it('waits for active operations before destroying an agent workspace', async () => {
+		const sandbox = makeSandbox();
+		createSandboxMock.mockResolvedValue(sandbox);
+		createFilesystemMock.mockReturnValue(makeFilesystem());
+		const started = createDeferred();
+		const release = createDeferred();
+
+		const activeOperation = service.withCachedWorkspace('project-1:agent-1:workspace', async () => {
+			started.resolve();
+			await release.promise;
+			return 'active';
+		});
+		await started.promise;
+
+		const destroyPromise = service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
+		await flushMicrotasks();
+
+		expect(sandbox.destroy).not.toHaveBeenCalled();
+		release.resolve();
+		await expect(activeOperation).resolves.toBe('active');
+		await destroyPromise;
+		expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(service.getCachedWorkspaceCount()).toBe(0);
+	});
+
 	it('skips materialization when required files are present and current', async () => {
 		const filesystem = makeFilesystem();
 		const workspace = makeWorkspace(filesystem);

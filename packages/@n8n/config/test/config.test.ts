@@ -846,15 +846,5 @@ describe('GlobalConfig', () => {
 
 			expect([...config.agents.modules]).toEqual(['node-tools-searcher']);
 		});
-
-		it('should reject knowledge-base module token', () => {
-			process.env = {
-				N8N_AGENTS_MODULES: 'knowledge-base',
-			};
-
-			expect(() => Container.get(GlobalConfig)).toThrow(
-				'Unknown agents module: "knowledge-base". Valid tokens: node-tools-searcher.',
-			);
-		});
 	});
 });

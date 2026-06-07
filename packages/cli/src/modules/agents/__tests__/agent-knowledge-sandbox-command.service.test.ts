@@ -1,4 +1,5 @@
 import { AgentKnowledgeSandboxCommandService } from '../agent-knowledge-sandbox-command.service';
+import type { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import type { KnowledgeSandboxWorkspace } from '../agent-knowledge-sandbox-workspace.service';
 
 function makeWorkspace(executeCommand = jest.fn()): KnowledgeSandboxWorkspace {
@@ -30,9 +31,18 @@ const commandResult = (stdout: string, timedOut = false) => ({
 
 describe('AgentKnowledgeSandboxCommandService', () => {
 	let service: AgentKnowledgeSandboxCommandService;
+	let sandboxConfigService: jest.Mocked<AgentKnowledgeSandboxConfigService>;
 
 	beforeEach(() => {
-		service = new AgentKnowledgeSandboxCommandService();
+		sandboxConfigService = {
+			resolveConfig: jest.fn(() => ({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				serviceUrl: 'https://sandbox.example.test',
+				timeout: 12_345,
+			})),
+		} as unknown as jest.Mocked<AgentKnowledgeSandboxConfigService>;
+		service = new AgentKnowledgeSandboxCommandService(sandboxConfigService);
 	});
 
 	it('runs rg from the knowledge root and supports scoped search options', async () => {
@@ -52,7 +62,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		expect(executeCommand).toHaveBeenCalledWith(
 			'rg',
 			expect.arrayContaining(['-i', '--count', '-C', '5', '--', 'needle', 'a.txt']),
-			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+			expect.objectContaining({ cwd: workspace.knowledgeRoot, timeout: 12_345 }),
 		);
 	});
 

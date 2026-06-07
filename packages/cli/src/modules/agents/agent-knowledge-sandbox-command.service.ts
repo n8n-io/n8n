@@ -5,14 +5,16 @@ import type {
 	AgentKnowledgeCommandRequest,
 	AgentKnowledgeCommandResult,
 } from './agent-knowledge-command.types';
+import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
 import type { KnowledgeSandboxWorkspace } from './agent-knowledge-sandbox-workspace.service';
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
-const COMMAND_TIMEOUT_MS = 5_000;
 const MAX_READ_RANGE_LINES = 500;
 
 @Service()
 export class AgentKnowledgeSandboxCommandService {
+	constructor(private readonly sandboxConfigService: AgentKnowledgeSandboxConfigService) {}
+
 	async run(
 		workspace: KnowledgeSandboxWorkspace,
 		request: AgentKnowledgeCommandRequest,
@@ -52,7 +54,7 @@ export class AgentKnowledgeSandboxCommandService {
 
 		const result = await workspace.sandbox.executeCommand(command, args, {
 			cwd: workspace.knowledgeRoot,
-			timeout: COMMAND_TIMEOUT_MS,
+			timeout: this.sandboxConfigService.resolveConfig().timeout,
 			onStdout: (chunk: string) => {
 				stdoutFromCallback = true;
 				stdout = append(stdout, chunk);

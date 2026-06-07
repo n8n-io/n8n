@@ -19,7 +19,7 @@ import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-co
 import type {
 	KnowledgeSandboxExpectedManifest,
 	KnowledgeSandboxManifest,
-	KnowledgeWorkspaceFile,
+	KnowledgeSandboxRequiredFile,
 } from './agent-knowledge.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 
@@ -66,7 +66,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	async ensureWorkspaceContainsFiles(
 		workspace: KnowledgeSandboxWorkspace,
 		requiredManifest: KnowledgeSandboxExpectedManifest,
-		materialize: (missingFiles: KnowledgeWorkspaceFile[]) => Promise<void>,
+		materialize: (missingFiles: KnowledgeSandboxRequiredFile[]) => Promise<void>,
 	): Promise<void> {
 		const actualManifest = await this.readWorkspaceManifest(workspace);
 		if (
@@ -74,29 +74,13 @@ export class AgentKnowledgeSandboxWorkspaceService {
 			!this.knowledgeService.isSandboxManifestIdentityValid(actualManifest, requiredManifest)
 		) {
 			await this.clearStaleWorkspaceState(workspace);
-			await materialize(
-				requiredManifest.files.map((file) => ({
-					id: file.id,
-					fileName: '',
-					mimeType: '',
-					fileSizeBytes: file.fileSizeBytes,
-					relativePath: file.relativePath,
-				})),
-			);
+			await materialize(requiredManifest.files.map(toRequiredFile));
 			return;
 		}
 
 		if (!(await workspace.filesystem.exists(workspace.knowledgeRoot))) {
 			await this.clearStaleWorkspaceState(workspace);
-			await materialize(
-				requiredManifest.files.map((file) => ({
-					id: file.id,
-					fileName: '',
-					mimeType: '',
-					fileSizeBytes: file.fileSizeBytes,
-					relativePath: file.relativePath,
-				})),
-			);
+			await materialize(requiredManifest.files.map(toRequiredFile));
 			return;
 		}
 
@@ -158,22 +142,13 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	async destroyCachedWorkspacesForAgent(projectId: string, agentId: string): Promise<void> {
 		const prefix = `${projectId}:${agentId}:`;
-		const toDestroy: Array<[string, CachedKnowledgeSandboxWorkspace]> = [];
-
-		for (const entry of this.cachedWorkspaces) {
-			if (entry[0].startsWith(prefix)) {
-				toDestroy.push(entry);
-			}
-		}
-
-		for (const [key] of toDestroy) {
-			this.cachedWorkspaces.delete(key);
-			this.workspaceLocks.delete(key);
-		}
-
-		await Promise.all(
-			toDestroy.map(async ([, entry]) => await this.destroySandbox(entry.workspace.sandbox)),
+		const keys = new Set(
+			[...this.cachedWorkspaces.keys(), ...this.workspaceLocks.keys()].filter((key) =>
+				key.startsWith(prefix),
+			),
 		);
+
+		await Promise.all([...keys].map(async (key) => await this.destroyCachedWorkspace(key)));
 	}
 
 	/**
@@ -207,6 +182,16 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		} finally {
 			if (this.workspaceLocks.get(key) === tail) this.workspaceLocks.delete(key);
 		}
+	}
+
+	private async destroyCachedWorkspace(cacheKey: string): Promise<void> {
+		await this.serializeByKey(cacheKey, async () => {
+			const entry = this.cachedWorkspaces.get(cacheKey);
+			if (!entry) return;
+
+			this.cachedWorkspaces.delete(cacheKey);
+			await this.destroySandbox(entry.workspace.sandbox);
+		});
 	}
 
 	private async ensureCachedWorkspace(cacheKey: string): Promise<CachedKnowledgeSandboxWorkspace> {
@@ -461,4 +446,14 @@ function buildAgentsKnowledgeSandboxLabels(
 		labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
 	}
 	return labels;
+}
+
+function toRequiredFile(
+	file: KnowledgeSandboxExpectedManifest['files'][number],
+): KnowledgeSandboxRequiredFile {
+	return {
+		id: file.id,
+		relativePath: file.relativePath,
+		fileSizeBytes: file.fileSizeBytes,
+	};
 }

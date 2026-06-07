@@ -64,6 +64,7 @@ describe('AgentKnowledgeService', () => {
 	let agentFileRepository: jest.Mocked<AgentFileRepository>;
 	let binaryDataService: jest.Mocked<BinaryDataService>;
 	let transactionManager: jest.Mocked<EntityManager>;
+	let transactionMock: jest.Mock<Promise<unknown>, [(manager: EntityManager) => Promise<unknown>]>;
 	let service: AgentKnowledgeService;
 
 	function makeSandboxTarget() {
@@ -118,9 +119,10 @@ describe('AgentKnowledgeService', () => {
 		agentFileRepository = mock<AgentFileRepository>();
 		binaryDataService = mock<BinaryDataService>();
 		transactionManager = mock<EntityManager>();
+		transactionMock = jest.fn();
 		Object.assign(agentRepository, {
 			manager: {
-				transaction: jest.fn(),
+				transaction: transactionMock,
 			},
 		});
 
@@ -150,7 +152,7 @@ describe('AgentKnowledgeService', () => {
 				(await agentFileRepository.findByAgentId(options.where?.agentId ?? '')) as never,
 		);
 		transactionManager.getRepository.mockReturnValue(agentFileRepository as never);
-		agentRepository.manager.transaction.mockImplementation(
+		transactionMock.mockImplementation(
 			async (runInTransaction: (manager: EntityManager) => Promise<unknown>) =>
 				await runInTransaction(transactionManager),
 		);
