@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { N8nIcon, N8nMarkdownEditor, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { reactive, toRef } from 'vue';
+import { computed, reactive, toRef } from 'vue';
 import type { ToolCall } from '../composables/agentChatMessages';
+import { TOOL_CALL_STATE } from '../constants';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
+import {
+	formatToolNameForDisplay,
+	getToolNameTranslationKey,
+	SEARCH_KNOWLEDGE_TOOL_NAME,
+} from '../utils/toolDisplayName';
 import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
 import {
@@ -36,8 +41,16 @@ const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
 	toolCallsNeedSubAgentNames(props.toolCalls),
 );
 
-// Track which tool steps are expanded (by tool-call id).
+// Track which tool steps are expanded (by group id).
 const expandedIds = reactive(new Set<string>());
+
+interface ToolStepGroup {
+	id: string;
+	calls: ToolCall[];
+	primaryCall: ToolCall;
+	isSearchKnowledgeGroup: boolean;
+	state: ToolCall['state'];
+}
 
 interface ToolStepDisplay {
 	label: string;
@@ -52,7 +65,46 @@ function getToolDisplayName(toolName: string): string {
 	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
 }
 
-function toolStepLabel(tc: ToolCall): string {
+function isSearchKnowledgeTool(toolName: string): boolean {
+	return toolName === SEARCH_KNOWLEDGE_TOOL_NAME;
+}
+
+function getGroupedState(calls: ToolCall[]): ToolCall['state'] {
+	if (calls.some((call) => call.state === TOOL_CALL_STATE.ERROR)) return TOOL_CALL_STATE.ERROR;
+	if (calls.some((call) => call.state === TOOL_CALL_STATE.RUNNING)) return TOOL_CALL_STATE.RUNNING;
+	if (calls.some((call) => call.state === TOOL_CALL_STATE.PENDING)) return TOOL_CALL_STATE.PENDING;
+	if (calls.some((call) => call.state === TOOL_CALL_STATE.SUSPENDED))
+		return TOOL_CALL_STATE.SUSPENDED;
+	if (calls.every((call) => call.state === TOOL_CALL_STATE.CANCELLED))
+		return TOOL_CALL_STATE.CANCELLED;
+	return TOOL_CALL_STATE.DONE;
+}
+
+const toolStepGroups = computed(() => {
+	const groups: ToolStepGroup[] = [];
+
+	for (const toolCall of props.toolCalls) {
+		const previous = groups.at(-1);
+		if (isSearchKnowledgeTool(toolCall.tool) && previous?.isSearchKnowledgeGroup) {
+			previous.calls.push(toolCall);
+			previous.primaryCall = toolCall;
+			previous.state = getGroupedState(previous.calls);
+			continue;
+		}
+
+		groups.push({
+			id: toolCall.toolCallId || `${toolCall.tool}-${groups.length}`,
+			calls: [toolCall],
+			primaryCall: toolCall,
+			isSearchKnowledgeGroup: isSearchKnowledgeTool(toolCall.tool),
+			state: toolCall.state,
+		});
+	}
+
+	return groups;
+});
+
+function primaryToolStepLabel(tc: ToolCall): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
 	}
@@ -60,7 +112,23 @@ function toolStepLabel(tc: ToolCall): string {
 	return getToolDisplayName(tc.tool);
 }
 
-function toolStepSummary(tc: ToolCall): string | undefined {
+function toolStepLabel(group: ToolStepGroup): string {
+	if (group.isSearchKnowledgeGroup) return getToolDisplayName(SEARCH_KNOWLEDGE_TOOL_NAME);
+	return primaryToolStepLabel(group.primaryCall);
+}
+
+function groupedSearchKnowledgeSummary(count: number): string {
+	return i18n.baseText('agents.chat.toolStep.groupedCalls.other', {
+		interpolate: { count: String(count) },
+	});
+}
+
+function toolStepSummary(group: ToolStepGroup): string | undefined {
+	if (group.isSearchKnowledgeGroup) {
+		if (group.calls.length > 1) return groupedSearchKnowledgeSummary(group.calls.length);
+		return undefined;
+	}
+	const tc = group.primaryCall;
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
 		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todos.length);
@@ -69,53 +137,55 @@ function toolStepSummary(tc: ToolCall): string | undefined {
 	return undefined;
 }
 
-function toolStepView(tc: ToolCall): ToolStepDisplay {
-	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+function toolStepView(group: ToolStepGroup): ToolStepDisplay {
+	const details = group.isSearchKnowledgeGroup
+		? ''
+		: (getToolCallDetails(group.primaryCall, i18n, subAgentNameById.value) ?? '');
 	return {
-		label: toolStepLabel(tc),
-		summary: toolStepSummary(tc),
+		label: toolStepLabel(group),
+		summary: toolStepSummary(group),
 		details,
 		expandable: details.length > 0,
-		expanded: expandedIds.has(tc.toolCallId),
+		expanded: expandedIds.has(group.id),
 	};
 }
 
-function toggle(tc: ToolCall, view: ToolStepDisplay): void {
+function toggle(group: ToolStepGroup, view: ToolStepDisplay): void {
 	if (!view.expandable) return;
-	if (expandedIds.has(tc.toolCallId)) expandedIds.delete(tc.toolCallId);
-	else expandedIds.add(tc.toolCallId);
+	if (expandedIds.has(group.id)) expandedIds.delete(group.id);
+	else expandedIds.add(group.id);
 }
 </script>
 
 <template>
 	<ol :class="$style.toolSteps">
-		<li v-for="(tc, i) in toolCalls" :key="i" :class="$style.toolStep">
-			<template v-for="view in [toolStepView(tc)]" :key="view.label">
+		<li v-for="group in toolStepGroups" :key="group.id" :class="$style.toolStep">
+			<template v-for="view in [toolStepView(group)]" :key="view.label">
 				<!-- Rail: the status icon plus a line that grows to fill the step's
 				     height, so consecutive steps stay visually connected even when one
 				     expands its answer. -->
 				<div :class="$style.rail">
 					<div :class="$style.indicator">
 						<N8nIcon
-							v-if="tc.state === 'done'"
+							v-if="group.state === TOOL_CALL_STATE.DONE"
 							icon="circle-check"
 							size="large"
 							:class="$style.indicatorDone"
 						/>
 						<N8nIcon
-							v-else-if="tc.state === 'error'"
+							v-else-if="group.state === TOOL_CALL_STATE.ERROR"
 							icon="circle-x"
 							size="large"
 							:class="$style.indicatorError"
 						/>
 						<N8nIcon
-							v-else-if="tc.state === 'cancelled'"
+							v-else-if="group.state === TOOL_CALL_STATE.CANCELLED"
 							icon="circle-x"
 							size="large"
 							:class="$style.indicatorCancelled"
 						/>
 						<N8nTooltip
-							v-else-if="tc.state === 'suspended'"
+							v-else-if="group.state === TOOL_CALL_STATE.SUSPENDED"
 							placement="top"
 							:content="i18n.baseText('agents.chat.toolStep.waitingForInput')"
 						>
@@ -138,9 +208,11 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 						:type="view.expandable ? 'button' : undefined"
 						:aria-expanded="view.expandable ? view.expanded : undefined"
 						:class="[$style.stepRow, { [$style.stepRowButton]: view.expandable }]"
-						@click="toggle(tc, view)"
+						@click="toggle(group, view)"
 					>
-						<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
+						<span
+							:class="[$style.label, { [$style.shimmer]: group.state === TOOL_CALL_STATE.RUNNING }]"
+						>
 							{{ view.label }}
 						</span>
 						<span v-if="view.summary" :class="$style.summary" data-testid="tool-step-summary">

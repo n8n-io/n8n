@@ -6242,6 +6242,7 @@
 	"agents.chat.writeTodos.hint.subAgent": "Sub-agent",
 	"agents.chat.writeTodos.hint.expectedOutput": "Expected output",
 	"agents.chat.toolStep.waitingForInput": "Waiting for your input",
+	"agents.chat.toolStep.groupedCalls.other": "{count} calls",
 	"agents.chat.askQuestion.otherLabel": "Other",
 	"agents.chat.askQuestion.otherPlaceholder": "Type another answer",
 	"agents.chat.askQuestion.answerLabel": "Your answer",

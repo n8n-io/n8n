@@ -4,7 +4,7 @@ export const WEB_SEARCH_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.webS
 export const SEARCH_KNOWLEDGE_TOOL_NAME_KEY: BaseTextKey = 'agents.chat.toolNames.searchKnowledge';
 
 const WEB_SEARCH_TOOL_NAME_PATTERN = /^(?:web_search|(?:anthropic|openai)\.web_search(?:_\d{8})?)$/;
-const SEARCH_KNOWLEDGE_TOOL_NAME = 'search_knowledge';
+export const SEARCH_KNOWLEDGE_TOOL_NAME = 'search_knowledge';
 
 export function getToolNameTranslationKey(toolName: string | undefined): BaseTextKey | undefined {
 	const trimmed = toolName?.trim();
