@@ -1,44 +1,44 @@
-# Test harness for the SBOM generation + license-gate pipeline.
+# Test harness: build + push n8n Docker image to GHCR, then run syft against it.
 #
-# Mirrors sbom-generation-callable.yml but:
-#   - workflow_dispatch only (no release machinery needed)
-#   - git ref defaults to the branch you're on
-#   - skips gh release upload and Slack notification
+# Steps:
+#   1. pnpm build:n8n  → ./compiled/
+#   2. Docker build + push  → ghcr.io/n8n-io/n8n:test-sbom-<sha7>
+#   3. syft scan the pushed image  → sbom-syft.cdx.json
+#   4. check-sbom-licenses.mjs gate on the syft output (npm components only)
 #
-# Use this to verify the full pipeline end-to-end on any branch:
-#   1. pnpm build:deploy with N8N_GENERATE_LICENSES=true
-#   2. check-sbom-licenses.mjs gate (fails if any component has a non-SPDX license)
-#   3. actions/attest SBOM (proves the attest step works without a real release)
-#
-# "No licensed calls" = check-sbom-licenses.mjs exits 0 (all npm components
-# carry a valid SPDX identifier or the allowed LicenseRef-n8n-sustainable-use).
+# To run syft locally against the same image after this job:
+#   docker pull ghcr.io/n8n-io/n8n:test-sbom-<sha7>
+#   syft ghcr.io/n8n-io/n8n:test-sbom-<sha7> -o cyclonedx-json > sbom-local.json
+#   node scripts/licenses/check-sbom-licenses.mjs sbom-local.json \
+#     --allow-ref=LicenseRef-n8n-sustainable-use \
+#     --enforce-prefix=pkg:npm/
 
-name: 'Test: SBOM Pipeline'
+name: 'Test: Docker Build + syft SBOM'
 
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Git ref to build (branch, tag, or SHA). Defaults to the branch this workflow lives on.'
+        description: 'Git ref to build. Defaults to the branch this workflow runs on.'
         required: false
         type: string
         default: ''
-      n8n_version:
-        description: 'Fake version string stamped into the build (e.g. "test-sbom")'
-        required: false
-        type: string
-        default: 'test-sbom'
+
+env:
+  NODE_VERSION: '24.15.0'
 
 permissions:
   contents: read
+  packages: write
   id-token: write
-  attestations: write
 
 jobs:
-  test-sbom:
-    name: 'Build → Generate SBOM → Gate Licenses → Attest'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  build-push-syft:
+    name: 'Build → Push → syft'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 45
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
 
     steps:
       - name: Checkout
@@ -46,38 +46,78 @@ jobs:
         with:
           ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
 
-      - name: Build production deployment artifact (SBOM generation enabled)
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHA7="${GITHUB_SHA::7}"
+          echo "image_tag=ghcr.io/n8n-io/n8n:test-sbom-${SHA7}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=ghcr.io/n8n-io/n8n:test-sbom-${SHA7}"
+
+      - name: Build n8n app
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'pnpm build:deploy'
+          build-command: 'pnpm build:n8n'
+          enable-docker-cache: 'true'
         env:
-          RELEASE: ${{ inputs.n8n_version }}
-          # This env var is what turns on sbom-source.cdx.json + THIRD_PARTY_LICENSES.md
-          # generation inside build-n8n.mjs / generate-licenses.mjs.
-          # Regular CI Docker builds intentionally skip it; only this job and the
-          # real sbom-generation-callable.yml set it.
-          N8N_GENERATE_LICENSES: 'true'
+          RELEASE: 'test-sbom'
 
-      - name: Gate SBOM on resolved SPDX licenses
-        # Exit 1 = at least one component has a missing or non-SPDX license.
-        # Exit 0 = "no licensed calls" — every npm component in the shipped
-        # artifact carries a valid SPDX identifier (or the single allowed LicenseRef).
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
+      - name: Login to DHI (for n8nio/base pull)
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=test-sbom
+            N8N_RELEASE_TYPE=dev
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
+          push: true
+          tags: ${{ steps.tag.outputs.image_tag }}
+
+      - name: Install syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+            | sh -s -- -b /usr/local/bin v1.27.1
+
+      - name: Pull image and run syft
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+        run: |
+          docker pull "$IMAGE_TAG"
+          syft "$IMAGE_TAG" \
+            --output cyclonedx-json=sbom-syft.cdx.json \
+            --output table
+          echo ""
+          echo "Component count: $(jq '.components | length' sbom-syft.cdx.json)"
+
+      - name: Gate npm components on SPDX licenses
+        # OS packages carry upstream-distro license strings; we only gate npm.
+        # Exit 0 = no licensed calls — every npm dep has a valid SPDX id.
         run: |
           node scripts/licenses/check-sbom-licenses.mjs \
-            sbom-source.cdx.json \
-            --allow-ref=LicenseRef-n8n-sustainable-use
+            sbom-syft.cdx.json \
+            --allow-ref=LicenseRef-n8n-sustainable-use \
+            --enforce-prefix=pkg:npm/
 
-      - name: Show SBOM summary
+      - name: Upload syft SBOM
         if: always()
-        run: |
-          COMPONENTS=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
-          echo "SBOM component count: $COMPONENTS"
-          echo "Top 10 components:"
-          jq -r '.components[:10] | .[] | "\(.name)@\(.version // "?") — \((.licenses // [{}])[0].expression // (.licenses // [{}])[0].license.id // "NO LICENSE")"' \
-            sbom-source.cdx.json 2>/dev/null || true
-
-      - name: Attest SBOM
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          subject-path: './package.json'
-          sbom-path: 'sbom-source.cdx.json'
+          name: sbom-syft-${{ github.sha }}
+          path: sbom-syft.cdx.json
+          retention-days: 7
