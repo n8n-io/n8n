@@ -16,6 +16,10 @@
 name: 'Test: Docker Build + syft SBOM'
 
 on:
+  push:
+    branches:
+      - chore/sca-license-posture
+
   workflow_dispatch:
     inputs:
       ref:
