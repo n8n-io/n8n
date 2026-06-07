@@ -41,6 +41,14 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
+/**
+ * A save error that will fail identically on every retry.
+ */
+function isNonRetryableSaveError(error: unknown): boolean {
+	const meta = (error as { meta?: { violations?: unknown } } | null | undefined)?.meta;
+	return Array.isArray(meta?.violations);
+}
+
 export function useWorkflowSaving({
 	router,
 	onSaved,
@@ -302,6 +310,21 @@ export function useWorkflowSaving({
 					}
 				}
 
+				// Don't retry non-retryable errors. Block autosave until the next
+				// change and surface the error once.
+				if (isNonRetryableSaveError(error)) {
+					saveStore.setLastError(error.message);
+					saveStore.setAutoSaveBlocked(uiStore.dirtyStateSetCount);
+
+					toast.showMessage({
+						title: i18n.baseText('workflowHelpers.showMessage.title'),
+						message: error.message,
+						type: 'error',
+					});
+
+					return false;
+				}
+
 				// Handle autosave failures with exponential backoff
 				if (autosaved) {
 					saveStore.incrementRetry();
@@ -542,6 +565,11 @@ export function useWorkflowSaving({
 		} catch (e) {
 			uiStore.removeActiveAction('workflowSaving');
 
+			// Block autosave on non-retryable errors so it isn't retried in a loop.
+			if (isNonRetryableSaveError(e)) {
+				saveStore.setAutoSaveBlocked(uiStore.dirtyStateSetCount);
+			}
+
 			toast.showMessage({
 				title: i18n.baseText('workflowHelpers.showMessage.title'),
 				message: (e as Error).message,
@@ -573,8 +601,13 @@ export function useWorkflowSaving({
 					if (saveStore.autoSaveState === AutoSaveState.InProgress) {
 						saveStore.setAutoSaveState(AutoSaveState.Idle);
 					}
-					// If changes were made during save, reschedule autosave
-					if (uiStore.stateIsDirty && !saveStore.isRetrying) {
+					// Reschedule if changes were made during save, unless autosave is
+					// blocked by a non-retryable error.
+					if (
+						uiStore.stateIsDirty &&
+						!saveStore.isRetrying &&
+						!saveStore.isAutoSaveBlocked(uiStore.dirtyStateSetCount)
+					) {
 						saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 						void autoSaveWorkflowDebounced();
 					}
@@ -599,6 +632,11 @@ export function useWorkflowSaving({
 
 		// Don't schedule if we're waiting for retry backoff to complete
 		if (saveStore.isRetrying) {
+			return;
+		}
+
+		// Don't schedule while blocked by a non-retryable error with no new changes
+		if (saveStore.isAutoSaveBlocked(uiStore.dirtyStateSetCount)) {
 			return;
 		}
 
