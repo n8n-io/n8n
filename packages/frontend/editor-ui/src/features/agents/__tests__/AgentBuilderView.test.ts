@@ -1,4 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
+import {
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+} from '@n8n/api-types';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
@@ -12,6 +16,7 @@ let routeName = 'AgentBuilderView';
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
+const showErrorMock = vi.fn();
 const {
 	fetchAllCredentialsForWorkflowMock,
 	fetchAllCredentialsMock,
@@ -77,7 +82,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: showMessageMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -228,7 +233,7 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	}),
 }));
 
-const baseTextFn = (key: string) => {
+const baseTextFn = (key: string, options?: { interpolate?: Record<string, string> }) => {
 	const map: Record<string, string> = {
 		'agents.builder.chatMode.build': 'Build',
 		'agents.builder.chatMode.test': 'Test',
@@ -238,8 +243,17 @@ const baseTextFn = (key: string) => {
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
+		'agents.builder.files.uploadKnowledgeBaseTooLarge.title': 'Knowledge base is too large',
+		'agents.builder.files.uploadKnowledgeBaseTooLarge.message':
+			"This agent's knowledge base can be up to {sizeGb} GB. Delete existing files before uploading more.",
 	};
-	return map[key] ?? key;
+	let text = map[key] ?? key;
+	if (options?.interpolate) {
+		for (const [placeholder, value] of Object.entries(options.interpolate)) {
+			text = text.replace(`{${placeholder}}`, value);
+		}
+	}
+	return text;
 };
 
 vi.mock('@n8n/i18n', () => ({
@@ -508,6 +522,31 @@ describe('AgentBuilderView — preview routing', () => {
 			count: 1,
 			total_size_bytes: 12,
 		});
+	});
+
+	it('blocks upload when current knowledge base total plus selected files exceeds the cap', async () => {
+		listAgentFilesMock.mockResolvedValue([
+			{
+				id: 'file-existing',
+				fileName: 'large.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 1,
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		]);
+		const wrapper = await renderView();
+		const file = new File([new Uint8Array([1, 2])], 'overflow.txt', { type: 'text/plain' });
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('upload-files', [file]);
+		await flushPromises();
+
+		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		expect(showErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: `This agent's knowledge base can be up to ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB. Delete existing files before uploading more.`,
+			}),
+			'Knowledge base is too large',
+		);
 	});
 
 	it('does not upload agent files when agent sandbox is disabled', async () => {

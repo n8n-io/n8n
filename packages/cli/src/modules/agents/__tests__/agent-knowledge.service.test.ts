@@ -1,3 +1,4 @@
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { BinaryDataService } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils';
 import { mock } from 'jest-mock-extended';
@@ -116,6 +117,7 @@ describe('AgentKnowledgeService', () => {
 		binaryDataService = mock<BinaryDataService>();
 
 		agentFileRepository.create.mockImplementation((data?: Partial<unknown>) => data as never);
+		agentFileRepository.findByAgentId.mockResolvedValue([]);
 		binaryDataService.store.mockResolvedValue({ id: 'binary-1' } as never);
 		agentFileRepository.save.mockImplementation(
 			async (file) =>
@@ -188,6 +190,114 @@ describe('AgentKnowledgeService', () => {
 		]);
 		expect(agentFileRepository.findByAgentId).toHaveBeenCalledWith(agentId);
 	});
+	it('allows upload when existing plus incoming total equals the knowledge base cap', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		agentFileRepository.findByAgentId.mockResolvedValue([
+			{
+				id: 'existing-file',
+				agentId,
+				fileName: 'existing.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 5,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never);
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({ buffer: Buffer.alloc(5), size: 5 }),
+			]),
+		).resolves.toHaveLength(1);
+
+		expect(binaryDataService.store).toHaveBeenCalledTimes(1);
+	});
+
+	it('rejects upload when existing plus incoming total exceeds the knowledge base cap', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		agentFileRepository.findByAgentId.mockResolvedValue([
+			{
+				id: 'existing-file',
+				agentId,
+				fileName: 'existing.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 1,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never);
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({ buffer: Buffer.alloc(2), size: 2 }),
+			]),
+		).rejects.toThrow(BadRequestError);
+
+		expect(binaryDataService.store).not.toHaveBeenCalled();
+		expect(agentFileRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('rejects multi-file upload before storing any file when the batch exceeds the knowledge base cap', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		agentFileRepository.findByAgentId.mockResolvedValue([]);
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'first.txt',
+					buffer: Buffer.alloc(1_000),
+					size: 1_000,
+				}),
+				makeMulterFile({
+					originalname: 'second.txt',
+					buffer: undefined,
+					size: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+				}),
+			]),
+		).rejects.toThrow(BadRequestError);
+
+		expect(binaryDataService.store).not.toHaveBeenCalled();
+		expect(agentFileRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('serializes concurrent uploads before rechecking the knowledge base cap', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		jest
+			.mocked(generateNanoId)
+			.mockReturnValueOnce('file-first')
+			.mockReturnValueOnce('file-second');
+		const persistedFiles: unknown[] = [
+			{
+				id: 'existing-file',
+				agentId,
+				fileName: 'existing.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 5,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		];
+		agentFileRepository.findByAgentId.mockImplementation(async () => persistedFiles as never);
+		agentFileRepository.save.mockImplementation(async (file) => {
+			const savedFile = {
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+				...file,
+			};
+			persistedFiles.push(savedFile);
+			return savedFile as never;
+		});
+
+		const firstUpload = service.uploadFiles(agentId, projectId, [
+			makeMulterFile({ originalname: 'first.txt', buffer: Buffer.alloc(3), size: 3 }),
+		]);
+		const secondUpload = service.uploadFiles(agentId, projectId, [
+			makeMulterFile({ originalname: 'second.txt', buffer: Buffer.alloc(3), size: 3 }),
+		]);
+
+		await expect(firstUpload).resolves.toHaveLength(1);
+		await expect(secondUpload).rejects.toThrow(BadRequestError);
+		expect(agentFileRepository.findByAgentId).toHaveBeenCalledTimes(2);
+		expect(binaryDataService.store).toHaveBeenCalledTimes(1);
+		expect(agentFileRepository.save).toHaveBeenCalledTimes(1);
+	});
+
 	it('stores binary data and creates file rows for the agent', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 

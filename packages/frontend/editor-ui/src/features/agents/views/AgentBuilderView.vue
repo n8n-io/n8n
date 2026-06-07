@@ -3,7 +3,12 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 
 import { useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
+import {
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILE_SIZE_MB,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+} from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -275,6 +280,20 @@ async function onUploadAgentFiles(files: File[]) {
 	}
 	const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
 	if (filesWithinLimit.length === 0) return;
+
+	const currentTotalBytes = agentFiles.value.reduce((total, file) => total + file.fileSizeBytes, 0);
+	const incomingTotalBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
+	if (currentTotalBytes + incomingTotalBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		showError(
+			new Error(
+				locale.baseText('agents.builder.files.uploadKnowledgeBaseTooLarge.message', {
+					interpolate: { sizeGb: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
+				}),
+			),
+			locale.baseText('agents.builder.files.uploadKnowledgeBaseTooLarge.title'),
+		);
+		return;
+	}
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;

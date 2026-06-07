@@ -15,6 +15,7 @@ import {
 	ALLOWED_AGENT_FILE_EXTENSIONS,
 	MAX_AGENT_FILE_SIZE_MB,
 	MAX_AGENT_FILES_PER_UPLOAD,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
 } from '@n8n/api-types';
 
@@ -48,7 +49,11 @@ const isUploadDisabled = computed(() => props.disabled || props.loading || isMut
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
 const description = computed(() =>
 	i18n.baseText('agents.builder.files.description', {
-		interpolate: { maxFiles: MAX_AGENT_FILES_PER_UPLOAD, maxSizeMb: MAX_AGENT_FILE_SIZE_MB },
+		interpolate: {
+			maxFiles: MAX_AGENT_FILES_PER_UPLOAD,
+			maxSizeMb: MAX_AGENT_FILE_SIZE_MB,
+			maxKnowledgeBaseSizeGb: MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+		},
 	}),
 );
 

@@ -1,4 +1,8 @@
-import type { AgentFileDto } from '@n8n/api-types';
+import {
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
+	type AgentFileDto,
+} from '@n8n/api-types';
 import {
 	writeStreamToSandboxFile,
 	type SandboxFilesystem,
@@ -96,11 +100,13 @@ const MAX_AGENT_FILE_METADATA_LENGTH = 255;
  * corpus from writing unbounded data to the shared temp dir per call.
  */
 const MAX_WORKSPACE_FILES = 2_000;
-const MAX_WORKSPACE_BYTES = 2 * 1024 * 1024 * 1024;
 const KNOWLEDGE_SANDBOX_MANIFEST_VERSION = 1;
+const KNOWLEDGE_BASE_SIZE_LIMIT_MESSAGE = `Agent knowledge base cannot exceed ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB. Delete existing files before uploading more.`;
 
 @Service()
 export class AgentKnowledgeService {
+	private readonly uploadLocks = new Map<string, Promise<void>>();
+
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
@@ -114,23 +120,26 @@ export class AgentKnowledgeService {
 	): Promise<AgentFileDto[]> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
-		const storedFiles: StoredAgentFile[] = [];
+		return await this.serializeUploadForAgent(agentId, async () => {
+			const storedFiles: StoredAgentFile[] = [];
 
-		try {
-			// Process sequentially to bound peak memory: each file is read into
-			// a buffer and PDFs are parsed in-process, so storing the whole
-			// batch in parallel could spike RSS for large uploads.
-			for (const file of files) {
-				storedFiles.push(await this.storeFile(agentId, file));
+			try {
+				await this.assertAgentKnowledgeBaseSizeWithinLimit(agentId, files);
+				// Process sequentially to bound peak memory: each file is read into
+				// a buffer and PDFs are parsed in-process, so storing the whole
+				// batch in parallel could spike RSS for large uploads.
+				for (const file of files) {
+					storedFiles.push(await this.storeFile(agentId, file));
+				}
+			} catch (error) {
+				await this.cleanupStoredFiles(storedFiles).catch(() => {});
+				throw error;
+			} finally {
+				await this.cleanupUploadTempFiles(files);
 			}
-		} catch (error) {
-			await this.cleanupStoredFiles(storedFiles).catch(() => {});
-			throw error;
-		} finally {
-			await this.cleanupUploadTempFiles(files);
-		}
 
-		return storedFiles.map((file) => this.toDto(file));
+			return storedFiles.map((file) => this.toDto(file));
+		});
 	}
 
 	/**
@@ -445,6 +454,40 @@ export class AgentKnowledgeService {
 		};
 	}
 
+	private async assertAgentKnowledgeBaseSizeWithinLimit(
+		agentId: string,
+		incomingFiles: Express.Multer.File[],
+	): Promise<void> {
+		const existingFiles = await this.agentFileRepository.findByAgentId(agentId);
+		const existingBytes = existingFiles.reduce((total, file) => total + file.fileSizeBytes, 0);
+		const incomingBytes = incomingFiles.reduce(
+			(total, file) => total + this.getIncomingUploadSizeBytes(file),
+			0,
+		);
+		if (existingBytes + incomingBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+			throw new BadRequestError(KNOWLEDGE_BASE_SIZE_LIMIT_MESSAGE);
+		}
+	}
+
+	private getIncomingUploadSizeBytes(file: Express.Multer.File): number {
+		return file.buffer?.length ?? file.size;
+	}
+
+	private async serializeUploadForAgent<T>(agentId: string, fn: () => Promise<T>): Promise<T> {
+		const previous = this.uploadLocks.get(agentId) ?? Promise.resolve();
+		const run = previous.then(fn, fn);
+		const tail = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		this.uploadLocks.set(agentId, tail);
+		try {
+			return await run;
+		} finally {
+			if (this.uploadLocks.get(agentId) === tail) this.uploadLocks.delete(agentId);
+		}
+	}
+
 	private assertWorkspaceWithinLimits(files: AgentFile[]) {
 		if (files.length > MAX_WORKSPACE_FILES) {
 			throw new BadRequestError(
@@ -452,10 +495,8 @@ export class AgentKnowledgeService {
 			);
 		}
 		const totalBytes = files.reduce((total, file) => total + file.fileSizeBytes, 0);
-		if (totalBytes > MAX_WORKSPACE_BYTES) {
-			throw new BadRequestError(
-				`Cannot materialize ${totalBytes} bytes of knowledge files at once (limit ${MAX_WORKSPACE_BYTES}). Pass file references to narrow the operation.`,
-			);
+		if (totalBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+			throw new BadRequestError(KNOWLEDGE_BASE_SIZE_LIMIT_MESSAGE);
 		}
 	}
 
