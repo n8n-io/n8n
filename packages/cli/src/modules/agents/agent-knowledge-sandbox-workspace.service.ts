@@ -15,7 +15,6 @@ import path from 'node:path/posix';
 import pLimit from 'p-limit';
 
 import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
-import { AgentKnowledgeSandboxImageService } from './agent-knowledge-sandbox-image.service';
 import type {
 	KnowledgeSandboxExpectedManifest,
 	KnowledgeWorkspaceFile,
@@ -56,7 +55,6 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly sandboxConfigService: AgentKnowledgeSandboxConfigService,
-		private readonly sandboxImageService: AgentKnowledgeSandboxImageService,
 		private readonly knowledgeService: AgentKnowledgeService,
 	) {}
 
@@ -195,13 +193,9 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 
 		if (baseConfig.provider === 'daytona') {
-			const bakedImage = await this.sandboxImageService.prepareDaytonaImage(
-				typeof baseConfig.image === 'string' ? baseConfig.image : undefined,
-			);
 			return {
 				...baseConfig,
-				image: bakedImage,
-				name: baseConfig.name ?? `knowledge-${this.shortHash(cacheKey)}`,
+				name: baseConfig.name ?? this.buildDaytonaSandboxName(cacheKey),
 				labels: {
 					...baseConfig.labels,
 					component: 'agent-knowledge',
@@ -214,6 +208,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	private shortHash(cacheKey: string): string {
 		return createHash('sha1').update(cacheKey).digest('hex').slice(0, 12);
+	}
+
+	private buildDaytonaSandboxName(cacheKey: string): string {
+		return `knowledge-${this.shortHash(cacheKey)}-${this.shortHash(`${Date.now()}:${Math.random()}`)}`;
 	}
 
 	private async evictStaleWorkspaces(): Promise<void> {

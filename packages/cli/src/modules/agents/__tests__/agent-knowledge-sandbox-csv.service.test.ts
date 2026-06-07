@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import type { ExecuteCommandOptions } from '@n8n/ai-utilities/sandbox';
+import type { CommandResult, ExecuteCommandOptions } from '@n8n/ai-utilities/sandbox';
 
 import { AgentKnowledgeSandboxCsvService } from '../agent-knowledge-sandbox-csv.service';
 import { KNOWLEDGE_CSV_RUNNER_MISSING_MESSAGE } from '../agent-knowledge-sandbox-runtime';
@@ -32,14 +32,13 @@ describe('AgentKnowledgeSandboxCsvService', () => {
 				provider: 'n8n-sandbox',
 				status: 'running',
 				executeCommand: async (command: string, args: string[], options: ExecuteCommandOptions) => {
-					return await new Promise((resolve) => {
+					return await new Promise<CommandResult>((resolve) => {
 						const child = spawn(command, resolveKnowledgeCsvRunnerArgs(args), {
 							cwd: options.cwd,
 							env: { ...process.env, ...options.env },
 						});
 						let stdout = '';
 						let stderr = '';
-						let timedOut = false;
 						child.stdout.on('data', (chunk: Buffer) => {
 							const text = chunk.toString();
 							stdout += text;
@@ -53,17 +52,17 @@ describe('AgentKnowledgeSandboxCsvService', () => {
 						const timer =
 							options.timeout !== undefined
 								? setTimeout(() => {
-										timedOut = true;
 										child.kill();
 									}, options.timeout)
 								: undefined;
 						child.on('close', (exitCode) => {
 							if (timer) clearTimeout(timer);
 							resolve({
+								success: exitCode === 0,
 								exitCode: exitCode ?? 1,
 								stdout,
 								stderr,
-								timedOut,
+								executionTimeMs: 0,
 							});
 						});
 					});
@@ -71,7 +70,7 @@ describe('AgentKnowledgeSandboxCsvService', () => {
 			},
 			filesystem: {
 				writeFile: writeFileMock,
-			} as KnowledgeSandboxWorkspace['filesystem'],
+			} as unknown as KnowledgeSandboxWorkspace['filesystem'],
 			provider: 'n8n-sandbox',
 			workspaceRoot: knowledgeRoot,
 			knowledgeRoot,
@@ -167,10 +166,11 @@ describe('AgentKnowledgeSandboxCsvService', () => {
 			sandbox: {
 				...workspace.sandbox,
 				executeCommand: jest.fn(async () => ({
+					success: false,
 					exitCode: 1,
 					stdout: '',
 					stderr: 'No such file',
-					timedOut: false,
+					executionTimeMs: 0,
 				})),
 			},
 		};

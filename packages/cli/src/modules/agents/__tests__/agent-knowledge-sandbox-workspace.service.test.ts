@@ -1,26 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
-import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
 import { mock } from 'jest-mock-extended';
 
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
-import type { AgentKnowledgeSandboxImageService } from '../agent-knowledge-sandbox-image.service';
 import { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-const prepareDaytonaImageMock = jest.fn<
-	Promise<CreateSandboxFromImageParams['image']>,
-	[string?]
->();
 const createSandboxMock = jest.fn();
 const createFilesystemMock = jest.fn();
-
-jest.mock('../agent-knowledge-sandbox-image.service', () => ({
-	AgentKnowledgeSandboxImageService: jest.fn().mockImplementation(() => ({
-		prepareDaytonaImage: prepareDaytonaImageMock,
-	})),
-}));
 
 jest.mock('@n8n/ai-utilities/sandbox', () => ({
 	createSandbox: (...args: unknown[]) => createSandboxMock(...args),
@@ -51,8 +39,21 @@ function makeFilesystem(provider: 'n8n-sandbox' | 'daytona' = 'n8n-sandbox') {
 			throw new Error('manifest missing');
 		}),
 		writeFile: jest.fn(async () => {}),
+		appendFile: jest.fn(async () => {}),
 		deleteFile: jest.fn(async () => {}),
+		copyFile: jest.fn(async () => {}),
+		moveFile: jest.fn(async () => {}),
 		exists: jest.fn<Promise<boolean>, [string]>(async () => true),
+		rmdir: jest.fn(async () => {}),
+		readdir: jest.fn(async () => []),
+		stat: jest.fn(async () => ({
+			name: 'agent-knowledge',
+			path: '/home/user/workspace/agent-knowledge',
+			type: 'directory' as const,
+			size: 0,
+			createdAt: new Date('2026-06-06T12:00:00.000Z'),
+			modifiedAt: new Date('2026-06-06T12:00:00.000Z'),
+		})),
 	};
 }
 
@@ -84,9 +85,9 @@ function buildExpectedManifest() {
 	};
 }
 
-function createDeferred<T>() {
-	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((res) => {
+function createDeferred() {
+	let resolve!: () => void;
+	const promise = new Promise<void>((res) => {
 		resolve = res;
 	});
 	return { promise, resolve };
@@ -101,7 +102,6 @@ async function flushMicrotasks(): Promise<void> {
 describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let configService: AgentKnowledgeSandboxConfigService;
-	let imageService: AgentKnowledgeSandboxImageService;
 	let knowledgeService: AgentKnowledgeService;
 	let service: AgentKnowledgeSandboxWorkspaceService;
 
@@ -114,23 +114,12 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 				n8nSandboxServiceUrl: 'https://sandbox.example.test',
 			}),
 		);
-		prepareDaytonaImageMock.mockResolvedValue({
-			dockerfile: 'FROM test',
-		} as CreateSandboxFromImageParams['image']);
-		imageService = {
-			prepareDaytonaImage: prepareDaytonaImageMock,
-		} as unknown as AgentKnowledgeSandboxImageService;
 		knowledgeService = new AgentKnowledgeService(
 			mock<AgentRepository>(),
 			mock<AgentFileRepository>(),
 			mock(),
 		);
-		service = new AgentKnowledgeSandboxWorkspaceService(
-			logger,
-			configService,
-			imageService,
-			knowledgeService,
-		);
+		service = new AgentKnowledgeSandboxWorkspaceService(logger, configService, knowledgeService);
 	});
 
 	function mockN8nSandboxWorkspace() {
@@ -190,19 +179,19 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			provider: 'daytona',
 			timeout: 300_000,
 			name: undefined,
+			image: 'daytonaio/sandbox:0.5.0',
 		});
 		const { sandbox, filesystem } = mockDaytonaWorkspace();
 
 		const workspace = await service.withCachedWorkspace('key-daytona', async (entry) => entry);
 
 		expect(createSandboxMock).toHaveBeenCalledTimes(1);
-		expect(prepareDaytonaImageMock).toHaveBeenCalled();
 		expect(createSandboxMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				enabled: true,
 				provider: 'daytona',
-				image: { dockerfile: 'FROM test' },
-				name: expect.stringMatching(/^knowledge-[a-f0-9]{12}$/),
+				image: 'daytonaio/sandbox:0.5.0',
+				name: expect.stringMatching(/^knowledge-[a-f0-9]{12}-[a-f0-9]{12}$/),
 				labels: { component: 'agent-knowledge' },
 			}),
 			{ logger },
@@ -245,14 +234,14 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	it('serializes operations for the same key', async () => {
 		const sandbox = makeSandbox('n8n-sandbox');
 		const filesystem = makeFilesystem('n8n-sandbox');
-		const createGate = createDeferred<void>();
+		const createGate = createDeferred();
 		createSandboxMock.mockImplementation(async () => {
 			await createGate.promise;
 			return sandbox;
 		});
 		createFilesystemMock.mockReturnValue(filesystem);
 
-		const gate = createDeferred<void>();
+		const gate = createDeferred();
 		const started: number[] = [];
 
 		const first = service.withCachedWorkspace('same-key', async () => {
@@ -285,8 +274,8 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			.mockReturnValueOnce(makeFilesystem('n8n-sandbox'))
 			.mockReturnValueOnce(makeFilesystem('n8n-sandbox'));
 
-		const gateA = createDeferred<void>();
-		const gateB = createDeferred<void>();
+		const gateA = createDeferred();
+		const gateB = createDeferred();
 		const started: string[] = [];
 
 		const first = service.withCachedWorkspace('key-a', async () => {

@@ -3,8 +3,10 @@ import { createHash } from 'node:crypto';
 
 import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
 import type { AgentKnowledgeSandboxCsvService } from '../../agent-knowledge-sandbox-csv.service';
-import type { AgentKnowledgeSandboxWorkspaceService } from '../../agent-knowledge-sandbox-workspace.service';
-import type { KnowledgeSandboxWorkspace } from '../../agent-knowledge-sandbox-workspace.service';
+import type {
+	AgentKnowledgeSandboxWorkspaceService,
+	KnowledgeSandboxWorkspace,
+} from '../../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 
 import { aggregateCsv, distinctCsv, profileCsv, queryCsv } from './csv.operation';

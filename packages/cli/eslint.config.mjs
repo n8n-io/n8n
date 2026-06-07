@@ -17,7 +17,13 @@ const instanceAiLazyRuntimeImports = [
 }));
 
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js', 'test/*-testcontainers.js', 'coverage/**']),
+	globalIgnores([
+		'scripts/**/*.mjs',
+		'jest.config*.js',
+		'test/*-testcontainers.js',
+		'coverage/**',
+		'src/modules/agents/sandbox-runners/*.cjs',
+	]),
 	nodeConfig,
 	{
 		rules: {

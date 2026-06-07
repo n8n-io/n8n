@@ -76,6 +76,7 @@ describe('AgentKnowledgeService', () => {
 			provider: 'n8n-sandbox',
 			status: 'ready' as const,
 			mkdir: jest.fn(async () => {}),
+			readFile: jest.fn(async () => ''),
 			writeFile: jest.fn(
 				async (
 					_path: string,
@@ -83,7 +84,21 @@ describe('AgentKnowledgeService', () => {
 					_options?: { recursive?: boolean; overwrite?: boolean },
 				) => {},
 			),
+			appendFile: jest.fn(async () => {}),
 			deleteFile: jest.fn(async () => {}),
+			copyFile: jest.fn(async () => {}),
+			moveFile: jest.fn(async () => {}),
+			rmdir: jest.fn(async () => {}),
+			readdir: jest.fn(async () => []),
+			exists: jest.fn(async () => true),
+			stat: jest.fn(async () => ({
+				name: 'agent-knowledge',
+				path: '/home/user/workspace/agent-knowledge',
+				type: 'directory' as const,
+				size: 0,
+				createdAt: new Date('2026-06-06T12:00:00.000Z'),
+				modifiedAt: new Date('2026-06-06T12:00:00.000Z'),
+			})),
 		};
 		return {
 			sandbox,

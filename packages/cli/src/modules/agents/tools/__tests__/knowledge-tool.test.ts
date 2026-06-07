@@ -1,4 +1,8 @@
-import type { ExecuteCommandOptions, SandboxFilesystem } from '@n8n/ai-utilities/sandbox';
+import type {
+	CommandResult,
+	ExecuteCommandOptions,
+	SandboxFilesystem,
+} from '@n8n/ai-utilities/sandbox';
 
 import { resolveKnowledgeCsvRunnerArgs } from '../../__tests__/knowledge-csv-runner-test-utils';
 import { AgentKnowledgeSandboxCsvService } from '../../agent-knowledge-sandbox-csv.service';
@@ -54,9 +58,9 @@ describe('search_knowledge tool', () => {
 		hostCommandService = new AgentKnowledgeCommandService();
 		sandboxCsvService = new AgentKnowledgeSandboxCsvService();
 		sandboxCommandService = {
-			run: jest.fn(async (workspace, request) =>
-				hostCommandService.run(workspace.knowledgeRoot, request),
-			),
+			run: jest.fn(async (workspace, request) => {
+				return await hostCommandService.run(workspace.knowledgeRoot, request);
+			}),
 		} as unknown as AgentKnowledgeSandboxCommandService;
 		sandboxWorkspaceService = {
 			ensureWorkspaceMaterialized: jest.fn(async (_workspace, _expected, materialize) => {
@@ -81,14 +85,13 @@ describe('search_knowledge tool', () => {
 							args: string[],
 							options: ExecuteCommandOptions,
 						) => {
-							return await new Promise((resolve) => {
+							return await new Promise<CommandResult>((resolve) => {
 								const child = spawn(command, resolveKnowledgeCsvRunnerArgs(args), {
 									cwd: options.cwd,
 									env: { ...process.env, ...options.env },
 								});
 								let stdout = '';
 								let stderr = '';
-								let timedOut = false;
 								child.stdout.on('data', (chunk: Buffer) => {
 									const text = chunk.toString();
 									stdout += text;
@@ -102,17 +105,17 @@ describe('search_knowledge tool', () => {
 								const timer =
 									options.timeout !== undefined
 										? setTimeout(() => {
-												timedOut = true;
 												child.kill();
 											}, options.timeout)
 										: undefined;
 								child.on('close', (exitCode) => {
 									if (timer) clearTimeout(timer);
 									resolve({
+										success: exitCode === 0,
 										exitCode: exitCode ?? 1,
 										stdout,
 										stderr,
-										timedOut,
+										executionTimeMs: 0,
 									});
 								});
 							});
@@ -158,13 +161,14 @@ describe('search_knowledge tool', () => {
 			listWorkspaceFiles: jest.fn(),
 			materializeWorkspace: jest.fn(),
 			materializeWorkspaceIntoSandbox: jest.fn(
-				async (materializeAgentId, materializeProjectId, target, options) =>
-					knowledgeService.materializeWorkspace(
+				async (materializeAgentId, materializeProjectId, target, options) => {
+					return await knowledgeService.materializeWorkspace(
 						materializeAgentId,
 						materializeProjectId,
 						target.knowledgeRoot,
 						options,
-					),
+					);
+				},
 			),
 			resolveWorkspaceFilesForRuntime: jest.fn(
 				async (resolveAgentId, resolveProjectId, fileReferences) => {
