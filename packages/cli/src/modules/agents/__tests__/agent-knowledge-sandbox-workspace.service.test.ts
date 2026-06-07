@@ -222,11 +222,10 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		filesystem.readFile.mockResolvedValue(
 			JSON.stringify({ ...expected, materializedAt: '2026-06-06T12:00:00.000Z' }),
 		);
-		const materialize = jest.fn(async () => []);
+		const materialize = jest.fn(async () => {});
 
-		const result = await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
 
-		expect(result).toEqual({ files: undefined, freshness: { status: 'fresh' } });
 		expect(materialize).not.toHaveBeenCalled();
 	});
 
@@ -241,11 +240,10 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 				materializedAt: '2026-06-06T12:00:00.000Z',
 			}),
 		);
-		const materialize = jest.fn(async () => []);
+		const materialize = jest.fn(async () => {});
 
-		const result = await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'missing-required-files' });
 		expect(filesystem.deleteFile).not.toHaveBeenCalled();
 		expect(materialize).toHaveBeenCalledWith([
 			expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
@@ -259,11 +257,10 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		filesystem.readFile.mockResolvedValue(
 			JSON.stringify({ ...expected, agentId: 'other-agent', materializedAt: '2026-06-06' }),
 		);
-		const materialize = jest.fn(async () => []);
+		const materialize = jest.fn(async () => {});
 
-		const result = await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
 
-		expect(result.freshness).toEqual({ status: 'stale', reason: 'manifest-identity' });
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
 			recursive: true,
 			force: true,

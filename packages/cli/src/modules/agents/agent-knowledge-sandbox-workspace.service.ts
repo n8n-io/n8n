@@ -46,8 +46,6 @@ export interface KnowledgeSandboxWorkspace {
 	manifestPath: string;
 }
 
-export type KnowledgeWorkspaceFreshness = { status: 'fresh' } | { status: 'stale'; reason: string };
-
 interface CachedKnowledgeSandboxWorkspace {
 	workspace: KnowledgeSandboxWorkspace;
 	lastUsedAt: number;
@@ -67,18 +65,15 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	async ensureWorkspaceContainsFiles(
 		workspace: KnowledgeSandboxWorkspace,
 		requiredManifest: KnowledgeSandboxExpectedManifest,
-		materialize: (missingFiles: KnowledgeWorkspaceFile[]) => Promise<KnowledgeWorkspaceFile[]>,
-	): Promise<{
-		files: KnowledgeWorkspaceFile[] | undefined;
-		freshness: KnowledgeWorkspaceFreshness;
-	}> {
+		materialize: (missingFiles: KnowledgeWorkspaceFile[]) => Promise<void>,
+	): Promise<void> {
 		const actualManifest = await this.readWorkspaceManifest(workspace);
 		if (
 			actualManifest &&
 			!this.knowledgeService.isSandboxManifestIdentityValid(actualManifest, requiredManifest)
 		) {
 			await this.clearStaleWorkspaceState(workspace);
-			const files = await materialize(
+			await materialize(
 				requiredManifest.files.map((file) => ({
 					id: file.id,
 					fileName: '',
@@ -87,12 +82,12 @@ export class AgentKnowledgeSandboxWorkspaceService {
 					relativePath: file.relativePath,
 				})),
 			);
-			return { files, freshness: { status: 'stale', reason: 'manifest-identity' } };
+			return;
 		}
 
 		if (!(await workspace.filesystem.exists(workspace.knowledgeRoot))) {
 			await this.clearStaleWorkspaceState(workspace);
-			const files = await materialize(
+			await materialize(
 				requiredManifest.files.map((file) => ({
 					id: file.id,
 					fileName: '',
@@ -101,7 +96,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 					relativePath: file.relativePath,
 				})),
 			);
-			return { files, freshness: { status: 'stale', reason: 'knowledge-root-missing' } };
+			return;
 		}
 
 		const missingFiles = await this.knowledgeService.findRequiredFilesNeedingMaterialization(
@@ -117,11 +112,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		);
 
 		if (missingFiles.length === 0) {
-			return { files: undefined, freshness: { status: 'fresh' } };
+			return;
 		}
 
-		const files = await materialize(missingFiles);
-		return { files, freshness: { status: 'stale', reason: 'missing-required-files' } };
+		await materialize(missingFiles);
 	}
 
 	async withCachedWorkspace<T>(

@@ -489,7 +489,7 @@ describe('AgentKnowledgeService', () => {
 		binaryDataService.getAsStream.mockResolvedValue(stream as never);
 		const target = makeSandboxTarget();
 
-		const files = await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
+		await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
 			{
 				id: 'file-1',
 				agentId,
@@ -501,13 +501,6 @@ describe('AgentKnowledgeService', () => {
 			},
 		] as never);
 
-		expect(files).toEqual([
-			expect.objectContaining({
-				fileName: 'document.pdf',
-				mimeType: 'text/plain',
-				relativePath: 'file-1.pdf.txt',
-			}),
-		]);
 		expect(writeStreamToSandboxFileMock).toHaveBeenCalledWith(
 			target.filesystem,
 			target.sandbox,
@@ -536,7 +529,7 @@ describe('AgentKnowledgeService', () => {
 		binaryDataService.getAsStream.mockResolvedValue(stream as never);
 		const target = makeSandboxTarget();
 
-		const files = await service.materializeWorkspaceFilesIntoSandbox(
+		await service.materializeWorkspaceFilesIntoSandbox(
 			agentId,
 			projectId,
 			target,
@@ -555,8 +548,6 @@ describe('AgentKnowledgeService', () => {
 				temporaryDirectory: '/home/user/workspace/.agent-knowledge-internal/upload-parts',
 			},
 		);
-		expect(files).toEqual([expect.objectContaining({ id: 'file-1' })]);
-		expect(files[0]).not.toHaveProperty('binaryDataId');
 	});
 
 	it('writes manifest after all sandbox files are streamed', async () => {

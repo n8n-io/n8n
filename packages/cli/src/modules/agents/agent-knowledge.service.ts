@@ -320,15 +320,14 @@ export class AgentKnowledgeService {
 		projectId: string,
 		target: KnowledgeSandboxMaterializationTarget,
 		filesToMaterialize: StoredAgentFile[],
-	): Promise<KnowledgeWorkspaceFile[]> {
+	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
-		if (filesToMaterialize.length === 0) return [];
+		if (filesToMaterialize.length === 0) return;
 
 		await target.filesystem.mkdir(target.knowledgeRoot, { recursive: true });
 		await target.filesystem.mkdir(target.internalRoot, { recursive: true });
 
 		const existingManifest = await this.readSandboxManifest(target);
-		const materializedFiles: KnowledgeWorkspaceFile[] = [];
 		const materializedEntries: KnowledgeSandboxManifestFile[] = [];
 
 		for (const file of filesToMaterialize) {
@@ -345,7 +344,6 @@ export class AgentKnowledgeService {
 						temporaryDirectory: posixPath.join(target.internalRoot, 'upload-parts'),
 					},
 				);
-				materializedFiles.push(this.toWorkspaceFile(file));
 				materializedEntries.push(this.toManifestFileEntry(file));
 			} catch (error) {
 				await target.filesystem.deleteFile(targetPath, { force: true }).catch(() => {});
@@ -363,8 +361,6 @@ export class AgentKnowledgeService {
 			recursive: true,
 			overwrite: true,
 		});
-
-		return materializedFiles;
 	}
 
 	private async ensureAgentBelongsToProject(agentId: string, projectId: string) {

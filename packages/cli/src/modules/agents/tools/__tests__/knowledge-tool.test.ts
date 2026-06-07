@@ -12,7 +12,6 @@ import type {
 } from '../../agent-knowledge.service';
 import { createSearchKnowledgeTool } from '../knowledge/tool';
 import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
-import type { JSONSchema7 } from 'json-schema';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -103,10 +102,6 @@ describe('search_knowledge tool', () => {
 					}),
 				);
 				await materialize(missingFiles);
-				return {
-					files: undefined,
-					freshness: { status: 'stale' as const, reason: 'missing-required-files' },
-				};
 			}),
 			withCachedWorkspace: jest.fn(
 				async (_cacheKey, operation) => await operation(makeWorkspace()),
@@ -127,7 +122,7 @@ describe('search_knowledge tool', () => {
 				}),
 			),
 			listWorkspaceFiles: jest.fn(),
-			materializeWorkspaceFilesIntoSandbox: jest.fn(async () => [file]),
+			materializeWorkspaceFilesIntoSandbox: jest.fn(async () => {}),
 			openWorkspaceFileStream: jest.fn(async () => ({
 				file: { ...file, fileName: 'data.csv', mimeType: 'text/csv', relativePath: 'file-1.csv' },
 				contentStream: Readable.from(['country,year\nGermany,2022\n']),
@@ -154,7 +149,7 @@ describe('search_knowledge tool', () => {
 		const jsonKeys = new Set(Object.keys(searchKnowledgeInputSchema.properties ?? {}));
 
 		expect(jsonKeys).toEqual(zodKeys);
-		expect((searchKnowledgeInputSchema as JSONSchema7).properties).not.toHaveProperty('request');
+		expect(searchKnowledgeInputSchema.properties).not.toHaveProperty('request');
 	});
 
 	it('lists uploaded knowledge files without creating a sandbox', async () => {
@@ -211,10 +206,7 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('skips materialization when the cached manifest is fresh', async () => {
-		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockResolvedValueOnce({
-			files: undefined,
-			freshness: { status: 'fresh' },
-		});
+		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockResolvedValueOnce(undefined);
 
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
@@ -222,7 +214,7 @@ describe('search_knowledge tool', () => {
 		expect(commandService.run).toHaveBeenCalled();
 	});
 
-	it('fails before command execution when freshness reports an unresolved file', async () => {
+	it('fails before command execution when materialization cannot resolve a file', async () => {
 		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockImplementationOnce(
 			async (_workspace, _expected, materialize) => {
 				await materialize([
@@ -234,10 +226,6 @@ describe('search_knowledge tool', () => {
 						relativePath: 'missing.txt',
 					},
 				]);
-				return {
-					files: undefined,
-					freshness: { status: 'stale' as const, reason: 'missing-required-files' },
-				};
 			},
 		);
 

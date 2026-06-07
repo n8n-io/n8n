@@ -125,7 +125,7 @@ export function createSearchKnowledgeTool({
 									'Failed to resolve stored knowledge files for sandbox materialization',
 								);
 							}
-							return await knowledgeService.materializeWorkspaceFilesIntoSandbox(
+							await knowledgeService.materializeWorkspaceFilesIntoSandbox(
 								agentId,
 								projectId,
 								workspace,

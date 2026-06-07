@@ -75,14 +75,28 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const sandboxEnabled = await this.isSandboxAvailable(config);
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			sandboxEnabled: config.aiSandboxEnabled,
+			sandboxEnabled,
 		};
+	}
+
+	private async isSandboxAvailable(config: AgentsConfig): Promise<boolean> {
+		if (!config.aiSandboxEnabled) return false;
+
+		try {
+			const { AgentKnowledgeSandboxConfigService } = await import(
+				'./agent-knowledge-sandbox-config.service'
+			);
+			Container.get(AgentKnowledgeSandboxConfigService).resolveConfig();
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	async entities() {
