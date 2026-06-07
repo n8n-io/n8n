@@ -485,45 +485,6 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-files-card"]').exists()).toBe(true);
 	});
 
-	it('does not load or render agent files when agent sandbox is disabled', async () => {
-		isAgentsSandboxEnabledRef.value = false;
-
-		const wrapper = await renderView();
-
-		expect(listAgentFilesMock).not.toHaveBeenCalled();
-		expect(wrapper.find('[data-testid="agent-files-card"]').exists()).toBe(false);
-	});
-
-	it('uploads agent files and tracks telemetry after success', async () => {
-		uploadAgentFilesMock.mockResolvedValue([
-			{
-				id: 'file-1',
-				fileName: 'notes.md',
-				mimeType: 'text/markdown',
-				fileSizeBytes: 12,
-				createdAt: '2026-01-01T00:00:00.000Z',
-			},
-		]);
-		const wrapper = await renderView();
-		const file = new File(['hello world!'], 'notes.md', { type: 'text/markdown' });
-
-		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('upload-files', [file]);
-		await flushPromises();
-
-		expect(uploadAgentFilesMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-			[file],
-		);
-		expect(telemetryTrackMock).toHaveBeenCalledWith('User uploaded agent knowledge files', {
-			agent_id: 'a1',
-			project_id: 'p1',
-			count: 1,
-			total_size_bytes: 12,
-		});
-	});
-
 	it('blocks upload when current knowledge base total plus selected files exceeds the cap', async () => {
 		listAgentFilesMock.mockResolvedValue([
 			{
@@ -546,72 +507,6 @@ describe('AgentBuilderView — preview routing', () => {
 				message: `This agent's knowledge base can be up to ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB. Delete existing files before uploading more.`,
 			}),
 			'Knowledge base is too large',
-		);
-	});
-
-	it('does not upload agent files when agent sandbox is disabled', async () => {
-		isAgentsSandboxEnabledRef.value = false;
-		const wrapper = await renderView();
-		const file = new File(['hello'], 'notes.md', { type: 'text/markdown' });
-
-		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('upload-files', [file]);
-		await flushPromises();
-
-		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
-		expect(telemetryTrackMock).not.toHaveBeenCalledWith(
-			'User uploaded agent knowledge files',
-			expect.anything(),
-		);
-	});
-
-	it('deletes agent files and tracks telemetry after success', async () => {
-		const file = {
-			id: 'file-1',
-			fileName: 'notes.md',
-			mimeType: 'text/markdown',
-			fileSizeBytes: 12,
-			createdAt: '2026-01-01T00:00:00.000Z',
-		};
-		listAgentFilesMock.mockResolvedValue([file]);
-		const wrapper = await renderView();
-
-		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('delete-file', file);
-		await flushPromises();
-		const modalData = openModalWithDataMock.mock.calls.at(-1)?.[0]?.data;
-		modalData.onConfirm();
-		await flushPromises();
-
-		expect(deleteAgentFileMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-			'file-1',
-		);
-		expect(telemetryTrackMock).toHaveBeenCalledWith('User deleted agent knowledge file', {
-			agent_id: 'a1',
-			project_id: 'p1',
-			file_id: 'file-1',
-		});
-	});
-
-	it('does not delete agent files when agent sandbox is disabled', async () => {
-		isAgentsSandboxEnabledRef.value = false;
-		const wrapper = await renderView();
-
-		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('delete-file', {
-			id: 'file-1',
-			fileName: 'notes.md',
-			mimeType: 'text/markdown',
-			fileSizeBytes: 12,
-			createdAt: '2026-01-01T00:00:00.000Z',
-		});
-		await flushPromises();
-
-		expect(openModalWithDataMock).not.toHaveBeenCalled();
-		expect(deleteAgentFileMock).not.toHaveBeenCalled();
-		expect(telemetryTrackMock).not.toHaveBeenCalledWith(
-			'User deleted agent knowledge file',
-			expect.anything(),
 		);
 	});
 

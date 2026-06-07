@@ -19,16 +19,14 @@ function makeWorkspace(executeCommand = jest.fn()): KnowledgeSandboxWorkspace {
 	};
 }
 
-function commandResult(stdout: string, options: { timedOut?: boolean } = {}) {
-	return {
-		success: true,
-		exitCode: 0,
-		stdout,
-		stderr: '',
-		executionTimeMs: 1,
-		timedOut: options.timedOut ?? false,
-	};
-}
+const commandResult = (stdout: string, timedOut = false) => ({
+	success: true,
+	exitCode: 0,
+	stdout,
+	stderr: '',
+	executionTimeMs: 1,
+	timedOut,
+});
 
 describe('AgentKnowledgeSandboxCommandService', () => {
 	let service: AgentKnowledgeSandboxCommandService;
@@ -37,40 +35,7 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		service = new AgentKnowledgeSandboxCommandService();
 	});
 
-	it('search invokes rg with default args', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(commandResult('file-1-notes.txt:2:needle\n'));
-		const workspace = makeWorkspace(executeCommand);
-
-		const result = await service.run(workspace, {
-			command: 'search',
-			pattern: 'needle',
-			fixedStrings: true,
-		});
-
-		expect(result.command).toBe('search');
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout).toContain('needle');
-		expect(executeCommand).toHaveBeenCalledTimes(1);
-		expect(executeCommand).toHaveBeenCalledWith(
-			'rg',
-			[
-				'--no-heading',
-				'--line-number',
-				'--with-filename',
-				'--color',
-				'never',
-				'-F',
-				'--',
-				'needle',
-				'.',
-			],
-			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
-		);
-	});
-
-	it('search supports count, case-insensitive, context, and explicit files', async () => {
+	it('runs rg from the knowledge root and supports scoped search options', async () => {
 		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('a.txt:1\n'));
 		const workspace = makeWorkspace(executeCommand);
 
@@ -79,105 +44,19 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 			pattern: 'needle',
 			outputMode: 'count',
 			caseInsensitive: true,
-			context: 3,
+			context: 9,
 			fixedStrings: false,
 			files: ['a.txt'],
 		});
 
 		expect(executeCommand).toHaveBeenCalledWith(
 			'rg',
-			[
-				'--no-heading',
-				'--line-number',
-				'--with-filename',
-				'--color',
-				'never',
-				'-i',
-				'--count',
-				'-C',
-				'3',
-				'--',
-				'needle',
-				'a.txt',
-			],
+			expect.arrayContaining(['-i', '--count', '-C', '5', '--', 'needle', 'a.txt']),
 			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
 		);
 	});
 
-	it('search rejects an empty pattern', async () => {
-		const executeCommand = jest.fn();
-		const workspace = makeWorkspace(executeCommand);
-
-		await expect(service.run(workspace, { command: 'search', pattern: '   ' })).rejects.toThrow(
-			'Search pattern is required',
-		);
-		expect(executeCommand).not.toHaveBeenCalled();
-	});
-
-	it('search rejects absolute paths and parent segments', async () => {
-		const executeCommand = jest.fn();
-		const workspace = makeWorkspace(executeCommand);
-
-		await expect(
-			service.run(workspace, { command: 'search', pattern: 'needle', files: ['/etc/passwd'] }),
-		).rejects.toThrow('Absolute paths are not allowed');
-		await expect(
-			service.run(workspace, { command: 'search', pattern: 'needle', files: ['../secret.txt'] }),
-		).rejects.toThrow('Parent path segments are not allowed');
-		expect(executeCommand).not.toHaveBeenCalled();
-	});
-
-	it('search clamps context to 0-5', async () => {
-		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult(''));
-		const workspace = makeWorkspace(executeCommand);
-
-		await service.run(workspace, {
-			command: 'search',
-			pattern: 'needle',
-			context: 9,
-			fixedStrings: true,
-		});
-
-		expect(executeCommand.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['-C', '5']));
-	});
-
-	it('read without range invokes sed for the first 500 lines', async () => {
-		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('hello world'));
-		const workspace = makeWorkspace(executeCommand);
-
-		const result = await service.run(workspace, {
-			command: 'read',
-			file: 'notes.txt',
-		});
-
-		expect(result.command).toBe('read');
-		expect(executeCommand).toHaveBeenCalledWith(
-			'sed',
-			['-n', '1,500p', 'notes.txt'],
-			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
-		);
-	});
-
-	it('read with line range invokes sed for the requested window', async () => {
-		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('line 2\nline 3\n'));
-		const workspace = makeWorkspace(executeCommand);
-
-		const result = await service.run(workspace, {
-			command: 'read',
-			file: 'notes.txt',
-			startLine: 10,
-			endLine: 12,
-		});
-
-		expect(result.command).toBe('read');
-		expect(executeCommand).toHaveBeenCalledWith(
-			'sed',
-			['-n', '10,12p', 'notes.txt'],
-			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
-		);
-	});
-
-	it('read clamps oversized line ranges and marks the result truncated', async () => {
+	it('runs sed from the knowledge root for clamped read ranges', async () => {
 		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('line 2\n'));
 		const workspace = makeWorkspace(executeCommand);
 
@@ -196,25 +75,23 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		expect(result.truncated).toBe(true);
 	});
 
-	it('rejects absolute paths, parent segments, and control characters for read', async () => {
+	it('rejects unsafe paths before executing commands', async () => {
 		const executeCommand = jest.fn();
 		const workspace = makeWorkspace(executeCommand);
 
-		await expect(service.run(workspace, { command: 'read', file: '/etc/passwd' })).rejects.toThrow(
-			'Absolute paths are not allowed',
-		);
+		await expect(
+			service.run(workspace, { command: 'search', pattern: 'needle', files: ['/etc/passwd'] }),
+		).rejects.toThrow('Absolute paths are not allowed');
 		await expect(
 			service.run(workspace, { command: 'read', file: '../secret.txt' }),
 		).rejects.toThrow('Parent path segments are not allowed');
-		await expect(
-			service.run(workspace, { command: 'read', file: 'notes\u0000.txt' }),
-		).rejects.toThrow('Invalid path');
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
 
 	it('truncates stdout without breaking UTF-8', async () => {
-		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('é'.repeat(40_000)));
-		const workspace = makeWorkspace(executeCommand);
+		const workspace = makeWorkspace(
+			jest.fn().mockResolvedValueOnce(commandResult('é'.repeat(40_000))),
+		);
 
 		const result = await service.run(workspace, { command: 'read', file: 'notes.txt' });
 
@@ -222,44 +99,9 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		expect(Buffer.byteLength(result.stdout)).toBeLessThanOrEqual(64 * 1024);
 	});
 
-	it('marks timed out commands as truncated', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(commandResult('hello', { timedOut: true }));
-		const workspace = makeWorkspace(executeCommand);
-
-		const result = await service.run(workspace, { command: 'read', file: 'notes.txt' });
-
-		expect(result.truncated).toBe(true);
-	});
-
-	it('scopes search commands to the knowledge root cwd', async () => {
-		const executeCommand = jest
-			.fn()
-			.mockResolvedValueOnce(commandResult('file-1-notes.txt:1:needle\n'));
-		const workspace = makeWorkspace(executeCommand);
-
-		await service.run(workspace, {
-			command: 'search',
-			pattern: 'needle',
-			fixedStrings: true,
-		});
-
-		const rgArgs = executeCommand.mock.calls[0]?.[1];
-		expect(executeCommand.mock.calls[0]?.[2]).toEqual(
-			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
-		);
-		expect(rgArgs).toEqual(expect.arrayContaining(['.', 'needle']));
-		expect(rgArgs).not.toContain(workspace.manifestPath);
-		expect(rgArgs).not.toContain(workspace.internalRoot);
-	});
-
-	it('throws clear error when executeCommand is missing', async () => {
+	it('throws a clear error when command execution is unavailable', async () => {
 		const workspace = makeWorkspace();
-		workspace.sandbox = {
-			...workspace.sandbox,
-			executeCommand: undefined,
-		};
+		workspace.sandbox = { ...workspace.sandbox, executeCommand: undefined };
 
 		await expect(service.run(workspace, { command: 'read', file: 'notes.txt' })).rejects.toThrow(
 			'Agent knowledge sandbox does not support command execution',

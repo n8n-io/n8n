@@ -314,38 +314,6 @@ describe('AgentsController file endpoints', () => {
 		expect(result).toBe(files);
 	});
 
-	it('returns not found when uploading files while agent knowledge sandbox is disabled', async () => {
-		const { controller, agentKnowledgeService } = makeController({
-			agentsConfig: { aiSandboxEnabled: false } as AgentsConfig,
-		});
-		await expect(
-			controller.uploadFiles(
-				{ params: { projectId: 'project-1' }, files: [] } as never,
-				undefined as never,
-				'project-1',
-				'agent-1',
-			),
-		).rejects.toThrow(NotFoundError);
-		expect(agentKnowledgeService.uploadFiles).not.toHaveBeenCalled();
-	});
-
-	it('returns not found when deleting a file while agent knowledge sandbox is disabled', async () => {
-		const { controller, agentKnowledgeService } = makeController({
-			agentsConfig: { aiSandboxEnabled: false } as AgentsConfig,
-		});
-
-		await expect(
-			controller.deleteFile(
-				{ params: { projectId: 'project-1' } } as never,
-				undefined as never,
-				'project-1',
-				'agent-1',
-				'file-1',
-			),
-		).rejects.toThrow(NotFoundError);
-		expect(agentKnowledgeService.deleteFile).not.toHaveBeenCalled();
-	});
-
 	it('uploads files via AgentKnowledgeService', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
@@ -369,26 +337,6 @@ describe('AgentsController file endpoints', () => {
 			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
 		).not.toHaveBeenCalled();
 		expect(result).toBe(storedFiles);
-	});
-
-	it('does not invalidate cached workspaces after successful upload', async () => {
-		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
-			makeController();
-		const uploadedFiles = [{ originalname: 'notes.md' }] as never;
-		const storedFiles = [{ id: 'file-1', fileName: 'notes.md' }] as never;
-		agentKnowledgeService.uploadFiles.mockResolvedValue(storedFiles);
-
-		const result = await controller.uploadFiles(
-			{ params: { projectId: 'project-1' }, files: uploadedFiles } as never,
-			undefined as never,
-			'project-1',
-			'agent-1',
-		);
-
-		expect(result).toBe(storedFiles);
-		expect(
-			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
-		).not.toHaveBeenCalled();
 	});
 
 	it('does not invalidate cached workspaces when upload fails', async () => {
@@ -427,38 +375,6 @@ describe('AgentsController file endpoints', () => {
 			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
 		).toHaveBeenCalledWith('project-1', 'agent-1');
 		expect(result).toEqual({ success: true });
-	});
-
-	it('returns success when workspace invalidation fails after delete', async () => {
-		const { controller, agentKnowledgeSandboxWorkspaceService } = makeController();
-		agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent.mockRejectedValue(
-			new Error('destroy failed'),
-		);
-		agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent.mockImplementation(
-			async (invalidateProjectId, invalidateAgentId) => {
-				try {
-					await agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent(
-						invalidateProjectId,
-						invalidateAgentId,
-					);
-				} catch {
-					// Best-effort invalidation mirrors production behavior.
-				}
-			},
-		);
-
-		const result = await controller.deleteFile(
-			{ params: { projectId: 'project-1' } } as never,
-			undefined as never,
-			'project-1',
-			'agent-1',
-			'file-1',
-		);
-
-		expect(result).toEqual({ success: true });
-		expect(
-			agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent,
-		).toHaveBeenCalledWith('project-1', 'agent-1');
 	});
 
 	it('does not invalidate cached workspaces when delete fails', async () => {

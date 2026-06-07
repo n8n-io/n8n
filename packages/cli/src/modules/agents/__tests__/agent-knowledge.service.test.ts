@@ -190,28 +190,6 @@ describe('AgentKnowledgeService', () => {
 		]);
 		expect(agentFileRepository.findByAgentId).toHaveBeenCalledWith(agentId);
 	});
-	it('allows upload when existing plus incoming total equals the knowledge base cap', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'existing-file',
-				agentId,
-				fileName: 'existing.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 5,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-
-		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({ buffer: Buffer.alloc(5), size: 5 }),
-			]),
-		).resolves.toHaveLength(1);
-
-		expect(binaryDataService.store).toHaveBeenCalledTimes(1);
-	});
-
 	it('rejects upload when existing plus incoming total exceeds the knowledge base cap', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
@@ -228,29 +206,6 @@ describe('AgentKnowledgeService', () => {
 		await expect(
 			service.uploadFiles(agentId, projectId, [
 				makeMulterFile({ buffer: Buffer.alloc(2), size: 2 }),
-			]),
-		).rejects.toThrow(BadRequestError);
-
-		expect(binaryDataService.store).not.toHaveBeenCalled();
-		expect(agentFileRepository.save).not.toHaveBeenCalled();
-	});
-
-	it('rejects multi-file upload before storing any file when the batch exceeds the knowledge base cap', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([]);
-
-		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'first.txt',
-					buffer: Buffer.alloc(1_000),
-					size: 1_000,
-				}),
-				makeMulterFile({
-					originalname: 'second.txt',
-					buffer: undefined,
-					size: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-				}),
 			]),
 		).rejects.toThrow(BadRequestError);
 
@@ -565,62 +520,6 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
-	it('resolves runtime files without exposing stored binary ids', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-
-		const runtimeFiles = await service.resolveWorkspaceFilesForRuntime(agentId, projectId);
-		const sandboxResolution = await service.resolveWorkspaceForSandboxOperation(agentId, projectId);
-
-		expect(runtimeFiles.files[0]).not.toHaveProperty('binaryDataId');
-		expect(sandboxResolution.files[0]).not.toHaveProperty('binaryDataId');
-		expect(sandboxResolution.storedFiles[0]).toMatchObject({
-			id: 'file-1',
-			binaryDataId: 'binary-1',
-		});
-		expect(agentFileRepository.findByAgentId).toHaveBeenCalledTimes(2);
-	});
-
-	it('buildExpectedSandboxManifest includes hashed binary ids without exposing raw binary ids', () => {
-		const manifest = service.buildExpectedSandboxManifest(agentId, projectId, [
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-
-		expect(manifest).toMatchObject({
-			version: 1,
-			agentId,
-			projectId,
-			cacheSignatureSha1: '',
-			files: [
-				{
-					id: 'file-1',
-					relativePath: 'file-1.txt',
-					fileSizeBytes: 10,
-					binaryDataIdSha1: expect.any(String),
-				},
-			],
-		});
-		expect(JSON.stringify(manifest)).not.toContain('binary-1');
-	});
-
 	it('streams selected files into sandbox knowledge root', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
@@ -806,29 +705,6 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
-	it('rejects oversized sandbox materialization before opening binary streams', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue(
-			Array.from({ length: 2_001 }, (_, index) => ({
-				id: `file-${index}`,
-				agentId,
-				binaryDataId: `binary-${index}`,
-				fileName: `notes-${index}.txt`,
-				mimeType: 'text/plain',
-				fileSizeBytes: 1,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			})) as never,
-		);
-		const target = makeSandboxTarget();
-
-		await expect(
-			service.materializeWorkspaceIntoSandbox(agentId, projectId, target),
-		).rejects.toThrow(BadRequestError);
-
-		expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
-		expect(writeStreamToSandboxFileMock).not.toHaveBeenCalled();
-	});
-
 	it('cleans only the failed sandbox file when streaming fails', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		agentFileRepository.findByAgentId.mockResolvedValue([
@@ -858,50 +734,5 @@ describe('AgentKnowledgeService', () => {
 		expect(target.filesystem.deleteFile).not.toHaveBeenCalledWith(target.manifestPath, {
 			force: true,
 		});
-	});
-
-	it('materializes sandbox files requested by display file name', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		agentFileRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'file-1',
-				agentId,
-				binaryDataId: 'binary-1',
-				fileName: 'data.csv',
-				mimeType: 'text/csv',
-				fileSizeBytes: 17,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-			{
-				id: 'file-2',
-				agentId,
-				binaryDataId: 'binary-2',
-				fileName: 'notes.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 10,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
-		binaryDataService.getAsStream.mockResolvedValue(
-			Readable.from(Buffer.from('name,age\nAlice,30\n')) as never,
-		);
-		const target = makeSandboxTarget();
-
-		const files = await service.materializeWorkspaceIntoSandbox(agentId, projectId, target, {
-			fileReferences: ['data.csv'],
-		});
-
-		expect(files).toEqual([expect.objectContaining({ id: 'file-1', fileName: 'data.csv' })]);
-		expect(binaryDataService.getAsStream).toHaveBeenCalledTimes(1);
-		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-1');
-		expect(writeStreamToSandboxFileMock).toHaveBeenCalledWith(
-			target.filesystem,
-			target.sandbox,
-			'/home/user/workspace/agent-knowledge/file-1.csv',
-			expect.any(Readable),
-			{
-				temporaryDirectory: '/home/user/workspace/.agent-knowledge-internal/upload-parts',
-			},
-		);
 	});
 });

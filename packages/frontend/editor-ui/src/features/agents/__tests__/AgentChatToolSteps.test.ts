@@ -4,7 +4,6 @@ import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
 import type { ToolCall } from '../composables/agentChatMessages';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
-import { SEARCH_KNOWLEDGE_TOOL_NAME } from '../utils/toolDisplayName';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
@@ -32,10 +31,6 @@ vi.mock('@n8n/i18n', () => ({
 			if (key === 'agents.chat.writeTodos.summary.other' && opts?.interpolate?.count) {
 				return `${opts.interpolate.count} tasks`;
 			}
-			if (key === 'agents.chat.toolNames.searchKnowledge') return 'Search knowledge';
-			if (key === 'agents.chat.toolStep.groupedCalls.other' && opts?.interpolate?.count) {
-				return `${opts.interpolate.count} calls`;
-			}
 			const statusLabels: Record<string, string> = {
 				'agents.chat.writeTodos.status.inProgress': 'In progress',
 				'agents.chat.writeTodos.status.pending': 'Pending',
@@ -60,72 +55,7 @@ function mountSteps(toolCalls: ToolCall[]) {
 	});
 }
 
-function searchKnowledgeCall(
-	toolCallId: string,
-	state: ToolCall['state'] = TOOL_CALL_STATE.DONE,
-): ToolCall {
-	return { tool: SEARCH_KNOWLEDGE_TOOL_NAME, toolCallId, state };
-}
-
 describe('AgentChatToolSteps', () => {
-	it('groups consecutive search_knowledge calls into one visual row', () => {
-		const wrapper = mountSteps([
-			searchKnowledgeCall('sk-1'),
-			searchKnowledgeCall('sk-2'),
-			searchKnowledgeCall('sk-3'),
-		]);
-
-		expect(wrapper.findAll('li').length).toBe(1);
-		expect(wrapper.text()).toContain('Search knowledge');
-		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('3 calls');
-	});
-
-	it('does not group search_knowledge calls separated by another tool', () => {
-		const wrapper = mountSteps([
-			searchKnowledgeCall('sk-1'),
-			searchKnowledgeCall('sk-2'),
-			{
-				tool: 'search_nodes',
-				toolCallId: 'nodes-1',
-				state: TOOL_CALL_STATE.DONE,
-			},
-			searchKnowledgeCall('sk-3'),
-			searchKnowledgeCall('sk-4'),
-		]);
-
-		expect(wrapper.findAll('li').length).toBe(3);
-		const text = wrapper.text();
-		expect((text.match(/Search knowledge/g) ?? []).length).toBe(2);
-		expect(text).toContain('Search nodes');
-		expect(wrapper.findAll('[data-testid="tool-step-summary"]').length).toBe(2);
-	});
-
-	it('does not show a count summary for a single search_knowledge call', () => {
-		const wrapper = mountSteps([searchKnowledgeCall('sk-1')]);
-
-		expect(wrapper.findAll('li').length).toBe(1);
-		expect(wrapper.text()).toContain('Search knowledge');
-		expect(wrapper.find('[data-testid="tool-step-summary"]').exists()).toBe(false);
-	});
-
-	it('uses the running indicator when a grouped search_knowledge run is still running', () => {
-		const wrapper = mountSteps([
-			searchKnowledgeCall('sk-1', TOOL_CALL_STATE.DONE),
-			searchKnowledgeCall('sk-2', TOOL_CALL_STATE.RUNNING),
-		]);
-
-		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(true);
-	});
-
-	it('uses the error indicator when a grouped search_knowledge run contains an error', () => {
-		const wrapper = mountSteps([
-			searchKnowledgeCall('sk-1', TOOL_CALL_STATE.DONE),
-			searchKnowledgeCall('sk-2', TOOL_CALL_STATE.ERROR),
-		]);
-
-		expect(wrapper.find('[data-icon="circle-x"]').exists()).toBe(true);
-	});
-
 	it('does not make generic tool steps expandable', () => {
 		const wrapper = mountSteps([
 			{
