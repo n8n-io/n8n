@@ -15,6 +15,7 @@ import type { SlackAppSetupService } from '../integrations/slack-app-setup.servi
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsConfig } from '@n8n/config';
+import type { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { AgentsController } from '../agents.controller';
@@ -47,6 +48,7 @@ function makeController({
 	slackAppSetupService = mock<SlackAppSetupService>(),
 	agentTaskService = mock<AgentTaskService>(),
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
+	agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>(),
 	agentsConfig = { aiSandboxEnabled: true } as AgentsConfig,
 }: {
 	agentsService?: jest.Mocked<AgentsService>;
@@ -57,6 +59,7 @@ function makeController({
 	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
 	agentTaskService?: jest.Mocked<AgentTaskService>;
 	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
+	agentKnowledgeSandboxWorkspaceService?: jest.Mocked<AgentKnowledgeSandboxWorkspaceService>;
 	agentsConfig?: AgentsConfig;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
@@ -81,6 +84,7 @@ function makeController({
 		slackAppSetupService,
 		agentTaskService,
 		agentKnowledgeService,
+		agentKnowledgeSandboxWorkspaceService,
 		agentsConfig,
 	);
 
@@ -94,6 +98,7 @@ function makeController({
 		slackAppSetupService,
 		agentTaskService,
 		agentKnowledgeService,
+		agentKnowledgeSandboxWorkspaceService,
 		agentsConfig,
 	};
 }
@@ -342,7 +347,8 @@ describe('AgentsController file endpoints', () => {
 	});
 
 	it('uploads files via AgentKnowledgeService', async () => {
-		const { controller, agentKnowledgeService } = makeController();
+		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
+			makeController();
 		const uploadedFiles = [{ originalname: 'notes.md' }] as never;
 		const storedFiles = [{ id: 'file-1', fileName: 'notes.md' }] as never;
 		agentKnowledgeService.uploadFiles.mockResolvedValue(storedFiles);
@@ -359,11 +365,69 @@ describe('AgentsController file endpoints', () => {
 			'project-1',
 			uploadedFiles,
 		);
+		expect(
+			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
+		).toHaveBeenCalledWith('project-1', 'agent-1');
 		expect(result).toBe(storedFiles);
 	});
 
+	it('returns uploaded files when workspace invalidation fails', async () => {
+		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
+			makeController();
+		const uploadedFiles = [{ originalname: 'notes.md' }] as never;
+		const storedFiles = [{ id: 'file-1', fileName: 'notes.md' }] as never;
+		agentKnowledgeService.uploadFiles.mockResolvedValue(storedFiles);
+		agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent.mockRejectedValue(
+			new Error('destroy failed'),
+		);
+		agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent.mockImplementation(
+			async (invalidateProjectId, invalidateAgentId) => {
+				try {
+					await agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent(
+						invalidateProjectId,
+						invalidateAgentId,
+					);
+				} catch {
+					// Best-effort invalidation mirrors production behavior.
+				}
+			},
+		);
+
+		const result = await controller.uploadFiles(
+			{ params: { projectId: 'project-1' }, files: uploadedFiles } as never,
+			undefined as never,
+			'project-1',
+			'agent-1',
+		);
+
+		expect(result).toBe(storedFiles);
+		expect(
+			agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent,
+		).toHaveBeenCalledWith('project-1', 'agent-1');
+	});
+
+	it('does not invalidate cached workspaces when upload fails', async () => {
+		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
+			makeController();
+		agentKnowledgeService.uploadFiles.mockRejectedValue(new Error('storage unavailable'));
+
+		await expect(
+			controller.uploadFiles(
+				{ params: { projectId: 'project-1' }, files: [{ originalname: 'notes.md' }] } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).rejects.toThrow('storage unavailable');
+
+		expect(
+			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
+		).not.toHaveBeenCalled();
+	});
+
 	it('deletes a file via AgentKnowledgeService and returns success', async () => {
-		const { controller, agentKnowledgeService } = makeController();
+		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
+			makeController();
 
 		const result = await controller.deleteFile(
 			{ params: { projectId: 'project-1' } } as never,
@@ -374,7 +438,62 @@ describe('AgentsController file endpoints', () => {
 		);
 
 		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
+		expect(
+			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
+		).toHaveBeenCalledWith('project-1', 'agent-1');
 		expect(result).toEqual({ success: true });
+	});
+
+	it('returns success when workspace invalidation fails after delete', async () => {
+		const { controller, agentKnowledgeSandboxWorkspaceService } = makeController();
+		agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent.mockRejectedValue(
+			new Error('destroy failed'),
+		);
+		agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent.mockImplementation(
+			async (invalidateProjectId, invalidateAgentId) => {
+				try {
+					await agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent(
+						invalidateProjectId,
+						invalidateAgentId,
+					);
+				} catch {
+					// Best-effort invalidation mirrors production behavior.
+				}
+			},
+		);
+
+		const result = await controller.deleteFile(
+			{ params: { projectId: 'project-1' } } as never,
+			undefined as never,
+			'project-1',
+			'agent-1',
+			'file-1',
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(
+			agentKnowledgeSandboxWorkspaceService.destroyCachedWorkspacesForAgent,
+		).toHaveBeenCalledWith('project-1', 'agent-1');
+	});
+
+	it('does not invalidate cached workspaces when delete fails', async () => {
+		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
+			makeController();
+		agentKnowledgeService.deleteFile.mockRejectedValue(new Error('file missing'));
+
+		await expect(
+			controller.deleteFile(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+				'file-1',
+			),
+		).rejects.toThrow('file missing');
+
+		expect(
+			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
+		).not.toHaveBeenCalled();
 	});
 });
 
@@ -475,6 +594,7 @@ describe('AgentsController integration credentials', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentKnowledgeSandboxWorkspaceService>(),
 			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
@@ -1020,6 +1140,7 @@ describe('AgentsController agent resource', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentKnowledgeSandboxWorkspaceService>(),
 			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
@@ -1066,6 +1187,7 @@ describe('AgentsController agent resource', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentKnowledgeSandboxWorkspaceService>(),
 			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 
@@ -1101,6 +1223,7 @@ describe('AgentsController chat message history', () => {
 			mock<SlackAppSetupService>(),
 			mock<AgentTaskService>(),
 			mock<AgentKnowledgeService>(),
+			mock<AgentKnowledgeSandboxWorkspaceService>(),
 			{ aiSandboxEnabled: true } as AgentsConfig,
 		);
 

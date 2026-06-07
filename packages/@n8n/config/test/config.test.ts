@@ -575,6 +575,7 @@ describe('GlobalConfig', () => {
 			daytonaApiKey: '',
 			aiSandboxImage: '',
 			aiSandboxTimeout: 300_000,
+			aiSandboxNamePrefix: '',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -820,6 +821,15 @@ describe('GlobalConfig', () => {
 			expect(config.agents.daytonaApiKey).toBe('dtn_');
 			expect(config.agents.aiSandboxImage).toBe('daytonaio/sandbox:0.5.0');
 			expect(config.agents.aiSandboxTimeout).toBe(300_000);
+		});
+
+		it('should read agent knowledge sandbox name prefix env var', () => {
+			process.env = {
+				N8N_AGENTS_AI_SANDBOX_NAME_PREFIX: 'Acme Eval',
+			};
+			const config = Container.get(GlobalConfig);
+
+			expect(config.agents.aiSandboxNamePrefix).toBe('Acme Eval');
 		});
 
 		it('should accept node-tools-searcher module token', () => {

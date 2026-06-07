@@ -91,6 +91,24 @@ describe('AgentKnowledgeSandboxConfigService', () => {
 		});
 	});
 
+	it('returns undefined name prefix when unset', () => {
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig(),
+			createAgentsConfig(),
+		);
+
+		expect(service.resolveNamePrefix()).toBeUndefined();
+	});
+
+	it('returns configured name prefix when set', () => {
+		const service = new AgentKnowledgeSandboxConfigService(
+			createInstanceAiConfig(),
+			createAgentsConfig({ aiSandboxNamePrefix: 'Acme Eval' }),
+		);
+
+		expect(service.resolveNamePrefix()).toBe('Acme Eval');
+	});
+
 	it('falls back to n8n-sandbox for unknown provider', () => {
 		const service = new AgentKnowledgeSandboxConfigService(
 			createInstanceAiConfig({

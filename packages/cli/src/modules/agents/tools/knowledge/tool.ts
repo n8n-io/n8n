@@ -83,12 +83,12 @@ export function createSearchKnowledgeTool({
 			let files: WorkspaceFiles = [];
 			try {
 				const fileReferences = getRequiredFileReferences(parsedInput);
-				const resolution = await knowledgeService.resolveWorkspaceFilesForRuntime(
+				const scopedResolution = await knowledgeService.resolveWorkspaceFilesForRuntime(
 					agentId,
 					projectId,
 					fileReferences,
 				);
-				files = resolution.files;
+				files = scopedResolution.files;
 				if (isCsvOperation(parsedInput)) {
 					return await handleCsvKnowledgeOperation(
 						parsedInput,
@@ -98,28 +98,29 @@ export function createSearchKnowledgeTool({
 						csvService,
 					);
 				}
-				const cacheKey = buildWorkspaceCacheKey(projectId, agentId, resolution.cacheSignature);
+				const workspaceResolution =
+					fileReferences === undefined
+						? scopedResolution
+						: await knowledgeService.resolveWorkspaceFilesForRuntime(agentId, projectId);
+				const cacheKey = buildWorkspaceCacheKey(
+					projectId,
+					agentId,
+					workspaceResolution.cacheSignature,
+				);
 
 				return await sandboxWorkspaceService.withCachedWorkspace(cacheKey, async (workspace) => {
 					const expectedManifest = knowledgeService.buildExpectedSandboxManifest(
 						agentId,
 						projectId,
-						resolution.cacheSignature,
-						files,
+						workspaceResolution.cacheSignature,
+						workspaceResolution.files,
 					);
 
 					await sandboxWorkspaceService.ensureWorkspaceMaterialized(
 						workspace,
 						expectedManifest,
 						async () =>
-							await knowledgeService.materializeWorkspaceIntoSandbox(
-								agentId,
-								projectId,
-								workspace,
-								{
-									fileReferences,
-								},
-							),
+							await knowledgeService.materializeWorkspaceIntoSandbox(agentId, projectId, workspace),
 					);
 
 					return await handleSandboxKnowledgeOperation(
@@ -142,8 +143,8 @@ export function createSearchKnowledgeTool({
 
 /**
  * Stable cache key for a materialized workspace. Encodes the agent plus the
- * exact set of files and their sizes, so a different file selection or an
- * add/delete invalidates the cache and forces re-materialization.
+ * full current knowledge corpus signature, so add/delete/update invalidates
+ * the cache and forces re-materialization.
  */
 function buildWorkspaceCacheKey(
 	projectId: string,

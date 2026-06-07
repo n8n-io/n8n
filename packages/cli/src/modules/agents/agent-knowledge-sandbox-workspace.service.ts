@@ -11,7 +11,7 @@ import {
 } from '@n8n/ai-utilities/sandbox';
 import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path/posix';
 import pLimit from 'p-limit';
 
@@ -27,6 +27,10 @@ const KNOWLEDGE_SANDBOX_WORKSPACE_CACHE_TTL_MS = 10 * 60_000;
 const MAX_CACHED_KNOWLEDGE_SANDBOX_WORKSPACES = 25;
 const KNOWLEDGE_SANDBOX_SUBDIR = 'agent-knowledge';
 const KNOWLEDGE_SANDBOX_INTERNAL_SUBDIR = '.agent-knowledge-internal';
+const SANDBOX_NAME_MAX_LEN = 63;
+const SANDBOX_LABEL_MAX_LEN = 63;
+const NAME_PREFIX_SLUG_MAX_LEN = 24;
+const AGENTS_KNOWLEDGE_SANDBOX_BASE_NAME = 'agents-knowledgebase';
 
 /** Bounds concurrent sandbox workspace usage; queued calls run in FIFO order. */
 const workspaceLimit = pLimit(MAX_CONCURRENT_KNOWLEDGE_SANDBOX_WORKSPACES);
@@ -104,6 +108,38 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	getCachedWorkspaceCount(): number {
 		return this.cachedWorkspaces.size;
+	}
+
+	async destroyCachedWorkspacesForAgent(projectId: string, agentId: string): Promise<void> {
+		const prefix = `${projectId}:${agentId}:`;
+		const toDestroy: Array<[string, CachedKnowledgeSandboxWorkspace]> = [];
+
+		for (const entry of this.cachedWorkspaces) {
+			if (entry[0].startsWith(prefix)) {
+				toDestroy.push(entry);
+			}
+		}
+
+		for (const [key] of toDestroy) {
+			this.cachedWorkspaces.delete(key);
+			this.workspaceLocks.delete(key);
+		}
+
+		await Promise.all(
+			toDestroy.map(async ([, entry]) => await this.destroyWorkspace(entry.workspace)),
+		);
+	}
+
+	async invalidateCachedWorkspacesForAgent(projectId: string, agentId: string): Promise<void> {
+		try {
+			await this.destroyCachedWorkspacesForAgent(projectId, agentId);
+		} catch (error) {
+			this.logger.warn('Failed to destroy cached agent knowledge workspaces', {
+				projectId,
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/** Run `fn`s sharing a key strictly one at a time (FIFO). */
@@ -196,25 +232,21 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 
 		if (baseConfig.provider === 'daytona') {
+			const identity = parseAgentWorkspaceCacheKey(cacheKey);
+			const namePrefix = this.sandboxConfigService.resolveNamePrefix();
+			const name = baseConfig.name ?? buildAgentsKnowledgeSandboxName(namePrefix);
 			return {
 				...baseConfig,
-				name: baseConfig.name ?? this.buildDaytonaSandboxName(cacheKey),
+				id: name,
+				name,
 				labels: {
+					...buildAgentsKnowledgeSandboxLabels(identity, namePrefix),
 					...baseConfig.labels,
-					component: 'agent-knowledge',
 				},
 			};
 		}
 
 		return baseConfig;
-	}
-
-	private shortHash(cacheKey: string): string {
-		return createHash('sha1').update(cacheKey).digest('hex').slice(0, 12);
-	}
-
-	private buildDaytonaSandboxName(cacheKey: string): string {
-		return `knowledge-${this.shortHash(cacheKey)}-${this.shortHash(`${Date.now()}:${Math.random()}`)}`;
 	}
 
 	private async evictStaleWorkspaces(): Promise<void> {
@@ -345,4 +377,70 @@ export class AgentKnowledgeSandboxWorkspaceService {
 			});
 		}
 	}
+}
+
+function slugifySandboxName(value: string, maxLen: number): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug.slice(0, maxLen).replace(/-+$/, '');
+}
+
+function slugifySandboxLabel(value: string, maxLen: number): string {
+	return value
+		.replace(/[^A-Za-z0-9_.-]+/g, '-')
+		.replace(/^[-.]+|[-.]+$/g, '')
+		.slice(0, maxLen)
+		.replace(/[-.]+$/, '');
+}
+
+function getAgentsKnowledgeSandboxBaseName(): string {
+	return `${AGENTS_KNOWLEDGE_SANDBOX_BASE_NAME}-${randomUUID()}`;
+}
+
+function buildAgentsKnowledgeSandboxName(namePrefix: string | undefined): string {
+	const parts: string[] = [];
+	if (namePrefix) {
+		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
+		if (prefixSlug) parts.push(prefixSlug);
+	}
+	const baseSlug = slugifySandboxName(getAgentsKnowledgeSandboxBaseName(), SANDBOX_NAME_MAX_LEN);
+	if (baseSlug) parts.push(baseSlug);
+	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
+	if (!name) {
+		throw new Error('Failed to build agent knowledge sandbox name');
+	}
+	return name;
+}
+
+function parseAgentWorkspaceCacheKey(
+	cacheKey: string,
+): { projectId: string; agentId: string } | undefined {
+	const separatorIndex = cacheKey.lastIndexOf(':');
+	if (separatorIndex === -1) return undefined;
+	const remainder = cacheKey.slice(0, separatorIndex);
+	const agentSeparatorIndex = remainder.lastIndexOf(':');
+	if (agentSeparatorIndex === -1) return undefined;
+	return {
+		projectId: remainder.slice(0, agentSeparatorIndex),
+		agentId: remainder.slice(agentSeparatorIndex + 1),
+	};
+}
+
+function buildAgentsKnowledgeSandboxLabels(
+	identity: { projectId: string; agentId: string } | undefined,
+	namePrefix: string | undefined,
+): Record<string, string> {
+	const labels: Record<string, string> = {
+		component: 'agent-knowledge',
+	};
+	if (identity) {
+		labels.agent_id = slugifySandboxLabel(identity.agentId, SANDBOX_LABEL_MAX_LEN);
+		labels.project_id = slugifySandboxLabel(identity.projectId, SANDBOX_LABEL_MAX_LEN);
+	}
+	if (namePrefix) {
+		labels.name_prefix = slugifySandboxLabel(namePrefix, SANDBOX_LABEL_MAX_LEN);
+	}
+	return labels;
 }

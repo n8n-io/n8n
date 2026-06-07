@@ -13,6 +13,11 @@ export class AgentKnowledgeSandboxConfigService {
 		private readonly agentsConfig: AgentsConfig,
 	) {}
 
+	resolveNamePrefix(): string | undefined {
+		const prefix = (this.agentsConfig.aiSandboxNamePrefix ?? '').trim();
+		return prefix.length > 0 ? prefix : undefined;
+	}
+
 	resolveConfig(): SandboxConfig {
 		const provider = normalizeSandboxProvider(this.agentsConfig.aiSandboxProvider);
 		const timeout = this.agentsConfig.aiSandboxTimeout;

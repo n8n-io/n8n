@@ -76,6 +76,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 
 type AgentToolEntries = Agent['tools'];
@@ -287,6 +288,7 @@ export class AgentsService {
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 	) {}
 
@@ -751,6 +753,10 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
+		await this.agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent(
+			projectId,
+			agentId,
+		);
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);

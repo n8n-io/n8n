@@ -377,7 +377,7 @@ describe('search_knowledge tool', () => {
 		expect(stdout).not.toContain('needle');
 	});
 
-	it('re-materializes when runtime cache signature changes for the same public files', async () => {
+	it('re-materializes when full corpus cache signature changes', async () => {
 		const files = [
 			{
 				id: 'file-1',
@@ -387,9 +387,17 @@ describe('search_knowledge tool', () => {
 				relativePath: 'file-1-notes.txt',
 			},
 		];
-		knowledgeService.resolveWorkspaceFilesForRuntime
-			.mockResolvedValueOnce({ files, cacheSignature: 'signature-a' })
-			.mockResolvedValueOnce({ files, cacheSignature: 'signature-b' });
+		let handlerInvocation = 0;
+		let callsInHandler = 0;
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockImplementation(async () => {
+			const cacheSignature = handlerInvocation === 0 ? 'signature-a' : 'signature-b';
+			callsInHandler += 1;
+			if (callsInHandler === 2) {
+				handlerInvocation += 1;
+				callsInHandler = 0;
+			}
+			return { files, cacheSignature };
+		});
 		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
 			async (_agentId, _projectId, target) => {
 				const workspaceRoot = target.knowledgeRoot;
@@ -406,6 +414,223 @@ describe('search_knowledge tool', () => {
 
 		expect(knowledgeService.resolveWorkspaceFilesForRuntime).toHaveBeenCalledTimes(2);
 		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledTimes(2);
+	});
+
+	it('resolves the full corpus once for unscoped search', async () => {
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockResolvedValue({
+			files: [
+				{
+					id: 'file-1',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					fileSizeBytes: 13,
+					relativePath: 'file-1-notes.txt',
+				},
+			],
+			cacheSignature: 'full-corpus-signature',
+		});
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue([
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+		]);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'search',
+			exitCode: 0,
+			stdout: 'file-1-notes.txt:1\n',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+
+		expect(knowledgeService.resolveWorkspaceFilesForRuntime).toHaveBeenCalledTimes(1);
+		expect(knowledgeService.resolveWorkspaceFilesForRuntime).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			undefined,
+		);
+	});
+
+	it('reuses the same workspace cache key for search and read operations', async () => {
+		const fullFiles = [
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+			{
+				id: 'file-2',
+				fileName: 'other.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 11,
+				relativePath: 'file-2-other.txt',
+			},
+		];
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockImplementation(
+			async (_agentId, _projectId, fileReferences) => {
+				if (fileReferences) {
+					return {
+						files: fullFiles.filter((file) => file.fileName === fileReferences[0]),
+						cacheSignature: 'scoped-signature',
+					};
+				}
+				return { files: fullFiles, cacheSignature: 'full-corpus-signature' };
+			},
+		);
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue(fullFiles);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'search',
+			exitCode: 0,
+			stdout: 'file-1-notes.txt:1\n',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.({ operation: 'search', query: 'needle' }, {} as never);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'read',
+			exitCode: 0,
+			stdout: 'hello',
+			stderr: '',
+			truncated: false,
+		});
+		await tool.handler?.(
+			{ operation: 'read', file: 'notes.txt', lineRange: { start: 1, end: 1 } },
+			{} as never,
+		);
+
+		const withCachedWorkspaceMock = sandboxWorkspaceService.withCachedWorkspace as jest.Mock;
+		expect(withCachedWorkspaceMock).toHaveBeenCalledTimes(2);
+		expect(withCachedWorkspaceMock.mock.calls[0]?.[0]).toBe(
+			withCachedWorkspaceMock.mock.calls[1]?.[0],
+		);
+		expect(knowledgeService.resolveWorkspaceFilesForRuntime).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+		);
+	});
+
+	it('reuses the same workspace cache key for read operations on different files', async () => {
+		const fullFiles = [
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+			{
+				id: 'file-2',
+				fileName: 'other.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 11,
+				relativePath: 'file-2-other.txt',
+			},
+		];
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockImplementation(
+			async (_agentId, _projectId, fileReferences) => {
+				if (fileReferences) {
+					return {
+						files: fullFiles.filter((file) => file.fileName === fileReferences[0]),
+						cacheSignature: 'scoped-signature',
+					};
+				}
+				return { files: fullFiles, cacheSignature: 'full-corpus-signature' };
+			},
+		);
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue(fullFiles);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'read',
+			exitCode: 0,
+			stdout: 'hello',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.(
+			{ operation: 'read', file: 'notes.txt', lineRange: { start: 1, end: 1 } },
+			{} as never,
+		);
+		await tool.handler?.(
+			{ operation: 'read', file: 'other.txt', lineRange: { start: 1, end: 1 } },
+			{} as never,
+		);
+
+		const withCachedWorkspaceMock = sandboxWorkspaceService.withCachedWorkspace as jest.Mock;
+		expect(withCachedWorkspaceMock).toHaveBeenCalledTimes(2);
+		expect(withCachedWorkspaceMock.mock.calls[0]?.[0]).toBe(
+			withCachedWorkspaceMock.mock.calls[1]?.[0],
+		);
+	});
+
+	it('materializes the full corpus while scoping sandbox commands to requested files', async () => {
+		const fullFiles = [
+			{
+				id: 'file-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 13,
+				relativePath: 'file-1-notes.txt',
+			},
+			{
+				id: 'file-2',
+				fileName: 'other.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 11,
+				relativePath: 'file-2-other.txt',
+			},
+		];
+		knowledgeService.resolveWorkspaceFilesForRuntime.mockImplementation(
+			async (_agentId, _projectId, fileReferences) => {
+				if (fileReferences) {
+					return {
+						files: fullFiles.filter((file) => file.fileName === fileReferences[0]),
+						cacheSignature: 'scoped-signature',
+					};
+				}
+				return { files: fullFiles, cacheSignature: 'full-corpus-signature' };
+			},
+		);
+		knowledgeService.materializeWorkspaceIntoSandbox.mockResolvedValue(fullFiles);
+		(sandboxCommandService.run as jest.Mock).mockResolvedValue({
+			command: 'read',
+			exitCode: 0,
+			stdout: 'hello',
+			stderr: '',
+			truncated: false,
+		});
+		const tool = createTool();
+
+		await tool.handler?.(
+			{ operation: 'read', file: 'notes.txt', lineRange: { start: 1, end: 1 } },
+			{} as never,
+		);
+
+		expect(knowledgeService.buildExpectedSandboxManifest).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			'full-corpus-signature',
+			fullFiles,
+		);
+		expect(knowledgeService.materializeWorkspaceIntoSandbox).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
+		);
+		expect(sandboxCommandService.run).toHaveBeenCalledWith(
+			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
+			expect.objectContaining({ command: 'read', file: 'file-1-notes.txt' }),
+		);
 	});
 
 	it('accepts a singular file reference for search', async () => {
@@ -452,7 +677,6 @@ describe('search_knowledge tool', () => {
 			agentId,
 			projectId,
 			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
-			{ fileReferences: ['notes.txt'] },
 		);
 	});
 
@@ -514,8 +738,8 @@ describe('search_knowledge tool', () => {
 				operation: 'search',
 				query: 'needle',
 				output_mode: 'content',
-				files: ['file-1', 'file-2'],
-				head_limit: 20,
+				files: ['file-1'],
+				head_limit: 10,
 			},
 			{} as never,
 		);
@@ -529,15 +753,14 @@ describe('search_knowledge tool', () => {
 			search: {
 				mode: 'content',
 				matches: expect.any(Array),
-				appliedLimit: 20,
-				nextOffset: 20,
-				hint: expect.stringContaining('Continue with offset=20 and head_limit=20'),
+				appliedLimit: 10,
+				nextOffset: 10,
+				hint: expect.stringContaining('Continue with offset=10 and head_limit=10'),
 			},
 		});
-		expect(stdout).toContain('book-one.md:12:needle 12');
-		expect(stdout).toContain('book-two.md:8:needle 8');
-		expect(stdout).not.toContain('book-two.md:9:needle 9');
-		expect(stdout).toContain('Continue with offset=20 and head_limit=20');
+		expect(stdout).toMatch(/book-one\.md:10:needle 10/);
+		expect(stdout).not.toMatch(/book-one\.md:11:needle 11/);
+		expect(stdout).toContain('Continue with offset=10 and head_limit=10');
 	});
 	it('returns content matches only when requested', async () => {
 		knowledgeService.materializeWorkspaceIntoSandbox.mockImplementation(
@@ -975,7 +1198,6 @@ describe('search_knowledge tool', () => {
 			agentId,
 			projectId,
 			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
-			{ fileReferences: ['file-1'] },
 		);
 	});
 
@@ -1015,7 +1237,6 @@ describe('search_knowledge tool', () => {
 			agentId,
 			projectId,
 			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
-			{ fileReferences: ['Moby Dick.md'] },
 		);
 	});
 
@@ -1591,7 +1812,6 @@ describe('search_knowledge tool', () => {
 			agentId,
 			projectId,
 			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
-			{ fileReferences: undefined },
 		);
 	});
 

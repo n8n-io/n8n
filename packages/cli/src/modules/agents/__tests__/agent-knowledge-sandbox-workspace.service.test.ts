@@ -115,6 +115,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			}),
 			Object.assign(new (jest.requireActual('@n8n/config').AgentsConfig)(), {
 				aiSandboxEnabled: true,
+				aiSandboxNamePrefix: '',
 			}),
 		);
 		knowledgeService = new AgentKnowledgeService(
@@ -194,8 +195,10 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 				enabled: true,
 				provider: 'daytona',
 				image: 'daytonaio/sandbox:0.5.0',
-				name: expect.stringMatching(/^knowledge-[a-f0-9]{12}-[a-f0-9]{12}$/),
-				labels: { component: 'agent-knowledge' },
+				name: expect.stringMatching(/^agents-knowledgebase-[a-f0-9-]{36}$/),
+				labels: expect.objectContaining({
+					component: 'agent-knowledge',
+				}),
 			}),
 			{ logger },
 		);
@@ -218,6 +221,97 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		expect(createSandboxMock).toHaveBeenCalledTimes(1);
 		expect(first).toBe(second);
+	});
+
+	it('uses configured Daytona name prefix and labels', async () => {
+		jest.spyOn(configService, 'resolveConfig').mockReturnValue({
+			enabled: true,
+			provider: 'daytona',
+			timeout: 300_000,
+			name: undefined,
+			image: 'daytonaio/sandbox:0.5.0',
+		});
+		jest.spyOn(configService, 'resolveNamePrefix').mockReturnValue('Acme Eval');
+		mockDaytonaWorkspace();
+
+		await service.withCachedWorkspace('project-1:agent-1:abc123', async (entry) => entry);
+
+		expect(createSandboxMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: expect.stringMatching(/^acme-eval-agents-knowledgebase-[a-f0-9-]+$/),
+				labels: expect.objectContaining({
+					component: 'agent-knowledge',
+					name_prefix: 'Acme-Eval',
+					agent_id: 'agent-1',
+					project_id: 'project-1',
+				}),
+			}),
+			{ logger },
+		);
+	});
+
+	it('destroys cached workspaces for a matching agent and project', async () => {
+		mockN8nSandboxWorkspace();
+
+		await service.withCachedWorkspace('project-1:agent-1:signature-a', async (entry) => entry);
+		await service.withCachedWorkspace('project-1:agent-2:signature-b', async (entry) => entry);
+		expect(service.getCachedWorkspaceCount()).toBe(2);
+
+		await service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
+
+		expect(service.getCachedWorkspaceCount()).toBe(1);
+		expect(createSandboxMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('clears workspace locks when destroying cached agent workspaces', async () => {
+		const sandbox = makeSandbox('n8n-sandbox');
+		const filesystem = makeFilesystem('n8n-sandbox');
+		createSandboxMock.mockResolvedValue(sandbox);
+		createFilesystemMock.mockReturnValue(filesystem);
+
+		const gate = createDeferred();
+		const started: number[] = [];
+		const cacheKey = 'project-1:agent-1:signature-a';
+
+		const first = service.withCachedWorkspace(cacheKey, async () => {
+			started.push(1);
+			await gate.promise;
+			return 'first';
+		});
+
+		await flushMicrotasks();
+		expect(started).toEqual([1]);
+
+		await service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
+
+		const second = service.withCachedWorkspace(cacheKey, async () => {
+			started.push(2);
+			return 'second';
+		});
+
+		await flushMicrotasks();
+		expect(started).toEqual([1, 2]);
+
+		gate.resolve();
+		await expect(Promise.all([first, second])).resolves.toEqual(['first', 'second']);
+	});
+
+	it('swallows workspace destroy failures during best-effort invalidation', async () => {
+		jest
+			.spyOn(service, 'destroyCachedWorkspacesForAgent')
+			.mockRejectedValueOnce(new Error('provider unavailable'));
+
+		await expect(
+			service.invalidateCachedWorkspacesForAgent('project-1', 'agent-1'),
+		).resolves.toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to destroy cached agent knowledge workspaces',
+			expect.objectContaining({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				error: 'provider unavailable',
+			}),
+		);
 	});
 
 	it('creates separate workspaces for different keys', async () => {

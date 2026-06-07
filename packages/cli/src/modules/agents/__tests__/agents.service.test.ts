@@ -165,6 +165,7 @@ describe('AgentsService', () => {
 	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
 	let agentKnowledgeService: jest.Mocked<AgentKnowledgeService>;
+	let agentKnowledgeSandboxWorkspaceService: jest.Mocked<AgentKnowledgeSandboxWorkspaceService>;
 	let publisher: jest.Mocked<Publisher>;
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
@@ -186,6 +187,7 @@ describe('AgentsService', () => {
 		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
 		chatIntegrationService = mock<ChatIntegrationService>();
 		agentKnowledgeService = mock<AgentKnowledgeService>();
+		agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
 		agentsConfig = { modules: [] } as unknown as AgentsConfig;
@@ -212,6 +214,7 @@ describe('AgentsService', () => {
 			telemetry,
 			chatIntegrationService,
 			agentKnowledgeService,
+			agentKnowledgeSandboxWorkspaceService,
 			mock(),
 		);
 	});
@@ -2872,6 +2875,9 @@ describe('AgentsService', () => {
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
+			expect(
+				agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
+			).toHaveBeenCalledWith(projectId, agentId);
 		});
 
 		it('still removes the agent when knowledge file cleanup fails', async () => {

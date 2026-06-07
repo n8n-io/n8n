@@ -51,6 +51,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { AgentKnowledgeSandboxWorkspaceService } from './agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
 import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
@@ -127,6 +128,7 @@ export class AgentsController {
 		private readonly slackAppSetupService: SlackAppSetupService,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
+		private readonly agentKnowledgeSandboxWorkspaceService: AgentKnowledgeSandboxWorkspaceService,
 		private readonly agentsConfig: AgentsConfig,
 	) {}
 
@@ -447,7 +449,12 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+			const uploaded = await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+			await this.agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent(
+				projectId,
+				agentId,
+			);
+			return uploaded;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -468,6 +475,10 @@ export class AgentsController {
 	) {
 		this.assertKnowledgeBaseEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+		await this.agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent(
+			projectId,
+			agentId,
+		);
 		return { success: true };
 	}
 

@@ -73,4 +73,8 @@ export class AgentsConfig {
 	/** Agent knowledge sandbox command timeout in milliseconds. */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	aiSandboxTimeout: number = 300_000;
+
+	/** Prefix prepended to every Daytona agent knowledge sandbox name; also surfaced as a `name_prefix` label. */
+	@Env('N8N_AGENTS_AI_SANDBOX_NAME_PREFIX')
+	aiSandboxNamePrefix: string = '';
 }
