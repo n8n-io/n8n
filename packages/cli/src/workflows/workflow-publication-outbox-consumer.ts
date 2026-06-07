@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import {
+	WorkflowEntity,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
-	WorkflowPublicationOutboxStatus,
 	WorkflowPublishedVersion,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -100,7 +100,7 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		if (processed > 0) {
-			this.logger.info(`Processed ${processed} outbox record(s)`);
+			this.logger.debug(`Processed ${processed} workflow publication outbox record(s)`);
 		}
 	}
 
@@ -152,13 +152,11 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		try {
-			// Must happen BEFORE updating activeVersionId because
-			// clearWebhooks() reads activeVersion from DB.
+			// Must happen BEFORE advancing the version because clearWebhooks()
+			// reads activeVersion from DB.
 			await this.tearDownOldTriggers(record);
 
-			await this.workflowRepository.update(workflowId, {
-				activeVersionId: publishedVersionId,
-			});
+			await this.advancePublishedVersion(record);
 
 			await this.registerNewTriggers(record);
 		} catch (error) {
@@ -176,6 +174,8 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async tearDownOldTriggers(record: WorkflowPublicationOutbox) {
+		// This try-catch reflects the old behaviour in the ActiveWorkflowManager.
+		// We probably want to revisit this.
 		try {
 			await this.activeWorkflowManager.clearWebhooks(record.workflowId);
 		} catch (error) {
@@ -188,9 +188,8 @@ export class WorkflowPublicationOutboxConsumer {
 			});
 		}
 
-		await this.activeWorkflowManager.handleRemoveNonWebhookTriggers({
-			workflowId: record.workflowId,
-		});
+		await this.activeWorkflowManager.removeActivationError(record.workflowId);
+		await this.activeWorkflowManager.removeNonWebhookTriggers(record.workflowId);
 	}
 
 	private async registerNewTriggers(record: WorkflowPublicationOutbox) {
@@ -209,23 +208,32 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
-	 * Atomically records the published version and marks the outbox record as
-	 * completed in a single transaction, then clears any activation errors for
-	 * the workflow.
+	 * Atomically advances the workflow's requested version
+	 * (`Workflow.activeVersionId`) and the canonical version read by triggers
+	 * (`WorkflowPublishedVersion`). Runs before registering the new triggers so
+	 * they execute the newly published version rather than the previous one.
 	 */
-	private async finalizePublication(record: WorkflowPublicationOutbox) {
+	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
 		await this.outboxRepository.manager.transaction(async (trx) => {
+			await trx.update(
+				WorkflowEntity,
+				{ id: record.workflowId },
+				{ activeVersionId: record.publishedVersionId },
+			);
 			await trx.upsert(
 				WorkflowPublishedVersion,
 				{ workflowId: record.workflowId, publishedVersionId: record.publishedVersionId },
 				['workflowId'],
 			);
-			await trx.update(
-				WorkflowPublicationOutbox,
-				{ id: record.id, status: WorkflowPublicationOutboxStatus.InProgress },
-				{ status: WorkflowPublicationOutboxStatus.Completed, errorMessage: null },
-			);
 		});
+	}
+
+	/**
+	 * Marks the outbox record as completed and clears any activation errors for
+	 * the workflow.
+	 */
+	private async finalizePublication(record: WorkflowPublicationOutbox) {
+		await this.outboxRepository.markCompleted(record.id);
 		await this.activationErrorsService.deregister(record.workflowId);
 	}
 }
