@@ -71,7 +71,11 @@ export class McpSettingsController {
 
 	@GlobalScope('mcp:manage')
 	@Patch('/oauth/allowed-redirect-uris')
-	async updateAllowedRedirectUris(@Body dto: UpdateAllowedRedirectUrisDto) {
+	async updateAllowedRedirectUris(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: UpdateAllowedRedirectUrisDto,
+	) {
 		try {
 			await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
 			return { success: true };

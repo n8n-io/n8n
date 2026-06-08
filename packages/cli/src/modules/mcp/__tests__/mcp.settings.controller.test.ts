@@ -395,7 +395,7 @@ describe('McpSettingsController', () => {
 			const dto = new UpdateAllowedRedirectUrisDto({ uris });
 			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
 
-			const result = await controller.updateAllowedRedirectUris(dto);
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
 
 			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith(uris);
 			expect(result).toEqual({ success: true });
@@ -407,7 +407,9 @@ describe('McpSettingsController', () => {
 			const validationError = new Error('Invalid URL format: invalid-url');
 			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(validationError);
 
-			await expect(controller.updateAllowedRedirectUris(dto)).rejects.toThrow(BadRequestError);
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow(BadRequestError);
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to update allowed redirect URIs',
 				expect.objectContaining({
@@ -422,10 +424,12 @@ describe('McpSettingsController', () => {
 			const dbError = new Error('Database connection failed');
 			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(dbError);
 
-			await expect(controller.updateAllowedRedirectUris(dto)).rejects.toThrow(BadRequestError);
-			await expect(controller.updateAllowedRedirectUris(dto)).rejects.toThrow(
-				'Database connection failed',
-			);
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow('Database connection failed');
 			expect(logger.error).toHaveBeenCalledWith(
 				'Failed to update allowed redirect URIs',
 				expect.objectContaining({
@@ -438,7 +442,7 @@ describe('McpSettingsController', () => {
 			const dto = new UpdateAllowedRedirectUrisDto({ uris: [] });
 			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
 
-			const result = await controller.updateAllowedRedirectUris(dto);
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
 
 			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith([]);
 			expect(result).toEqual({ success: true });

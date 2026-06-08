@@ -395,23 +395,6 @@ onMounted(async () => {
 						{{ i18n.baseText('generic.learnMore') }}
 					</N8nLink>
 				</div>
-				<N8nCallout
-					v-if="showRedirectUriWarning"
-					theme="warning"
-					class="mt-xs"
-					data-test-id="mcp-redirect-uri-warning"
-				>
-					{{ i18n.baseText('settings.mcp.allowedRedirectUris.warning') }}
-					<template #trailingContent>
-						<N8nButton
-							icon="x"
-							variant="ghost"
-							size="small"
-							iconOnly
-							@click="redirectUriWarningDismissed = true"
-						/>
-					</template>
-				</N8nCallout>
 			</div>
 			<MCpHeaderActions
 				:access-enabled="mcpStore.mcpAccessEnabled"
@@ -421,6 +404,23 @@ onMounted(async () => {
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
+		<N8nCallout
+			v-if="showRedirectUriWarning"
+			theme="warning"
+			:class="$style['redirect-uri-warning']"
+			data-test-id="mcp-redirect-uri-warning"
+		>
+			{{ i18n.baseText('settings.mcp.allowedRedirectUris.warning') }}
+			<template #trailingContent>
+				<N8nButton
+					icon="x"
+					variant="ghost"
+					size="small"
+					iconOnly
+					@click="redirectUriWarningDismissed = true"
+				/>
+			</template>
+		</N8nCallout>
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
@@ -489,11 +489,11 @@ onMounted(async () => {
 					:class="$style['oauth-settings-content']"
 					data-test-id="mcp-oauth-settings-tab"
 				>
-					<N8nNotice
-						theme="info"
-						:content="i18n.baseText('settings.mcp.allowedRedirectUris.description')"
-					/>
-					<N8nInputLabel :label="i18n.baseText('settings.mcp.allowedRedirectUris.label')">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.mcp.allowedRedirectUris.label')"
+						:tooltip-text="i18n.baseText('settings.mcp.allowedRedirectUris.description')"
+						:show-tooltip="true"
+					>
 						<N8nInput
 							v-model="redirectUrisInput"
 							type="textarea"
@@ -564,8 +564,12 @@ onMounted(async () => {
 	gap: var(--spacing--2xs);
 }
 
+.redirect-uri-warning {
+	margin-bottom: var(--spacing--sm);
+}
+
 .oauth-settings-content {
-	padding: var(--spacing--lg);
+	padding-top: var(--spacing--sm);
 	max-width: 800px;
 }
 

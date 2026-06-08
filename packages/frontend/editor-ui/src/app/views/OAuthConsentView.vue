@@ -32,7 +32,10 @@ const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 const allowDisabled = computed(
-	() => loading.value || error.value !== null || !redirectUriTrusted.value,
+	() =>
+		loading.value ||
+		error.value !== null ||
+		(!!clentDetails.value?.redirectUri && !redirectUriTrusted.value),
 );
 
 const handleAllow = async () => {
