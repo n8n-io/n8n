@@ -12,6 +12,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ensureError,
 	toCronExpression,
 	TriggerCloseError,
 	UserError,
@@ -94,7 +95,7 @@ export class ActiveWorkflows {
 					triggerResponses.push(triggerResponse);
 				}
 			} catch (e) {
-				const error = e instanceof Error ? e : new Error(`${e}`);
+				const error = ensureError(e);
 
 				// Tear down anything an earlier node already registered, so a failed
 				// activation doesn't leave triggers or crons running.
@@ -129,7 +130,7 @@ export class ActiveWorkflows {
 				delete this.activeWorkflows[workflowId];
 				await this.rollbackPartialActivation(workflowId, triggerResponses);
 
-				const error = e instanceof Error ? e : new Error(`${e}`);
+				const error = ensureError(e);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -154,8 +155,7 @@ export class ActiveWorkflows {
 			try {
 				await this.closeTrigger(response, workflowId);
 			} catch (e) {
-				const error = e instanceof Error ? e : new Error(`${e}`);
-				this.errorReporter.error(error, { extra: { workflowId } });
+				this.errorReporter.error(ensureError(e), { extra: { workflowId } });
 			}
 		}
 
