@@ -155,6 +155,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		stripedBackground?: boolean;
 		showNodeGroups?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
@@ -171,6 +172,7 @@ const props = withDefaults(
 		loading: false,
 		suppressInteraction: false,
 		hideControls: false,
+		stripedBackground: true,
 		showNodeGroups: true,
 	},
 );
@@ -1237,7 +1239,7 @@ defineExpose({
 		<CanvasArrowHeadMarker :id="arrowHeadMarkerId" />
 
 		<slot name="canvas-background" v-bind="{ viewport }">
-			<CanvasBackground :viewport="viewport" :striped="readOnly" />
+			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
 		</slot>
 
 		<CanvasNodeGroupsLayer
