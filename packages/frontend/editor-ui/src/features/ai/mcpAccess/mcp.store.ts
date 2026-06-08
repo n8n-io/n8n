@@ -46,17 +46,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<WorkflowListItem[]> {
-		const workflows = await workflowsListStore.fetchWorkflowsPage(
+	): Promise<{ data: WorkflowListItem[]; count: number }> {
+		const { data, count } = await workflowsListStore.fetchWorkflowsPageWithCount(
 			undefined, // projectId
 			page,
 			pageSize,
 			'updatedAt:desc',
 			{ isArchived: false, availableInMCP: true },
 			false, // includeFolders
-			false, // includeAllVersions
+			false, // onlySharedWithMe
 		);
-		return workflows.filter(isWorkflowListItem);
+		return { data: data.filter(isWorkflowListItem), count };
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {

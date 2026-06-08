@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { CredentialModal } from './components/CredentialModal';
@@ -136,6 +136,10 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-credential-continue-button');
 	}
 
+	getConfirmationText(text: string): Locator {
+		return this.page.getByText(text, { exact: false });
+	}
+
 	// ── Plan Review ───────────────────────────────────────────────────
 
 	getPlanApproveButton(): Locator {
@@ -186,6 +190,10 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	getPreviewTabByName(name: string | RegExp): Locator {
+		return this.getPreviewPanel().getByRole('tab', { name });
+	}
+
 	/**
 	 * Resolves to the preview's canvas root. Used by tests to assert the
 	 * preview is hidden (collapsing the panel removes the host from the DOM
@@ -206,6 +214,7 @@ export class InstanceAiPage extends BasePage {
 		if (await approvalButton.isVisible()) {
 			await approvalButton.click();
 		} else {
+			await expect(runButton).toBeEnabled({ timeout: 120_000 });
 			await runButton.click();
 		}
 	}
@@ -216,8 +225,8 @@ export class InstanceAiPage extends BasePage {
 		);
 	}
 
-	async openPreviewNodeByName(nodeName: string): Promise<void> {
-		const node = this.getPreviewNodeByName(nodeName);
+	async openLastPreviewNode(): Promise<void> {
+		const node = this.getPreviewCanvasNodes().last();
 		await node.waitFor({ state: 'visible', timeout: 10_000 });
 		await node.dblclick();
 	}
@@ -252,8 +261,8 @@ export class InstanceAiPage extends BasePage {
 
 	// ── Artifacts ─────────────────────────────────────────────────────
 
-	getArtifactCards(): Locator {
-		return this.container.getByTestId('instance-ai-artifact-card');
+	getArtifactPanelLinkByName(name: string | RegExp): Locator {
+		return this.container.getByTestId('instance-ai-artifacts-sidebar').getByRole('link', { name });
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────

@@ -2,10 +2,10 @@
 name: data-table-manager
 description: >-
   Designs and manages n8n Data Tables directly with the data-tables and
-  parse-file tools. Use when the user asks to create, inspect, import, seed,
-  query, update, clean up, rename columns in, or delete data tables and rows,
-  especially from CSV/XLSX/JSON attachments, and before planning workflows that
-  create or write to Data Tables.
+  parse-file tools. Use when the user asks to list, show, create, inspect,
+  import, seed, query, update, clean up, rename columns in, or delete data
+  tables and rows, especially from CSV/XLSX/JSON attachments, and before
+  building or planning workflows that create or write to Data Tables.
 recommended_tools:
   - data-tables
   - parse-file
@@ -21,7 +21,7 @@ sub-agent, or create a background plan for data-table-only work.
 
 Also load this skill before planning or building a workflow whose trigger,
 processing steps, or outputs create, inspect, or write Data Table records, then
-pass the relevant schema/row-handling guidance to the planner or builder.
+pass the relevant schema/row-handling guidance to the planning skill or builder.
 
 n8n Data Tables are flat, workflow-friendly stores. Design them so future
 workflow expressions can read predictable field names and so updates/deletes
@@ -40,7 +40,7 @@ can target rows with narrow filters.
 4. Inspect schema before writes, deletes, column changes, imports into an
    existing table, and workflow-facing summaries.
 5. Execute the smallest direct tool sequence. Prefer read -> decide -> write;
-   never use plan/create-tasks/delegate for standalone table work.
+   never use create-tasks or delegate for standalone table work.
 6. Close with facts: table name, table ID when available, project if relevant,
    columns changed, row counts inserted/updated/deleted, skipped rows, and any
    approval or permission blocker.

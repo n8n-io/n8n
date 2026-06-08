@@ -2,11 +2,11 @@
 
 When the Instance AI agent builds workflows, it needs somewhere to write code, run a compiler, install packages, and execute scripts. Running all of that directly on the n8n host is risky and hard to control. Sandboxing solves this by giving the agent a dedicated, disposable environment — a workspace with its own filesystem and shell — where it can do all of that without touching the host.
 
-Today the main consumer is the workflow builder. The agent writes TypeScript files, validates them with the TypeScript compiler, executes them to produce workflow JSON, and only saves to n8n after everything passes. Without a sandbox, this falls back to a simpler string-based path that cannot run real tooling.
+Today the main consumer is the workflow builder. The agent writes TypeScript files, validates them with the TypeScript compiler, executes them to produce workflow JSON, and only saves to n8n after everything passes. Without a sandbox, workflow building is unavailable.
 
 ## How the Pieces Fit Together
 
-There are three layers between the agent and actual code execution: a workspace abstraction from Mastra, a sandbox provider (Daytona, n8n sandbox service, or local), and the execution runtime inside the sandbox. Here is how they relate:
+There are three layers between the agent and actual code execution: a workspace abstraction from Mastra, a sandbox provider (n8n sandbox service or Daytona), and the execution runtime inside the sandbox. Here is how they relate:
 
 ```mermaid
 graph TB
@@ -22,11 +22,9 @@ graph TB
 
     subgraph Providers ["Sandbox Providers"]
         FS --> DaytonaFS["Daytona Filesystem<br/>(remote API calls)"]
-        FS --> LocalFS["Local Filesystem<br/>(host disk I/O)"]
         FS --> N8nFS["n8n Sandbox FS<br/>(remote API calls)"]
         Sandbox --> DaytonaSB["Daytona Sandbox<br/>(remote container)"]
         Sandbox --> N8nSB["n8n Sandbox Service<br/>(remote container)"]
-        Sandbox --> LocalSB["Local Sandbox<br/>(host process)"]
     end
 
     subgraph Runtime ["Execution Runtime"]
@@ -34,8 +32,6 @@ graph TB
         DaytonaFS --> Container
         N8nSB --> Container
         N8nFS --> Container
-        LocalSB --> HostDir["Host Directory<br/>Node.js · TypeScript · shell"]
-        LocalFS --> HostDir
     end
 
     style Agent fill:#f3e8ff,stroke:#7c3aed
@@ -55,7 +51,7 @@ Mastra is the agent framework that Instance AI uses. A Mastra **Workspace** is a
 
 When a Workspace is attached to an agent, Mastra automatically exposes built-in tools to the LLM: `read_file`, `write_file`, `edit_file`, `list_files`, `grep`, `execute_command`, and others. The agent uses these tools naturally in its reasoning loop — it writes a file, runs a command, reads the output, and decides what to do next.
 
-The key design property is that the Workspace abstraction is provider-agnostic. The agent's code and prompts are identical regardless of whether the workspace is backed by a remote container or a local directory. The provider choice is purely an infrastructure decision.
+The key design property is that the Workspace abstraction is provider-agnostic. The agent's code and prompts are identical regardless of whether the workspace is backed by n8n sandbox service or Daytona. The provider choice is purely an infrastructure decision.
 
 ```mermaid
 graph LR
@@ -84,9 +80,9 @@ graph LR
     style Workspace fill:#e0f2fe,stroke:#0284c7
 ```
 
-## Daytona: The Production Provider
+## Daytona: Explicit Container Provider
 
-Daytona is a third-party platform for creating and managing isolated sandbox environments. It runs containers on its own infrastructure (cloud-hosted or self-hosted) and exposes them through an SDK. Instance AI uses Daytona as its production sandbox provider.
+Daytona is a third-party platform for creating and managing isolated sandbox environments. It runs containers on its own infrastructure (cloud-hosted or self-hosted) and exposes them through an SDK. Instance AI keeps Daytona as an explicit provider for environments that still rely on it.
 
 ### What Daytona provides
 
@@ -141,48 +137,31 @@ Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Ma
 | Full shell (bash) | Arbitrary command execution |
 | Python | Available but not primary |
 
-## n8n Sandbox Service: API-Backed Alternative
+## n8n Sandbox Service: Default Provider
 
 The n8n sandbox service exposes a simple HTTP API for creating sandboxes, executing shell commands, and manipulating files. Instance AI uses it through a custom Mastra sandbox and filesystem adapter.
 
-Builder prewarming follows Daytona-like lazy image instantiation semantics:
-- the builder creates an in-memory image placeholder from setup commands
-- the first sandbox creation sends those commands to the service
-- the returned `image_id` is cached on that placeholder
-- later builder sandboxes reuse the cached image directly
-
 This provider supports the builder's file and command workflow, but it does not expose interactive process handles. That means `execute_command` works, while process-manager-backed features such as long-lived spawned subprocesses are out of scope for this provider.
 
-## Local: The Development Fallback
+For eval CI, `n8n-containers` starts the API and runner sidecars through the shared sandbox service wrapper:
 
-The local provider runs everything on the host machine in a subdirectory. There is no container, no API, no isolation. It exists so developers can iterate on sandbox-related features without needing a Daytona account or Docker.
-
-```mermaid
-graph LR
-    Agent["Builder Agent"] --> Workspace["Workspace"]
-    Workspace --> LocalSB["Local Sandbox<br/>(runs shell commands<br/>on host)"]
-    Workspace --> LocalFS["Local Filesystem<br/>(reads/writes to<br/>./workspace-builders/)"]
-    LocalSB --> Dir["Host Directory"]
-    LocalFS --> Dir
-
-    style Dir fill:#fef3c7,stroke:#d97706
+```bash
+pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
 ```
 
-Commands run as child processes of the n8n server. Files are written to the host disk. There is no cleanup — directories persist after the agent finishes, which is useful for inspecting what the agent did during debugging.
+For local development, point `N8N_SANDBOX_SERVICE_URL` and
+`N8N_SANDBOX_SERVICE_API_KEY` at a running sandbox service and enable
+`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`.
 
-The local provider is **blocked in production builds**. It is a developer convenience, not a deployment option.
+### Providers at a glance
 
-### Daytona vs Local at a glance
-
-| | Daytona | Local |
+| | n8n sandbox service | Daytona |
 | --- | --- | --- |
-| **Isolation** | Full container boundary | None — same host process |
-| **Where commands run** | Remote container via API | Host machine as child process |
-| **Where files live** | Container filesystem via API | Host disk in a subdirectory |
-| **Startup** | ~seconds (pre-warmed image) | Instant (local directory) |
-| **Cleanup** | Container destroyed after use | Directory persists (debugging) |
-| **Production use** | Yes | Blocked |
-| **Setup required** | Daytona account + API key | None |
+| **Isolation** | Service-managed container boundary | Daytona-managed container boundary |
+| **Where commands run** | Sandbox service runner via API | Remote container via Daytona API |
+| **Where files live** | Sandbox service filesystem API | Daytona filesystem API |
+| **Production use** | Default provider | Explicit provider |
+| **Setup required** | Sandbox API + runner sidecars | Daytona account/API or proxy |
 
 ## Lifecycle
 
@@ -213,7 +192,7 @@ graph TB
 ```
 
 - **Thread-scoped workspace.** The service can maintain a single workspace per conversation thread, reused across messages. This workspace is destroyed on server shutdown.
-- **Per-builder ephemeral workspace.** Each time the workflow builder is invoked, it gets its own isolated workspace. Multiple concurrent builders in the same thread do not share a workspace. In Daytona mode, the container is deleted after the builder finishes (best-effort). In local mode, the directory persists for debugging.
+- **Per-builder ephemeral workspace.** Each time the workflow builder is invoked, it gets its own isolated workspace. Multiple concurrent builders in the same thread do not share a workspace. The provider sandbox is deleted after the builder finishes (best-effort).
 
 ### Pre-warmed images
 
@@ -260,7 +239,7 @@ If any step fails, the agent reads the error output, fixes the code, and retries
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED` | `false` | Master switch for sandboxing |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `daytona` | Which provider to use: `daytona`, `n8n-sandbox`, or `local` |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `n8n-sandbox` | Which provider to use: `n8n-sandbox` or `daytona` |
 | `DAYTONA_API_URL` | — | Daytona API endpoint (required for Daytona) |
 | `DAYTONA_API_KEY` | — | Daytona API key (required for Daytona) |
 | `N8N_SANDBOX_SERVICE_URL` | — | n8n sandbox service URL (required for `n8n-sandbox`) |

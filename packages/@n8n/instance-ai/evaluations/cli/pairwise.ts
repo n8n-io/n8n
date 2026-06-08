@@ -377,9 +377,7 @@ function buildInteractivity(
 ): BuildInteractivity {
 	return {
 		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === 'ask-user').length,
-		planToolCount: toolCalls.filter(
-			(toolCall) => toolCall.toolName === 'plan' || toolCall.toolName === 'create-tasks',
-		).length,
+		planToolCount: toolCalls.filter((toolCall) => toolCall.toolName === 'create-tasks').length,
 		autoApprovedSuspensions: events.filter((event) => event.type === 'confirmation-request').length,
 		mockedCredentialTypes: [],
 	};

@@ -146,7 +146,7 @@ function onSelectFloor(value: SelectValue | undefined) {
 }
 
 function goToUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
+	void pageRedirectionHelper.goToUpgrade('data-redaction', 'upgrade-data-redaction');
 }
 </script>
 
