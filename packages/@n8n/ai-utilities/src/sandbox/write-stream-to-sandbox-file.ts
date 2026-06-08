@@ -196,6 +196,9 @@ async function writeDaytonaStream(
 		);
 
 		if (writtenChunks === 0) {
+			if (options.overwrite === false && (await filesystem.exists(targetPath))) {
+				throw new Error(`Target file already exists: ${targetPath}`);
+			}
 			await filesystem.writeFile(targetPath, Buffer.alloc(0), {
 				recursive: true,
 				overwrite: options.overwrite ?? true,

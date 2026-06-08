@@ -13,6 +13,7 @@ function makeFilesystem(provider: 'n8n-sandbox' | 'daytona') {
 		writeFile: vi.fn(async () => {}),
 		appendFile: vi.fn(async () => {}),
 		deleteFile: vi.fn(async () => {}),
+		exists: vi.fn(async () => false),
 	} satisfies Partial<SandboxFilesystem> as unknown as SandboxFilesystem;
 }
 
@@ -128,6 +129,35 @@ describe('writeStreamToSandboxFile', () => {
 		).rejects.toThrow(/^Failed to assemble Daytona sandbox file:/);
 		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(
 			'/home/daytona/workspace/agent-knowledge/file.txt',
+			expect.anything(),
+		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			expect.stringContaining('/upload-parts/stream-upload/'),
+			{ recursive: true, force: true },
+		);
+	});
+
+	it('does not overwrite an existing Daytona target with an empty stream when overwrite is false', async () => {
+		const filesystem = makeFilesystem('daytona');
+		vi.mocked(filesystem.exists).mockResolvedValueOnce(true);
+
+		await expect(
+			writeStreamToSandboxFile(
+				filesystem,
+				makeSandbox('daytona'),
+				'/home/daytona/workspace/agent-knowledge/file.txt',
+				Readable.from([]),
+				{
+					overwrite: false,
+					temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+				},
+			),
+		).rejects.toThrow(
+			'Target file already exists: /home/daytona/workspace/agent-knowledge/file.txt',
+		);
+		expect(filesystem.writeFile).not.toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/file.txt',
+			expect.anything(),
 			expect.anything(),
 		);
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(
