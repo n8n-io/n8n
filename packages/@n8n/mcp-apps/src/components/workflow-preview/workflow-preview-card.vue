@@ -106,7 +106,6 @@ function handlePreviewMessage(event: MessageEvent) {
 		if (event.origin !== previewReadyOrigin.value && event.origin !== getPreviewOrigin()) return;
 
 		emit('previewCrash', getPreviewErrorMessage(message));
-		emit('previewError', t('workflowPreview.error.previewUnavailable'));
 	}
 }
 
