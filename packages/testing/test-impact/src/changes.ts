@@ -51,6 +51,23 @@ export function filterImpactfulChanges(files: string[]): string[] {
 	return files.filter((file) => !isNonImpactful(file));
 }
 
+/**
+ * Paths that define the runtime the WHOLE E2E suite executes in — the container
+ * image and the container harness. The coverage map can't attribute these (a
+ * change here can reach any spec), so they force a broad run rather than being
+ * declared uncovered. This is a small, low-churn set, so broad is cheap here.
+ */
+const FORCES_BROAD: Array<(f: string) => boolean> = [
+	(f) => f.startsWith('docker/'),
+	(f) => /(^|\/)Dockerfile(\.|$)/.test(f),
+	(f) => f.startsWith('packages/testing/containers/'),
+];
+
+/** True if a changed file defines the E2E runtime → the whole suite must run. */
+export function forcesBroad(file: string): boolean {
+	return FORCES_BROAD.some((matches) => matches(file));
+}
+
 /** A package.json change classified by which dependency sections moved. */
 export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'none';
 

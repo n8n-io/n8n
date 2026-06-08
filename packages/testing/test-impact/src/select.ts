@@ -17,6 +17,7 @@ import {
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
 	filterImpactfulChanges,
+	forcesBroad,
 	stripDependencyFiles,
 } from './changes.js';
 import type { WorkspaceImporters } from './dep-graph.js';
@@ -99,6 +100,14 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	// simply has no entry for a change (declared uncovered below, not run).
 	if (failOpen) {
 		return { specs: allSpecs ?? [], unmapped: impactful, mode: 'broad', failOpen };
+	}
+
+	// Runtime-defining changes (the container image / harness) affect every spec
+	// and aren't in the coverage map → run the whole suite rather than declaring
+	// them uncovered. Small, low-churn set, so broad is cheap here.
+	const forcing = impactful.filter(forcesBroad);
+	if (forcing.length > 0) {
+		return { specs: allSpecs ?? [], unmapped: forcing, mode: 'broad' };
 	}
 
 	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);

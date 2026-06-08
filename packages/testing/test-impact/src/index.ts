@@ -12,6 +12,7 @@ export * from './map-build.js';
 export {
 	isNonImpactful,
 	filterImpactfulChanges,
+	forcesBroad,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
 	changedRuntimeDeps,

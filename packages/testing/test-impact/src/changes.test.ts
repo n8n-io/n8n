@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	isNonImpactful,
 	filterImpactfulChanges,
+	forcesBroad,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
 } from './changes.js';
@@ -70,6 +71,26 @@ describe('filterImpactfulChanges', () => {
 	it('is a no-op when nothing is ignored', () => {
 		const files = ['packages/cli/src/a.ts', 'pnpm-lock.yaml', 'docker/Dockerfile'];
 		expect(filterImpactfulChanges(files)).toEqual(files);
+	});
+});
+
+describe('forcesBroad', () => {
+	it.each([
+		'docker/images/n8n/Dockerfile',
+		'docker/compose/base.yml',
+		'packages/testing/containers/services/n8n.ts',
+		'packages/cli/Dockerfile',
+		'Dockerfile.dev',
+	])('treats %s as runtime-defining (force broad)', (file) => {
+		expect(forcesBroad(file)).toBe(true);
+	});
+
+	it.each([
+		'packages/cli/src/server.ts',
+		'packages/testing/playwright/tests/e2e/x.spec.ts',
+		'packages/nodes-base/nodes/If/If.node.ts',
+	])('does not force broad for %s', (file) => {
+		expect(forcesBroad(file)).toBe(false);
 	});
 });
 
