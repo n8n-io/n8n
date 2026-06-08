@@ -107,12 +107,6 @@ const closeSubMenu = () => {
 	}
 };
 
-const openSubMenu = () => {
-	if (!props.disabled) {
-		handleSubMenuOpenChange(true);
-	}
-};
-
 const leadingProps = computed(() => ({
 	class: $style['item-leading'],
 }));
@@ -176,8 +170,6 @@ watch(
 					{ 'is-disabled': !!disabled },
 					{ [$style.highlighted]: highlighted },
 				]"
-				@pointerenter="openSubMenu"
-				@focus="openSubMenu"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon

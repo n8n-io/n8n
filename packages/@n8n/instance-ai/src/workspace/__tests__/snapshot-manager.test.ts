@@ -1,6 +1,12 @@
-// Mock the Daytona SDK before importing — its source has require() paths that
-// jest can't resolve in this monorepo, and we don't need the real types here.
-jest.mock('@daytonaio/sdk', () => {
+/* eslint-disable import-x/order */
+import type { Mock } from 'vitest';
+
+// The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s
+// @daytonaio/sdk — a path the test runner can't resolve in this monorepo), so we
+// mock the first-party `lazy-daytona` module. The mock classes live in vi.hoisted
+// so they are shared between the mock factory and the test (`instanceof` checks in
+// source must see the same DaytonaError the test constructs).
+const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
 	class DaytonaError extends Error {
 		statusCode?: number;
 		constructor(message: string, statusCode?: number) {
@@ -38,7 +44,20 @@ jest.mock('@daytonaio/sdk', () => {
 	return { DaytonaError, DaytonaNotFoundError, Image };
 });
 
-import { DaytonaError } from '@daytonaio/sdk';
+vi.mock('../lazy-daytona', () => ({
+	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
+}));
+
+vi.mock('../builder-templates-service', () => {
+	class MockBuilderTemplatesService {
+		getBundle = vi.fn().mockResolvedValue({ archive: null, version: null });
+	}
+	return {
+		BuilderTemplatesService: MockBuilderTemplatesService,
+		builderTemplatesOptionsFromEnv: vi.fn().mockReturnValue({}),
+	};
+});
+
 import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	type RuntimeSkillLinkedFiles,
@@ -67,8 +86,8 @@ interface CreateSnapshotParams {
 }
 
 interface FakeSnapshotApi {
-	get: jest.Mock<Promise<{ name: string }>, [string]>;
-	create: jest.Mock<Promise<{ name: string }>, [CreateSnapshotParams, unknown?]>;
+	get: Mock<(...args: [string]) => Promise<{ name: string }>>;
+	create: Mock<(...args: [CreateSnapshotParams, unknown?]) => Promise<{ name: string }>>;
 }
 
 interface FakeDaytona {
@@ -114,8 +133,8 @@ function createRuntimeSkillSource(skillsHash: string): RuntimeSkillSource {
 function makeFakeDaytona(): FakeDaytona {
 	return {
 		snapshot: {
-			get: jest.fn<Promise<{ name: string }>, [string]>(),
-			create: jest.fn<Promise<{ name: string }>, [CreateSnapshotParams, unknown?]>(),
+			get: vi.fn<(...args: [string]) => Promise<{ name: string }>>(),
+			create: vi.fn<(...args: [CreateSnapshotParams, unknown?]) => Promise<{ name: string }>>(),
 		},
 	};
 }
@@ -124,7 +143,7 @@ async function knowledgeBaseHash(): Promise<string> {
 	const { buildKnowledgeBaseWorkspaceBundle } = await import(
 		'../../knowledge-base/materialize-knowledge-base'
 	);
-	return buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' }).contentHash;
+	return (await buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' })).contentHash;
 }
 
 describe('SnapshotManager.ensureImage', () => {
@@ -288,7 +307,7 @@ describe('SnapshotManager.createSnapshot', () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
 		daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:1.123.0' });
-		const onLogs = jest.fn();
+		const onLogs = vi.fn();
 
 		await manager.createSnapshot(daytona as never, { timeout: 1800, onLogs });
 
@@ -386,7 +405,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 		});
 
 		it('reports transient failures via the error reporter', async () => {
-			const errorReporter = { error: jest.fn() };
+			const errorReporter = { error: vi.fn() };
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			const error = new DaytonaError('upstream 500', 500);
@@ -403,7 +422,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 		});
 
 		it('does not report when create succeeds', async () => {
-			const errorReporter = { error: jest.fn() };
+			const errorReporter = { error: vi.fn() };
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:1.123.0' });
@@ -414,7 +433,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 		});
 
 		it('does not report 409/already-exists as an error', async () => {
-			const errorReporter = { error: jest.fn() };
+			const errorReporter = { error: vi.fn() };
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));

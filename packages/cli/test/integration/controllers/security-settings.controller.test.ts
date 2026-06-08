@@ -256,11 +256,7 @@ describe('SecuritySettingsController', () => {
 
 			it('should return redactionEnforcement.floor = "off" by default when flag is on', async () => {
 				enableRedactionFlag();
-				instanceRedactionEnforcementService.get.mockResolvedValue({
-					enforced: false,
-					manual: false,
-					production: false,
-				});
+				instanceRedactionEnforcementService.get.mockResolvedValue('off');
 
 				const response = await ownerAgent.get('/settings/security').expect(200);
 
@@ -268,26 +264,18 @@ describe('SecuritySettingsController', () => {
 				expect(instanceRedactionEnforcementService.get).toHaveBeenCalledTimes(1);
 			});
 
-			it('should translate stored {enforced, production} to floor = "production"', async () => {
+			it('should return stored floor = "production"', async () => {
 				enableRedactionFlag();
-				instanceRedactionEnforcementService.get.mockResolvedValue({
-					enforced: true,
-					manual: false,
-					production: true,
-				});
+				instanceRedactionEnforcementService.get.mockResolvedValue('production');
 
 				const response = await ownerAgent.get('/settings/security').expect(200);
 
 				expect(response.body.data.redactionEnforcement).toEqual({ floor: 'production' });
 			});
 
-			it('should translate stored {enforced, manual, production} to floor = "all"', async () => {
+			it('should return stored floor = "all"', async () => {
 				enableRedactionFlag();
-				instanceRedactionEnforcementService.get.mockResolvedValue({
-					enforced: true,
-					manual: true,
-					production: true,
-				});
+				instanceRedactionEnforcementService.get.mockResolvedValue('all');
 
 				const response = await ownerAgent.get('/settings/security').expect(200);
 
@@ -297,11 +285,7 @@ describe('SecuritySettingsController', () => {
 
 		describe('POST /settings/security', () => {
 			beforeEach(() => {
-				instanceRedactionEnforcementService.get.mockResolvedValue({
-					enforced: false,
-					manual: false,
-					production: false,
-				});
+				instanceRedactionEnforcementService.get.mockResolvedValue('off');
 			});
 
 			it('should ignore redactionEnforcement when feature flag is off', async () => {
@@ -331,11 +315,7 @@ describe('SecuritySettingsController', () => {
 					data: { redactionEnforcement: { floor: 'production' } },
 				});
 				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledTimes(1);
-				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith({
-					enforced: true,
-					manual: false,
-					production: true,
-				});
+				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('production');
 			});
 
 			it('should persist redactionEnforcement.floor = "all" when flag is on', async () => {
@@ -347,20 +327,12 @@ describe('SecuritySettingsController', () => {
 					.send({ redactionEnforcement: { floor: 'all' } })
 					.expect(200);
 
-				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith({
-					enforced: true,
-					manual: true,
-					production: true,
-				});
+				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('all');
 			});
 
 			it('should persist redactionEnforcement.floor = "off" when flag is on', async () => {
 				enableRedactionFlag();
-				instanceRedactionEnforcementService.get.mockResolvedValue({
-					enforced: true,
-					manual: false,
-					production: true,
-				});
+				instanceRedactionEnforcementService.get.mockResolvedValue('production');
 				instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
 
 				await ownerAgent
@@ -368,11 +340,7 @@ describe('SecuritySettingsController', () => {
 					.send({ redactionEnforcement: { floor: 'off' } })
 					.expect(200);
 
-				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith({
-					enforced: false,
-					manual: false,
-					production: false,
-				});
+				expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('off');
 			});
 
 			it('should update personalSpace and redactionEnforcement together', async () => {
@@ -412,11 +380,7 @@ describe('SecuritySettingsController', () => {
 			describe('audit event emission', () => {
 				it('should emit `redaction-enforcement-updated` with before/after when settings change', async () => {
 					enableRedactionFlag();
-					instanceRedactionEnforcementService.get.mockResolvedValue({
-						enforced: false,
-						manual: false,
-						production: false,
-					});
+					instanceRedactionEnforcementService.get.mockResolvedValue('off');
 					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
 
 					await ownerAgent
@@ -428,19 +392,15 @@ describe('SecuritySettingsController', () => {
 						'redaction-enforcement-updated',
 						expect.objectContaining({
 							user: expect.objectContaining({ id: expect.any(String) }),
-							before: { enforced: false, manual: false, production: false },
-							after: { enforced: true, manual: false, production: true },
+							before: 'off',
+							after: 'production',
 						}),
 					);
 				});
 
 				it('should emit `redaction-enforcement-updated` with before/after when settings are disabled', async () => {
 					enableRedactionFlag();
-					instanceRedactionEnforcementService.get.mockResolvedValue({
-						enforced: true,
-						manual: false,
-						production: true,
-					});
+					instanceRedactionEnforcementService.get.mockResolvedValue('production');
 					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
 
 					await ownerAgent
@@ -452,19 +412,15 @@ describe('SecuritySettingsController', () => {
 						'redaction-enforcement-updated',
 						expect.objectContaining({
 							user: expect.objectContaining({ id: expect.any(String) }),
-							before: { enforced: true, manual: false, production: true },
-							after: { enforced: false, manual: false, production: false },
+							before: 'production',
+							after: 'off',
 						}),
 					);
 				});
 
 				it('should not emit when save is idempotent', async () => {
 					enableRedactionFlag();
-					instanceRedactionEnforcementService.get.mockResolvedValue({
-						enforced: true,
-						manual: false,
-						production: true,
-					});
+					instanceRedactionEnforcementService.get.mockResolvedValue('production');
 					instanceRedactionEnforcementService.set.mockResolvedValue(undefined);
 
 					await ownerAgent

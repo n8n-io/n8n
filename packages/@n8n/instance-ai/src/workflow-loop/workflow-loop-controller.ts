@@ -223,6 +223,7 @@ export function handleVerificationVerdict(
 	const attempt = makeAttempt(normalizedState, 'verify', attempts);
 	attempt.executionId = verdict.executionId;
 	attempt.failureSignature = verdict.failureSignature;
+	attempt.workflowInspection = verdict.workflowInspection;
 	attempt.diagnosis = verdict.diagnosis;
 	const remediation = withRemainingSubmitFixes(
 		verdict.remediation,
@@ -239,6 +240,7 @@ export function handleVerificationVerdict(
 				status: 'blocked',
 				lastExecutionId: verdict.executionId,
 				lastFailureSignature: verdict.failureSignature,
+				lastWorkflowInspection: verdict.workflowInspection,
 				lastRemediation: remediation,
 			},
 			action: { type: 'blocked', reason: remediation.guidance },
@@ -255,6 +257,7 @@ export function handleVerificationVerdict(
 					phase: 'done',
 					status: 'completed',
 					lastExecutionId: verdict.executionId,
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: {
@@ -275,6 +278,7 @@ export function handleVerificationVerdict(
 					...normalizedState,
 					phase: 'done',
 					status: 'completed',
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: {
@@ -295,6 +299,7 @@ export function handleVerificationVerdict(
 					...normalizedState,
 					phase: 'blocked',
 					status: 'blocked',
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: { type: 'blocked', reason: verdict.diagnosis ?? 'Needs user input' },
@@ -310,6 +315,7 @@ export function handleVerificationVerdict(
 					phase: 'blocked',
 					status: 'blocked',
 					lastFailureSignature: verdict.failureSignature,
+					lastWorkflowInspection: verdict.workflowInspection,
 					lastRemediation: remediation,
 				},
 				action: { type: 'blocked', reason: verdict.summary },
@@ -335,6 +341,7 @@ export function handleVerificationVerdict(
 
 			const failureDetails = [
 				verdict.diagnosis ?? '',
+				verdict.workflowInspection ? `Workflow inspection: ${verdict.workflowInspection}` : '',
 				verdict.failedNodeName ? `Failed node: ${verdict.failedNodeName}` : '',
 				verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
 			]
@@ -377,6 +384,7 @@ function escalateToRepair(
 				phase: 'blocked',
 				status: 'blocked',
 				lastFailureSignature: verdict.failureSignature,
+				lastWorkflowInspection: verdict.workflowInspection,
 				lastRemediation: blockedRemediation,
 			},
 			action: {
@@ -404,6 +412,7 @@ function escalateToRepair(
 				phase: 'blocked',
 				status: 'blocked',
 				lastFailureSignature: verdict.failureSignature,
+				lastWorkflowInspection: verdict.workflowInspection,
 				lastRemediation: blockedRemediation,
 			},
 			action: {
@@ -422,6 +431,7 @@ function escalateToRepair(
 			rebuildAttempts: state.rebuildAttempts + 1,
 			lastFailureSignature: verdict.failureSignature,
 			lastExecutionId: verdict.executionId,
+			lastWorkflowInspection: verdict.workflowInspection,
 			lastRemediation: remediation,
 		},
 		action,
@@ -496,6 +506,7 @@ export function formatAttemptHistory(attempts: AttemptRecord[]): string {
 	const lines = attempts.map((a) => {
 		let line = `Attempt ${a.attempt} [${a.action}]: ${a.result}`;
 		if (a.failureSignature) line += ` — ${a.failureSignature}`;
+		if (a.workflowInspection) line += ` | Inspection: ${a.workflowInspection}`;
 		if (a.diagnosis) line += ` | ${a.diagnosis}`;
 		if (a.fixApplied) line += ` | Fix: ${a.fixApplied}`;
 		return line;

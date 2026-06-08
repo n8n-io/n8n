@@ -1,7 +1,6 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe(
 	'Instance AI sidebar @capability:proxy',
 	{
@@ -89,18 +88,14 @@ test.describe(
 		});
 
 		test('should delete thread via action menu', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
-
-			// Create a thread with a recognizable message
-			await n8n.instanceAi.sendMessage('Thread to delete');
-			await n8n.instanceAi.waitForResponseComplete();
+			const thread = await n8n.api.createInstanceAiThread();
+			await n8n.api.renameInstanceAiThread(thread.id, 'Thread to delete');
+			await n8n.instanceAi.gotoThread(thread.id);
 
 			// Sidebar starts collapsed; open it so the thread list is queryable.
 			await n8n.instanceAi.openSidebar();
 
-			// Verify target thread is visible in the sidebar. Its generated title is not part of
-			// the behavior under test, so use the current thread item instead of title text.
-			const targetThread = n8n.instanceAi.sidebar.getThreadItems().first();
+			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to delete');
 			await expect(targetThread).toBeVisible({ timeout: 10_000 });
 			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 

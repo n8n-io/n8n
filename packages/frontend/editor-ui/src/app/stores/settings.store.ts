@@ -170,9 +170,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
 	);
 
-	const isOtelEnabled = computed(
-		() => isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true,
-	);
+	const isOtelCustomSpanAttributesEnabled = computed(() => {
+		const isOtelCustomSpanAttributesLicensed =
+			settings.value.enterprise?.otelCustomSpanAttributes === true;
+		const isOtelModuleActive =
+			isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true;
+
+		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
+	});
 
 	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
 	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
@@ -477,7 +482,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
-		isOtelEnabled,
+		isOtelCustomSpanAttributesEnabled,
 		isAgentsNodeToolsFeatureEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,

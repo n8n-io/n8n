@@ -8,6 +8,7 @@
     "debug": "./scripts/debug.sh",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "vitest run",
@@ -56,5 +57,6 @@
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

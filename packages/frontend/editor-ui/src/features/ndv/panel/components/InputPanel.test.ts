@@ -14,12 +14,13 @@ import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -66,7 +67,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowState = useWorkflowState();
+	const workflowsStore = useWorkflowsStore();
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
@@ -78,7 +79,11 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	}
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
+		// The component reads run data via `workflowsStore.getWorkflowExecution`, which
+		// resolves through the execution-state store keyed by `workflowsStore.workflowId`.
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',

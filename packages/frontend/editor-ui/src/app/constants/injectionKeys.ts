@@ -6,7 +6,6 @@ import type {
 import type { ComputedRef, InjectionKey, Ref, ShallowRef } from 'vue';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { TelemetryContext } from '@/app/types/telemetry';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
@@ -22,7 +21,6 @@ export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
 export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
-export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowState');
 export const WorkflowDocumentStoreKey: InjectionKey<ShallowRef<WorkflowDocumentStore | null>> =
 	Symbol('WorkflowDocumentStore');
 export const ExecutionDataStoreKey: InjectionKey<

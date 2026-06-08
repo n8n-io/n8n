@@ -3,7 +3,7 @@ import { ElDialog } from 'element-plus';
 import { N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
+import { APP_MODALS_ELEMENT_ID, CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 
 const visible = defineModel<boolean>();
 const i18n = useI18n();
@@ -20,6 +20,7 @@ const onViewPlans = async () => {
 		v-model="visible"
 		:title="i18n.baseText('projects.settings.role.upgrade.title')"
 		width="400"
+		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 	>
 		<div :class="$style.content">
 			<N8nText tag="p" size="medium">
@@ -35,10 +36,10 @@ const onViewPlans = async () => {
 		</div>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="visible = false">
+				<N8nButton variant="subtle" @click="visible = false">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton type="primary" @click="onViewPlans">
+				<N8nButton variant="solid" @click="onViewPlans">
 					{{ i18n.baseText('projects.settings.role.upgrade.custom.viewPlans') }}
 					<template #append>
 						<span :class="$style.externalIcon">↗</span>

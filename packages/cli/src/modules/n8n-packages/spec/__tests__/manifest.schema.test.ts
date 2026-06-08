@@ -31,6 +31,20 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate/i);
 	});
 
+	it('rejects duplicate credential ids in requirements.credentials', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				credentials: [
+					{ id: 'cred-1', name: 'A', type: 'githubApi', usedByWorkflows: ['wf-abc'] },
+					{ id: 'cred-1', name: 'B', type: 'slackApi', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate credential id/i);
+	});
+
 	it('accepts manifests with unknown sections for forward compatibility', () => {
 		const manifest = {
 			...validManifest,
