@@ -74,7 +74,13 @@ export interface IGetExecutionsQueryFilter {
 	retryOf?: string;
 	retrySuccessId?: string;
 	status?: ExecutionStatus[];
-	workflowId?: string;
+	/**
+	 * Restrict the result to a single workflow id, or to a set of workflow ids.
+	 * The set form is used by BFF endpoints that resolve a marker (e.g. a tag)
+	 * to a list of workflow ids and then query executions across that list in
+	 * one round-trip.
+	 */
+	workflowId?: string | string[];
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
@@ -127,10 +133,22 @@ function parseFiltersToQueryBuilder(
 			),
 		});
 	}
-	if (filters?.workflowId) {
-		qb.andWhere({
-			workflowId: filters.workflowId,
-		});
+	if (filters?.workflowId !== undefined) {
+		if (Array.isArray(filters.workflowId)) {
+			if (filters.workflowId.length === 0) {
+				// Empty set means "no accessible matches" — short-circuit the result set
+				// instead of producing an invalid `IN ()` fragment.
+				qb.andWhere('1 = 0');
+			} else {
+				qb.andWhere('execution.workflowId IN (:...filterWorkflowIds)', {
+					filterWorkflowIds: filters.workflowId,
+				});
+			}
+		} else {
+			qb.andWhere({
+				workflowId: filters.workflowId,
+			});
+		}
 	}
 }
 
@@ -979,7 +997,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (finished) qb.andWhere({ finished });
-		if (workflowId) qb.andWhere({ workflowId });
+		if (workflowId !== undefined) {
+			if (Array.isArray(workflowId)) {
+				if (workflowId.length === 0) {
+					qb.andWhere('1 = 0');
+				} else {
+					qb.andWhere('execution.workflowId IN (:...rangeWorkflowIds)', {
+						rangeWorkflowIds: workflowId,
+					});
+				}
+			} else {
+				qb.andWhere({ workflowId });
+			}
+		}
 		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 

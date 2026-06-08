@@ -75,7 +75,13 @@ export const schemaGetExecutionsQueryFilter = {
 			items: { type: 'string' },
 		},
 		waitTill: { type: 'boolean' },
-		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+		workflowId: {
+			anyOf: [
+				{ type: 'integer' },
+				{ type: 'string' },
+				{ type: 'array', items: { type: 'string' } },
+			],
+		},
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },

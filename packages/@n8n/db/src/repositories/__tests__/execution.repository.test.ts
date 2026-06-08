@@ -523,6 +523,72 @@ describe('ExecutionRepository', () => {
 				{ type: 'execution', executionId: '1', workflowId },
 			]);
 		});
+
+		describe('workflowId filter (array form)', () => {
+			function captureAndWhereCalls() {
+				const calls: Array<[unknown, unknown?]> = [];
+				const qb: SelectQueryBuilder<ExecutionEntity> = mock<SelectQueryBuilder<ExecutionEntity>>({
+					select: vi.fn().mockReturnThis(),
+					andWhere: vi.fn((fragment: unknown, params?: unknown) => {
+						calls.push([fragment, params]);
+						return qb;
+					}),
+					getMany: vi.fn().mockResolvedValue([]),
+				});
+				vi.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(qb);
+				return calls;
+			}
+
+			test('produces an IN (:...filterWorkflowIds) fragment when given an array', async () => {
+				const calls = captureAndWhereCalls();
+
+				await executionRepository.deleteExecutionsByFilter({
+					filters: { workflowId: ['wf-a', 'wf-b'] },
+					accessibleWorkflowIds: ['wf-a', 'wf-b'],
+					deleteConditions: { deleteBefore: new Date() },
+				});
+
+				const filterCall = calls.find(
+					([fragment]) =>
+						typeof fragment === 'string' &&
+						fragment.includes('execution.workflowId IN (:...filterWorkflowIds)'),
+				);
+				expect(filterCall).toBeDefined();
+				expect(filterCall?.[1]).toEqual({ filterWorkflowIds: ['wf-a', 'wf-b'] });
+			});
+
+			test('short-circuits when given an empty array', async () => {
+				const calls = captureAndWhereCalls();
+
+				await executionRepository.deleteExecutionsByFilter({
+					filters: { workflowId: [] },
+					accessibleWorkflowIds: ['wf-a'],
+					deleteConditions: { deleteBefore: new Date() },
+				});
+
+				const shortCircuit = calls.find(
+					([fragment]) => typeof fragment === 'string' && fragment === '1 = 0',
+				);
+				expect(shortCircuit).toBeDefined();
+			});
+
+			test('falls back to a simple equality when given a string', async () => {
+				const calls = captureAndWhereCalls();
+
+				await executionRepository.deleteExecutionsByFilter({
+					filters: { workflowId: 'wf-a' },
+					accessibleWorkflowIds: ['wf-a'],
+					deleteConditions: { deleteBefore: new Date() },
+				});
+
+				const objectCall = calls.find(
+					([fragment]) =>
+						fragment !== null && typeof fragment === 'object' && 'workflowId' in fragment,
+				);
+				expect(objectCall).toBeDefined();
+				expect((objectCall?.[0] as { workflowId: string }).workflowId).toBe('wf-a');
+			});
+		});
 	});
 
 	describe('updateExistingExecution', () => {
