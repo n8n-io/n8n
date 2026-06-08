@@ -159,6 +159,72 @@ describe('resolveImpact', () => {
 	});
 });
 
+describe('resolveImpact — sibling fallback', () => {
+	const m: ImpactMap = {
+		'packages/cli/src/a.ts': { '1': ['s1'] },
+		'packages/cli/src/sub/b.ts': { '1': ['s2'] },
+		'packages/core/src/c.ts': { '1': ['s3'] },
+	};
+	const sib = { siblingFallback: true, allSpecs: ['s1', 's2', 's3'] };
+
+	it('resolves a new file to its nearest covered directory (not broad)', () => {
+		const r = resolveImpact([{ file: 'packages/cli/src/e.ts' }], m, sib);
+		expect(r.mode).toBe('scoped');
+		expect(r.viaSibling).toEqual(['packages/cli/src/e.ts']);
+		expect(r.specs).toEqual(['s1', 's2']); // union of packages/cli/src
+		expect(r.unmapped).toEqual([]);
+	});
+
+	it('prefers the DEEPEST covered directory', () => {
+		const r = resolveImpact([{ file: 'packages/cli/src/sub/d.ts' }], m, sib);
+		expect(r.specs).toEqual(['s2']); // only sub/, not all of cli/src
+	});
+
+	it('still forces broad when NO ancestor directory is covered', () => {
+		const r = resolveImpact([{ file: 'scripts/tool.mjs' }], m, sib);
+		expect(r.mode).toBe('broad');
+		expect(r.unmapped).toEqual(['scripts/tool.mjs']);
+		expect(r.specs).toEqual(['s1', 's2', 's3']);
+	});
+
+	it('is off by default — unmapped still forces broad', () => {
+		const r = resolveImpact([{ file: 'packages/cli/src/e.ts' }], m, {
+			allSpecs: ['s1', 's2', 's3'],
+		});
+		expect(r.mode).toBe('broad');
+	});
+
+	it('PROPERTY: safe — never selects outside allSpecs, partitions files cleanly', () => {
+		const allSpecs = ['s0', 's1', 's2', 's3', 's4', 's5'];
+		const name = fc.constantFrom('a', 'b', 'c', 'd', 'e');
+		const mDir = fc.constantFrom('pkg/x/src', 'pkg/x/src/sub', 'pkg/y/src');
+		const cDir = fc.constantFrom('pkg/x/src', 'pkg/x/src/sub', 'pkg/y/src', 'pkg/z/src', 'scripts');
+		fc.assert(
+			fc.property(
+				fc.array(
+					fc.record({ dir: mDir, name, idx: fc.uniqueArray(fc.nat({ max: 5 }), { minLength: 1 }) }),
+					{ minLength: 1, maxLength: 6 },
+				),
+				fc.array(fc.record({ dir: cDir, name }), { minLength: 1, maxLength: 5 }),
+				(mapped, changed) => {
+					const map: ImpactMap = {};
+					for (const x of mapped)
+						map[`${x.dir}/${x.name}.ts`] = { '1': x.idx.map((i) => allSpecs[i]).sort() };
+					const cf = changed.map((c) => ({ file: `${c.dir}/${c.name}.new.ts` }));
+					const r = resolveImpact(cf, map, { allSpecs, siblingFallback: true });
+					// safety: only ever selects real specs
+					for (const s of r.specs) expect(allSpecs).toContain(s);
+					// a file is resolved (mapped/sibling) XOR unmapped — never both
+					const via = new Set(r.viaSibling ?? []);
+					for (const f of r.unmapped) expect(via.has(f)).toBe(false);
+					// scoped ⟺ nothing fell through to unmapped
+					expect(r.mode === 'scoped').toBe(r.unmapped.length === 0);
+				},
+			),
+		);
+	});
+});
+
 // ===========================================================================
 // Property + metamorphic tests — the soundness guarantee
 // ===========================================================================
@@ -360,8 +426,63 @@ describe('encode/decode impact map (interned on-disk form)', () => {
 		]);
 		const enc = encodeImpactMap(impactMap);
 		expect(enc.specs).toEqual(['A']); // one entry despite two functions
-		expect(enc.files['f.ts']['10']).toEqual([0]);
+		expect(enc.files['f.ts']['10']).toEqual([0]); // sparse → index list
 		expect(enc.files['f.ts']['20']).toEqual([0]);
+	});
+
+	it('SPARSE entries stay index lists; DENSE entries become bitmasks', () => {
+		const specs = Array.from({ length: 40 }, (_, i) => `spec-${i}.ts`).sort();
+		const map = { 'f.ts': { '5': ['spec-0.ts', 'spec-1.ts'], '10': specs } };
+		const enc = encodeImpactMap(map);
+		expect(Array.isArray(enc.files['f.ts']['5'])).toBe(true); // 2 specs → list
+		expect(typeof enc.files['f.ts']['10']).toBe('string'); // 40 specs → bitmask
+		expect(enc.files['f.ts']['10']).toMatch(/^b:/);
+		// Lossless either way.
+		expect(decodeImpactMap(enc)).toEqual(map);
+	});
+
+	it('LOSSLESS through the bitmask branch for a fully-covered (hub) line', () => {
+		const specs = Array.from({ length: 100 }, (_, i) => `s${i}.spec.ts`).sort();
+		const map = { 'hub.ts': { '1': specs } };
+		const enc = encodeImpactMap(map);
+		expect(enc.files['hub.ts']['1']).toMatch(/^b:/);
+		expect(decodeImpactMap(enc)).toEqual(map);
+	});
+
+	it('BACKWARD-COMPAT: decodes a pre-bitmask map (all index lists)', () => {
+		const old = { specs: ['A', 'B'], files: { 'f.ts': { '1': [0, 1], '2': [1] } } };
+		expect(decodeImpactMap(old)).toEqual({ 'f.ts': { '1': ['A', 'B'], '2': ['B'] } });
+	});
+
+	// The arbExecs property above caps at 5 specs (single-byte masks, indices
+	// 0-4). This drives a WIDE spec universe + SCATTERED subsets so the bitmask
+	// bit-packing (i>>3 across multiple bytes), the list/bitmask threshold, and
+	// the full hub case are all round-tripped.
+	it('LOSSLESS: round-trips wide spec universes + scattered subsets through both encodings', () => {
+		fc.assert(
+			fc.property(
+				fc.integer({ min: 1, max: 200 }),
+				fc.array(fc.array(fc.nat({ max: 1000 }), { minLength: 1, maxLength: 200 }), {
+					minLength: 1,
+					maxLength: 8,
+				}),
+				(n, rawEntries) => {
+					const specs = Array.from(
+						{ length: n },
+						(_, i) => `tests/e2e/s${String(i).padStart(3, '0')}.spec.ts`,
+					);
+					const map: ImpactMap = {};
+					// A hub line covering ALL specs pins specs.length = n (forces
+					// multi-byte masks) and exercises the fully-covered bitmask.
+					map['hub.ts'] = { '1': [...specs].sort() };
+					rawEntries.forEach((idxs, k) => {
+						const set = [...new Set(idxs.map((i) => i % n))].map((i) => specs[i]).sort();
+						if (set.length) map[`f${k}.ts`] = { '1': set };
+					});
+					expect(decodeImpactMap(encodeImpactMap(map))).toEqual(map);
+				},
+			),
+		);
 	});
 });
 

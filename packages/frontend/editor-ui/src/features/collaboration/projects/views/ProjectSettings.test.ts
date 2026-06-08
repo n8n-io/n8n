@@ -741,7 +741,7 @@ describe('ProjectSettings', () => {
 		});
 	});
 
-	describe('Custom telemetry tags', () => {
+	describe('Custom span attributes', () => {
 		beforeEach(() => {
 			settingsStore.isOtelCustomSpanAttributesEnabled = true;
 			projectsStore.updateProject.mockResolvedValue(undefined);
@@ -763,7 +763,7 @@ describe('ProjectSettings', () => {
 			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
 		});
 
-		it('should add a new tag row when clicking Add tag', async () => {
+		it('should add a new attribute row when clicking Add attribute', async () => {
 			const { getByTestId, getAllByTestId } = renderComponent();
 			await userEvent.click(getByTestId('project-telemetry-tag-add'));
 			await nextTick();
