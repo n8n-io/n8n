@@ -53,11 +53,13 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
+import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -79,6 +81,7 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
+	const gatewayService = mock<InstanceAiGatewayService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
@@ -93,9 +96,11 @@ describe('InstanceAiController', () => {
 
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const projectService = mock<ProjectService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
+		gatewayService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
@@ -105,6 +110,7 @@ describe('InstanceAiController', () => {
 		urlService,
 		userRepository,
 		credentialsService,
+		projectService,
 		globalConfig,
 	);
 
@@ -570,12 +576,12 @@ describe('InstanceAiController', () => {
 
 		it('should disconnect all gateways when enabled is set to false', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({} as never);
-			instanceAiService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
+			gatewayService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
 			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'instanceAiGatewayStateChanged',
@@ -587,12 +593,12 @@ describe('InstanceAiController', () => {
 
 		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({} as never);
-			instanceAiService.disconnectAllGateways.mockReturnValue(['user-c']);
+			gatewayService.disconnectAllGateways.mockReturnValue(['user-c']);
 			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'instanceAiGatewayStateChanged',
@@ -610,7 +616,7 @@ describe('InstanceAiController', () => {
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(instanceAiService.disconnectAllGateways).not.toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
 		});
 	});
 
@@ -689,25 +695,37 @@ describe('InstanceAiController', () => {
 
 		it('should create thread with provided threadId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: 'custom-id' });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: 'custom-id',
+				projectId: 'project-1',
+			});
 
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1');
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: undefined });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: undefined,
+				projectId: 'project-1',
+			});
 
 			await controller.ensureThread(req, res, payload);
 
 			// The controller generates a UUID — just verify ensureThread was called with some string
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, expect.any(String));
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				USER_ID,
+				expect.any(String),
+				'project-1',
+			);
 		});
 	});
 
@@ -829,8 +847,8 @@ describe('InstanceAiController', () => {
 			const nowSpy = jest
 				.spyOn(Date, 'now')
 				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
-			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
-			instanceAiService.getGatewayApiKeyExpiresAt.mockReturnValue(
+			gatewayService.generatePairingToken.mockReturnValue('pairing-token');
+			gatewayService.getGatewayApiKeyExpiresAt.mockReturnValue(
 				new Date('2026-01-01T00:05:00.000Z'),
 			);
 			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
@@ -843,8 +861,8 @@ describe('InstanceAiController', () => {
 				expiresAt: '2026-01-01T00:05:00.000Z',
 				ttlSeconds: 300,
 			});
-			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
+			expect(gatewayService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
 				USER_ID,
 				'pairing-token',
 			);
@@ -861,15 +879,15 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should initialize gateway with valid key and body', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.consumePairingToken.mockReturnValue(null);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
 			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
 
 			const result = await controller.gatewayInit(gatewayReq, res, payload);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.initGateway).toHaveBeenCalledWith(
+			expect(gatewayService.initGateway).toHaveBeenCalledWith(
 				USER_ID,
 				expect.objectContaining({ rootPath: '/home/user' }),
 			);
@@ -888,8 +906,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should return sessionKey when pairing token is consumed', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.consumePairingToken.mockReturnValue('new-session-key');
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
 			const result = await controller.gatewayInit(gatewayReq, res, {
@@ -902,7 +920,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should accept static env var key', async () => {
-			instanceAiService.consumePairingToken.mockReturnValue(null);
+			gatewayService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
 
 			const result = await controller.gatewayInit(gatewayReq, res, {
@@ -912,7 +930,7 @@ describe('InstanceAiController', () => {
 			});
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
+			expect(gatewayService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
 		});
 
 		it('should throw ForbiddenError with missing API key', async () => {
@@ -928,7 +946,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw ForbiddenError with invalid API key', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(undefined);
+			gatewayService.getUserIdForApiKey.mockReturnValue(undefined);
 			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
 
 			await expect(
@@ -964,25 +982,25 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
 
 			await expect(
 				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
 			).rejects.toThrow(ForbiddenError);
 
-			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
+			expect(gatewayService.clearDisconnectTimer).not.toHaveBeenCalled();
 		});
 
 		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			const gateway = mock<LocalGateway>({ isConnected: true });
 			gateway.onRequest.mockReturnValue(() => {});
-			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+			gatewayService.getLocalGateway.mockReturnValue(gateway);
 
 			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
 
-			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
 	});
 
@@ -995,8 +1013,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should resolve gateway request', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
 			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
@@ -1004,7 +1022,7 @@ describe('InstanceAiController', () => {
 			});
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.resolveGatewayRequest).toHaveBeenCalledWith(
+			expect(gatewayService.resolveGatewayRequest).toHaveBeenCalledWith(
 				USER_ID,
 				'req-1',
 				{ content: [] },
@@ -1013,8 +1031,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw NotFoundError when request not found', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.resolveGatewayRequest.mockReturnValue(false);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
 			expect(() =>
@@ -1029,7 +1047,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect gateway and send push notification', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': 'session-key' },
 			} as unknown as Request;
@@ -1037,9 +1055,9 @@ describe('InstanceAiController', () => {
 			const result = controller.gatewayDisconnect(gatewayReq);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				{
 					type: 'instanceAiGatewayStateChanged',
@@ -1071,9 +1089,9 @@ describe('InstanceAiController', () => {
 			const result = await controller.gatewayDisconnectSession(req);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				{
 					type: 'instanceAiGatewayStateChanged',
@@ -1101,7 +1119,7 @@ describe('InstanceAiController', () => {
 
 		it('should create credential and return credentialId', async () => {
 			const user = mock<User>({ id: USER_ID });
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			userRepository.findOne.mockResolvedValue(user);
 			credentialsService.createUnmanagedCredential.mockResolvedValue(
 				mock<Awaited<ReturnType<CredentialsService['createUnmanagedCredential']>>>({
@@ -1128,7 +1146,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw ForbiddenError when the user is not found', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			userRepository.findOne.mockResolvedValue(null);
 
 			await expect(
@@ -1138,7 +1156,7 @@ describe('InstanceAiController', () => {
 
 		it('should throw ForbiddenError when the gateway is disabled', async () => {
 			const user = mock<User>({ id: USER_ID });
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			userRepository.findOne.mockResolvedValue(user);
 			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
 
@@ -1150,8 +1168,8 @@ describe('InstanceAiController', () => {
 
 	describe('getGatewayKeyHeader', () => {
 		it('should extract first element from array header', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': ['key1', 'key2'] },
 				body: { result: { content: [] } },
@@ -1160,7 +1178,7 @@ describe('InstanceAiController', () => {
 			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
 			// validateGatewayApiKey receives 'key1' (the first element)
-			expect(instanceAiService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
+			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
 		});
 	});
 });
