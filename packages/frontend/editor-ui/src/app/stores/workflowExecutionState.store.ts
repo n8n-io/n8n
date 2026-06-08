@@ -520,43 +520,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			if (touched) fireChange(CHANGE_ACTION.UPDATE, 'state');
 		}
 
-		/**
-		 * Orchestrates `setExecution` across the pending / IN_PROGRESS / id-keyed
-		 * stores. Three branches:
-		 *  - `null`                       -> clears pending + displayed (full reset path)
-		 *  - id === IN_PROGRESS sentinel  -> stages a pending scaffold and points
-		 *                                    activeExecutionId at it (`null`),
-		 *                                    also writes the IN_PROGRESS data store
-		 *  - real id                      -> writes the id-keyed data store and
-		 *                                    promotes displayedExecutionId so reads
-		 *                                    see the new execution before the
-		 *                                    activeExecutionId transition lands
-		 */
-		function setActiveExecution(execution: IExecutionResponse | null) {
-			if (execution === null) {
-				setPendingExecution(null);
-				clearDisplayedExecution();
-				return;
-			}
-			if (execution.id === IN_PROGRESS_EXECUTION_ID) {
-				setPendingExecution(execution);
-				setActiveExecutionId(null);
-				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
-					execution,
-				);
-				return;
-			}
-			trackExecutionId(execution.id);
-			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
-			// When activeExecutionId isn't yet pointing at this execution,
-			// clear pending state and set displayedExecutionId so reads see it.
-			if (typeof activeExecutionId.value !== 'string') {
-				setPendingExecution(null);
-				setActiveExecutionId(undefined);
-				setDisplayedExecutionId(execution.id);
-			}
-		}
-
 		function setActiveExecutionRunData(runData: IRunExecutionData) {
 			const executionId = getResolvedActiveExecutionId();
 			if (!executionId) return;
@@ -732,7 +695,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			appendChatMessage,
 			setSelectedTriggerNodeName,
 			renameExecutionStateNode,
-			setActiveExecution,
 			setActiveExecutionRunData,
 			clearActiveExecutionStartedData,
 			addActiveNodeExecutionStartedData,

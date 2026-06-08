@@ -2,7 +2,7 @@
   "name": "@n8n/cli",
   "version": "0.6.0",
   "description": "[beta] Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
     "n8n-cli": "bin/n8n-cli.mjs"
   },

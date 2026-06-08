@@ -1,6 +1,5 @@
 import {
 	ROOT_SUB_AGENT_TASK_PATH,
-	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
 	isSubAgentTaskPath,
@@ -53,12 +52,5 @@ describe('sub-agent task paths', () => {
 		expect(first).toBe('/root/research_0');
 		expect(second).toBe('/root/research_1');
 		expect(first).not.toBe(second);
-	});
-
-	it('enforces max child count policy', () => {
-		expect(() => assertSubAgentPolicyAllowsChildCount(1, { maxChildren: 2 })).not.toThrow();
-		expect(() => assertSubAgentPolicyAllowsChildCount(2, { maxChildren: 2 })).toThrow(
-			'exceeds maxChildren',
-		);
 	});
 });

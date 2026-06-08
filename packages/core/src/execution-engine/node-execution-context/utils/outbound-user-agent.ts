@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { AxiosRequestConfig } from 'axios';
 import { join } from 'node:path';
 
-import { searchForHeader } from './request-helpers';
+import { searchForHeader } from './request-helpers/axios-utils';
 
 const N8N_PRODUCT_URL = 'https://n8n.io/';
 const LEGACY_USER_AGENT = 'n8n';

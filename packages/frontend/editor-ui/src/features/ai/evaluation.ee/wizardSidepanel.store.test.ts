@@ -59,6 +59,36 @@ describe('wizardSidepanel.store', () => {
 		expect(store.isOpen).toBe(false);
 	});
 
+	it('goNext() advances through all 4 steps and stops at step 3', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(0);
+		expect(store.activeStep).toBe(0);
+		store.goNext();
+		expect(store.activeStep).toBe(1);
+		store.goNext();
+		expect(store.activeStep).toBe(2);
+		store.goNext();
+		expect(store.activeStep).toBe(3);
+		// Calling goNext at the last step is a no-op
+		store.goNext();
+		expect(store.activeStep).toBe(3);
+	});
+
+	it('goBack() retreats through all 4 steps and stops at step 0', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(3);
+		expect(store.activeStep).toBe(3);
+		store.goBack();
+		expect(store.activeStep).toBe(2);
+		store.goBack();
+		expect(store.activeStep).toBe(1);
+		store.goBack();
+		expect(store.activeStep).toBe(0);
+		// Calling goBack at the first step is a no-op
+		store.goBack();
+		expect(store.activeStep).toBe(0);
+	});
+
 	it('toggleMetric() adds a metric and removes it on second call', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.toggleMetric('correctness');

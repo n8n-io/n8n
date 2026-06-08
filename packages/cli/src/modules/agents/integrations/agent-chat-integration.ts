@@ -38,7 +38,7 @@ export interface AgentChatIntegrationBuilderGuidance {
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
  * Encapsulates everything platform-specific in one place: adapter construction,
- * credential extraction, capability metadata used by the rich_interaction tool,
+ * credential extraction, capability metadata used by interactive integration cards,
  * component normalization before rendering, and optional lifecycle hooks.
  *
  * The concrete subclasses live under `./platforms/`.
@@ -70,9 +70,8 @@ export abstract class AgentChatIntegration {
 	readonly builderGuidance?: AgentChatIntegrationBuilderGuidance;
 
 	/**
-	 * Component types this platform supports in rich_interaction cards.
-	 * Omit to signal that the platform has no rich_interaction surface — the
-	 * tool won't be injected into agents targeting this platform.
+	 * Component types this platform supports in integration action cards.
+	 * Omit to signal that the platform has no rich card surface.
 	 */
 	readonly supportedComponents?: string[];
 
@@ -220,7 +219,7 @@ export interface PlatformActionParams {
  * Singleton registry of AgentChatIntegration implementations.
  *
  * Platforms register themselves during module init (`agents.module.ts`).
- * Consumers (ChatIntegrationService, ComponentMapper, createRichInteractionTool,
+ * Consumers (ChatIntegrationService, ComponentMapper,
  * AgentChatBridge) look up integrations by type.
  */
 @Service()
