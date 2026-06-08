@@ -172,12 +172,16 @@ export class PublicApiKeyService {
 	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
-		const result = await this.apiKeyRepository.delete({
+		const apiKey = await this.apiKeyRepository.findOneBy({
 			id: apiKeyId,
 			audience: API_KEY_AUDIENCE,
 			...(canDeleteAny ? {} : { userId: caller.id }),
 		});
-		if (!result.affected) throw new NotFoundError('API key not found');
+		if (!apiKey) throw new NotFoundError('API key not found');
+
+		await this.apiKeyRepository.delete({ id: apiKey.id });
+
+		return { isOwn: apiKey.userId === caller.id };
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
