@@ -2,6 +2,7 @@ import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
 import { useI18n } from '@mcp-apps/i18n';
+import { MCP_APP_EVENTS, useTelemetry } from '@mcp-apps/telemetry';
 import { isRecord } from '@mcp-apps/utils/guards';
 
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
@@ -10,12 +11,19 @@ import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } 
 
 type UseWorkflowPreviewOptions = {
 	app: Readonly<ShallowRef<App | undefined>>;
+	appSlug?: string;
 	hostContext: Readonly<Ref<McpUiHostContext | undefined>>;
 	toolResult: Readonly<ShallowRef<unknown>>;
 };
 
-export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflowPreviewOptions) {
+export function useWorkflowPreview({
+	app,
+	appSlug = 'workflow-preview',
+	hostContext,
+	toolResult,
+}: UseWorkflowPreviewOptions) {
 	const { t } = useI18n();
+	const telemetry = useTelemetry();
 
 	const workflowUrl = ref<string>();
 	const workflowId = ref<string>();
@@ -80,6 +88,8 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 			return;
 		}
 
+		telemetry.track(MCP_APP_EVENTS.OPEN_IN_N8N_CLICKED, getOpenWorkflowTelemetryPayload());
+
 		try {
 			const result = await mcpApp.openLink({ url });
 			if (result.isError) {
@@ -88,6 +98,26 @@ export function useWorkflowPreview({ app, hostContext, toolResult }: UseWorkflow
 		} catch (error) {
 			console.error('[n8n MCP App] Failed to open workflow link', error);
 		}
+	}
+
+	function getOpenWorkflowTelemetryPayload() {
+		const payload: Record<string, unknown> = {
+			app: appSlug,
+			preview_status: getPreviewStatus(),
+		};
+
+		if (workflowId.value) {
+			payload.workflow_id = workflowId.value;
+		}
+
+		return payload;
+	}
+
+	function getPreviewStatus() {
+		if (previewError.value) return 'error';
+		if (previewLoading.value) return 'loading';
+		if (isPreviewVisible.value) return 'visible';
+		return 'fallback';
 	}
 
 	async function loadPreviewWorkflow(mcpApp: App, id: string) {

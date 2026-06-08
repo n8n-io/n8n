@@ -6,6 +6,19 @@ import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 
 import { useWorkflowPreview } from './use-workflow-preview';
 
+const { telemetryTrack } = vi.hoisted(() => ({
+	telemetryTrack: vi.fn(),
+}));
+
+vi.mock('@mcp-apps/telemetry', () => ({
+	MCP_APP_EVENTS: {
+		OPEN_IN_N8N_CLICKED: 'MCP App Open in n8n clicked',
+	},
+	useTelemetry: () => ({
+		track: telemetryTrack,
+	}),
+}));
+
 vi.mock('@mcp-apps/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string, params?: { count?: number }) =>
@@ -43,6 +56,7 @@ function createDeferred<T>() {
 
 describe('useWorkflowPreview', () => {
 	beforeEach(() => {
+		telemetryTrack.mockClear();
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
@@ -189,5 +203,50 @@ describe('useWorkflowPreview', () => {
 		await flushPromises();
 
 		expect(preview.previewWorkflow.value?.id).toBe('rerun');
+	});
+
+	it('tracks Open in n8n clicks for valid workflow URLs', async () => {
+		const callServerTool = vi.fn(async () => await new Promise(() => {}));
+		const openLink = vi.fn().mockResolvedValue({ isError: false });
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool, openLink } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await nextTick();
+
+		await preview.handleOpenWorkflow();
+
+		expect(telemetryTrack).toHaveBeenCalledWith('MCP App Open in n8n clicked', {
+			app: 'workflow-preview',
+			preview_status: 'loading',
+			workflow_id: 'abc123',
+		});
+		expect(openLink).toHaveBeenCalledWith({ url: 'https://n8n.example.com/workflow/abc123' });
+	});
+
+	it('does not track Open in n8n clicks for invalid workflow URLs', async () => {
+		const openLink = vi.fn().mockResolvedValue({ isError: false });
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ openLink } as unknown as App),
+			hostContext: ref<McpUiHostContext>(),
+			toolResult,
+		});
+
+		toolResult.value = { url: 'javascript:alert(1)', workflowId: 'abc123' };
+		await nextTick();
+
+		await preview.handleOpenWorkflow();
+
+		expect(telemetryTrack).not.toHaveBeenCalled();
+		expect(openLink).not.toHaveBeenCalled();
 	});
 });

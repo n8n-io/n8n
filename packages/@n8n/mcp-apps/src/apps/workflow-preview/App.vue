@@ -5,17 +5,27 @@ import McpAppContainer from '@mcp-apps/components/mcp-app-container.vue';
 import McpFallbackCard from '@mcp-apps/components/mcp-fallback-card.vue';
 import OpenInN8nButton from '@mcp-apps/components/open-in-n8n-button.vue';
 import WorkflowPreviewCard from '@mcp-apps/components/workflow-preview/workflow-preview-card.vue';
+import { useMcpAppTelemetry } from '@mcp-apps/composables/use-mcp-app-telemetry';
 import { useMcpHostApp } from '@mcp-apps/composables/use-mcp-host-app';
 import { useMcpHostContextStyles } from '@mcp-apps/composables/use-mcp-host-context-styles';
 import { useI18n } from '@mcp-apps/i18n';
 
 import { useWorkflowPreview } from './composables/use-workflow-preview';
 
+const APP_SLUG = 'workflow-preview';
+
 const { t } = useI18n();
 
-const { app, hostContext, toolResult } = useMcpHostApp({
+const { app, bootMs, connectionError, connectionStatus, hostContext, toolResult } = useMcpHostApp({
 	name: 'n8n Workflow Preview',
 	version: '0.1.0',
+});
+
+useMcpAppTelemetry({
+	app: APP_SLUG,
+	bootMs,
+	connectionError,
+	connectionStatus,
 });
 
 useMcpHostContextStyles(hostContext);
@@ -33,7 +43,7 @@ const {
 	isPreviewVisible,
 	nodeCountLabel,
 	handleOpenWorkflow,
-} = useWorkflowPreview({ app, hostContext, toolResult });
+} = useWorkflowPreview({ app, appSlug: APP_SLUG, hostContext, toolResult });
 </script>
 
 <template>
