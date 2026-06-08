@@ -7,7 +7,8 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from '../outbound-user-agent';
-import { httpRequest, proxyRequestToAxios } from '../request-helper-functions';
+import { httpRequest } from '../request-helpers/http-request';
+import { proxyRequestToAxios } from '../request-helpers/legacy-request-adapter';
 
 /** Exercises the full httpRequest → axios path for outbound User-Agent resolution. */
 describe('Outbound User-Agent (httpRequest integration)', () => {

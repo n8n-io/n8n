@@ -24,6 +24,7 @@ vi.mock('@n8n/i18n', () => ({
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
 				return `Sub-agent · ${opts.interpolate.name}`;
 			}
+			if (key === 'agents.chat.delegate.labelFallback') return 'Sub-agent';
 			if (key === 'agents.chat.writeTodos.label') return 'Task list';
 			if (key === 'agents.chat.writeTodos.summary.one' && opts?.interpolate?.count) {
 				return `${opts.interpolate.count} task`;
@@ -148,9 +149,12 @@ describe('AgentChatToolSteps', () => {
 			},
 		]);
 
-		expect(wrapper.text()).toContain('Sub-agent · Research api');
+		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('·');
-		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toContain('High');
+		const metadata = wrapper
+			.findAll('[data-testid="tool-step-summary"]')
+			.map((item) => item.text());
+		expect(metadata).toEqual(['Research api', 'High']);
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.find('[data-test-id="tool-step-details"]').text()).toBe('Child answer');

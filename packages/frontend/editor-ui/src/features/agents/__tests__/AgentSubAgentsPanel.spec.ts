@@ -3,6 +3,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
+import {
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_MAX_CHILDREN_MAX,
+	SUB_AGENT_MAX_CHILDREN_MIN,
+} from '@n8n/api-types';
 
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import type { AgentJsonConfig, AgentResource } from '../types';
@@ -142,10 +147,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nButton: {
-		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
-		props: ['disabled', 'type', 'size'],
-	},
 	N8nCard: {
 		template: '<div><slot name="prepend" /><slot /><slot name="append" /></div>',
 		props: ['variant'],
@@ -159,7 +160,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision'],
 		emits: ['update:modelValue'],
 		template:
-			'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+			'<input :value="modelValue" :disabled="disabled" :min="min" :max="max" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 	},
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
@@ -256,7 +257,15 @@ describe('AgentSubAgentsPanel', () => {
 	it('initialises max-children input to the default when unset in config', async () => {
 		const wrapper = await mountPanel();
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
-		expect(Number(input.element.getAttribute('value'))).toBe(10);
+		expect(Number(input.element.getAttribute('value'))).toBe(SUB_AGENT_MAX_CHILDREN_DEFAULT);
+	});
+
+	it('passes the shared min and max bounds to the max-children input', async () => {
+		const wrapper = await mountPanel();
+		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');
+
+		expect(Number(input.attributes('min'))).toBe(SUB_AGENT_MAX_CHILDREN_MIN);
+		expect(Number(input.attributes('max'))).toBe(SUB_AGENT_MAX_CHILDREN_MAX);
 	});
 
 	it('initialises max-children input from config', async () => {
@@ -293,7 +302,7 @@ describe('AgentSubAgentsPanel', () => {
 		const wrapper = await mountPanel({
 			...defaultConfig,
 			subAgents: {
-				maxChildren: 10,
+				maxChildren: SUB_AGENT_MAX_CHILDREN_DEFAULT,
 				agents: [{ agentId: 'agent-2' }],
 			},
 		});

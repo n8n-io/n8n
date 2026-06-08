@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentTaskDifficulty } from '@n8n/api-types';
+import {
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_MAX_CHILDREN_MAX,
+	SUB_AGENT_MAX_CHILDREN_MIN,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type SubAgentTaskDifficulty,
+} from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import {
 	N8nCard,
@@ -31,10 +37,6 @@ import {
 import type { AgentJsonConfig } from '../types';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { parseModelString, sanitizeModelId } from '../utils/model-string';
-
-const SUB_AGENT_MAX_CHILDREN_MIN = 1;
-const SUB_AGENT_MAX_CHILDREN_MAX = 20;
-const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
 
 const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
 	low: 'agents.builder.subAgents.modelsByDifficulty.low.label',
@@ -72,6 +74,10 @@ const { credentialsByProvider } = useAgentModelCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 	projectIdRef,
 );
+const maxChildrenHintInterpolate = {
+	min: String(SUB_AGENT_MAX_CHILDREN_MIN),
+	max: String(SUB_AGENT_MAX_CHILDREN_MAX),
+};
 
 onMounted(() => {
 	void ensureProjectAgentsLoaded().catch(() => {});
@@ -332,7 +338,11 @@ function onRemoveSubAgent(agentId: string) {
 					{{ i18n.baseText('agents.builder.subAgents.maxChildren.label') }}
 				</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.maxChildren.hint') }}
+					{{
+						i18n.baseText('agents.builder.subAgents.maxChildren.hint', {
+							interpolate: maxChildrenHintInterpolate,
+						})
+					}}
 				</N8nText>
 			</div>
 			<N8nInputNumber2
@@ -481,7 +491,8 @@ function onRemoveSubAgent(agentId: string) {
 	width: 100%;
 }
 
-.subAgentsPanel.disabled {
+.subAgentsPanel.disabled > :not(.subAgentsHeader) {
+	pointer-events: none;
 	opacity: 0.6;
 }
 

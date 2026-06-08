@@ -1,6 +1,5 @@
 import {
 	createWriteTodosTool,
-	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -9,6 +8,7 @@ import {
 } from '@n8n/agents';
 import {
 	isNodeToolsEnabled,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -451,7 +451,7 @@ export class AgentRuntimeReconstructionService {
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
 					: {}),
-				resolveInlineSubAgentProviderTools: (modelConfig) =>
+				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
 					buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
@@ -486,7 +486,7 @@ export class AgentRuntimeReconstructionService {
 
 	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
 		return {
-			maxChildren: config.subAgents?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN,
+			maxChildren: config.subAgents?.maxChildren ?? SUB_AGENT_MAX_CHILDREN_DEFAULT,
 		};
 	}
 }
