@@ -10,7 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { deviceFields, deviceOperations } from './DeviceDescription';
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems, mapUserExtraFields } from './GenericFunctions';
 import { groupFields, groupOperations } from './GroupDescription';
 import { searchDevices, searchGroups, searchUsers } from './SearchFunctions';
 import { userFields, userOperations } from './UserDescription';
@@ -536,6 +536,8 @@ export class GSuiteAdmin implements INodeType {
 							}
 						}
 
+						mapUserExtraFields(additionalFields as IDataObject, body);
+
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
@@ -728,17 +730,7 @@ export class GSuiteAdmin implements INodeType {
 						}) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						const body: {
-							name?: { givenName?: string; familyName?: string };
-							emails?: IDataObject[];
-							primaryEmail?: string;
-							phones?: IDataObject[];
-							suspended?: boolean;
-							roles?: { [key: string]: boolean };
-							customSchemas?: IDataObject;
-							password?: string;
-							changePasswordAtNextLogin?: boolean;
-						} = {};
+						const body: IDataObject = {};
 
 						if (updateFields.password) {
 							body.password = updateFields.password as string;
@@ -748,14 +740,15 @@ export class GSuiteAdmin implements INodeType {
 							body.changePasswordAtNextLogin = updateFields.changePasswordAtNextLogin as boolean;
 						}
 
+						const name: { givenName?: string; familyName?: string } = {};
 						if (updateFields.firstName) {
-							body.name ??= {};
-							body.name.givenName = updateFields.firstName as string;
+							name.givenName = updateFields.firstName as string;
 						}
-
 						if (updateFields.lastName) {
-							body.name ??= {};
-							body.name.familyName = updateFields.lastName as string;
+							name.familyName = updateFields.lastName as string;
+						}
+						if (Object.keys(name).length > 0) {
+							body.name = name;
 						}
 
 						if (updateFields.phoneUi) {
@@ -826,6 +819,8 @@ export class GSuiteAdmin implements INodeType {
 								body.customSchemas = customSchemas;
 							}
 						}
+
+						mapUserExtraFields(updateFields as IDataObject, body);
 
 						responseData = await googleApiRequest.call(
 							this,
