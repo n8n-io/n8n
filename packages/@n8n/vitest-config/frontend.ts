@@ -30,7 +30,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 		coverage.enabled = true;
 		if (process.env.CI === 'true' && coverage.provider === 'v8') {
 			coverage.include = ['src/**'];
-			coverage.reporter = ['cobertura'];
+			coverage.reporter = ['lcov'];
 		}
 	}
 

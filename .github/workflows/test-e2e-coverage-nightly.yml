@@ -10,6 +10,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Shared build so the Turbo remote cache is warm before any test job starts.
+  # Downstream jobs call setup-nodejs with the default build-command and get
+  # ~30s cache hits rather than racing to build in parallel from cold.
+  build:
+    name: Install & Build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
   prepare-docker:
     name: Prepare Docker (coverage)
     uses: ./.github/workflows/prepare-docker-reusable.yml
@@ -24,6 +37,7 @@ jobs:
   # then blew past the timeout; duration-weighting keeps every shard even.
   generate-matrix:
     name: Generate shard matrix
+    needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
@@ -31,7 +45,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup and Build janitor
+      - name: Setup
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
@@ -60,9 +74,93 @@ jobs:
       currents-project-id: 'LRxcNt'
     secrets: inherit
 
+  # Full unit + nodes coverage — no change-scoping. Runs in parallel with E2E
+  # shards; Turbo cache hit from the shared `build` job keeps setup fast.
+  unit-coverage:
+    name: Unit Coverage (backend + nodes)
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      COVERAGE_ENABLED: 'true'
+      NODE_OPTIONS: --max-old-space-size=7168
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Test Unit (backend + nodes)
+        run: pnpm test:ci:backend:unit --continue
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: unit-coverage
+          path: packages/**/coverage/lcov.info
+          retention-days: 3
+
+  frontend-coverage:
+    name: Unit Coverage (frontend)
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      COVERAGE_ENABLED: 'true'
+      NODE_OPTIONS: --max-old-space-size=7168
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Test Unit (frontend)
+        run: pnpm test:ci:frontend --continue
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: frontend-coverage
+          path: packages/**/coverage/lcov.info
+          retention-days: 3
+
+  # CLI integration tests against Postgres via testcontainers — captures
+  # branches that unit tests can't reach with a mocked DB: real query paths,
+  # multi-main coordination, migration logic.
+  integration-coverage:
+    name: Unit Coverage (CLI integration + Postgres)
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      COVERAGE_ENABLED: 'true'
+      NODE_OPTIONS: --max-old-space-size=7168
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Pre-pull Test Container Images
+        run: pnpm tsx packages/testing/containers/pull-test-images.ts || true
+
+      - name: Test Integration (CLI + Postgres)
+        working-directory: packages/cli
+        run: pnpm test:postgres:integration:tc
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: integration-coverage
+          path: packages/cli/coverage/lcov.info
+          retention-days: 3
+
   aggregate:
     name: Aggregate Coverage
-    needs: e2e
+    needs: [e2e, unit-coverage, frontend-coverage, integration-coverage]
     if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
@@ -72,21 +170,34 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
-      - name: Download shard artifacts
+      - name: Download E2E shard artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: coverage-shard-*
           path: /tmp/shards/
 
-      - name: Build janitor (tested merge-coverage)
+      # No merge-multiple: packages/cli/coverage/lcov.info exists in both
+      # unit-coverage and integration-coverage — separate artifact subdirs
+      # prevent clobbering, and findFiles recurses into all of them so MCR
+      # unions unit + integration coverage for CLI correctly.
+      - name: Download unit + integration + frontend coverage artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: '*-coverage'
+          path: /tmp/unit-lcovs/
+
+      - name: Build janitor (merge-coverage)
         run: pnpm turbo run build --filter=@n8n/playwright-janitor
 
-      # Report (shard lcovs → unified lcov) + impact map (per-spec lcovs →
-      # spec-keyed map), both via the property-tested janitor merge-coverage.
-      # Logic lives in the tested aggregate-coverage.mjs, not inline bash.
+      # Merges all lcovs into one lcov.info (SF: paths normalised to repo-root-
+      # relative) and builds the per-spec E2E impact map for PR selection.
       - name: Aggregate coverage + build impact map
         working-directory: packages/testing/playwright
-        run: node scripts/aggregate-coverage.mjs --shards=/tmp/shards --out=coverage
+        run: |
+          node scripts/aggregate-coverage.mjs \
+            --shards=/tmp/shards \
+            --unit-shards=/tmp/unit-lcovs \
+            --out=coverage
 
       - name: Upload Coverage Report Artifact
         if: always()
@@ -96,14 +207,14 @@ jobs:
           path: packages/testing/playwright/coverage/
           retention-days: 14
 
-      - name: Upload E2E Coverage to Codecov
+      - name: Upload Combined Coverage to Codecov
         if: always()
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: packages/testing/playwright/coverage/lcov.info
-          flags: frontend-e2e
-          name: playwright-e2e
+          flags: nightly-full
+          name: nightly-full-coverage
           fail_ci_if_error: false
 
       # Codecov needs ~60-90s to finish indexing the fresh upload before its

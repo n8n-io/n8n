@@ -78,7 +78,9 @@ function isMutationWorthy(absPath) {
 	if (absPath.includes(`${path.sep}__tests__${path.sep}`)) return false;
 	if (absPath.includes(`${path.sep}__mocks__${path.sep}`)) return false;
 	const base = path.basename(absPath, '.ts');
-	if (LOW_VALUE_BASENAMES.has(base)) return false;
+	// Also catch "foo.types.ts", "foo.interfaces.ts", "foo.constants.ts"
+	const lastSegment = base.split('.').at(-1);
+	if (LOW_VALUE_BASENAMES.has(base) || LOW_VALUE_BASENAMES.has(lastSegment)) return false;
 	return true;
 }
 

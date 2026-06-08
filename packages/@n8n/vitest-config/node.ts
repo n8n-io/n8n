@@ -16,7 +16,7 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 				coverage: {
 					enabled: true,
 					provider: 'v8',
-					reporter: process.env.CI === 'true' ? 'cobertura' : 'text-summary',
+					reporter: process.env.CI === 'true' ? 'lcov' : 'text-summary',
 					include: ['src/**/*.ts'],
 				},
 			}

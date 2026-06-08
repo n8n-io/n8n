@@ -102,7 +102,7 @@ const config = {
 if (process.env.CI === 'true') {
 	config.collectCoverageFrom = ['src/**/*.ts'];
 	config.reporters = ['default', 'jest-junit'];
-	config.coverageReporters = ['cobertura'];
+	config.coverageReporters = ['lcov'];
 }
 
 module.exports = config;
