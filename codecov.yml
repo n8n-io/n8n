@@ -36,6 +36,10 @@ flags:
     carryforward: true
   python:
     carryforward: true
+  nightly-full:
+    carryforward: true
+  nightly-python:
+    carryforward: true
 
 component_management:
   default_rules:
