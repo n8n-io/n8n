@@ -78,6 +78,7 @@ function buildExpectedManifest() {
 		version: 1,
 		agentId: 'agent-1',
 		projectId: 'project-1',
+		corpusSignature: 'sig-current',
 		files: [
 			{
 				id: 'file-1',

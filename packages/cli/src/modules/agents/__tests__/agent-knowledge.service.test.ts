@@ -527,6 +527,140 @@ describe('AgentKnowledgeService', () => {
 		expect(mockDestroy).toHaveBeenCalledTimes(1);
 	});
 
+	const manifestFiles = [
+		{
+			id: 'file-1',
+			relativePath: 'notes.txt',
+			fileSizeBytes: 10,
+			binaryDataIdSha1: 'sha1-a',
+		},
+		{
+			id: 'file-2',
+			relativePath: 'data.csv',
+			fileSizeBytes: 17,
+			binaryDataIdSha1: 'sha1-b',
+		},
+	];
+
+	it('buildCorpusSignature returns the same signature for the same file set in different orders', () => {
+		const signature = service.buildCorpusSignature(manifestFiles);
+		const reversedSignature = service.buildCorpusSignature([...manifestFiles].reverse());
+
+		expect(signature).toBe(reversedSignature);
+		expect(signature).toMatch(/^[a-f0-9]{64}$/);
+	});
+
+	it('buildCorpusSignature changes when file identity metadata changes', () => {
+		const baseFile = manifestFiles[0];
+		const base = service.buildCorpusSignature([baseFile]);
+
+		expect(service.buildCorpusSignature([{ ...baseFile, id: 'file-other' }])).not.toBe(base);
+		expect(service.buildCorpusSignature([{ ...baseFile, relativePath: 'other.txt' }])).not.toBe(
+			base,
+		);
+		expect(service.buildCorpusSignature([{ ...baseFile, fileSizeBytes: 99 }])).not.toBe(base);
+		expect(
+			service.buildCorpusSignature([{ ...baseFile, binaryDataIdSha1: 'sha1-other' }]),
+		).not.toBe(base);
+	});
+
+	it('buildCorpusSignature supports an empty corpus', () => {
+		const first = service.buildCorpusSignature([]);
+		const second = service.buildCorpusSignature([]);
+
+		expect(first).toBe(second);
+		expect(first).toMatch(/^[a-f0-9]{64}$/);
+	});
+
+	it('buildExpectedSandboxManifest includes a deterministic corpus signature', () => {
+		const storedFiles = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+			{
+				id: 'file-2',
+				agentId,
+				binaryDataId: 'binary-2',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+
+		const manifest = service.buildExpectedSandboxManifest(agentId, projectId, storedFiles);
+
+		expect(manifest.corpusSignature).toBe(service.buildCorpusSignature(manifest.files));
+		expect(manifest.corpusSignature).toMatch(/^[a-f0-9]{64}$/);
+		expect(manifest).toMatchObject({
+			version: 1,
+			agentId,
+			projectId,
+			files: expect.any(Array),
+		});
+		expect(JSON.stringify(manifest)).not.toContain('binary-1');
+		expect(JSON.stringify(manifest)).not.toContain('binary-2');
+	});
+
+	it('buildExpectedSandboxManifest signature is stable when repository file order changes', () => {
+		const storedFiles = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+			{
+				id: 'file-2',
+				agentId,
+				binaryDataId: 'binary-2',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+
+		const first = service.buildExpectedSandboxManifest(agentId, projectId, storedFiles);
+		const second = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			[...storedFiles].reverse(),
+		);
+
+		expect(first.corpusSignature).toBe(second.corpusSignature);
+	});
+
+	it('buildExpectedSandboxManifest changes signature when binary data id changes', () => {
+		const baseStoredFile = {
+			id: 'file-1',
+			agentId,
+			binaryDataId: 'binary-1',
+			fileName: 'notes.txt',
+			mimeType: 'text/plain',
+			fileSizeBytes: 10,
+			createdAt: new Date('2026-05-24T12:00:00.000Z'),
+		};
+
+		const first = service.buildExpectedSandboxManifest(agentId, projectId, [
+			baseStoredFile,
+		] as never);
+		const second = service.buildExpectedSandboxManifest(agentId, projectId, [
+			{ ...baseStoredFile, binaryDataId: 'binary-2' },
+		] as never);
+
+		expect(first.corpusSignature).not.toBe(second.corpusSignature);
+	});
+
 	it('materializes stored PDF text as a sandbox text file', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		const stream = Readable.from(Buffer.from('stored PDF text'));

@@ -75,10 +75,13 @@ export interface KnowledgeSandboxManifest {
 	materializedAt: string;
 }
 
-export type KnowledgeSandboxExpectedManifest = Pick<
-	KnowledgeSandboxManifest,
-	'version' | 'agentId' | 'projectId' | 'files'
->;
+export interface KnowledgeSandboxExpectedManifest {
+	version: number;
+	agentId: string;
+	projectId: string;
+	corpusSignature: string;
+	files: KnowledgeSandboxManifestFile[];
+}
 
 export interface KnowledgeSandboxMaterializationTarget {
 	sandbox: SandboxInstance;
@@ -232,16 +235,38 @@ export class AgentKnowledgeService {
 		};
 	}
 
+	buildCorpusSignature(files: KnowledgeSandboxManifestFile[]): string {
+		const payload = files
+			.map(({ id, relativePath, fileSizeBytes, binaryDataIdSha1 }) => ({
+				id,
+				relativePath,
+				fileSizeBytes,
+				binaryDataIdSha1,
+			}))
+			.sort(
+				(left, right) =>
+					left.relativePath.localeCompare(right.relativePath) ||
+					left.id.localeCompare(right.id) ||
+					left.binaryDataIdSha1.localeCompare(right.binaryDataIdSha1) ||
+					left.fileSizeBytes - right.fileSizeBytes,
+			);
+
+		return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+	}
+
 	buildExpectedSandboxManifest(
 		agentId: string,
 		projectId: string,
 		storedFiles: StoredAgentFile[],
 	): KnowledgeSandboxExpectedManifest {
+		const files = storedFiles.map((file) => this.toManifestFileEntry(file));
+
 		return {
 			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
 			agentId,
 			projectId,
-			files: storedFiles.map((file) => this.toManifestFileEntry(file)),
+			corpusSignature: this.buildCorpusSignature(files),
+			files,
 		};
 	}
 
