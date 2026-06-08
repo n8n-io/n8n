@@ -65,5 +65,5 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-integration-postgres
           name: backend-integration-postgres
-          files: ./packages/cli/coverage/cobertura-coverage.xml
+          files: ./packages/cli/coverage/lcov.info
           fail_ci_if_error: false
