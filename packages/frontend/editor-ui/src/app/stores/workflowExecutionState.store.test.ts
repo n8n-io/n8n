@@ -635,7 +635,7 @@ describe('workflowExecutionState.store', () => {
 		});
 	});
 
-	describe('setActiveExecution', () => {
+	describe('setWorkflowExecutionData (execution-data store writes)', () => {
 		it('null clears pending and displayed execution ids', () => {
 			const executionStateStore = useWorkflowExecutionStateStore(
 				createWorkflowDocumentId('wf-1'),
@@ -646,7 +646,7 @@ describe('workflowExecutionState.store', () => {
 			);
 			executionStateStore.setActiveExecutionId('exec-1');
 
-			executionStateStore.setActiveExecution(null);
+			executionStateStore.setWorkflowExecutionData(null);
 
 			expect(executionStateStore.pendingExecution).toBeNull();
 			expect(executionStateStore.displayedExecutionId).toBeUndefined();
@@ -658,7 +658,7 @@ describe('workflowExecutionState.store', () => {
 			);
 			const payload = makeExecution({ id: IN_PROGRESS_EXECUTION_ID, executedNode: 'Code' });
 
-			executionStateStore.setActiveExecution(payload);
+			executionStateStore.setWorkflowExecutionData(payload);
 
 			expect(executionStateStore.activeExecutionId).toBeNull();
 			expect(executionStateStore.pendingExecution?.id).toBe(IN_PROGRESS_EXECUTION_ID);
@@ -674,7 +674,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.setPendingExecution(makeExecution());
 			const exec = makeExecution({ id: 'exec-real' });
 
-			executionStateStore.setActiveExecution(exec);
+			executionStateStore.setWorkflowExecutionData(exec);
 
 			expect(useExecutionDataStore(createExecutionDataId('exec-real')).execution?.id).toBe(
 				'exec-real',
@@ -694,7 +694,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.setActiveExecutionId('exec-1');
 			const updated = makeExecution({ id: 'exec-1', executedNode: 'Code' });
 
-			executionStateStore.setActiveExecution(updated);
+			executionStateStore.setWorkflowExecutionData(updated);
 
 			expect(executionStateStore.activeExecutionId).toBe('exec-1');
 			expect(executionStateStore.displayedExecutionId).toBe('exec-1');

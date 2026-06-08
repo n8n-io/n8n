@@ -64,6 +64,14 @@ interface AgentExecutor {
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
+const APPROVAL_INPUT_MAX_LENGTH = 1500;
+
+interface ApprovalSuspendPayload {
+	type: 'approval';
+	toolName: string;
+	displayName?: string;
+	args?: unknown;
+}
 
 function isIntegrationActionSuspendPayload(value: unknown): boolean {
 	return (
@@ -72,6 +80,68 @@ function isIntegrationActionSuspendPayload(value: unknown): boolean {
 		'type' in value &&
 		value.type === 'integration_action'
 	);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
+	return (
+		isRecord(value) &&
+		value.type === 'approval' &&
+		typeof value.toolName === 'string' &&
+		value.toolName.length > 0
+	);
+}
+
+function truncateApprovalInput(value: string): string {
+	if (value.length <= APPROVAL_INPUT_MAX_LENGTH) return value;
+	return `${value.slice(0, APPROVAL_INPUT_MAX_LENGTH)}...`;
+}
+
+function stringifyApprovalInput(value: unknown): string | undefined {
+	if (value === undefined) return undefined;
+
+	if (typeof value === 'string') {
+		return truncateApprovalInput(value);
+	}
+
+	try {
+		const serialized = JSON.stringify(value, null, 2);
+		return truncateApprovalInput(serialized ?? String(value));
+	} catch {
+		return truncateApprovalInput(String(value));
+	}
+}
+
+function getApprovalToolLabel(payload: ApprovalSuspendPayload): string {
+	return typeof payload.displayName === 'string' && payload.displayName.length > 0
+		? payload.displayName
+		: payload.toolName;
+}
+
+function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
+	title: string;
+	components: Array<{ type: string; [key: string]: unknown }>;
+} {
+	const toolLabel = getApprovalToolLabel(payload);
+	const fields: Array<{ label: string; value: string }> = [{ label: 'Tool', value: toolLabel }];
+	const input = stringifyApprovalInput(payload.args);
+
+	if (input) {
+		fields.push({ label: 'Input', value: input });
+	}
+
+	return {
+		title: 'Approval required',
+		components: [
+			{ type: 'section', text: `The agent wants to run this tool: ${toolLabel}` },
+			{ type: 'fields', fields },
+			{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+			{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
+		],
+	};
 }
 
 function toIntegrationMessageSubject(
@@ -660,7 +730,9 @@ export class AgentChatBridge {
 			components: Array<{ type: string; [key: string]: unknown }>;
 		};
 
-		if (hasComponents) {
+		if (isApprovalSuspendPayload(payload)) {
+			cardPayload = buildApprovalCardPayload(payload);
+		} else if (hasComponents) {
 			cardPayload = payload as RichSuspendPayload;
 		} else {
 			// Plain suspend payload — auto-generate approve/deny buttons
@@ -1284,10 +1356,6 @@ function stripSlackSelfMention(text: string, userId: string): string {
 		.replace(new RegExp(`(^|\\s)@${escapedUserId}\\b`, 'gi'), '$1')
 		.replace(/\s+/g, ' ')
 		.trim();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantStatusAdapter {

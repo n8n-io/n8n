@@ -1,5 +1,9 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
+import {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
@@ -28,6 +32,11 @@ type NodeRequest =
  */
 export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
 
+const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
+const aiUtilityAgentToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+);
+
 /**
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
@@ -36,6 +45,8 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  * not approval-gated workflow steps. Provider nodes (OpenAI etc.) are
  * admitted via the explicit whitelist — they ship the full vendor API
  * (image, audio, …) but lack the `usableAsTool` flag.
+ * Frontend-hidden tool variants are excluded here too, so `search_nodes`
+ * cannot offer tools the modal intentionally hides.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
@@ -44,9 +55,14 @@ export const isAgentToolNodeType = (nodeId: string): boolean => {
 	if (!isExecutableNodeType(nodeId)) {
 		return false;
 	}
+	if (hiddenAgentToolNodeTypes.has(nodeId)) {
+		return false;
+	}
+
+	const isAllowedAiUtilityTool = aiUtilityAgentToolNodeTypes.has(nodeId);
 	const isAllowedTool = isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
 	const isAllowedProviderNode = isAgentProviderNode(nodeId);
-	return isAllowedTool || isAllowedProviderNode;
+	return isAllowedAiUtilityTool || isAllowedTool || isAllowedProviderNode;
 };
 
 const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
