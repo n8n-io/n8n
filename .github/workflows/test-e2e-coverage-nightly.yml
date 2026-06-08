@@ -50,10 +50,10 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
 
-      - name: Generate matrix (10 shards, duration-weighted)
+      - name: Generate matrix (16 shards, duration-weighted)
         id: gen
         run: |
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 10 --orchestrate)
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   e2e:
