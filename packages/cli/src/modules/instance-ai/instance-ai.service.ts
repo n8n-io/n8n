@@ -63,7 +63,6 @@ import {
 	generateTitleForRun,
 	patchThread,
 	type ConfirmationData,
-	type BuiltMemory,
 	type DomainAccessTracker,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
@@ -2437,21 +2436,6 @@ export class InstanceAiService {
 		};
 	}
 
-	private async ensureThreadExists(
-		memory: BuiltMemory,
-		threadId: string,
-		resourceId: string,
-	): Promise<void> {
-		const existingThread = await memory.getThread(threadId);
-		if (existingThread) return;
-
-		await memory.saveThread({
-			id: threadId,
-			resourceId,
-			title: '',
-		});
-	}
-
 	private createWorkflowTaskServiceWithUiSync(
 		threadId: string,
 		runId: string,
@@ -3020,6 +3004,14 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
+		const memory = this.agentMemory;
+		const boundProjectId = await memory.getThreadProjectId(threadId);
+		if (!boundProjectId) {
+			throw new UnexpectedError(
+				`Instance AI thread "${threadId}" has no bound project; it must be created via POST /instance-ai/threads before a run can start`,
+			);
+		}
+
 		const adminSettings = this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
@@ -3066,6 +3058,7 @@ export class InstanceAiService {
 			searchProxyConfig,
 			pushRef,
 			threadId,
+			projectId: boundProjectId,
 		});
 		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
@@ -3105,8 +3098,6 @@ export class InstanceAiService {
 			proxyBaseUrl && tokenManager
 				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
 				: await this.resolveAgentModelConfig(user);
-		const memory = this.agentMemory;
-		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
@@ -3184,6 +3175,7 @@ export class InstanceAiService {
 			runId,
 			messageGroupId,
 			userId: user.id,
+			projectId: boundProjectId,
 			orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 			modelId,
 			checkpointStore: this.checkpointStore,

@@ -889,6 +889,7 @@ export type CloudUpdateLinkSourceType =
 	| 'chat-hub'
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
+	| 'data-redaction'
 	| 'workflow-settings';
 
 export type UTMCampaign =
