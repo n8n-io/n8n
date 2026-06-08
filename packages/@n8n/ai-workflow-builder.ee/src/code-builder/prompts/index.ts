@@ -6,7 +6,7 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { formatTextWithLineNumbers } from '@n8n/text-editor';
+import { formatTextWithLineNumbers } from '@n8n/ai-utilities/text-editor';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {

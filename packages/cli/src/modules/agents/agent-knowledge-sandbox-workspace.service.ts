@@ -8,7 +8,7 @@ import {
 	type SandboxFilesystem,
 	type SandboxInstance,
 	type SandboxProvider,
-} from '@n8n/ai-utilities/sandbox';
+} from '@n8n/agents/sandbox';
 import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'node:crypto';

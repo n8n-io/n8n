@@ -1,4 +1,5 @@
 /* eslint-disable import-x/order */
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 import type { Mock } from 'vitest';
 
 // The Daytona SDK is consumed in source via `loadDaytona()` (which `require()`s
@@ -44,8 +45,8 @@ const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
 	return { DaytonaError, DaytonaNotFoundError, Image };
 });
 
-vi.mock('@n8n/ai-utilities/sandbox', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/ai-utilities/sandbox')>()),
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof SharedSandboxMod>()),
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 
@@ -144,7 +145,7 @@ async function knowledgeBaseHash(): Promise<string> {
 	const { buildKnowledgeBaseWorkspaceBundle } = await import(
 		'../../knowledge-base/materialize-knowledge-base'
 	);
-	return buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' }).contentHash;
+	return (await buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' })).contentHash;
 }
 
 describe('SnapshotManager.ensureImage', () => {

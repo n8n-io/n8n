@@ -10,7 +10,7 @@ import {
 	type SandboxInstance,
 	type SandboxProvider,
 	loadDaytona,
-} from '@n8n/ai-utilities/sandbox';
+} from '@n8n/agents/sandbox';
 
 import type { Logger } from '../logger';
 import { SnapshotManager } from './snapshot-manager';

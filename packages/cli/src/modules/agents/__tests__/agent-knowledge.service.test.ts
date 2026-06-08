@@ -17,7 +17,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 
 const writeStreamToSandboxFileMock = jest.fn();
 
-jest.mock('@n8n/ai-utilities/sandbox', () => ({
+jest.mock('@n8n/agents/sandbox', () => ({
 	writeStreamToSandboxFile: (...args: unknown[]) => writeStreamToSandboxFileMock(...args),
 }));
 

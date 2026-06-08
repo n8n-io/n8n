@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import type * as SharedSandboxMod from '@n8n/ai-utilities/sandbox';
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 
 import './source-map-filter';
 
@@ -128,7 +128,7 @@ const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
 );
 const loadSharedSandbox = lazyModule(
-	() => require('@n8n/ai-utilities/sandbox') as typeof SharedSandboxMod,
+	() => require('@n8n/agents/sandbox') as typeof SharedSandboxMod,
 );
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,

@@ -12,7 +12,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 const createSandboxMock = jest.fn();
 const createFilesystemMock = jest.fn();
 
-jest.mock('@n8n/ai-utilities/sandbox', () => ({
+jest.mock('@n8n/agents/sandbox', () => ({
 	createSandbox: (...args: unknown[]) => createSandboxMock(...args),
 	createFilesystem: (...args: unknown[]) => createFilesystemMock(...args),
 	DAYTONA_WORKSPACE_ROOT: '/home/daytona/workspace',

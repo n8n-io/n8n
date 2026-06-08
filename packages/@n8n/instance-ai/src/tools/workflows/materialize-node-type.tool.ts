@@ -10,7 +10,7 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';

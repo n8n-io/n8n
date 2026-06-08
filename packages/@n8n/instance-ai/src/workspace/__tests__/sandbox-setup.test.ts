@@ -331,6 +331,7 @@ describe('setupSandboxWorkspace', () => {
 				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
 			>();
 		runInSandbox.mockImplementation(async (_workspace, command) => {
+			await Promise.resolve();
 			if (command.startsWith('cat ')) {
 				return { exitCode: 1, stdout: '', stderr: '' };
 			}

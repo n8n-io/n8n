@@ -8,6 +8,9 @@
   "typesVersions": {
     "*": {
       "text-editor": [
+        "dist/esm/utils/workflow-text-editor.d.ts"
+      ],
+      "generic-text-editor": [
         "dist/esm/utils/text-editor.d.ts"
       ],
       "node-catalog": [
@@ -21,9 +24,6 @@
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
-      ],
-      "sandbox": [
-        "dist/esm/sandbox/index.d.ts"
       ]
     }
   },
@@ -34,6 +34,11 @@
       "require": "./dist/cjs/index.js"
     },
     "./text-editor": {
+      "types": "./dist/esm/utils/workflow-text-editor.d.ts",
+      "import": "./dist/esm/utils/workflow-text-editor.js",
+      "require": "./dist/cjs/utils/workflow-text-editor.js"
+    },
+    "./generic-text-editor": {
       "types": "./dist/esm/utils/text-editor.d.ts",
       "import": "./dist/esm/utils/text-editor.js",
       "require": "./dist/cjs/utils/text-editor.js"
@@ -57,11 +62,6 @@
       "types": "./dist/esm/web-search/index.d.ts",
       "import": "./dist/esm/web-search/index.js",
       "require": "./dist/cjs/web-search/index.js"
-    },
-    "./sandbox": {
-      "types": "./dist/esm/sandbox/index.d.ts",
-      "import": "./dist/esm/sandbox/index.js",
-      "require": "./dist/cjs/sandbox/index.js"
     },
     "./*": "./*"
   },
@@ -96,9 +96,6 @@
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
-    "@daytonaio/sdk": "catalog:",
-    "@n8n/sandbox-client": "0.0.4",
-    "@n8n/agents": "workspace:*",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
@@ -108,7 +105,6 @@
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
-    "@n8n/text-editor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "tmp-promise": "3.0.3",

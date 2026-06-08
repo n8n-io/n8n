@@ -1,6 +1,6 @@
 import { Workspace } from '@n8n/agents';
-import type * as SharedSandboxMod from '@n8n/ai-utilities/sandbox';
-import type { SandboxFilesystem, SandboxInstance } from '@n8n/ai-utilities/sandbox';
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
+import type { SandboxFilesystem, SandboxInstance } from '@n8n/agents/sandbox';
 
 const {
 	mockCreateSharedSandbox,
@@ -18,7 +18,7 @@ const {
 	mockDaytonaConstructor: vi.fn(),
 }));
 
-vi.mock('@n8n/ai-utilities/sandbox', async (importOriginal) => ({
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof SharedSandboxMod>()),
 	createSandbox: mockCreateSharedSandbox,
 	createFilesystem: mockCreateFilesystem,

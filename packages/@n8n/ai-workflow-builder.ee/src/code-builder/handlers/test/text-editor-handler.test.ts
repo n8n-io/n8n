@@ -6,7 +6,7 @@ import {
 	MultipleMatchesError,
 	NoMatchFoundError,
 	type BatchReplaceResult,
-} from '@n8n/text-editor';
+} from '@n8n/ai-utilities/text-editor';
 
 import { TextEditorHandler } from '../text-editor-handler';
 

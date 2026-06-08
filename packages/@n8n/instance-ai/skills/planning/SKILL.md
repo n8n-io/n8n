@@ -1,9 +1,11 @@
 ---
 name: planning
 description: >-
-  Designs dependency-aware execution plans for multi-workflow, multi-artifact,
-  shared data-table, broad research, or ambiguous architecture requests. Use
-  before create-tasks for initial plan-worthy work.
+  ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
+  shared data-table schema/migration across tasks, or the user explicitly asked
+  to review a plan first. Do NOT use for new one-off workflows, single-workflow
+  edits, verification-only requests, or standalone data-table ops — use
+  workflow-builder or data-table-manager instead.
 recommended_tools:
   - create-tasks
   - workflows
@@ -21,15 +23,34 @@ Use this skill to design a dependency-aware task graph in the orchestrator and
 submit it with `create-tasks`. Do not spawn another agent, do not delegate the
 planning step, and do not use incremental plan item tools.
 
-Planning is for work that needs coordination: multiple workflows, dependencies
-between workflows, shared data-table schema or migration work, multiple durable
-artifacts, broad best-practice research, ambiguous business-process
-architecture, or an explicit user request to review a plan first.
+## When NOT to use this skill
 
-Clear single-workflow builds and existing-workflow edits use the
-`workflow-builder` skill with `build-workflow` directly. Standalone data-table
-work uses the `data-table-manager` skill with direct `data-tables` and
-`parse-file` calls.
+Stop and use `workflow-builder` + `build-workflow` instead when the request is:
+
+- A new or one-off single workflow, even if it sounds large or unfamiliar
+- An edit to one existing workflow (nodes, expressions, credentials, schedule, Code)
+- Verification, setup, or credential collection for a workflow you just built
+- A workflow-local data table whose schema ships with that same workflow
+- Standalone data-table list/schema/query/create/mutation work
+
+Do not call `create-tasks` just to get approval, verification, or a checklist for
+a single workflow. Workflow verification is automatic from structured build
+outcomes after `build-workflow`.
+
+## When to use this skill
+
+Planning is only for work that needs coordination: multiple workflows,
+dependencies between workflows, shared data-table schema or migration work across
+tasks, multiple durable artifacts, broad best-practice research across many
+sources, genuinely ambiguous business-process architecture that cannot be
+resolved with one `build-workflow` call, or an explicit user request to review a
+plan first.
+
+If shared data tables are involved, load `data-table-manager` before this skill
+and carry the relevant table guidance into workflow task specs. Clear
+single-workflow builds and existing-workflow edits use `workflow-builder` with
+`build-workflow` directly. Standalone data-table work uses `data-table-manager`
+with direct `data-tables` and `parse-file` calls.
 
 ## Method
 

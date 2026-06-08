@@ -20,7 +20,7 @@
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
-import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/ai-utilities/sandbox';
+import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
 
 import {
 	buildKnowledgeBaseWorkspaceBundle,
@@ -226,7 +226,7 @@ export class SnapshotManager {
 			new BuilderTemplatesService(builderTemplatesOptionsFromEnv({ logger: this.logger }));
 		const templatesBundle = await templatesService.getBundle();
 
-		return buildKnowledgeBaseWorkspaceBundle({
+		return await buildKnowledgeBaseWorkspaceBundle({
 			root: DAYTONA_WORKSPACE_ROOT,
 			templatesArchive: templatesBundle.archive,
 			logger: this.logger,

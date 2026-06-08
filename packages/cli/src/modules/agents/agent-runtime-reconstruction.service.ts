@@ -42,7 +42,6 @@ import {
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -343,7 +342,6 @@ export class AgentRuntimeReconstructionService {
 			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
-			integrationType,
 			credentialIntegrations,
 		} = params;
 
@@ -373,10 +371,6 @@ export class AgentRuntimeReconstructionService {
 
 		if (runtimeProfile === 'top-level') {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);
-			const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
-			if (integration?.supportedComponents !== undefined) {
-				agent.tool(createRichInteractionTool(integrationType));
-			}
 
 			if (credentialIntegrations.length > 0) {
 				const messageContextStore = Container.get(IntegrationMessageContextService);

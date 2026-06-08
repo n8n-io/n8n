@@ -7,7 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow } from '@n8n/workflow-sdk';

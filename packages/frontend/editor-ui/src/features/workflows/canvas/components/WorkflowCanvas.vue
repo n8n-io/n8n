@@ -27,6 +27,7 @@ const props = withDefaults(
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
+		stripedBackground?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -35,6 +36,7 @@ const props = withDefaults(
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
 		suppressInteraction: false,
+		stripedBackground: true,
 	},
 );
 
@@ -163,6 +165,7 @@ defineExpose({
 				:can-execute="canExecute"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
+				:striped-background="stripedBackground"
 				:initial-viewport="initialViewport"
 				v-bind="$attrs"
 			/>

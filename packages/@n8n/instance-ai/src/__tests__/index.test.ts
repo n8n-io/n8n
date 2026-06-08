@@ -119,7 +119,7 @@ vi.mock('../workspace/create-workspace', () => ({
 	createSandbox: () => ({ type: 'sandbox' }),
 	createWorkspace: () => ({ type: 'workspace' }),
 }));
-vi.mock('@n8n/ai-utilities/sandbox', () => ({
+vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: () => '/workspace',
 	getPromptWorkspaceRoot: () => '/home/daytona/workspace',
 }));

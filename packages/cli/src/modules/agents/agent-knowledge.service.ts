@@ -7,7 +7,7 @@ import {
 	writeStreamToSandboxFile,
 	type SandboxFilesystem,
 	type SandboxInstance,
-} from '@n8n/ai-utilities/sandbox';
+} from '@n8n/agents/sandbox';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { generateNanoId, sanitizeFilename } from '@n8n/utils';

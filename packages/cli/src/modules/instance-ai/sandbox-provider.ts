@@ -1,12 +1,16 @@
-import { isInstanceAiSandboxProvider, type InstanceAiSandboxProvider } from '@n8n/api-types';
+import type { InstanceAiSandboxProvider } from '@n8n/api-types';
+import {
+	DEFAULT_SANDBOX_PROVIDER as RUNTIME_DEFAULT_SANDBOX_PROVIDER,
+	normalizeSandboxProvider as normalizeRuntimeSandboxProvider,
+} from '@n8n/agents/sandbox';
 import { OperationalError } from 'n8n-workflow';
 
 /** Fallback provider when none is configured or a persisted/env value is unrecognized. */
-export const DEFAULT_SANDBOX_PROVIDER: InstanceAiSandboxProvider = 'n8n-sandbox';
+export const DEFAULT_SANDBOX_PROVIDER: InstanceAiSandboxProvider = RUNTIME_DEFAULT_SANDBOX_PROVIDER;
 
 /** Coerce a raw config/env value to a supported provider, falling back to the default. */
 export function normalizeSandboxProvider(value: string | undefined): InstanceAiSandboxProvider {
-	return isInstanceAiSandboxProvider(value) ? value : DEFAULT_SANDBOX_PROVIDER;
+	return normalizeRuntimeSandboxProvider(value);
 }
 
 export const N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE =

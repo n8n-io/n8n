@@ -1,6 +1,6 @@
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { normalizeSandboxProvider, type SandboxConfig } from '@n8n/ai-utilities/sandbox';
+import { normalizeSandboxProvider, type SandboxConfig } from '@n8n/agents/sandbox';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
