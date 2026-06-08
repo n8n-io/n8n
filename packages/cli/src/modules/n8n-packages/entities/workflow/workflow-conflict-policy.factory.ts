@@ -1,19 +1,19 @@
 import { Service } from '@n8n/di';
 
-import { FailWorkflowConflictPolicyHandler } from './fail-workflow-conflict-policy.handler';
-import { NewVersionWorkflowConflictPolicyHandler } from './new-version-workflow-conflict-policy.handler';
-import { SkipWorkflowConflictPolicyHandler } from './skip-workflow-conflict-policy.handler';
-import type { WorkflowConflictPolicyHandler } from './workflow-conflict-policy-handler';
 import type { WorkflowConflictPolicy } from '../../n8n-packages.types';
+import type { WorkflowConflictPolicyHandler } from './workflow-conflict-policy-handler';
+import { WorkflowConflictPolicyFailHandler } from './workflow-conflict-policy-fail.handler';
+import { WorkflowConflictPolicyNewVersionHandler } from './workflow-conflict-policy-new-version.handler';
+import { WorkflowConflictPolicySkipHandler } from './workflow-conflict-policy-skip.handler';
 
 @Service()
 export class WorkflowConflictPolicyFactory {
 	private readonly handlers: Record<WorkflowConflictPolicy, WorkflowConflictPolicyHandler>;
 
 	constructor(
-		newVersion: NewVersionWorkflowConflictPolicyHandler,
-		fail: FailWorkflowConflictPolicyHandler,
-		skip: SkipWorkflowConflictPolicyHandler,
+		newVersion: WorkflowConflictPolicyNewVersionHandler,
+		fail: WorkflowConflictPolicyFailHandler,
+		skip: WorkflowConflictPolicySkipHandler,
 	) {
 		/* eslint-disable @typescript-eslint/naming-convention -- API workflow conflict policy keys */
 		this.handlers = {

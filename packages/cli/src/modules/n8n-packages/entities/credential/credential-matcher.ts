@@ -8,7 +8,7 @@ import {
 	type CredentialResolution,
 	type CredentialResolutionFailure,
 } from './credential.types';
-import type { BindingMap } from '../../n8n-packages.types';
+import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface CredentialMatcherContext {
@@ -41,7 +41,7 @@ export abstract class CredentialMatcher {
 	protected abstract resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<BindingMap>;
+	): Promise<ImportBindingMap>;
 }
 
 function partitionByKnownType(

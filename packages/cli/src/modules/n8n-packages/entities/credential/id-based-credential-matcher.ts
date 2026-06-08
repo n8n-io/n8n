@@ -7,7 +7,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
-import type { BindingMap } from '../../n8n-packages.types';
+import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 @Service()
@@ -24,7 +24,7 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 	protected async resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<BindingMap> {
+	): Promise<ImportBindingMap> {
 		const resolvableIds = await this.findResolvableCredentialIds(
 			known.map((reference) => reference.id),
 			context.targetProject,

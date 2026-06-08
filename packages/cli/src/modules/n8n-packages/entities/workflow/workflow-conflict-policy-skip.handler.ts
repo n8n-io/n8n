@@ -7,7 +7,7 @@ import { WorkflowConflictPolicyHandler } from './workflow-conflict-policy-handle
 import type { WorkflowImportOutcome, WorkflowMatchContext } from './workflow-conflict-policy.types';
 
 @Service()
-export class SkipWorkflowConflictPolicyHandler extends WorkflowConflictPolicyHandler {
+export class WorkflowConflictPolicySkipHandler extends WorkflowConflictPolicyHandler {
 	constructor(workflowCreationService: WorkflowCreationService) {
 		super(workflowCreationService);
 	}

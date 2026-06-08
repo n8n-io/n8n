@@ -1,7 +1,7 @@
 import type { Project, User } from '@n8n/db';
 
 import type {
-	BindingMap,
+	ImportBindingMap,
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
@@ -23,7 +23,7 @@ export type CredentialResolutionFailure = {
 };
 
 export interface CredentialResolution {
-	successes: BindingMap;
+	successes: ImportBindingMap;
 	failures: CredentialResolutionFailure[];
 }
 
@@ -58,7 +58,7 @@ export function createFailure(
 
 /** Flattens the internal lookup `Map` into the serializable pairs exposed via events/responses. */
 export function resolvedBindingsToSummaries(
-	successes: BindingMap,
+	successes: ImportBindingMap,
 ): Array<{ sourceId: string; targetId: string }> {
 	return [...successes].map(([sourceId, targetId]) => ({ sourceId, targetId }));
 }

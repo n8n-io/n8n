@@ -5,7 +5,11 @@ export type { CredentialResolution } from './entities/credential/credential.type
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';
 
-export type WorkflowConflictPolicy = 'new-version' | 'fail' | 'skip';
+export type WorkflowConflictPolicy =
+	// Matched = target-project workflow whose sourceWorkflowId equals a workflow id in the exported package.
+	| 'new-version' // Update matched workflows; create the rest
+	| 'fail' // Abort the import when any matched workflow already exists in the target project
+	| 'skip'; // Leave matched workflows unchanged; create the rest
 
 export interface ExportWorkflowsRequest {
 	user: User;
@@ -33,15 +37,15 @@ export interface ImportedWorkflowSummary {
 }
 
 /** Source id → target id mapping for one entity type within an imported package. */
-export type BindingMap = Map<string, string>;
+export type ImportBindingMap = Map<string, string>;
 
 /**
  * Source→target id mappings accumulated while importing a package, one map per
  * entity type.
  */
 export interface PackageImportBindings {
-	workflows: BindingMap;
-	credentials: BindingMap;
+	workflows: ImportBindingMap;
+	credentials: ImportBindingMap;
 }
 
 export function createBindings(seed: Partial<PackageImportBindings> = {}): PackageImportBindings {
