@@ -124,18 +124,15 @@ const openInteractive = computed(
 );
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
-const hasOpenInteractiveQuestion = computed(
-	() => hasOpenInteraction.value && !hasOpenApproval.value,
-);
 
 const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
 
 const chatPlaceholder = computed(() =>
 	isBuilderReadOnly.value
 		? locale.baseText('agents.builder.readonly.placeholder')
-		: hasOpenApproval.value
+		: hasOpenApproval.value && props.endpoint !== 'chat'
 			? locale.baseText('agents.chat.approval.inputPlaceholder')
-			: hasOpenInteractiveQuestion.value
+			: hasOpenInteraction.value
 				? locale.baseText('agents.chat.answerQuestionPlaceholder')
 				: locale.baseText('agents.chat.input.placeholder'),
 );
@@ -151,16 +148,17 @@ async function onSubmit() {
 	const text = inputText.value.trim();
 	if (
 		!text ||
-		isStreaming.value ||
 		isPreparingToSend.value ||
 		isBuilderReadOnly.value ||
-		hasOpenApproval.value
+		// In builder mode, approval cards are the only way to resolve approvals.
+		// In chat mode, users can type a message to cancel any suspended tool.
+		(hasOpenApproval.value && props.endpoint !== 'chat')
 	)
 		return;
 
-	// When there is an open interactive question, the user's message cancels
-	// the suspended tool and steers the agent in a new direction.
-	if (hasOpenInteractiveQuestion.value) {
+	// When there is any open interactive tool (question or approval in chat
+	// mode), the user's message cancels the suspended tool and steers the agent.
+	if (hasOpenInteraction.value) {
 		inputText.value = '';
 		await cancelAndSteer(text);
 		return;
@@ -201,14 +199,6 @@ async function onSubmit() {
 
 	await sendMessage(text);
 }
-
-function sendMessageFromOutside(message: string) {
-	if (hasOpenApproval.value) return;
-	inputText.value = message;
-	void onSubmit();
-}
-
-defineExpose({ sendMessageFromOutside });
 
 // Capture the seed message locally so later clearing of `props.initialMessage`
 // by the parent (which does so on `nextTick` to prevent the same prompt

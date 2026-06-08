@@ -58,6 +58,19 @@ export type AgentStreamResponseConfig = {
 	executionCounter: AgentExecutionCounter;
 };
 
+export type ResumeStreamResponseConfig = {
+	agentInstance: RuntimeAgent;
+	toolRegistry: ToolRegistry;
+	agentId: string;
+	projectId: string;
+	runId: string;
+	toolCallId: string;
+	resumeData: unknown;
+	memory: AgentStreamMemoryScope;
+	streamKey?: string;
+	executionCounter: AgentExecutionCounter;
+};
+
 type InitialMessageTurnConfig = {
 	message: string;
 	initialTurn?: never;
@@ -124,17 +137,32 @@ export function integrationAgentStreamKey(
 	return `integration:${projectId}:${agentId}:${integrationType ?? 'unknown'}:${threadId}`;
 }
 
-function getMaxIterationsChunks(): StreamChunk[] {
+function* getMaxIterationsChunks(): Generator<StreamChunk> {
 	const id = crypto.randomUUID();
-	return [
-		{ type: 'text-start', id },
-		{
-			type: 'text-delta',
-			id,
-			delta: 'The agent has reached the maximum number of iterations and has stopped.',
-		},
-		{ type: 'text-end', id },
-	];
+	yield { type: 'text-start', id };
+	yield {
+		type: 'text-delta',
+		id,
+		delta: 'The agent has reached the maximum number of iterations and has stopped.',
+	};
+	yield { type: 'text-end', id };
+}
+
+async function* processAgentStream(
+	stream: ReadableStream<StreamChunk>,
+	recorder: ExecutionRecorder,
+	control: AgentStreamControl | undefined,
+	onChunk?: (value: StreamChunk) => void,
+): AsyncGenerator<StreamChunk> {
+	for await (const value of streamAgentChunks(stream)) {
+		if (control?.wasAborted()) return;
+		recorder.record(value);
+		onChunk?.(value);
+		if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+			yield* getMaxIterationsChunks();
+		}
+		yield value;
+	}
 }
 
 @Service()
@@ -319,12 +347,7 @@ export class AgentsRuntimeService {
 					abortSignal: control?.signal,
 				});
 
-				for await (const value of streamAgentChunks(resultStream.stream)) {
-					if (control?.wasAborted()) {
-						return;
-					}
-
-					recorder.record(value);
+				yield* processAgentStream(resultStream.stream, recorder, control, (value) => {
 					if (value.type === 'tool-call-suspended') {
 						logger.info('Chat: tool-call-suspended chunk received', {
 							agentId,
@@ -332,19 +355,10 @@ export class AgentsRuntimeService {
 							toolName: value.toolName,
 						});
 					}
-					if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-						for (const chunk of getMaxIterationsChunks()) {
-							yield chunk;
-						}
-					}
-					yield value;
-				}
+				});
 
-				if (control?.wasAborted()) {
-					return;
-				}
+				if (control?.wasAborted()) return;
 
-				const messageRecord = recorder.getMessageRecord();
 				void agentExecutionService
 					.recordMessage({
 						threadId,
@@ -352,7 +366,7 @@ export class AgentsRuntimeService {
 						agentName: agentInstance.name,
 						projectId,
 						userMessage: turnMessage,
-						record: messageRecord,
+						record: recorder.getMessageRecord(),
 						hitlStatus: recorder.suspended ? 'suspended' : undefined,
 						source,
 						taskId,
@@ -360,6 +374,99 @@ export class AgentsRuntimeService {
 					})
 					.catch((error) => {
 						logger.warn('Failed to record agent execution', {
+							agentId,
+							threadId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					});
+			},
+		});
+	}
+
+	/**
+	 * Resume a suspended agent tool call and yield the resulting stream chunks.
+	 *
+	 * Mirrors `streamAgentResponse` but starts with a `resume()` initial turn
+	 * instead of a `stream()` call. After the initial resume completes, any
+	 * mid-stream steer that aborts the SSE connection kicks off a fresh
+	 * `streamTurn` — identical to the steer behaviour in `streamAgentResponse`.
+	 *
+	 * Execution is recorded for both the initial resumed turn (`hitlStatus:
+	 * 'resumed'`) and any subsequent steer turns.
+	 */
+	async *streamResumeResponse(config: ResumeStreamResponseConfig): AsyncGenerator<StreamChunk> {
+		const {
+			agentInstance,
+			toolRegistry,
+			agentId,
+			runId,
+			toolCallId,
+			resumeData,
+			memory,
+			projectId,
+			streamKey,
+			executionCounter,
+		} = config;
+		const { threadId, resourceId } = memory;
+		const { logger, agentExecutionService } = this;
+
+		yield* this.streamSteerableTurns({
+			streamKey,
+			async *initialTurn(control: AgentStreamControl | undefined) {
+				const recorder = new ExecutionRecorder(toolRegistry);
+				const resultStream = await agentInstance.resume('stream', resumeData, {
+					runId,
+					toolCallId,
+					executionCounter,
+					abortSignal: control?.signal,
+				});
+
+				yield* processAgentStream(resultStream.stream, recorder, control);
+
+				if (control?.wasAborted()) return;
+
+				void agentExecutionService
+					.recordMessage({
+						threadId,
+						agentId,
+						agentName: agentInstance.name,
+						projectId,
+						userMessage: '',
+						record: recorder.getMessageRecord(),
+						hitlStatus: 'resumed',
+					})
+					.catch((error) => {
+						logger.warn('Failed to record resumed agent execution', {
+							agentId,
+							threadId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					});
+			},
+			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
+				const recorder = new ExecutionRecorder(toolRegistry);
+				const resultStream = await agentInstance.stream(turnMessage, {
+					persistence: { threadId, resourceId },
+					executionCounter,
+					abortSignal: control?.signal,
+				});
+
+				yield* processAgentStream(resultStream.stream, recorder, control);
+
+				if (control?.wasAborted()) return;
+
+				void agentExecutionService
+					.recordMessage({
+						threadId,
+						agentId,
+						agentName: agentInstance.name,
+						projectId,
+						userMessage: turnMessage,
+						record: recorder.getMessageRecord(),
+						hitlStatus: recorder.suspended ? 'suspended' : undefined,
+					})
+					.catch((error) => {
+						logger.warn('Failed to record agent execution after steer', {
 							agentId,
 							threadId,
 							error: error instanceof Error ? error.message : String(error),

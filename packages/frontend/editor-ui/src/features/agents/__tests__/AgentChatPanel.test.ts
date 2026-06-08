@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { flushPromises, mount } from '@vue/test-utils';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { computed, nextTick, ref } from 'vue';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
@@ -109,6 +109,12 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
+	async function submitChatMessage(wrapper: VueWrapper, message: string): Promise<void> {
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', message);
+		await chatInput.trigger('submit');
+	}
+
 	function openInteractiveMessage(
 		toolName: InteractiveToolName = ASK_QUESTION_TOOL_NAME,
 	): ChatMessage {
@@ -179,9 +185,7 @@ describe('AgentChatPanel', () => {
 			},
 		});
 
-		(
-			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
-		).sendMessageFromOutside('update config');
+		await submitChatMessage(wrapper, 'update config');
 		await flushPromises();
 
 		expect(beforeSend).toHaveBeenCalledTimes(1);
@@ -302,9 +306,7 @@ describe('AgentChatPanel', () => {
 			},
 		});
 
-		(
-			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
-		).sendMessageFromOutside('hello');
+		await submitChatMessage(wrapper, 'hello');
 		await flushPromises();
 
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
@@ -331,11 +333,8 @@ describe('AgentChatPanel', () => {
 				connectedTriggers: [],
 			},
 		});
-		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		chatInput.vm.$emit('update:modelValue', 'send next');
-		await nextTick();
-		await chatInput.trigger('submit');
+		await submitChatMessage(wrapper, 'send next');
 
 		expect(enqueueMessageMock).toHaveBeenCalledWith('send next');
 		expect(sendMessageMock).not.toHaveBeenCalled();
@@ -346,9 +345,7 @@ describe('AgentChatPanel', () => {
 
 		const wrapper = mountPanel();
 
-		(
-			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
-		).sendMessageFromOutside('go another direction');
+		await submitChatMessage(wrapper, 'go another direction');
 		await flushPromises();
 
 		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction');

@@ -800,8 +800,6 @@ export class AgentsService {
 			throw new UserError(`Checkpoint ${runId} has no memory data and cannot be resumed`);
 		}
 
-		const threadId = memoryScope.threadId;
-
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
@@ -811,39 +809,25 @@ export class AgentsService {
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
-		const recorder = new ExecutionRecorder(toolRegistry);
 
-		const resultStream = await agentInstance.resume('stream', resumeData, {
+		// Derive a stream key so the resumed SSE stream can be interrupted by a
+		// concurrent `chat/steer` call — matching the behaviour of `build/resume`.
+		const streamKey = userId
+			? testChatAgentStreamKey(projectId, agentId, userId, memoryScope.threadId)
+			: undefined;
+
+		yield* this.agentsRuntimeService.streamResumeResponse({
+			agentInstance,
+			toolRegistry,
+			agentId,
+			projectId,
 			runId,
 			toolCallId,
+			resumeData,
+			memory: memoryScope,
+			streamKey,
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			yield value;
-		}
-
-		// Always record resumed executions — even if they suspend again (chained HITL).
-		// Don't repeat the original user message — the pre-suspension execution already has it.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: '',
-				record: messageRecord,
-				hitlStatus: 'resumed',
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record resumed agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
 	}
 
 	/**
