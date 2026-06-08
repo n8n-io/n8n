@@ -226,7 +226,7 @@ export class SnapshotManager {
 			new BuilderTemplatesService(builderTemplatesOptionsFromEnv({ logger: this.logger }));
 		const templatesBundle = await templatesService.getBundle();
 
-		return buildKnowledgeBaseWorkspaceBundle({
+		return await buildKnowledgeBaseWorkspaceBundle({
 			root: DAYTONA_WORKSPACE_ROOT,
 			templatesArchive: templatesBundle.archive,
 			logger: this.logger,
