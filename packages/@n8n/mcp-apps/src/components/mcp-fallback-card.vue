@@ -25,7 +25,7 @@ defineProps<{
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing--xs);
-	width: 100%;
+	width: 45%;
 	padding: var(--spacing--lg);
 	border: var(--border);
 	border-radius: var(--radius--md);
