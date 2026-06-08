@@ -5,6 +5,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import type { CannedMetricKey } from './evaluation.constants';
+import { DEFAULT_SELECTED_METRIC_KEYS } from './evaluation.constants';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 
 export type WizardStep = 0 | 1 | 2 | 3;
@@ -31,7 +32,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			() => focusPanelStore.focusPanelActive && focusPanelStore.selectedTab === 'evaluations',
 		);
 		const activeStep = ref<WizardStep>(0);
-		const selectedMetricKeys = ref<CannedMetricKey[]>([]);
+		const selectedMetricKeys = ref<CannedMetricKey[]>([...DEFAULT_SELECTED_METRIC_KEYS]);
 		const judgeSelectionByMetric = ref<Partial<Record<CannedMetricKey, JudgeSelection>>>({});
 		const aiNodeName = ref<string>('');
 		const isSliceMode = ref(false);
@@ -52,7 +53,9 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 
 		function resetState() {
 			activeStep.value = 0;
-			selectedMetricKeys.value = [];
+			// Correctness is pre-selected for every fresh wizard ("we've selected it
+			// for you"). Hydration overrides this when a saved config exists.
+			selectedMetricKeys.value = [...DEFAULT_SELECTED_METRIC_KEYS];
 			judgeSelectionByMetric.value = {};
 			aiNodeName.value = '';
 			isSliceMode.value = false;

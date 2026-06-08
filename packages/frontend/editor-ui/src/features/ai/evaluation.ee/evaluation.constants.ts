@@ -63,6 +63,18 @@ export type CannedMetric = {
 
 export const LLM_JUDGE_METRIC_KEYS = new Set<CannedMetricKey>(['correctness', 'helpfulness']);
 
+// Checks step display groupings. Correctness is the primary, pre-selected check;
+// the rest are revealed behind "Explore more checks". `helpfulness` and
+// `stringSimilarity` are intentionally not offered as built-in cards (they remain
+// achievable via a Custom check) but stay in CANNED_METRICS so legacy configs
+// still decode and render.
+export const BUILTIN_PRIMARY_CHECK_KEY: CannedMetricKey = 'correctness';
+export const BUILTIN_MORE_CHECK_KEYS: readonly CannedMetricKey[] = ['categorization', 'toolsUsed'];
+
+// Metrics pre-selected for a fresh/blank wizard. Hydration overrides this with a
+// saved config's metrics when one exists.
+export const DEFAULT_SELECTED_METRIC_KEYS: readonly CannedMetricKey[] = ['correctness'];
+
 // Column names must match what the Set Metrics operation reads (expectedAnswer,
 // expectedTools). Multiple metrics may share a column — wizard dedupes by name.
 export type ExpectedField = {
