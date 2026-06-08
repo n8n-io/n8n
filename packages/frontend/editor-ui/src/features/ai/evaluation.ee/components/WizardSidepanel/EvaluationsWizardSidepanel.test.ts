@@ -607,8 +607,8 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(queryByTestId('evaluations-wizard-sidepanel-loading-skeletons')).not.toBeInTheDocument();
 		expect(queryByTestId('evaluations-wizard-sidepanel-running')).not.toBeInTheDocument();
 		expect(getByTestId('evaluations-wizard-sidepanel-results')).toBeInTheDocument();
-		// Aggregate header + one case row render from the run/case data.
-		expect(getByTestId('evaluations-wizard-sidepanel-results-summary')).toBeInTheDocument();
+		// A per-check result card and one expandable case row render from the run data.
+		expect(getByTestId('evaluations-wizard-sidepanel-result-card-correctness')).toBeInTheDocument();
 		expect(getByTestId('evaluations-wizard-sidepanel-case-1')).toBeInTheDocument();
 	});
 

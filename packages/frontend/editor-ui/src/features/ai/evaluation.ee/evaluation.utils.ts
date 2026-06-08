@@ -131,6 +131,7 @@ export function getMetricScale(category: MetricCategory | undefined): MetricScal
 export type ResultCheck = {
 	key: string;
 	label: string;
+	description?: string;
 	isAiJudged: boolean;
 	icon: IconName;
 	iconBg?: string;

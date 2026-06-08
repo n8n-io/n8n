@@ -14,7 +14,9 @@ import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store'
 import { useEvaluationStore } from '../../evaluation.store';
 import {
 	extractAnswerText,
+	formatMetricAverage,
 	formatMetricLabel,
+	formatMetricPercent,
 	getMetricCategory,
 	getUserDefinedMetricNames,
 	type ResultCheck,
@@ -36,7 +38,6 @@ import { useWizardPersistence } from './useWizardPersistence';
 import { useWizardHydration } from './useWizardHydration';
 import CheckCard from './CheckCard.vue';
 import CheckResultCard from './CheckResultCard.vue';
-import ResultsSummaryHeader from './ResultsSummaryHeader.vue';
 import ResultsCaseRow from './ResultsCaseRow.vue';
 import TestCaseForm from './TestCaseForm.vue';
 import SystemSelector from './SystemSelector.vue';
@@ -256,6 +257,7 @@ const resultChecks = computed<ResultCheck[]>(() => {
 		return {
 			key,
 			label: canned ? locale.baseText(canned.labelKey) : formatMetricLabel(key),
+			description: canned ? locale.baseText(canned.descriptionKey) : undefined,
 			isAiJudged: getMetricCategory(key) === 'aiBased',
 			// Mirror the Step-2 check tile; custom checks fall back to the code icon.
 			icon: canned?.icon ?? 'code',
@@ -608,11 +610,34 @@ function handleViewResults() {
 						:class="$style.results"
 						data-test-id="evaluations-wizard-sidepanel-results"
 					>
-						<ResultsSummaryHeader
-							:checks="resultChecks"
-							:run-metrics="latestRun.metrics"
-							:cases="latestRunCases"
-						/>
+						<ul :class="$style.checkList">
+							<li v-for="check in resultChecks" :key="check.key">
+								<CheckResultCard
+									:icon="check.icon"
+									:icon-bg="check.iconBg"
+									:icon-fg="check.iconFg"
+									:title="check.label"
+									:description="check.description"
+									:badge="
+										check.isAiJudged
+											? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
+											: undefined
+									"
+									:badge-icon="check.isAiJudged ? 'wand-sparkles' : undefined"
+									:score-label="
+										check.isAiJudged
+											? locale.baseText('evaluations.wizardSidepanel.step3.averageLabel')
+											: locale.baseText('evaluations.wizardSidepanel.step3.passedLabel')
+									"
+									:score-text="
+										check.isAiJudged
+											? formatMetricAverage(latestRun.metrics?.[check.key], { category: 'aiBased' })
+											: formatMetricPercent(latestRun.metrics?.[check.key])
+									"
+									:data-test-id="`evaluations-wizard-sidepanel-result-card-${check.key}`"
+								/>
+							</li>
+						</ul>
 						<ResultsCaseRow
 							v-for="(testCase, index) in latestRunCases"
 							:key="testCase.id"
