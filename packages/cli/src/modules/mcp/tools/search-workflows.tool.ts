@@ -158,7 +158,7 @@ export async function searchWorkflows(
 	{ limit = MAX_RESULTS, query, projectId, tags, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
-	const filterTags = tags?.filter((tag) => tag.length > 0);
+	const filterTags = tags && Array.from(new Set(tags.filter((tag) => tag.length > 0)));
 
 	const options: ListQuery.Options = {
 		take: safeLimit,

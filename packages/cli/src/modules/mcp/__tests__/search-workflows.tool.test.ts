@@ -170,6 +170,19 @@ describe('search-workflows MCP tool', () => {
 			expect(optionsArg.filter.tags).toBeUndefined();
 		});
 
+		test('deduplicates repeated tag names before forwarding the filter', async () => {
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+			});
+
+			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
+				tags: ['production', 'production', 'critical', 'production'],
+			});
+
+			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg.filter.tags).toEqual(['production', 'critical']);
+		});
+
 		test('applies provided filters and clamps high limit', async () => {
 			const workflows = [createWorkflow({ id: 'x', activeVersionId: uuid() })];
 			const workflowService = mockInstance(WorkflowService, {
