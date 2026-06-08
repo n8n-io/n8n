@@ -31,6 +31,27 @@ plugin directory. Everything gets the `n8n:` namespace prefix automatically.
 └── README.md
 ```
 
+## Autonomous dev flow
+
+The `n8n:dev-flow` skill orchestrates a full ticket lifecycle (read → plan →
+review → implement → multi-angle review → PR → watch CI) as a bounded,
+mostly-autonomous loop. It delegates to a purpose-built agent set:
+
+| Agent | Role |
+|-------|------|
+| `n8n:autodev-planner` | Produce a reviewable implementation plan |
+| `n8n:autodev-plan-reviewer` | Critique the plan (`VERDICT: APPROVED`/`CHANGES`) |
+| `n8n:autodev-implementer` | Execute the plan, get build/tests green |
+| `n8n:autodev-architecture-reviewer` | Review diff: boundaries, coupling, data flow |
+| `n8n:autodev-security-reviewer` | Review diff: injection, authz, secrets, SSRF |
+| `n8n:autodev-conventions-reviewer` | Review diff: n8n patterns, code quality |
+| `n8n:autodev-test-reviewer` | Review diff: high-value missing tests, test quality |
+
+Reviewers tag findings `[BLOCKER]`/`[MAJOR]`/`[MINOR]`; loops converge until no
+`[BLOCKER]`/`[MAJOR]` remain (capped at 3 rounds, then escalate). The skill
+never merges and confirms before opening a PR. Security fixes get neutral
+branch/commit/test naming per AGENTS.md.
+
 ## Design Decisions
 
 ### Why a plugin instead of standalone skills?
