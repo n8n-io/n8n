@@ -117,6 +117,47 @@ describe('ProjectController', () => {
 		});
 	});
 
+	it('emits team-project-updated with custom telemetry tag count on updateProject', async () => {
+		const projectId = 'p1';
+		const payload = {
+			name: 'Updated Project',
+			customTelemetryTags: [
+				{ key: 'env', value: 'production' },
+				{ key: 'team', value: 'engineering' },
+			],
+		};
+
+		const res = makeRes();
+
+		await controller.updateProject(req, res, payload as any, projectId);
+
+		expect(projectsService.updateProject).toHaveBeenCalledWith(projectId, payload);
+		expect(projectsService.getProjectRelations).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			projectId,
+			otelProjectCustomTagsCount: 2,
+		});
+	});
+
+	it('emits team-project-updated without custom telemetry tag count on updateProject without tags', async () => {
+		const projectId = 'p1';
+		const payload = { name: 'Updated Project' };
+
+		const res = makeRes();
+
+		await controller.updateProject(req, res, payload as any, projectId);
+
+		expect(projectsService.updateProject).toHaveBeenCalledWith(projectId, payload);
+		expect(projectsService.getProjectRelations).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			projectId,
+		});
+	});
+
 	it('emits team-project-updated with full members list on addProjectUsers', async () => {
 		// Arrange
 		const projectId = 'p1';

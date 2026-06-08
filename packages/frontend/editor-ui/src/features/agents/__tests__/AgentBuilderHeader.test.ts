@@ -9,7 +9,7 @@ const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
 const routerPush = vi.fn();
 const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
-	href: `/projects/${to.params?.projectId ?? ''}/workflows`,
+	href: `/projects/${to.params?.projectId ?? ''}/agents`,
 }));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
@@ -168,16 +168,16 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.text()).toContain('Darwin');
 	});
 
-	it('links the project breadcrumb to the project workflows page', () => {
+	it('links the project breadcrumb to the project agents page', () => {
 		const wrapper = mountHeader();
 		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
 		const items = bc.props('items') as Array<{ href: string }>;
-		expect(items[0].href).toBe('/projects/p1/workflows');
+		expect(items[0].href).toBe('/projects/p1/agents');
 
 		bc.vm.$emit('itemSelected', { id: 'p1' });
 
 		expect(routerPush).toHaveBeenCalledWith({
-			name: 'ProjectsWorkflows',
+			name: 'ProjectAgents',
 			params: { projectId: 'p1' },
 		});
 	});
@@ -262,42 +262,6 @@ describe('AgentBuilderHeader', () => {
 		await previewButton.trigger('click');
 
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
-	});
-
-	it('renders preview actions and hides publish actions in preview mode', () => {
-		const wrapper = mountHeader({
-			mode: 'preview',
-			currentSessionTitle: 'Support session',
-			sessionOptions: [{ id: 'thread-1', label: 'Support session' }],
-			headerActions: [{ id: 'delete', label: 'Delete' }],
-		});
-
-		expect(wrapper.find('[data-testid="agent-preview-session-picker"]').exists()).toBe(true);
-		expect(
-			wrapper.find('[data-testid="agent-preview-new-chat-btn"]').attributes('data-variant'),
-		).toBe('outline');
-		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
-	});
-
-	it('forwards preview session and header action events', async () => {
-		const wrapper = mountHeader({
-			mode: 'preview',
-			currentSessionTitle: 'Support session',
-			sessionOptions: [{ id: 'thread-1', label: 'Support session' }],
-		});
-
-		const sessionPicker = wrapper.findComponent(
-			'[data-testid="agent-preview-session-picker"]',
-		) as DropdownStubWrapper;
-		sessionPicker.vm.$emit('select', 'thread-1');
-		await wrapper.find('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
-		await wrapper.find('[data-testid="agent-preview-close-btn"]').trigger('click');
-
-		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
-		expect(wrapper.emitted('new-chat')).toEqual([[]]);
-		expect(wrapper.emitted('close-preview')).toEqual([[]]);
 	});
 
 	it('emits switch-agent when a switcher item is selected', async () => {

@@ -170,11 +170,35 @@ Object.defineProperty(workflowsStore, 'allNodes', {
 });
 ```
 
+## Current workflow id (`workflowsStore.workflowId`)
+
+`workflowsStore.workflowId` is a deprecated global pointer to "the open workflow".
+It is being removed: consumers become document-store-first and the id is derived
+from the route. There is **no `storeToRefs` destructuring** of it — every access
+is the literal `workflowsStore.workflowId` member expression, guarded by ESLint
+(`no-restricted-syntax`, `warn` during migration, flipped to `error` once empty).
+
+The per-document store is keyed *by* the id, so it cannot itself answer "which
+workflow is current" — that comes from the route (or the injected current-document
+pointer). Pick the replacement by context:
+
+| Context | Get the current document | Read |
+|---|---|---|
+| Components / composables inside `WorkflowLayout` | `injectWorkflowDocumentStore()` (`ShallowRef<Store \| null>`) | `workflowDocumentStore.value?.workflowId ?? ''` |
+| Out-of-tree Pinia stores / standalone composables | `computed(() => useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowId().value)))` | `workflowDocumentStore.value.workflowId` |
+| Non-reactive functions (push handlers) | receive `documentId` via `options`, resolved per event in `usePushConnection.processEvent` from the injected document store | `useWorkflowDocumentStore(documentId)` / `useWorkflowExecutionStateStore(documentId)`, and their `.workflowId` for equality guards |
+| Lifecycle snapshot (e.g. collaboration) | capture the id into a local/ref at the start of the operation | the captured value |
+
+Notes:
+- `useWorkflowId()` (`@/app/composables/useWorkflowId`) resolves `inject(WorkflowIdKey)` first, then the route — use it in any setup context.
+- Replace `watch(() => workflowsStore.workflowId, …)` with `watch(workflowId, …)` where `workflowId = useWorkflowId()` (or the route-derived computed).
+- Tests that set `workflowsStore.workflowId = 'x'` (or `workflow.id`) move to providing `WorkflowIdKey` / the route param. Component/composable tests already `provide` `WorkflowIdKey`; push-handler tests pass `documentId` in the handler `options` argument.
+
 ## What NOT to migrate
 
 - **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No ESLint guard for this — it's accepted tech debt.
 - **Execution-related methods** (e.g., `renameNodeSelectedAndExecution`, `removeNodeExecutionDataById`) — these are not node document state
-- **`workflowState.executingNode`** and other execution-state properties — these are not node document state
+- **`workflowExecutionStateStore.executingNode`** and other execution-state properties — these are not node document state (they live in `useWorkflowExecutionStateStore`)
 
 ## Maintaining this recipe
 

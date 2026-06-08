@@ -131,11 +131,6 @@ export class FileSystemManager implements BinaryData.Manager {
 			fs.rename(oldPath, newPath),
 			fs.rename(`${oldPath}.metadata`, `${newPath}.metadata`),
 		]);
-
-		const [tempDirParent] = oldPath.split('/temp/');
-		const tempDir = path.join(tempDirParent, 'temp');
-
-		await fs.rm(tempDir, { recursive: true });
 	}
 
 	async deleteManyByFileId(ids: string[]): Promise<void> {

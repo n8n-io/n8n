@@ -21,6 +21,7 @@ const UI_OPERATIONS = {
 		'read',
 		'execute',
 		'export',
+		'import',
 		'update',
 		'create',
 		'publish',

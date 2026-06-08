@@ -9,6 +9,21 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
+				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
+				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
+				'instanceAi.tools.list_skills': 'Checking available skills',
+				'instanceAi.tools.load_skill': 'Opening skill',
+				'instanceAi.tools.load_skill.asset': 'Opening',
+				'instanceAi.tools.load_skill.assetFallback': 'asset',
+				'instanceAi.tools.load_skill.example': 'Reading',
+				'instanceAi.tools.load_skill.exampleFallback': 'example',
+				'instanceAi.tools.load_skill.file': 'Reading',
+				'instanceAi.tools.load_skill.reference': 'Reading',
+				'instanceAi.tools.load_skill.referenceFallback': 'reference',
+				'instanceAi.tools.load_skill.script': 'Inspecting',
+				'instanceAi.tools.load_skill.scriptFallback': 'script',
+				'instanceAi.tools.load_skill.template': 'Reading',
+				'instanceAi.tools.load_skill.templateFallback': 'template',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
@@ -39,7 +54,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns share for tools ending with -with-agent', () => {
-		expect(getToolIcon('manage-data-tables-with-agent')).toBe('share');
+		expect(getToolIcon('build-workflow-with-agent')).toBe('share');
 	});
 
 	test('returns table for data-table tools', () => {
@@ -59,15 +74,17 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('research')).toBe('search');
 	});
 
-	test('returns brain for memory/planning tools', () => {
+	test('returns brain for memory/task-control tools', () => {
 		expect(getToolIcon('updateWorkingMemory')).toBe('brain');
-		expect(getToolIcon('plan')).toBe('brain');
 		expect(getToolIcon('task-control')).toBe('brain');
+	});
+
+	test('treats removed plan tool as an ordinary unknown icon', () => {
+		expect(getToolIcon('plan')).toBe('settings');
 	});
 
 	test('returns key-round for credential tools', () => {
 		expect(getToolIcon('credentials')).toBe('key-round');
-		expect(getToolIcon('browser-credential-setup')).toBe('key-round');
 	});
 
 	test('returns file-text for filesystem tools', () => {
@@ -80,6 +97,11 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('workspace_read_file')).toBe('folder');
 	});
 
+	test('returns book-open for skill tools', () => {
+		expect(getToolIcon('list_skills')).toBe('book-open');
+		expect(getToolIcon('load_skill')).toBe('book-open');
+	});
+
 	test('returns settings as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('settings');
 	});
@@ -90,6 +112,36 @@ describe('useToolLabel', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
+		expect(getToolLabel('list_skills')).toBe('Checking available skills');
+		expect(getToolLabel('load_skill', { name: 'data-table-manager' })).toBe(
+			'Opening skill: data-table-manager',
+		);
+		expect(
+			getToolLabel('load_skill', {
+				name: 'data-table-manager',
+				filePath: 'references/data-table-playbook.md',
+			}),
+		).toBe('Reading data table playbook');
+		expect(
+			getToolLabel('load_skill', {
+				name: 'data-table-manager',
+				filePath: 'scripts/import-rows.mjs',
+			}),
+		).toBe('Inspecting import rows script');
+	});
+
+	test('getToolLabel shows skill script commands cleanly', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(
+			getToolLabel('workspace_execute_command', {
+				command: 'node /home/daytona/workspace/skills/data-table-manager/scripts/import-rows.mjs',
+			}),
+		).toBe('Running import rows script');
+		expect(
+			getToolLabel('workspace_execute_command', {
+				command: 'node $N8N_SKILL_DIR/scripts/import-rows.mjs',
+			}),
+		).toBe('Running import rows script');
 	});
 
 	test('getToolLabel falls back to raw tool name when not found', () => {
@@ -110,8 +162,12 @@ describe('useToolLabel', () => {
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBeUndefined();
-		expect(getToggleLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
 		expect(getToggleLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+	});
+
+	test('getToggleLabel treats removed plan tool as an ordinary unknown tool', () => {
+		const { getToggleLabel } = useToolLabel();
+		expect(getToggleLabel(makeToolCall({ toolName: 'plan' }))).toBe('Show data');
 	});
 
 	test('getHideLabel returns hide data for regular tools', () => {
@@ -126,6 +182,11 @@ describe('useToolLabel', () => {
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
-		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
+		expect(getHideLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+	});
+
+	test('getHideLabel treats removed plan tool as an ordinary unknown tool', () => {
+		const { getHideLabel } = useToolLabel();
+		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBe('Hide data');
 	});
 });

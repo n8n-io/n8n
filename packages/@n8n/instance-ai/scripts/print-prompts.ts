@@ -2,9 +2,9 @@
 // ---------------------------------------------------------------------------
 // Print Prompts CLI
 //
-// Renders the final system prompt for the main Instance Agent and every
-// orchestration sub-agent, then writes one markdown file per agent variant
-// into `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
+// Renders the final system prompt for the main Instance Agent and sub-agent
+// prompt templates, then writes one markdown file per agent variant into
+// `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
 // auditing the full prompt verbatim, diffing prompts across branches, or
 // sharing them outside the codebase.
 // ---------------------------------------------------------------------------
@@ -14,13 +14,6 @@ import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
-import { buildBrowserAgentPrompt } from '../src/tools/orchestration/browser-credential-setup.prompt';
-import {
-	BUILDER_AGENT_PROMPT,
-	createSandboxBuilderAgentPrompt,
-} from '../src/tools/orchestration/build-workflow-agent.prompt';
-import { DATA_TABLE_AGENT_PROMPT } from '../src/tools/orchestration/data-table-agent.prompt';
-import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -113,53 +106,6 @@ function collectAgents(): AgentEntry[] {
 						localGateway: { status: 'connected', capabilities: ['filesystem'] },
 						browserAvailable: false,
 					}),
-				},
-			],
-		},
-		{
-			folder: 'planner',
-			displayName: 'Sub-Agent — Workflow Planner',
-			source: 'src/tools/orchestration/plan-agent-prompt.ts → PLANNER_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: PLANNER_AGENT_PROMPT }],
-		},
-		{
-			folder: 'builder',
-			displayName: 'Sub-Agent — Workflow Builder',
-			source: 'src/tools/orchestration/build-workflow-agent.prompt.ts',
-			variants: [
-				{
-					file: 'tool',
-					label: 'tool mode (no sandbox) → BUILDER_AGENT_PROMPT',
-					body: BUILDER_AGENT_PROMPT,
-				},
-				{
-					file: 'sandbox',
-					label: 'sandbox mode → createSandboxBuilderAgentPrompt(workspaceRoot: /workspace)',
-					body: createSandboxBuilderAgentPrompt('/workspace'),
-				},
-			],
-		},
-		{
-			folder: 'data-table',
-			displayName: 'Sub-Agent — Data Table Manager',
-			source: 'src/tools/orchestration/data-table-agent.prompt.ts → DATA_TABLE_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: DATA_TABLE_AGENT_PROMPT }],
-		},
-		{
-			folder: 'browser-credential-setup',
-			displayName: 'Sub-Agent — Browser Credential Setup',
-			source:
-				'src/tools/orchestration/browser-credential-setup.prompt.ts → buildBrowserAgentPrompt',
-			variants: [
-				{
-					file: 'gateway',
-					label: "source: 'gateway' (local gateway browser tools)",
-					body: buildBrowserAgentPrompt('gateway'),
-				},
-				{
-					file: 'chrome-mcp',
-					label: "source: 'chrome-devtools-mcp' (Chrome DevTools MCP server)",
-					body: buildBrowserAgentPrompt('chrome-devtools-mcp'),
 				},
 			],
 		},

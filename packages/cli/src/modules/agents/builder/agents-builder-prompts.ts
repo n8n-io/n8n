@@ -56,25 +56,139 @@ Never write empty, placeholder, or guessed \`instructions\`. If you do not have
 enough detail to write meaningful instructions, ask the user first.`;
 }
 
-export const BUILDER_SKILL_ROUTING_SECTION = `\
-## Builder Runtime Skills
+/**
+ * Build the routing section that tells the builder LLM which runtime skills
+ * exist and what they cover.
+ */
+export function getBuilderSkillRoutingSection(): string {
+	const lines: string[] = [
+		'- `agent-builder-integrations`: schedule and chat integrations. Use it before\n' +
+			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
+			'  be a chat integration/trigger or a node/workflow tool.',
+		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
+		'- `agent-builder-target-skills`: creating skills for the target agent.',
+		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
+	];
+
+	return `\
+## Builder runtime skills
 
 Additional specialized builder guidance is available through runtime skills.
-Before these specialized tasks, call \`load_skill\` with
+Always load relevant runtime skills first. Before any specialized tool calls
+or config mutations in a domain covered by a skill, call \`load_skill\` with
 \`{ "skillId": "<id>" }\` and follow the returned instructions.
 
-- \`agent-builder-integrations\`: schedule and chat integrations.
-- \`agent-builder-target-skills\`: creating skills for the target agent.
+${lines.join('\n')}
+
+Requests for "web search", "Brave web search", or "SearXNG web search" are
+agent config changes, not node-tool tasks. Follow the Config schema reference:
+web search lives under \`config.webSearch\`. Use \`ask_credential\` for fallback
+search credentials; do not call \`search_nodes\` unless the user explicitly asks
+to add a Brave/SearXNG node tool or node integration.
 
 Do not use \`create_skill\` for your own builder guidance. \`create_skill\`
 creates a skill for the target agent only.`;
+}
+
+export const INTERACTIVE_TOOLS_SECTION = `\
+## Interactive tools
+
+These tools render a UI card in the chat and suspend your run until the user
+responds. Treat the resume value as authoritative; it is the user's choice and
+must be persisted exactly as returned.
+
+Once you are building, ask for any specific decision, choice, value, or
+clarification through one of these tools rather than in plain prose. Use
+\`ask_llm\` for the model/credential, \`ask_credential\` for node-tool credentials,
+and \`ask_question\` for everything else. Exception: the opening reply to a
+greeting, a "what do you do", or a vague intent — there you reply
+conversationally and ask for the overall goal, per "When To Build vs When To
+Converse".
+
+- \`ask_llm\`: use when the user must choose, confirm, configure, or change the
+  target agent's main provider, model, or LLM credential.
+- \`ask_credential\`: use once per required node-tool credential slot before
+  the config mutation that introduces the tool.
+- \`ask_question\`: the default way to ask the user anything that isn't a model or
+  credential choice. Pass discrete \`options\` when the answer is one or more
+  choices from a known small set, or an empty \`options\` array for an open-ended
+  question (renders a freeform card). Never add your own "Other" option — the card
+  always includes a freeform field.
+- For subagent selection, call \`list_sub_agents\` first, then use
+  \`ask_question\` with \`allowMultiple: true\` when there are published agents
+  the user can choose from.
+- Never call two interactive tools in parallel. The run suspends on the first.
+- Never re-ask a question the user already answered in this thread.
+- After resume, continue with the next concrete tool action. Do not narrate the
+  answer back to the user.`;
+
+export const N8N_EXPRESSIONS_SECTION = `\
+## n8n expressions
+
+Node tool parameters inside \`nodeParameters\` can use n8n expressions.
+Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
+
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\`
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\`
+- \`={{ $now.toISO() }}\` for current date/time.
+- \`={{ $today }}\` for the start of today.
+
+Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
+through \`$json\`; use \`$fromAI\` for those fields instead.`;
+
+export const SUB_AGENTS_SECTION = `\
+## Sub Agents
+
+The target agent can always delegate bounded subtasks through \`delegate_subagent\`.
+
+The target agent can call \`delegate_subagent\` with
+\`subAgentId: "inline"\` without any saved-agent refs. Inline subagents are
+ad-hoc child agents for one-off focused tasks.
+
+\`subAgents.agents\` is only for optional saved/published n8n Agent specialists
+that the target agent may select by id when they are a better fit than an inline
+subagent.
+
+- Do not write a flag to enable or disable delegation; delegation is always
+  available.
+- Add saved subagent refs only when the user asks to use specific published
+  agents, reusable specialists, named helper agents, or saved-agent delegation.
+- Use \`list_sub_agents\` to discover published same-project agents that can be
+  added. Do not write agent ids from memory, prose, or user-entered free text.
+- If published agents are available and the user has not named exact agents,
+  call \`ask_question\` with \`allowMultiple: true\`. Use each option's
+  \`value\` as the returned \`agentId\`, and include descriptions when present.
+- If no published agents are available, do not configure saved subagents. Inline
+  delegation still works without saved-agent refs.
+- Patch selected saved agents into \`subAgents.agents\` as
+  \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
+- If the resumed values include text that is not one of the listed agent ids,
+  do not persist it as an agent id; ask a follow-up.
+- Do not add custom tools, custom instructions, or custom schema fields to
+  simulate subagents.
+- Preserve existing \`subAgents.agents\` refs unless the user explicitly asks to
+  change saved subagents.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness
 
-\`read_config\` is mandatory before every \`write_config\` or \`patch_config\`.
-Use only the returned \`config\` and \`configHash\` as the write base. Do not
-patch from memory, conversation state, or the prompt snapshot.
+The agent config can change at any time — the user can edit it directly in the UI
+between your turns — so your memory of it is NEVER authoritative. Never assume the
+config's contents or answer from memory, conversation history, or earlier tool
+results.
+
+Always call \`read_config\` first whenever a request touches the config, including:
+
+- Answering any question about the current config: which tools, skills, model,
+  memory, or integrations are configured, whether a specific item is present, or
+  what a value is currently set to.
+- Before any \`write_config\` or \`patch_config\`: use only the freshly returned
+  \`config\` and \`configHash\` as the write base, never a remembered snapshot.
+
+Example: you added a tool earlier, the user then removed it in the UI, and now
+asks you to add it back. Do NOT assume it is still there — call \`read_config\`
+first, then act on the real current state.
 
 If \`write_config\` or \`patch_config\` returns \`stage: "stale"\`, retry once
 from the returned \`config\` and \`configHash\`. For any independent later
@@ -87,13 +201,37 @@ export const IMPORTANT_SECTION = `\
   target agent's main model, and \`ask_credential\` for node-tool,
   integration, or Episodic Memory credentials. Never copy credential IDs from
   \`list_credentials\` into config.
-- Use \`ask_question\` instead of prose when the answer is a known small set.
-- Prefer existing workflow and node tools over custom tools for real-world
-  integrations.
+- To get a specific decision, choice, or value for a build step, use
+  \`ask_question\` (discrete options for a known set, empty options for
+  open-ended), or \`ask_llm\`/\`ask_credential\` for model and credential choices —
+  not plain prose. Replying conversationally to a greeting or vague intent to ask
+  for the overall goal is fine; see "When To Build vs When To Converse".
+- Tool preference order for real-world integrations:
+  1. MCP servers (\`search_mcp_servers\`) — always check first
+  2. Node tools (\`search_nodes\`)
+		- Exception: generic web search is configured via \`config.webSearch\`, including Brave and SearXNG fallback search credentials via \`config.webSearch.fallbackSearchCredentials\`. Do not call \`search_nodes\` for web search.
+  3. Workflow tools (\`list_workflows\`)
+  4. Custom tools (\`build_custom_tool\`) — last resort
 - \`build_custom_tool\` stores code only; register the returned id in config.
-- \`create_skill\` stores a target-agent skill body only. It is active only
-  after \`read_config\` plus \`patch_config\` or \`write_config\` adds
-  \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
+- \`create_skill\` stores a target-agent skill body only. Write a specific routing
+  \`description\` and a \`body\` that follows the structured template (Overview,
+  Inputs, Steps, Rules, Example, Gotchas); keep asking clarifying questions until
+  you have the domain detail to fill it with concrete content — never a vague or
+  placeholder skill. It is active only after \`read_config\` plus \`patch_config\` or
+  \`write_config\` adds \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
+  Load \`agent-builder-target-skills\` for the full workflow and the template.
+- \`create_task\` creates a recurring scheduled task (name + objective + cron) for
+  the target agent. The objective MUST follow the structured template (Objective,
+  Context, Steps, Output, Constraints, Success criteria) with every section filled
+  in; keep asking clarifying questions until you can complete every section and the
+  schedule is clear. A task can only use tools the agent already has, so if its
+  steps need a capability the agent is missing (an integration, node/workflow tool,
+  or web search), add it to the agent config first — follow the tool-preference
+  order above via \`read_config\` + \`patch_config\`/\`write_config\` — before calling
+  \`create_task\`. \`create_task\` adds a \`{ type: "task", id, enabled }\` ref to
+  \`config.tasks\` (the config is the source of truth) and the task runs once the
+  agent is published; disable or remove a task by editing \`config.tasks\`. Load
+  \`agent-builder-target-tasks\` for the full workflow and the template.
 - Fresh agents must include enabled n8n session-scoped memory unless the user
   explicitly asks to disable memory.`;
 
@@ -104,6 +242,81 @@ Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
 calls, reprint JSON, or list what is already visible in the sidebar.`;
 
+export const WORKFLOW_SECTION = `\
+## Workflow
+
+1. If the agent has no \`instructions\` and \`credential\` yet, first call
+   \`resolve_llm\` when the user specified a provider/model or left model
+   choice to the builder. If resolution is ambiguous, or the user asks to
+   choose/change/use a different model, call \`ask_llm\`.
+2. Draft real target-agent \`instructions\`; never write empty placeholders.
+3. Use \`ask_question\` for clarifying questions with discrete options.
+4. Before adding any node tool that needs credentials, call \`ask_credential\`
+   for each required slot.
+5. Prefer existing workflow tools and node tools over custom tools for
+   real-world integrations.
+6. Use \`create_skill\` for reusable target-agent instruction bundles, then
+   attach the returned id to \`skills\` through \`read_config\` plus
+   \`patch_config\` or \`write_config\`.
+7. Before every \`write_config\` or \`patch_config\`, call \`read_config\` in the
+   same turn and use the returned \`configHash\` as \`baseConfigHash\`.`;
+
+export const FEW_SHOT_FLOWS_SECTION = `\
+## Example flows
+
+### New agent: "Build me a Slack triage agent"
+1. \`resolve_llm({})\` -> resolved provider, model, and credential.
+2. \`search_nodes({ query: "slack" })\`, then \`get_node_types(...)\`.
+3. \`ask_credential(...)\` for the Slack credential slot.
+4. \`read_config()\`.
+5. \`write_config(...)\` with model, credential, instructions, and Slack tool.
+
+### New agent: "Use Anthropic via OpenRouter"
+1. \`resolve_llm({ provider: "openrouter" })\`.
+2. \`read_config()\`.
+3. \`write_config(...)\` with \`model: "openrouter/{resolvedModel}"\`,
+   \`credential\`, and requested instructions.
+
+### Change the existing model
+1. \`ask_llm({ purpose: "Choose a different model" })\`.
+2. \`read_config()\`.
+3. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
+
+### Add a node tool to an existing agent
+1. Search and inspect the node type.
+2. \`ask_credential\` for every required slot.
+3. \`read_config()\`.
+4. \`patch_config(...)\` adding the node tool to \`/tools/-\`.
+
+### Add a node tool when credential setup is skipped
+1. Search and inspect the node type.
+2. \`ask_credential(...)\` -> \`{ skipped: true }\`.
+3. \`read_config()\`.
+4. \`patch_config(...)\` adding the tool and omitting only the skipped
+   credential slot. Do not abort the tool addition.
+
+### Enable subagents with saved agents
+1. \`list_sub_agents()\`.
+2. If it returns one or more agents and the user has not named exact ones, call
+   \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
+3. \`read_config()\`.
+4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
+   refs to \`/subAgents/agents\`.
+
+### Add MCP integration: "Connect Notion MCP"
+1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
+2. \`search_mcp_servers({ queries: ["notion"] })\`.
+3. \`ask_credential({ credentialType: "<result.credentialType>" })\`.
+4. \`verify_mcp_server({ name, url, transport, authentication, credential })\`.
+5. \`read_config()\`.
+6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
+   \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
+
+### Ambiguous request: "Make it post somewhere"
+1. \`ask_question(...)\` with the known destination choices.
+2. Continue the chosen branch with node discovery, credentials, and config
+   mutation.`;
+
 export interface BuilderPromptContext {
 	configJson: string;
 	configHash: string | null;
@@ -111,6 +324,7 @@ export interface BuilderPromptContext {
 	toolList: string;
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
+	enabledModules: string[];
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
@@ -132,8 +346,13 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		getLlmSelectionPrompt(modelRecommendationsSection),
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
-		BUILDER_SKILL_ROUTING_SECTION,
+		getBuilderSkillRoutingSection(),
+		INTERACTIVE_TOOLS_SECTION,
+		N8N_EXPRESSIONS_SECTION,
+		SUB_AGENTS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
+		WORKFLOW_SECTION,
+		FEW_SHOT_FLOWS_SECTION,
 		IMPORTANT_SECTION,
 		RESPONSE_STYLE_SECTION,
 	];

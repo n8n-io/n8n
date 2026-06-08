@@ -1,5 +1,4 @@
 import { readdirSync, readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
 	IDeferredPromise,
@@ -15,6 +14,7 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import { UnrecognizedNodeTypeError } from '@/errors';
 import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';

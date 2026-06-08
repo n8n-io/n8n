@@ -17,6 +17,7 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { EnvHttpProxyAgent } from 'undici';
+import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -42,11 +43,17 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	loginEnabled: false,
 	prompt: 'select_account',
 	authenticationContextClassReference: [],
+	additionalScopes: '',
 };
 
 type OidcRuntimeConfig = Pick<
 	OidcConfigDto,
-	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt' | 'authenticationContextClassReference'
+	| 'clientId'
+	| 'clientSecret'
+	| 'loginEnabled'
+	| 'prompt'
+	| 'authenticationContextClassReference'
+	| 'additionalScopes'
 > & {
 	discoveryEndpoint: URL;
 };
@@ -55,6 +62,24 @@ const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
 	...DEFAULT_OIDC_CONFIG,
 	discoveryEndpoint: new URL('http://n8n.io/not-set'),
 };
+
+/**
+ * Serialises arbitrary error causes for logging. `util.inspect` is circular-ref
+ * safe, so values like `fetch` `Response` objects carried on `oauth4webapi`
+ * errors get fully rendered instead of swallowed by `JSON.stringify`.
+ * `breakLength: 120` keeps individual log lines within typical shipper limits.
+ */
+function safeStringify(value: unknown): string {
+	try {
+		return inspect(value, { depth: 3, breakLength: 120 });
+	} catch {
+		try {
+			return Object.prototype.toString.call(value);
+		} catch {
+			return '[unserializable]';
+		}
+	}
+}
 
 @Service()
 export class OidcService {
@@ -207,9 +232,12 @@ export class OidcService {
 			provisioningConfig.scopesProvisionProjectRoles;
 
 		// Include the custom n8n scope if provisioning is enabled
-		const scope = provisioningEnabled
+		const baseScope = provisioningEnabled
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
+
+		const additionalScopes = this.oidcConfig.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
@@ -240,18 +268,7 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			const e = error as {
-				error?: string;
-				error_description?: string;
-				cause?: unknown;
-				message?: string;
-			};
-			this.logger.error('Failed to exchange authorization code for tokens', {
-				oauthError: e.error,
-				oauthErrorDescription: e.error_description,
-				cause: e.cause ? JSON.stringify(e.cause) : undefined,
-				message: e.message,
-			});
+			this.logTokenExchangeError(error);
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -275,7 +292,7 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
 		}
 
@@ -383,9 +400,12 @@ export class OidcService {
 			provisioningConfig.scopesProvisionInstanceRole ||
 			provisioningConfig.scopesProvisionProjectRoles;
 
-		const scope = provisioningEnabled
+		const baseScope = provisioningEnabled
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
+
+		const additionalScopes = config.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
@@ -426,18 +446,7 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			const e = error as {
-				error?: string;
-				error_description?: string;
-				cause?: unknown;
-				message?: string;
-			};
-			this.logger.error('Failed to exchange authorization code for tokens', {
-				oauthError: e.error,
-				oauthErrorDescription: e.error_description,
-				cause: e.cause ? JSON.stringify(e.cause) : undefined,
-				message: e.message,
-			});
+			this.logTokenExchangeError(error);
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -461,7 +470,7 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
 		}
 
@@ -469,6 +478,27 @@ export class OidcService {
 			claims: { ...claims },
 			userInfo: { ...userInfo },
 		};
+	}
+
+	/**
+	 * Logs a token-exchange failure with structured oauth2 fields.
+	 * Uses a type guard rather than `as`-cast so TypeScript narrows the shape
+	 * safely; reads fields defensively for any non-object thrown value.
+	 * `cause` is omitted because oauth4webapi's ResponseBodyError stores the
+	 * parsed {error, error_description} JSON as its `.cause`, which would
+	 * duplicate the top-level `oauthError`/`oauthErrorDescription` fields.
+	 */
+	private logTokenExchangeError(error: unknown): void {
+		const isOAuthError = (e: unknown): e is Record<string, unknown> =>
+			typeof e === 'object' && e !== null;
+		const e = isOAuthError(error) ? error : {};
+		this.logger.error('Failed to exchange authorization code for tokens', {
+			oauthError: typeof e.error === 'string' ? e.error : undefined,
+			oauthErrorDescription:
+				typeof e.error_description === 'string' ? e.error_description : undefined,
+			code: typeof e.code === 'string' ? e.code : undefined,
+			message: error instanceof Error ? error.message : safeStringify(error),
+		});
 	}
 
 	private async applySsoProvisioning(
