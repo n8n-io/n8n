@@ -118,6 +118,10 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/** n8n user ID for in-app preview chat resumes. */
+	userId?: string;
+	/** Defaults to true for external integrations; preview chat passes false. */
+	usePublishedVersion?: boolean;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
 	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
@@ -771,7 +775,16 @@ export class AgentsService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
+		const {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			integrationType,
+			userId,
+			usePublishedVersion = true,
+		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -792,7 +805,8 @@ export class AgentsService {
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			usePublishedVersion: true,
+			...(userId ? { n8nUserId: userId } : {}),
+			usePublishedVersion,
 			integrationType,
 		});
 
@@ -802,7 +816,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter({ agentId }),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
 		for await (const value of streamAgentChunks(resultStream.stream)) {

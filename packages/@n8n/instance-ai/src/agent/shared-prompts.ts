@@ -35,9 +35,10 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 ${pathHint}
 A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
 
-- \`<workspace_root>/knowledge-base/index.json\` — combined catalog of technique guides and curated workflow templates
+- \`<workspace_root>/knowledge-base/index.json\` — combined catalog of technique guides, curated workflow templates, and orchestration reference docs
 - \`<workspace_root>/knowledge-base/best-practices/index.json\` — workflow technique guides (read the linked \`.md\` files)
 - \`<workspace_root>/knowledge-base/templates/index.json\` — curated SDK workflow examples (read the linked \`.ts\` source files)
+- \`<workspace_root>/knowledge-base/reference/index.json\` — orchestration reference docs (e.g. trigger \`inputData\` shapes for verification)
 - \`<workspace_root>/node-types/index.txt\` — searchable catalog of available n8n nodes
 - \`<workspace_root>/workflows/*.json\` — existing workflows on this instance (when synced)
 

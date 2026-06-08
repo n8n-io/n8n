@@ -272,11 +272,11 @@ export interface BuiltAgent {
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 
-	/** Approve a tool that uses requiresApproval or needsApprovalFn */
+	/** Approve a tool that uses requireApproval or needsApprovalFn */
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 
-	/** Deny a tool that uses requiresApproval or needsApprovalFn */
+	/** Deny a tool that uses requireApproval or needsApprovalFn */
 	deny(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	deny(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 }

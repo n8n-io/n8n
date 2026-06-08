@@ -21,7 +21,7 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -98,7 +98,6 @@ function makeRuntimeReconstructionService(
 		mock<AgentRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
-		mock<ExecutionRepository>(),
 		mock<WorkflowRepository>(),
 		mock<UserRepository>(),
 		mock<WorkflowFinderService>(),
