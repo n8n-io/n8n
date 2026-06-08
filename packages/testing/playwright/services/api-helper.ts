@@ -172,21 +172,34 @@ export class ApiHelpers {
 	// ===== CORE METHODS =====
 
 	async resetDatabase(): Promise<void> {
-		const response = await this.request.post('/rest/e2e/reset', {
-			data: {
-				owner: INSTANCE_OWNER_CREDENTIALS,
-				members: INSTANCE_MEMBER_CREDENTIALS,
-				admin: INSTANCE_ADMIN_CREDENTIALS,
-				chat: INSTANCE_CHAT_CREDENTIALS,
-			},
-		});
+		// Some n8n images pass /healthz/readiness (which the container wait
+		// strategy gates on) before the REST controllers — including the e2e
+		// reset route — finish registering, so a reset fired right after
+		// "stack ready" can briefly get a 404. Retry while the route is still
+		// coming up; the common case succeeds on the first attempt.
+		const deadlineMs = Date.now() + 30_000;
+		let lastErrorText = '';
+		do {
+			const response = await this.request.post('/rest/e2e/reset', {
+				data: {
+					owner: INSTANCE_OWNER_CREDENTIALS,
+					members: INSTANCE_MEMBER_CREDENTIALS,
+					admin: INSTANCE_ADMIN_CREDENTIALS,
+					chat: INSTANCE_CHAT_CREDENTIALS,
+				},
+			});
 
-		if (!response.ok()) {
-			const errorText = await response.text();
-			throw new TestError(errorText);
-		}
-		// Adding small delay to ensure database is reset
-		await wait(1000);
+			if (response.ok()) {
+				// Adding small delay to ensure database is reset
+				await wait(1000);
+				return;
+			}
+
+			lastErrorText = await response.text();
+			await wait(1000);
+		} while (Date.now() < deadlineMs);
+
+		throw new TestError(lastErrorText);
 	}
 
 	async signin(role: UserRole, memberIndex: number = 0): Promise<LoginResponseData> {

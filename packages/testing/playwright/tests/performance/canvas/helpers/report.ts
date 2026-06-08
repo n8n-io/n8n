@@ -52,6 +52,8 @@ export function formatTable(
 export const fmt = {
 	ms: (value: number): string => `${value.toFixed(0)} ms`,
 	mb: (value: number): string => `${value.toFixed(1)} MB`,
+	mbOptional: (value: number | null | undefined): string =>
+		value === null || value === undefined ? 'n/a' : `${value.toFixed(1)} MB`,
 	count: (value: number): string => Math.round(value).toLocaleString('en-US'),
 	bytes: (value: number): string => `${(value / (1024 * 1024)).toFixed(2)} MB`,
 	gb: (value: number): string => `${value.toFixed(2)} GB`,
@@ -77,7 +79,7 @@ export function firstDefined<T>(...values: Array<T | null | undefined>): T | nul
 export function buildExecutionReportSections(args: {
 	v8HeapLimitGb: number | null;
 	execRows: string[][];
-	postExecHeap: { server: number; browser: number } | null;
+	postExecHeap: { server: number | null; browser: number } | null;
 }): ReportSection[] {
 	const v8Value = args.v8HeapLimitGb === null ? 'n/a' : fmt.gb(args.v8HeapLimitGb);
 	const sections: ReportSection[] = [
@@ -96,7 +98,7 @@ export function buildExecutionReportSections(args: {
 		sections.push({
 			heading: 'Post-execution heap (after heavy-concentrated)',
 			rows: [
-				{ label: 'Server', value: fmt.mb(args.postExecHeap.server) },
+				{ label: 'Server', value: fmt.mbOptional(args.postExecHeap.server) },
 				{ label: 'Browser', value: fmt.mb(args.postExecHeap.browser) },
 			],
 		});

@@ -2,7 +2,11 @@ import type { Page, TestInfo } from '@playwright/test';
 import type { MetricsHelper } from 'n8n-containers';
 
 import { bytesToMb, captureCdpMetrics } from './cdp-metrics';
-import { attachMetric, getStableHeap } from '../../../../utils/performance-helper';
+import {
+	attachMetric,
+	attachOptionalMetric,
+	getStableHeapIfSupported,
+} from '../../../../utils/performance-helper';
 import type { Tier } from '../fixtures/generate-workflow';
 
 interface PostExecHeapArgs {
@@ -15,7 +19,7 @@ interface PostExecHeapArgs {
 }
 
 export interface PostExecHeap {
-	server: number;
+	server: number | null;
 	browser: number;
 }
 
@@ -33,7 +37,7 @@ export async function maybeCapturePostExecHeap(
 ): Promise<PostExecHeap | null> {
 	if (args.scenario !== 'heavy-concentrated') return null;
 	const cdp = await captureCdpMetrics(args.page);
-	const server = await getStableHeap(args.baseUrl, args.metrics, { logGC: false });
+	const server = await getStableHeapIfSupported(args.baseUrl, args.metrics, { logGC: false });
 	const dimensions = { tier: args.tier };
 	const browserMb = bytesToMb(cdp.JSHeapUsedSize);
 	await attachMetric(
@@ -43,14 +47,14 @@ export async function maybeCapturePostExecHeap(
 		'MB',
 		dimensions,
 	);
-	await attachMetric(
+	await attachOptionalMetric(
 		args.testInfo,
 		`canvas-post-exec-server-heap-${args.tier}-mb`,
-		server.heapUsedMB,
+		server?.heapUsedMB,
 		'MB',
 		dimensions,
 	);
-	return { server: server.heapUsedMB, browser: browserMb };
+	return { server: server?.heapUsedMB ?? null, browser: browserMb };
 }
 
 /**

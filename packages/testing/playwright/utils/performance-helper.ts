@@ -67,6 +67,22 @@ export async function attachMetric(
 	});
 }
 
+/**
+ * Attach a metric only when a value is present. Keeps benchmark specs
+ * branch-free (no `if` in the test body) when a measurement is unavailable —
+ * e.g. server-memory metrics skipped on an n8n image that lacks the endpoint.
+ */
+export async function attachOptionalMetric(
+	testInfo: TestInfo,
+	metricName: string,
+	value: number | null | undefined,
+	unit?: string,
+	dimensions?: Record<string, string | number>,
+): Promise<void> {
+	if (value === null || value === undefined) return;
+	await attachMetric(testInfo, metricName, value, unit, dimensions);
+}
+
 export interface StableHeapOptions {
 	maxWaitMs?: number;
 	checkIntervalMs?: number;
@@ -89,12 +105,53 @@ export interface StableHeapResult {
  * Trigger GC and wait for heap memory to stabilize.
  * Collects RSS, PSS, and heap total samples during the stabilization window
  * and returns median values to reduce point-in-time noise.
+ *
+ * Throws if the server lacks the /rest/e2e/gc endpoint. Use
+ * {@link getStableHeapIfSupported} when measuring an n8n image that may predate
+ * the memory-profiling routes (e.g. cross-version benchmarking).
  */
 export async function getStableHeap(
 	baseUrl: string,
 	metrics: MetricsHelper,
 	options: StableHeapOptions = {},
 ): Promise<StableHeapResult> {
+	const result = await measureStableHeap(baseUrl, metrics, options);
+	if (result === null) {
+		throw new Error('Server GC endpoint (/rest/e2e/gc) is not available on this n8n instance');
+	}
+	return result;
+}
+
+/**
+ * Like {@link getStableHeap}, but returns null instead of throwing when the
+ * server lacks the /rest/e2e/gc endpoint. Older n8n images ship an e2e
+ * controller that predates the memory-profiling routes, so a spec can still
+ * collect its browser-side metrics and simply skip the server-memory ones.
+ */
+export async function getStableHeapIfSupported(
+	baseUrl: string,
+	metrics: MetricsHelper,
+	options: StableHeapOptions = {},
+): Promise<StableHeapResult | null> {
+	const result = await measureStableHeap(baseUrl, metrics, options);
+	if (result === null) {
+		console.warn(
+			'[STABILIZATION] Skipping server heap measurement — /rest/e2e/gc not available on this n8n instance',
+		);
+	}
+	return result;
+}
+
+/**
+ * Trigger GC, then wait for the heap to stabilize. Returns null (without
+ * stabilizing) when the GC endpoint is absent, leaving the throw-vs-skip
+ * decision to the caller.
+ */
+async function measureStableHeap(
+	baseUrl: string,
+	metrics: MetricsHelper,
+	options: StableHeapOptions,
+): Promise<StableHeapResult | null> {
 	const {
 		maxWaitMs = 60000,
 		checkIntervalMs = 5000,
@@ -103,7 +160,9 @@ export async function getStableHeap(
 		logGC = true,
 	} = options;
 
-	await triggerGC(baseUrl, logGC);
+	const gcRan = await triggerGC(baseUrl, logGC);
+	if (!gcRan) return null;
+
 	return await waitForStableMemory(metrics, {
 		maxWaitMs,
 		checkIntervalMs,
@@ -112,8 +171,16 @@ export async function getStableHeap(
 	});
 }
 
-async function triggerGC(baseUrl: string, log: boolean): Promise<void> {
+/**
+ * Ask the server to run a V8 GC. Returns false when the endpoint is missing
+ * (404) — older n8n images don't expose it — so callers can skip server-side
+ * memory measurement. Throws on any other failure.
+ */
+async function triggerGC(baseUrl: string, log: boolean): Promise<boolean> {
 	const response = await fetch(`${baseUrl}/rest/e2e/gc`, { method: 'POST' });
+	if (response.status === 404) {
+		return false;
+	}
 	if (!response.ok) {
 		throw new Error(`GC endpoint returned ${response.status}: ${response.statusText}`);
 	}
@@ -124,6 +191,7 @@ async function triggerGC(baseUrl: string, log: boolean): Promise<void> {
 	if (log) {
 		console.log(`[GC] ${result.data.message}`);
 	}
+	return true;
 }
 
 interface StabilizationConfig {

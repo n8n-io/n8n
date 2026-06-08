@@ -4,7 +4,11 @@ import { bytesToMb, captureCdpMetrics } from './helpers/cdp-metrics';
 import { medianBy, withWarmup } from './helpers/iterate';
 import { fmt, formatReport } from './helpers/report';
 import { test, expect } from '../../../fixtures/base';
-import { attachMetric, getStableHeap } from '../../../utils/performance-helper';
+import {
+	attachMetric,
+	attachOptionalMetric,
+	getStableHeapIfSupported,
+} from '../../../utils/performance-helper';
 
 const ITERATIONS = 3;
 const TIERS: Tier[] = ['S', 'M', 'L'];
@@ -60,9 +64,11 @@ test.describe(
 					};
 				});
 
-				const server = await getStableHeap(n8nContainer.baseUrl, services.observability.metrics, {
-					logGC: false,
-				});
+				const server = await getStableHeapIfSupported(
+					n8nContainer.baseUrl,
+					services.observability.metrics,
+					{ logGC: false },
+				);
 
 				const dimensions = { tier };
 				const medianLoad = medianBy(samples, (sample) => sample.coldLoadMs);
@@ -72,17 +78,17 @@ test.describe(
 				const medianScript = medianBy(samples, (sample) => sample.scriptDurationMs);
 
 				await attachMetric(testInfo, `canvas-cold-load-${tier}-ms`, medianLoad, 'ms', dimensions);
-				await attachMetric(
+				await attachOptionalMetric(
 					testInfo,
 					`canvas-server-heap-${tier}-mb`,
-					server.heapUsedMB,
+					server?.heapUsedMB,
 					'MB',
 					dimensions,
 				);
-				await attachMetric(
+				await attachOptionalMetric(
 					testInfo,
 					`canvas-server-rss-${tier}-mb`,
-					server.rssMB,
+					server?.rssMB,
 					'MB',
 					dimensions,
 				);
@@ -129,8 +135,8 @@ test.describe(
 						{
 							heading: 'Memory',
 							rows: [
-								{ label: 'Server heap', value: fmt.mb(server.heapUsedMB) },
-								{ label: 'Server RSS', value: fmt.mb(server.rssMB) },
+								{ label: 'Server heap', value: fmt.mbOptional(server?.heapUsedMB) },
+								{ label: 'Server RSS', value: fmt.mbOptional(server?.rssMB) },
 								{ label: 'Browser heap', value: fmt.mb(medianBrowserHeap) },
 							],
 						},
@@ -138,7 +144,7 @@ test.describe(
 				);
 
 				expect(medianLoad).toBeGreaterThan(0);
-				expect(server.heapUsedMB).toBeGreaterThan(0);
+				expect(medianBrowserHeap).toBeGreaterThan(0);
 				expect(medianDomNodes).toBeGreaterThan(0);
 			});
 		}
