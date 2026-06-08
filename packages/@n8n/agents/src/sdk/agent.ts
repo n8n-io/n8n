@@ -1038,6 +1038,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
 					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(request.parentExecutionCounter !== undefined
+						? { executionCounter: request.parentExecutionCounter }
+						: {}),
 				});
 				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
 					return failedDelegatedChildSuspendOutput(request.taskPath);
