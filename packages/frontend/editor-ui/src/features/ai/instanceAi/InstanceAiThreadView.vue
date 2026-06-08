@@ -626,107 +626,109 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
-					<N8nScrollArea as-child :class="$style.scrollArea">
-						<div ref="scrollable" :class="$style.scrollContent">
-							<div :class="$style.messageList">
-								<TransitionGroup name="message-slide">
-									<InstanceAiMessage
-										v-for="message in displayedMessages"
-										:key="message.id"
-										:message="message"
-									/>
-								</TransitionGroup>
-								<!-- Builder sub-agents are extracted from their parent assistant
+					<div :class="$style.scrollArea">
+						<N8nScrollArea as-child type="auto">
+							<div ref="scrollable" :class="$style.scrollContent">
+								<div :class="$style.messageList">
+									<TransitionGroup name="message-slide">
+										<InstanceAiMessage
+											v-for="message in displayedMessages"
+											:key="message.id"
+											:message="message"
+										/>
+									</TransitionGroup>
+									<!-- Builder sub-agents are extracted from their parent assistant
      messages and rendered here so they always sit at the bottom
      of the conversation. -->
-								<div v-if="builderAgents.length" :class="$style.builderAgents">
-									<AgentSection
-										v-for="builder in builderAgents"
-										:key="builder.agentId"
-										:agent-node="builder"
-									/>
-								</div>
-								<!-- Inline confirmations (questions, plan review, text, setup,
+									<div v-if="builderAgents.length" :class="$style.builderAgents">
+										<AgentSection
+											v-for="builder in builderAgents"
+											:key="builder.agentId"
+											:agent-node="builder"
+										/>
+									</div>
+									<!-- Inline confirmations (questions, plan review, text, setup,
 									 credential, gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
-								<InstanceAiConfirmationPanel kind="inline" />
-								<Transition name="confirmation-slide">
-									<InstanceAiFixWithAiPanel
-										v-if="activeFixWithAiOffer"
-										:node-name="activeFixWithAiOffer.errors[0].nodeName"
-										:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-										:failed-count="activeFixWithAiOffer.errors.length"
-										@fix-with-ai="handleFixWithAiFromOffer"
-										@dismiss="dismissFixWithAiOffer"
-									/>
-								</Transition>
-							</div>
-
-							<!-- Floating input slot - replaced by the confirmation panel while a
-								 floating-eligible approval is pending. StatusBar and credit
-								 banner stay anchored above the slot in both states. The
-								 leaving child is positioned absolutely during the cross-fade
-								 so the in-flow child can size the slot to its natural
-								 height. -->
-							<div :class="$style.inputDock">
-								<!-- Scroll to bottom button -->
-								<div :class="$style.scrollButtonContainer">
-									<Transition name="scroll-button-fade">
-										<N8nIconButton
-											v-if="userScrolledUp && thread.hasMessages"
-											variant="outline"
-											icon="arrow-down"
-											size="large"
-											icon-size="large"
-											:class="$style.scrollToBottomButton"
-											@click="
-												scrollToBottom(true);
-												userScrolledUp = false;
-											"
+									<InstanceAiConfirmationPanel kind="inline" />
+									<Transition name="confirmation-slide">
+										<InstanceAiFixWithAiPanel
+											v-if="activeFixWithAiOffer"
+											:node-name="activeFixWithAiOffer.errors[0].nodeName"
+											:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+											:failed-count="activeFixWithAiOffer.errors.length"
+											@fix-with-ai="handleFixWithAiFromOffer"
+											@dismiss="dismissFixWithAiOffer"
 										/>
 									</Transition>
 								</div>
 
-								<div :class="$style.inputContainer">
-									<div :class="$style.inputConstraint">
-										<InstanceAiStatusBar />
-										<CreditWarningBanner
-											v-if="creditBanner.visible.value"
-											:credits-remaining="store.creditsRemaining"
-											:credits-quota="store.creditsQuota"
-											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-											@dismiss="creditBanner.dismiss()"
-										/>
-										<div :class="$style.inputSwap">
-											<Transition name="input-swap">
-												<InstanceAiConfirmationPanel
-													v-if="hasFloatingConfirmation"
-													key="floating-confirmation"
-													kind="floating"
-												/>
-												<InstanceAiInput
-													v-else
-													ref="chatInputRef"
-													key="chat-input"
-													:is-streaming="thread.isStreaming"
-													:is-submitting="thread.isSendingMessage"
-													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-													:is-plan-edit-mode="thread.activePlanEdit !== null"
-													:current-thread-id="thread.id"
-													:amend-context="thread.amendContext"
-													:contextual-suggestion="thread.contextualSuggestion"
-													@submit="handleSubmit"
-													@stop="handleStop"
-													@cancel-plan-edit="thread.cancelPlanEdit"
-												/>
-											</Transition>
+								<!-- Floating input slot - replaced by the confirmation panel while a
+										 floating-eligible approval is pending. StatusBar and credit
+										 banner stay anchored above the slot in both states. The
+										 leaving child is positioned absolutely during the cross-fade
+										 so the in-flow child can size the slot to its natural
+										 height. -->
+								<div :class="$style.inputDock">
+									<!-- Scroll to bottom button -->
+									<div :class="$style.scrollButtonContainer">
+										<Transition name="scroll-button-fade">
+											<N8nIconButton
+												v-if="userScrolledUp && thread.hasMessages"
+												variant="outline"
+												icon="arrow-down"
+												size="large"
+												icon-size="large"
+												:class="$style.scrollToBottomButton"
+												@click="
+													scrollToBottom(true);
+													userScrolledUp = false;
+												"
+											/>
+										</Transition>
+									</div>
+
+									<div :class="$style.inputContainer">
+										<div :class="$style.inputConstraint">
+											<InstanceAiStatusBar />
+											<CreditWarningBanner
+												v-if="creditBanner.visible.value"
+												:credits-remaining="store.creditsRemaining"
+												:credits-quota="store.creditsQuota"
+												@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+												@dismiss="creditBanner.dismiss()"
+											/>
+											<div :class="$style.inputSwap">
+												<Transition name="input-swap">
+													<InstanceAiConfirmationPanel
+														v-if="hasFloatingConfirmation"
+														key="floating-confirmation"
+														kind="floating"
+													/>
+													<InstanceAiInput
+														v-else
+														ref="chatInputRef"
+														key="chat-input"
+														:is-streaming="thread.isStreaming"
+														:is-submitting="thread.isSendingMessage"
+														:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+														:is-plan-edit-mode="thread.activePlanEdit !== null"
+														:current-thread-id="thread.id"
+														:amend-context="thread.amendContext"
+														:contextual-suggestion="thread.contextualSuggestion"
+														@submit="handleSubmit"
+														@stop="handleStop"
+														@cancel-plan-edit="thread.cancelPlanEdit"
+													/>
+												</Transition>
+											</div>
 										</div>
 									</div>
 								</div>
 							</div>
-						</div>
-					</N8nScrollArea>
+						</N8nScrollArea>
+					</div>
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
@@ -924,6 +926,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 .contentArea {
 	--instance-ai-artifacts-layout-width: 0;
+	--instance-ai-scrollbar-edge-gap: 3px;
 
 	display: flex;
 	flex: 1;
@@ -951,7 +954,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 .artifactsPanelSlot {
 	position: absolute;
 	top: 0;
-	right: 0;
+	right: calc(var(--spacing--2xs) + var(--instance-ai-scrollbar-edge-gap));
 	bottom: 0;
 	z-index: 4;
 	width: var(--instance-ai-artifacts-panel-width);
@@ -972,6 +975,22 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	flex: 1;
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
+
+	:global([data-orientation='vertical'][data-orientation='vertical']) {
+		right: var(--instance-ai-scrollbar-edge-gap) !important;
+		z-index: 5;
+		background: transparent;
+		padding: 0;
+		pointer-events: auto;
+	}
+
+	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
+
+		&:hover {
+			background: light-dark(var(--color--neutral-500), var(--color--neutral-500));
+		}
+	}
 }
 
 .scrollContent {

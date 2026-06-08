@@ -5592,6 +5592,7 @@
 	"instanceAi.connections.title": "Connections",
 	"instanceAi.connections.empty.title": "No connections yet",
 	"instanceAi.connections.empty.cta": "Setup computer use",
+	"instanceAi.connections.add.label": "Add connection",
 	"instanceAi.connections.add.computerUse": "Computer Use",
 	"instanceAi.connections.add.browserUse": "Browser Use",
 	"instanceAi.connections.add.nothingAvailableTooltip": "All connections are already added",
