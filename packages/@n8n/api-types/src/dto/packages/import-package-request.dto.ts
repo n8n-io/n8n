@@ -9,6 +9,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'credentialMatchingMode',
 	'credentialMissingMode',
 	'workflowConflictPolicy',
+	'dryRun',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -21,10 +22,17 @@ const optionalFormId = z
 		return trimmed.length > 0 ? trimmed : undefined;
 	});
 
+/** Multipart text field: `"true"` (case-insensitive) is true, everything else false. */
+const optionalFormBoolean = z
+	.string()
+	.optional()
+	.transform((value) => value?.trim().toLowerCase() === 'true');
+
 export class ImportPackageRequestDto extends Z.class({
 	projectId: optionalFormId,
 	folderId: optionalFormId,
 	credentialMatchingMode: z.enum(['id-only']).optional().default('id-only'),
 	credentialMissingMode: z.enum(['must-preexist']).optional().default('must-preexist'),
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
+	dryRun: optionalFormBoolean,
 }) {}

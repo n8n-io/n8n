@@ -74,152 +74,210 @@ post:
                 `new-version` updates matching workflows and creates a new version,
                 `fail` rejects the import when any matching workflow exists, and
                 `skip` leaves matching workflows untouched while importing the rest.
+            dryRun:
+              type: string
+              enum:
+                - 'true'
+                - 'false'
+              default: 'false'
+              description: >
+                When `true`, the import writes nothing and instead reports what it
+                *would* do: the planned action per workflow, any conflicts under the
+                `fail` policy, and any credential references that could not be
+                resolved. Conflicts and unresolved credentials are reported in the
+                `200` body rather than raising `409`/`422`.
   responses:
     '200':
-      description: Import succeeded.
+      description: >
+        Import succeeded, or — when `dryRun` is `true` — the import plan was computed
+        without writing anything. The response shape is selected by `dryRun`.
       content:
         application/json:
           schema:
-            type: object
-            required:
-              - package
-              - workflows
-              - bindings
-            properties:
-              package:
-                type: object
+            oneOf:
+              - type: object
+                description: Applied import (`dryRun` was `false`).
                 required:
-                  - sourceN8nVersion
-                  - sourceId
-                  - exportedAt
-                properties:
-                  sourceN8nVersion:
-                    type: string
-                  sourceId:
-                    type: string
-                  exportedAt:
-                    type: string
-                    format: date-time
-              workflows:
-                type: array
-                items:
-                  type: object
-                  required:
-                    - sourceWorkflowId
-                    - localId
-                    - name
-                    - projectId
-                    - parentFolderId
-                    - activeVersionId
-                    - status
-                  properties:
-                    sourceWorkflowId:
-                      type: string
-                      description: Workflow id as it appeared in the package.
-                    localId:
-                      type: string
-                      description: Newly minted workflow id on the target instance.
-                    name:
-                      type: string
-                    projectId:
-                      type: string
-                    parentFolderId:
-                      type: string
-                      nullable: true
-                    activeVersionId:
-                      type: string
-                      nullable: true
-                      description: >
-                        Published version on the target instance, if any.
-                    status:
-                      type: string
-                      enum:
-                        - created
-                        - updated
-                        - skipped
-                      description: Import outcome for this package workflow.
-              bindings:
-                type: object
-                description: >
-                  Source id → target id mappings produced during import, one map per
-                  entity type. Each value maps an id as it appeared in the package to
-                  the id on the target instance.
-                required:
+                  - dryRun
+                  - package
                   - workflows
-                  - credentials
+                  - bindings
                 properties:
-                  workflows:
-                    type: object
-                    additionalProperties:
-                      type: string
-                  credentials:
-                    type: object
-                    description: >
-                      Credential id from `requirements.credentials` in the package
-                      manifest → matched credential id on the target instance.
-                    additionalProperties:
-                      type: string
-    '409':
-      description: Workflow source id conflict.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              code:
-                type: number
-              message:
-                type: string
-              meta:
-                type: object
-                properties:
-                  code:
-                    type: string
+                  dryRun:
+                    type: boolean
                     enum:
-                      - WORKFLOW_CONFLICT
-                  conflicts:
+                      - false
+                  package:
+                    type: object
+                    required:
+                      - sourceN8nVersion
+                      - sourceId
+                      - exportedAt
+                    properties:
+                      sourceN8nVersion:
+                        type: string
+                      sourceId:
+                        type: string
+                      exportedAt:
+                        type: string
+                        format: date-time
+                  workflows:
                     type: array
                     items:
                       type: object
+                      required:
+                        - sourceWorkflowId
+                        - localId
+                        - name
+                        - projectId
+                        - parentFolderId
+                        - activeVersionId
+                        - status
                       properties:
                         sourceWorkflowId:
                           type: string
-                        existingWorkflowId:
+                          description: Workflow id as it appeared in the package.
+                        localId:
                           type: string
+                          description: Newly minted workflow id on the target instance.
                         name:
                           type: string
-    '422':
-      description: One or more credential references could not be resolved.
+                        projectId:
+                          type: string
+                        parentFolderId:
+                          type: string
+                          nullable: true
+                        activeVersionId:
+                          type: string
+                          nullable: true
+                          description: >
+                            Published version on the target instance, if any.
+                        status:
+                          type: string
+                          enum:
+                            - created
+                            - updated
+                            - skipped
+                          description: Import outcome for this package workflow.
+                  bindings:
+                    type: object
+                    description: >
+                      Source id → target id mappings produced during import, one map per
+                      entity type. Each value maps an id as it appeared in the package to
+                      the id on the target instance.
+                    required:
+                      - workflows
+                      - credentials
+                    properties:
+                      workflows:
+                        type: object
+                        additionalProperties:
+                          type: string
+                      credentials:
+                        type: object
+                        description: >
+                          Credential id from `requirements.credentials` in the package
+                          manifest → matched credential id on the target instance.
+                        additionalProperties:
+                          type: string
+              - type: object
+                description: Dry-run plan (`dryRun` was `true`); nothing was written.
+                required:
+                  - dryRun
+                  - package
+                  - workflows
+                  - blockingIssues
+                properties:
+                  dryRun:
+                    type: boolean
+                    enum:
+                      - true
+                  package:
+                    type: object
+                    required:
+                      - sourceN8nVersion
+                      - sourceId
+                      - exportedAt
+                    properties:
+                      sourceN8nVersion:
+                        type: string
+                      sourceId:
+                        type: string
+                      exportedAt:
+                        type: string
+                        format: date-time
+                  workflows:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - sourceWorkflowId
+                        - name
+                        - action
+                        - existingWorkflowId
+                      properties:
+                        sourceWorkflowId:
+                          type: string
+                          description: Workflow id as it appeared in the package.
+                        name:
+                          type: string
+                        action:
+                          type: string
+                          enum:
+                            - create
+                            - update
+                            - skip
+                          description: What the import would do to this workflow.
+                        existingWorkflowId:
+                          type: string
+                          nullable: true
+                          description: >
+                            Matched workflow id on the target instance, or `null` when
+                            the workflow would be created.
+                  blockingIssues:
+                    type: array
+                    description: >
+                      Reasons the import would be blocked. A real run aborts when any
+                      are present; here they are reported instead. Empty when the
+                      import would proceed.
+                    items:
+                      $ref: '../schemas/importBlockingIssue.yml'
+    '409':
+      description: >
+        Import blocked, with at least one workflow source-id conflict among the
+        issues. Returned for real (non-dry-run) imports only.
       content:
         application/json:
           schema:
             type: object
             required:
               - message
-              - failures
+              - issues
             properties:
               message:
                 type: string
-              failures:
+              issues:
                 type: array
                 items:
-                  type: object
-                  required:
-                    - kind
-                    - sourceId
-                    - usedByWorkflows
-                  properties:
-                    kind:
-                      type: string
-                      enum:
-                        - not_found
-                        - unknown_type
-                    sourceId:
-                      type: string
-                    usedByWorkflows:
-                      type: array
-                      items:
-                        type: string
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '422':
+      description: >
+        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+        Returned for real (non-dry-run) imports only.
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':

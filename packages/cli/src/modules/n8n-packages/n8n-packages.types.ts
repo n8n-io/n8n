@@ -32,6 +32,8 @@ export interface ImportPackageRequest {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
 	workflowConflictPolicy: WorkflowConflictPolicy;
+	/** When true, compute and report what the import would do without writing anything. */
+	dryRun: boolean;
 }
 
 export interface ImportedWorkflowSummary {
@@ -43,6 +45,33 @@ export interface ImportedWorkflowSummary {
 	activeVersionId: string | null;
 	status: 'created' | 'updated' | 'skipped';
 }
+
+/** What a dry-run determined would happen to a single workflow, without writing it. */
+export interface PlannedWorkflowSummary {
+	sourceWorkflowId: string;
+	name: string;
+	action: 'create' | 'update' | 'skip';
+	existingWorkflowId: string | null;
+}
+
+/**
+ * A reason the import cannot proceed, produced by some policy from any subsystem.
+ * Discriminated by `type` so new gates add a variant rather than a new throw site.
+ * A real run aborts when any are present; a dry-run reports them all.
+ */
+export type BlockingIssue =
+	| {
+			type: 'workflow-conflict';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			name: string;
+	  }
+	| {
+			type: 'credential-unresolved';
+			kind: 'not_found' | 'unknown_type';
+			sourceId: string;
+			usedByWorkflows: string[];
+	  };
 
 /** Source id → target id mapping for one entity type within an imported package. */
 export type ImportBindingMap = Map<string, string>;
@@ -75,12 +104,26 @@ export function serializeBindings(bindings: PackageImportBindings): SerializedBi
 	};
 }
 
-export interface ImportResult {
-	package: {
-		sourceN8nVersion: string;
-		sourceId: string;
-		exportedAt: string;
-	};
+export interface ImportPackageSummary {
+	sourceN8nVersion: string;
+	sourceId: string;
+	exportedAt: string;
+}
+
+/** Result of an applied (non-dry-run) import: workflows were written to the database. */
+export interface AppliedImportResult {
+	dryRun: false;
+	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	bindings: SerializedBindings;
 }
+
+/** Result of a dry-run import: nothing was written, only what *would* happen is reported. */
+export interface PlannedImportResult {
+	dryRun: true;
+	package: ImportPackageSummary;
+	workflows: PlannedWorkflowSummary[];
+	blockingIssues: BlockingIssue[];
+}
+
+export type ImportResult = AppliedImportResult | PlannedImportResult;
