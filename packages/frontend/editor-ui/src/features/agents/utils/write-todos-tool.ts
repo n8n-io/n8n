@@ -1,7 +1,8 @@
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
+import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
-import { resolveSubAgentIdForDisplay } from './delegate-tool';
+import { SUB_AGENT_DIFFICULTY_I18N_KEY, resolveSubAgentIdForDisplay } from './delegate-tool';
 
 /**
  * Name of the SDK tool the parent agent calls to maintain a structured task list.
@@ -11,10 +12,13 @@ export const WRITE_TODOS_TOOL_NAME = 'write_todos';
 
 const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
 
+const todoDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
+
 const todoItemSchema = z.object({
 	id: z.string().min(1),
 	content: z.string().min(1),
 	status: todoStatusSchema,
+	difficulty: todoDifficultySchema.optional(),
 	delegateHint: z
 		.object({
 			subAgentId: z.string().optional(),
@@ -38,6 +42,7 @@ export type WriteTodosOutput = z.infer<typeof writeTodosOutputSchema>;
 export type WriteTodosFailedOutput = z.infer<typeof writeTodosFailedOutputSchema>;
 export type TodoItem = z.infer<typeof todoItemSchema>;
 export type TodoStatus = z.infer<typeof todoStatusSchema>;
+export type TodoDifficulty = z.infer<typeof todoDifficultySchema>;
 
 export type WriteTodosI18n = Pick<ReturnType<typeof useI18n>, 'baseText'>;
 
@@ -84,16 +89,30 @@ export function writeTodosLabel(i18n: WriteTodosI18n): string {
 	return i18n.baseText('agents.chat.writeTodos.label');
 }
 
-export function writeTodosSummaryLabel(i18n: WriteTodosI18n, todoCount: number): string {
+export function countIncompleteTodos(todos: TodoItem[]): number {
+	return todos.filter((todo) => todo.status !== 'completed').length;
+}
+
+export function writeTodosSummaryLabel(i18n: WriteTodosI18n, incompleteTodoCount: number): string {
+	if (incompleteTodoCount === 0) {
+		return i18n.baseText('agents.chat.writeTodos.summary.done');
+	}
+
 	const key =
-		todoCount === 1 ? 'agents.chat.writeTodos.summary.one' : 'agents.chat.writeTodos.summary.other';
+		incompleteTodoCount === 1
+			? 'agents.chat.writeTodos.summary.one'
+			: 'agents.chat.writeTodos.summary.other';
 	return i18n.baseText(key, {
-		interpolate: { count: String(todoCount) },
+		interpolate: { count: String(incompleteTodoCount) },
 	});
 }
 
 function writeTodosStatusLabel(i18n: WriteTodosI18n, status: TodoStatus): string {
 	return i18n.baseText(STATUS_I18N_KEY[status]);
+}
+
+function writeTodosDifficultyLabel(i18n: WriteTodosI18n, difficulty: TodoDifficulty): string {
+	return i18n.baseText(SUB_AGENT_DIFFICULTY_I18N_KEY[difficulty]);
 }
 
 function formatTodoItem(
@@ -102,6 +121,11 @@ function formatTodoItem(
 	subAgentNameById?: Map<string, string>,
 ): string {
 	const hints: string[] = [];
+	if (todo.difficulty) {
+		hints.push(
+			`${i18n.baseText('agents.chat.writeTodos.hint.difficulty')}: ${writeTodosDifficultyLabel(i18n, todo.difficulty)}`,
+		);
+	}
 	if (todo.delegateHint?.subAgentId) {
 		const displayName = resolveSubAgentIdForDisplay(
 			todo.delegateHint.subAgentId,

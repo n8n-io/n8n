@@ -5,16 +5,15 @@
  * Run from the n8n release pipeline (see
  * `.github/workflows/release-build-daytona-snapshot.yml`). Authenticates
  * with a static Daytona admin API key supplied via env vars and creates
- * the snapshot named `n8n/instance-ai:<version>-<setupHash>` from the same image
+ * the snapshot named `n8n/instance-ai:<version>` from the same image
  * descriptor used by the runtime fallback path. Re-runs against the same
  * version are idempotent — "already exists" is treated as success.
  *
- * The runtime never calls `snapshot.create` through the sandbox proxy in
- * cloud mode; CI is the only producer of cloud snapshots.
+ * The runtime never calls `snapshot.create`; CI is the only producer of
+ * versioned snapshots.
  *
  * The actual create-with-already-exists logic lives in
- * `SnapshotManager.createSnapshot` so the runtime (direct mode) and CI
- * share a single implementation.
+ * `SnapshotManager.createSnapshot`.
  *
  * CommonJS so Node resolves the package via `main: dist/index.js` instead
  * of the bundler-only `module: src/index.ts` entry.
