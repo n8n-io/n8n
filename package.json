@@ -183,9 +183,10 @@
       "langsmith": "0.6.0",
       "@turbo/darwin-64@<=2.9.15": "2.9.15",
       "@turbo/windows-64@<=2.9.15": "2.9.15",
-      "tar": "7.5.16",
-      "undici@<=7.26.0": "7.26.0",
-      "vue-i18n@<=11.4.4": "11.4.4"
+      "tar": "catalog:",
+      "undici@5": "catalog:undici-v6",
+      "undici@6": "catalog:undici-v6",
+      "undici@7": "catalog:undici-v7"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

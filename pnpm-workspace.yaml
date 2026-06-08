@@ -176,7 +176,7 @@ catalogs:
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
-    vue-i18n: ^11.1.2
+    vue-i18n: ^11.4.4
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
@@ -196,7 +196,7 @@ catalogs:
   undici-v6:
     undici: ^6.24.0
   undici-v7:
-    undici: ^7.16.0
+    undici: ^7.26.0
 
 minimumReleaseAge: 4320
 
