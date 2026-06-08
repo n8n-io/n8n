@@ -634,7 +634,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	async setupHotReload() {
-		const { default: debounce } = await import('lodash/debounce');
+		const { default: debounce } = await import('lodash/debounce.js');
 
 		const { subscribe } = await import('@parcel/watcher');
 

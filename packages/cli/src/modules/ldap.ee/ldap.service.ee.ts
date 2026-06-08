@@ -184,7 +184,10 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		}
 		if (this.client === undefined) {
 			if (!this.ldapts) {
-				this.ldapts = await import('ldapts');
+				// `ldapts` ships dual ESM/CJS builds; in this CommonJS package the field's
+				// static `typeof import` type resolves to the CJS declarations while the
+				// runtime `await import()` yields the ESM ones. They're identical, so bridge them.
+				this.ldapts = (await import('ldapts')) as unknown as typeof this.ldapts;
 			}
 
 			const url = formatUrl(

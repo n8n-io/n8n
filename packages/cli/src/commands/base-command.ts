@@ -267,12 +267,12 @@ export abstract class BaseCommand<F = never> {
 		if (isS3Configured) {
 			try {
 				const { ObjectStoreService } = await import(
-					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+					'n8n-core/dist/binary-data/object-store/object-store.service.ee.js'
 				);
 				const objectStoreService = Container.get(ObjectStoreService);
 				await objectStoreService.init();
 				const { ObjectStoreManager } = await import(
-					'n8n-core/dist/binary-data/object-store.manager'
+					'n8n-core/dist/binary-data/object-store.manager.js'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
 			} catch {

@@ -41,7 +41,7 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 	if (!isJSONRPCRequest(body)) return {};
 	if (!body.params) return {};
 
-	const { arguments: args } = body.params;
+	const args = body.params.arguments;
 	if (isRecord(args)) {
 		return args;
 	}

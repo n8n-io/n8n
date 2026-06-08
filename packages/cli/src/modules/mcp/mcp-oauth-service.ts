@@ -1,15 +1,15 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
-} from '@modelcontextprotocol/sdk/server/auth/provider';
+} from '@modelcontextprotocol/sdk/server/auth/provider.js';
 import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
-} from '@modelcontextprotocol/sdk/shared/auth';
+} from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
