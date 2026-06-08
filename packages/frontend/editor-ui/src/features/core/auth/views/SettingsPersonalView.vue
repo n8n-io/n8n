@@ -100,7 +100,9 @@ const isExternalAuthEnabled = computed((): boolean => {
 		ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
 	const isSamlEnabled = ssoStore.isSamlLoginEnabled && ssoStore.isDefaultAuthenticationSaml;
 	const isOidcEnabled =
-		ssoStore.isEnterpriseOidcEnabled && currentUser.value?.signInType === 'oidc';
+		ssoStore.isEnterpriseOidcEnabled &&
+		ssoStore.isOidcLoginEnabled &&
+		currentUser.value?.signInType === 'oidc';
 	return isLdapEnabled || isSamlEnabled || isOidcEnabled;
 });
 

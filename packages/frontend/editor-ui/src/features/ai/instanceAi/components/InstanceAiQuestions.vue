@@ -568,6 +568,8 @@ function onOptionMouseEnter(idx: number) {
 </template>
 
 <style lang="scss" module>
+@use '../../shared/styles/question-option-rows' as questionOptions;
+
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -604,64 +606,17 @@ function onOptionMouseEnter(idx: number) {
 }
 
 .optionRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: none;
-	border-radius: var(--radius--lg);
-	background: none;
-	cursor: pointer;
-	transition: background-color 0.15s ease;
-	text-align: left;
-
-	&:hover,
-	&.highlighted {
-		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
-	}
+	@include questionOptions.option-button-row;
+	@include questionOptions.active-selected;
 
 	&:hover .arrowIndicator,
 	&.highlighted .arrowIndicator {
 		opacity: 1;
 	}
-
-	&.activeSelected {
-		background-color: var(--color--primary);
-
-		.numberBadge {
-			background-color: var(--color--orange-400);
-			color: white;
-		}
-
-		.optionLabel {
-			color: white;
-		}
-
-		.arrowIndicator {
-			opacity: 1;
-			color: white;
-		}
-	}
-
-	&:disabled {
-		color: var(--color--text--tint-1);
-		cursor: not-allowed;
-	}
 }
 
 .numberBadge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	flex-shrink: 0;
+	@include questionOptions.number-badge;
 }
 
 .arrowIndicator {
@@ -673,25 +628,11 @@ function onOptionMouseEnter(idx: number) {
 }
 
 .optionLabel {
-	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--xl);
+	@include questionOptions.option-label;
 }
 
 .checkboxRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	cursor: pointer;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius--lg);
-	transition: background-color 0.15s ease;
-
-	&:hover,
-	&.highlighted {
-		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
-	}
+	@include questionOptions.checkbox-row;
 }
 
 .somethingElseRow {

@@ -4,9 +4,8 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { buildFilesystemResource, resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, isLikelyBinaryContent, resolveReadablePath } from './fs-utils';
 const DEFAULT_MAX_LINES = 200;
-const BINARY_CHECK_SIZE = 8192;
 
 const inputSchema = z.object({
 	filePath: z.string().describe('File path relative to root'),
@@ -25,7 +24,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 		];
 	},
 	async execute({ filePath, startLine, maxLines }, { dir }) {
-		const resolvedPath = await resolveSafePath(dir, filePath);
+		const resolvedPath = await resolveReadablePath(dir, filePath);
 
 		const stat = await fs.stat(resolvedPath);
 		if (stat.size > MAX_FILE_SIZE) {
@@ -34,11 +33,10 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 			);
 		}
 
-		const buffer = await fs.readFile(resolvedPath);
+		const fileContent = await fs.readFile(resolvedPath);
+		const buffer = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
 
-		// Binary detection: check first 8KB for null bytes
-		const checkSlice = buffer.subarray(0, Math.min(BINARY_CHECK_SIZE, buffer.length));
-		if (checkSlice.includes(0)) {
+		if (isLikelyBinaryContent(buffer)) {
 			throw new Error('Binary file detected — cannot read binary files');
 		}
 

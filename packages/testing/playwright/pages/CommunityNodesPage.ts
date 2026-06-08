@@ -53,7 +53,7 @@ export class CommunityNodesPage extends BasePage {
 	}
 
 	getUpdateButton(): Locator {
-		return this.getCommunityCards().first().locator('button');
+		return this.getCommunityCards().first().getByRole('button', { name: 'Update' });
 	}
 
 	getConfirmUpdateButton(): Locator {

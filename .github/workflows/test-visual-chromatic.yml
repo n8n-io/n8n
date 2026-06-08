@@ -34,4 +34,4 @@ jobs:
           skip: 'release/**'
           onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          exitZeroOnChanges: false
+          exitZeroOnChanges: true

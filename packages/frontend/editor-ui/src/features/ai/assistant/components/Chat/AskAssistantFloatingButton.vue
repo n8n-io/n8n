@@ -8,11 +8,13 @@ import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
+const workflowId = useWorkflowId();
 const i18n = useI18n();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -52,6 +54,7 @@ const onClick = async () => {
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
+			workflowId: workflowId.value,
 		});
 	}
 };

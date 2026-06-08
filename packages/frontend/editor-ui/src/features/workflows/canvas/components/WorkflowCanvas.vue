@@ -9,12 +9,11 @@ import { throttledRef } from '@vueuse/core';
 import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import Canvas from './Canvas.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -30,6 +29,7 @@ const props = withDefaults(
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
+		stripedBackground?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -38,14 +38,15 @@ const props = withDefaults(
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
 		suppressInteraction: false,
+		stripedBackground: true,
 	},
 );
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const renderData = computed(() =>
+	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
 );
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
@@ -61,11 +62,37 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const readOnlyRef = computed(() => props.readOnly ?? false);
+const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
+
+const experimentalNdvStore = useExperimentalNdvStore();
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
+const {
+	nodes: mappedWorkflowNodes,
+	connections: mappedConnections,
+	nodeDisplaySizeById,
+} = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
+	renderData,
+	isExperimentalNdvActive,
 });
+
+const mappedGroupVueFlowNodes = computed(() =>
+	mapGroupsToVueFlowNodes({
+		allGroups: workflowDocumentStore.value.allGroups,
+		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+	}),
+);
+
+const mappedNodes = computed(() => [
+	...mappedWorkflowNodes.value,
+	...mappedGroupVueFlowNodes.value,
+]);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {
@@ -159,11 +186,14 @@ defineExpose({
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:render-data="renderData"
+				:node-display-size-by-id="nodeDisplaySizeById"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
+				:striped-background="stripedBackground"
 				:initial-viewport="initialViewport"
 				v-bind="$attrs"
 			/>

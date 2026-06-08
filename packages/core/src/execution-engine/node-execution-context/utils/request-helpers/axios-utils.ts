@@ -6,9 +6,9 @@ import crypto from 'crypto';
 import FormData from 'form-data';
 import type { AgentOptions } from 'https';
 import {
-	ApplicationError,
-	isDomainAllowed,
+	assertUrlAllowed,
 	type IHttpRequestOptions,
+	type IRequestOptions,
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 
@@ -20,11 +20,7 @@ export function throwIfDomainNotAllowed(
 	allowedDomains?: string,
 ): void {
 	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
-	if (allowedDomains && !isDomainAllowed(url, { allowedDomains })) {
-		throw new ApplicationError(
-			`Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`,
-		);
-	}
+	assertUrlAllowed({ url, allowedDomains });
 }
 
 /** Attempts to parse a string as a URL. Returns the parsed `URL` or `null` on failure. */
@@ -314,4 +310,26 @@ export function setAxiosAgents(
 
 	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
 	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
+}
+
+/** Validates a URL against SSRF protection rules. Throws UserError if blocked. */
+export async function validateUrlSsrf(
+	url: string | undefined,
+	ssrfBridge?: SsrfBridge,
+): Promise<void> {
+	if (!ssrfBridge || !url) return;
+
+	const parsed = tryParseUrl(url);
+	if (!parsed) return;
+
+	const result = await ssrfBridge.validateUrl(parsed);
+	if (!result.ok) {
+		throw result.error;
+	}
+}
+
+export function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
+	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
+	const baseURL = requestObject.baseURL?.toString();
+	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
 }

@@ -59,10 +59,11 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 
-const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
-	computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
-);
+const { source, target, sourceRenderData, targetRenderData, nodesDiff, connectionsDiff } =
+	useWorkflowDiff(
+		computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
+		computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
+	);
 
 // Use shared composable for UI logic
 const {
@@ -277,8 +278,10 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 		<WorkflowDiffContent
 			:source-nodes="source.nodes"
 			:source-connections="source.connections"
+			:source-render-data="sourceRenderData"
 			:target-nodes="target.nodes"
 			:target-connections="target.connections"
+			:target-render-data="targetRenderData"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
 			:source-exists="!!sourceWorkflow"

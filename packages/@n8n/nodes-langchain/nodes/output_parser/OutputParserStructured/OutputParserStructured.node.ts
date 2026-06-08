@@ -182,7 +182,7 @@ export class OutputParserStructured implements INodeType {
 			},
 		],
 		builderHint: {
-			message:
+			searchHint:
 				'Output data is wrapped in an "output" key, e.g. { "output": { "state": "California", "cities": ["San Francisco"] } }',
 			inputs: {
 				ai_languageModel: {

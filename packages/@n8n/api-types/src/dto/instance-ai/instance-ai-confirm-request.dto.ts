@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { domainAccessActionSchema } from '../../schemas/instance-ai.schema';
+import {
+	domainAccessActionSchema,
+	instanceGatewayResourceDecisionSchema,
+} from '../../schemas/instance-ai.schema';
 
 /**
  * Plain approval/denial. Also carries optional `userInput` for:
@@ -46,13 +49,16 @@ const domainAccessDenySchema = z.object({
 	kind: z.literal('domainAccessDeny'),
 });
 
-/** Gateway resource-access decision (inputType='resource-decision'). Approval is implied.
- *  `resourceDecision` is one of the opaque tokens listed in the request's `options[]` array
- *  (e.g. `'denyOnce'`, `'allowOnce'`, `'allowForSession'`) — the daemon defines the vocabulary,
- *  so we keep this as a string rather than a fixed enum. */
+/** Plan-review denial — user rejected the proposed plan outright. Distinct from
+ *  `approval` with `approved: false + userInput`, which asks the agent to revise. */
+const planDenySchema = z.object({
+	kind: z.literal('planDeny'),
+});
+
+/** Gateway resource-access decision (inputType='resource-decision'). Approval is implied. */
 const resourceDecisionConfirmSchema = z.object({
 	kind: z.literal('resourceDecision'),
-	resourceDecision: z.string(),
+	resourceDecision: instanceGatewayResourceDecisionSchema,
 });
 
 /** Per-node credential map: `Record<nodeName, Record<credentialType, credentialId>>`. */
@@ -61,7 +67,7 @@ const nodeCredentialsRecord = z.record(credentialIdByTypeSchema).optional();
 const nodeParametersRecord = z.record(z.record(z.unknown())).optional();
 
 /** Workflow-setup wizard: apply the chosen credentials/parameters. Approval is implied;
- *  the service maps this to `action: 'apply'` for the underlying Mastra resume schema. */
+ *  the service maps this to `action: 'apply'` for the setup resume schema. */
 const setupWorkflowApplyConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowApply'),
 	nodeCredentials: nodeCredentialsRecord,
@@ -69,7 +75,7 @@ const setupWorkflowApplyConfirmSchema = z.object({
 });
 
 /** Workflow-setup wizard: run a test-trigger against a specific node. Approval is implied;
- *  the service maps this to `action: 'test-trigger'` for the underlying Mastra resume schema. */
+ *  the service maps this to `action: 'test-trigger'` for the setup resume schema. */
 const setupWorkflowTestTriggerConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowTestTrigger'),
 	testTriggerNode: z.string(),
@@ -83,6 +89,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	credentialSelectionConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
+	planDenySchema,
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
@@ -90,3 +97,4 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;
 export type InstanceAiConfirmRequestKind = InstanceAiConfirmRequest['kind'];
+export type InstanceAiResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;

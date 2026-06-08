@@ -1,13 +1,13 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
+import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { ImportService } from '../import.service';
 
@@ -30,10 +30,6 @@ jest.mock('@n8n/db', () => ({
 	WithTimestampsAndStringId: class {},
 }));
 
-jest.mock('@/active-workflow-manager', () => ({
-	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
-}));
-
 describe('ImportService', () => {
 	let importService: ImportService;
 	let mockLogger: Logger;
@@ -42,9 +38,10 @@ describe('ImportService', () => {
 	let mockTagRepository: TagRepository;
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
-	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDataTableDDLService: DataTableDDLService;
+	let mockUserRepository: UserRepository;
+	let mockWorkflowService: WorkflowService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -55,9 +52,10 @@ describe('ImportService', () => {
 		mockTagRepository = mock<TagRepository>();
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
-		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDataTableDDLService = mock<DataTableDDLService>();
+		mockUserRepository = mock<UserRepository>();
+		mockWorkflowService = mock<WorkflowService>();
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = jest.fn(async (data: string) =>
@@ -107,9 +105,10 @@ describe('ImportService', () => {
 			mockTagRepository,
 			mockDataSource,
 			mockCipher,
-			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			mockDataTableDDLService,
+			mockUserRepository,
+			mockWorkflowService,
 		);
 	});
 
@@ -270,6 +269,7 @@ describe('ImportService', () => {
 					workflowentity: ['/test/input/workflowentity.jsonl'],
 				},
 				tableNames: ['user', 'workflow_entity'],
+				dataTableFiles: {},
 			});
 		});
 
@@ -290,6 +290,7 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl', '/test/input/user.2.jsonl', '/test/input/user.3.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
 			});
 		});
 
@@ -303,6 +304,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -314,6 +316,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -327,6 +330,7 @@ describe('ImportService', () => {
 			expect(result).toEqual({
 				entityFiles: {},
 				tableNames: [],
+				dataTableFiles: {},
 			});
 		});
 
@@ -344,6 +348,37 @@ describe('ImportService', () => {
 					user: ['/test/input/user.jsonl'],
 				},
 				tableNames: ['user'],
+				dataTableFiles: {},
+			});
+		});
+
+		it('should route data-table user-row files into dataTableFiles', async () => {
+			const mockFiles = [
+				'user.jsonl',
+				'data_table_user_abc.jsonl',
+				'data_table_user_abc.2.jsonl',
+				'data_table_user_xyz.jsonl',
+			];
+
+			jest.mocked(readdir).mockResolvedValue(mockFiles as any);
+			jest
+				.mocked(safeJoinPath)
+				.mockReturnValueOnce('/test/input/user.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_abc.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_abc.2.jsonl')
+				.mockReturnValueOnce('/test/input/data_table_user_xyz.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+				tableNames: ['user'],
+				dataTableFiles: {
+					abc: ['/test/input/data_table_user_abc.jsonl', '/test/input/data_table_user_abc.2.jsonl'],
+					xyz: ['/test/input/data_table_user_xyz.jsonl'],
+				},
 			});
 		});
 	});
@@ -1093,6 +1128,396 @@ describe('ImportService', () => {
 
 			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
 			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
+		});
+
+		describe('row import', () => {
+			beforeEach(() => {
+				mockDataSource.driver.escapeQueryWithParameters = jest
+					.fn()
+					.mockImplementation((sql, params) => [sql, params]);
+			});
+
+			it('should insert rows into the recreated backing table when files are provided', async () => {
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([
+						{ id: 'col-1', dataTableId: 'abc', name: 'flag', type: 'boolean', index: 0 },
+					])
+					.mockResolvedValue(undefined); // subsequent INSERTs
+
+				const row = {
+					id: 1,
+					createdAt: '2024-01-01 12:00:00',
+					updatedAt: '2024-01-01 12:00:00',
+					flag: 0,
+				};
+				jest.mocked(readFile).mockResolvedValue(JSON.stringify(row));
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					abc: ['/test/input/data_table_user_abc.jsonl'],
+				});
+
+				const insertCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.startsWith('INSERT INTO'),
+				);
+				expect(insertCalls).toHaveLength(1);
+				const [, params] = insertCalls[0];
+				// Boolean must have been normalised from 0 -> false (matters for cross-DB inserts)
+				expect((params as Record<string, unknown>).flag).toBe(false);
+				// id is preserved
+				expect((params as Record<string, unknown>).id).toBe(1);
+			});
+
+			it('should warn when archive has row files but registry is empty', async () => {
+				mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					orphan: ['/test/input/data_table_user_orphan.jsonl'],
+				});
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('but no entries in the data_table registry'),
+				);
+			});
+
+			it('should reset the id sequence after inserts on Postgres', async () => {
+				// @ts-expect-error overriding for the test
+				mockDataSource.options = { type: 'postgres' };
+
+				// Mixed-case id matters: pg_get_serial_sequence folds unquoted
+				// identifiers to lowercase, so the param must be the quoted form.
+				const mixedCaseId = 'AbC123';
+
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: mixedCaseId }])
+					.mockResolvedValueOnce([
+						{ id: 'col-1', dataTableId: mixedCaseId, name: 'foo', type: 'string', index: 0 },
+					])
+					.mockResolvedValueOnce(undefined) // INSERT row
+					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
+					.mockResolvedValue(undefined);
+
+				jest.mocked(readFile).mockResolvedValue(
+					JSON.stringify({
+						id: 5,
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-01T00:00:00.000Z',
+						foo: 'x',
+					}),
+				);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
+					[mixedCaseId]: [`/test/input/data_table_user_${mixedCaseId}.jsonl`],
+				});
+
+				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.includes('setval('),
+				);
+				expect(setvalCalls).toHaveLength(1);
+				const [, params] = setvalCalls[0];
+				expect(params).toEqual([`"data_table_user_${mixedCaseId}"`, 'id']);
+			});
+
+			it('should NOT call setval on Postgres when no rows were inserted', async () => {
+				// @ts-expect-error overriding for the test
+				mockDataSource.options = { type: 'postgres' };
+
+				mockEntityManager.query = jest
+					.fn()
+					.mockResolvedValueOnce([{ id: 'abc' }])
+					.mockResolvedValueOnce([])
+					.mockResolvedValue(undefined);
+
+				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {});
+
+				const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+					([sql]) => typeof sql === 'string' && sql.includes('setval('),
+				);
+				expect(setvalCalls).toHaveLength(0);
+			});
+		});
+	});
+
+	describe('extractSubworkflowId', () => {
+		it('should extract workflow ID from legacy string format', () => {
+			const node = {
+				parameters: { workflowId: 'abc123' },
+			};
+
+			// @ts-expect-error accessing private method for testing
+			expect(importService.extractSubworkflowId(node)).toBe('abc123');
+		});
+
+		it('should extract workflow ID from resource-locator object format', () => {
+			const node = {
+				parameters: {
+					workflowId: { __rl: true, value: 'LCEM9GnTcIVSy1D8', mode: 'list' },
+				},
+			};
+
+			// @ts-expect-error accessing private method for testing
+			expect(importService.extractSubworkflowId(node)).toBe('LCEM9GnTcIVSy1D8');
+		});
+
+		it('should return undefined when workflowId is missing', () => {
+			const node = {
+				parameters: {},
+			};
+
+			// @ts-expect-error accessing private method for testing
+			expect(importService.extractSubworkflowId(node)).toBeUndefined();
+		});
+	});
+
+	describe('sortWorkflowsForActivation', () => {
+		function makeNode(id: string, type: string, parameters: Record<string, unknown> = {}) {
+			return { id, type, parameters, disabled: false } as any;
+		}
+
+		function makeExecuteWorkflowNode(id: string, calleeId: string) {
+			return makeNode(id, 'n8n-nodes-base.executeWorkflow', {
+				workflowId: calleeId,
+			});
+		}
+
+		function makeWorkflow(id: string, nodes: any[] = []) {
+			return { id, nodes } as any;
+		}
+
+		function makeToActivate(ids: string[]) {
+			return ids.map((id) => ({ workflowId: id, versionId: `v-${id}` }));
+		}
+
+		it('should return single workflow unchanged', () => {
+			const workflows = [makeWorkflow('A')];
+			const toActivate = makeToActivate(['A']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result.map((w) => w.workflowId)).toEqual(['A']);
+		});
+
+		it('should activate callee (B) before caller (A) — simple A→B case', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B')]),
+				makeWorkflow('B'),
+			];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result.map((w) => w.workflowId)).toEqual(['B', 'A']);
+		});
+
+		it('should activate C → B → A for a three-level chain', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n2', 'C')]),
+				makeWorkflow('C'),
+			];
+			const toActivate = makeToActivate(['A', 'B', 'C']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result.map((w) => w.workflowId)).toEqual(['C', 'B', 'A']);
+		});
+
+		it('should activate both B and C before A when A calls both', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B'), makeExecuteWorkflowNode('n2', 'C')]),
+				makeWorkflow('B'),
+				makeWorkflow('C'),
+			];
+			const toActivate = makeToActivate(['A', 'B', 'C']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			const ids = result.map((w) => w.workflowId);
+			expect(ids.indexOf('B')).toBeLessThan(ids.indexOf('A'));
+			expect(ids.indexOf('C')).toBeLessThan(ids.indexOf('A'));
+			expect(ids).toHaveLength(3);
+		});
+
+		it('should ignore referenced workflows not present in the activation batch', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'EXTERNAL')]),
+				makeWorkflow('B'),
+			];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(2);
+			expect(result.map((w) => w.workflowId)).toContain('A');
+			expect(result.map((w) => w.workflowId)).toContain('B');
+		});
+
+		it('should skip disabled executeWorkflow nodes when building the dependency graph', () => {
+			const disabledNode = { ...makeExecuteWorkflowNode('n1', 'B'), disabled: true };
+			const workflows = [makeWorkflow('A', [disabledNode]), makeWorkflow('B')];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			// A has no active dependencies on B, so order can be anything — just verify both present
+			expect(result).toHaveLength(2);
+		});
+
+		it('should handle resource-locator workflowId format in nodes', () => {
+			const node = makeNode('n1', 'n8n-nodes-base.executeWorkflow', {
+				workflowId: { __rl: true, value: 'B', mode: 'list' },
+			});
+			const workflows = [makeWorkflow('A', [node]), makeWorkflow('B')];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result.map((w) => w.workflowId)).toEqual(['B', 'A']);
+		});
+
+		it('should return original order (fast path) when no workflow references another batch workflow', () => {
+			// Both workflows have executeWorkflow nodes, but they point to external IDs not in batch
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'EXTERNAL_1')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n2', 'EXTERNAL_2')]),
+			];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			// Same reference → fast path returned the original array unchanged
+			expect(result).toBe(toActivate);
+		});
+
+		it('should return original order (fast path) when no workflows have executeWorkflow nodes', () => {
+			const workflows = [makeWorkflow('A'), makeWorkflow('B'), makeWorkflow('C')];
+			const toActivate = makeToActivate(['A', 'B', 'C']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toBe(toActivate);
+		});
+
+		it('should append mutually-cyclic workflows (A↔B) and log a warning', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n2', 'A')]),
+			];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(2);
+			expect(result.map((w) => w.workflowId)).toContain('A');
+			expect(result.map((w) => w.workflowId)).toContain('B');
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('circular'));
+		});
+
+		it('should append all workflows in a three-way cycle (A→B→C→A) and log a warning', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n2', 'C')]),
+				makeWorkflow('C', [makeExecuteWorkflowNode('n3', 'A')]),
+			];
+			const toActivate = makeToActivate(['A', 'B', 'C']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(3);
+			expect(result.map((w) => w.workflowId)).toContain('A');
+			expect(result.map((w) => w.workflowId)).toContain('B');
+			expect(result.map((w) => w.workflowId)).toContain('C');
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('circular'));
+		});
+
+		it('should sort non-cyclic workflows first and append cyclic workflows at the end', () => {
+			// D→E: normal dependency, no cycle
+			// A↔B: mutual cycle
+			const workflows = [
+				makeWorkflow('D', [makeExecuteWorkflowNode('n1', 'E')]),
+				makeWorkflow('E'),
+				makeWorkflow('A', [makeExecuteWorkflowNode('n2', 'B')]),
+				makeWorkflow('B', [makeExecuteWorkflowNode('n3', 'A')]),
+			];
+			const toActivate = makeToActivate(['D', 'E', 'A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toHaveLength(4);
+			const ids = result.map((w) => w.workflowId);
+			// E must come before D (normal dependency order)
+			expect(ids.indexOf('E')).toBeLessThan(ids.indexOf('D'));
+			// A and B are cyclic — they appear after the sorted pair
+			expect(ids.indexOf('A')).toBeGreaterThan(ids.indexOf('D'));
+			expect(ids.indexOf('B')).toBeGreaterThan(ids.indexOf('D'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('circular'));
+		});
+	});
+
+	describe('advanceIdentitySequences', () => {
+		it('should run setval for each identity column on Postgres', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'postgres' };
+
+			mockEntityManager.query = jest
+				.fn()
+				// information_schema lookup for "workflow_dependency"
+				.mockResolvedValueOnce([{ column_name: 'id' }])
+				// setval call returns nothing meaningful
+				.mockResolvedValueOnce(undefined)
+				// information_schema lookup for "insights_metadata" (has 'metaId')
+				.mockResolvedValueOnce([{ column_name: 'metaId' }])
+				.mockResolvedValueOnce(undefined)
+				// information_schema lookup for "user" (no identity columns)
+				.mockResolvedValueOnce([]);
+
+			await importService.advanceIdentitySequences(mockEntityManager, [
+				'workflow_dependency',
+				'insights_metadata',
+				'user',
+			]);
+
+			const setvalCalls = (mockEntityManager.query as jest.Mock).mock.calls.filter(
+				([sql]) => typeof sql === 'string' && sql.includes('setval('),
+			);
+			expect(setvalCalls).toHaveLength(2);
+			// Quoted table identifier passed through to pg_get_serial_sequence
+			// (regclass folds unquoted names to lowercase, so the quoted form is required).
+			expect(setvalCalls[0][1]).toEqual(['"workflow_dependency"', 'id']);
+			expect(setvalCalls[1][1]).toEqual(['"insights_metadata"', 'metaId']);
+		});
+
+		it('should be a no-op on SQLite', async () => {
+			// SQLite is the default in beforeEach.
+			mockEntityManager.query = jest.fn();
+
+			await importService.advanceIdentitySequences(mockEntityManager, ['workflow_dependency']);
+
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
+
+		it('should be a no-op when no tables are provided', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'postgres' };
+			mockEntityManager.query = jest.fn();
+
+			await importService.advanceIdentitySequences(mockEntityManager, []);
+
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 		});
 	});
 });

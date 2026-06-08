@@ -1,11 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { LicenseState } from '@n8n/backend-common';
-import type { PublicApiCredentialResponse } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import type express from 'express';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
@@ -13,8 +10,11 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import {
 	validCredentialsProperties,
 	validCredentialType,
@@ -32,8 +32,8 @@ import {
 	toJsonSchema,
 	updateCredential,
 } from './credentials.service';
-import { toPublicApiCredentialResponse } from './credentials.mapper';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
@@ -41,29 +41,23 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-export = {
+type CredentialsHandlers = {
+	getCredentials: PublicAPIEndpoint<CredentialRequest.GetAll>;
+	getCredential: PublicAPIEndpoint<CredentialRequest.Get>;
+	testCredential: PublicAPIEndpoint<CredentialRequest.Test>;
+	createCredential: PublicAPIEndpoint<CredentialRequest.Create>;
+	updateCredential: PublicAPIEndpoint<CredentialRequest.Update>;
+	transferCredential: PublicAPIEndpoint<CredentialRequest.Transfer>;
+	deleteCredential: PublicAPIEndpoint<CredentialRequest.Delete>;
+	getCredentialType: PublicAPIEndpoint<CredentialTypeRequest.Get>;
+};
+
+const credentialsHandlers: CredentialsHandlers = {
 	getCredentials: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'credential:list' }),
 		validCursor,
-		async (
-			req: CredentialRequest.GetAll,
-			res: express.Response,
-		): Promise<
-			express.Response<{
-				data: Array<{
-					id: string;
-					name: string;
-					type: string;
-					createdAt: Date;
-					updatedAt: Date;
-					shared: ReturnType<typeof buildSharedForCredential>;
-				}>;
-				nextCursor: string | null;
-			}>
-		> => {
+		async (req, res) => {
 			const offset = Number(req.query.offset) || 0;
 			const limit = Math.min(Number(req.query.limit) || 100, 250);
 
@@ -101,10 +95,7 @@ export = {
 	getCredential: [
 		publicApiScope('credential:read'),
 		projectScope('credential:read', 'credential'),
-		async (
-			req: CredentialRequest.Get,
-			res: express.Response,
-		): Promise<express.Response<PublicApiCredentialResponse>> => {
+		async (req, res) => {
 			const { id: credentialId } = req.params;
 
 			const credential = await getCredential(credentialId);
@@ -118,12 +109,7 @@ export = {
 	testCredential: [
 		publicApiScope('credential:read'),
 		projectScope('credential:read', 'credential'),
-		async (
-			req: CredentialRequest.Test,
-			res: express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>,
-		): Promise<
-			express.Response<{ status: 'OK' | 'Error'; message: string } | { message: string }>
-		> => {
+		async (req, res) => {
 			const { id: credentialId } = req.params;
 			try {
 				const credentialTestResult = await Container.get(CredentialsService).testById(
@@ -144,10 +130,7 @@ export = {
 		validCredentialType,
 		validCredentialsProperties,
 		publicApiScope('credential:create'),
-		async (
-			req: CredentialRequest.Create,
-			res: express.Response,
-		): Promise<express.Response<PublicApiCredentialResponse>> => {
+		async (req, res) => {
 			const savedCredential = await saveCredential(req.body, req.user);
 			return res.json(savedCredential);
 		},
@@ -157,10 +140,7 @@ export = {
 		validCredentialsPropertiesForUpdate,
 		publicApiScope('credential:update'),
 		projectScope('credential:update', 'credential'),
-		async (
-			req: CredentialRequest.Update,
-			res: express.Response,
-		): Promise<express.Response<PublicApiCredentialResponse>> => {
+		async (req, res) => {
 			const { id: credentialId } = req.params;
 
 			const existingCredential = await getCredential(credentialId);
@@ -197,7 +177,7 @@ export = {
 	transferCredential: [
 		publicApiScope('credential:move'),
 		projectScope('credential:move', 'credential'),
-		async (req: CredentialRequest.Transfer, res: express.Response) => {
+		async (req, res) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 			await Container.get(EnterpriseCredentialsService).transferOne(
@@ -206,16 +186,13 @@ export = {
 				body.destinationProjectId,
 			);
 
-			res.status(204).send();
+			return res.status(204).send();
 		},
 	],
 	deleteCredential: [
 		publicApiScope('credential:delete'),
 		projectScope('credential:delete', 'credential'),
-		async (
-			req: CredentialRequest.Delete,
-			res: express.Response,
-		): Promise<express.Response<Partial<CredentialsEntity>>> => {
+		async (req, res) => {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
@@ -239,7 +216,7 @@ export = {
 	],
 
 	getCredentialType: [
-		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { credentialTypeName } = req.params;
 
 			try {
@@ -256,3 +233,5 @@ export = {
 		},
 	],
 };
+
+export = credentialsHandlers;

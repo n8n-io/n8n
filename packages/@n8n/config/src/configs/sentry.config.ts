@@ -36,6 +36,16 @@ export class SentryConfig {
 	profilesSampleRate: number = 0;
 
 	/**
+	 * Whether Sentry's native event-loop-block detection is enabled. When on, a
+	 * native watchdog (`@sentry/node-native`) captures the main thread's stack
+	 * whenever the event loop is blocked beyond the threshold below.
+	 *
+	 * @default false
+	 */
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_DETECTION_ENABLED')
+	eventLoopBlockDetectionEnabled: boolean = false;
+
+	/**
 	 * Threshold in milliseconds for event loop block detection.
 	 * When the event loop is blocked for longer than this threshold,
 	 * Sentry will report it.
@@ -44,6 +54,13 @@ export class SentryConfig {
 	 */
 	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_THRESHOLD', z.number({ coerce: true }).int().positive())
 	eventLoopBlockThreshold: number = 500;
+
+	/** Leaky-bucket cap on event loop block events reported per hour per instance. @default 5 */
+	@Env(
+		'N8N_SENTRY_EVENT_LOOP_BLOCK_MAX_EVENTS_PER_HOUR',
+		z.number({ coerce: true }).int().positive(),
+	)
+	eventLoopBlockMaxEventsPerHour: number = 5;
 
 	/**
 	 * Environment of the n8n instance.

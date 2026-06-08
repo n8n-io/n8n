@@ -9,6 +9,7 @@ function makeWorkflow(overrides: Partial<WorkflowResponse> = {}): WorkflowRespon
 		id: 'wf-1',
 		name: 'Test Workflow',
 		active: false,
+		versionId: 'v-1',
 		nodes: [
 			{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 			{
@@ -26,13 +27,13 @@ function makeWorkflow(overrides: Partial<WorkflowResponse> = {}): WorkflowRespon
 
 describe('binary checks', () => {
 	it('passes all checks for a valid workflow', async () => {
-		const feedback = await runBinaryChecks(makeWorkflow(), ctx);
+		const { feedback } = await runBinaryChecks(makeWorkflow(), ctx);
 		const passRate = feedback.find((f) => f.metric === 'pass_rate');
 		expect(passRate?.score).toBe(1);
 	});
 
 	it('fails has_nodes for empty workflow', async () => {
-		const feedback = await runBinaryChecks(makeWorkflow({ nodes: [] }), ctx);
+		const { feedback } = await runBinaryChecks(makeWorkflow({ nodes: [] }), ctx);
 		const check = feedback.find((f) => f.metric === 'has_nodes');
 		expect(check?.score).toBe(0);
 	});
@@ -42,7 +43,7 @@ describe('binary checks', () => {
 			nodes: [{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {} }],
 			connections: {},
 		});
-		const feedback = await runBinaryChecks(workflow, ctx);
+		const { feedback } = await runBinaryChecks(workflow, ctx);
 		const check = feedback.find((f) => f.metric === 'has_trigger');
 		expect(check?.score).toBe(0);
 	});
@@ -58,7 +59,7 @@ describe('binary checks', () => {
 				Webhook: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 			},
 		});
-		const feedback = await runBinaryChecks(workflow, ctx);
+		const { feedback } = await runBinaryChecks(workflow, ctx);
 		const check = feedback.find((f) => f.metric === 'all_nodes_connected');
 		expect(check?.score).toBe(0);
 		expect(check?.comment).toContain('Orphan');
@@ -74,7 +75,7 @@ describe('binary checks', () => {
 				Webhook: { main: [[{ node: 'EmptySet', type: 'main', index: 0 }]] },
 			},
 		});
-		const feedback = await runBinaryChecks(workflow, ctx);
+		const { feedback } = await runBinaryChecks(workflow, ctx);
 		const check = feedback.find((f) => f.metric === 'no_empty_set_nodes');
 		expect(check?.score).toBe(0);
 		expect(check?.comment).toContain('EmptySet');
@@ -90,7 +91,7 @@ describe('binary checks', () => {
 				Webhook: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 			},
 		});
-		const feedback = await runBinaryChecks(workflow, ctx);
+		const { feedback } = await runBinaryChecks(workflow, ctx);
 		const check = feedback.find((f) => f.metric === 'no_disabled_nodes');
 		expect(check?.score).toBe(0);
 	});
@@ -107,7 +108,7 @@ describe('binary checks', () => {
 			],
 		});
 
-		const feedback = await runBinaryChecks(workflow, ctx);
+		const { feedback } = await runBinaryChecks(workflow, ctx);
 		const check = feedback.find((f) => f.metric === 'inbound_trigger_auth_defaults');
 
 		expect(check?.score).toBe(0);
@@ -126,7 +127,7 @@ describe('binary checks', () => {
 			],
 		});
 
-		const feedback = await runBinaryChecks(workflow, {
+		const { feedback } = await runBinaryChecks(workflow, {
 			prompt: 'Create a workflow with a webhook and require header auth for inbound requests',
 		});
 		const check = feedback.find((f) => f.metric === 'inbound_trigger_auth_defaults');
@@ -135,7 +136,7 @@ describe('binary checks', () => {
 	});
 
 	it('supports --only filter', async () => {
-		const feedback = await runBinaryChecks(makeWorkflow(), ctx, { only: ['has_nodes'] });
+		const { feedback } = await runBinaryChecks(makeWorkflow(), ctx, { only: ['has_nodes'] });
 		const metrics = feedback.filter((f) => f.kind === 'metric');
 		expect(metrics).toHaveLength(1);
 		expect(metrics[0].metric).toBe('has_nodes');

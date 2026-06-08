@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
@@ -7,8 +7,18 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -111,7 +121,7 @@ const service = new InstanceAiAdapterService(
 	workflowRunner,
 	loadNodesAndCredentials,
 	nodeTypes,
-	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
+	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
 	dynamicNodeParametersService,
@@ -145,6 +155,7 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
+	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------
@@ -374,5 +385,107 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		expect(result.deletedCount).toBe(0);
 		expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
 		expect(eventService.emit).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential listing — workflow/project scoping
+// ---------------------------------------------------------------------------
+
+describe('credentialService.list — scoping', () => {
+	it('uses getCredentialsAUserCanUseInAWorkflow when workflowId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.list({ type: 'slackApi', workflowId: 'wf-1' });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			workflowId: 'wf-1',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+		// type filter applied post-fetch
+		expect(result).toEqual([{ id: 'c1', name: 'Slack Shared', type: 'slackApi' }]);
+	});
+
+	it('uses getCredentialsAUserCanUseInAWorkflow when projectId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		await ctx.credentialService.list({ projectId: 'proj-1' });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'proj-1',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+	});
+
+	it('falls back to getMany (broad) when neither workflowId nor projectId is provided', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		await ctx.credentialService.list({ type: 'slackApi' });
+
+		expect(credentialsService.getMany).toHaveBeenCalledWith(user, {
+			listQueryOptions: { filter: { type: 'slackApi' } },
+			includeGlobal: true,
+		});
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
+
+		// A bound thread can only ever see its own project's usable credentials —
+		// the LLM cannot broaden the list by passing another workflow or project.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential adapter — credential ownership revalidation
+// ---------------------------------------------------------------------------
+
+describe('credentialService.get — credential ownership revalidation', () => {
+	it('forwards the credential ID to credentialsService.getOne with the bound user', async () => {
+		credentialsService.getOne.mockResolvedValue({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+		} as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.get('cred-mine');
+
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-mine', false);
+		expect(result).toEqual({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+	});
+
+	it('propagates the NotFoundError when the user cannot access the credential', async () => {
+		credentialsService.getOne.mockRejectedValue(
+			new Error('Credential with ID "cred-other" could not be found.'),
+		);
+
+		const ctx = service.createContext(user);
+
+		await expect(ctx.credentialService.get('cred-other')).rejects.toThrow(
+			'Credential with ID "cred-other" could not be found.',
+		);
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
 	});
 });

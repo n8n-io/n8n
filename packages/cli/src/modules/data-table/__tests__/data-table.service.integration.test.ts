@@ -1292,9 +1292,8 @@ describe('dataTable', () => {
 			);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError("unknown column name 'cWrong'"),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow("unknown column name 'cWrong'");
 		});
 
 		it('inserts rows with partial data (some columns missing)', async () => {
@@ -1380,9 +1379,8 @@ describe('dataTable', () => {
 			);
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError("unknown column name 'cWrong'"),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow("unknown column name 'cWrong'");
 		});
 
 		it('rejects an invalid date string to date column', async () => {
@@ -2372,10 +2370,9 @@ describe('dataTable', () => {
 				filter: undefined as any,
 			});
 
+			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow(
-				new DataTableValidationError(
-					'Filter is required for delete operations to prevent accidental deletion of all data',
-				),
+				'Filter is required for delete operations to prevent accidental deletion of all data',
 			);
 		});
 
@@ -2398,10 +2395,9 @@ describe('dataTable', () => {
 				filter: { type: 'and', filters: [] },
 			});
 
+			await expect(result).rejects.toThrow(DataTableValidationError);
 			await expect(result).rejects.toThrow(
-				new DataTableValidationError(
-					'Filter is required for delete operations to prevent accidental deletion of all data',
-				),
+				'Filter is required for delete operations to prevent accidental deletion of all data',
 			);
 		});
 
@@ -2950,9 +2946,8 @@ describe('dataTable', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError('Filter must not be empty'),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow('Filter must not be empty');
 
 			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
 			expect(data).toEqual([
@@ -2982,9 +2977,8 @@ describe('dataTable', () => {
 			});
 
 			// ASSERT
-			await expect(result).rejects.toThrow(
-				new DataTableValidationError('Data columns must not be empty'),
-			);
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow('Data columns must not be empty');
 
 			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
 			expect(data).toEqual([

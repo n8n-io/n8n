@@ -275,15 +275,28 @@ describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 
 describe('POST /workflows/:workflowId/test-runs/new', () => {
 	test('should create a test run for a workflow the user owns', async () => {
+		// Controller now `await`s `startTestRun` (which returns
+		// `{ testRun, finished }`) and surfaces `testRunId` in the 202 body.
+		// `mockInstance(TestRunnerService)` auto-stubs methods to undefined,
+		// so we need to wire `startTestRun` explicitly or the controller
+		// crashes destructuring.
+		testRunner.startTestRun.mockResolvedValue({
+			testRun: { id: 'test-run-id' } as never,
+			finished: Promise.resolve(),
+		});
+
 		const resp = await authOwnerAgent.post(`/workflows/${workflowUnderTest.id}/test-runs/new`);
 
 		expect(resp.statusCode).toBe(202);
-		expect(resp.body).toEqual({ success: true });
-		expect(testRunner.runTest).toHaveBeenCalledWith(
+		expect(resp.body).toEqual({ success: true, testRunId: 'test-run-id' });
+		// 4th arg is `options` (evaluation config id + compileFromConfig flag);
+		// the controller forwards it from the request body even when absent, so
+		// the mock sees `undefined` rather than no value.
+		expect(testRunner.startTestRun).toHaveBeenCalledWith(
 			expect.objectContaining({ id: ownerShell.id }),
 			workflowUnderTest.id,
 			1,
-			false,
+			undefined,
 		);
 	});
 

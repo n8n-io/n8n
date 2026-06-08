@@ -7,6 +7,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -38,5 +39,6 @@
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:",
     "vitest-websocket-mock": "^0.5.0"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

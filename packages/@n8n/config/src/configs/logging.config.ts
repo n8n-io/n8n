@@ -37,6 +37,7 @@ export const LOG_SCOPES = [
 	'ssrf-protection',
 	'token-exchange',
 	'instance-ai',
+	'agents',
 	'sub-agent-eval',
 	'instance-version-history',
 	'instance-settings-loader',
@@ -44,6 +45,8 @@ export const LOG_SCOPES = [
 	'expression-engine',
 	'encryption-key-manager',
 	'oauth-jwe',
+	'mcp-registry',
+	'workflow-publication',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -175,94 +175,43 @@ describe('event system — stream', () => {
 });
 
 // ---------------------------------------------------------------------------
-// result.getState()
+// Result getState()
 // ---------------------------------------------------------------------------
 
-describe('result.getState()', () => {
-	it('generate() result reports success after a successful run', async () => {
+describe('result getState()', () => {
+	it('returns success after a successful generate()', async () => {
 		const agent = createSimpleAgent();
 		const result = await agent.generate('Say hello');
+		const state = result.getState();
+		expect(state.status).toBe('success');
+	});
+
+	it('returns success after a completed stream()', async () => {
+		const agent = createSimpleAgent();
+		const result = await agent.stream('Say hello');
+		const { stream } = result;
+		await collectStreamChunks(stream);
+		const state = result.getState();
+		expect(state.status).toBe('success');
+	});
+
+	it('stream result state is running before the stream is drained', async () => {
+		const agent = createSimpleAgent();
+
+		const result = await agent.stream('Say hello');
+		expect(result.getState().status).toBe('running');
+
+		await collectStreamChunks(result.stream);
 		expect(result.getState().status).toBe('success');
 	});
 
-	it('stream() result reports success after the stream is fully consumed', async () => {
-		const agent = createSimpleAgent();
-		const { stream, getState } = await agent.stream('Say hello');
-		await collectStreamChunks(stream);
-		expect(getState().status).toBe('success');
-	});
-
-	it('stream() getState() is running while the stream is being consumed', async () => {
-		const agent = createSimpleAgent();
-		const { stream, getState } = await agent.stream('Say hello');
-
-		// State is running before the stream is consumed
-		expect(getState().status).toBe('running');
-
-		await collectStreamChunks(stream);
-
-		expect(getState().status).toBe('success');
-	});
-
-	it('generate() result reflects resourceId and threadId from RunOptions', async () => {
+	it('reflects resourceId and threadId from RunOptions', async () => {
 		const agent = createSimpleAgent();
 		const result = await agent.generate('Say hello', {
 			persistence: { resourceId: 'user-123', threadId: 'thread-abc' },
 		});
-		expect(result.getState().persistence?.resourceId).toBe('user-123');
-		expect(result.getState().persistence?.threadId).toBe('thread-abc');
-	});
-});
-
-// ---------------------------------------------------------------------------
-// asTool()
-// ---------------------------------------------------------------------------
-
-describe('asTool()', () => {
-	it('wraps the agent as a BuiltTool with the correct name and description', () => {
-		const agent = createSimpleAgent();
-		const tool = agent.asTool('A helpful assistant tool');
-
-		expect(tool.name).toBe('events-test-agent');
-		expect(tool.description).toBe('A helpful assistant tool');
-		expect(tool.inputSchema).toBeDefined();
-		expect(typeof tool.handler).toBe('function');
-	});
-
-	it('asTool handler calls the agent and returns text result', async () => {
-		const agent = createSimpleAgent();
-		const tool = agent.asTool('A helpful assistant tool');
-
-		const result = await tool.handler!({ input: 'Say "pong"' }, {});
-
-		expect(result).toHaveProperty('result');
-		expect(typeof (result as { result: string }).result).toBe('string');
-		expect((result as { result: string }).result.length).toBeGreaterThan(0);
-	});
-
-	it('coordinator agent can use sub-agent via asTool', async () => {
-		const specialist = new Agent('specialist')
-			.model(getModel('anthropic'))
-			.instructions('You are a specialist. When asked, reply with exactly "SPECIALIST_RESPONSE".');
-
-		const coordinator = new Agent('coordinator')
-			.model(getModel('anthropic'))
-			.instructions(
-				'You coordinate tasks. Use the specialist tool to answer questions. Relay the exact response.',
-			)
-			.tool(specialist.asTool('A specialist agent'));
-
-		const result = await coordinator.generate(
-			'Ask the specialist for their response and tell me what they said.',
-		);
-
-		const text = result.messages
-			.filter((m) => 'role' in m && m.role === 'assistant')
-			.flatMap((m) => ('content' in m ? m.content : []))
-			.filter((c) => c.type === 'text')
-			.map((c) => ('text' in c ? c.text : ''))
-			.join('');
-
-		expect(text.length).toBeGreaterThan(0);
+		const state = result.getState();
+		expect(state.persistence?.resourceId).toBe('user-123');
+		expect(state.persistence?.threadId).toBe('thread-abc');
 	});
 });

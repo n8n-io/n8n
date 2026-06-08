@@ -3,16 +3,26 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import type { CanvasConnection, CanvasNode } from '../canvas.types';
+import {
+	CANVAS_NODE_GROUP_TYPE,
+	type CanvasConnection,
+	type CanvasEventBusEvents,
+	type CanvasGroupNode,
+	type CanvasNode,
+} from '../canvas.types';
 import {
 	createCanvasConnection,
 	createCanvasNodeElement,
 } from '@/features/workflows/canvas/__tests__/utils';
-import { NodeConnectionTypes } from 'n8n-workflow';
+
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -24,7 +34,40 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	return { ...actual, useDeviceSupport: vi.fn(() => ({ isCtrlKeyPressed: vi.fn() })) };
 });
 
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
+	injectCanvasRenderData: vi.fn(() => ({
+		value: {
+			nodeInputsByNodeId: new Map(),
+			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
+		},
+	})),
+}));
+
 const canvasId = 'canvas';
+
+function createCanvasGroupNode({
+	nodesRect = { x: 0, y: 0, width: 300, height: 100 },
+	selectable = false,
+}: {
+	nodesRect?: NonNullable<CanvasGroupNode['data']>['nodesRect'];
+	selectable?: boolean;
+} = {}): CanvasGroupNode {
+	return {
+		id: 'group:g1',
+		type: CANVAS_NODE_GROUP_TYPE,
+		position: { x: 0, y: 0 },
+		width: 300,
+		height: 40,
+		selectable,
+		data: {
+			group: { id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
+			nodesRect,
+		},
+	};
+}
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
@@ -61,27 +104,11 @@ describe('Canvas', () => {
 			createCanvasNodeElement({
 				id: '1',
 				label: 'Node 1',
-				data: {
-					outputs: [
-						{
-							type: NodeConnectionTypes.Main,
-							index: 0,
-						},
-					],
-				},
 			}),
 			createCanvasNodeElement({
 				id: '2',
 				label: 'Node 2',
 				position: { x: 200, y: 200 },
-				data: {
-					inputs: [
-						{
-							type: NodeConnectionTypes.Main,
-							index: 0,
-						},
-					],
-				},
 			}),
 		];
 
@@ -99,6 +126,62 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${nodes[1].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
+	});
+
+	it('should render group frame from live VueFlow node data', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const groupNode = createCanvasGroupNode();
+
+		const { getByTestId } = renderComponent({
+			props: {
+				nodes: [groupNode],
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('canvas-node-group-frame')).toBeInTheDocument());
+
+		const { updateNode } = useVueFlow(canvasId);
+		updateNode(groupNode.id, {
+			data: {
+				...groupNode.data,
+				nodesRect: { x: 0, y: 0, width: 300, height: 240 },
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('canvas-node-group-frame')).toHaveStyle({
+				height: `${240 + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM}px`,
+			});
+		});
+	});
+
+	it('should exclude group title bars from select all', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const node = createCanvasNodeElement({ id: 'node-1' });
+		const groupNode = createCanvasGroupNode();
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+
+		const { container } = renderComponent({
+			props: {
+				nodes: [node, groupNode],
+				eventBus,
+			},
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		eventBus.emit('nodes:selectAll');
+
+		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([node.id]));
 	});
 
 	it('should emit `update:nodes:position` event', async () => {
@@ -294,6 +377,16 @@ describe('Canvas', () => {
 			expect(patternCanvas).toBeInTheDocument();
 			expect(patternCanvas?.innerHTML).toContain('<path');
 			expect(patternCanvas?.innerHTML).not.toContain('<circle');
+		});
+
+		it('should render default background in read-only mode when striped background is disabled', () => {
+			const { container } = renderComponent({
+				props: { readOnly: true, stripedBackground: false },
+			});
+			const patternCanvas = container.querySelector('#pattern-canvas');
+			expect(patternCanvas).toBeInTheDocument();
+			expect(patternCanvas?.innerHTML).toContain('<circle');
+			expect(patternCanvas?.innerHTML).not.toContain('<path');
 		});
 	});
 

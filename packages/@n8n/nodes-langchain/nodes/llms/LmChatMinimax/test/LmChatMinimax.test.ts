@@ -5,16 +5,17 @@ import { ChatOpenAI } from '@langchain/openai';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatMinimax } from '../LmChatMinimax.node';
 
-jest.mock('@langchain/openai');
-jest.mock('@n8n/ai-utilities');
+vi.mock('@langchain/openai');
+vi.mock('@n8n/ai-utilities');
 
-const MockedChatOpenAI = jest.mocked(ChatOpenAI);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const MockedChatOpenAI = vi.mocked(ChatOpenAI);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 describe('LmChatMinimax', () => {
 	let node: LmChatMinimax;
@@ -33,28 +34,30 @@ describe('LmChatMinimax', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			nodeDef,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
-		ctx.getCredentials = jest.fn().mockResolvedValue({
+		ctx.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-minimax-key',
 			url: 'https://api.minimax.io/v1',
 		});
-		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
-		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
+		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 			if (paramName === 'model') return 'MiniMax-M2.7';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		MockedN8nLlmTracing.mockImplementation(function () {
+			return {} as unknown as N8nLlmTracing;
+		});
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		return ctx;
 	};
 
 	beforeEach(() => {
 		node = new LmChatMinimax();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('node description', () => {
@@ -101,7 +104,7 @@ describe('LmChatMinimax', () => {
 
 		it('should pass options to ChatOpenAI', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'MiniMax-M2.5';
 				if (paramName === 'options')
 					return {
@@ -142,7 +145,7 @@ describe('LmChatMinimax', () => {
 
 		it('should not set reasoning_split when hideThinking is false', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'MiniMax-M2.7';
 				if (paramName === 'options') return { hideThinking: false };
 				return undefined;
@@ -173,7 +176,7 @@ describe('LmChatMinimax', () => {
 
 		it('should configure proxy agent with custom timeout', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'MiniMax-M2.7';
 				if (paramName === 'options') return { timeout: 120000 };
 				return undefined;

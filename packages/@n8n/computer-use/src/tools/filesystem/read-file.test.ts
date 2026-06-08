@@ -1,25 +1,26 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { readFileTool } from './read-file';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
 function mockStat(size: number): void {
-	jest.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
 }
 
 function mockReadFile(content: Buffer | string): void {
-	(fs.readFile as jest.Mock).mockResolvedValue(content);
+	(fs.readFile as Mock).mockResolvedValue(content);
 }
 
 describe('readFileTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});
@@ -139,6 +140,15 @@ describe('readFileTool', () => {
 			);
 		});
 
+		it('rejects binary files without null bytes', async () => {
+			mockStat(100);
+			mockReadFile(Buffer.from([0xff, 0xfe, 0xfd, 0xfc]));
+
+			await expect(readFileTool.execute({ filePath: 'binary.dat' }, CONTEXT)).rejects.toThrow(
+				'Binary file',
+			);
+		});
+
 		it('rejects files larger than 512KB', async () => {
 			mockStat(600 * 1024);
 
@@ -152,6 +162,15 @@ describe('readFileTool', () => {
 				readFileTool.execute({ filePath: '../../../etc/passwd' }, CONTEXT),
 			).rejects.toThrow('escapes');
 		});
+
+		it.each(['node_modules/foo/.env', 'Node_Modules/foo/.env', '.git/config', 'dist/bundle.js'])(
+			'rejects direct reads under excluded directory %s',
+			async (filePath) => {
+				await expect(readFileTool.execute({ filePath }, CONTEXT)).rejects.toThrow(
+					'excluded from filesystem reads',
+				);
+			},
+		);
 
 		it.each([
 			{ startLine: undefined, maxLines: undefined },

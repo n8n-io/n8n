@@ -187,6 +187,17 @@ describe('CodeFlow', () => {
 				expect(token1.refreshToken).toEqual(config.refreshedRefreshToken);
 				expect(token1.tokenType).toEqual('bearer');
 			});
+
+			it('should throw a clear error when no refresh token is present', async () => {
+				const token = githubAuth.createToken({
+					access_token: config.accessToken,
+					refresh_token: '',
+				});
+
+				await expect(token.refresh()).rejects.toThrow(
+					'OAuth access token expired and no refresh token is available. Please reconnect the credentials.',
+				);
+			});
 		});
 	});
 });

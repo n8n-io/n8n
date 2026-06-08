@@ -1,0 +1,45 @@
+name: 'Util: Clean Stale Branches'
+
+on:
+  schedule:
+    - cron: "0 10 * * 1" # Every monday
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run only lists branches; uncheck to actually delete.'
+        type: boolean
+        default: true
+      days:
+        description: 'Days of inactivity before a branch is considered stale.'
+        type: string
+        default: '100'
+      exclude:
+        description: 'Comma-separated branch-name globs to always keep (e.g. release/*,1.x).'
+        type: string
+        default: ''
+
+permissions:
+  contents: write # delete branches; ruleset reads use the token's implicit metadata access
+  pull-requests: read # list open PRs so their head/base branches are never deleted
+
+jobs:
+  remove-stale-branches:
+    name: Remove stale branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Clean stale branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          STALE_DAYS: ${{ inputs.days || '100' }}
+          EXCLUDE_BRANCHES: ${{ inputs.exclude || '' }}
+        run: node .github/scripts/stale/clean-stale-branches.mjs --days="$STALE_DAYS" ${{ !inputs.dry-run && '--execute' || '--dry-run' }}

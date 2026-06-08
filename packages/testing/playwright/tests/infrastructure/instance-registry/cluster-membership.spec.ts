@@ -20,7 +20,6 @@ test.use({
 	capability: {
 		mains: 2,
 		workers: 1,
-		env: { N8N_ENV_FEAT_INSTANCE_REGISTRY: 'true' },
 	},
 });
 

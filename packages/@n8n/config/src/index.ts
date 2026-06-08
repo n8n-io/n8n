@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
@@ -7,6 +8,7 @@ import { AuthConfig } from './configs/auth.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
+import { CompressionNodeConfig } from './configs/compression.config';
 import { CredentialsConfig } from './configs/credentials.config';
 import { DataTableConfig } from './configs/data-table.config';
 import { DatabaseConfig } from './configs/database.config';
@@ -60,6 +62,7 @@ export {
 	SsrfProtectionConfig,
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
+export { EngineConfig } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -78,6 +81,9 @@ export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
+export { AgentsConfig } from './configs/agents.config';
+export { CompressionNodeConfig } from './configs/compression.config';
+export { RedisConfig } from './configs/redis.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -161,9 +167,6 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
-
-	@Nested
-	evaluation: EvaluationConfig;
 
 	@Nested
 	generic: GenericConfig;
@@ -264,10 +267,19 @@ export class GlobalConfig {
 	chatTrigger: ChatTriggerConfig;
 
 	@Nested
+	compressionNode: CompressionNodeConfig;
+
+	@Nested
 	instanceAi: InstanceAiConfig;
 
 	@Nested
+	agents: AgentsConfig;
+
+	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	evaluation: EvaluationConfig;
 
 	@Nested
 	instanceSettingsLoader: InstanceSettingsLoaderConfig;

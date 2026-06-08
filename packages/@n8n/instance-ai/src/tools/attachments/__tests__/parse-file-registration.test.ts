@@ -1,6 +1,6 @@
 import type { InstanceAiAttachment } from '@n8n/api-types';
 
-import { isStructuredAttachment } from '../../../parsers/structured-file-parser';
+import { isParseableAttachment } from '../../../parsers/structured-file-parser';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -11,11 +11,12 @@ function toBase64(content: string): string {
 }
 
 /**
- * Mirrors the conditional from createAllTools:
- *   context.currentUserAttachments?.some(isStructuredAttachment)
+ * Mirrors the conditional shared by createAllTools and
+ * createOrchestratorDomainTools:
+ *   context.currentUserAttachments?.some(isParseableAttachment)
  */
 function wouldRegisterParseTool(attachments?: InstanceAiAttachment[]): boolean {
-	return attachments?.some(isStructuredAttachment) ?? false;
+	return attachments?.some(isParseableAttachment) ?? false;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,5 +67,20 @@ describe('parse-file tool registration logic', () => {
 				{ data: toBase64('a,b'), mimeType: 'application/octet-stream', fileName: 'data.csv' },
 			]),
 		).toBe(true);
+	});
+
+	it.each([
+		['PDF', 'application/pdf', 'doc.pdf'],
+		['HTML', 'text/html', 'page.html'],
+		[
+			'DOCX',
+			'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			'letter.docx',
+		],
+		['XLSX', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'sheet.xlsx'],
+		['plain text', 'text/plain', 'notes.txt'],
+		['markdown', 'text/markdown', 'readme.md'],
+	])('registers for %s attachments', (_label, mimeType, fileName) => {
+		expect(wouldRegisterParseTool([{ data: '', mimeType, fileName }])).toBe(true);
 	});
 });
