@@ -137,12 +137,12 @@ export class N8nClient {
 
 	/**
 	 * Ensure a conversation thread exists before sending chat messages.
-	 * POST /rest/instance-ai/threads body: { threadId }
+	 * POST /rest/instance-ai/threads body: { threadId, projectId }
 	 */
-	async ensureThread(threadId: string): Promise<void> {
+	async ensureThread(threadId: string, projectId: string): Promise<void> {
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
-			body: { threadId },
+			body: { threadId, projectId },
 		});
 	}
 
