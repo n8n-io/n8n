@@ -163,9 +163,61 @@ jobs:
           path: packages/cli/coverage/lcov.info
           retention-days: 3
 
+  # Both Python packages in one job — they're fast and share the uv setup.
+  python-coverage:
+    name: Python Coverage (task-runner + ai-workflow-builder)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python 3.13 (task-runner)
+        working-directory: packages/@n8n/task-runner-python
+        run: uv python install 3.13
+
+      - name: Install task-runner dependencies
+        working-directory: packages/@n8n/task-runner-python
+        run: just sync-all
+
+      - name: Test task-runner-python
+        working-directory: packages/@n8n/task-runner-python
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Install Python 3.11 (ai-workflow-builder evals)
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv python install 3.11
+
+      - name: Install ai-workflow-builder eval dependencies
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: just sync-all
+
+      - name: Test ai-workflow-builder evals
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload Python Coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            packages/@n8n/task-runner-python/coverage.xml
+            packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/coverage.xml
+          flags: nightly-python
+          name: nightly-python-coverage
+          fail_ci_if_error: false
+
   aggregate:
     name: Aggregate Coverage
-    needs: [e2e, unit-coverage, frontend-coverage, integration-coverage]
+    needs: [e2e, unit-coverage, frontend-coverage, integration-coverage, python-coverage]
     if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
