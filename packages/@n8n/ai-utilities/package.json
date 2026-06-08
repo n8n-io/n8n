@@ -117,5 +117,6 @@
   },
   "peerDependencies": {
     "n8n-workflow": "*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

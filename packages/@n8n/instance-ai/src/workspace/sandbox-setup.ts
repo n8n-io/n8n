@@ -400,6 +400,23 @@ async function writeWorkspaceFile(
 	}
 }
 
+async function readWorkspaceFile(
+	workspace: SandboxWorkspace,
+	path: string,
+): Promise<string | null> {
+	const filesystem = workspace.filesystem;
+	if (filesystem?.readFile) {
+		try {
+			const content = await filesystem.readFile(path, { encoding: 'utf-8' });
+			return typeof content === 'string' ? content : content.toString('utf-8');
+		} catch {
+			if (!workspace.sandbox) return null;
+		}
+	}
+
+	return await readFileViaSandbox(workspace, path);
+}
+
 async function materializeKnowledgeBaseStep(
 	workspace: SandboxWorkspace,
 	root: string,
@@ -437,7 +454,7 @@ export async function setupSandboxWorkspace(
 	// Check marker file for idempotency
 	const marker = await setupStep(
 		'read-initialization-marker',
-		async () => await readFileViaSandbox(workspace, markerFile),
+		async () => await readWorkspaceFile(workspace, markerFile),
 	);
 	if (marker !== null) {
 		await materializeKnowledgeBaseStep(workspace, root, context);

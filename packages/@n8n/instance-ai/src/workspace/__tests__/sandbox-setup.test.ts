@@ -68,15 +68,21 @@ function createFilesystemWorkspace(
 function createLocalWorkspace(
 	writeFile: Mock<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>,
 	mkdir?: Mock<(...args: [string, { recursive?: boolean }?]) => Promise<void>>,
+	readFile: Mock<(...args: [string]) => Promise<string | Buffer>> = vi.fn(
+		async () => await Promise.reject(new Error('ENOENT')),
+	),
 ): SandboxWorkspace {
 	return {
 		filesystem: {
 			provider: 'local',
 			basePath: '/sandbox',
+			readFile,
 			writeFile,
 			mkdir:
 				mkdir ??
-				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(async () => {}),
+				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(
+					async () => await Promise.resolve(),
+				),
 		},
 	};
 }
@@ -202,7 +208,7 @@ describe('setupSandboxWorkspace', () => {
 		);
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => {});
+		>(async () => await Promise.resolve());
 
 		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
 
@@ -273,14 +279,20 @@ describe('setupSandboxWorkspace', () => {
 		);
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => {});
+		>(async () => await Promise.resolve());
+		const readFile = vi.fn(async (path: string) => {
+			if (path === '/sandbox/.sandbox-initialized') {
+				return await Promise.resolve('2024-01-01T00:00:00.000Z');
+			}
+			return await Promise.reject(new Error(`ENOENT: ${path}`));
+		});
 
 		const bundle: BuilderTemplatesBundle = {
 			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
 			version: 'test-sha',
 		};
 		const initialized = await setupSandboxWorkspace(
-			createLocalWorkspace(writeFile),
+			createLocalWorkspace(writeFile, undefined, readFile),
 			createSetupContext(bundle),
 		);
 

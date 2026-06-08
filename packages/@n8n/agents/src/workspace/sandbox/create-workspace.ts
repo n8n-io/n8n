@@ -1,5 +1,3 @@
-import { DaytonaFilesystem } from '../filesystem/daytona-filesystem';
-import { N8nSandboxFilesystem } from '../filesystem/n8n-sandbox-filesystem';
 import { DaytonaSandbox } from './daytona-sandbox';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import type {
@@ -8,11 +6,20 @@ import type {
 	SandboxFilesystem,
 	SandboxInstance,
 } from './types';
+import { DaytonaFilesystem } from '../filesystem/daytona-filesystem';
+import { N8nSandboxFilesystem } from '../filesystem/n8n-sandbox-filesystem';
 
 export async function createSandbox(
 	config: SandboxConfig,
 	options: CreateSandboxOptions = {},
 ): Promise<SandboxInstance | undefined> {
+	return await Promise.resolve(buildSandbox(config, options));
+}
+
+function buildSandbox(
+	config: SandboxConfig,
+	options: CreateSandboxOptions = {},
+): SandboxInstance | undefined {
 	if (!config.enabled) return undefined;
 
 	const provider = config.provider;

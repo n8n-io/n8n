@@ -1,4 +1,5 @@
 import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
+
 import type { BaseFilesystemOptions } from '../filesystem/base-filesystem';
 import type {
 	BaseSandboxOptions,
@@ -23,7 +24,6 @@ import type {
 	WorkspaceSandbox,
 	WriteOptions,
 } from '../types';
-
 import type { ErrorReporter, Logger } from './logger';
 
 export type {

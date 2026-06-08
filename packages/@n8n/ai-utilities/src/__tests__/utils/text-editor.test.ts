@@ -48,6 +48,20 @@ describe('TextEditorDocument', () => {
 		expect(editor.getText()).toBe('const value = "$& $1 $$";');
 	});
 
+	it('keeps master behavior for empty old_str', () => {
+		const editor = new TextEditorDocument({ initialText: 'hello\nworld' });
+
+		const result = editor.execute({
+			command: 'str_replace',
+			path: '/file.ts',
+			old_str: '',
+			new_str: 'REPLACED',
+		});
+
+		expect(result).toBe('Edit applied successfully.');
+		expect(editor.getText()).toBe('helloREPLACEDworld');
+	});
+
 	it('rejects missing and non-unique matches', () => {
 		const editor = new TextEditorDocument({ initialText: 'const x = 1;\nconst x = 1;' });
 
@@ -174,5 +188,11 @@ describe('text editor helpers', () => {
 
 		expect(arrayResult).toEqual([{ old_str: 'old', new_str: 'new' }]);
 		expect(stringResult).toEqual([{ old_str: 'old', new_str: 'new' }]);
+	});
+
+	it('parses empty old_str to preserve master behavior', () => {
+		expect(parseStrReplacements([{ old_str: '', new_str: 'new' }])).toEqual([
+			{ old_str: '', new_str: 'new' },
+		]);
 	});
 });

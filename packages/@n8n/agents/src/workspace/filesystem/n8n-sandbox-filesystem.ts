@@ -1,3 +1,6 @@
+import { SandboxServiceError } from '@n8n/sandbox-client';
+import { dirname } from 'node:path/posix';
+
 import type {
 	CopyOptions,
 	FileContent,
@@ -11,8 +14,6 @@ import type {
 } from '../types';
 import { BaseFilesystem } from './base-filesystem';
 import type { N8nSandboxServiceSandbox } from '../sandbox/n8n-sandbox-sandbox';
-import { SandboxServiceError } from '@n8n/sandbox-client';
-import { dirname } from 'node:path/posix';
 
 function getParentDirectory(path: string): string | null {
 	const parent = dirname(path);
