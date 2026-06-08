@@ -12,6 +12,7 @@
 
 import * as fs from 'node:fs';
 
+import { filterImpactfulChanges } from './changes.js';
 import {
 	type ImpactMap,
 	type InternedImpactMap,
@@ -67,7 +68,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 		? parseSpecList(fs.readFileSync(input.allSpecsFile, 'utf8'))
 		: undefined;
 	const { map, failOpen } = loadMap(input.mapFile);
-	const changed = input.changedFiles.map((file) => ({ file }));
+	// Drop non-impactful paths (repo tooling / docs / named config) up front so
+	// they never trip the unmapped→broad fallback. A change that's *only* such
+	// files yields an empty set → scoped/0 → the caller skips E2E.
+	const changed = filterImpactfulChanges(input.changedFiles).map((file) => ({ file }));
 	// The live V8 selection runs through the pipeline as the single selection
 	// mechanism; the AST / dep-graph selectors join this array later. Sibling
 	// fallback scopes a new/unmapped file to its nearest covered directory.

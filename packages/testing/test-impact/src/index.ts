@@ -9,6 +9,7 @@ export * from './impact-map.js';
 export * from './shard-distributor.js';
 export * from './select.js';
 export * from './map-build.js';
+export { isNonImpactful, filterImpactfulChanges } from './changes.js';
 export type { DiscoveredSpec } from './types.js';
 
 // Strategy + Pipeline selection layer.
