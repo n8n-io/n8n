@@ -81,6 +81,7 @@ describe('forcesBroad', () => {
 		'packages/testing/containers/services/n8n.ts',
 		'packages/cli/Dockerfile',
 		'Dockerfile.dev',
+		'packages/cli/worker.Dockerfile',
 	])('treats %s as runtime-defining (force broad)', (file) => {
 		expect(forcesBroad(file)).toBe(true);
 	});

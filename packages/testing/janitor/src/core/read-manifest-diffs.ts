@@ -3,25 +3,12 @@
  * devDependency classifier. Any read failure → '' so the classifier stays
  * conservative (an unreadable manifest is treated as a non-devDep change, kept).
  */
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { getGitRoot } from '../utils/git-operations.js';
+import { getFileAtRef, getGitRoot } from '../utils/git-operations.js';
 
 const isManifest = (file: string): boolean => /(^|\/)package\.json$/.test(file);
-
-const showAtRef = (root: string, ref: string, file: string): string => {
-	try {
-		return execFileSync('git', ['show', `${ref}:${file}`], {
-			cwd: root,
-			encoding: 'utf8',
-			stdio: ['ignore', 'pipe', 'ignore'],
-		});
-	} catch {
-		return '';
-	}
-};
 
 export function readManifestDiffs(
 	changedFiles: string[],
@@ -34,7 +21,7 @@ export function readManifestDiffs(
 	for (const file of manifests) {
 		const abs = join(root, file);
 		out[file] = {
-			before: showAtRef(root, baseRef, file),
+			before: getFileAtRef(file, baseRef) ?? '',
 			after: existsSync(abs) ? readFileSync(abs, 'utf8') : '',
 		};
 	}

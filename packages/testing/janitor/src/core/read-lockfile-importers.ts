@@ -8,13 +8,12 @@
  * lockfile) returns `{}`, which makes the dep-graph selector contribute nothing
  * (the change then resolves through the coverage map alone — fail-open).
  */
+import { RUNTIME_SECTIONS } from '@n8n/test-impact';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 
 import { getGitRoot } from '../utils/git-operations.js';
-
-const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const;
 
 type ImporterSections = Record<string, Record<string, unknown> | undefined>;
 

@@ -119,6 +119,13 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	if (input.lockfileImporters && input.manifests) {
 		const runtimeDeps = changedRuntimeDepsFromManifests(input.manifests);
 		if (runtimeDeps.length > 0) {
+			// Stripping the lockfile is intentional: the dep-graph scopes each changed
+			// declared dep to its importers, which covers that dep's transitive subtree
+			// (the subtree is reached only THROUGH the dep). What it does NOT cover is
+			// UNRELATED transitive churn co-occurring in the same lockfile (e.g. a
+			// `pnpm dedupe` alongside the bump) — the deferred transitive-closure case,
+			// backstopped by the nightly full E2E run. A lockfile-only change (no
+			// manifest) never reaches here and stays broad.
 			impactful = stripDependencyFiles(impactful);
 			strategies.push(
 				new DependencyGraphStrategy(map, input.lockfileImporters, runtimeDeps, { allSpecs }),

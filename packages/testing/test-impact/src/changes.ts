@@ -59,7 +59,7 @@ export function filterImpactfulChanges(files: string[]): string[] {
  */
 const FORCES_BROAD: Array<(f: string) => boolean> = [
 	(f) => f.startsWith('docker/'),
-	(f) => /(^|\/)Dockerfile(\.|$)/.test(f),
+	(f) => /(^|\/)Dockerfile(\.|$)|\.Dockerfile$/.test(f),
 	(f) => f.startsWith('packages/testing/containers/'),
 ];
 
@@ -72,7 +72,12 @@ export function forcesBroad(file: string): boolean {
 export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'none';
 
 type ManifestJson = Record<string, Record<string, string> | undefined>;
-const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const;
+/** package.json sections whose changes can reach the runtime bundle. */
+export const RUNTIME_SECTIONS = [
+	'dependencies',
+	'optionalDependencies',
+	'peerDependencies',
+] as const;
 
 function parseManifest(raw: string): ManifestJson {
 	try {

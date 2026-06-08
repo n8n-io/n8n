@@ -18,6 +18,7 @@ export {
 	changedRuntimeDeps,
 	changedRuntimeDepsFromManifests,
 	stripDependencyFiles,
+	RUNTIME_SECTIONS,
 	type ManifestChangeKind,
 } from './changes.js';
 export { dependentDirs, type WorkspaceImporters } from './dep-graph.js';

@@ -26,6 +26,8 @@ export class DependencyGraphStrategy implements SelectionStrategy {
 		const dirs = dependentDirs(this.changedDeps, this.importers);
 		if (dirs.length === 0) {
 			// No workspace package declares the changed dep → can't attribute → broad.
+			// `unmapped` carries the dep NAMES here (not file paths) purely for the
+			// broad-reason diagnostic; broad mode runs everything regardless.
 			return {
 				specs: this.opts.allSpecs ?? [],
 				unmapped: this.changedDeps,

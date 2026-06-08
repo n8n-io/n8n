@@ -16,7 +16,13 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
-import { encodeImpactMap, buildImpactMap, distributeShards, selectTests } from '@n8n/test-impact';
+import {
+	encodeImpactMap,
+	buildImpactMap,
+	distributeShards,
+	selectTests,
+	changedRuntimeDepsFromManifests,
+} from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -689,10 +695,13 @@ function runSelect(options: CliOptions): void {
 	// devDependency-only classifier can drop a devDep-only lockfile change.
 	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
 	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
-	// Only parse the (large) lockfile when a manifest actually changed — that's
-	// the only case the dep-graph selector (389) can act on.
+	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
+	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
+	// change would parse it for nothing.
 	const lockfileImporters =
-		manifests && Object.keys(manifests).length > 0 ? readLockfileImporters() : undefined;
+		manifests && changedRuntimeDepsFromManifests(manifests).length > 0
+			? readLockfileImporters()
+			: undefined;
 	const result = selectTests({
 		changedFiles,
 		mapFile: options.mapFile,
