@@ -139,6 +139,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot
 				: undefined,
+		promptMode: options.promptMode,
 	});
 
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
