@@ -5,7 +5,6 @@ import { getOtelSettings, updateOtelSettings } from './otel.api';
 import type { OtelSettingsResponse } from './otel.api';
 import { OTEL_STORE } from './otel.constants';
 
-/** Convert comma-separated "key=value,..." string to array of {key,value} pairs */
 export function headersStringToPairs(str: string): Array<{ key: string; value: string }> {
 	if (!str.trim()) return [];
 	return str
@@ -18,7 +17,6 @@ export function headersStringToPairs(str: string): Array<{ key: string; value: s
 		.filter((p) => p.key);
 }
 
-/** Convert array of {key,value} pairs to comma-separated "key=value,..." string */
 export function headersPairsToString(pairs: Array<{ key: string; value: string }>): string {
 	return pairs
 		.filter((p) => p.key.trim())
@@ -26,18 +24,30 @@ export function headersPairsToString(pairs: Array<{ key: string; value: string }
 		.join(',');
 }
 
+const defaultSettings: OtelSettingsResponse = {
+	enabled: false,
+	exporterEndpoint: 'http://localhost:4318',
+	exporterTracingPath: '/v1/traces',
+	exporterServiceName: 'n8n',
+	exporterHeaders: '',
+	tracesSampleRate: 1.0,
+	startupConnectivityTimeoutMs: 2_000,
+	includeNodeSpans: true,
+	injectOutbound: true,
+	productionExecutionsOnly: true,
+};
+
 export const useOtelStore = defineStore(OTEL_STORE, () => {
 	const rootStore = useRootStore();
 
-	const settings = ref<OtelSettingsResponse | null>(null);
-	const savedSettings = ref<OtelSettingsResponse | null>(null);
-	const loading = ref(false);
+	const settings = ref<OtelSettingsResponse>({ ...defaultSettings });
+	const savedSettings = ref<OtelSettingsResponse>({ ...defaultSettings });
+	const loading = ref(true);
 	const saving = ref(false);
 
-	const isDirty = computed(() => {
-		if (!settings.value || !savedSettings.value) return false;
-		return JSON.stringify(settings.value) !== JSON.stringify(savedSettings.value);
-	});
+	const isDirty = computed(
+		() => JSON.stringify(settings.value) !== JSON.stringify(savedSettings.value),
+	);
 
 	async function fetchSettings(): Promise<void> {
 		loading.value = true;
@@ -50,24 +60,19 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		}
 	}
 
-	async function saveSettings(): Promise<{ wasEnabled: boolean; nowEnabled: boolean }> {
-		if (!settings.value) throw new Error('No settings to save');
+	async function saveSettings(): Promise<void> {
 		saving.value = true;
-		const wasEnabled = savedSettings.value?.enabled ?? false;
 		try {
 			const updated = await updateOtelSettings(rootStore.restApiContext, settings.value);
 			settings.value = { ...updated };
 			savedSettings.value = { ...updated };
-			return { wasEnabled, nowEnabled: updated.enabled };
 		} finally {
 			saving.value = false;
 		}
 	}
 
 	function discardChanges(): void {
-		if (savedSettings.value) {
-			settings.value = { ...savedSettings.value };
-		}
+		settings.value = { ...savedSettings.value };
 	}
 
 	return {

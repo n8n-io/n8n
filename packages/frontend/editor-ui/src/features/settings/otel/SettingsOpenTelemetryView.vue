@@ -37,13 +37,11 @@ const showSavedConfirmation = ref(false);
 let savedConfirmationTimer: ReturnType<typeof setTimeout> | null = null;
 
 function syncHeaderPairsFromStore() {
-	headerPairs.value = headersStringToPairs(otelStore.settings?.exporterHeaders ?? '');
+	headerPairs.value = headersStringToPairs(otelStore.settings.exporterHeaders);
 }
 
 function syncHeaderPairsToStore() {
-	if (otelStore.settings) {
-		otelStore.settings.exporterHeaders = headersPairsToString(headerPairs.value);
-	}
+	otelStore.settings.exporterHeaders = headersPairsToString(headerPairs.value);
 }
 
 function addHeader() {
@@ -71,12 +69,14 @@ function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 
 async function save() {
 	try {
-		const { wasEnabled, nowEnabled } = await otelStore.saveSettings();
-		if (!wasEnabled && nowEnabled) {
-			telemetry.track('Activated otel via UI');
-		} else if (wasEnabled && !nowEnabled) {
-			telemetry.track('Disabled otel via UI');
-		}
+		await otelStore.saveSettings();
+		telemetry.track('User saved otel settings', {
+			enabled: otelStore.settings.enabled,
+			includeNodeSpans: otelStore.settings.includeNodeSpans,
+			productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
+			tracesSampleRate: otelStore.settings.tracesSampleRate,
+			injectOutbound: otelStore.settings.injectOutbound,
+		});
 		toast.showMessage({
 			title: i18n.baseText('settings.opentelemetry.savedSuccess'),
 			type: 'success',
@@ -162,11 +162,11 @@ watch(
 			</a>
 		</p>
 
-		<div v-if="otelStore.loading" :class="$style.loading">
+		<div v-if="otelStore.loading" :class="$style.loading" data-test-id="otel-loading">
 			<N8nIcon icon="spinner" spin />
 		</div>
 
-		<template v-if="otelStore.settings && !otelStore.loading">
+		<template v-if="!otelStore.loading">
 			<!-- Enable toggle -->
 			<div :class="$style.card">
 				<div :class="$style.settingsItem">
@@ -187,8 +187,8 @@ watch(
 						<N8nSelect
 							:model-value="otelStore.settings.enabled ? 'enabled' : 'disabled'"
 							size="medium"
-							data-testid="otel-enabled-toggle"
-							@update:model-value="otelStore.settings!.enabled = $event === 'enabled'"
+							data-test-id="otel-enabled-toggle"
+							@update:model-value="otelStore.settings.enabled = $event === 'enabled'"
 						>
 							<template #prefix>
 								<span v-if="otelStore.settings.enabled" :class="$style.greenDot" />
@@ -225,7 +225,7 @@ watch(
 						<N8nInput
 							v-model="otelStore.settings.exporterEndpoint"
 							:placeholder="i18n.baseText('settings.opentelemetry.exporterEndpoint.placeholder')"
-							data-testid="otel-exporter-endpoint"
+							data-test-id="otel-exporter-endpoint"
 						/>
 					</div>
 				</div>
@@ -250,7 +250,7 @@ watch(
 						<N8nInput
 							v-model="otelStore.settings.exporterServiceName"
 							:placeholder="i18n.baseText('settings.opentelemetry.exporterServiceName.placeholder')"
-							data-testid="otel-service-name"
+							data-test-id="otel-service-name"
 						/>
 					</div>
 				</div>
@@ -285,7 +285,7 @@ watch(
 									:placeholder="
 										i18n.baseText('settings.opentelemetry.exporterHeaders.keyPlaceholder')
 									"
-									data-testid="otel-header-key"
+									data-test-id="otel-header-key"
 									@update:model-value="(v: string) => onHeaderChange(index, 'key', v)"
 								/>
 							</N8nInputLabel>
@@ -302,7 +302,7 @@ watch(
 									:placeholder="
 										i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder')
 									"
-									data-testid="otel-header-value"
+									data-test-id="otel-header-value"
 									@update:model-value="(v: string) => onHeaderChange(index, 'value', v)"
 								/>
 							</N8nInputLabel>
@@ -313,7 +313,7 @@ watch(
 									size="small"
 									native-type="button"
 									:aria-label="i18n.baseText('settings.opentelemetry.exporterHeaders.remove')"
-									data-testid="otel-header-remove"
+									data-test-id="otel-header-remove"
 									@click.stop.prevent="removeHeader(index)"
 								/>
 							</div>
@@ -324,7 +324,7 @@ watch(
 							size="small"
 							native-type="button"
 							class="mt-2xs"
-							data-testid="otel-header-add"
+							data-test-id="otel-header-add"
 							@click.stop.prevent="addHeader"
 						>
 							{{ i18n.baseText('settings.opentelemetry.exporterHeaders.addHeader') }}
@@ -352,7 +352,7 @@ watch(
 						<N8nInput
 							v-model="otelStore.settings.exporterTracingPath"
 							:placeholder="i18n.baseText('settings.opentelemetry.exporterTracingPath.placeholder')"
-							data-testid="otel-tracing-path"
+							data-test-id="otel-tracing-path"
 						/>
 					</div>
 				</div>
@@ -382,9 +382,9 @@ watch(
 								:min="0"
 								:step="100"
 								:controls="false"
-								data-testid="otel-connectivity-timeout"
+								data-test-id="otel-connectivity-timeout"
 								@update:model-value="
-									otelStore.settings!.startupConnectivityTimeoutMs = Number($event)
+									otelStore.settings.startupConnectivityTimeoutMs = Number($event)
 								"
 							/>
 							<span :class="$style.slug">{{
@@ -425,8 +425,8 @@ watch(
 								:step="0.01"
 								:precision="2"
 								:controls="false"
-								data-testid="otel-sample-rate"
-								@update:model-value="otelStore.settings!.tracesSampleRate = Number($event)"
+								data-test-id="otel-sample-rate"
+								@update:model-value="otelStore.settings.tracesSampleRate = Number($event)"
 							/>
 							<span :class="$style.slug">{{
 								i18n.baseText('settings.opentelemetry.tracesSampleRate.slug')
@@ -454,8 +454,8 @@ watch(
 					<div :class="$style.settingsItemControl">
 						<N8nCheckbox
 							:model-value="otelStore.settings.includeNodeSpans"
-							data-testid="otel-include-node-spans"
-							@update:model-value="otelStore.settings!.includeNodeSpans = Boolean($event)"
+							data-test-id="otel-include-node-spans"
+							@update:model-value="otelStore.settings.includeNodeSpans = Boolean($event)"
 						/>
 					</div>
 				</div>
@@ -477,8 +477,8 @@ watch(
 					<div :class="$style.settingsItemControl">
 						<N8nCheckbox
 							:model-value="otelStore.settings.injectOutbound"
-							data-testid="otel-inject-outbound"
-							@update:model-value="otelStore.settings!.injectOutbound = Boolean($event)"
+							data-test-id="otel-inject-outbound"
+							@update:model-value="otelStore.settings.injectOutbound = Boolean($event)"
 						/>
 					</div>
 				</div>
@@ -504,8 +504,8 @@ watch(
 					<div :class="$style.settingsItemControl">
 						<N8nCheckbox
 							:model-value="otelStore.settings.productionExecutionsOnly"
-							data-testid="otel-production-only"
-							@update:model-value="otelStore.settings!.productionExecutionsOnly = Boolean($event)"
+							data-test-id="otel-production-only"
+							@update:model-value="otelStore.settings.productionExecutionsOnly = Boolean($event)"
 						/>
 					</div>
 				</div>
@@ -517,7 +517,7 @@ watch(
 					v-if="otelStore.isDirty"
 					:label="i18n.baseText('settings.opentelemetry.save')"
 					:loading="otelStore.saving"
-					data-testid="otel-save-button"
+					data-test-id="otel-save-button"
 					@click="save"
 				/>
 				<N8nButton
@@ -525,10 +525,15 @@ watch(
 					variant="outline"
 					:label="i18n.baseText('settings.opentelemetry.discard')"
 					:disabled="otelStore.saving"
-					data-testid="otel-discard-button"
+					data-test-id="otel-discard-button"
 					@click="discard"
 				/>
-				<N8nText v-if="showSavedConfirmation && !otelStore.isDirty" color="text-light" size="small">
+				<N8nText
+					v-if="showSavedConfirmation && !otelStore.isDirty"
+					color="text-light"
+					size="small"
+					data-test-id="otel-saved-confirmation"
+				>
 					{{ i18n.baseText('settings.opentelemetry.allChangesSaved') }}
 				</N8nText>
 			</div>
@@ -538,7 +543,7 @@ watch(
 			v-model="showUnsavedChangesDialog"
 			:title="i18n.baseText('settings.opentelemetry.unsavedChanges.title')"
 			width="500"
-			data-testid="otel-unsaved-changes-dialog"
+			data-test-id="otel-unsaved-changes-dialog"
 		>
 			<N8nText>{{ i18n.baseText('settings.opentelemetry.unsavedChanges.message') }}</N8nText>
 			<template #footer>
