@@ -1,5 +1,5 @@
 import mysql2 from 'mysql2/promise';
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
@@ -332,6 +332,100 @@ describe('Test MySql V2, operations', () => {
 		expect(result).toBeDefined();
 
 		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
+	});
+
+	it('executeQuery, should route parameter validation error to error output when continueOnFail is true', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: '$1',
+			options: {},
+		};
+
+		const nodeOptions: IDataObject = { nodeVersion: 2.5 };
+		const mockRunQueries = jest.fn(async () => []);
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, true);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+			nodeOptions,
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toHaveProperty('message');
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+		expect(mockRunQueries).not.toHaveBeenCalled();
+	});
+
+	it('executeQuery, should throw parameter validation error when continueOnFail is false', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: '$1',
+			options: {},
+		};
+
+		const nodeOptions: IDataObject = { nodeVersion: 2.5 };
+		const mockRunQueries = jest.fn(async () => []);
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode, false);
+
+		const promise = executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			mockRunQueries as unknown as QueryRunner,
+			nodeOptions,
+		);
+
+		await expect(promise).rejects.toThrow(
+			'Parameter $1 referenced in query but no replacement value provided',
+		);
+		expect(mockRunQueries).not.toHaveBeenCalled();
+	});
+
+	it('executeQuery, should route error item before success items when a preceding item fails query preparation', async () => {
+		const nodeOptions: IDataObject = { nodeVersion: 2.5 };
+
+		const fakeExecuteFunction = {
+			getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: IDataObject) {
+				if (parameterName === 'query') {
+					return itemIndex === 0 ? '$1' : 'SELECT 1';
+				}
+				return fallbackValue ?? {};
+			},
+			getNode() {
+				return mySqlMockNode;
+			},
+			continueOnFail() {
+				return true;
+			},
+		} as unknown as IExecuteFunctions;
+
+		const successResult: INodeExecutionData = { json: { success: true }, pairedItem: { item: 0 } };
+		const mockRunQueries = jest.fn(async () => [successResult]);
+
+		const inputItems: INodeExecutionData[] = [
+			{ json: { a: 1 }, pairedItem: { item: 0, input: undefined } },
+			{ json: { b: 2 }, pairedItem: { item: 1, input: undefined } },
+		];
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			inputItems,
+			mockRunQueries as unknown as QueryRunner,
+			nodeOptions,
+		);
+
+		// Item 0 failed preparation → error item with original index 0
+		expect(result[0].json).toHaveProperty('message');
+		expect(result[0].pairedItem).toEqual({ item: 0 });
+
+		// runQueries was called with only the valid query (from item 1)
+		expect(mockRunQueries).toHaveBeenCalledWith([{ query: 'SELECT 1', values: [] }]);
+
+		// Success result from runQueries is appended after error items
+		expect(result[1].json).toEqual({ success: true });
 	});
 
 	it('select, should call runQueries with', async () => {
