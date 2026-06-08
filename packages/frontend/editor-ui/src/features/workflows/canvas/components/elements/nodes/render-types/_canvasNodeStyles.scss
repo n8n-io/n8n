@@ -1,0 +1,9 @@
+// Shared visual contract for canvas-node-like elements (nodes, group title bars).
+
+@mixin canvas-node-border-defaults {
+	--canvas-node--border-width: 1.5px;
+	--canvas-node--border-color: light-dark(
+		oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)),
+		oklch(from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15))
+	);
+}
