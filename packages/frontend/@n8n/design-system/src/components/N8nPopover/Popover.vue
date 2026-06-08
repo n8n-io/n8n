@@ -46,6 +46,14 @@ interface Props
 	 */
 	suppressAutoFocus?: boolean;
 	/**
+	 * Whether the popover should dismiss when focus moves outside of it.
+	 * Set to `false` when the popover is opened programmatically right as
+	 * another layer (e.g. a context menu) closes and restores focus elsewhere,
+	 * which would otherwise dismiss the popover immediately. Pointer and escape
+	 * dismissal are unaffected.
+	 */
+	dismissOnFocusOutside?: boolean;
+	/**
 	 * Scrollbar visibility behavior
 	 */
 	scrollType?: 'auto' | 'always' | 'scroll' | 'hover';
@@ -94,6 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
 	sideFlip: undefined,
 	collisionPadding: 5,
 	suppressAutoFocus: false,
+	dismissOnFocusOutside: true,
 	zIndex: 999,
 	showArrow: false,
 	teleported: true,
@@ -125,6 +134,18 @@ function handleCloseAutoFocus(e: Event) {
 function handleOutsideInteraction(e: PointerDownOutsideEvent | FocusOutsideEvent) {
 	const target = e.target as HTMLElement | null;
 	if (target?.closest('.el-popper, .el-select-dropdown')) {
+		e.preventDefault();
+	}
+}
+
+/**
+ * Prevents focus-outside dismissal when the consumer opts out. Reka emits this
+ * before the dismiss check, so calling preventDefault keeps the popover open
+ * when focus moves away (e.g. a closing context menu restoring focus), while
+ * leaving pointer-down-outside and escape dismissal intact.
+ */
+function handleFocusOutside(e: FocusOutsideEvent) {
+	if (!props.dismissOnFocusOutside) {
 		e.preventDefault();
 	}
 }
@@ -164,6 +185,7 @@ watch(
 				@close-auto-focus="handleCloseAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
+				@focus-outside="handleFocusOutside"
 			>
 				<N8nScrollArea
 					v-if="enableScrolling"

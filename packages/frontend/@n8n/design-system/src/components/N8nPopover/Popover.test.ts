@@ -141,6 +141,51 @@ describe('N8nPopover', () => {
 			expect(popover.contains(document.activeElement)).toBe(false);
 		});
 
+		it('should dismiss when focus moves outside by default', async () => {
+			const externalInput = document.createElement('input');
+			document.body.appendChild(externalInput);
+
+			const wrapper = render(N8nPopover, {
+				props: { open: true },
+				slots: {
+					trigger: '<button>trigger</button>',
+					content: '<input />',
+				},
+			});
+			const popover = await wrapper.findByRole('dialog');
+			expect(popover.contains(document.activeElement)).toBe(true);
+
+			externalInput.focus();
+
+			await waitFor(() => expect(wrapper.emitted()['update:open']).toContainEqual([false]));
+
+			externalInput.remove();
+		});
+
+		it('should not dismiss when focus moves outside and dismissOnFocusOutside is false', async () => {
+			const externalInput = document.createElement('input');
+			document.body.appendChild(externalInput);
+
+			const wrapper = render(N8nPopover, {
+				props: { open: true, dismissOnFocusOutside: false },
+				slots: {
+					trigger: '<button>trigger</button>',
+					content: '<input />',
+				},
+			});
+			const popover = await wrapper.findByRole('dialog');
+			expect(popover.contains(document.activeElement)).toBe(true);
+
+			externalInput.focus();
+
+			// Allow Reka's focus-outside detection (which awaits a couple of ticks) to run
+			await new Promise((resolve) => setTimeout(resolve, 20));
+
+			expect(wrapper.emitted()['update:open'] ?? []).not.toContainEqual([false]);
+
+			externalInput.remove();
+		});
+
 		it('should suppress focus restore on close when suppressAutoFocus is true', async () => {
 			const triggerHandle = document.createElement('button');
 			triggerHandle.textContent = 'trigger';

@@ -1,9 +1,13 @@
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { createEventBus } from '@n8n/utils/event-bus';
 import CanvasNodeStickyColorSelector from './CanvasNodeStickyColorSelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
-import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	CanvasNodeRenderType,
+	type CanvasNodeEventBusEvents,
+} from '@/features/workflows/canvas/canvas.types';
 
 const renderComponent = createComponentRenderer(CanvasNodeStickyColorSelector);
 
@@ -40,6 +44,36 @@ describe('CanvasNodeStickyColorSelector', () => {
 
 		expect(emitted()).toHaveProperty('update');
 		expect(emitted().update[0]).toEqual([3]);
+	});
+
+	describe('opening via the "update:sticky:color" event (context menu)', () => {
+		it('should open the popover, deferred to a later tick so the closing context menu does not dismiss it', async () => {
+			vi.useFakeTimers();
+			try {
+				const eventBus = createEventBus<CanvasNodeEventBusEvents>();
+				renderComponent({
+					global: {
+						provide: {
+							...createCanvasNodeProvide({ eventBus }),
+						},
+					},
+				});
+
+				eventBus.emit('update:sticky:color');
+
+				// The open must be deferred — opening synchronously while the context
+				// menu is still tearing down lets its focus restoration dismiss the popover.
+				expect(screen.queryAllByTestId('color')).toHaveLength(0);
+
+				await vi.runAllTimersAsync();
+			} finally {
+				vi.useRealTimers();
+			}
+
+			await waitFor(() => {
+				expect(screen.getAllByTestId('color')).toHaveLength(7);
+			});
+		});
 	});
 
 	describe('custom color picker', () => {

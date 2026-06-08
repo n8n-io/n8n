@@ -17,6 +17,7 @@ const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
+const showPopoverTimeout = ref<NodeJS.Timeout | null>(null);
 
 const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1));
 
@@ -25,11 +26,26 @@ const isPopoverVisible = defineModel<boolean>('visible');
 const colorInputRef = ref<HTMLInputElement | null>(null);
 
 function hidePopover() {
+	if (showPopoverTimeout.value) {
+		clearTimeout(showPopoverTimeout.value);
+		showPopoverTimeout.value = null;
+	}
 	isPopoverVisible.value = false;
 }
 
 function showPopover() {
-	isPopoverVisible.value = true;
+	// Triggered by the context menu's "Change color" action. The menu is a Reka
+	// dismissable layer that closes and restores focus elsewhere as it tears down.
+	// Defer the open so it happens after the menu has closed (avoids overlapping
+	// layers); `dismiss-on-focus-outside="false"` on the popover then keeps it
+	// open against the menu's focus restoration, which fires slightly later.
+	if (showPopoverTimeout.value) {
+		clearTimeout(showPopoverTimeout.value);
+	}
+	showPopoverTimeout.value = setTimeout(() => {
+		isPopoverVisible.value = true;
+		showPopoverTimeout.value = null;
+	}, 0);
 }
 
 function changeColor(index: number) {
@@ -69,6 +85,12 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	eventBus.value?.off('update:sticky:color', showPopover);
+	if (showPopoverTimeout.value) {
+		clearTimeout(showPopoverTimeout.value);
+	}
+	if (autoHideTimeout.value) {
+		clearTimeout(autoHideTimeout.value);
+	}
 });
 </script>
 
@@ -80,6 +102,7 @@ onBeforeUnmount(() => {
 			width="auto"
 			:content-class="$style.popover"
 			:enable-scrolling="false"
+			:dismiss-on-focus-outside="false"
 			@before-enter="onMouseEnter"
 			@after-leave="onMouseLeave"
 		>
