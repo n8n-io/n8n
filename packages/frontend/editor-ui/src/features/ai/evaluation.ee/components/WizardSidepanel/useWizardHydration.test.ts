@@ -118,7 +118,8 @@ describe('useWizardHydration', () => {
 
 		expect(mocks.listEvaluationConfigs).not.toHaveBeenCalled();
 		expect(mocks.showError).not.toHaveBeenCalled();
-		expect(store.selectedMetricKeys).toEqual([]);
+		// Skipping hydration leaves the store's default pre-selection untouched.
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
 	});
 
 	it('decodes a canned correctness metric back into selectedMetricKeys + judgeSelection', async () => {
@@ -315,7 +316,8 @@ describe('useWizardHydration', () => {
 		const { hydrate } = useWizardHydration();
 		await hydrate();
 
-		expect(store.selectedMetricKeys).toEqual([]);
+		// No config to load — the store keeps its default pre-selection.
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
 		expect(store.customChecks).toEqual([]);
 		expect(mocks.getDataTableRowsApi).not.toHaveBeenCalled();
 	});

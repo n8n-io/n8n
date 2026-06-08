@@ -18,9 +18,9 @@ import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
 // Preview cards that scroll in the marquee at the top of the info card. We
 // duplicate the list once so the CSS `translateY(-50%)` loop reads as a
 // continuous scroll — single-list looping would visibly snap back. The
-// `LLM-as-Judge` pill is only shown for metrics in `LLM_JUDGE_METRIC_KEYS`
-// (correctness, helpfulness) — labelling Tools Used / String Similarity /
-// Categorization as judge-based would be wrong, those are deterministic.
+// `AI` pill is only shown for metrics in `LLM_JUDGE_METRIC_KEYS`
+// (correctness, helpfulness) — labelling the exact-match / string-similarity /
+// tools-used checks as AI-judged would be wrong, those are deterministic.
 const marqueeMetrics = computed(() =>
 	[...CANNED_METRICS, ...CANNED_METRICS].map((m) => ({
 		...m,

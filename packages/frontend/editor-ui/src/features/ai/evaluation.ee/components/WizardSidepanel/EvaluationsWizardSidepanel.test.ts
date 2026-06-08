@@ -7,7 +7,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationsWizardSidepanel from './EvaluationsWizardSidepanel.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import { CANNED_METRICS } from '../../evaluation.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 // Plain mutable holders instead of module-scope `ref()`s — reactive refs
@@ -110,6 +109,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		mocks.workflowId = 'workflow-id';
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
+		mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: true };
 		mockRouterPush.mockReset();
 		mockHydrate.mockReset();
 		// Trigger Vue to re-read the shallowRef so watchers see the reset workflowId.
@@ -234,14 +234,39 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(docHtml).not.toContain('OpenAI Chat Model');
 	});
 
-	it('renders every canned metric option on step 1 (Setup Checks)', () => {
+	it('shows Correctness on step 1 and reveals the rest behind "Explore more checks"', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
 
+		const { getByTestId, queryByTestId } = renderComponent();
+		// Correctness is shown up front; the other built-ins and the custom-check
+		// affordance are hidden initially.
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-correctness')).toBeInTheDocument();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-categorization')).toBeNull();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeNull();
+		expect(queryByTestId('evaluations-wizard-sidepanel-new-custom-check')).toBeNull();
+
+		// Reveal the rest.
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-explore-more-checks'));
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-categorization')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeInTheDocument();
+		// The custom-check affordance becomes available only after expanding.
+		expect(getByTestId('evaluations-wizard-sidepanel-new-custom-check')).toBeInTheDocument();
+		// The button disappears once expanded.
+		expect(queryByTestId('evaluations-wizard-sidepanel-explore-more-checks')).toBeNull();
+
+		// Helpfulness and String Similarity are never offered as built-in cards.
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-helpfulness')).toBeNull();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-stringSimilarity')).toBeNull();
+	});
+
+	it('auto-reveals more checks when a hidden built-in is already selected', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+		store.selectedMetricKeys = ['correctness', 'toolsUsed'];
+
 		const { getByTestId } = renderComponent();
-		for (const metric of CANNED_METRICS) {
-			expect(getByTestId(`evaluations-wizard-sidepanel-metric-${metric.key}`)).toBeInTheDocument();
-		}
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeInTheDocument();
 	});
 
 	it('toggles selection when a check card is clicked on step 1', async () => {
@@ -249,11 +274,14 @@ describe('EvaluationsWizardSidepanel', () => {
 		store.open(1);
 
 		const { getByTestId } = renderComponent();
-		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
+		// Correctness is pre-selected by default.
 		expect(store.selectedMetricKeys).toContain('correctness');
 
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
 		expect(store.selectedMetricKeys).not.toContain('correctness');
+
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
+		expect(store.selectedMetricKeys).toContain('correctness');
 	});
 
 	it('closes when the Cancel button is clicked', async () => {
@@ -364,6 +392,8 @@ describe('EvaluationsWizardSidepanel', () => {
 	it('enables Next on step 1 when only a custom check is added (no canned metric)', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
+		// Clear the default correctness pre-selection so only the custom check remains.
+		store.selectedMetricKeys = [];
 		store.addCustomCheck({
 			name: 'Has output',
 			expression: '$json.output.length > 0',
@@ -602,6 +632,8 @@ describe('EvaluationsWizardSidepanel', () => {
 		store.open(1);
 
 		const { getByTestId, findByTestId } = renderComponent();
+		// The custom-check CTA only appears after expanding "Explore more checks".
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-explore-more-checks'));
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-new-custom-check'));
 
 		expect(store.isCustomCheckModalOpen).toBe(true);
@@ -628,12 +660,39 @@ describe('EvaluationsWizardSidepanel', () => {
 		).not.toBeInTheDocument();
 	});
 
+	describe('run-first gate', () => {
+		it('blocks the wizard with a run-first gate when the workflow has never run', async () => {
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(0);
+
+			const { findByTestId, queryByTestId } = renderComponent();
+
+			// Once the execution probe settles with no execution, the gate appears…
+			await findByTestId('evaluations-wizard-sidepanel-gate');
+			expect(queryByTestId('evaluations-wizard-sidepanel-gate-run')).toBeInTheDocument();
+			// …and the wizard steps/footer are hidden.
+			expect(queryByTestId('evaluations-wizard-sidepanel-progress')).toBeNull();
+			expect(queryByTestId('evaluations-wizard-sidepanel-next')).toBeNull();
+		});
+
+		it('shows the wizard (not the gate) when an execution exists', () => {
+			mocks.sliceInputs = { fieldNames: ['query'], values: { query: 'hi' }, hasExecution: true };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(0);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('evaluations-wizard-sidepanel-progress')).toBeInTheDocument();
+			expect(queryByTestId('evaluations-wizard-sidepanel-gate')).toBeNull();
+		});
+	});
+
 	describe('workflow-switch watch', () => {
 		it('calls reset() and hydrate() when workflowId changes between two real ids', async () => {
 			const store = useEvaluationsWizardSidepanelStore();
-			// Seed some state to verify it is cleared
+			// Seed non-default state to verify it is cleared (correctness is on by default).
 			store.setStep(2);
-			store.toggleMetric('correctness');
+			store.toggleMetric('toolsUsed');
 
 			mocks.workflowId = 'wf-1';
 			workflowDocumentRef.value = {
@@ -661,13 +720,14 @@ describe('EvaluationsWizardSidepanel', () => {
 			await nextTick();
 
 			expect(store.activeStep).toBe(0);
-			expect(store.selectedMetricKeys).toEqual([]);
+			// reset() restores the default pre-selection.
+			expect(store.selectedMetricKeys).toEqual(['correctness']);
 		});
 
 		it('does NOT call reset() when prevId is the placeholder (new→saved transition)', async () => {
 			const store = useEvaluationsWizardSidepanelStore();
 			store.setStep(1);
-			store.toggleMetric('correctness');
+			store.toggleMetric('toolsUsed');
 
 			const NEW_WORKFLOW_ID = '__EMPTY__';
 			mocks.workflowId = NEW_WORKFLOW_ID;
@@ -697,7 +757,7 @@ describe('EvaluationsWizardSidepanel', () => {
 
 			// State must NOT be reset when transitioning from the placeholder id
 			expect(store.activeStep).toBe(1);
-			expect(store.selectedMetricKeys).toEqual(['correctness']);
+			expect(store.selectedMetricKeys).toEqual(['correctness', 'toolsUsed']);
 		});
 
 		it('resets across an unmount/remount on a different workflow (pane closed between workflows)', async () => {
@@ -716,7 +776,7 @@ describe('EvaluationsWizardSidepanel', () => {
 			const first = renderComponent();
 			await nextTick();
 			store.setStep(3);
-			store.toggleMetric('correctness');
+			store.toggleMetric('toolsUsed');
 			store.setActiveRunId('run-from-wf-1');
 
 			// The focus panel closes between workflows, so the pane unmounts. The
@@ -738,7 +798,7 @@ describe('EvaluationsWizardSidepanel', () => {
 			await nextTick();
 
 			expect(store.activeStep).toBe(0);
-			expect(store.selectedMetricKeys).toEqual([]);
+			expect(store.selectedMetricKeys).toEqual(['correctness']);
 			expect(store.activeRunId).toBeNull();
 		});
 	});

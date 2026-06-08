@@ -11,6 +11,7 @@ defineProps<{
 	title: string;
 	description?: string;
 	badge?: string;
+	badgeIcon?: IconName;
 	category?: string;
 	loading?: boolean;
 	scoreLabel?: string;
@@ -25,7 +26,14 @@ defineProps<{
 
 <template>
 	<div :class="[$style.card, loading ? $style.cardLoading : null]">
-		<CheckHeader :icon="icon" :icon-bg="iconBg" :icon-fg="iconFg" :title="title" :badge="badge">
+		<CheckHeader
+			:icon="icon"
+			:icon-bg="iconBg"
+			:icon-fg="iconFg"
+			:title="title"
+			:badge="badge"
+			:badge-icon="badgeIcon"
+		>
 			<template #description>
 				<N8nText
 					v-if="loading && loadingLabel"

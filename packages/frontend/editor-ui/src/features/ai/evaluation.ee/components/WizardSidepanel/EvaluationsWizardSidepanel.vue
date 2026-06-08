@@ -5,12 +5,6 @@ import { useRouter } from 'vue-router';
 
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type {
-	ChatHubConversationModel,
-	ChatHubLLMProvider,
-	ChatHubProvider,
-	ChatModelDto,
-} from '@n8n/api-types';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -18,14 +12,9 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import { useToast } from '@/app/composables/useToast';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
-import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	formatMetricPercent,
+	formatMetricAverage,
 	formatDuration,
 	formatTokens,
 	extractAnswerText,
@@ -33,11 +22,14 @@ import {
 import {
 	CANNED_METRICS,
 	LLM_JUDGE_METRIC_KEYS,
+	BUILTIN_PRIMARY_CHECK_KEY,
+	BUILTIN_MORE_CHECK_KEYS,
 	getExpectedFieldsForMetrics,
 	type CannedMetricKey,
 } from '../../evaluation.constants';
 import { useSliceInputs } from '../../composables/useSliceInputs';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
+import { useRunEvalWorkflow } from '../../composables/useRunEvalWorkflow';
 import { useDefaultJudgeSelection } from '../../composables/useDefaultJudgeSelection';
 import { useWizardPersistence } from './useWizardPersistence';
 import { useWizardHydration } from './useWizardHydration';
@@ -55,9 +47,6 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const evaluationStore = useEvaluationStore();
-const toast = useToast();
-const usersStore = useUsersStore();
-const chatStore = useChatStore();
 
 const {
 	activeStep,
@@ -72,33 +61,36 @@ const {
 	customChecks,
 } = storeToRefs(wizardStore);
 
-// useChatCredentials binds to the user id at construction. The canvas route is
-// authenticated-only, so currentUserId is always resolved by the time this
-// panel mounts; the 'anonymous' fallback mirrors the chat-hub views and never
-// fires here.
-const currentUserId = computed(() => usersStore.currentUserId);
-const { credentialsByProvider, selectCredential } = useChatCredentials(
-	currentUserId.value ?? 'anonymous',
-);
-
-watch(
-	[credentialsByProvider, currentUserId],
-	([creds, userId]) => {
-		if (!creds || !userId) return;
-		chatStore.fetchAgents(creds).catch((error) => {
-			toast.showError(
-				error,
-				locale.baseText('evaluations.wizardSidepanel.step1.judgeMissingCredential'),
-			);
-		});
-	},
-	{ immediate: true },
-);
-
-const agentsResponse = computed(() => chatStore.agents);
 const cannedMetrics = computed(() => CANNED_METRICS);
 const aiRootNodes = useAiRootNodes();
 const defaultJudgeSelection = useDefaultJudgeSelection();
+const { runWorkflow } = useRunEvalWorkflow();
+
+// Checks step: Correctness is always shown; the remaining built-ins are revealed
+// behind "Explore more checks". Auto-open if a hidden built-in is already selected
+// (e.g. a hydrated config), so a selected check is never invisible.
+const showMoreChecks = ref(false);
+const primaryCheckMetric = computed(() =>
+	CANNED_METRICS.find((m) => m.key === BUILTIN_PRIMARY_CHECK_KEY),
+);
+const moreCheckMetrics = computed(() =>
+	CANNED_METRICS.filter((m) => BUILTIN_MORE_CHECK_KEYS.includes(m.key)),
+);
+const visibleCheckMetrics = computed(() => {
+	const primary = primaryCheckMetric.value ? [primaryCheckMetric.value] : [];
+	return showMoreChecks.value ? [...primary, ...moreCheckMetrics.value] : primary;
+});
+watch(
+	[selectedMetricKeys, customChecks],
+	([keys, checks]) => {
+		if (showMoreChecks.value) return;
+		const hasHiddenBuiltin = keys.some((k) => BUILTIN_MORE_CHECK_KEYS.includes(k));
+		if (hasHiddenBuiltin || checks.length > 0) {
+			showMoreChecks.value = true;
+		}
+	},
+	{ immediate: true },
+);
 
 // Watching judgeSelectionByMetric so a hydrate that drops some keys still
 // triggers a re-seed of the rest.
@@ -114,18 +106,37 @@ watch(
 	{ immediate: true },
 );
 
+// Gate (ticket "Step 0"): the wizard is blocked until the workflow has had at
+// least one successful, non-evaluation execution. `probeComplete` guards against
+// flashing the gate before the execution lookup resolves.
+const probeComplete = ref(false);
+
+async function runExecutionProbe() {
+	try {
+		await Promise.all([
+			Promise.resolve(workflowsStore.fetchLastSuccessfulExecution()),
+			loadFallbackUserExecution(),
+		]);
+	} finally {
+		probeComplete.value = true;
+	}
+}
+
 watch(
 	[activeStep, aiRootNodes],
 	([step, nodes]) => {
 		if (step !== 0 && step !== 2) return;
-		void workflowsStore.fetchLastSuccessfulExecution();
-		void loadFallbackUserExecution();
+		void runExecutionProbe();
 		if (wizardStore.aiNodeName) return;
 		const first = nodes[0];
 		if (first) wizardStore.setAiNodeName(first.name);
 	},
 	{ immediate: true },
 );
+
+// True once the workflow has a usable successful execution to seed inputs from.
+const hasRun = computed(() => sliceInputs.value.hasExecution);
+const showGate = computed(() => probeComplete.value && !hasRun.value);
 
 // Skip evaluation runs — after a few wizard sessions, lastSuccessfulExecution
 // would always be the compiled eval workflow, not the user's graph.
@@ -321,63 +332,11 @@ const step2Complete = computed(() => {
 	return inputsFilled && expectedFilled;
 });
 
+// LLM-judge metrics carry an "AI-judged" badge. The judge model itself is
+// auto-selected from the workflow's own chat-model sub-node (see
+// useDefaultJudgeSelection) — there is no manual picker in the wizard.
 function isLlmJudgeMetric(key: CannedMetricKey): boolean {
 	return LLM_JUDGE_METRIC_KEYS.has(key);
-}
-
-function selectedAgentForMetric(key: CannedMetricKey): ChatModelDto | null {
-	const sel = judgeSelectionByMetric.value[key];
-	if (!sel) return null;
-	const entry = agentsResponse.value[sel.provider]?.models.find(
-		(m) => isLlmProviderModel(m.model) && m.model.model === sel.model,
-	);
-	if (entry) return entry;
-	return {
-		model: { provider: sel.provider, model: sel.model } as ChatHubConversationModel,
-		name: sel.model,
-		description: null,
-		icon: null,
-		updatedAt: null,
-		createdAt: null,
-		metadata: {} as ChatModelDto['metadata'],
-		groupName: null,
-		groupIcon: null,
-	};
-}
-
-function onJudgeModelChange(key: CannedMetricKey, selection: ChatHubConversationModel) {
-	if (!isLlmProviderModel(selection)) return;
-	const credentialId = credentialsByProvider.value?.[selection.provider];
-	if (!credentialId) {
-		toast.showError(
-			new Error('Pick a credential for this provider first'),
-			locale.baseText('evaluations.wizardSidepanel.step1.judgeMissingCredential'),
-		);
-		return;
-	}
-	wizardStore.setJudgeSelection(key, {
-		provider: selection.provider as ChatHubLLMProvider,
-		credentialId,
-		model: selection.model,
-	});
-}
-
-function onJudgeCredentialChange(
-	key: CannedMetricKey,
-	provider: ChatHubProvider,
-	credentialId: string | null,
-) {
-	selectCredential(provider, credentialId);
-	const current = judgeSelectionByMetric.value[key];
-	if (!current || current.provider !== provider) return;
-	if (credentialId) {
-		wizardStore.setJudgeSelection(key, { ...current, credentialId });
-	} else {
-		// Credential cleared — drop the stored selection so the removed id can't
-		// be persisted or dispatched. The default-judge seed re-fills it if the
-		// workflow still offers a usable judge model.
-		wizardStore.setJudgeSelection(key, undefined);
-	}
 }
 
 // Indexed by activeStep (0-3); WizardStep is constrained to those values.
@@ -455,276 +414,319 @@ function handleViewResults() {
 
 <template>
 	<div :class="$style.sidepanel" data-test-id="evaluations-wizard-sidepanel">
-		<div :class="$style.progressBar" data-test-id="evaluations-wizard-sidepanel-progress">
-			<div
-				v-for="step in 4"
-				:key="step"
-				:class="[
-					$style.progressSegment,
-					activeStep >= step - 1 ? $style.progressSegmentActive : null,
-				]"
-			></div>
+		<div
+			v-if="!hasRun && !probeComplete"
+			:class="$style.gate"
+			data-test-id="evaluations-wizard-sidepanel-probe-loading"
+		>
+			<N8nIcon icon="spinner" size="medium" :spin="true" />
 		</div>
 
-		<header :class="$style.header">
-			<N8nText tag="h2" size="large" color="text-dark" bold :class="$style.title">
-				{{ locale.baseText(titleKey) }}
+		<div v-else-if="showGate" :class="$style.gate" data-test-id="evaluations-wizard-sidepanel-gate">
+			<N8nIcon icon="info" size="large" :class="$style.gateIcon" />
+			<N8nText size="small" color="text-base" :class="$style.gateMessage">
+				{{ locale.baseText('evaluations.wizardSidepanel.gate.message') }}
 			</N8nText>
-			<N8nText size="small" color="text-base" :class="$style.description">
-				{{ locale.baseText(descriptionKey) }}
-			</N8nText>
-		</header>
+			<N8nButton
+				size="small"
+				type="button"
+				data-test-id="evaluations-wizard-sidepanel-gate-run"
+				@click="runWorkflow"
+			>
+				{{ locale.baseText('evaluations.wizardSidepanel.step.addTestCases.runButton') }}
+			</N8nButton>
+		</div>
 
-		<div :class="$style.body">
-			<section v-if="activeStep === 0" :class="$style.section">
-				<SystemSelector />
-			</section>
+		<template v-else>
+			<div :class="$style.progressBar" data-test-id="evaluations-wizard-sidepanel-progress">
+				<div
+					v-for="step in 4"
+					:key="step"
+					:class="[
+						$style.progressSegment,
+						activeStep >= step - 1 ? $style.progressSegmentActive : null,
+					]"
+				></div>
+			</div>
 
-			<section v-if="activeStep === 1" :class="$style.section">
-				<ul :class="$style.checkList">
-					<li v-for="metric in cannedMetrics" :key="metric.key">
-						<CheckCard
-							:icon="metric.icon"
-							:icon-bg="metric.tileBg"
-							:icon-fg="metric.tileFg"
-							:title="locale.baseText(metric.labelKey)"
-							:description="locale.baseText(metric.descriptionKey)"
-							:badge="
-								isLlmJudgeMetric(metric.key)
-									? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
-									: undefined
-							"
-							:selected="selectedMetricKeys.includes(metric.key)"
-							:data-test-id="`evaluations-wizard-sidepanel-metric-${metric.key}`"
-							@toggle="wizardStore.toggleMetric(metric.key)"
+			<header :class="$style.header">
+				<N8nText tag="h2" size="large" color="text-dark" bold :class="$style.title">
+					{{ locale.baseText(titleKey) }}
+				</N8nText>
+				<N8nText size="small" color="text-base" :class="$style.description">
+					{{ locale.baseText(descriptionKey) }}
+				</N8nText>
+			</header>
+
+			<div :class="$style.body">
+				<section v-if="activeStep === 0" :class="$style.section">
+					<SystemSelector />
+				</section>
+
+				<section v-if="activeStep === 1" :class="$style.section">
+					<ul :class="$style.checkList">
+						<li v-for="metric in visibleCheckMetrics" :key="metric.key">
+							<CheckCard
+								:icon="metric.icon"
+								:icon-bg="metric.tileBg"
+								:icon-fg="metric.tileFg"
+								:title="locale.baseText(metric.labelKey)"
+								:description="locale.baseText(metric.descriptionKey)"
+								:badge="
+									isLlmJudgeMetric(metric.key)
+										? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
+										: undefined
+								"
+								:badge-icon="isLlmJudgeMetric(metric.key) ? 'wand-sparkles' : undefined"
+								:selected="selectedMetricKeys.includes(metric.key)"
+								:data-test-id="`evaluations-wizard-sidepanel-metric-${metric.key}`"
+								@toggle="wizardStore.toggleMetric(metric.key)"
+							/>
+						</li>
+
+						<li
+							v-if="!showMoreChecks"
+							:class="[$style.addCard]"
+							role="button"
+							tabindex="0"
+							data-test-id="evaluations-wizard-sidepanel-explore-more-checks"
+							@click="showMoreChecks = true"
+							@keydown.enter.prevent="showMoreChecks = true"
+							@keydown.space.prevent="showMoreChecks = true"
 						>
-							<div
-								v-if="selectedMetricKeys.includes(metric.key) && isLlmJudgeMetric(metric.key)"
-								:data-test-id="`evaluations-wizard-sidepanel-judge-${metric.key}`"
-							>
-								<N8nText size="xsmall" color="text-base">
-									{{ locale.baseText('evaluations.wizardSidepanel.step1.judgeLabel') }}
-								</N8nText>
-								<ModelSelector
-									:selected-agent="selectedAgentForMetric(metric.key)"
-									:include-custom-agents="false"
-									:credentials="credentialsByProvider"
-									:agents="agentsResponse"
-									:is-loading="false"
-									:warn-missing-credentials="true"
-									horizontal
-									@change="(m) => onJudgeModelChange(metric.key, m)"
-									@select-credential="
-										(provider, credentialId) =>
-											onJudgeCredentialChange(metric.key, provider, credentialId)
+							<span :class="$style.addCardIcon">
+								<N8nIcon icon="plus" size="small" />
+							</span>
+							<N8nText size="small" color="text-base">
+								{{ locale.baseText('evaluations.wizardSidepanel.step1.exploreMoreChecks') }}
+							</N8nText>
+						</li>
+
+						<!-- Custom checks (and the affordance to add one) appear only after
+							the user expands "Explore more checks". -->
+						<template v-if="showMoreChecks">
+							<li v-for="check in customChecks" :key="check.id">
+								<CheckCard
+									icon="code"
+									:title="check.name"
+									:badge="locale.baseText('evaluations.wizardSidepanel.customCheck.expressionTag')"
+									:selected="true"
+									:removable="true"
+									:remove-aria-label="
+										locale.baseText('evaluations.wizardSidepanel.customCheck.remove')
 									"
+									:data-test-id="`evaluations-wizard-sidepanel-custom-check-${check.id}`"
+									:remove-test-id="`evaluations-wizard-sidepanel-custom-check-remove-${check.id}`"
+									@remove="wizardStore.removeCustomCheck(check.id)"
 								/>
-							</div>
-						</CheckCard>
-					</li>
+							</li>
 
-					<li v-for="check in customChecks" :key="check.id">
-						<CheckCard
-							icon="code"
-							:title="check.name"
-							:badge="locale.baseText('evaluations.wizardSidepanel.customCheck.expressionTag')"
-							:selected="true"
-							:removable="true"
-							:remove-aria-label="locale.baseText('evaluations.wizardSidepanel.customCheck.remove')"
-							:data-test-id="`evaluations-wizard-sidepanel-custom-check-${check.id}`"
-							:remove-test-id="`evaluations-wizard-sidepanel-custom-check-remove-${check.id}`"
-							@remove="wizardStore.removeCustomCheck(check.id)"
-						/>
-					</li>
+							<li
+								:class="[$style.addCard]"
+								role="button"
+								tabindex="0"
+								data-test-id="evaluations-wizard-sidepanel-new-custom-check"
+								@click="wizardStore.openCustomCheckModal()"
+								@keydown.enter.prevent="wizardStore.openCustomCheckModal()"
+								@keydown.space.prevent="wizardStore.openCustomCheckModal()"
+							>
+								<span :class="$style.addCardIcon">
+									<N8nIcon icon="plus" size="small" />
+								</span>
+								<N8nText size="small" color="text-base">
+									{{ locale.baseText('evaluations.wizardSidepanel.step1.newCustomCheck') }}
+								</N8nText>
+							</li>
+						</template>
+					</ul>
+				</section>
 
-					<li
-						:class="[$style.addCard]"
-						role="button"
-						tabindex="0"
-						data-test-id="evaluations-wizard-sidepanel-new-custom-check"
-						@click="wizardStore.openCustomCheckModal()"
-						@keydown.enter.prevent="wizardStore.openCustomCheckModal()"
-						@keydown.space.prevent="wizardStore.openCustomCheckModal()"
+				<section v-if="activeStep === 2" :class="$style.section">
+					<TestCaseForm :slice-inputs="sliceInputs" />
+				</section>
+
+				<section v-if="activeStep === 3" :class="$style.section">
+					<div
+						v-if="showLoadingState"
+						:class="$style.runningState"
+						data-test-id="evaluations-wizard-sidepanel-running"
 					>
-						<span :class="$style.addCardIcon">
-							<N8nIcon icon="plus" size="small" />
-						</span>
+						<N8nIcon icon="spinner" size="medium" :spin="true" />
 						<N8nText size="small" color="text-base">
-							{{ locale.baseText('evaluations.wizardSidepanel.step1.newCustomCheck') }}
+							{{ locale.baseText('evaluations.wizardSidepanel.step3.running') }}
 						</N8nText>
-					</li>
-				</ul>
-			</section>
-
-			<section v-if="activeStep === 2" :class="$style.section">
-				<TestCaseForm :slice-inputs="sliceInputs" />
-			</section>
-
-			<section v-if="activeStep === 3" :class="$style.section">
-				<div
-					v-if="showLoadingState"
-					:class="$style.runningState"
-					data-test-id="evaluations-wizard-sidepanel-running"
-				>
-					<N8nIcon icon="spinner" size="medium" :spin="true" />
-					<N8nText size="small" color="text-base">
-						{{ locale.baseText('evaluations.wizardSidepanel.step3.running') }}
-					</N8nText>
-				</div>
-				<ul
-					v-if="showLoadingState"
-					:class="$style.checkList"
-					data-test-id="evaluations-wizard-sidepanel-loading-skeletons"
-				>
-					<li
-						v-for="metric in cannedMetrics.filter((m) => selectedMetricKeys.includes(m.key))"
-						:key="`skeleton-${metric.key}`"
+					</div>
+					<ul
+						v-if="showLoadingState"
+						:class="$style.checkList"
+						data-test-id="evaluations-wizard-sidepanel-loading-skeletons"
 					>
-						<CheckResultCard
-							:icon="metric.icon"
-							:icon-bg="metric.tileBg"
-							:icon-fg="metric.tileFg"
-							:title="locale.baseText(metric.labelKey)"
-							:badge="
-								isLlmJudgeMetric(metric.key)
-									? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
-									: undefined
-							"
-							:category="metric.category"
-							:loading="true"
-							:loading-label="locale.baseText('evaluations.wizardSidepanel.step3.scoring')"
-						/>
-					</li>
-				</ul>
+						<li
+							v-for="metric in cannedMetrics.filter((m) => selectedMetricKeys.includes(m.key))"
+							:key="`skeleton-${metric.key}`"
+						>
+							<CheckResultCard
+								:icon="metric.icon"
+								:icon-bg="metric.tileBg"
+								:icon-fg="metric.tileFg"
+								:title="locale.baseText(metric.labelKey)"
+								:badge="
+									isLlmJudgeMetric(metric.key)
+										? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
+										: undefined
+								"
+								:badge-icon="isLlmJudgeMetric(metric.key) ? 'wand-sparkles' : undefined"
+								:category="metric.category"
+								:loading="true"
+								:loading-label="locale.baseText('evaluations.wizardSidepanel.step3.scoring')"
+							/>
+						</li>
+					</ul>
 
-				<ul
-					v-if="latestRun && !showLoadingState"
-					:class="$style.checkList"
-					data-test-id="evaluations-wizard-sidepanel-results"
-				>
-					<li
-						v-for="metric in cannedMetrics.filter((m) => selectedMetricKeys.includes(m.key))"
-						:key="metric.key"
+					<ul
+						v-if="latestRun && !showLoadingState"
+						:class="$style.checkList"
+						data-test-id="evaluations-wizard-sidepanel-results"
 					>
-						<CheckResultCard
-							:icon="metric.icon"
-							:icon-bg="metric.tileBg"
-							:icon-fg="metric.tileFg"
-							:title="locale.baseText(metric.labelKey)"
-							:description="locale.baseText(metric.descriptionKey)"
-							:badge="
-								isLlmJudgeMetric(metric.key)
-									? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
-									: undefined
-							"
-							:category="metric.category"
-							:score-label="locale.baseText('evaluations.wizardSidepanel.step3.testLabel')"
-							:score-text="
-								formatMetricPercent(latestRun.metrics?.[metric.key], {
-									category: metric.category,
-								})
-							"
-							:score-percent="metricScorePercent(metric.key)"
-							:output-label="locale.baseText('evaluations.wizardSidepanel.step3.output')"
-							:output-text="
-								latestRunOutputText ||
-								locale.baseText('evaluations.wizardSidepanel.step3.outputPlaceholder')
-							"
-							:output-meta="`${formatTokens(latestRun.metrics?.totalTokens)} · ${formatDuration(latestRun.metrics?.executionTime)}`"
-						/>
-					</li>
-				</ul>
+						<li
+							v-for="metric in cannedMetrics.filter((m) => selectedMetricKeys.includes(m.key))"
+							:key="metric.key"
+						>
+							<CheckResultCard
+								:icon="metric.icon"
+								:icon-bg="metric.tileBg"
+								:icon-fg="metric.tileFg"
+								:title="locale.baseText(metric.labelKey)"
+								:badge="
+									isLlmJudgeMetric(metric.key)
+										? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
+										: undefined
+								"
+								:badge-icon="isLlmJudgeMetric(metric.key) ? 'wand-sparkles' : undefined"
+								:category="metric.category"
+								:score-label="
+									metric.category === 'aiBased'
+										? locale.baseText('evaluations.wizardSidepanel.step3.testLabel')
+										: locale.baseText('evaluations.wizardSidepanel.step3.passedLabel')
+								"
+								:score-text="
+									metric.category === 'aiBased'
+										? formatMetricAverage(latestRun.metrics?.[metric.key], {
+												category: metric.category,
+											})
+										: formatMetricPercent(latestRun.metrics?.[metric.key], {
+												category: metric.category,
+											})
+								"
+								:score-percent="metricScorePercent(metric.key)"
+								:output-label="locale.baseText('evaluations.wizardSidepanel.step3.output')"
+								:output-text="
+									latestRunOutputText ||
+									locale.baseText('evaluations.wizardSidepanel.step3.outputPlaceholder')
+								"
+								:output-meta="
+									locale.baseText('evaluations.wizardSidepanel.step3.outputMeta', {
+										interpolate: {
+											tokens: formatTokens(latestRun.metrics?.totalTokens),
+											time: formatDuration(latestRun.metrics?.executionTime),
+										},
+									})
+								"
+							/>
+						</li>
+					</ul>
 
-				<div
-					v-if="!latestRun && !showLoadingState"
-					:class="$style.emptyResult"
-					data-test-id="evaluations-wizard-sidepanel-no-run"
+					<div
+						v-if="!latestRun && !showLoadingState"
+						:class="$style.emptyResult"
+						data-test-id="evaluations-wizard-sidepanel-no-run"
+					>
+						<N8nText size="small" color="text-light">
+							{{ locale.baseText('evaluations.wizardSidepanel.step3.noRun') }}
+						</N8nText>
+					</div>
+				</section>
+			</div>
+
+			<footer :class="$style.footer">
+				<N8nButton
+					v-if="activeStep === 0"
+					variant="ghost"
+					size="small"
+					type="button"
+					data-test-id="evaluations-wizard-sidepanel-cancel"
+					@click.stop="handleCancel"
 				>
-					<N8nText size="small" color="text-light">
-						{{ locale.baseText('evaluations.wizardSidepanel.step3.noRun') }}
-					</N8nText>
-				</div>
-			</section>
-		</div>
-
-		<footer :class="$style.footer">
-			<N8nButton
-				v-if="activeStep === 0"
-				variant="ghost"
-				size="small"
-				type="button"
-				data-test-id="evaluations-wizard-sidepanel-cancel"
-				@click.stop="handleCancel"
-			>
-				{{ locale.baseText('evaluations.wizardSidepanel.cancel') }}
-			</N8nButton>
-			<N8nButton
-				v-else-if="activeStep === 1"
-				variant="ghost"
-				size="small"
-				type="button"
-				data-test-id="evaluations-wizard-sidepanel-back"
-				@click.stop="handleBack"
-			>
-				{{ locale.baseText('evaluations.wizardSidepanel.nav.chooseSystem') }}
-			</N8nButton>
-			<N8nButton
-				v-else-if="activeStep === 2"
-				variant="ghost"
-				size="small"
-				type="button"
-				data-test-id="evaluations-wizard-sidepanel-back"
-				@click.stop="handleBack"
-			>
-				{{ locale.baseText('evaluations.wizardSidepanel.nav.setupChecks') }}
-			</N8nButton>
-			<N8nButton
-				v-else-if="activeStep === 3"
-				variant="ghost"
-				size="small"
-				type="button"
-				:loading="isPersisting"
-				data-test-id="evaluations-wizard-sidepanel-run-again"
-				@click.stop="handleRunAgain"
-			>
-				{{ locale.baseText('evaluations.wizardSidepanel.nav.runAgain') }}
-			</N8nButton>
-			<span :class="$style.footerSpacer" />
-			<N8nButton
-				v-if="activeStep < 3"
-				variant="outline"
-				size="small"
-				type="button"
-				:loading="isPersisting"
-				:disabled="
-					(activeStep === 0 && !step0Complete) ||
-					(activeStep === 1 && !step1Complete) ||
-					(activeStep === 2 && !step2Complete)
-				"
-				data-test-id="evaluations-wizard-sidepanel-next"
-				@click.stop="handleNext"
-			>
-				<span v-if="activeStep === 0">
-					{{ locale.baseText('evaluations.wizardSidepanel.nav.setupChecks') }}
-				</span>
-				<span v-else-if="activeStep === 1">
-					{{ locale.baseText('evaluations.wizardSidepanel.nav.addTestCases') }}
-				</span>
-				<span v-else>
-					{{ locale.baseText('evaluations.wizardSidepanel.nav.runTests') }}
-				</span>
-			</N8nButton>
-			<N8nButton
-				v-else
-				variant="outline"
-				size="small"
-				type="button"
-				data-test-id="evaluations-wizard-sidepanel-view-results"
-				@click.stop="handleViewResults"
-			>
-				{{ locale.baseText('evaluations.wizardSidepanel.nav.viewResults') }}
-			</N8nButton>
-		</footer>
+					{{ locale.baseText('evaluations.wizardSidepanel.cancel') }}
+				</N8nButton>
+				<N8nButton
+					v-else-if="activeStep === 1 || activeStep === 2"
+					variant="ghost"
+					size="small"
+					type="button"
+					data-test-id="evaluations-wizard-sidepanel-back"
+					@click.stop="handleBack"
+				>
+					{{ locale.baseText('evaluations.wizardSidepanel.nav.back') }}
+				</N8nButton>
+				<N8nButton
+					v-else-if="activeStep === 3"
+					variant="ghost"
+					size="small"
+					type="button"
+					data-test-id="evaluations-wizard-sidepanel-edit-evals"
+					@click.stop="wizardStore.setStep(0)"
+				>
+					{{ locale.baseText('evaluations.wizardSidepanel.nav.editEvals') }}
+				</N8nButton>
+				<span :class="$style.footerSpacer" />
+				<N8nButton
+					v-if="activeStep < 3"
+					variant="outline"
+					size="small"
+					type="button"
+					:loading="isPersisting"
+					:disabled="
+						(activeStep === 0 && !step0Complete) ||
+						(activeStep === 1 && !step1Complete) ||
+						(activeStep === 2 && !step2Complete)
+					"
+					data-test-id="evaluations-wizard-sidepanel-next"
+					@click.stop="handleNext"
+				>
+					<span v-if="activeStep === 0">
+						{{ locale.baseText('evaluations.wizardSidepanel.nav.next.checks') }}
+					</span>
+					<span v-else-if="activeStep === 1">
+						{{ locale.baseText('evaluations.wizardSidepanel.nav.next.cases') }}
+					</span>
+					<span v-else>
+						{{ locale.baseText('evaluations.wizardSidepanel.nav.next.run') }}
+					</span>
+				</N8nButton>
+				<template v-else>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						type="button"
+						:loading="isPersisting"
+						data-test-id="evaluations-wizard-sidepanel-run-again"
+						@click.stop="handleRunAgain"
+					>
+						{{ locale.baseText('evaluations.wizardSidepanel.nav.runAgain') }}
+					</N8nButton>
+					<N8nButton
+						variant="outline"
+						size="small"
+						type="button"
+						data-test-id="evaluations-wizard-sidepanel-view-results"
+						@click.stop="handleViewResults"
+					>
+						{{ locale.baseText('evaluations.wizardSidepanel.nav.viewDetailedResults') }}
+					</N8nButton>
+				</template>
+			</footer>
+		</template>
 
 		<CustomCheckModal />
 	</div>
@@ -738,6 +740,26 @@ function handleViewResults() {
 	height: 100%;
 	background-color: var(--background--surface);
 	overflow: hidden;
+}
+
+.gate {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--xl) var(--spacing--md);
+	text-align: center;
+}
+
+.gateIcon {
+	color: var(--color--secondary);
+}
+
+.gateMessage {
+	max-width: 300px;
+	line-height: 1.4;
 }
 
 .progressBar {

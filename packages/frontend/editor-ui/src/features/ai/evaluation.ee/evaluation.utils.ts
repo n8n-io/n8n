@@ -175,6 +175,20 @@ export function formatMetricRawScore(
 	return `${formatScoreNumerator(num)}/5`;
 }
 
+// Average score for the wizard results card: AI-based shows "X / 5", other
+// metrics show the 0–1 average to two decimals (e.g. "0.75"). This is the mean
+// across the run's cases, not a percentage.
+export function formatMetricAverage(
+	value: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '–';
+	return getMetricScale(options.category) === 'oneToFive'
+		? `${formatScoreNumerator(num)} / 5`
+		: num.toFixed(2);
+}
+
 // Run-level totals: "13/15" (AI-based: sum / 5×count) or "1.11/6" (0-1: sum / count).
 export function formatMetricRawScoreSum(
 	values: Array<number | undefined>,
