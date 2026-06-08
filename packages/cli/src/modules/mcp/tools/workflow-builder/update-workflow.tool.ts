@@ -8,6 +8,8 @@ import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-ch
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -17,6 +19,7 @@ import {
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
@@ -28,8 +31,42 @@ import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 
+// Renames are followed so the key matches the node's name in the post-apply
+// workflow.
+function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, number> {
+	const touched = new Map<string, number>();
+	const recordTouch = (name: string, opIndex: number) => {
+		if (!touched.has(name)) touched.set(name, opIndex);
+	};
+
+	for (let i = 0; i < operations.length; i++) {
+		const op = operations[i];
+		if (op.type === 'addNode') {
+			recordTouch(op.node.name, i);
+		} else if (op.type === 'updateNodeParameters' || op.type === 'setNodeParameter') {
+			recordTouch(op.nodeName, i);
+		} else if (op.type === 'renameNode') {
+			const idx = touched.get(op.oldName);
+			if (idx !== undefined) {
+				touched.delete(op.oldName);
+				touched.set(op.newName, idx);
+			}
+		} else if (op.type === 'removeNode') {
+			touched.delete(op.nodeName);
+		}
+	}
+
+	return touched;
+}
+
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow update call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
+		),
 	operations: z
 		.array(partialUpdateOperationSchema)
 		.min(1)
@@ -88,11 +125,12 @@ export const createUpdateWorkflowTool = (
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
+	dataTableOps: DataTableUserOperations,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged.',
+			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged. If you used n8n skills while preparing this update, pass their identifiers in skillsUsed.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -105,16 +143,20 @@ export const createUpdateWorkflowTool = (
 	},
 	handler: async ({
 		workflowId,
+		skillsUsed,
 		operations,
 	}: {
 		workflowId: string;
+		skillsUsed?: string[];
 		operations: PartialUpdateOperation[];
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 			parameters: {
 				workflowId,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
 			},
@@ -156,6 +198,21 @@ export const createUpdateWorkflowTool = (
 			);
 			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
+			const { projectId: workflowProjectId } = await sharedWorkflowRepository.findOneOrFail({
+				where: { workflowId, role: 'workflow:owner' },
+				select: ['projectId'],
+			});
+
+			const dataTableCheck = await validateDataTableReferencesForUpdate(
+				result.workflow.nodes,
+				collectTouchedNodes(operations),
+				workflowProjectId,
+				dataTableOps,
+			);
+			if (!dataTableCheck.ok) {
+				throw new Error(dataTableCheck.error);
+			}
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -183,17 +240,13 @@ export const createUpdateWorkflowTool = (
 			if (result.addedNodeNames.length > 0) {
 				const addedNodeSet = new Set(result.addedNodeNames);
 				const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
-				const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
-					where: { workflowId, role: 'workflow:owner' },
-					select: ['projectId'],
-				});
 
 				const autoAssign = await autoPopulateNodeCredentials(
 					{ ...workflowUpdateData, nodes: addedNodes },
 					user,
 					nodeTypes,
 					credentialsService,
-					sharedWorkflow.projectId,
+					workflowProjectId,
 				);
 				credentialAssignments = autoAssign.assignments;
 				skippedHttpNodes = autoAssign.skippedHttpNodes;

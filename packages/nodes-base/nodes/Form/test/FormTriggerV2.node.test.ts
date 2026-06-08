@@ -1,6 +1,17 @@
 import crypto from 'crypto';
 import { mock } from 'jest-mock-extended';
-import { NodeOperationError, type INode } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type INode,
+	type INodeProperties,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
+
+type VersionCnd = { lte?: number; gte?: number };
+type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
+	displayOptions?: { show?: { '@version'?: Array<{ _cnd?: VersionCnd }> } };
+	options?: INodePropertyOptions[];
+};
 
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -25,16 +36,46 @@ describe('FormTrigger', () => {
 			defaultVersion: 2.5,
 		});
 
-		const authParam = formTriggerV2.description.properties.find(
+		const authParams = formTriggerV2.description.properties.filter(
 			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
 		);
 
-		expect(authParam).toMatchObject({
-			default: 'none',
-			builderHint: {
-				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
-			},
+		expect(authParams.length).toBeGreaterThan(0);
+		for (const param of authParams) {
+			expect(param).toMatchObject({
+				default: 'none',
+				builderHint: {
+					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		}
+	});
+
+	it('should expose n8nUserAuth option only on typeVersion >= 2.6', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
 		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		) as VersionedAuthParam[];
+
+		expect(authParams).toHaveLength(2);
+
+		const versionCnd = (param: VersionedAuthParam) =>
+			param.displayOptions?.show?.['@version']?.[0]?._cnd;
+		const legacyAuth = authParams.find((p) => versionCnd(p)?.lte === 2.5);
+		const v26Auth = authParams.find((p) => versionCnd(p)?.gte === 2.6);
+
+		const legacyValues = (legacyAuth?.options ?? []).map((o) => o.value).sort();
+		const v26Values = (v26Auth?.options ?? []).map((o) => o.value).sort();
+
+		expect(legacyValues).toEqual(['basicAuth', 'none']);
+		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
 	});
 
 	it('should render a form template with correct fields', async () => {

@@ -2,7 +2,9 @@ import { useStorage } from '@/app/composables/useStorage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { STORES } from '@n8n/stores';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
 import type { MCPOnboardingClient as SurfaceMcpOnboardingClient } from '../components/onboarding/types';
@@ -10,7 +12,7 @@ import type { MCPOnboardingClient as SurfaceMcpOnboardingClient } from '../compo
 const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_SEEN';
 const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
 
-type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
+type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
 type SurfaceMcpOnboardingEntryPoint = 'empty_state_tile';
 type SurfaceMcpOnboardingParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type SurfaceMcpOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
@@ -46,10 +48,12 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 		const hasSeenFirstEligibleOpen = computed(() => firstOpenSeenStorage.value === 'true');
 		const hasDismissedFirstOpenModal = computed(() => firstOpenDismissedStorage.value === 'true');
 
-		const getTelemetryPayload = (payload: Record<string, unknown> = {}) => ({
-			...payload,
-			variant: currentVariant.value,
-		});
+		const getTelemetryPayload = (payload: ITelemetryTrackProperties = {}) =>
+			getExperimentTelemetryPayload(
+				SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT,
+				currentVariant.value,
+				payload,
+			);
 
 		function markFirstEligibleOpenSeen() {
 			firstOpenSeenStorage.value = 'true';

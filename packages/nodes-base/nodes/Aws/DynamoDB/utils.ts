@@ -1,5 +1,5 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy, assert, ApplicationError } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { ApplicationError, assert } from 'n8n-workflow';
 
 import type {
 	AdjustedPutItem,
@@ -100,19 +100,6 @@ export function validateJSON(input: any): object {
 	} catch (error) {
 		throw new ApplicationError('Items must be a valid JSON', { level: 'warning' });
 	}
-}
-
-export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
-	// Prepare the data to insert and copy it to be returned
-	const newItem: IDataObject = {};
-	for (const property of properties) {
-		if (item.json[property] === undefined) {
-			newItem[property] = null;
-		} else {
-			newItem[property] = deepCopy(item.json[property]);
-		}
-	}
-	return newItem;
 }
 
 export function mapToAttributeValues(item: IDataObject): void {

@@ -24,10 +24,6 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
-jest.mock('../eval/sub-agent-eval.service', () => ({
-	SubAgentEvalService: jest.fn(),
-}));
-
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
@@ -42,8 +38,6 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
@@ -59,10 +53,10 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
-import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -98,22 +92,22 @@ describe('InstanceAiController', () => {
 		port: 5678,
 	});
 
-	const subAgentEvalService = mock<SubAgentEvalService>();
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const projectService = mock<ProjectService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
-		subAgentEvalService,
 		eventBus,
 		moduleRegistry,
 		push,
 		urlService,
 		userRepository,
 		credentialsService,
+		projectService,
 		globalConfig,
 	);
 
@@ -267,28 +261,17 @@ describe('InstanceAiController', () => {
 					textContent: '',
 					reasoning: '',
 					toolCalls: [],
-					children: [
+					children: [],
+					timeline: [],
+					planItems: [
 						{
-							agentId: 'agent-planner-1',
-							role: 'planner',
-							status: 'active',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							children: [],
-							timeline: [],
-							planItems: [
-								{
-									id: 'task-1',
-									title: 'Build workflow',
-									kind: 'build-workflow',
-									spec: 'Create the workflow',
-									deps: [],
-								},
-							],
+							id: 'task-1',
+							title: 'Build workflow',
+							kind: 'build-workflow',
+							spec: 'Create the workflow',
+							deps: [],
 						},
 					],
-					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
 				},
 			});
 
@@ -317,7 +300,7 @@ describe('InstanceAiController', () => {
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
 
-			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
 		});
 
@@ -709,25 +692,37 @@ describe('InstanceAiController', () => {
 
 		it('should create thread with provided threadId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: 'custom-id' });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: 'custom-id',
+				projectId: 'project-1',
+			});
 
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1');
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: undefined });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: undefined,
+				projectId: 'project-1',
+			});
 
 			await controller.ensureThread(req, res, payload);
 
 			// The controller generates a UUID — just verify ensureThread was called with some string
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, expect.any(String));
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				USER_ID,
+				expect.any(String),
+				'project-1',
+			);
 		});
 	});
 
@@ -834,55 +829,6 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
-		});
-	});
-
-	describe('runSubAgentEval', () => {
-		const originalNodeEnv = process.env.NODE_ENV;
-		const originalE2ETests = process.env.E2E_TESTS;
-
-		afterEach(() => {
-			process.env.NODE_ENV = originalNodeEnv;
-			if (originalE2ETests === undefined) {
-				delete process.env.E2E_TESTS;
-			} else {
-				process.env.E2E_TESTS = originalE2ETests;
-			}
-		});
-
-		it('should delegate to SubAgentEvalService.run and return the response', async () => {
-			process.env.NODE_ENV = 'test';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-			const expectedResponse = mock<InstanceAiEvalSubAgentResponse>({
-				text: 'done',
-				toolCalls: [],
-				toolResults: [],
-				capturedWorkflowIds: [],
-				durationMs: 100,
-			});
-			subAgentEvalService.run.mockResolvedValue(expectedResponse);
-
-			const result = await controller.runSubAgentEval(req, res, payload);
-
-			expect(subAgentEvalService.run).toHaveBeenCalledWith(req.user, payload);
-			expect(result).toBe(expectedResponse);
-		});
-
-		it('should throw ForbiddenError when E2E_TESTS is not set', async () => {
-			process.env.NODE_ENV = 'test';
-			delete process.env.E2E_TESTS;
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should throw ForbiddenError when NODE_ENV is production', async () => {
-			process.env.NODE_ENV = 'production';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
 		});
 	});
 

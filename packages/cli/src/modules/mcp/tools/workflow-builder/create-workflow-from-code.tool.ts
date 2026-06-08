@@ -1,14 +1,18 @@
-import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
+import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
@@ -21,6 +25,12 @@ const inputSchema = {
 		.string()
 		.describe(
 			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+		),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
 		),
 	name: z
 		.string()
@@ -38,7 +48,7 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe(
-			"Optional project ID to create the workflow in. Use search_projects to find a project by name. Defaults to the user's personal project.",
+			"Project ID to create the workflow in. If the user named a project (e.g. 'in my Marketing project'), you MUST call search_projects first to resolve the name to an ID and pass it here — do not guess. If search_projects returns multiple partial matches with no exact match, ask the user to clarify before creating the workflow. Only omit this field when the user did not mention a project at all; in that case it defaults to the user's personal project.",
 		),
 	folderId: z
 		.string()
@@ -62,6 +72,15 @@ const outputSchema = {
 			}),
 		)
 		.describe('List of credentials that were automatically assigned to nodes'),
+	targetProject: z
+		.object({
+			id: z.string().describe('The ID of the project the workflow was created in'),
+			name: z.string().describe('The display name of the project the workflow was created in'),
+			type: z
+				.enum(['personal', 'team'])
+				.describe('Whether the workflow landed in a personal or team project'),
+		})
+		.describe('The project the workflow was actually created in.'),
 	note: z
 		.string()
 		.optional()
@@ -89,10 +108,11 @@ export const createCreateWorkflowFromCodeTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
+	dataTableOps: DataTableUserOperations,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation.`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -105,22 +125,26 @@ export const createCreateWorkflowFromCodeTool = (
 	},
 	handler: async ({
 		code,
+		skillsUsed,
 		name,
 		description,
 		projectId,
 		folderId,
 	}: {
 		code: string;
+		skillsUsed?: string[];
 		name?: string;
 		description?: string;
 		projectId?: string;
 		folderId?: string;
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 			parameters: {
 				codeLength: code.length,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
@@ -139,6 +163,7 @@ export const createCreateWorkflowFromCodeTool = (
 		}
 
 		let newWorkflow: WorkflowEntity | undefined;
+		let landingProject: Project | null = null;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -175,11 +200,23 @@ export const createCreateWorkflowFromCodeTool = (
 
 			stripNullCredentialStubs(newWorkflow.nodes);
 
-			// Resolve the effective project ID — default to the user's personal project
-			let effectiveProjectId = projectId;
-			if (!effectiveProjectId) {
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-				effectiveProjectId = personalProject.id;
+			landingProject = projectId
+				? await projectRepository.findOneBy({ id: projectId })
+				: await projectRepository.getPersonalProjectForUserOrFail(user.id);
+			if (!landingProject) {
+				throw new NotFoundError(
+					`Project with id "${projectId}" was not found. Use search_projects to look up a valid project id.`,
+				);
+			}
+			const effectiveProjectId = landingProject.id;
+
+			const dataTableCheck = await validateDataTableReferencesForWorkflow(
+				newWorkflow.nodes,
+				effectiveProjectId,
+				dataTableOps,
+			);
+			if (!dataTableCheck.ok) {
+				throw new Error(dataTableCheck.error);
 			}
 
 			const { assignments: credentialAssignments, skippedHttpNodes } =
@@ -192,7 +229,7 @@ export const createCreateWorkflowFromCodeTool = (
 				);
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
-				projectId,
+				projectId: effectiveProjectId,
 				parentFolderId: folderId,
 				source: 'n8n-mcp',
 			});
@@ -215,6 +252,11 @@ export const createCreateWorkflowFromCodeTool = (
 				nodeCount: savedWorkflow.nodes.length,
 				url: workflowUrl,
 				autoAssignedCredentials: credentialAssignments,
+				targetProject: {
+					id: landingProject.id,
+					name: landingProject.name,
+					type: landingProject.type,
+				},
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
@@ -242,7 +284,7 @@ export const createCreateWorkflowFromCodeTool = (
 					// Verification lookup failed — fall through and report the original error.
 				}
 
-				if (persisted) {
+				if (persisted && landingProject) {
 					const baseUrl = urlService.getInstanceBaseUrl();
 					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
 
@@ -262,6 +304,11 @@ export const createCreateWorkflowFromCodeTool = (
 						nodeCount: persisted.nodes.length,
 						url: workflowUrl,
 						autoAssignedCredentials: [],
+						targetProject: {
+							id: landingProject.id,
+							name: landingProject.name,
+							type: landingProject.type,
+						},
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
 					};
 

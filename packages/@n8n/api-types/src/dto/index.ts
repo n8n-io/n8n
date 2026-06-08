@@ -33,6 +33,8 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
+export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
@@ -140,7 +142,7 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 
-export { PaginationDto } from './pagination/pagination.dto';
+export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -200,6 +202,12 @@ export {
 } from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
+
+export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
+export {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from './packages/import-package-request.dto';
 
 export * from './evaluations';
 

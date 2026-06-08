@@ -661,7 +661,7 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
 		});
 
-		it('should not render scope dropdown when unlicensed even if enforced=true', async () => {
+		it('should render disabled scope dropdown when unlicensed even if enforced=true', async () => {
 			enableRedactionEnforcementFlag(true);
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
 			getSecuritySettings.mockResolvedValue({
@@ -669,13 +669,91 @@ describe('SecuritySettings', () => {
 				redactionEnforcement: { floor: 'production' },
 			});
 
-			const { getByTestId, queryByTestId } = renderView();
+			const { getByTestId } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
-			expect(queryByTestId('redaction-enforcement-scope-row')).not.toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+		});
+
+		it('should render scope dropdown with Upgrade badge when unlicensed and not enforced', async () => {
+			enableRedactionEnforcementFlag(true);
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getAllByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			// One badge on the toggle row, one on the scope row.
+			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+			// Summary reflects stored floor='off' while the disabled dropdown previews 'production'.
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+		});
+
+		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
+			enableRedactionEnforcementFlag(true);
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('redaction-enforcement-scope-select'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show stored scope value when unlicensed with floor=production (downgrade)', async () => {
+			enableRedactionEnforcementFlag(true);
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should show stored scope value when unlicensed with floor=all (downgrade)', async () => {
+			enableRedactionEnforcementFlag(true);
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Manual and production executions',
+			);
 		});
 
 		it('should disable toggle when managed by env', async () => {
@@ -707,6 +785,50 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
 					'Manual and production executions',
 				);
+			});
+		});
+
+		describe('when security settings endpoint is unlicensed (403)', () => {
+			beforeEach(() => {
+				enableRedactionEnforcementFlag(true);
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+				// Reproduce the 403: useAsyncState keeps state === undefined.
+				getSecuritySettings.mockRejectedValue(new Error('Forbidden'));
+			});
+
+			it('should still render the data redaction section when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+			});
+
+			it('should show the Upgrade badges and disabled scope dropdown when endpoint 403s', async () => {
+				const { getByTestId, getAllByText } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+				// One badge on the toggle row, one on the scope row.
+				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+				// Defaults to floor 'off' when state never resolves.
+				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+			});
+
+			it('should not show an error toast when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(showError).not.toHaveBeenCalled();
 			});
 		});
 	});

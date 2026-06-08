@@ -6,7 +6,9 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import type { FrontendSettings } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
 import NodeCredentials from './NodeCredentials.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -131,6 +133,7 @@ function createCredential(
 		type: string;
 		isManaged: boolean;
 		isResolvable: boolean;
+		scopes: Scope[];
 	}> = {},
 ) {
 	return {
@@ -188,7 +191,7 @@ describe('NodeCredentials', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
@@ -463,7 +466,7 @@ describe('NodeCredentials', () => {
 			isResolvable: true,
 		});
 
-		it('should show dynamic icon in dropdown for resolvable credentials', async () => {
+		it('should show private badge in dropdown for resolvable credentials', async () => {
 			ndvStore.activeNode = httpNode;
 			credentialsStore.state.credentials = {
 				c8vqdPpPClh4TgIO: createCredential({ isResolvable: true }),
@@ -475,10 +478,10 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(credentialsSelect);
 
-			expect(screen.queryByTestId('credential-option-dynamic-icon')).toBeInTheDocument();
+			expect(screen.queryByTestId('credential-option-private-badge')).toBeInTheDocument();
 		});
 
-		it('should not show dynamic icon in dropdown for non-resolvable credentials', async () => {
+		it('should not show private badge in dropdown for non-resolvable credentials', async () => {
 			ndvStore.activeNode = httpNode;
 			credentialsStore.state.credentials = {
 				c8vqdPpPClh4TgIO: createCredential({ isResolvable: false }),
@@ -490,7 +493,7 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(credentialsSelect);
 
-			expect(screen.queryByTestId('credential-option-dynamic-icon')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('credential-option-private-badge')).not.toBeInTheDocument();
 		});
 
 		function setupResolvableCredential() {
@@ -503,33 +506,12 @@ describe('NodeCredentials', () => {
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue(resolvableCredential);
 		}
 
-		it('should show dynamic indicator next to selected resolvable credential', async () => {
+		it('should show private indicator next to selected resolvable credential', async () => {
 			setupResolvableCredential();
 
 			renderComponent();
 
-			expect(screen.queryByTestId('node-credential-dynamic-icon')).toBeInTheDocument();
-		});
-
-		it('should show warning when resolvable credential selected but workflow has no resolver', async () => {
-			setupResolvableCredential();
-			workflowDocumentStore.setSettings({ executionOrder: 'v1' });
-
-			renderComponent();
-
-			expect(screen.queryByTestId('node-credential-resolver-warning')).toBeInTheDocument();
-		});
-
-		it('should not show warning when resolvable credential selected and workflow has resolver', async () => {
-			setupResolvableCredential();
-			workflowDocumentStore.setSettings({
-				executionOrder: 'v1',
-				credentialResolverId: 'resolver-123',
-			});
-
-			renderComponent();
-
-			expect(screen.queryByTestId('node-credential-resolver-warning')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-icon')).toBeInTheDocument();
 		});
 	});
 
@@ -539,9 +521,16 @@ describe('NodeCredentials', () => {
 			displayName: 'OAuth2 API',
 			properties: [
 				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: false,
+				},
+				{
 					displayName: 'Client ID',
 					name: 'clientId',
 					type: 'string',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
 					default: '',
 					required: true,
 				},
@@ -549,6 +538,7 @@ describe('NodeCredentials', () => {
 					displayName: 'Client Secret',
 					name: 'clientSecret',
 					type: 'string',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
 					default: '',
 					required: true,
 				},
@@ -559,16 +549,8 @@ describe('NodeCredentials', () => {
 			name: 'slackOAuth2Api',
 			extends: ['oAuth2Api'],
 			displayName: 'Slack OAuth2 API',
-			properties: [
-				{
-					displayName: 'Client ID',
-					name: 'clientId',
-					type: 'string',
-					default: '',
-					required: true,
-				},
-			],
-			__overwrittenProperties: ['clientId'],
+			properties: [],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
 		};
 
 		const slackNode: INodeUi = {
@@ -607,6 +589,27 @@ describe('NodeCredentials', () => {
 					props: {
 						node: slackNode,
 						overrideCredType: 'slackOAuth2Api',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+		});
+
+		it('should also show quick-connect-empty-state in standalone mode (NODE-5115)', () => {
+			setupQuickConnectStores();
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{
+					props: {
+						node: slackNode,
+						overrideCredType: 'slackOAuth2Api',
+						standalone: true,
 					},
 				},
 				{ merge: true },
@@ -1408,6 +1411,130 @@ describe('NodeCredentials', () => {
 			};
 			// Credential should be removed
 			expect(payload.properties.credentials['googlePalmApi']).toBeUndefined();
+		});
+	});
+
+	describe('private credential badge and callout', () => {
+		const privateCredential = createCredential({
+			id: 'private-cred-id',
+			name: 'My Slack',
+			type: 'openAiApi',
+			isResolvable: true,
+			scopes: ['credential:update'],
+		});
+
+		const notionNode: INodeUi = {
+			...httpNode,
+			id: 'notion-node-id',
+			name: 'Notion',
+			type: 'n8n-nodes-base.notion',
+			credentials: { openAiApi: { id: 'private-cred-id', name: 'My Slack' } },
+			parameters: {},
+		};
+
+		beforeEach(() => {
+			ndvStore.activeNode = notionNode;
+			credentialsStore.state.credentials = {
+				'private-cred-id': privateCredential,
+			};
+		});
+
+		it('renders the Private badge when selected credential is resolvable', async () => {
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-icon')).toBeInTheDocument();
+		});
+
+		it('does not render the Private badge for a static credential', async () => {
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ isResolvable: false }),
+			};
+			renderComponent({ props: { node: httpNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.queryByTestId('node-credential-private-icon')).not.toBeInTheDocument();
+		});
+
+		it('renders the private callout when a private credential is selected', async () => {
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-callout')).toBeInTheDocument();
+		});
+
+		it('does not render the callout for a static credential', async () => {
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ isResolvable: false }),
+			};
+			renderComponent({ props: { node: httpNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
+		});
+
+		it('shows connected status row when connectedByMe is true', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: true },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByText('Your account is connected')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
+		});
+
+		it('shows the connect prompt with a Connect button when connectedByMe is false', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByText('Connect your account')).toBeInTheDocument();
+			expect(screen.getByTestId('node-credential-private-connect')).toBeInTheDocument();
+		});
+
+		it('hides the Connect button when the user lacks update permission', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': {
+					...privateCredential,
+					connectedByMe: false,
+					scopes: ['credential:read'],
+				},
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByText('Connect your account')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credential-private-connect')).not.toBeInTheDocument();
+		});
+
+		it('clicking the Connect button calls uiStore.openExistingCredential with the credential id', async () => {
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			await userEvent.click(screen.getByTestId('node-credential-private-connect'));
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith(
+				'private-cred-id',
+				expect.any(Object),
+			);
+		});
+
+		it('still renders the callout when the workflow uses the default (system) resolver', async () => {
+			workflowDocumentStore.mergeSettings({ credentialResolverId: SYSTEM_RESOLVER_ID });
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.getByTestId('node-credential-private-callout')).toBeInTheDocument();
+		});
+
+		it('hides the callout when the workflow uses a non-default resolver', async () => {
+			workflowDocumentStore.mergeSettings({ credentialResolverId: 'slack-resolver' });
+			credentialsStore.state.credentials = {
+				'private-cred-id': { ...privateCredential, connectedByMe: false },
+			};
+			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
+
+			expect(screen.queryByTestId('node-credential-private-callout')).not.toBeInTheDocument();
 		});
 	});
 });

@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
@@ -9,6 +10,12 @@ import {
 	User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import {
+	registerMcpAppTool,
+	registerWorkflowPreviewApp,
+	WORKFLOW_PREVIEW_APP_URI,
+	type McpAppTelemetryConfig,
+} from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 import {
 	createDeferredPromise,
@@ -39,20 +46,23 @@ import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
-import { createGetSuggestedWorkflowNodesTool } from './tools/workflow-builder/get-suggested-workflow-nodes.tool';
+import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
 import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
 import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
+import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
 import { NodeCatalogService } from '@/node-catalog';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -61,6 +71,8 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import type { McpAppsTelemetryVariant } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { ExecutionService } from '@/executions/execution.service';
@@ -74,6 +86,16 @@ interface PendingMcpResponse {
 	createdAt: Date;
 }
 
+export type McpAppsResolution = {
+	enabled: boolean;
+	variant: McpAppsTelemetryVariant;
+};
+
+type McpAppTelemetryResolution = {
+	telemetry: McpAppTelemetryConfig;
+	instanceOrigin?: string;
+};
+
 @Service()
 export class McpService {
 	/**
@@ -85,7 +107,7 @@ export class McpService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
-		_instanceSettings: InstanceSettings,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
@@ -106,9 +128,68 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly postHogClient: PostHogClient,
 	) {}
 
-	async getServer(user: User) {
+	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
+		if (this.globalConfig.endpoints.mcpAppsEnabled) {
+			return { enabled: true, variant: 'env_override' };
+		}
+
+		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
+		// returns `{}`, so a transient outage surfaces here as `unassigned`.
+		const flags = await this.postHogClient.getFeatureFlags(user);
+		const raw = flags?.[MCP_APPS_FLAG];
+		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
+		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
+		return { enabled: false, variant: 'unassigned' };
+	}
+
+	/**
+	 * Builds the instance-level telemetry config injected into MCP app UIs.
+	 * Mirrors the front-end telemetry settings: RudderStack data plane and source
+	 * config requests go through the instance telemetry proxy.
+	 */
+	private buildMcpAppTelemetryConfig(): McpAppTelemetryResolution {
+		const { enabled, frontendConfig } = this.globalConfig.diagnostics;
+		const disabledTelemetry: McpAppTelemetryConfig = {
+			enabled: false,
+			writeKey: '',
+			dataPlaneUrl: '',
+			configUrl: '',
+			instanceId: this.instanceSettings.instanceId,
+			versionCli: N8N_VERSION,
+		};
+
+		if (!enabled) return { telemetry: disabledTelemetry };
+
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
+		const restEndpoint = this.globalConfig.endpoints.rest;
+		const [writeKey] = frontendConfig.split(';');
+
+		const telemetry: McpAppTelemetryConfig = {
+			enabled,
+			writeKey: writeKey ?? '',
+			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
+			configUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`,
+			instanceId: this.instanceSettings.instanceId,
+			versionCli: N8N_VERSION,
+		};
+
+		try {
+			return { telemetry, instanceOrigin: new URL(telemetry.dataPlaneUrl).origin };
+		} catch {
+			this.logger.warn('Disabling MCP app telemetry because telemetry proxy URL is invalid', {
+				dataPlaneUrl: telemetry.dataPlaneUrl,
+			});
+
+			return {
+				telemetry: disabledTelemetry,
+			};
+		}
+	}
+
+	async getServer(user: User, mcpAppsEnabled: boolean) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const server = new McpServer(
@@ -309,13 +390,18 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(server, user);
+			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled);
 		}
 
 		return server;
 	}
 
-	private async registerBuilderTools(server: InstanceType<typeof McpServer>, user: User) {
+	private async registerBuilderTools(
+		server: InstanceType<typeof McpServer>,
+		user: User,
+		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
+		mcpAppsEnabled: boolean,
+	) {
 		await this.nodeCatalogService.initialize();
 
 		const searchNodesTool = createSearchWorkflowNodesTool(
@@ -332,19 +418,18 @@ export class McpService {
 		);
 		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
 
-		const suggestedNodesTool = createGetSuggestedWorkflowNodesTool(
-			user,
-			this.nodeCatalogService,
-			this.telemetry,
-		);
+		const bestPracticesTool = createGetWorkflowBestPracticesTool(user, this.telemetry);
 		server.registerTool(
-			suggestedNodesTool.name,
-			suggestedNodesTool.config,
-			suggestedNodesTool.handler,
+			bestPracticesTool.name,
+			bestPracticesTool.config,
+			bestPracticesTool.handler,
 		);
 
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
 		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
+
+		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
+		server.registerTool(validateNodeTool.name, validateNodeTool.config, validateNodeTool.handler);
 
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
@@ -355,8 +440,34 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.projectRepository,
+			dataTableOps,
 		);
-		server.registerTool(createTool.name, createTool.config, createTool.handler);
+
+		if (mcpAppsEnabled) {
+			const appTelemetry = this.buildMcpAppTelemetryConfig();
+			registerWorkflowPreviewApp(server, {
+				instanceOrigin: appTelemetry.instanceOrigin,
+				telemetry: appTelemetry.telemetry,
+				onResourceRead: () => {
+					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, { user_id: user.id });
+				},
+			});
+			registerMcpAppTool(
+				server,
+				createTool.name,
+				{
+					...createTool.config,
+					_meta: {
+						ui: {
+							resourceUri: WORKFLOW_PREVIEW_APP_URI,
+						},
+					},
+				},
+				createTool.handler,
+			);
+		} else {
+			server.registerTool(createTool.name, createTool.config, createTool.handler);
+		}
 
 		const searchProjectsTool = createSearchProjectsTool(
 			user,
@@ -400,6 +511,7 @@ export class McpService {
 			this.credentialsService,
 			this.sharedWorkflowRepository,
 			this.collaborationService,
+			dataTableOps,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

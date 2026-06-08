@@ -1,11 +1,16 @@
 {
   "name": "workflow-scripts",
   "scripts": {
-    "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs",
-    "generate-sbom": "cdxgen -t pnpm --no-install-deps -o ../../sbom-source.cdx.json ../../compiled/"
+    "test": "node --test --experimental-test-module-mocks ./*.test.mjs ./quality/*.test.mjs ./slack/*.test.mjs ./stale/*.test.mjs ../../scripts/licenses/*.test.mjs",
+    "generate-sbom": "FETCH_LICENSE=true cdxgen -t pnpm --no-install-deps --profile license-compliance --spec-version 1.6 -o ../../sbom-source.cdx.json ../../compiled/",
+    "enrich-sbom": "node ../../scripts/licenses/enrich-sbom.mjs ../../sbom-source.cdx.json",
+    "render-licenses-md": "node ../../scripts/licenses/render-licenses-md.mjs ../../sbom-source.cdx.json ../../packages/cli/THIRD_PARTY_LICENSES.md ../../compiled/node_modules",
+    "check-licenses": "node ../../scripts/licenses/check-sbom-licenses.mjs ../../sbom-source.cdx.json --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise",
+    "generate-licenses": "pnpm generate-sbom && pnpm enrich-sbom && pnpm render-licenses-md && pnpm check-licenses"
   },
   "dependencies": {
     "@actions/github": "9.0.0",
+    "@cyclonedx/cdxgen": "12.4.0",
     "@octokit/core": "7.0.6",
     "conventional-changelog": "7.2.0",
     "debug": "4.4.3",
@@ -16,7 +21,6 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "@cyclonedx/cdxgen": "12.4.0",
     "conventional-changelog-angular": "8.3.0"
   }
 }

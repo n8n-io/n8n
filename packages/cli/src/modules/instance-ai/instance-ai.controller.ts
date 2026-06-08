@@ -14,7 +14,6 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -39,7 +38,6 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
-import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -51,6 +49,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
@@ -96,13 +95,13 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
-		private readonly subAgentEvalService: SubAgentEvalService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectService: ProjectService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -525,9 +524,15 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
 		this.requireInstanceAiEnabled();
+		const project = await this.projectService.getProjectWithScope(req.user, payload.projectId, [
+			'project:read',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have access to the requested project');
+		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+		return await this.memoryService.ensureThread(req.user.id, requestedThreadId, payload.projectId);
 	}
 
 	@Delete('/threads/:threadId')
@@ -628,19 +633,6 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
-	}
-
-	@Post('/eval/run-sub-agent')
-	@GlobalScope('instanceAi:message')
-	async runSubAgentEval(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiEvalSubAgentRequest,
-	) {
-		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
-			throw new ForbiddenError('Sub-agent evaluation is not enabled');
-		}
-		return await this.subAgentEvalService.run(req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

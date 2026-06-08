@@ -97,12 +97,14 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 			versionId: sourceWorkflowVersion.versionId,
 			nodes: sourceWorkflowVersion.nodes,
 			connections: sourceWorkflowVersion.connections,
+			nodeGroups: sourceWorkflowVersion.nodeGroups ?? [],
 		};
 		targetWorkflow.value = {
 			...workflowWithoutPinData,
 			versionId: targetWorkflowVersion.versionId,
 			nodes: targetWorkflowVersion.nodes,
 			connections: targetWorkflowVersion.connections,
+			nodeGroups: targetWorkflowVersion.nodeGroups ?? [],
 		};
 
 		sourceLabel.value = getVersionLabelById(sourceWorkflowVersion.versionId);

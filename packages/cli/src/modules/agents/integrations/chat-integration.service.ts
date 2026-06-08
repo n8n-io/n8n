@@ -1,6 +1,5 @@
 import {
-	AgentCredentialIntegrationConfig,
-	isAgentCredentialIntegration,
+	AgentIntegrationConfig,
 	type AgentIntegrationSettings,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
@@ -10,6 +9,7 @@ import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { Channel, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -23,8 +23,9 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
-import { ComponentMapper } from './component-mapper';
+import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
+import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -40,13 +41,18 @@ type WebhookHandler = (
 	options?: { waitUntil?: (task: Promise<unknown>) => void },
 ) => Promise<Response>;
 
-interface ChatInstance {
+export interface ChatInstance {
 	initialize(): Promise<void>;
 	shutdown(): Promise<void>;
 	webhooks: Record<string, WebhookHandler>;
 	onNewMention: (handler: unknown) => void;
 	onSubscribedMessage: (handler: unknown) => void;
 	onAction: (handler: unknown) => void;
+	getAdapter(name: string): unknown;
+	openDM(user: string): Promise<Thread>;
+	thread(threadId: string): Thread;
+	channel(channelId: string): Channel;
+	getUser(user: string): Promise<UserInfo | null>;
 }
 
 interface ChatAgentConnection {
@@ -109,7 +115,7 @@ export class ChatIntegrationService {
 	 */
 	async broadcastIntegrationChange(
 		agentId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
@@ -150,7 +156,7 @@ export class ChatIntegrationService {
 	 */
 	async connect(
 		agentId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		userId: string,
 		projectId: string,
 		options: ConnectOptions = {},
@@ -318,7 +324,7 @@ export class ChatIntegrationService {
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-
 	 * editing works). Connects of newly-added integrations are gated on
-	 * `agent.publishedVersion` — matching the controller's connect endpoint,
+	 * `agent.activeVersionId` — matching the controller's connect endpoint,
 	 * which rejects unpublished agents, and `reconnectAll`, which only restores
 	 * published agents. The integration entry stays persisted on the entity so
 	 * it can be picked up later by `publishAgent` calling this method again.
@@ -329,15 +335,14 @@ export class ChatIntegrationService {
 	 */
 	async syncToConfig(
 		agent: Agent,
-		previous: AgentCredentialIntegrationConfig[],
-		next: AgentCredentialIntegrationConfig[],
+		previous: AgentIntegrationConfig[],
+		next: AgentIntegrationConfig[],
 	): Promise<void> {
-		const key = (i: AgentCredentialIntegrationConfig) => `${i.type}:${i.credentialId}`;
-		const previousKeys = new Set(previous.map(key));
-		const nextKeys = new Set(next.map(key));
+		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
+		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
 
 		for (const integration of previous) {
-			if (!nextKeys.has(key(integration))) {
+			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
 				try {
 					await this.disconnect(agent.id, integration);
 					await this.broadcastIntegrationChange(agent.id, integration, 'disconnect');
@@ -349,9 +354,9 @@ export class ChatIntegrationService {
 			}
 		}
 
-		const additions = next.filter((i) => !previousKeys.has(key(i)));
+		const additions = next.filter((i) => !previousKeys.has(buildIntegrationConnectionId(i)));
 
-		if (additions.length > 0 && !agent.publishedVersion) {
+		if (additions.length > 0 && !agent.activeVersionId) {
 			this.logger.debug(
 				'[ChatIntegrationService] Skipping connect for unpublished agent — entry persisted, will connect on publish',
 				{ agentId: agent.id, pendingTypes: additions.map((i) => i.type) },
@@ -359,7 +364,7 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		// TODO: AgentCredentialIntegration has no record of *who* connected the
+		// TODO: AgentIntegration has no record of *who* connected the
 		// integration, so we have no anchor user identity to decrypt credentials
 		// with on reconnect / sync. We fall back to probing project members until
 		// one has `credential:read` on the integration credential.
@@ -420,11 +425,28 @@ export class ChatIntegrationService {
 	/**
 	 * Return the first Chat instance for an agent, or undefined if not connected.
 	 */
-	getChatInstance(agentId: string): ChatInstance | undefined {
+	getChatInstance(
+		agentId: string,
+		integration?: { type: string; credentialId: string },
+	): ChatInstance | undefined {
+		if (integration) {
+			return this.connections.get(
+				this.connectionKey(agentId, integration.type, integration.credentialId),
+			)?.chat;
+		}
 		for (const [k, conn] of this.connections) {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
 		return undefined;
+	}
+
+	getShortenCallback(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+	): ShortenCallback | undefined {
+		return this.connections
+			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
+			?.bridge.getShortenCallback();
 	}
 
 	/**
@@ -465,10 +487,6 @@ export class ChatIntegrationService {
 		for (const agent of agents) {
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {
-				if (!isAgentCredentialIntegration(integration)) {
-					continue;
-				}
-
 				const definition = this.integrationRegistry.get(integration.type);
 				if (definition?.requiresLeader() && !this.instanceSettings.isLeader) {
 					this.logger.debug(
@@ -659,7 +677,7 @@ export class ChatIntegrationService {
 	}
 
 	private connectOptionsFor(
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		skipExternalHooks: boolean,
 	): ConnectOptions {
 		return 'settings' in integration
