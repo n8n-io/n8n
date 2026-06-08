@@ -6423,7 +6423,7 @@
 	"agents.builder.subAgents.loadError": "Could not load project agents",
 	"agents.builder.subAgents.remove": "Remove {name}",
 	"agents.builder.subAgents.maxChildren.label": "Max parallel sub-agents",
-	"agents.builder.subAgents.maxChildren.hint": "How many sub-agents this agent can run at the same time (1-20).",
+	"agents.builder.subAgents.maxChildren.hint": "How many sub-agents this agent can run at the same time ({min}-{max}).",
 	"agents.builder.subAgents.modal.title": "Add sub-agents",
 	"agents.builder.subAgents.modal.description": "Select published agents from this project to let this agent delegate work to them.",
 	"agents.builder.subAgents.modal.selectAgent": "Select {name}",

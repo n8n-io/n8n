@@ -1,6 +1,11 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import {
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_MAX_CHILDREN_MAX,
+	SUB_AGENT_MAX_CHILDREN_MIN,
+} from './sub-agent.schema';
 
 export const AgentModelSchema = z
 	.string()
@@ -73,11 +78,11 @@ const SubAgentsConfigSchema = z
 		maxChildren: z
 			.number()
 			.int()
-			.min(1)
-			.max(20)
+			.min(SUB_AGENT_MAX_CHILDREN_MIN)
+			.max(SUB_AGENT_MAX_CHILDREN_MAX)
 			.optional()
 			.describe(
-				'Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to 10 when unset.',
+				`Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to ${SUB_AGENT_MAX_CHILDREN_DEFAULT} when unset.`,
 			),
 		agents: z.array(SubAgentConfigSchema).optional(),
 	})

@@ -1,5 +1,6 @@
 import { AgentJsonConfigSchema } from '../agent-json-config.schema';
 import { sanitizeAgentJsonConfig } from '../sanitize-agent-json-config';
+import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '../sub-agent.schema';
 
 const baseConfig = {
 	name: 'Test Agent',
@@ -382,12 +383,27 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(parsed.data.subAgents?.maxChildren).toBe(3);
 	});
 
-	it.each([0, -1, 1.5, 21])('rejects invalid subAgents.maxChildren %s', (maxChildren) => {
-		expect(
-			AgentJsonConfigSchema.safeParse({
-				...baseConfig,
-				subAgents: { maxChildren },
-			}).success,
-		).toBe(false);
-	});
+	it.each([SUB_AGENT_MAX_CHILDREN_MIN, SUB_AGENT_MAX_CHILDREN_MAX])(
+		'accepts boundary subAgents.maxChildren %s',
+		(maxChildren) => {
+			expect(
+				AgentJsonConfigSchema.safeParse({
+					...baseConfig,
+					subAgents: { maxChildren },
+				}).success,
+			).toBe(true);
+		},
+	);
+
+	it.each([0, -1, 1.5, SUB_AGENT_MAX_CHILDREN_MAX + 1])(
+		'rejects invalid subAgents.maxChildren %s',
+		(maxChildren) => {
+			expect(
+				AgentJsonConfigSchema.safeParse({
+					...baseConfig,
+					subAgents: { maxChildren },
+				}).success,
+			).toBe(false);
+		},
+	);
 });

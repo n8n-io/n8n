@@ -10,16 +10,17 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import {
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_MAX_CHILDREN_MAX,
+	SUB_AGENT_MAX_CHILDREN_MIN,
+} from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentJsonConfig } from '../types';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
-
-const SUB_AGENT_MAX_CHILDREN_MIN = 1;
-const SUB_AGENT_MAX_CHILDREN_MAX = 20;
-const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
 
 const props = defineProps<{
 	config: AgentJsonConfig | null;
@@ -35,6 +36,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const uiStore = useUIStore();
+const maxChildrenHintInterpolate = {
+	min: String(SUB_AGENT_MAX_CHILDREN_MIN),
+	max: String(SUB_AGENT_MAX_CHILDREN_MAX),
+};
 const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProjectAgentsList(
 	computed(() => props.projectId),
 );
@@ -172,7 +177,11 @@ function onRemoveSubAgent(agentId: string) {
 					{{ i18n.baseText('agents.builder.subAgents.maxChildren.label') }}
 				</N8nText>
 				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.maxChildren.hint') }}
+					{{
+						i18n.baseText('agents.builder.subAgents.maxChildren.hint', {
+							interpolate: maxChildrenHintInterpolate,
+						})
+					}}
 				</N8nText>
 			</div>
 			<N8nInputNumber2
