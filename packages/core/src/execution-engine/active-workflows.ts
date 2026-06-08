@@ -77,6 +77,9 @@ export class ActiveWorkflows {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
+		// Tear down any registration still lingering for this workflow before readding it.
+		await this.remove(workflowId);
+
 		const triggerFunctionNodes = workflow.getTriggerNodes();
 
 		const triggerResponses: ITriggerResponse[] = [];
@@ -151,6 +154,10 @@ export class ActiveWorkflows {
 		workflowId: string,
 		triggerResponses: ITriggerResponse[],
 	) {
+		// Stop the crons first: deregistration is synchronous and is what actually
+		// prevents the failed activation from continuing to fire.
+		this.scheduledTaskManager.deregisterCrons(workflowId);
+
 		for (const response of triggerResponses) {
 			try {
 				await this.closeTrigger(response, workflowId);
@@ -158,8 +165,6 @@ export class ActiveWorkflows {
 				this.errorReporter.error(ensureError(e), { extra: { workflowId } });
 			}
 		}
-
-		this.scheduledTaskManager.deregisterCrons(workflowId);
 	}
 
 	/**

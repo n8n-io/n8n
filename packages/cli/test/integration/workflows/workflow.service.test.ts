@@ -617,25 +617,57 @@ describe('workflow_published_version table population', () => {
 });
 
 describe('activateWorkflow trigger cleanup', () => {
-	test('should tear down triggers when activation fails', async () => {
+	test('should tear down triggers before the rollback and surface the original activation error', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Capture state at the moment cleanup runs. The rollback must happen
+		// after remove(), so the workflow is still active here; that ordering is what
+		// lets clearWebhooks resolve the active version before it becomes null
+		let activeWhenRemoved: boolean | undefined;
+		activeWorkflowManager.remove.mockImplementationOnce(async () => {
+			activeWhenRemoved = (await workflowRepository.findById(workflow.id))?.active;
+		});
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWhenRemoved).toBe(true);
+		expect(loggerMock.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Rolled back partial activation'),
+			{ workflowId: workflow.id },
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should rollback and surface the original error when cleanup itself fails', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		activeWorkflowManager.add.mockRejectedValueOnce(
 			new Error('activation failed mid registration'),
 		);
+		activeWorkflowManager.remove.mockRejectedValueOnce(new Error('cleanup blew up'));
 
-		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow();
-
-		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-
-		// Check whether the rollback was logged
-		expect(loggerMock.warn).toHaveBeenCalledWith(
-			expect.stringContaining('Rolled back partial activation'),
-			{ workflowId: workflow.id },
+		// A failing cleanup is logged but must not hide the original error
+		// nor block the rollback
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
 		);
 
-		// Check rollback happened
+		expect(loggerMock.error).toHaveBeenCalledWith(
+			expect.stringContaining('Failed to roll back partial activation'),
+			expect.objectContaining({ workflowId: workflow.id }),
+		);
+
 		const reloaded = await workflowRepository.findById(workflow.id);
 		expect(reloaded?.active).toBe(false);
 		expect(reloaded?.activeVersionId).toBeNull();

@@ -687,5 +687,39 @@ describe('ActiveWorkflows', () => {
 
 			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
 		});
+
+		it('should tear down a lingering cron before re-adding so reactivation does not leave a duplicate', async () => {
+			// A cron left over from a previously rolled-back activation
+			// must be torn down before the new one registers
+			// otherwise both would coexist and fire, duplicating executions.
+			registerStrandedCron(workflowId, 'stale-node');
+			expect(realScheduledTaskManager.cronsByWorkflow.get(workflowId)?.size).toBe(1);
+
+			workflow.id = workflowId;
+			workflow.getTriggerNodes.mockReturnValue([mock<INode>()]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementationOnce(async () => {
+				realScheduledTaskManager.registerCron(
+					{ workflowId, nodeId: 'fresh-node', timezone: 'GMT', expression: hourly },
+					vi.fn(),
+				);
+				return triggerResponse;
+			});
+
+			await activeWorkflowsReal.add(
+				workflowId,
+				workflow,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+			// Only the newly registered cron remains; the stale one was removed
+			const crons = realScheduledTaskManager.cronsByWorkflow.get(workflowId);
+			expect(crons?.size).toBe(1);
+			expect(Array.from(crons!.values())[0].ctx.nodeId).toBe('fresh-node');
+		});
 	});
 });
