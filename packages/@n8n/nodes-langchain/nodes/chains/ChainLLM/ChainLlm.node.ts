@@ -1,3 +1,4 @@
+// E2E impact-selector demo — DO NOT MERGE (verifies scoped selection)
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
