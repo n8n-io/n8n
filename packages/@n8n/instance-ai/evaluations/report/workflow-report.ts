@@ -437,7 +437,12 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			const idTag = interaction.toolCallId
 				? ` <span class="transcript-tool-id">${escapeHtml(interaction.toolCallId)}</span>`
 				: '';
-			const title = `🔧 <code>${escapeHtml(interaction.toolName)}</code>${idTag}`;
+			// Surface load_skill's skillId inline so the loaded skill is visible without expanding args.
+			const inlineArg =
+				interaction.toolName === 'load_skill' && args && typeof args.skillId === 'string'
+					? ` <span class="transcript-inline-arg">${escapeHtml(args.skillId)}</span>`
+					: '';
+			const title = `🔧 <code>${escapeHtml(interaction.toolName)}</code>${inlineArg}${idTag}`;
 			if (!hasArgs && !errorText && !hasResult) {
 				return `<div class="transcript-tools">${title}</div>`;
 			}
@@ -861,6 +866,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-args { margin: 4px 0 4px 26px; padding: 6px 8px; font-size: 11px; font-family: monospace; line-height: 1.45; color: var(--text-secondary); background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
 	.transcript-args.transcript-error { color: var(--color-fail); border-left-color: var(--color-fail); }
 	.transcript-tool-id { color: var(--text-muted); font-size: 10px; font-family: monospace; opacity: 0.7; }
+	.transcript-inline-arg { color: var(--text-muted); font-size: 11px; font-family: monospace; }
 	.transcript-plan, .transcript-questions { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
 	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
 	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }

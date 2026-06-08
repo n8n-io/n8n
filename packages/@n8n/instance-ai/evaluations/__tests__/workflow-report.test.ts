@@ -73,4 +73,22 @@ describe('transcript rendering', () => {
 		expect(html).toContain('👤 approved'); // elevated user decision
 		expect(html).toContain('Actually use #alerts'); // follow-up user message
 	});
+
+	it('surfaces load_skill skillId inline in the tool-call header', () => {
+		const result: WorkflowTestCaseResult = {
+			testCase: TEST_CASE,
+			workflowBuildSuccess: true,
+			executionScenarioResults: [],
+			transcript: [
+				{
+					userMessage: 'Build it',
+					steps: [
+						{ kind: 'tool-call', toolName: 'load_skill', args: { skillId: 'workflow-builder' } },
+					],
+				},
+			],
+		};
+		const html = generateWorkflowReport([result]);
+		expect(html).toContain('<span class="transcript-inline-arg">workflow-builder</span>');
+	});
 });
