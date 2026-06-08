@@ -10,9 +10,14 @@ import {
 	getToolNameTranslationKey,
 	SEARCH_KNOWLEDGE_TOOL_NAME,
 } from '../utils/toolDisplayName';
-import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
+import {
+	getDelegateDifficultySummary,
+	isDelegateSubAgentTool,
+	resolveSubAgentName,
+} from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
 import {
+	countIncompleteTodos,
 	isWriteTodosTool,
 	parseWriteTodosOutput,
 	writeTodosLabel,
@@ -54,7 +59,7 @@ interface ToolStepGroup {
 
 interface ToolStepDisplay {
 	label: string;
-	summary: string | undefined;
+	metadata: string[];
 	details: string;
 	expandable: boolean;
 	expanded: boolean;
@@ -106,7 +111,7 @@ const toolStepGroups = computed(() => {
 
 function primaryToolStepLabel(tc: ToolCall): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
-		return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
+		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
 	return getToolDisplayName(tc.tool);
@@ -123,18 +128,23 @@ function groupedSearchKnowledgeSummary(count: number): string {
 	});
 }
 
-function toolStepSummary(group: ToolStepGroup): string | undefined {
+function toolStepMetadata(group: ToolStepGroup): string[] {
 	if (group.isSearchKnowledgeGroup) {
-		if (group.calls.length > 1) return groupedSearchKnowledgeSummary(group.calls.length);
-		return undefined;
+		return group.calls.length > 1 ? [groupedSearchKnowledgeSummary(group.calls.length)] : [];
 	}
 	const tc = group.primaryCall;
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
-		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todos.length);
+		if (parsed) return [writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos))];
 	}
-	if (tc.displaySummary) return tc.displaySummary;
-	return undefined;
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return [
+			resolveSubAgentName(tc.input, subAgentNameById.value),
+			getDelegateDifficultySummary(tc.input, i18n),
+		].filter((part): part is string => Boolean(part));
+	}
+	if (tc.displaySummary) return [tc.displaySummary];
+	return [];
 }
 
 function toolStepView(group: ToolStepGroup): ToolStepDisplay {
@@ -143,7 +153,7 @@ function toolStepView(group: ToolStepGroup): ToolStepDisplay {
 		: (getToolCallDetails(group.primaryCall, i18n, subAgentNameById.value) ?? '');
 	return {
 		label: toolStepLabel(group),
-		summary: toolStepSummary(group),
+		metadata: toolStepMetadata(group),
 		details,
 		expandable: details.length > 0,
 		expanded: expandedIds.has(group.id),
@@ -215,9 +225,15 @@ function toggle(group: ToolStepGroup, view: ToolStepDisplay): void {
 						>
 							{{ view.label }}
 						</span>
-						<span v-if="view.summary" :class="$style.summary" data-testid="tool-step-summary">
-							· {{ view.summary }}
-						</span>
+						<template
+							v-for="(metadataPart, metadataIndex) in view.metadata"
+							:key="`${metadataIndex}:${metadataPart}`"
+						>
+							<span :class="$style.separator" aria-hidden="true">·</span>
+							<span :class="$style.summary" data-testid="tool-step-summary">
+								{{ metadataPart }}
+							</span>
+						</template>
 						<N8nIcon
 							v-if="view.expandable"
 							:icon="view.expanded ? 'chevron-down' : 'chevron-right'"
@@ -326,7 +342,7 @@ function toggle(group: ToolStepGroup, view: ToolStepDisplay): void {
 .stepRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .stepRowButton {
@@ -344,6 +360,12 @@ function toggle(group: ToolStepGroup, view: ToolStepDisplay): void {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	color: var(--text-color--subtler);
+	line-height: var(--line-height--sm);
+}
+
+.separator {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--sm);
 }
 
