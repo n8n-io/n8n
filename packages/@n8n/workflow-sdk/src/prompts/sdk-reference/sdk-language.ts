@@ -38,7 +38,9 @@ function renderForbiddenLines(): string {
 }
 
 function renderBlockedGlobalsLines(): string {
-	return BUILDER_BLOCKED_GLOBALS.map((g) => `- \`${g.name}\`: ${g.alternative}`).join('\n');
+	return BUILDER_BLOCKED_GLOBALS.map((g) =>
+		g.alternative ? `- \`${g.name}\`: ${g.alternative}` : `- \`${g.name}\``,
+	).join('\n');
 }
 
 function renderInlineConstraintLines(): string {
@@ -74,7 +76,7 @@ ${renderInlineConstraintLines()}
 
 ## Global objects are unavailable
 
-These are blocked in builder code. Use the alternative instead:
+These are blocked in builder code. When an alternative is listed, use it instead:
 
 ${renderBlockedGlobalsLines()}
 

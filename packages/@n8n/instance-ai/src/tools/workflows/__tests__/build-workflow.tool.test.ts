@@ -1,6 +1,6 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
-import { parseAndValidate } from '../../../workflow-builder';
+import { parseAndValidate, partitionWarnings } from '../../../workflow-builder';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createBuildWorkflowTool } from '../build-workflow.tool';
 import { resolveCredentials } from '../resolve-credentials';
@@ -111,6 +111,93 @@ describe('createBuildWorkflowTool', () => {
 		expect(second.success).toBe(false);
 		expect((second.errors ?? []).join('\n')).toContain('You already tried this');
 		expect((second.errors ?? []).join('\n')).toContain('workflow-sdk-language.md');
+	});
+
+	it('keeps repeated validation-error escalation generic', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+		const validationResult = {
+			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
+			warnings: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+		};
+		const partitionedWarnings = {
+			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			informational: [],
+		};
+		vi.mocked(parseAndValidate)
+			.mockReturnValueOnce(validationResult)
+			.mockReturnValueOnce(validationResult);
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce(partitionedWarnings)
+			.mockReturnValueOnce(partitionedWarnings);
+
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const errorText = (second.errors ?? []).join('\n');
+		expect(errorText).toContain('You already tried this');
+		expect(errorText).not.toContain('workflow-sdk-language.md');
+		expect(errorText).not.toContain('Code node');
+	});
+
+	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
+		const workflowBuildContext = {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			taskId: 'task-1',
+			workItemId: 'wi-1',
+		};
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			workflowBuildContext,
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { code: 'a.join()' });
+		workflowBuildContext.workItemId = 'wi-2';
+		const firstForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+			},
+		);
+		const repeatForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+			},
+		);
+
+		expect((firstForSecondWorkItem.errors ?? []).join('\n')).not.toContain(
+			'You already tried this',
+		);
+		expect((repeatForSecondWorkItem.errors ?? []).join('\n')).toContain('You already tried this');
 	});
 
 	it('allows direct new workflow builds without a name parameter when code provides one', async () => {

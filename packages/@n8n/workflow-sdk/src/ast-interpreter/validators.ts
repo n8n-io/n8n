@@ -105,79 +105,90 @@ export const SDK_METHODS: readonly SdkMethodSpec[] = [
 
 export const ALLOWED_METHODS = new Set(SDK_METHODS.map((m) => m.name));
 
+export interface BuilderBlockedGlobal {
+	name: string;
+	alternative?: string;
+}
+
+/** Source of truth for globals blocked in SDK builder code and builder-facing guidance. */
+export const BUILDER_BLOCKED_GLOBALS: readonly BuilderBlockedGlobal[] = [
+	{ name: 'eval' },
+	{ name: 'Function' },
+	{ name: 'require' },
+	{ name: 'import' },
+	{ name: 'process' },
+	{ name: 'global' },
+	{ name: 'globalThis' },
+	{ name: 'window' },
+	{ name: 'document' },
+	{ name: 'setTimeout' },
+	{ name: 'setInterval' },
+	{ name: 'setImmediate' },
+	{ name: 'clearTimeout' },
+	{ name: 'clearInterval' },
+	{ name: 'clearImmediate' },
+	{ name: '__dirname' },
+	{ name: '__filename' },
+	{ name: 'module' },
+	{ name: 'exports' },
+	{ name: 'Buffer' },
+	{ name: 'Reflect' },
+	{ name: 'Proxy' },
+
+	// Built-in constructors (defense-in-depth)
+	{ name: 'Object', alternative: 'build object literals directly, or transform in a Code node' },
+	{ name: 'Array', alternative: 'build array literals directly, or transform in a Code node' },
+	{ name: 'String' },
+	{ name: 'Number', alternative: 'use numeric literals, or convert in a Code node / expression' },
+	{ name: 'Boolean' },
+	{ name: 'Symbol' },
+	{ name: 'BigInt' },
+
+	// Built-in objects
+	{
+		name: 'JSON',
+		alternative: 'only JSON.stringify is available; parse at runtime in a Code node',
+	},
+	{ name: 'Math', alternative: 'compute at runtime in a Code node or an n8n expression' },
+	{ name: 'Date', alternative: 'use the $now / $today helpers inside expr()' },
+	{ name: 'RegExp', alternative: 'match at runtime in a Code node or an n8n expression' },
+
+	// Collection/async types
+	{ name: 'Promise', alternative: 'builder code is synchronous; no async/await or promises' },
+	{ name: 'WeakRef' },
+	{ name: 'WeakMap' },
+	{ name: 'WeakSet' },
+	{ name: 'Map', alternative: 'use object literals, or build collections in a Code node' },
+	{ name: 'Set', alternative: 'use array literals, or build collections in a Code node' },
+
+	// Binary data
+	{ name: 'ArrayBuffer' },
+	{ name: 'SharedArrayBuffer' },
+	{ name: 'DataView' },
+	{ name: 'Atomics' },
+
+	// WASM
+	{ name: 'WebAssembly' },
+
+	// Runtime APIs
+	{ name: 'fetch' },
+	{ name: 'XMLHttpRequest' },
+	{ name: 'queueMicrotask' },
+	{ name: 'structuredClone' },
+
+	// Error constructors
+	{ name: 'Error' },
+	{ name: 'TypeError' },
+	{ name: 'RangeError' },
+
+	// Logging
+	{ name: 'console' },
+];
+
 /**
  * Dangerous global identifiers that should be rejected.
  */
-export const DANGEROUS_GLOBALS = new Set([
-	'eval',
-	'Function',
-	'require',
-	'import',
-	'process',
-	'global',
-	'globalThis',
-	'window',
-	'document',
-	'setTimeout',
-	'setInterval',
-	'setImmediate',
-	'clearTimeout',
-	'clearInterval',
-	'clearImmediate',
-	'__dirname',
-	'__filename',
-	'module',
-	'exports',
-	'Buffer',
-	'Reflect',
-	'Proxy',
-
-	// Built-in constructors (defense-in-depth)
-	'Object',
-	'Array',
-	'String',
-	'Number',
-	'Boolean',
-	'Symbol',
-	'BigInt',
-
-	// Built-in objects
-	'JSON',
-	'Math',
-	'Date',
-	'RegExp',
-
-	// Collection/async types
-	'Promise',
-	'WeakRef',
-	'WeakMap',
-	'WeakSet',
-	'Map',
-	'Set',
-
-	// Binary data
-	'ArrayBuffer',
-	'SharedArrayBuffer',
-	'DataView',
-	'Atomics',
-
-	// WASM
-	'WebAssembly',
-
-	// Runtime APIs
-	'fetch',
-	'XMLHttpRequest',
-	'queueMicrotask',
-	'structuredClone',
-
-	// Error constructors
-	'Error',
-	'TypeError',
-	'RangeError',
-
-	// Logging
-	'console',
-]);
+export const DANGEROUS_GLOBALS = new Set(BUILDER_BLOCKED_GLOBALS.map((g) => g.name));
 
 /**
  * Node types that are allowed in SDK code.
@@ -402,23 +413,6 @@ export function getSafeStringMethod(
 export const SAFE_JSON_METHOD_NAMES = Object.keys(SAFE_JSON_METHODS);
 
 export const SAFE_STRING_METHOD_NAMES = Object.keys(SAFE_STRING_METHODS);
-
-/** Common globals the interpreter blocks, with the alternative to use instead. */
-export const BUILDER_BLOCKED_GLOBALS: ReadonlyArray<{ name: string; alternative: string }> = [
-	{ name: 'Math', alternative: 'compute at runtime in a Code node or an n8n expression' },
-	{ name: 'Date', alternative: 'use the $now / $today helpers inside expr()' },
-	{ name: 'Object', alternative: 'build object literals directly, or transform in a Code node' },
-	{ name: 'Array', alternative: 'build array literals directly, or transform in a Code node' },
-	{
-		name: 'JSON',
-		alternative: 'only JSON.stringify is available; parse at runtime in a Code node',
-	},
-	{ name: 'Number', alternative: 'use numeric literals, or convert in a Code node / expression' },
-	{ name: 'RegExp', alternative: 'match at runtime in a Code node or an n8n expression' },
-	{ name: 'Promise', alternative: 'builder code is synchronous; no async/await or promises' },
-	{ name: 'Map', alternative: 'use object literals, or build collections in a Code node' },
-	{ name: 'Set', alternative: 'use array literals, or build collections in a Code node' },
-];
 
 /** Constraints enforced inline by the interpreter, not via a table. */
 export const SDK_INLINE_CONSTRAINTS: readonly string[] = [

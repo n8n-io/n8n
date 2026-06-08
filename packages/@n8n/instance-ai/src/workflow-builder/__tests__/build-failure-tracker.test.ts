@@ -25,19 +25,45 @@ describe('buildFailureSignature', () => {
 describe('BuildFailureTracker', () => {
 	it('escalates only on a repeated failure for the same work item', () => {
 		const tracker = new BuildFailureTracker();
-		expect(tracker.record('wi_1', joinError)).toBeUndefined();
-		const escalation = tracker.record('wi_1', joinError);
+		expect(
+			tracker.record('wi_1', joinError, {
+				includeSdkLanguageGuidance: true,
+			}),
+		).toBeUndefined();
+		const escalation = tracker.record('wi_1', joinError, {
+			includeSdkLanguageGuidance: true,
+		});
 		expect(escalation).toBeDefined();
 		expect(escalation).toContain('You already tried this');
 		expect(escalation).toContain('workflow-sdk-language.md');
 		expect(escalation).toContain('Code node');
 	});
 
+	it('keeps generic validation repeats free of SDK-specific repair advice', () => {
+		const tracker = new BuildFailureTracker();
+		const validationError = ['[UNKNOWN_CONFIG_KEY] (Gmail): Unknown config key "recipient"'];
+		expect(tracker.record('wi_1', validationError)).toBeUndefined();
+		const escalation = tracker.record('wi_1', validationError);
+		expect(escalation).toContain('You already tried this');
+		expect(escalation).not.toContain('workflow-sdk-language.md');
+		expect(escalation).not.toContain('Code node');
+	});
+
 	it('does not loop: every repeat after the first keeps escalating', () => {
 		const tracker = new BuildFailureTracker();
-		tracker.record('wi_1', joinError);
-		expect(tracker.record('wi_1', joinError)).toBeDefined();
-		expect(tracker.record('wi_1', joinError)).toBeDefined();
+		tracker.record('wi_1', joinError, {
+			includeSdkLanguageGuidance: true,
+		});
+		expect(
+			tracker.record('wi_1', joinError, {
+				includeSdkLanguageGuidance: true,
+			}),
+		).toBeDefined();
+		expect(
+			tracker.record('wi_1', joinError, {
+				includeSdkLanguageGuidance: true,
+			}),
+		).toBeDefined();
 	});
 
 	it('tracks work items independently', () => {

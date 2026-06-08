@@ -18,12 +18,9 @@ describe('SDK language source-of-truth alignment', () => {
 		expect([...ALLOWED_METHODS].sort()).toEqual(SDK_METHODS.map((m) => m.name).sort());
 	});
 
-	it('only flags globals that the interpreter actually blocks', () => {
-		// Guards against the reference claiming a global is unavailable after it
-		// has been allowlisted (removed from DANGEROUS_GLOBALS).
-		for (const g of BUILDER_BLOCKED_GLOBALS) {
-			expect(DANGEROUS_GLOBALS.has(g.name)).toBe(true);
-		}
+	it('derives the blocked globals reference from the enforced globals', () => {
+		const renderedNames = BUILDER_BLOCKED_GLOBALS.map((g) => g.name).sort();
+		expect(renderedNames).toEqual([...DANGEROUS_GLOBALS].sort());
 	});
 });
 
@@ -59,7 +56,9 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 	it('includes every blocked global and inline constraint', () => {
 		for (const g of BUILDER_BLOCKED_GLOBALS) {
 			expect(SDK_LANGUAGE_REFERENCE).toContain(g.name);
-			expect(SDK_LANGUAGE_REFERENCE).toContain(g.alternative);
+			if (g.alternative) {
+				expect(SDK_LANGUAGE_REFERENCE).toContain(g.alternative);
+			}
 		}
 		for (const c of SDK_INLINE_CONSTRAINTS) {
 			expect(SDK_LANGUAGE_REFERENCE).toContain(c);

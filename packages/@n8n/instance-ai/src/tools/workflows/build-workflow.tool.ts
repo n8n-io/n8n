@@ -393,9 +393,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
-			const workItemKey = workItemId ?? workflowId ?? '_';
-			const withEscalation = (errors: string[]): string[] => {
-				const escalation = failureTracker.record(workItemKey, errors);
+			const activeBuildContext = context.workflowBuildContext;
+			const workItemKey =
+				workItemId ??
+				activeBuildContext?.workItemId ??
+				workflowId ??
+				`run:${context.runId ?? 'unknown'}`;
+			const withEscalation = (
+				errors: string[],
+				options: { includeSdkLanguageGuidance?: boolean } = {},
+			): string[] => {
+				const escalation = failureTracker.record(workItemKey, errors, options);
 				return escalation ? [...errors, escalation] : errors;
 			};
 			let finalCode: string;
@@ -473,9 +481,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			} catch (error) {
 				return {
 					success: false,
-					errors: withEscalation([
-						error instanceof Error ? error.message : 'Failed to parse workflow code',
-					]),
+					errors: withEscalation(
+						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
+						{
+							includeSdkLanguageGuidance: true,
+						},
+					),
 				};
 			}
 

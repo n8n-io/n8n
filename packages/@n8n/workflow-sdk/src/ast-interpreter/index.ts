@@ -43,4 +43,4 @@ export {
 	isAllowedSDKFunction,
 	isAllowedMethod,
 } from './validators';
-export type { SdkMethodSpec, SdkMethodGroup } from './validators';
+export type { BuilderBlockedGlobal, SdkMethodSpec, SdkMethodGroup } from './validators';
