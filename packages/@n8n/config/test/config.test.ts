@@ -212,6 +212,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			publicationOutboxPollIntervalMs: 15_000,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -566,8 +567,6 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
-			subAgentMaxChildren: 5,
-			subAgentTimeoutMs: 300000,
 			modules: [],
 			aiSandboxEnabled: true,
 			aiSandboxProvider: 'n8n-sandbox',

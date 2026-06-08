@@ -1,6 +1,12 @@
 import type * as agents from '@n8n/agents';
-import { DELEGATE_SUB_AGENT_TOOL_NAME, WRITE_TODOS_TOOL_NAME } from '@n8n/agents';
+import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	DEFAULT_SUB_AGENT_MAX_CHILDREN,
+	getInlineDelegateSubAgentToolOptions,
+	WRITE_TODOS_TOOL_NAME,
+} from '@n8n/agents';
 import type { CredentialProvider, BuiltTool } from '@n8n/agents';
+import { SUB_AGENT_MAX_CHILDREN_DEFAULT, type AgentJsonConfig } from '@n8n/api-types';
 import type { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
@@ -20,7 +26,6 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -63,6 +68,7 @@ function makeReconstructionService(
 	modules: string[] = [],
 	overrides: {
 		logger?: Logger;
+		agentsConfig?: Partial<AgentsConfig>;
 		aiSandboxEnabled?: boolean;
 		agentKnowledgeService?: AgentKnowledgeService;
 		agentKnowledgeSandboxCommandService?: AgentKnowledgeSandboxCommandService;
@@ -91,6 +97,7 @@ function makeReconstructionService(
 		{
 			modules,
 			aiSandboxEnabled: overrides.aiSandboxEnabled ?? true,
+			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
 		overrides.agentKnowledgeService ?? mock<AgentKnowledgeService>(),
 		overrides.agentKnowledgeSandboxCommandService ?? mock<AgentKnowledgeSandboxCommandService>(),
@@ -405,6 +412,49 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).toContain(WRITE_TODOS_TOOL_NAME);
+	});
+
+	function getInjectedDelegatePolicy() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) {
+					return getInlineDelegateSubAgentToolOptions(tool)?.policy;
+				}
+			}
+		}
+		return undefined;
+	}
+
+	it('keeps the config and SDK default maxChildren values aligned', () => {
+		expect(SUB_AGENT_MAX_CHILDREN_DEFAULT).toBe(DEFAULT_SUB_AGENT_MAX_CHILDREN);
+	});
+
+	it('uses the shared default maxChildren when config does not override it', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, []);
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(getInjectedDelegatePolicy()).toMatchObject({
+			maxChildren: SUB_AGENT_MAX_CHILDREN_DEFAULT,
+		});
+	});
+
+	it('uses subAgents.maxChildren over the SDK default', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, []);
+		const entity = makeAgentEntity(undefined, { subAgents: { maxChildren: 2 } });
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(getInjectedDelegatePolicy()).toMatchObject({
+			maxChildren: 2,
+		});
 	});
 });
 
