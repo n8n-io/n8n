@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import {
 	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 } from '@n8n/api-types';
@@ -53,6 +54,18 @@ function onSubmit(resumeData: unknown) {
 	/>
 	<AskCredentialCard
 		v-else-if="payload.toolName === ASK_CREDENTIAL_TOOL_NAME && projectId && agentId"
+		:purpose="payload.input.purpose"
+		:credential-type="payload.input.credentialType"
+		:node-type="payload.input.nodeType"
+		:credential-slot="payload.input.credentialSlot"
+		:project-id="projectId"
+		:agent-id="agentId"
+		:disabled="disabled"
+		:resolved-value="payload.resolvedValue"
+		@submit="onSubmit"
+	/>
+	<AskCredentialCard
+		v-else-if="payload.toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME && projectId && agentId"
 		:purpose="payload.input.purpose"
 		:credential-type="payload.input.credentialType"
 		:node-type="payload.input.nodeType"

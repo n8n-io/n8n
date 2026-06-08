@@ -11,6 +11,7 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -75,6 +76,7 @@ function makeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
 		mock<AgentKnowledgeCommandService>(),
+		mock<AiService>(),
 	);
 }
 

@@ -2,6 +2,8 @@ import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
+export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
+
 export const AgentModelSchema = z
 	.string()
 	.min(1)
@@ -15,9 +17,15 @@ export const AgentModelSchema = z
 		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 	);
 
+const CredentialIdSchema = z.string().trim();
+const EpisodicMemoryCredentialSchema = z.union([
+	z.literal(MANAGED_CREDENTIAL_TOKEN),
+	CredentialIdSchema,
+]);
+
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim(),
+	credential: CredentialIdSchema,
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -37,7 +45,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim(),
+		credential: EpisodicMemoryCredentialSchema,
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),

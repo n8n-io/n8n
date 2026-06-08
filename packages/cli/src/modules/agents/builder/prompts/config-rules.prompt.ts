@@ -58,8 +58,8 @@ export function getConfigRulesSection(): string {
   \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
 - \`memory.storage\` must be "n8n".
-- \`memory.episodicMemory\` requires \`ask_credential\` with
-  \`credentialType: "openAiApi"\`.
+- \`memory.episodicMemory\` requires \`ask_embedding_credential\` with
+  \`credentialType: "openAiApi"\`; use its returned \`credentialId\` value.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
   use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - Subagent delegation lives at top level under \`subAgents\`.

@@ -31,6 +31,7 @@ import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import {
 	buildAskCredentialTool,
+	buildAskEmbeddingCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
 	buildResolveLlmTool,
@@ -43,6 +44,7 @@ import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
+import { AiService } from '@/services/ai.service';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -191,6 +193,7 @@ export class AgentsBuilderToolsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
+		private readonly aiService: AiService,
 	) {}
 
 	getTools(
@@ -464,6 +467,11 @@ export class AgentsBuilderToolsService {
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+			}),
+			buildAskEmbeddingCredentialTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 			}),
 			buildAskLlmTool(),
 			buildAskQuestionTool(),

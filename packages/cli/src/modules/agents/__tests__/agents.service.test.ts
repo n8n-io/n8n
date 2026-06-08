@@ -24,6 +24,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
+import type { AiService } from '@/services/ai.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
@@ -109,6 +110,7 @@ function makeRuntimeReconstructionService(
 		{ modules } as unknown as AgentsConfig,
 		mock<AgentKnowledgeService>(),
 		mock<AgentKnowledgeCommandService>(),
+		mock<AiService>(),
 	);
 }
 
@@ -165,6 +167,7 @@ describe('AgentsService', () => {
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
 	let telemetry: jest.Mocked<Telemetry>;
+	let aiService: jest.Mocked<AiService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -189,6 +192,8 @@ describe('AgentsService', () => {
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
 		telemetry = mock<Telemetry>();
+		aiService = mock<AiService>();
+		aiService.isProxyEnabled.mockReturnValue(false);
 		const logger = mockLogger();
 
 		service = new AgentsService(
@@ -209,6 +214,7 @@ describe('AgentsService', () => {
 			chatIntegrationService,
 			agentKnowledgeService,
 			mock(),
+			aiService,
 		);
 	});
 
@@ -2472,6 +2478,37 @@ describe('AgentsService', () => {
 						episodicMemory: {
 							enabled: true,
 							credential: 'embedding-cred',
+						},
+					},
+				} as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('credential');
+			expect(result.missing).not.toContain('episodicMemory.credential');
+		});
+
+		it('accepts managed episodic memory credential when the assistant proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'managed',
 						},
 					},
 				} as AgentJsonConfig,
