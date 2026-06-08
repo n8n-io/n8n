@@ -97,6 +97,38 @@ describe('OutputRedactor', () => {
 		expect(JSON.stringify(out)).not.toContain('abcdef1234567890');
 	});
 
+	it('redacts confirmation card display text', () => {
+		const redactor = createRedactor(createLogger(), { detect: ['email'] });
+		const event: InstanceAiEvent = {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				toolName: 'ask',
+				args: {},
+				severity: 'warning',
+				message: 'What to do with jane@example.com?',
+				introMessage: 'I noticed jane@example.com in your request.',
+				questions: [
+					{
+						id: 'q1',
+						question: 'Where should jane@example.com be used?',
+						type: 'single',
+						options: ['Reply-to jane@example.com', 'Skip'],
+					},
+				],
+			},
+		};
+
+		const [out] = redactor.processEvent(event);
+		const serialized = JSON.stringify(out);
+		expect(serialized).not.toContain('jane@example.com');
+		expect(serialized).toContain('[REDACTED]');
+		expect(out).toMatchObject({ payload: { requestId: 'req-1', toolCallId: 'tc-1' } });
+	});
+
 	it('logs a filtering summary with category counts and no values', () => {
 		const logger = createLogger();
 		const redactor = createRedactor(logger, { secrets: true, detect: ['email'] });

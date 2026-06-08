@@ -141,11 +141,48 @@ export class OutputRedactor {
 			return { ...event, payload: { ...event.payload, result: value } };
 		}
 		if (event.type === 'tool-error') {
-			const { text, matches } = redactText(event.payload.error, this.options);
-			this.recordMatches(matches);
-			return { ...event, payload: { ...event.payload, error: text } };
+			return {
+				...event,
+				payload: { ...event.payload, error: this.redactString(event.payload.error) },
+			};
+		}
+		if (event.type === 'confirmation-request') {
+			return this.redactConfirmation(event);
 		}
 		return event;
+	}
+
+	/**
+	 * Redact the human-readable text of a HITL confirmation card (message, intro,
+	 * and question/option labels). Control and identifier fields — `requestId`,
+	 * `toolCallId`, `inputType`, `credentialRequests`, etc. — are left untouched
+	 * so suspend/resume routing keeps working.
+	 */
+	private redactConfirmation(
+		event: Extract<InstanceAiEvent, { type: 'confirmation-request' }>,
+	): InstanceAiEvent {
+		const payload = event.payload;
+		const questions = payload.questions?.map((question) => ({
+			...question,
+			question: this.redactString(question.question),
+			...(question.options ? { options: question.options.map((o) => this.redactString(o)) } : {}),
+		}));
+
+		return {
+			...event,
+			payload: {
+				...payload,
+				message: this.redactString(payload.message),
+				...(payload.introMessage ? { introMessage: this.redactString(payload.introMessage) } : {}),
+				...(questions ? { questions } : {}),
+			},
+		};
+	}
+
+	private redactString(text: string): string {
+		const { text: redacted, matches } = redactText(text, this.options);
+		this.recordMatches(matches);
+		return redacted;
 	}
 
 	private recordMatches(matches: Array<{ category: RedactionCategory }>): void {
