@@ -14,7 +14,7 @@ import fc from 'fast-check';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IContextObject, IWorkflowBase } from 'n8n-workflow';
 import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -1041,7 +1041,7 @@ describe('ExecutionPersistence', () => {
 				contextData: {
 					'node:HTTP Request': {
 						socket: socketRef,
-					} as unknown as import('n8n-workflow').IContextObject,
+					} as unknown as IContextObject,
 				},
 				nodeExecutionStack: [],
 				metadata: {},
