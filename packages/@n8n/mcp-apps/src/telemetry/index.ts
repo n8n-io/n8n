@@ -3,6 +3,7 @@ import {
 	RUDDERSTACK_CDN_ORIGIN,
 	type McpAppTelemetryConfig,
 } from '../telemetry-contract';
+import { sanitizeTelemetryProperties } from './sanitize';
 import type { RudderStack } from './types';
 
 function loadRudderStack(writeKey: string, dataPlaneUrl: string, options: object): void {
@@ -82,10 +83,12 @@ export class McpAppTelemetry {
 		if (!this.ready || !this.config) return;
 
 		try {
+			const sanitizedProperties = sanitizeTelemetryProperties(properties);
+
 			this.rudderStack?.track(
 				event,
 				{
-					...properties,
+					...sanitizedProperties,
 					instance_id: this.config.instanceId,
 					version_cli: this.config.versionCli,
 				},

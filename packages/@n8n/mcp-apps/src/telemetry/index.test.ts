@@ -63,6 +63,30 @@ describe('McpAppTelemetry', () => {
 		]);
 	});
 
+	it('sanitizes event properties before dispatching', () => {
+		const telemetry = new McpAppTelemetry();
+		telemetry.init(enabledConfig);
+
+		telemetry.track('Test event', {
+			apiKey: 'secret-api-key',
+			error_message: 'Authorization: Bearer abc.def-ghi_jkl/mno=',
+		});
+
+		expect(getCalls('track')).toEqual([
+			[
+				'track',
+				'Test event',
+				{
+					apiKey: '[REDACTED]',
+					error_message: '[REDACTED]',
+					instance_id: 'instance-123',
+					version_cli: '1.2.3',
+				},
+				{ context: { ip: '0.0.0.0' } },
+			],
+		]);
+	});
+
 	it('no-ops when diagnostics are disabled', () => {
 		const telemetry = new McpAppTelemetry();
 		telemetry.init({ ...enabledConfig, enabled: false });
