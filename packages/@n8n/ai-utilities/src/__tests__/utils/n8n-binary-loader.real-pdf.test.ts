@@ -1,9 +1,8 @@
+import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING, LoggerProxy } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-
-import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING, LoggerProxy } from 'n8n-workflow';
 import { PDFParse } from 'pdf-parse';
 
 import { N8nBinaryLoader } from 'src/utils/n8n-binary-loader';
