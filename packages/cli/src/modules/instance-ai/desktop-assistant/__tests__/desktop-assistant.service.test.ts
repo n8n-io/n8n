@@ -167,7 +167,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 		expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
 	});
 
-	test('on a tool-result with workflowId, the post-build hook tags the workflow and writes meta', async () => {
+	test('on a tasks-update with a completed build-workflow planned task, the post-build hook tags the workflow and writes meta', async () => {
 		const ctx = makeService();
 		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
 		ctx.memoryService.getThreadMetadata.mockResolvedValue(undefined);
@@ -202,16 +202,29 @@ describe('DesktopAssistantService.promoteThread', () => {
 		await ctx.service.promoteThread(USER, { threadId: 't-1' });
 		expect(handler).toBeDefined();
 
-		// Synthesise a tool-result event from the build-workflow tool
+		// Sub-agent planned-task completion is signalled on the parent thread
+		// via a tasks-update whose planItems carry the workflowId and whose
+		// tasks array reports the matching task as done.
 		handler!({
 			id: 7,
 			event: {
-				type: 'tool-result',
+				type: 'tasks-update',
 				runId: 'r-1',
 				agentId: 'orchestrator',
 				payload: {
-					toolCallId: 'tc-1',
-					result: { submitted: true, workflowId: 'wf-new' },
+					tasks: {
+						tasks: [{ id: 'task-build', description: 'Build the workflow', status: 'done' }],
+					},
+					planItems: [
+						{
+							id: 'task-build',
+							title: 'Build the workflow',
+							kind: 'build-workflow',
+							spec: 'spec',
+							deps: [],
+							workflowId: 'wf-new',
+						},
+					],
 				},
 			},
 		} as unknown as StoredEvent);
@@ -234,6 +247,63 @@ describe('DesktopAssistantService.promoteThread', () => {
 		expect(ctx.memoryService.updateThread).toHaveBeenCalledWith('t-1', {
 			metadata: { promotedWorkflowId: 'wf-new' },
 		});
+	});
+
+	test('does not fire the post-build hook for an in-flight build-workflow task (workflowId allocated but not yet done)', async () => {
+		const ctx = makeService();
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata.mockResolvedValue(undefined);
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'rename files',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.promoteThread(USER, { threadId: 't-1' });
+
+		handler!({
+			id: 7,
+			event: {
+				type: 'tasks-update',
+				runId: 'r-1',
+				agentId: 'orchestrator',
+				payload: {
+					tasks: {
+						tasks: [{ id: 'task-build', description: 'Build the workflow', status: 'in_progress' }],
+					},
+					planItems: [
+						{
+							id: 'task-build',
+							title: 'Build the workflow',
+							kind: 'build-workflow',
+							spec: 'spec',
+							deps: [],
+							workflowId: 'wf-new',
+						},
+					],
+				},
+			},
+		} as unknown as StoredEvent);
+
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(ctx.workflowTagMappingRepository.insert).not.toHaveBeenCalled();
+		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
+		expect(ctx.memoryService.updateThread).not.toHaveBeenCalled();
 	});
 });
 

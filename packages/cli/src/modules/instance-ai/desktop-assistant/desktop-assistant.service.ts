@@ -448,17 +448,40 @@ function readDesktopAssistantMeta(meta: unknown): StoredDesktopAssistantMeta | u
 }
 
 /**
- * Inspect a stored SSE event and return the workflow id of a successful
- * build-workflow outcome, or undefined otherwise.
+ * Inspect a stored SSE event and return the workflow id of a completed
+ * build-workflow planned task, or undefined otherwise.
+ *
+ * The `build-workflow` tool runs in a sub-agent / planned-task context, so
+ * its `tool-result` event is published on the sub-agent's thread, NOT on the
+ * parent promote thread. The signal that DOES reach the parent thread is
+ * `tasks-update`: each carries `planItems[]` where the build-workflow planned
+ * task has its `workflowId` populated, and the matching entry in `tasks[]`
+ * moves to status `'done'`. We require BOTH — a populated `workflowId` AND
+ * a `done` status — to avoid acting on an in-flight task that already has its
+ * id slot allocated.
  */
 function extractBuiltWorkflowId(storedEvent: StoredEvent): string | undefined {
 	const ev = storedEvent.event;
-	if (ev.type !== 'tool-result') return undefined;
-	const payload = ev.payload as { result?: unknown };
-	const result = payload.result;
-	if (!result || typeof result !== 'object') return undefined;
-	const rec = result as Record<string, unknown>;
-	if (rec.submitted !== true) return undefined;
-	if (typeof rec.workflowId !== 'string') return undefined;
-	return rec.workflowId;
+	if (ev.type !== 'tasks-update') return undefined;
+	const payload = ev.payload as {
+		tasks?: { tasks?: Array<{ id?: unknown; status?: unknown }> };
+		planItems?: Array<{ id?: unknown; kind?: unknown; workflowId?: unknown }>;
+	};
+	const planItems = payload.planItems;
+	const taskList = payload.tasks?.tasks;
+	if (!Array.isArray(planItems) || !Array.isArray(taskList)) return undefined;
+
+	const doneTaskIds = new Set<string>();
+	for (const task of taskList) {
+		if (typeof task.id === 'string' && task.status === 'done') doneTaskIds.add(task.id);
+	}
+
+	for (const item of planItems) {
+		if (item.kind !== 'build-workflow') continue;
+		if (typeof item.workflowId !== 'string') continue;
+		if (typeof item.id !== 'string') continue;
+		if (!doneTaskIds.has(item.id)) continue;
+		return item.workflowId;
+	}
+	return undefined;
 }
