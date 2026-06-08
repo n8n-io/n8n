@@ -115,6 +115,43 @@ export function getLatestWorkflowSetupResult(
 	return undefined;
 }
 
+const WORKFLOW_UPDATE_ACTIONS = new Set(['update', 'restore-version']);
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the workflowId
+ * (from args) and toolCallId from the latest successful `workflows` tool call
+ * that mutated the workflow definition (action=update / restore-version). Like
+ * the setup tools, these modify an existing workflow but surface under tool name
+ * 'workflows' — invisible to getLatestBuildResult — and don't reliably return
+ * the workflowId in the result, so it is read from the call args.
+ */
+export function getLatestWorkflowUpdateResult(
+	node: InstanceAiAgentNode,
+): WorkflowSetupResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestWorkflowUpdateResult(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const args = tc.args as Record<string, unknown> | undefined;
+		if (
+			tc.toolName === 'workflows' &&
+			typeof args?.action === 'string' &&
+			WORKFLOW_UPDATE_ACTIONS.has(args.action) &&
+			!tc.isLoading &&
+			tc.result &&
+			typeof tc.result === 'object'
+		) {
+			const result = tc.result as Record<string, unknown>;
+			if (result.success === true && typeof args?.workflowId === 'string') {
+				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
+			}
+		}
+	}
+	return undefined;
+}
+
 export interface LatestExecution {
 	executionId: string;
 	workflowId: string;

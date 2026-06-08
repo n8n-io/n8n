@@ -6,6 +6,7 @@ import {
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestWorkflowUpdateResult,
 	getExecutionResultsByWorkflow,
 } from '../canvasPreview.utils';
 
@@ -897,5 +898,142 @@ describe('getExecutionResultsByWorkflow', () => {
 			],
 		});
 		expect(getExecutionResultsByWorkflow(node).size).toBe(0);
+	});
+});
+
+describe('getLatestWorkflowUpdateResult', () => {
+	test('returns undefined for node with no tool calls', () => {
+		expect(getLatestWorkflowUpdateResult(makeAgentNode())).toBeUndefined();
+	});
+
+	test('returns undefined for build-workflow calls (handled by getLatestBuildResult)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toBeUndefined();
+	});
+
+	test('returns undefined for non-mutating workflows actions', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					args: { action: 'get-json', workflowId: 'wf-1' },
+					result: { workflow: { id: 'wf-1' } },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toBeUndefined();
+	});
+
+	test('returns undefined for a loading update call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1' },
+					isLoading: true,
+					result: undefined,
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toBeUndefined();
+	});
+
+	test('returns undefined for a failed update call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1' },
+					result: { success: false, error: 'invalid workflow' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toBeUndefined();
+	});
+
+	test('returns workflowId (from args) and toolCallId for a successful update', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-update-1',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1', workflow: { id: 'wf-1' } },
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-1',
+			toolCallId: 'tc-update-1',
+		});
+	});
+
+	test('returns workflowId from args for restore-version (result omits workflowId)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-restore-1',
+					toolName: 'workflows',
+					args: { action: 'restore-version', workflowId: 'wf-2', versionId: 'v-1' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-2',
+			toolCallId: 'tc-restore-1',
+		});
+	});
+
+	test('returns the latest update when multiple exist', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1' },
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1' },
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-1',
+			toolCallId: 'tc-2',
+		});
+	});
+
+	test('finds update results in child nodes', () => {
+		const node = makeAgentNode({
+			children: [
+				makeAgentNode({
+					agentId: 'child-1',
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-child-update',
+							toolName: 'workflows',
+							args: { action: 'update', workflowId: 'wf-9' },
+							result: { success: true, workflowId: 'wf-9' },
+						}),
+					],
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-9',
+			toolCallId: 'tc-child-update',
+		});
 	});
 });
