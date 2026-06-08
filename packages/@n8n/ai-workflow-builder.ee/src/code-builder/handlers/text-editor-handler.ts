@@ -1,4 +1,4 @@
-import { TextEditorDocument } from '@n8n/text-editor';
+import { TextEditorDocument } from '@n8n/ai-utilities/text-editor';
 
 const WORKFLOW_FILE_PATH = '/workflow.js';
 

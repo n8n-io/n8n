@@ -73,7 +73,7 @@
     "@daytonaio/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/sandbox-client": "0.0.4",
-    "@n8n/text-editor": "workspace:*",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
     "ai": "^6.0.116",

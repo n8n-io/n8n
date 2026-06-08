@@ -97,7 +97,6 @@
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
-    "@n8n/text-editor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "tmp-promise": "3.0.3",
