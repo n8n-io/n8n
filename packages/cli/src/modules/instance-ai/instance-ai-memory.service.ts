@@ -87,7 +87,11 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async ensureThread(userId: string, threadId: string): Promise<InstanceAiEnsureThreadResponse> {
+	async ensureThread(
+		userId: string,
+		threadId: string,
+		projectId: string,
+	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
 			if (existing.resourceId !== userId) {
@@ -100,11 +104,14 @@ export class InstanceAiMemoryService {
 			};
 		}
 
-		const created = await this.agentMemory.saveThread({
-			id: threadId,
-			resourceId: userId,
-			title: '',
-		});
+		const created = await this.agentMemory.saveThreadWithProject(
+			{
+				id: threadId,
+				resourceId: userId,
+				title: '',
+			},
+			projectId,
+		);
 
 		return {
 			thread: this.toThreadInfo(created),
@@ -167,7 +174,8 @@ export class InstanceAiMemoryService {
 		const messages = parseStoredMessages(storedMessages, snapshots);
 		await this.flagExpiredConfirmations(messages);
 
-		return { threadId, messages };
+		const projectId = await this.agentMemory.getThreadProjectId(threadId);
+		return { threadId, projectId: projectId ?? undefined, messages };
 	}
 
 	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
