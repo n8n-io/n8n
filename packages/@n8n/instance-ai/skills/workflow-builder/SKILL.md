@@ -1,10 +1,11 @@
 ---
 name: workflow-builder
 description: >-
-  Builds and edits n8n workflows with the workflow SDK. Use for new planned
-  workflow builds, existing-workflow edits, verification repairs,
-  credential-aware node configuration, and setup routing. This is the former
-  workflow-builder agent guidance, now loaded as a skill by the orchestrator.
+  Default path for all single-workflow work: new one-off workflows, existing-
+  workflow edits, verification repairs, and workflow-local data tables. Use
+  build-workflow directly — do not load planning or create-tasks first. Load
+  planning only when multiple coordinated workflows or shared cross-task data
+  tables require a dependency-aware task graph.
 recommended_tools:
   - build-workflow
   - workflows
@@ -26,10 +27,10 @@ Use the orchestrator tools already available in the current turn. If a relevant
 orchestrator or MCP tool is available through tool search, use it when it helps
 complete the build.
 
-For clear single-workflow requests, build directly with `build-workflow`. For
-plan-worthy work that needs architecture or dependency coordination, load the
-`planning` skill first and submit the dependency-aware graph with
-`create-tasks`. Use this skill during an approved
+For all clear single-workflow requests — including new and one-off workflows —
+build directly with `build-workflow`. Do not load `planning` or call
+`create-tasks` first. Only load `planning` when the orchestrator routing rules
+require coordinated multi-artifact work. Use this skill during an approved
 `<planned-task-follow-up type="build-workflow">` turn, or for direct
 single-workflow builds and edits.
 
