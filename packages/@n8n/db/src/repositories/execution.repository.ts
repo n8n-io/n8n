@@ -32,12 +32,7 @@ import type {
 	IRunExecutionData,
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
-import {
-	createEmptyRunExecutionData,
-	ManualExecutionCancelledError,
-	migrateRunExecutionData,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import {
 	AnnotationTagEntity,
@@ -728,42 +723,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
-	async getExecutionInWorkflowsForPublicApi(
-		id: string,
-		workflowIds: string[],
-		includeData?: boolean,
-	): Promise<IExecutionBase | undefined> {
-		return await this.findSingleExecution(id, {
-			where: {
-				workflowId: In(workflowIds),
-			},
-			includeData,
-			unflattenData: true,
-		});
-	}
-
-	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(accessibleWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-		});
-	}
-
-	async findIfSharedUnflatten(executionId: string, sharedWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-		});
-	}
-
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
 		return await this.findSingleExecution(executionId, {
 			where: {
@@ -790,26 +749,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			{ id: execution.id },
 			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
 		);
-
-		return execution;
-	}
-
-	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ManualExecutionCancelledError(execution.id);
-
-		execution.data = execution.data || createEmptyRunExecutionData();
-
-		execution.data.resultData.error = {
-			...error,
-			message: error.message,
-			stack: error.stack,
-		};
-
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-		execution.status = 'canceled';
-
-		await this.updateExistingExecution(execution.id, execution);
 
 		return execution;
 	}

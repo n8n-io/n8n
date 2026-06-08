@@ -1013,5 +1013,38 @@ describe('CredentialEdit', () => {
 				expect(confirmMock).not.toHaveBeenCalled();
 			});
 		});
+
+		describe('switching a static credential to private', () => {
+			test('resets the connected state so no Disconnect button is shown', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				// A static credential whose per-user connection flag leaked over from a
+				// prior in-session connect. Switching it to private must not carry that
+				// connected state over, since no end-user connection exists yet.
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: false,
+					connectedByMe: true,
+					oauthTokenData: false,
+				});
+
+				const { queryByTestId, getByTestId } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+				await retry(() => expect(getByTestId('dynamic-credentials-toggle')).toBeVisible());
+
+				await userEvent.click(getByTestId('dynamic-credentials-toggle'));
+
+				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+				expect(queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			});
+		});
 	});
 });

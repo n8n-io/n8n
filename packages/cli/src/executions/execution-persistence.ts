@@ -12,7 +12,7 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository, Not } from '@n8n/db';
+import { ExecutionData, ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -355,6 +355,39 @@ export class ExecutionPersistence {
 			| IExecutionFlattedDb[]
 			| IExecutionResponse[]
 			| IExecutionBase[];
+	}
+
+	/** Find an execution scoped to accessible workflows, with unflattened data and annotation. */
+	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
+		return await this.findSingleExecution(executionId, {
+			where: { workflowId: In(accessibleWorkflowIds) },
+			includeData: true,
+			unflattenData: true,
+			includeAnnotation: true,
+		});
+	}
+
+	/** Find an execution scoped to shared workflows, with unflattened data and annotation. */
+	async findIfSharedUnflatten(executionId: string, sharedWorkflowIds: string[]) {
+		return await this.findSingleExecution(executionId, {
+			where: { workflowId: In(sharedWorkflowIds) },
+			includeData: true,
+			unflattenData: true,
+			includeAnnotation: true,
+		});
+	}
+
+	/** Find an execution scoped to the given workflows for the public API. */
+	async getExecutionInWorkflowsForPublicApi(
+		id: string,
+		workflowIds: string[],
+		includeData?: boolean,
+	): Promise<IExecutionBase | undefined> {
+		return await this.findSingleExecution(id, {
+			where: { workflowId: In(workflowIds) },
+			includeData,
+			unflattenData: true,
+		});
 	}
 
 	/**

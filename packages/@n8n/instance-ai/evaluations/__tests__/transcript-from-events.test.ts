@@ -77,7 +77,7 @@ describe('buildTranscriptFromEvents', () => {
 					RUN_START,
 					evt('tool-call', {
 						payload: {
-							toolName: 'plan',
+							toolName: 'create-tasks',
 							args: { tasks: [{ title: 'Fetch posts', description: 'GET /posts' }] },
 						},
 					}),
@@ -87,18 +87,6 @@ describe('buildTranscriptFromEvents', () => {
 				kind: 'plan',
 				tasks: [{ title: 'Fetch posts', description: 'GET /posts' }],
 			});
-		});
-
-		it('treats `add-plan-item` as plan (alias in the dispatch table)', () => {
-			const turns = buildTranscriptFromEvents({
-				events: [
-					RUN_START,
-					evt('tool-call', {
-						payload: { toolName: 'add-plan-item', args: { tasks: [{ title: 'A' }] } },
-					}),
-				],
-			});
-			expect(turns[0].toolInteractions[0]).toMatchObject({ kind: 'plan' });
 		});
 	});
 
@@ -137,14 +125,14 @@ describe('buildTranscriptFromEvents', () => {
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', toolName: 'submit-plan' },
+						payload: { requestId: 'r1', toolName: 'create-tasks' },
 					}),
 				],
 				proxyResponses: new Map([['r1', { kind: 'approval' as const, approved: false }]]),
 			});
 			expect(turns[0].toolInteractions[0]).toMatchObject({
 				kind: 'confirmation',
-				toolName: 'submit-plan',
+				toolName: 'create-tasks',
 				resumeReason: 'approval',
 				approved: false,
 			});
