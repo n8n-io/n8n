@@ -14,11 +14,16 @@ export {
 	filterImpactfulChanges,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
+	changedRuntimeDeps,
+	changedRuntimeDepsFromManifests,
+	stripDependencyFiles,
 	type ManifestChangeKind,
 } from './changes.js';
+export { dependentDirs, type WorkspaceImporters } from './dep-graph.js';
 export type { DiscoveredSpec } from './types.js';
 
 // Strategy + Pipeline selection layer.
 export type { SelectionStrategy } from './select/strategy.js';
 export { CoverageMapStrategy } from './select/coverage-map-strategy.js';
+export { DependencyGraphStrategy } from './select/dep-graph-strategy.js';
 export { selectImpactedTests } from './select/pipeline.js';

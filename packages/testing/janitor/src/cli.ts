@@ -72,6 +72,7 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
+import { readLockfileImporters } from './core/read-lockfile-importers.js';
 import { readManifestDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
@@ -688,11 +689,16 @@ function runSelect(options: CliOptions): void {
 	// devDependency-only classifier can drop a devDep-only lockfile change.
 	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
 	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
+	// Only parse the (large) lockfile when a manifest actually changed — that's
+	// the only case the dep-graph selector (389) can act on.
+	const lockfileImporters =
+		manifests && Object.keys(manifests).length > 0 ? readLockfileImporters() : undefined;
 	const result = selectTests({
 		changedFiles,
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
 		manifests,
+		lockfileImporters,
 	});
 	console.log(JSON.stringify(result));
 }

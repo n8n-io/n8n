@@ -65,13 +65,23 @@ function parseManifest(raw: string): ManifestJson {
 	}
 }
 
-function sectionChanged(before: ManifestJson, after: ManifestJson, section: string): boolean {
+/** Dependency names added / removed / version-changed in one manifest section. */
+function changedKeysInSection(
+	before: ManifestJson,
+	after: ManifestJson,
+	section: string,
+): string[] {
 	const b = before[section] ?? {};
 	const a = after[section] ?? {};
+	const changed: string[] = [];
 	for (const key of new Set([...Object.keys(b), ...Object.keys(a)])) {
-		if (b[key] !== a[key]) return true;
+		if (b[key] !== a[key]) changed.push(key);
 	}
-	return false;
+	return changed;
+}
+
+function sectionChanged(before: ManifestJson, after: ManifestJson, section: string): boolean {
+	return changedKeysInSection(before, after, section).length > 0;
 }
 
 /**
@@ -89,8 +99,40 @@ export function classifyManifestChange(before: string, after: string): ManifestC
 	return sectionChanged(b, a, 'devDependencies') ? 'devDep-only' : 'none';
 }
 
+/**
+ * Names of the *runtime* dependencies (dependencies / optional / peer) that
+ * changed between two manifests — the input to the dep-graph selector (389),
+ * which walks each name to the workspace packages that declare it. devDeps are
+ * excluded (they can't reach the runtime bundle).
+ */
+export function changedRuntimeDeps(before: string, after: string): string[] {
+	const b = parseManifest(before);
+	const a = parseManifest(after);
+	const names = new Set<string>();
+	for (const section of RUNTIME_SECTIONS) {
+		for (const name of changedKeysInSection(b, a, section)) names.add(name);
+	}
+	return [...names];
+}
+
+/** {@link changedRuntimeDeps} unioned across every changed manifest. */
+export function changedRuntimeDepsFromManifests(
+	manifests: Record<string, { before: string; after: string }>,
+): string[] {
+	const names = new Set<string>();
+	for (const { before, after } of Object.values(manifests)) {
+		for (const name of changedRuntimeDeps(before, after)) names.add(name);
+	}
+	return [...names];
+}
+
 const isManifest = (f: string): boolean => /(^|\/)package\.json$/.test(f);
 const isLockfile = (f: string): boolean => f === 'pnpm-lock.yaml';
+
+/** Remove the lockfile + every package.json from a changed-file set. */
+export function stripDependencyFiles(files: string[]): string[] {
+	return files.filter((f) => !isLockfile(f) && !isManifest(f));
+}
 
 /**
  * Drop the lockfile + manifests from a changed-file set when the dependency
@@ -114,5 +156,5 @@ export function dropDevDepOnlyDeps(
 	);
 	if (kinds.includes('runtime')) return files;
 	if (!kinds.includes('devDep-only')) return files;
-	return files.filter((f) => !isLockfile(f) && !isManifest(f));
+	return stripDependencyFiles(files);
 }
