@@ -144,11 +144,29 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 
-	it('expanded width matches nodes rect + 2 * GROUP_PADDING_X', () => {
+	it('expanded width matches nodes rect + 2 * GROUP_PADDING_X when wider than the minimum', () => {
 		const out = setup(false);
 		// nodes rect width = (400 + 96) - 100 = 396  (DEFAULT_NODE_SIZE = 96)
 		const NODE_W = 96;
 		expect(out[0].width).toBe(400 + NODE_W - 100 + 2 * GROUP_PADDING_X);
+	});
+
+	it('expanded width matches collapsed width for tight node clusters', () => {
+		const getById = nodeStore(makeNode('a', 100, 200), makeNode('b', 196, 200));
+		const collapsed = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+		});
+		const expanded = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			readOnly: false,
+		});
+		expect(collapsed[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
+		expect(expanded[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 
 	it('marks the title bar selectable when collapsed and editable; never connectable', () => {

@@ -61,18 +61,22 @@ function resolveNodeDimensions(
  * Title bar position + width derived from the group's nodes-bounding rect.
  * Snaps the position to the canvas grid; if it didn't, VueFlow's
  * `snap-to-grid` would shift the title bar on the first drag.
+ *
+ * Width is at least {@link GROUP_HEADER_WIDTH_COLLAPSED} so expanding a
+ * tight cluster never shrinks the header below the collapsed chip size.
  */
 export function titleBarFromNodesRect(nodesRect: NodesRect): {
 	position: { x: number; y: number };
 	width: number;
 } {
 	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
+	const contentWidth = nodesRect.width + 2 * GROUP_PADDING_X;
 	return {
 		position: {
 			x: snap(nodesRect.x - GROUP_PADDING_X),
 			y: snap(nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 		},
-		width: nodesRect.width + 2 * GROUP_PADDING_X,
+		width: Math.max(contentWidth, GROUP_HEADER_WIDTH_COLLAPSED),
 	};
 }
 
