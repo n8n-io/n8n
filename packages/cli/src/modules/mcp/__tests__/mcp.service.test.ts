@@ -658,7 +658,7 @@ describe('McpService', () => {
 				const telemetry = mockInstance(Telemetry);
 
 				const service = buildService({ telemetry });
-				await service.getServer(user, true);
+				await service.getServer(user, true, { name: 'Claude Desktop', version: '1.2.3' });
 
 				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
 					unknown,
@@ -668,6 +668,8 @@ describe('McpService', () => {
 
 				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
 					user_id: 'user-1',
+					client_name: 'Claude Desktop',
+					client_version: '1.2.3',
 				});
 			});
 
