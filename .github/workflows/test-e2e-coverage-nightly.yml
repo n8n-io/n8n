@@ -91,7 +91,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
 
       - name: Test Unit (backend + nodes)
-        run: pnpm test:ci:backend:unit --continue
+        run: pnpm test:ci:backend:unit
 
       - name: Upload coverage artifact
         if: always()
@@ -116,7 +116,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
 
       - name: Test Unit (frontend)
-        run: pnpm test:ci:frontend --continue
+        run: pnpm test:ci:frontend
 
       - name: Upload coverage artifact
         if: always()
