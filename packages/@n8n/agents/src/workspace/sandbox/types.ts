@@ -1,4 +1,4 @@
-import type { CreateSandboxFromImageParams } from '@daytonaio/sdk';
+import type { CreateSandboxFromImageParams, VolumeMount } from '@daytonaio/sdk';
 
 import type { BaseFilesystemOptions } from '../filesystem/base-filesystem';
 import type {
@@ -76,6 +76,7 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 	getAuthToken?: () => Promise<string>;
 	refreshSkewMs?: number;
 	logger?: Logger;
+	volumes?: VolumeMount[];
 }
 
 export interface N8nSandboxConfig extends SandboxConfigBase {
