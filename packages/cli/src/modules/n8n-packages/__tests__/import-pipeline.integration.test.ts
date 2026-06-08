@@ -463,7 +463,7 @@ describe('ImportPipeline workflow conflict policy', () => {
 		expect(await workflowRepo.count()).toBe(workflowsBefore);
 	});
 
-	it('rejects ambiguous source workflow matches before applying the policy', async () => {
+	it('fails fast when duplicate sourceWorkflowId matches exist in the target project', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -480,19 +480,8 @@ describe('ImportPipeline workflow conflict policy', () => {
 				workflowConflictPolicy: 'skip',
 			}),
 		).rejects.toMatchObject({
-			message: expect.stringContaining('matched multiple workflows in the target project'),
-			meta: {
-				code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
-				ambiguous: [
-					{
-						sourceWorkflowId: 'wf-ambiguous',
-						matches: expect.arrayContaining([
-							expect.objectContaining({ name: 'First match' }),
-							expect.objectContaining({ name: 'Second match' }),
-						]),
-					},
-				],
-			},
+			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
+			extra: { projectId: personalProject.id, sourceWorkflowId: 'wf-ambiguous' },
 		});
 	});
 

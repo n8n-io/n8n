@@ -101,31 +101,6 @@ describe('http-error-serializers', () => {
 		});
 	});
 
-	it('serializePublicApiError: exposes ambiguous source workflow metadata', () => {
-		const ambiguous = [{ sourceWorkflowId: 'wf-dup', matches: [{ id: 'local-1', name: 'First' }] }];
-		const descriptor = classifyHttpError(
-			new ConflictError(
-				'Import blocked: source workflow id(s) matched multiple workflows',
-				undefined,
-				{
-					code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
-					ambiguous,
-				},
-			),
-		);
-		expect(serializePublicApiError(descriptor)).toEqual({
-			status: 409,
-			body: {
-				code: 409,
-				message: 'Import blocked: source workflow id(s) matched multiple workflows',
-				meta: {
-					code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
-					ambiguous,
-				},
-			},
-		});
-	});
-
 	it('both serializers map UserError to 400', () => {
 		const descriptor = classifyHttpError(new UserError('bad input'));
 		expect(serializePublicApiError(descriptor)).toEqual({

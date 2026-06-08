@@ -67,25 +67,14 @@ describe('WorkflowImportMatchService', () => {
 		expect(result.get('other-source')).toBe(imported);
 	});
 
-	it('rejects as ambiguous when two workflows share the same sourceWorkflowId', async () => {
+	it('fails fast when two workflows share the same sourceWorkflowId', async () => {
 		const first = workflow({ id: 'local-1', sourceWorkflowId: 'wf-dup', name: 'First' });
 		const second = workflow({ id: 'local-2', sourceWorkflowId: 'wf-dup', name: 'Second' });
 		const { service } = makeService([first, second]);
 
 		await expect(service.findBySourceWorkflowIds('project-1', ['wf-dup'])).rejects.toMatchObject({
-			message: expect.stringContaining('matched multiple workflows in the target project'),
-			meta: {
-				code: 'AMBIGUOUS_SOURCE_WORKFLOW_ID',
-				ambiguous: [
-					{
-						sourceWorkflowId: 'wf-dup',
-						matches: [
-							{ id: 'local-1', name: 'First' },
-							{ id: 'local-2', name: 'Second' },
-						],
-					},
-				],
-			},
+			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
+			extra: { projectId: 'project-1', sourceWorkflowId: 'wf-dup' },
 		});
 	});
 

@@ -177,7 +177,6 @@ post:
                     type: string
                     enum:
                       - WORKFLOW_CONFLICT
-                      - AMBIGUOUS_SOURCE_WORKFLOW_ID
                   conflicts:
                     type: array
                     items:
@@ -189,22 +188,6 @@ post:
                           type: string
                         name:
                           type: string
-                  ambiguous:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        sourceWorkflowId:
-                          type: string
-                        matches:
-                          type: array
-                          items:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              name:
-                                type: string
     '422':
       description: One or more credential references could not be resolved.
       content:

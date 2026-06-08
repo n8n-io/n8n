@@ -3,7 +3,7 @@ import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-cla
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 
 /** `meta` keys from import-conflict errors that are safe to expose publicly. */
-const PUBLIC_CONFLICT_META_KEYS = ['code', 'conflicts', 'ambiguous'] as const;
+const PUBLIC_CONFLICT_META_KEYS = ['code', 'conflicts'] as const;
 
 function pickPublicConflictMeta(meta: Record<string, unknown> = {}) {
 	const picked = Object.fromEntries(
