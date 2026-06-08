@@ -149,6 +149,7 @@
     "@parcel/watcher": "^2.5.1",
     "@rudderstack/rudder-sdk-node": "catalog:",
     "@sentry/node": "catalog:sentry",
+    "@thednp/dommatrix": "^2.0.12",
     "aws4": "1.11.0",
     "axios": "catalog:",
     "bcryptjs": "2.4.3",

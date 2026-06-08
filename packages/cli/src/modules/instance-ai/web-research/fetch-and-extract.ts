@@ -49,6 +49,15 @@ const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
 const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
 const MAX_REDIRECTS = 10;
 
+async function ensureDomMatrixPolyfill() {
+	// pdf-parse v2 is backed by pdfjs-dist, which expects a `DOMMatrix` global
+	// that Node.js does not provide.
+	if (typeof Reflect.get(globalThis, 'DOMMatrix') === 'undefined') {
+		const { default: DOMMatrix } = await import('@thednp/dommatrix');
+		Reflect.set(globalThis, 'DOMMatrix', DOMMatrix);
+	}
+}
+
 export interface FetchAndExtractOptions {
 	maxContentLength?: number;
 	maxResponseBytes?: number;
@@ -262,6 +271,8 @@ async function extractPdf(
 	body: Buffer,
 	maxContentLength: number,
 ): Promise<FetchedPage> {
+	await ensureDomMatrixPolyfill();
+
 	// Dynamic import to avoid loading pdf-parse unless needed
 	const { PDFParse } = await import('pdf-parse');
 	const parser = new PDFParse({ data: body });

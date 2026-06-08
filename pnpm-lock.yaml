@@ -3123,6 +3123,9 @@ importers:
       '@sentry/node':
         specifier: catalog:sentry
         version: 10.55.0(@opentelemetry/exporter-trace-otlp-http@0.217.0(@opentelemetry/api@1.9.0))
+      '@thednp/dommatrix':
+        specifier: ^2.0.12
+        version: 2.0.12
       aws4:
         specifier: 1.11.0
         version: 1.11.0

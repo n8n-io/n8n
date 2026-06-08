@@ -53,6 +53,15 @@ const MAX_AGENT_FILE_METADATA_LENGTH = 255;
 const MAX_WORKSPACE_FILES = 2_000;
 const MAX_WORKSPACE_BYTES = 2 * 1024 * 1024 * 1024;
 
+async function ensureDomMatrixPolyfill() {
+	// pdf-parse v2 is backed by pdfjs-dist, which expects a `DOMMatrix` global
+	// that Node.js does not provide.
+	if (typeof Reflect.get(globalThis, 'DOMMatrix') === 'undefined') {
+		const { default: DOMMatrix } = await import('@thednp/dommatrix');
+		Reflect.set(globalThis, 'DOMMatrix', DOMMatrix);
+	}
+}
+
 @Service()
 export class AgentKnowledgeService {
 	constructor(
@@ -333,6 +342,8 @@ export class AgentKnowledgeService {
 	}
 
 	private async extractPdfText(fileName: string, buffer: Buffer) {
+		await ensureDomMatrixPolyfill();
+
 		const { PDFParse } = await import('pdf-parse');
 		const parser = new PDFParse({ data: buffer });
 		try {
