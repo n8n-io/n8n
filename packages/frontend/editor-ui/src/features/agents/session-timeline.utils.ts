@@ -132,36 +132,11 @@ export function chartBlockColor(kind: EventKind): string {
 	return CHART_BLOCK_COLOR_MAP[kind];
 }
 
-/**
- * Resolve the i18n label for a tool entry. Some built-in tools (currently
- * `rich_interaction`) have two semantically distinct modes — interactive
- * (suspends, awaits user input) vs display-only (renders a card and the
- * agent continues). We pick the label based on the recorded output: the
- * `rich_interaction` handler returns `{ displayOnly: true }` to mark a
- * display-only call, and a button/select payload (after the user clicks)
- * for the interactive case.
- */
 export function builtinToolLabelKey(
 	toolName: string | undefined,
-	output?: unknown,
+	_output?: unknown,
 ): BaseTextKey | null {
-	switch (toolName) {
-		case 'rich_interaction':
-			return isDisplayOnlyOutput(output)
-				? 'agentSessions.timeline.tool.richInteractionDisplay'
-				: 'agentSessions.timeline.tool.richInteraction';
-		default:
-			return getToolNameTranslationKey(toolName) ?? null;
-	}
-}
-
-function isDisplayOnlyOutput(output: unknown): boolean {
-	return (
-		typeof output === 'object' &&
-		output !== null &&
-		'displayOnly' in output &&
-		(output as { displayOnly: unknown }).displayOnly === true
-	);
+	return getToolNameTranslationKey(toolName) ?? null;
 }
 
 export function formatDuration(ms: number): string {
