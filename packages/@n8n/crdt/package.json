@@ -39,5 +39,6 @@
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:",
     "vitest-websocket-mock": "^0.5.0"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

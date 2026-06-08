@@ -72,7 +72,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			projectId,
 			userId,
 			credentialProvider,
-			policy: { maxChildren: 2, timeoutMs: 1000 },
+			policy: { maxChildren: 2 },
 		});
 
 		await expect(
@@ -104,7 +104,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 				expectedOutput: 'A short summary.',
 				source,
 				executionMode: 'foreground',
-				policy: { maxChildren: 2, timeoutMs: 1000 },
+				policy: { maxChildren: 2 },
 				taskPath: '/root/research_api_0',
 			},
 			expect.objectContaining({
