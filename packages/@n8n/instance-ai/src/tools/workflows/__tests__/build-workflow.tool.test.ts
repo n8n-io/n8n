@@ -200,6 +200,93 @@ describe('createBuildWorkflowTool', () => {
 		expect((repeatForSecondWorkItem.errors ?? []).join('\n')).toContain('You already tried this');
 	});
 
+	it('does not share repeat-failure history between main and supporting workflows', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-main',
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { code: 'a.join()' });
+		const firstSupportingAttempt = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+				isSupportingWorkflow: true,
+				name: 'Support workflow',
+			},
+		);
+		const repeatSupportingAttempt = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+				isSupportingWorkflow: true,
+				name: 'Support workflow',
+			},
+		);
+
+		expect((firstSupportingAttempt.errors ?? []).join('\n')).not.toContain(
+			'You already tried this',
+		);
+		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+
+	it('uses workflowBuildContext task id as the fallback repeat-failure key', async () => {
+		const workflowBuildContext = {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			taskId: 'task-1',
+		};
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			workflowBuildContext,
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { code: 'a.join()' });
+		workflowBuildContext.taskId = 'task-2';
+		const firstForSecondTask = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+		});
+		const repeatForSecondTask = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+		});
+
+		expect((firstForSecondTask.errors ?? []).join('\n')).not.toContain('You already tried this');
+		expect((repeatForSecondTask.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+
 	it('allows direct new workflow builds without a name parameter when code provides one', async () => {
 		const context = {
 			userId: 'user-1',

@@ -141,6 +141,40 @@ function hasCredentialVerificationData(
 	);
 }
 
+function getBuildFailureTrackingKey({
+	workItemId,
+	workflowId,
+	workflowName,
+	isAuxiliarySupportingWorkflow,
+	buildContext,
+	runId,
+}: {
+	workItemId?: string;
+	workflowId?: string;
+	workflowName?: string;
+	isAuxiliarySupportingWorkflow: boolean;
+	buildContext?: InstanceAiContext['workflowBuildContext'];
+	runId?: string;
+}): string {
+	if (workItemId) return workItemId;
+
+	if (isAuxiliarySupportingWorkflow) {
+		return [
+			'supporting-workflow',
+			buildContext?.taskId ?? (runId ? `run:${runId}` : 'unknown-run'),
+			workflowId ?? workflowName ?? 'new',
+		].join(':');
+	}
+
+	return (
+		buildContext?.workItemId ??
+		buildContext?.taskId ??
+		workflowId ??
+		workflowName ??
+		`run:${runId ?? 'unknown'}`
+	);
+}
+
 function determineVerificationReadiness(
 	outcome: Pick<
 		WorkflowBuildOutcome,
@@ -393,12 +427,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
-			const activeBuildContext = context.workflowBuildContext;
-			const workItemKey =
-				workItemId ??
-				activeBuildContext?.workItemId ??
-				workflowId ??
-				`run:${context.runId ?? 'unknown'}`;
+			const buildContext = context.workflowBuildContext;
+			const isAuxiliarySupportingWorkflow =
+				isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+			const workItemKey = getBuildFailureTrackingKey({
+				workItemId,
+				workflowId,
+				workflowName: name,
+				isAuxiliarySupportingWorkflow,
+				buildContext,
+				runId: context.runId,
+			});
 			const withEscalation = (
 				errors: string[],
 				options: { includeSdkLanguageGuidance?: boolean } = {},
@@ -543,9 +582,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
-				const buildContext = context.workflowBuildContext;
-				const isAuxiliarySupportingWorkflow =
-					isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
 				const plannedTaskId =
 					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
 						? buildContext.taskId
