@@ -302,8 +302,8 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		const volumes = [
 			{
 				volumeId: 'vol-1',
-				mountPath: '/home/daytona/workspace/agent-knowledge',
-				subpath: 'fixture/projects/project-1/agents/agent-1/corpora/sig-current',
+				mountPath: '/home/daytona/workspace/shared-volume',
+				subpath: 'fixtures/workspaces/workspace-1/current',
 			},
 		];
 		queueNotFound('not found');

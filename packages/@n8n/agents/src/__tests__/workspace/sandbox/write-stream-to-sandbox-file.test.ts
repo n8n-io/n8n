@@ -3,17 +3,39 @@ import { Readable } from 'node:stream';
 import type { SandboxFilesystem, SandboxInstance } from '../../../workspace/sandbox/types';
 import { writeStreamToSandboxFile } from '../../../workspace/sandbox/write-stream-to-sandbox-file';
 
+async function asyncNoop() {
+	await Promise.resolve();
+}
+
+async function asyncFalse() {
+	await Promise.resolve();
+	return false;
+}
+
+async function asyncCommandSuccess() {
+	await Promise.resolve();
+	return {
+		command: 'sh',
+		args: [],
+		success: true,
+		exitCode: 0,
+		stdout: '',
+		stderr: '',
+		executionTimeMs: 1,
+	};
+}
+
 function makeFilesystem(provider: 'n8n-sandbox' | 'daytona') {
 	return {
 		id: `${provider}-fs`,
 		name: 'TestFilesystem',
 		provider,
 		status: 'ready' as const,
-		mkdir: vi.fn(async () => {}),
-		writeFile: vi.fn(async () => {}),
-		appendFile: vi.fn(async () => {}),
-		deleteFile: vi.fn(async () => {}),
-		exists: vi.fn(async () => false),
+		mkdir: vi.fn(asyncNoop),
+		writeFile: vi.fn(asyncNoop),
+		appendFile: vi.fn(asyncNoop),
+		deleteFile: vi.fn(asyncNoop),
+		exists: vi.fn(asyncFalse),
 	} satisfies Partial<SandboxFilesystem> as unknown as SandboxFilesystem;
 }
 
@@ -23,17 +45,13 @@ function makeSandbox(provider: 'n8n-sandbox' | 'daytona') {
 		name: 'TestSandbox',
 		provider,
 		status: 'running' as const,
-		executeCommand: vi.fn(async () => ({
-			command: 'sh',
-			args: [],
-			success: true,
-			exitCode: 0,
-			stdout: '',
-			stderr: '',
-			executionTimeMs: 1,
-		})),
+		executeCommand: vi.fn(asyncCommandSuccess),
 	} satisfies Partial<SandboxInstance> as SandboxInstance;
 }
+
+const N8N_SANDBOX_TARGET = '/home/user/workspace/files/file.txt';
+const DAYTONA_TARGET = '/home/daytona/workspace/files/file.txt';
+const DAYTONA_TEMP_DIR = '/home/daytona/workspace/.tmp/upload-parts';
 
 describe('writeStreamToSandboxFile', () => {
 	it('writes n8n sandbox streams in bounded chunks', async () => {
@@ -41,7 +59,7 @@ describe('writeStreamToSandboxFile', () => {
 		await writeStreamToSandboxFile(
 			filesystem,
 			makeSandbox('n8n-sandbox'),
-			'/home/user/workspace/agent-knowledge/file.txt',
+			N8N_SANDBOX_TARGET,
 			Readable.from([Buffer.alloc(2500, 1)]),
 			{ chunkSizeBytes: 1024 },
 		);
@@ -67,15 +85,12 @@ describe('writeStreamToSandboxFile', () => {
 			writeStreamToSandboxFile(
 				filesystem,
 				makeSandbox('n8n-sandbox'),
-				'/home/user/workspace/agent-knowledge/file.txt',
+				N8N_SANDBOX_TARGET,
 				Readable.from([Buffer.alloc(1500, 1)]),
 				{ chunkSizeBytes: 1024 },
 			),
 		).rejects.toThrow(error);
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(
-			'/home/user/workspace/agent-knowledge/file.txt',
-			{ force: true },
-		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(N8N_SANDBOX_TARGET, { force: true });
 	});
 
 	it('writes Daytona streams through temporary parts and sandbox assembly', async () => {
@@ -84,17 +99,17 @@ describe('writeStreamToSandboxFile', () => {
 		await writeStreamToSandboxFile(
 			filesystem,
 			sandbox,
-			'/home/daytona/workspace/agent-knowledge/file.txt',
+			DAYTONA_TARGET,
 			Readable.from([Buffer.alloc(2500, 2)]),
 			{
 				chunkSizeBytes: 1024,
-				temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+				temporaryDirectory: DAYTONA_TEMP_DIR,
 			},
 		);
 
 		expect(sandbox.executeCommand).toHaveBeenCalledWith('sh', [
 			'-lc',
-			expect.stringContaining('/home/daytona/workspace/agent-knowledge/file.txt'),
+			expect.stringContaining(DAYTONA_TARGET),
 		]);
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(
 			expect.stringContaining('/upload-parts/stream-upload/'),
@@ -119,18 +134,15 @@ describe('writeStreamToSandboxFile', () => {
 			writeStreamToSandboxFile(
 				filesystem,
 				sandbox,
-				'/home/daytona/workspace/agent-knowledge/file.txt',
+				DAYTONA_TARGET,
 				Readable.from([Buffer.alloc(1500, 3)]),
 				{
 					chunkSizeBytes: 1024,
-					temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+					temporaryDirectory: DAYTONA_TEMP_DIR,
 				},
 			),
 		).rejects.toThrow(/^Failed to assemble Daytona sandbox file:/);
-		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(
-			'/home/daytona/workspace/agent-knowledge/file.txt',
-			expect.anything(),
-		);
+		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(DAYTONA_TARGET, expect.anything());
 		expect(filesystem.deleteFile).toHaveBeenCalledWith(
 			expect.stringContaining('/upload-parts/stream-upload/'),
 			{ recursive: true, force: true },
@@ -145,18 +157,16 @@ describe('writeStreamToSandboxFile', () => {
 			writeStreamToSandboxFile(
 				filesystem,
 				makeSandbox('daytona'),
-				'/home/daytona/workspace/agent-knowledge/file.txt',
+				DAYTONA_TARGET,
 				Readable.from([]),
 				{
 					overwrite: false,
-					temporaryDirectory: '/home/daytona/workspace/.agent-knowledge-internal/upload-parts',
+					temporaryDirectory: DAYTONA_TEMP_DIR,
 				},
 			),
-		).rejects.toThrow(
-			'Target file already exists: /home/daytona/workspace/agent-knowledge/file.txt',
-		);
+		).rejects.toThrow(`Target file already exists: ${DAYTONA_TARGET}`);
 		expect(filesystem.writeFile).not.toHaveBeenCalledWith(
-			'/home/daytona/workspace/agent-knowledge/file.txt',
+			DAYTONA_TARGET,
 			expect.anything(),
 			expect.anything(),
 		);

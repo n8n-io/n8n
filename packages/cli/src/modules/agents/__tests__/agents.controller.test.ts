@@ -321,12 +321,15 @@ describe('AgentsController file endpoints', () => {
 		expect(result).toBe(files);
 	});
 
-	it('uploads files via AgentKnowledgeService', async () => {
+	it('returns uploaded files when Daytona sync helper resolves after handling its own failure', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
 		const uploadedFiles = [{ originalname: 'notes.md' }] as never;
 		const storedFiles = [{ id: 'file-1', fileName: 'notes.md' }] as never;
 		agentKnowledgeService.uploadFiles.mockResolvedValue(storedFiles);
+		agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume.mockImplementationOnce(
+			async () => undefined,
+		);
 
 		const result = await controller.uploadFiles(
 			{ params: { projectId: 'project-1' }, files: uploadedFiles } as never,
@@ -365,9 +368,12 @@ describe('AgentsController file endpoints', () => {
 		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).not.toHaveBeenCalled();
 	});
 
-	it('deletes a file via AgentKnowledgeService and returns success', async () => {
+	it('returns delete success when Daytona sync helper resolves after handling its own failure', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
+		agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume.mockImplementationOnce(
+			async () => undefined,
+		);
 
 		const result = await controller.deleteFile(
 			{ params: { projectId: 'project-1' } } as never,
