@@ -1,3 +1,4 @@
+import type { RedactionOptions } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { Logger } from '../../logger';
@@ -7,8 +8,14 @@ function createLogger() {
 	return { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as unknown as Logger;
 }
 
-function createRedactor(logger = createLogger()) {
-	return new OutputRedactor({ logger, threadId: 'thread-1', runId: 'run-1', agentId: 'agent-1' });
+function createRedactor(logger = createLogger(), options?: RedactionOptions | false) {
+	return new OutputRedactor({
+		logger,
+		threadId: 'thread-1',
+		runId: 'run-1',
+		agentId: 'agent-1',
+		...(options !== undefined ? { options } : {}),
+	});
 }
 
 function textDelta(text: string): InstanceAiEvent {
@@ -32,13 +39,23 @@ describe('OutputRedactor', () => {
 		expect(out).not.toContain('sk-ant-');
 	});
 
-	it('redacts a conservative PII email', () => {
-		const redactor = createRedactor();
+	it('redacts a PII email when the email category is enabled', () => {
+		const redactor = createRedactor(createLogger(), { detect: ['email'] });
 		const emitted = [
 			...redactor.processEvent(textDelta('email me at jane@example.com ok')),
 			...redactor.flush(),
 		];
 		expect(collectText(emitted)).toBe('email me at [REDACTED] ok');
+	});
+
+	it('redacts credit cards by default but leaves email untouched', () => {
+		const redactor = createRedactor();
+		const emitted = [
+			...redactor.processEvent(textDelta('card 4111 1111 1111 1111 mail jane@example.com')),
+			...redactor.flush(),
+		];
+		const out = collectText(emitted);
+		expect(out).toBe('card [REDACTED] mail jane@example.com');
 	});
 
 	it('passes non-sensitive prose through unchanged', () => {
@@ -82,7 +99,7 @@ describe('OutputRedactor', () => {
 
 	it('logs a filtering summary with category counts and no values', () => {
 		const logger = createLogger();
-		const redactor = createRedactor(logger);
+		const redactor = createRedactor(logger, { secrets: true, detect: ['email'] });
 		redactor.processEvent(
 			textDelta('key sk-ant-api03-aaaaaaaaaaaaaaaa and mail jane@example.com here'),
 		);
@@ -109,5 +126,32 @@ describe('OutputRedactor', () => {
 		redactor.processEvent(textDelta('all clear, nothing sensitive here at all'));
 		redactor.flush();
 		expect(logger.info).not.toHaveBeenCalled();
+	});
+
+	describe('when disabled (options: false)', () => {
+		function createDisabled(logger = createLogger()) {
+			return new OutputRedactor({
+				logger,
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				options: false,
+			});
+		}
+
+		it('passes events through untouched, including secrets', () => {
+			const redactor = createDisabled();
+			const input = textDelta('your key is sk-ant-api03-aaaaaaaaaaaaaaaa here');
+			const emitted = [...redactor.processEvent(input), ...redactor.flush()];
+			expect(emitted).toEqual([input]);
+		});
+
+		it('does not log a filtering summary', () => {
+			const logger = createLogger();
+			const redactor = createDisabled(logger);
+			redactor.processEvent(textDelta('key sk-ant-api03-aaaaaaaaaaaaaaaa'));
+			redactor.flush();
+			expect(logger.info).not.toHaveBeenCalled();
+		});
 	});
 });

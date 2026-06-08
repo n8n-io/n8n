@@ -40,6 +40,11 @@ describe('redactText', () => {
 			const { text } = redactText(input, { secrets: false });
 			expect(text).toBe(input);
 		});
+
+		it('uses a custom placeholder', () => {
+			const { text } = redactText('key sk-ant-api03-aaaaaaaaaaaaaaaa', { placeholder: '###' });
+			expect(text).toBe('key ###');
+		});
 	});
 
 	describe('PII', () => {
@@ -69,8 +74,8 @@ describe('redactText', () => {
 			expect(matches).toEqual([]);
 		});
 
-		it('redacts an SSN', () => {
-			const { text } = redactText('ssn 123-45-6789', { detect: ['ssn'] });
+		it('redacts a US SSN', () => {
+			const { text } = redactText('ssn 123-45-6789', { detect: ['ssn-us'] });
 			expect(text).toBe('ssn [REDACTED]');
 		});
 	});
@@ -80,11 +85,11 @@ describe('redactText', () => {
 			const guardrail = new Guardrail('pii')
 				.type('pii')
 				.strategy('redact')
-				.detect(['email', 'ssn'])
+				.detect(['email', 'ssn-us'])
 				.build();
 			expect(redactionOptionsFromGuardrail(guardrail)).toEqual({
 				secrets: false,
-				detect: ['email', 'ssn'],
+				detect: ['email', 'ssn-us'],
 			});
 		});
 	});
@@ -121,6 +126,16 @@ describe('StreamingRedactor', () => {
 		out += redactor.push('example.com bye').text;
 		out += redactor.flush().text;
 		expect(out).toBe('mail [REDACTED] bye');
+	});
+
+	it('redacts a spaced credit card that straddles the holdback boundary', () => {
+		const redactor = new StreamingRedactor({ detect: ['credit-card'] }, HOLDBACK);
+		let out = '';
+		out += redactor.push('card 4111 1111 ').text;
+		out += redactor.push('1111 1111 done here').text;
+		out += redactor.flush().text;
+		expect(out).toBe('card [REDACTED] done here');
+		expect(out).not.toContain('4111');
 	});
 
 	it('passes through non-sensitive streamed prose intact', () => {

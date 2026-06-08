@@ -1,5 +1,5 @@
 import type { RedactionOptions, RedactionResult } from './redactor';
-import { redactText } from './redactor';
+import { findMatchRanges, redactText } from './redactor';
 
 /**
  * How many trailing characters to hold back before emitting.
@@ -56,6 +56,13 @@ export class StreamingRedactor {
 		let cut = target;
 		while (cut > 0 && !WHITESPACE.test(this.buffer[cut - 1])) {
 			cut -= 1;
+		}
+
+		// Never emit through the middle of a complete match. A match with internal
+		// whitespace (e.g. a spaced credit-card number) can straddle the cut; pull
+		// the boundary back to its start so it stays buffered and is redacted whole.
+		for (const [start, end] of findMatchRanges(this.buffer, this.options)) {
+			if (start < cut && end > cut) cut = start;
 		}
 
 		if (cut === 0) {

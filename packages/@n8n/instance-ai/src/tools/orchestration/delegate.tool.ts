@@ -354,6 +354,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 						eventBus: context.eventBus,
 						logger: context.logger,
 						threadId: context.threadId,
+						outputRedaction: context.outputRedaction,
 						abortSignal: context.abortSignal,
 						waitForConfirmation: context.waitForConfirmation,
 						maxIterations,

@@ -71,8 +71,11 @@ const PII_PATTERNS: Readonly<Record<PiiDetectionType, RedactionPattern | undefin
 		flags: 'g',
 		validate: passesLuhn,
 	},
-	ssn: {
-		category: 'ssn',
+	'ssn-us': {
+		category: 'ssn-us',
+		// US Social Security Number, dashed form only (123-45-6789). Bare 9-digit
+		// runs are intentionally not matched (too false-positive-prone). Per-country
+		// national IDs each get their own `ssn-<cc>` category (e.g. a future `ssn-uk`).
 		source: '\\b\\d{3}-\\d{2}-\\d{4}\\b',
 		flags: 'g',
 	},
@@ -80,6 +83,16 @@ const PII_PATTERNS: Readonly<Record<PiiDetectionType, RedactionPattern | undefin
 	phone: undefined,
 	address: undefined,
 };
+
+/**
+ * PII categories that actually have a detection pattern today. `phone` and
+ * `address` are part of {@link PiiDetectionType} but not yet implemented, so
+ * they are excluded here — callers should treat this as the source of truth
+ * for what redaction can detect.
+ */
+export const SUPPORTED_PII_CATEGORIES: PiiDetectionType[] = (
+	Object.keys(PII_PATTERNS) as PiiDetectionType[]
+).filter((type) => PII_PATTERNS[type] !== undefined);
 
 /** Resolve the active pattern set for the given options. */
 export function resolvePatterns(opts: {

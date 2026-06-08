@@ -5,6 +5,7 @@ export type {
 	BuiltMemory,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
 	AgentResult,
@@ -111,6 +112,7 @@ export {
 	StreamingRedactor,
 	resolvePatterns,
 	passesLuhn,
+	SUPPORTED_PII_CATEGORIES,
 } from './sdk/guardrails';
 export type {
 	RedactionOptions,

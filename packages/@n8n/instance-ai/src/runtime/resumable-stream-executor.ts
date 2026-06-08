@@ -1,4 +1,4 @@
-import type { StreamResult } from '@n8n/agents';
+import type { RedactionOptions, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
@@ -31,6 +31,8 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 }
 
 export interface ManualSuspensionControl {
@@ -196,6 +198,7 @@ export async function executeResumableStream(
 		threadId: options.context.threadId,
 		runId: options.context.runId,
 		agentId: options.context.agentId,
+		options: options.context.outputRedaction,
 	});
 
 	let currentResponseId: string | undefined;

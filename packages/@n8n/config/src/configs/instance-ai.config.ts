@@ -111,4 +111,20 @@ export class InstanceAiConfig {
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
+
+	/** Scan and redact secrets/PII from agent output before it reaches the user. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
+	outputRedactionEnabled: boolean = true;
+
+	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
+	outputRedactionSecrets: boolean = true;
+
+	/** Comma-separated PII categories to redact from agent output. Available: email, credit-card, ssn-us. Empty = no PII scanning. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
+	outputRedactionPii: string = 'credit-card';
+
+	/** Replacement text substituted for each redacted match in agent output. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
+	outputRedactionPlaceholder: string = '[REDACTED]';
 }

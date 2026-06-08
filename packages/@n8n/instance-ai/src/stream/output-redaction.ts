@@ -11,12 +11,15 @@ import type { Logger } from '../logger';
 
 /**
  * Default output-filtering policy for Instance AI: redact known credential/
- * secret patterns plus high-confidence PII. `block`/`warn` strategies are
- * supported by the engine but not yet surfaced here.
+ * secret patterns plus credit-card numbers. Other PII categories (`email`,
+ * `ssn-us`) are implemented but off by default until we decide which to enable.
+ *
+ * Instance AI always redacts matches. The SDK's `GuardrailStrategy` also defines
+ * `block` and `warn`, but those are not implemented here.
  */
 export const DEFAULT_OUTPUT_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
-	detect: ['email', 'credit-card', 'ssn'],
+	detect: ['credit-card'],
 };
 
 interface OutputRedactorContext {
@@ -24,7 +27,11 @@ interface OutputRedactorContext {
 	threadId: string;
 	runId: string;
 	agentId: string;
-	options?: RedactionOptions;
+	/**
+	 * Redaction policy: omit for the safe default, pass options to customise, or
+	 * `false` to disable scanning entirely (events pass through untouched).
+	 */
+	options?: RedactionOptions | false;
 }
 
 type DeltaType = 'text-delta' | 'reasoning-delta';
@@ -51,6 +58,8 @@ interface Channel {
  * stream segment ends to release any remainder and log a filtering summary.
  */
 export class OutputRedactor {
+	private readonly enabled: boolean;
+
 	private readonly options: RedactionOptions;
 
 	private readonly text: Channel;
@@ -60,13 +69,19 @@ export class OutputRedactor {
 	private matches: RedactionCategory[] = [];
 
 	constructor(private readonly context: OutputRedactorContext) {
-		this.options = context.options ?? DEFAULT_OUTPUT_REDACTION_OPTIONS;
+		this.enabled = context.options !== false;
+		// When disabled the options are unused; default keeps the type concrete.
+		this.options =
+			context.options === false || context.options === undefined
+				? DEFAULT_OUTPUT_REDACTION_OPTIONS
+				: context.options;
 		this.text = { type: 'text-delta', redactor: new StreamingRedactor(this.options) };
 		this.reasoning = { type: 'reasoning-delta', redactor: new StreamingRedactor(this.options) };
 	}
 
 	/** Redact an outgoing event; returns the ordered events that should be published. */
 	processEvent(event: InstanceAiEvent): InstanceAiEvent[] {
+		if (!this.enabled) return [event];
 		if (event.type === 'text-delta') return this.processDelta(event, this.text);
 		if (event.type === 'reasoning-delta') return this.processDelta(event, this.reasoning);
 
@@ -80,6 +95,7 @@ export class OutputRedactor {
 
 	/** Release buffered text for both channels and log a filtering summary. Call at segment end. */
 	flush(): InstanceAiEvent[] {
+		if (!this.enabled) return [];
 		const events = [...this.drainChannel(this.reasoning), ...this.drainChannel(this.text)];
 		this.logSummary();
 		return events;

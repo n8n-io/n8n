@@ -6,5 +6,5 @@ export {
 } from './redactor';
 export type { RedactionOptions, RedactionResult, DeepRedactionResult } from './redactor';
 export { StreamingRedactor } from './streaming-redactor';
-export { resolvePatterns, passesLuhn } from './patterns';
+export { resolvePatterns, passesLuhn, SUPPORTED_PII_CATEGORIES } from './patterns';
 export type { RedactionCategory, RedactionPattern } from './patterns';

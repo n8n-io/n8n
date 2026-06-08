@@ -59,6 +59,36 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 	return { text, matches };
 }
 
+/**
+ * Find the `[start, end)` ranges of every (validated) match in `input`. Used by
+ * the streaming redactor to avoid emitting through the middle of a complete
+ * match that contains internal whitespace (e.g. a spaced credit-card number).
+ */
+export function findMatchRanges(
+	input: string,
+	opts: RedactionOptions = {},
+): Array<[number, number]> {
+	const patterns = resolvePatterns({
+		secrets: opts.secrets ?? true,
+		detect: opts.detect ?? [],
+	});
+
+	const ranges: Array<[number, number]> = [];
+	for (const pattern of patterns) {
+		const regex = new RegExp(pattern.source, pattern.flags);
+		let match: RegExpExecArray | null;
+		while ((match = regex.exec(input)) !== null) {
+			if (match[0].length === 0) {
+				regex.lastIndex++;
+				continue;
+			}
+			if (pattern.validate && !pattern.validate(match[0])) continue;
+			ranges.push([match.index, match.index + match[0].length]);
+		}
+	}
+	return ranges;
+}
+
 const MAX_DEEP_DEPTH = 8;
 
 export interface DeepRedactionResult {
