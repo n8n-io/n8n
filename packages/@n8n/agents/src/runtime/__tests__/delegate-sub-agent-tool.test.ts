@@ -101,6 +101,33 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent).toHaveBeenCalledOnce();
 	});
 
+	it('forwards the parent execution counter to the runner callback', async () => {
+		const runSubAgent = vi
+			.fn<DelegateSubAgentRunner>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			toolCallId: 'tool-call-1',
+			executionCounter,
+		});
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				parentExecutionCounter: executionCounter,
+			}),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
+	});
+
 	it('forwards the parent persistence thread id and resource id', async () => {
 		const runSubAgent = vi
 			.fn<DelegateSubAgentRunner>()
@@ -134,6 +161,7 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentThreadId');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentResourceId');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentAbortSignal');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentExecutionCounter');
 	});
 
 	it('forwards the parent run abort signal to the runner callback', async () => {
@@ -197,7 +225,54 @@ describe('createDelegateSubAgentTool', () => {
 		});
 	});
 
-	it('tracks child count per parent run id', async () => {
+	it('defaults maxChildren to 10 when policy is omitted', () => {
+		const tool = createDelegateSubAgentTool({
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
+		expect(tool.systemInstruction).toContain('Up to 10 child sub-agent runs');
+	});
+
+	it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+		'rejects invalid maxChildren policy value %s',
+		(maxChildren) => {
+			expect(() =>
+				createDelegateSubAgentTool({
+					policy: { maxChildren },
+					runSubAgent: async () =>
+						await Promise.resolve({
+							status: 'completed',
+							taskPath: '/root/research_api_0',
+							answer: 'done',
+						}),
+				}),
+			).toThrow('delegate_subagent policy.maxChildren');
+		},
+	);
+
+	it('describes maxChildren as a parallelism limit in model-facing instructions', () => {
+		const tool = createDelegateSubAgentTool({
+			policy: { maxChildren: 2 },
+			runSubAgent: async () =>
+				await Promise.resolve({
+					status: 'completed',
+					taskPath: '/root/research_api_0',
+					answer: 'done',
+				}),
+		});
+
+		expect(tool.systemInstruction).toContain('DELEGATION PARALLELISM');
+		expect(tool.systemInstruction).toContain('Up to 2 child sub-agent runs');
+		expect(tool.systemInstruction).toContain('limits parallelism, not the total number');
+	});
+
+	it('assigns distinct task paths for repeated delegations in the same parent run', async () => {
 		const runSubAgent = vi.fn<DelegateSubAgentRunner>().mockResolvedValue({
 			status: 'completed',
 			taskPath: '/root/research_api',
@@ -213,14 +288,16 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'completed',
 		});
 		await expect(tool.handler?.(input, { runId: 'parent-run-1' })).resolves.toMatchObject({
-			status: 'failed',
-			error: 'Sub-agent child count 2 exceeds maxChildren 1',
+			status: 'completed',
 		});
 		await expect(tool.handler?.(input, { runId: 'parent-run-2' })).resolves.toMatchObject({
 			status: 'completed',
 		});
 
-		expect(runSubAgent).toHaveBeenCalledTimes(2);
+		expect(runSubAgent).toHaveBeenCalledTimes(3);
+		expect(runSubAgent.mock.calls[0]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
+		expect(runSubAgent.mock.calls[1]?.[0]).toMatchObject({ taskPath: '/root/research_api_1' });
+		expect(runSubAgent.mock.calls[2]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
 	});
 
 	it('returns a failed output when the runner callback throws', async () => {

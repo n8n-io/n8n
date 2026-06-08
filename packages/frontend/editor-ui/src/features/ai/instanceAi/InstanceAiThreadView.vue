@@ -20,7 +20,7 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
+import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -152,8 +152,8 @@ watch(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
-const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
+const isArtifactsPanelDismissedInLayout = ref(false);
 const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
@@ -172,6 +172,13 @@ const artifactsPreviewToggleLabel = computed(() =>
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
 );
+const artifactsPanelToggleLabel = computed(() =>
+	i18n.baseText(
+		showArtifactsPanel.value
+			? 'instanceAi.artifactsPanel.hidePanel'
+			: 'instanceAi.artifactsPanel.showPanel',
+	),
+);
 const artifactsPanelTransitionName = computed(() =>
 	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
@@ -188,35 +195,26 @@ function toggleArtifactsPreview() {
 	}
 }
 
-function revealArtifactsPanel() {
-	if (
-		!canShowArtifactsPanel.value ||
-		isArtifactsPanelEffectivelyPinned.value ||
-		preview.isPreviewVisible.value
-	) {
+function toggleArtifactsPanel() {
+	if (!canShowArtifactsPanel.value || preview.isPreviewVisible.value) {
 		return;
 	}
+
+	if (showArtifactsPanel.value) {
+		if (isArtifactsPanelInLayout.value) {
+			isArtifactsPanelDismissedInLayout.value = true;
+			return;
+		}
+		isArtifactsPanelRevealed.value = false;
+		return;
+	}
+
+	if (isArtifactsPanelInLayout.value) {
+		isArtifactsPanelDismissedInLayout.value = false;
+		return;
+	}
+
 	isArtifactsPanelRevealed.value = true;
-}
-
-function hideArtifactsPanel(event?: FocusEvent) {
-	if (isArtifactsPanelEffectivelyPinned.value) return;
-	if (
-		event?.currentTarget instanceof HTMLElement &&
-		event.relatedTarget instanceof Node &&
-		event.currentTarget.contains(event.relatedTarget)
-	) {
-		return;
-	}
-	isArtifactsPanelRevealed.value = false;
-}
-
-function toggleArtifactsPanelPinned() {
-	if (!isArtifactsPanelPinningAvailable.value) return;
-
-	const nextPinned = !isArtifactsPanelPinned.value;
-	isArtifactsPanelPinned.value = nextPinned;
-	isArtifactsPanelRevealed.value = !nextPinned;
 }
 
 function enablePanelTransitionsAfterStableRender() {
@@ -243,34 +241,34 @@ const instanceAiSidebarOccupiedWidth = computed(() =>
 const availableWidthForPinnedArtifactsPanel = computed(
 	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
 );
-const isArtifactsPanelPinningAvailable = computed(
+const isArtifactsPanelInLayout = computed(
 	() =>
 		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
-const isArtifactsPanelEffectivelyPinned = computed(
-	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
-);
 const canShowArtifactsPanel = computed(
 	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
-);
-const showArtifactsPanelEdge = computed(
-	() =>
-		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
-		!isArtifactsPanelEffectivelyPinned.value,
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
+		(isArtifactsPanelInLayout.value
+			? !isArtifactsPanelDismissedInLayout.value
+			: isArtifactsPanelRevealed.value),
+);
+const showArtifactsPanelToggle = computed(
+	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
 );
 const reserveArtifactsPanelLayout = computed(
-	() => showArtifactsPanel.value && isArtifactsPanelEffectivelyPinned.value,
+	() => showArtifactsPanel.value && isArtifactsPanelInLayout.value,
+);
+const shouldAnimateArtifactsPanel = computed(
+	() => isArtifactsPanelTransitionEnabled.value && isArtifactsPanelInLayout.value,
 );
 const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
+const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
@@ -331,17 +329,29 @@ watch(threadAreaWidth, (width) => {
 	}
 });
 
-watch(isArtifactsPanelPinningAvailable, (isAvailable) => {
-	if (!isAvailable) {
-		isArtifactsPanelRevealed.value = false;
+watch(isArtifactsPanelInLayout, (isInLayout) => {
+	isArtifactsPanelRevealed.value = false;
+
+	if (isInLayout) {
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
 
 watch(canShowArtifactsPanel, (canShow) => {
 	if (!canShow) {
 		isArtifactsPanelRevealed.value = false;
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
+
+onClickOutside(
+	artifactsPanelSlotRef,
+	() => {
+		if (isArtifactsPanelInLayout.value) return;
+		isArtifactsPanelRevealed.value = false;
+	},
+	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
+);
 
 watch(
 	() => props.threadId,
@@ -575,7 +585,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		<div :class="$style.chatArea">
 			<InstanceAiViewHeader>
 				<template #title>
-					<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+					<N8nHeading
+						v-if="currentThreadTitle"
+						tag="h2"
+						size="small"
+						:class="[
+							$style.headerTitle,
+							{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
+						]"
+					>
 						{{ currentThreadTitle }}
 					</N8nHeading>
 					<N8nText
@@ -600,6 +618,26 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							store.debugMode = showDebugPanel;
 						"
 					/>
+					<N8nTooltip
+						:content="artifactsPanelToggleLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<N8nIconButton
+								v-if="showArtifactsPanelToggle"
+								icon="list"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								data-test-id="instance-ai-artifacts-panel-toggle"
+								:aria-label="artifactsPanelToggleLabel"
+								:aria-pressed="showArtifactsPanel"
+								:disabled="!canShowArtifactsPanel"
+								@click="toggleArtifactsPanel"
+							/>
+						</Transition>
+					</N8nTooltip>
 					<N8nTooltip
 						:content="artifactsPreviewToggleLabel"
 						placement="bottom"
@@ -636,7 +674,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
-					<N8nScrollArea as-child :class="$style.scrollArea">
+					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
 						<div ref="scrollable" :class="$style.scrollContent">
 							<div :class="$style.messageList">
 								<TransitionGroup name="message-slide">
@@ -750,34 +788,17 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
-				<div
-					v-if="showArtifactsPanelEdge"
-					:class="$style.artifactsPanelEdge"
-					role="button"
-					tabindex="0"
-					:aria-label="i18n.baseText('instanceAi.artifactsPanel.showPanel')"
-					data-test-id="instance-ai-artifacts-sidebar-edge"
-					@click="revealArtifactsPanel"
-					@mouseenter="revealArtifactsPanel"
-					@focusin="revealArtifactsPanel"
-					@keydown.enter.prevent="revealArtifactsPanel"
-					@keydown.space.prevent="revealArtifactsPanel"
-				/>
-				<Transition :name="artifactsPanelTransitionName" :css="isArtifactsPanelTransitionEnabled">
+				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
 					<div
 						v-if="showArtifactsPanel"
-						:class="$style.artifactsPanelSlot"
+						ref="artifactsPanelSlot"
+						:class="[
+							$style.artifactsPanelSlot,
+							{ [$style.artifactsPanelSlotOverlay]: !reserveArtifactsPanelLayout },
+						]"
 						data-test-id="instance-ai-artifacts-sidebar-slot"
-						@mouseenter="revealArtifactsPanel"
-						@mouseleave="hideArtifactsPanel()"
-						@focusin="revealArtifactsPanel"
-						@focusout="hideArtifactsPanel"
 					>
-						<InstanceAiArtifactsPanel
-							:is-pinned="isArtifactsPanelEffectivelyPinned"
-							:is-pinning-available="isArtifactsPanelPinningAvailable"
-							@toggle-pinned="toggleArtifactsPanelPinned"
-						/>
+						<InstanceAiArtifactsPanel />
 					</div>
 				</Transition>
 
@@ -934,6 +955,10 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	color: var(--color--text);
 }
 
+.headerTitleWithSidebar {
+	padding-left: var(--spacing--4xs);
+}
+
 .activeButton {
 	color: var(--color--primary);
 }
@@ -953,21 +978,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		var(--instance-ai-panel-transition-easing);
 }
 
-.artifactsPanelEdge {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 3;
-	width: var(--spacing--xl);
-	cursor: default;
-	outline: none;
-
-	&:focus-visible {
-		box-shadow: inset calc(-1 * var(--spacing--5xs)) 0 0 var(--color--primary);
-	}
-}
-
 .artifactsPanelSlot {
 	position: absolute;
 	top: 0;
@@ -978,6 +988,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	min-width: var(--instance-ai-artifacts-panel-width);
 	display: flex;
 	overflow: hidden;
+	// Keep the transparent right padding from intercepting the chat scrollbar.
+	clip-path: inset(0 var(--spacing--2xs) 0 0);
+}
+
+.artifactsPanelSlotOverlay {
+	bottom: auto;
+	max-height: calc(100% - var(--spacing--sm));
 }
 
 .chatContent {
@@ -992,6 +1009,19 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	flex: 1;
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
+
+	:global([data-orientation='vertical'][data-orientation='vertical']) {
+		background: transparent;
+		padding: 0;
+	}
+
+	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
+
+		&:hover {
+			background: light-dark(var(--color--neutral-500), var(--color--neutral-500));
+		}
+	}
 }
 
 .scrollContent {

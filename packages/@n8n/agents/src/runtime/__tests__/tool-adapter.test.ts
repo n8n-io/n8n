@@ -221,4 +221,37 @@ describe('executeTool — context propagation', () => {
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ abortSignal: signal }));
 	});
+
+	it('passes the execution counter to the tool handler', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = { name: 'counted', description: 'd', handler };
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { executionCounter });
+
+		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
+	});
+
+	it('passes the execution counter to interruptible tool handlers', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'interruptible-counted',
+			description: 'd',
+			handler,
+			suspendSchema: z.object({}),
+		};
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		await executeTool({}, tool, undefined, undefined, 'call-1', { executionCounter });
+
+		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
+	});
 });
