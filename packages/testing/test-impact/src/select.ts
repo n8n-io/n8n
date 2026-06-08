@@ -14,6 +14,7 @@ import * as fs from 'node:fs';
 
 import {
 	changedRuntimeDepsFromManifests,
+	classifyManifestChange,
 	dropDevDepOnlyDeps,
 	filterImpactfulChanges,
 	stripDependencyFiles,
@@ -116,11 +117,21 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 			);
 		}
 	}
-	// A dependency file still present here is one neither the devDep drop (388)
-	// nor the dep-graph walk (389) could attribute — e.g. a transitive lockfile
-	// bump with no manifest. We can't scope it, and must NEVER declare a dep
-	// change merely "uncovered" (it could affect anything) → conservatively broad.
-	if (stripDependencyFiles(impactful).length !== impactful.length) {
+	// An unattributable dependency CHANGE stays conservatively broad — we can't
+	// scope it and must never declare a dep change merely "uncovered" (it could
+	// affect anything). That means: a lockfile bump (a definitive dep-version
+	// signal we couldn't scope), or a runtime-manifest change the dep-graph didn't
+	// strip (e.g. a transitive dep declared by no importer). A package.json change
+	// that is NOT a dependency change (version / scripts / exports / devDep) is not
+	// a dep signal — it falls through and is declared uncovered like any source.
+	const lockfileRemains = impactful.includes('pnpm-lock.yaml');
+	const unscopedRuntimeManifest = impactful.some(
+		(f) =>
+			/(^|\/)package\.json$/.test(f) &&
+			input.manifests?.[f] &&
+			classifyManifestChange(input.manifests[f].before, input.manifests[f].after) === 'runtime',
+	);
+	if (lockfileRemains || unscopedRuntimeManifest) {
 		return { specs: allSpecs ?? [], unmapped: impactful, mode: 'broad' };
 	}
 

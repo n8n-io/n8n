@@ -134,6 +134,44 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
+	it('package.json change with NO dependency change (version) → uncovered, not broad', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-ver.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/cli/package.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+			manifests: {
+				'packages/cli/package.json': {
+					before: JSON.stringify({ version: '1.0.0', dependencies: { axios: '1' } }),
+					after: JSON.stringify({ version: '1.0.1', dependencies: { axios: '1' } }),
+				},
+			},
+		});
+		expect(result.mode).toBe('scoped');
+		expect(result.specs).toEqual([]);
+		expect(result.uncovered).toEqual(['packages/cli/package.json']);
+	});
+
+	it('runtime-dep manifest change with no importers data → broad (cannot scope)', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-rt.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/cli/package.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+			manifests: {
+				'packages/cli/package.json': {
+					before: JSON.stringify({ dependencies: { axios: '1.0.0' } }),
+					after: JSON.stringify({ dependencies: { axios: '2.0.0' } }),
+				},
+			},
+		});
+		expect(result.mode).toBe('broad');
+	});
+
 	describe('--all-specs parsing', () => {
 		const triggerBroad = (allSpecsFile: string) =>
 			selectTests({
