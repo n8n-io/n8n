@@ -63,5 +63,6 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

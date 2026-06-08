@@ -54,5 +54,6 @@
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }
