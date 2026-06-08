@@ -15,7 +15,7 @@ import { transcriptAsText } from '../utils/conversation-text';
 const expectationResultSchema = z.object({
 	results: z.array(
 		z.object({
-			index: z.number(),
+			index: z.number().int().nonnegative(),
 			pass: z.boolean(),
 			reason: z.string(),
 		}),

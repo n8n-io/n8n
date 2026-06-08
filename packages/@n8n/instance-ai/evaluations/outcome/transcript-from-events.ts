@@ -20,6 +20,7 @@ import type {
 	TranscriptTurn,
 } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
+import { redactSecrets } from '../harness/redact';
 import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
@@ -122,7 +123,8 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 		if (event.type === 'tool-error') {
 			map.set(callId, { error: getString(payload, 'error') ?? 'tool error' });
 		} else {
-			map.set(callId, { result: payload.result });
+			// Redact secret-shaped keys before the result reaches the report/judge.
+			map.set(callId, { result: redactSecrets(payload.result) });
 		}
 	}
 	return map;
@@ -156,7 +158,8 @@ function interpretToolCall(
 		kind: 'tool-call',
 		toolName,
 		toolCallId: callId,
-		args: Object.keys(args).length > 0 ? args : undefined,
+		args:
+			Object.keys(args).length > 0 ? (redactSecrets(args) as Record<string, unknown>) : undefined,
 		result,
 		error: outcome?.error,
 	};

@@ -34,9 +34,17 @@ export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
 }
 
+// Cap per-step narration so a long multi-turn build doesn't blow up judge token cost.
+const MAX_STEP_CHARS = 2000;
+
 function describeStep(step: TranscriptStep): string | null {
 	if (step.kind === 'agent-text') {
-		return step.text ? `Assistant: ${step.text}` : null;
+		if (!step.text) return null;
+		const text =
+			step.text.length > MAX_STEP_CHARS
+				? `${step.text.slice(0, MAX_STEP_CHARS)}… (${String(step.text.length - MAX_STEP_CHARS)} more chars)`
+				: step.text;
+		return `Assistant: ${text}`;
 	}
 	return describeInteraction(step);
 }

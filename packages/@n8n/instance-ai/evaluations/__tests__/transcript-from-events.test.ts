@@ -41,6 +41,57 @@ describe('buildTranscriptFromEvents', () => {
 		]);
 	});
 
+	describe('secret redaction', () => {
+		it('redacts secret-shaped keys in tool-call args', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', {
+						payload: {
+							toolName: 'httpRequest',
+							toolCallId: 'tc1',
+							args: {
+								url: 'https://api.example.com',
+								apiKey: 'sk-secret',
+								headers: { authorization: 'Bearer xyz' },
+							},
+						},
+					}),
+				],
+			});
+			expect(turns[0].steps[0]).toMatchObject({
+				kind: 'tool-call',
+				args: {
+					url: 'https://api.example.com',
+					apiKey: '[REDACTED]',
+					headers: { authorization: '[REDACTED]' },
+				},
+			});
+		});
+
+		it('redacts secret-shaped keys in a paired tool-result', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', {
+						payload: { toolName: 'credentials', toolCallId: 'tc2', args: { name: 'slack' } },
+					}),
+					evt('tool-result', {
+						payload: {
+							toolName: 'credentials',
+							toolCallId: 'tc2',
+							result: { id: 'c1', token: 'secret-token' },
+						},
+					}),
+				],
+			});
+			expect(turns[0].steps[0]).toMatchObject({
+				kind: 'tool-call',
+				result: { id: 'c1', token: '[REDACTED]' },
+			});
+		});
+	});
+
 	describe('ask-user routing', () => {
 		const questions = [{ id: 'q1', question: 'Which channels?' }];
 
