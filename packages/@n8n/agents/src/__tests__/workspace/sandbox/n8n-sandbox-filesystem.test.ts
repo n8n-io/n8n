@@ -1,7 +1,7 @@
 import { SandboxServiceError } from '@n8n/sandbox-client';
 
-import { N8nSandboxFilesystem } from '../n8n-sandbox-filesystem';
-import { N8nSandboxServiceSandbox } from '../n8n-sandbox-sandbox';
+import { N8nSandboxFilesystem } from '../../../workspace/filesystem/n8n-sandbox-filesystem';
+import { N8nSandboxServiceSandbox } from '../../../workspace/sandbox/n8n-sandbox-sandbox';
 
 const mockMkdir = vi.fn();
 const mockWriteFile = vi.fn();

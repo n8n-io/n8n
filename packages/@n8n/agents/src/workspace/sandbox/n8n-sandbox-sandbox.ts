@@ -1,10 +1,5 @@
-import {
-	BaseSandbox,
-	type CommandResult,
-	type ExecuteCommandOptions,
-	type ProviderStatus,
-	type SandboxInfo,
-} from '@n8n/agents';
+import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import { BaseSandbox } from './base-sandbox';
 import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';

@@ -1,6 +1,6 @@
-import { DaytonaFilesystem } from './daytona-filesystem';
+import { DaytonaFilesystem } from '../filesystem/daytona-filesystem';
+import { N8nSandboxFilesystem } from '../filesystem/n8n-sandbox-filesystem';
 import { DaytonaSandbox } from './daytona-sandbox';
-import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import type {
 	CreateSandboxOptions,

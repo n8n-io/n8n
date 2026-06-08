@@ -7,7 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import path from 'node:path';
 import { z } from 'zod';
 

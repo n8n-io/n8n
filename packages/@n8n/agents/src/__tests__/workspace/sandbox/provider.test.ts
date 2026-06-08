@@ -1,4 +1,8 @@
-import { DEFAULT_SANDBOX_PROVIDER, isSandboxProvider, normalizeSandboxProvider } from '../provider';
+import {
+	DEFAULT_SANDBOX_PROVIDER,
+	isSandboxProvider,
+	normalizeSandboxProvider,
+} from '../../../workspace/sandbox/provider';
 
 describe('normalizeSandboxProvider', () => {
 	it('returns n8n-sandbox for undefined', () => {

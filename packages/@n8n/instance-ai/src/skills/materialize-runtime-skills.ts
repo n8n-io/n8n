@@ -11,7 +11,7 @@ import {
 	type RuntimeSkillSource,
 	type Workspace,
 } from '@n8n/agents';
-import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';

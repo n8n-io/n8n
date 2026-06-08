@@ -1,5 +1,5 @@
 import { instanceAiSandboxProviderSchema } from '@n8n/api-types';
-import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/ai-utilities/sandbox';
+import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/agents/sandbox';
 import { OperationalError } from 'n8n-workflow';
 
 import {

@@ -12,7 +12,7 @@ import {
 	runInSandbox as runInSharedSandbox,
 	type SandboxCommandTarget,
 	type SandboxWorkspace as SharedSandboxWorkspace,
-} from '@n8n/ai-utilities/sandbox';
+} from '@n8n/agents/sandbox';
 
 export interface SandboxWorkspace extends SharedSandboxWorkspace {
 	filesystem?: {

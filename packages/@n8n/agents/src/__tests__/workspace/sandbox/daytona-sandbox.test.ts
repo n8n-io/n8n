@@ -160,13 +160,13 @@ const {
 	};
 });
 
-vi.mock('../lazy-daytona', () => ({
+vi.mock('../../../workspace/sandbox/lazy-daytona', () => ({
 	loadDaytona: () => ({ Daytona, DaytonaError, DaytonaNotFoundError }),
 }));
 
-import { DaytonaFilesystem } from '../daytona-filesystem';
-import { DaytonaSandbox } from '../daytona-sandbox';
-import type { ErrorReporter, Logger } from '../logger';
+import { DaytonaFilesystem } from '../../../workspace/filesystem/daytona-filesystem';
+import { DaytonaSandbox } from '../../../workspace/sandbox/daytona-sandbox';
+import type { ErrorReporter, Logger } from '../../../workspace/sandbox/logger';
 
 function base64url(input: string): string {
 	return Buffer.from(input, 'utf8').toString('base64url');

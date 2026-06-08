@@ -7,20 +7,19 @@
  *
  * Without this adapter, Daytona workspaces only get sandbox tools (execute_command).
  */
-import {
-	BaseFilesystem,
-	type CopyOptions,
-	type FileContent,
-	type FileEntry,
-	type FileStat,
-	type ListOptions,
-	type ProviderStatus,
-	type ReadOptions,
-	type RemoveOptions,
-	type WriteOptions,
-} from '@n8n/agents';
-
-import type { DaytonaSandbox } from './daytona-sandbox';
+import type {
+	CopyOptions,
+	FileContent,
+	FileEntry,
+	FileStat,
+	ListOptions,
+	ProviderStatus,
+	ReadOptions,
+	RemoveOptions,
+	WriteOptions,
+} from '../types';
+import { BaseFilesystem } from './base-filesystem';
+import type { DaytonaSandbox } from '../sandbox/daytona-sandbox';
 
 type DaytonaFsHandle = Parameters<Parameters<DaytonaSandbox['withFilesystem']>[0]>[0];
 

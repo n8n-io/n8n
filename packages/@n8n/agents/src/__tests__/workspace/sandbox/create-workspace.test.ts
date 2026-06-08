@@ -2,12 +2,12 @@ vi.mock('@n8n/utils', () => ({
 	getJwtExpiry: vi.fn(() => undefined),
 }));
 
-import { createFilesystem, createSandbox } from '../create-workspace';
-import { DaytonaFilesystem } from '../daytona-filesystem';
-import { DaytonaSandbox } from '../daytona-sandbox';
-import { N8nSandboxFilesystem } from '../n8n-sandbox-filesystem';
-import { N8nSandboxServiceSandbox } from '../n8n-sandbox-sandbox';
-import type { SandboxConfig } from '../types';
+import { createFilesystem, createSandbox } from '../../../workspace/sandbox/create-workspace';
+import { DaytonaFilesystem } from '../../../workspace/filesystem/daytona-filesystem';
+import { DaytonaSandbox } from '../../../workspace/sandbox/daytona-sandbox';
+import { N8nSandboxFilesystem } from '../../../workspace/filesystem/n8n-sandbox-filesystem';
+import { N8nSandboxServiceSandbox } from '../../../workspace/sandbox/n8n-sandbox-sandbox';
+import type { SandboxConfig } from '../../../workspace/sandbox/types';
 
 describe('createSandbox', () => {
 	it('returns undefined when sandbox is disabled', async () => {

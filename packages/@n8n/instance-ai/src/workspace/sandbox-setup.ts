@@ -29,7 +29,7 @@
  *         *.ts                        # SDK workflow examples
  */
 
-import { getWorkspaceRoot } from '@n8n/ai-utilities/sandbox';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';

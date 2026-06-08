@@ -21,9 +21,6 @@
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
-      ],
-      "sandbox": [
-        "dist/esm/sandbox/index.d.ts"
       ]
     }
   },
@@ -58,11 +55,6 @@
       "import": "./dist/esm/web-search/index.js",
       "require": "./dist/cjs/web-search/index.js"
     },
-    "./sandbox": {
-      "types": "./dist/esm/sandbox/index.d.ts",
-      "import": "./dist/esm/sandbox/index.js",
-      "require": "./dist/cjs/sandbox/index.js"
-    },
     "./*": "./*"
   },
   "scripts": {
@@ -96,9 +88,6 @@
     "n8n-workflow": "workspace:*"
   },
   "dependencies": {
-    "@daytonaio/sdk": "catalog:",
-    "@n8n/sandbox-client": "0.0.4",
-    "@n8n/agents": "workspace:*",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",

@@ -5,7 +5,7 @@ import {
 	getWorkspaceRoot,
 	WORKSPACE_DIR,
 	type SandboxWorkspace,
-} from '../workspace-root';
+} from '../../../workspace/sandbox/workspace-root';
 
 describe('getPromptWorkspaceRoot', () => {
 	it('returns daytona workspace root', () => {

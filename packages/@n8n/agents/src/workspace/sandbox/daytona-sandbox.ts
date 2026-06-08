@@ -8,13 +8,8 @@ import type {
 	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
-import {
-	BaseSandbox,
-	type CommandResult,
-	type ExecuteCommandOptions,
-	type ProviderStatus,
-	type SandboxInfo,
-} from '@n8n/agents';
+import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import { BaseSandbox } from './base-sandbox';
 import { randomUUID } from 'node:crypto';
 
 import { DaytonaAuthManager } from './daytona-auth-manager';

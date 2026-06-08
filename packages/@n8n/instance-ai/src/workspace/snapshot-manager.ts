@@ -20,7 +20,7 @@
 
 import type { Daytona, DaytonaError as TDaytonaError, Image } from '@daytonaio/sdk';
 import type { RuntimeSkillSource } from '@n8n/agents';
-import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/ai-utilities/sandbox';
+import { DAYTONA_WORKSPACE_ROOT, loadDaytona } from '@n8n/agents/sandbox';
 
 import {
 	buildKnowledgeBaseWorkspaceBundle,
