@@ -146,15 +146,7 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (
-		!text ||
-		isPreparingToSend.value ||
-		isBuilderReadOnly.value ||
-		// In builder mode, approval cards are the only way to resolve approvals.
-		// In chat mode, users can type a message to cancel any suspended tool.
-		(hasOpenApproval.value && props.endpoint !== 'chat')
-	)
-		return;
+	if (!text || isPreparingToSend.value || isBuilderReadOnly.value) return;
 
 	// When there is any open interactive tool (question or approval in chat
 	// mode), the user's message cancels the suspended tool and steers the agent.
