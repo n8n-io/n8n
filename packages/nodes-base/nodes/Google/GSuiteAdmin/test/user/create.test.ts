@@ -40,12 +40,49 @@ describe('Google GSuiteAdmin Node - Create User', () => {
 					directorySyncAdmin: false,
 					mobileAdmin: false,
 				},
-				orgUnitPath: '/',
 				customSchemas: {
 					NewTest: {
 						test: 'test',
 					},
 				},
+				orgUnitPath: '/',
+				recoveryEmail: 'recovery@example.com',
+				organizations: [
+					{
+						name: 'Acme',
+						title: 'Engineer',
+						type: 'work',
+						customType: '',
+						department: '',
+						costCenter: '',
+						description: '',
+						domain: '',
+						location: '',
+						symbol: '',
+						fullTimeEquivalent: 100000,
+						primary: false,
+					},
+				],
+				posixAccounts: [
+					{
+						username: 'jdoe',
+						uid: 1001,
+						gid: 0,
+						homeDirectory: '',
+						shell: '',
+						gecos: '',
+						systemId: '',
+						accountId: '',
+						operatingSystemType: 'linux',
+						primary: true,
+					},
+				],
+				sshPublicKeys: [
+					{
+						key: 'ssh-rsa AAAA',
+						expirationTimeUsec: 1893456000000000,
+					},
+				],
 			})
 			.reply(200, {
 				kind: 'admin#directory#user',

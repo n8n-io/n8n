@@ -16,6 +16,7 @@ vi.mock('../GenericFunctions', () => ({
 	})),
 	googleApiRequest: vi.fn(),
 	googleApiRequestAllItems: vi.fn(),
+	mapUserExtraFields: vi.fn(),
 }));
 
 const node = new GSuiteAdmin();

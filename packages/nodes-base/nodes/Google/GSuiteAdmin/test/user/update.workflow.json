@@ -39,7 +39,26 @@
 							}
 						]
 					},
-					"orgUnitPath": "/"
+					"orgUnitPath": "/",
+					"recoveryEmail": "recovery@example.com",
+					"organizationUi": {
+						"organizationValues": [
+							{
+								"name": "Acme",
+								"title": "Engineer",
+								"type": "work",
+								"primary": true
+							}
+						]
+					},
+					"relationsUi": {
+						"relationsValues": [
+							{
+								"type": "manager",
+								"value": "boss@example.com"
+							}
+						]
+					}
 				}
 			},
 			"type": "n8n-nodes-base.gSuiteAdmin",

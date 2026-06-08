@@ -33,6 +33,16 @@
 					},
 					"roles": ["groupsAdmin"],
 					"orgUnitPath": "/",
+					"recoveryEmail": "recovery@example.com",
+					"organizationUi": {
+						"organizationValues": [
+							{
+								"name": "Acme",
+								"title": "Engineer",
+								"type": "work"
+							}
+						]
+					},
 					"customFields": {
 						"fieldValues": [
 							{
