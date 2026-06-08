@@ -7,7 +7,12 @@ import { useTelemetry } from '@mcp-apps/telemetry';
 import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info';
 import { isRecord } from '@mcp-apps/utils/guards';
 
-import { WORKFLOW_PREVIEW_APP_SLUG, WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from '../constants';
+import {
+	WORKFLOW_PREVIEW_APP_SLUG,
+	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
+	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+	type WorkflowPreviewRenderFailureReason,
+} from '../constants';
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
 import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
@@ -37,11 +42,13 @@ export function useWorkflowPreview({
 	const previewBaseUrl = ref<string>();
 	const previewWorkflow = shallowRef<WorkflowPreviewData>();
 	const previewError = ref<string>();
+	const previewFailureReason = ref<WorkflowPreviewRenderFailureReason>();
 	const previewLoading = ref(false);
 	const previewSent = ref(false);
 	const previewTheme = computed(() => hostContext.value?.theme);
 	const workflowDetailsRevision = ref(0);
 	let latestPreviewLoadRequestId = 0;
+	let trackedPreviewFailureRevision: number | undefined;
 
 	const ariaLabel = computed(() =>
 		previewWorkflow.value
@@ -55,6 +62,22 @@ export function useWorkflowPreview({
 
 	const isPreviewVisible = computed(
 		() => !!previewUrl.value && !!previewWorkflow.value && !previewError.value,
+	);
+	const previewRenderFailureReason = computed<WorkflowPreviewRenderFailureReason | undefined>(
+		() => {
+			if (!workflowUrl.value || previewSent.value) return undefined;
+			if (previewError.value) {
+				return (
+					previewFailureReason.value ??
+					WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE
+				);
+			}
+			if (!previewLoading.value && !previewUrl.value) {
+				return WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED;
+			}
+
+			return undefined;
+		},
 	);
 
 	const nodeCountLabel = computed(() => {
@@ -81,6 +104,16 @@ export function useWorkflowPreview({
 
 	watch(previewTheme, () => {
 		previewUrl.value = buildPreviewUrl();
+	});
+
+	watch([previewRenderFailureReason, workflowDetailsRevision], ([reason, revision]) => {
+		if (!reason || trackedPreviewFailureRevision === revision) return;
+
+		trackedPreviewFailureRevision = revision;
+		telemetry.track(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED, {
+			...getPreviewTelemetryPayload(),
+			reason,
+		});
 	});
 
 	watch(previewSent, (sent) => {
@@ -138,6 +171,15 @@ export function useWorkflowPreview({
 		return 'fallback';
 	}
 
+	function handlePreviewError(message: string) {
+		setPreviewError(message, WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED);
+	}
+
+	function setPreviewError(message: string, reason: WorkflowPreviewRenderFailureReason) {
+		previewError.value = message;
+		previewFailureReason.value = reason;
+	}
+
 	async function loadPreviewWorkflow(mcpApp: App, id: string) {
 		const requestId = ++latestPreviewLoadRequestId;
 
@@ -153,7 +195,10 @@ export function useWorkflowPreview({
 			if (!isLatestPreviewLoadRequest(requestId)) return;
 
 			if (result.isError) {
-				previewError.value = t('workflowPreview.error.detailsUnavailable');
+				setPreviewError(
+					t('workflowPreview.error.detailsUnavailable'),
+					WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE,
+				);
 				return;
 			}
 
@@ -162,7 +207,10 @@ export function useWorkflowPreview({
 				: undefined;
 			const workflow = structuredContent?.workflow;
 			if (!isWorkflowPreviewData(workflow)) {
-				previewError.value = t('workflowPreview.error.invalidWorkflow');
+				setPreviewError(
+					t('workflowPreview.error.invalidWorkflow'),
+					WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.INVALID_WORKFLOW,
+				);
 				return;
 			}
 
@@ -171,7 +219,10 @@ export function useWorkflowPreview({
 			if (!isLatestPreviewLoadRequest(requestId)) return;
 
 			console.warn('[n8n MCP App] Failed to load workflow preview data', error);
-			previewError.value = t('workflowPreview.error.detailsUnavailable');
+			setPreviewError(
+				t('workflowPreview.error.detailsUnavailable'),
+				WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE,
+			);
 		} finally {
 			if (isLatestPreviewLoadRequest(requestId)) {
 				previewLoading.value = false;
@@ -187,6 +238,7 @@ export function useWorkflowPreview({
 		latestPreviewLoadRequestId += 1;
 		previewWorkflow.value = undefined;
 		previewError.value = undefined;
+		previewFailureReason.value = undefined;
 		previewLoading.value = false;
 		previewSent.value = false;
 	}
@@ -252,6 +304,7 @@ export function useWorkflowPreview({
 		ariaLabel,
 		isPreviewVisible,
 		nodeCountLabel,
+		handlePreviewError,
 		handleOpenWorkflow,
 	};
 }

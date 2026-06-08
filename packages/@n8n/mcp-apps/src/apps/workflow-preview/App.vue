@@ -11,7 +11,11 @@ import { useMcpHostContextStyles } from '@mcp-apps/composables/use-mcp-host-cont
 import { useI18n } from '@mcp-apps/i18n';
 
 import { useWorkflowPreview } from './composables/use-workflow-preview';
-import { WORKFLOW_PREVIEW_APP_SLUG, WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from './constants';
+import {
+	WORKFLOW_PREVIEW_APP_SLUG,
+	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
+	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+} from './constants';
 
 const { t } = useI18n();
 
@@ -29,6 +33,7 @@ useMcpAppTelemetry({
 		renderFailed: WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
 	},
 	hostVersion,
+	renderFailedReason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.HOST_CONNECTION_FAILED,
 });
 
 useMcpHostContextStyles(hostContext);
@@ -45,6 +50,7 @@ const {
 	ariaLabel,
 	isPreviewVisible,
 	nodeCountLabel,
+	handlePreviewError,
 	handleOpenWorkflow,
 } = useWorkflowPreview({
 	app,
@@ -70,7 +76,7 @@ const {
 			:preview-sent="previewSent"
 			:preview-theme="previewTheme"
 			@open="handleOpenWorkflow"
-			@preview-error="previewError = $event"
+			@preview-error="handlePreviewError"
 			@preview-sent-change="previewSent = $event"
 		/>
 

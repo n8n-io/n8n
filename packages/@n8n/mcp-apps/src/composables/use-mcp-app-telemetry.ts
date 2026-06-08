@@ -16,6 +16,7 @@ type UseMcpAppTelemetryOptions = {
 	connectionStatus: Readonly<Ref<McpHostConnectionStatus>>;
 	events: McpAppLifecycleTelemetryEvents;
 	hostVersion: Readonly<Ref<Implementation | undefined>>;
+	renderFailedReason: string;
 	telemetry?: McpAppTelemetry;
 };
 
@@ -29,6 +30,7 @@ export function useMcpAppTelemetry({
 	connectionStatus,
 	events,
 	hostVersion,
+	renderFailedReason,
 	telemetry = useTelemetry(),
 }: UseMcpAppTelemetryOptions) {
 	let trackedConnection = false;
@@ -46,7 +48,8 @@ export function useMcpAppTelemetry({
 			telemetry.track(events.renderFailed, {
 				app,
 				...getMcpClientTelemetryProperties(hostVersion.value),
-				reason: getConnectionErrorReason(connectionError.value),
+				error_message: getConnectionErrorReason(connectionError.value),
+				reason: renderFailedReason,
 			});
 		},
 		{ immediate: true },

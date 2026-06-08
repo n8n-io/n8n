@@ -4,7 +4,10 @@ import { nextTick, ref, shallowRef } from 'vue';
 
 import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 
-import { WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from '../constants';
+import {
+	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
+	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+} from '../constants';
 import { useWorkflowPreview } from './use-workflow-preview';
 
 const { telemetryTrack } = vi.hoisted(() => ({
@@ -235,6 +238,73 @@ describe('useWorkflowPreview', () => {
 				mcp_client_name: 'Claude Desktop',
 				mcp_client_version: '1.2.3',
 				preview_status: 'visible',
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
+	it('tracks preview render failure when the preview iframe is not supported', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		preview.handlePreviewError('Preview not supported');
+		await nextTick();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'error',
+				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED,
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
+	it('tracks preview render failure when workflow details cannot be loaded', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({ isError: true });
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		expect(preview.previewError.value).toBe('workflowPreview.error.detailsUnavailable');
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'error',
+				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE,
 				workflow_id: 'abc123',
 			},
 		);

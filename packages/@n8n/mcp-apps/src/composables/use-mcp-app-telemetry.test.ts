@@ -17,6 +17,7 @@ function createTelemetryMock() {
 const events = {
 	renderFailed: 'Test app render failed',
 };
+const renderFailedReason = 'host_connection_failed';
 
 const hostVersion = shallowRef<Implementation>({ name: 'Claude Desktop', version: '1.2.3' });
 
@@ -31,6 +32,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionStatus,
 			events,
 			hostVersion,
+			renderFailedReason,
 			telemetry,
 		});
 
@@ -52,6 +54,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionStatus,
 			events,
 			hostVersion,
+			renderFailedReason,
 			telemetry,
 		});
 
@@ -61,9 +64,10 @@ describe('useMcpAppTelemetry', () => {
 		expect(telemetry.init).toHaveBeenCalledTimes(1);
 		expect(telemetry.track).toHaveBeenCalledWith('Test app render failed', {
 			app: 'workflow-preview',
+			error_message: 'host unavailable',
 			mcp_client_name: 'Claude Desktop',
 			mcp_client_version: '1.2.3',
-			reason: 'host unavailable',
+			reason: 'host_connection_failed',
 		});
 	});
 
@@ -77,6 +81,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionStatus,
 			events,
 			hostVersion,
+			renderFailedReason,
 			telemetry,
 		});
 
