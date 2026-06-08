@@ -481,7 +481,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	private reportCreateError(error: unknown, strategy: 'snapshot' | 'image'): void {
 		this.options.errorReporter?.error(error, {
 			tags: {
-				component: 'daytona-sandbox-factory',
+				component: 'builder-sandbox-factory',
 				strategy,
 				...(this.options.createStrategyMode ? { mode: this.options.createStrategyMode } : {}),
 			},

@@ -51,9 +51,8 @@ function getFallbackHome(workspace: SandboxWorkspace): string {
 		case 'daytona':
 			return DAYTONA_HOME;
 		case undefined:
-			return DAYTONA_HOME;
 		default:
-			throw new Error(`Unsupported sandbox provider: ${workspace?.sandbox?.provider}`);
+			return DAYTONA_HOME;
 	}
 }
 

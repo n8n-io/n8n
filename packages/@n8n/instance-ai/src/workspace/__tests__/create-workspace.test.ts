@@ -138,9 +138,10 @@ describe('createSandbox', () => {
 
 		expect(mockSnapshotManagerConstructor).not.toHaveBeenCalled();
 		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.id).toMatch(/^daytona-sandbox-/);
 		expect(sharedConfig).toEqual({
 			...config,
-			id: expect.stringMatching(/^daytona-sandbox-/),
+			id: sharedConfig.id,
 			labels: {
 				'n8n-instance-ai-sandbox-id': sharedConfig.id,
 			},

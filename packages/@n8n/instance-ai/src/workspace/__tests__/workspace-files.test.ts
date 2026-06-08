@@ -95,13 +95,11 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
 	});
 
-	it('logs successful command fallback at debug level', async () => {
+	it('logs successful command fallback at warn level', async () => {
 		const { target } = createWorkspaceTarget(new Map());
 		const writeError = new Error('filesystem unavailable');
 		target.filesystem = {
-			writeFile: vi.fn(async () => {
-				throw writeError;
-			}),
+			writeFile: vi.fn(async () => await Promise.reject(writeError)),
 		};
 		const logger = {
 			info: vi.fn(),
@@ -115,10 +113,10 @@ describe('workspace-files', () => {
 			resourceLabel: 'Knowledge base file',
 		});
 
-		expect(logger.warn).not.toHaveBeenCalled();
-		expect(logger.debug).toHaveBeenCalledWith(
+		expect(logger.warn).toHaveBeenCalledWith(
 			'Knowledge base file filesystem write failed; used command fallback',
 			expect.objectContaining({ path: '/tmp/a.txt' }),
 		);
+		expect(logger.debug).not.toHaveBeenCalled();
 	});
 });

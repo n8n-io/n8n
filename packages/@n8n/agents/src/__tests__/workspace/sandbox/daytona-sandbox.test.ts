@@ -262,7 +262,7 @@ describe('DaytonaSandbox (creation strategies)', () => {
 			snapshotError,
 			expect.objectContaining({
 				tags: {
-					component: 'daytona-sandbox-factory',
+					component: 'builder-sandbox-factory',
 					mode: 'direct',
 					strategy: 'snapshot',
 				},
@@ -290,7 +290,7 @@ describe('DaytonaSandbox (creation strategies)', () => {
 			imageError,
 			expect.objectContaining({
 				tags: {
-					component: 'daytona-sandbox-factory',
+					component: 'builder-sandbox-factory',
 					mode: 'proxy',
 					strategy: 'image',
 				},

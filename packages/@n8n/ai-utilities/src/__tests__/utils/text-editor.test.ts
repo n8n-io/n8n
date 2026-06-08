@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	EmptyOldStrError,
 	FileNotFoundError,
 	InvalidLineNumberError,
 	InvalidPathError,
@@ -49,18 +48,18 @@ describe('TextEditorDocument', () => {
 		expect(editor.getText()).toBe('const value = "$& $1 $$";');
 	});
 
-	it('rejects empty old_str instead of falling back to newline replacement', () => {
+	it('keeps master behavior for empty old_str', () => {
 		const editor = new TextEditorDocument({ initialText: 'hello\nworld' });
 
-		expect(() =>
-			editor.execute({
-				command: 'str_replace',
-				path: '/file.ts',
-				old_str: '',
-				new_str: 'REPLACED',
-			}),
-		).toThrow(EmptyOldStrError);
-		expect(editor.getText()).toBe('hello\nworld');
+		const result = editor.execute({
+			command: 'str_replace',
+			path: '/file.ts',
+			old_str: '',
+			new_str: 'REPLACED',
+		});
+
+		expect(result).toBe('Edit applied successfully.');
+		expect(editor.getText()).toBe('helloREPLACEDworld');
 	});
 
 	it('rejects missing and non-unique matches', () => {
@@ -138,7 +137,6 @@ describe('TextEditorDocument', () => {
 
 describe('text editor errors', () => {
 	it('formats matching and line errors', () => {
-		expect(new EmptyOldStrError().message).toContain('old_str cannot be empty');
 		expect(new NoMatchFoundError('search string').message).toContain('No exact match found');
 		expect(new MultipleMatchesError(3).message).toContain('Found 3 matches');
 		expect(new InvalidLineNumberError(10, 5).message).toContain('Invalid line number 10');
@@ -192,7 +190,9 @@ describe('text editor helpers', () => {
 		expect(stringResult).toEqual([{ old_str: 'old', new_str: 'new' }]);
 	});
 
-	it('rejects empty old_str when parsing batch replacements', () => {
-		expect(() => parseStrReplacements([{ old_str: '', new_str: 'new' }])).toThrow(EmptyOldStrError);
+	it('parses empty old_str to preserve master behavior', () => {
+		expect(parseStrReplacements([{ old_str: '', new_str: 'new' }])).toEqual([
+			{ old_str: '', new_str: 'new' },
+		]);
 	});
 });
