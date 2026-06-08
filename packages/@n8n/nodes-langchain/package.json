@@ -239,7 +239,7 @@
     "@google/generative-ai": "0.24.0",
     "@huggingface/inference": "4.0.5",
     "@langchain/anthropic": "catalog:",
-    "@langchain/aws": "1.0.3",
+    "@langchain/aws": "1.3.9",
     "@langchain/classic": "1.0.27",
     "@langchain/cohere": "1.0.1",
     "@langchain/community": "catalog:",
