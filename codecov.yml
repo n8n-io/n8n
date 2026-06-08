@@ -3,7 +3,6 @@ codecov:
   require_ci_to_pass: true
 
 bundle_analysis:
-  status: warning
   warning_threshold: 1%
 
 comment:
