@@ -6,7 +6,7 @@ export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
 export * from './provider-capabilities';
-export type * from './sub-agent.schema';
+export * from './sub-agent.schema';
 export * from './types';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';
 export {

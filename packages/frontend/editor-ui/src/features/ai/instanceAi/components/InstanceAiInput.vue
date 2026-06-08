@@ -324,7 +324,7 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
-			:class="props.isPlanEditMode && $style.planEditInput"
+			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
 			:placeholder="placeholder"
 			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
@@ -379,10 +379,12 @@ const resizable = computed(() => {
 				</div>
 			</template>
 		</ChatInputBase>
+		<slot name="footer"></slot>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
+				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
@@ -400,7 +402,17 @@ const resizable = computed(() => {
 .composer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	> * + * {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.inputWrapper {
+	z-index: 1;
+}
+
+.suggestions {
+	margin-top: var(--spacing--lg);
 }
 
 .attachments {

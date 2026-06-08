@@ -146,12 +146,6 @@ export function formatBackendStats(stats: BackendResolveStats): string {
 	);
 }
 
-/**
- * Force every `TN:` record in an lcov to `spec`, so the merge attributes the
- * coverage to exactly this spec (the impact map keys on TN). Prepends a `TN:`
- * if the lcov has none. Mirrors the frontend per-spec emitter.
- */
-export function forceSpecTn(lcov: string, spec: string): string {
-	const tagged = lcov.replace(/^TN:.*$/gm, `TN:${spec}`);
-	return tagged.startsWith('TN:') ? tagged : `TN:${spec}\n${tagged}`;
-}
+// forceSpecTn is owned by @n8n/test-impact's map-build kernel; re-exported here
+// so existing importers (and the test) keep their path.
+export { forceSpecTn } from '@n8n/test-impact';

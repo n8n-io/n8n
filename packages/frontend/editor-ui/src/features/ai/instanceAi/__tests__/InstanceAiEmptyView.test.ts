@@ -11,7 +11,11 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import type { FrontendModuleSettings } from '@n8n/api-types';
+
+const PERSONAL_PROJECT_ID = 'personal-project-id';
 
 const {
 	experimentMocks,
@@ -193,6 +197,8 @@ describe('InstanceAiEmptyView', () => {
 			'instance-ai': { ...defaultModuleSettings },
 		};
 		store = mockedStore(useInstanceAiStore);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.personalProject = { id: PERSONAL_PROJECT_ID } as Project;
 		thread = {
 			id: 'thread-placeholder',
 			isStreaming: false,
@@ -280,8 +286,11 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder');
-		expect(store.getOrCreateRuntime).toHaveBeenCalledWith('thread-placeholder');
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
+			'thread-placeholder',
+			PERSONAL_PROJECT_ID,
+		);
 		expect(thread.sendMessage).toHaveBeenCalledWith('hello', undefined, 'test-push-ref');
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,

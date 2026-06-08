@@ -1,6 +1,11 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import {
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_MAX_CHILDREN_MAX,
+	SUB_AGENT_MAX_CHILDREN_MIN,
+} from './sub-agent.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
@@ -78,6 +83,15 @@ const SubAgentConfigSchema = z.object({
 
 const SubAgentsConfigSchema = z
 	.object({
+		maxChildren: z
+			.number()
+			.int()
+			.min(SUB_AGENT_MAX_CHILDREN_MIN)
+			.max(SUB_AGENT_MAX_CHILDREN_MAX)
+			.optional()
+			.describe(
+				`Maximum number of child sub-agent runs this parent agent may run in parallel. Defaults to ${SUB_AGENT_MAX_CHILDREN_DEFAULT} when unset.`,
+			),
 		agents: z.array(SubAgentConfigSchema).optional(),
 	})
 	.strict();
@@ -232,6 +246,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			type: z.literal('node'),
 			name: z.string().min(1),
 			description: z.string().optional(),
+			inputSchema: z.never().optional(),
 			node: NodeConfigSchema,
 			requireApproval: z.boolean().optional(),
 		})
