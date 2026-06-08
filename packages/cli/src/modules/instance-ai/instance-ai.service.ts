@@ -4203,6 +4203,7 @@ export class InstanceAiService {
 								eventBus: this.eventBus,
 								logger: this.logger,
 								onActivity: () => this.runState.touchActiveRun(threadId),
+								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 							},
 						);
 					})
@@ -5214,6 +5215,7 @@ export class InstanceAiService {
 								logger: this.logger,
 								agentRunId: opts.agentRunId,
 								onActivity: () => this.runState.touchActiveRun(opts.threadId),
+								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 							},
 						);
 					})

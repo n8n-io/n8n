@@ -119,6 +119,16 @@ describe('OutputRedactor', () => {
 						options: ['Reply-to jane@example.com', 'Skip'],
 					},
 				],
+				tasks: { tasks: [{ id: 't1', description: 'Email jane@example.com', status: 'todo' }] },
+				planItems: [
+					{
+						id: 'p1',
+						title: 'Notify jane@example.com',
+						kind: 'task',
+						spec: 'Send to jane@example.com',
+						deps: [],
+					},
+				],
 			},
 		};
 
@@ -126,6 +136,7 @@ describe('OutputRedactor', () => {
 		const serialized = JSON.stringify(out);
 		expect(serialized).not.toContain('jane@example.com');
 		expect(serialized).toContain('[REDACTED]');
+		// Control/identifier fields are preserved so suspend/resume keeps working.
 		expect(out).toMatchObject({ payload: { requestId: 'req-1', toolCallId: 'tc-1' } });
 	});
 

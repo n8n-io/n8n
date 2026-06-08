@@ -154,9 +154,10 @@ export class OutputRedactor {
 
 	/**
 	 * Redact the human-readable text of a HITL confirmation card (message, intro,
-	 * and question/option labels). Control and identifier fields — `requestId`,
-	 * `toolCallId`, `inputType`, `credentialRequests`, etc. — are left untouched
-	 * so suspend/resume routing keeps working.
+	 * question/option labels, and task/plan-item descriptions). Control and
+	 * identifier fields — `requestId`, `toolCallId`, `inputType`,
+	 * `credentialRequests`, task `id`/`status`, plan `kind`/`deps`, etc. — are
+	 * left untouched so suspend/resume routing keeps working.
 	 */
 	private redactConfirmation(
 		event: Extract<InstanceAiEvent, { type: 'confirmation-request' }>,
@@ -168,6 +169,23 @@ export class OutputRedactor {
 			...(question.options ? { options: question.options.map((o) => this.redactString(o)) } : {}),
 		}));
 
+		const tasks = payload.tasks
+			? {
+					...payload.tasks,
+					tasks: payload.tasks.tasks.map((task) => ({
+						...task,
+						description: this.redactString(task.description),
+						...(task.detail ? { detail: this.redactString(task.detail) } : {}),
+					})),
+				}
+			: undefined;
+
+		const planItems = payload.planItems?.map((item) => ({
+			...item,
+			title: this.redactString(item.title),
+			spec: this.redactString(item.spec),
+		}));
+
 		return {
 			...event,
 			payload: {
@@ -175,6 +193,8 @@ export class OutputRedactor {
 				message: this.redactString(payload.message),
 				...(payload.introMessage ? { introMessage: this.redactString(payload.introMessage) } : {}),
 				...(questions ? { questions } : {}),
+				...(tasks ? { tasks } : {}),
+				...(planItems ? { planItems } : {}),
 			},
 		};
 	}
