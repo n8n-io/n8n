@@ -18,10 +18,15 @@ process.env.FORCE_COLOR = '1';
 // #region ===== Helper Functions =====
 
 /**
- * Get Docker platform string based on host architecture
+ * Get Docker platform string based on host architecture or environment override
  * @returns {string} Platform string (e.g., 'linux/amd64')
  */
 function getDockerPlatform() {
+	// Allow environment variable override for cross-platform builds
+	if (process.env.DOCKER_PLATFORM) {
+		return process.env.DOCKER_PLATFORM;
+	}
+
 	const arch = os.arch();
 	const dockerArch = {
 		x64: 'amd64',
@@ -86,6 +91,22 @@ async function isDockerPodmanShim() {
 		return false;
 	}
 }
+
+/**
+ * Get the driver of the currently selected buildx builder ('docker', 'docker-container', etc).
+ * Colima defaults to the 'docker' driver, which doesn't support buildkit-container flags
+ * like `--load` or `--provenance=false`.
+ * @returns {Promise<string|null>}
+ */
+async function getBuildxDriver() {
+	try {
+		const { stdout } = await $`docker buildx inspect`;
+		const match = stdout.match(/Driver:\s+(\S+)/);
+		return match ? match[1] : null;
+	} catch {
+		return null;
+	}
+}
 /**
  * @returns {Promise<(typeof SupportedContainerEngines[number])>}
  */
@@ -121,7 +142,7 @@ const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
-const nodeVersion = process.env.NODE_VERSION || '24.13.1';
+const nodeVersion = process.env.NODE_VERSION || '24.15.0';
 
 const config = {
 	base: {
@@ -268,9 +289,23 @@ async function buildDockerImage({ name, dockerfilePath, fullImageName, buildArgs
 		echo(chalk.yellow(`INFO: Registry detected - pushing directly to ${fullImageName}`));
 	}
 
+	const buildxDriver = containerEngine === 'docker' ? await getBuildxDriver() : null;
+	const useLegacyDockerBuild = containerEngine === 'docker' && buildxDriver === 'docker';
+
 	try {
 		if (containerEngine === 'podman') {
 			const { stdout } = await $`podman build \
+				--platform ${platform} \
+				--build-arg TARGETPLATFORM=${platform} \
+				${extraFlags} \
+				-t ${fullImageName} \
+				-f ${dockerfilePath} \
+				${config.buildContext}`;
+			echo(stdout);
+		} else if (useLegacyDockerBuild) {
+			// Buildx 'docker' driver (colima default) doesn't support `--load` or
+			// `--provenance=false`. Use plain `docker build` instead.
+			const { stdout } = await $`docker build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
 				${extraFlags} \

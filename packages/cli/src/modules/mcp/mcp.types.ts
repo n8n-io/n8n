@@ -24,10 +24,22 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 };
 
 // Shared MCP tool types
+export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
+	'updatedAt:desc',
+	'updatedAt:asc',
+	'createdAt:desc',
+	'createdAt:asc',
+	'name:asc',
+	'name:desc',
+] as const;
+
+export type SearchWorkflowsSortBy = (typeof SEARCH_WORKFLOWS_SORT_BY_VALUES)[number];
+
 export type SearchWorkflowsParams = {
 	limit?: number;
 	query?: string;
 	projectId?: string;
+	sortBy?: SearchWorkflowsSortBy;
 };
 
 export type SearchWorkflowsItem = {
@@ -57,21 +69,28 @@ export type JSONRPCRequest = {
 	jsonrpc?: string;
 	method?: string;
 	params?: {
-		clientInfo?: {
-			name?: string;
-			version?: string;
-		};
+		clientInfo?: McpClientInfo;
 		[key: string]: unknown;
 	};
 	id?: string | number | null;
 };
+
+export type McpClientInfo = {
+	name?: string;
+	version?: string;
+};
+
+export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
 
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
 	client_name?: string;
 	client_version?: string;
+	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
+	mcp_apps_enabled?: boolean;
+	mcp_apps_variant?: McpAppsTelemetryVariant;
 	error?: string;
 };
 
@@ -87,8 +106,8 @@ export type WorkflowNotFoundReason =
 	| 'not_available_in_mcp'
 	| 'workflow_not_active'
 	| 'unsupported_trigger'
-	| 'execution_does_not_exist'
-	| 'execution_workflow_mismatch';
+	| 'execution_not_found'
+	| 'invalid_pin_data';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;
@@ -126,5 +145,7 @@ export type TelemetryAuthContext = {
 
 export type UserWithContext = {
 	user: User | null;
+	actor?: User;
 	context?: TelemetryAuthContext;
+	authType?: Mcpauth_type;
 };

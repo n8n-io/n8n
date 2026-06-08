@@ -21,6 +21,7 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
@@ -37,12 +38,14 @@ describe('ExecutionRecoveryService', () => {
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
+	let executionPersistence: ExecutionPersistence;
 	let workflowRepository: WorkflowRepository;
 	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		executionPersistence = Container.get(ExecutionPersistence);
 		workflowRepository = Container.get(WorkflowRepository);
 		globalConfig = Container.get(GlobalConfig);
 
@@ -51,6 +54,7 @@ describe('ExecutionRecoveryService', () => {
 			instanceSettings,
 			push,
 			executionRepository,
+			executionPersistence,
 			globalConfig.executions,
 			workflowRepository,
 			mock(),
@@ -276,8 +280,53 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				assert(amendedExecution);
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
-				expect(amendedExecution.data).toEqual({ resultData: { runData: {} } });
+				expect(amendedExecution.data).toEqual({ version: 1, resultData: { runData: {} } });
 				expect(amendedExecution.status).toBe('crashed');
+			});
+
+			test('for running execution without `runData`, should reconstruct missing node data', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const executionDataWithoutRunData = structuredClone(IN_PROGRESS_EXECUTION_DATA);
+				// @ts-expect-error CAT-752
+				delete executionDataWithoutRunData.resultData.runData;
+
+				const execution = await createExecution(
+					{
+						status: 'running',
+						data: stringify(executionDataWithoutRunData),
+					},
+					workflow,
+				);
+
+				const messages = setupMessages(execution.id, workflow.name);
+
+				/**
+				 * Act
+				 */
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				/**
+				 * Assert
+				 */
+				const resultData = amendedExecution?.data.resultData;
+
+				if (!resultData) fail('Expected `resultData` to be defined');
+
+				expect(resultData.error).toBeInstanceOf(WorkflowCrashedError);
+				expect(resultData.lastNodeExecuted).toBe('DebugHelper');
+
+				const runData = resultData.runData;
+
+				if (!runData) fail('Expected `runData` to be defined');
+
+				expect(runData['When clicking "Execute workflow"']?.at(0)?.executionStatus).toBe('success');
+				expect(runData.DebugHelper?.at(0)?.executionStatus).toBe('crashed');
 			});
 
 			test('for running execution, should update `status`, `stoppedAt` and `data` if last node did not finish', async () => {

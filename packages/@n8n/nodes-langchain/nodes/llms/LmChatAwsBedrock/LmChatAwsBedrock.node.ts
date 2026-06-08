@@ -8,6 +8,7 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 
 import {
 	NodeConnectionTypes,
@@ -16,6 +17,8 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,17 +51,13 @@ export class LmChatAwsBedrock implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL: '=https://bedrock.{{$credentials?.region ?? "eu-central-1"}}.amazonaws.com',
 		},
 		properties: [
+			awsNodeAuthOptions,
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
 			{
 				displayName: 'Model Source',
@@ -139,6 +138,10 @@ export class LmChatAwsBedrock implements INodeType {
 					},
 				},
 				default: '',
+				builderHint: {
+					propertyHint:
+						'Default to the latest Claude Sonnet on Bedrock (anthropic.claude-sonnet-4-6 family). For Claude Sonnet 4+, switch Model Source to Inference Profiles. Avoid claude-sonnet-4-5, claude-3.x, and non-Claude legacy models unless requested.',
+				},
 			},
 			{
 				displayName: 'Model',
@@ -195,6 +198,10 @@ export class LmChatAwsBedrock implements INodeType {
 					},
 				},
 				default: '',
+				builderHint: {
+					propertyHint:
+						'Default to the latest Claude Sonnet inference profile (anthropic.claude-sonnet-4-6 family). Avoid claude-sonnet-4-5 and claude-3.x profiles unless specifically requested.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -226,27 +233,27 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		const { region: credentialRegion, credentials } = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
 		};
 
+		// If the model is specified as a full ARN, extract the region from it
+		// ARN format: arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>
+		let region = credentialRegion;
+		const arnMatch = modelName.match(/^arn:aws:bedrock:([a-z0-9-]+):/);
+		if (arnMatch) {
+			region = arnMatch[1];
+		}
+
 		// We set-up client manually to pass httpAgent and httpsAgent
-		const proxyAgent = getNodeProxyAgent();
+		const bedrockEndpoint = `https://bedrock-runtime.${region}.amazonaws.com`;
+		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
-			},
+			region,
+			credentials,
 		};
 
 		if (proxyAgent) {
@@ -262,7 +269,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const model = new ChatBedrockConverse({
 			client,
 			model: modelName,
-			region: credentials.region,
+			region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],

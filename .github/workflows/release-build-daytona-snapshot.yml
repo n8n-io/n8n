@@ -1,0 +1,43 @@
+name: 'Release: Build Daytona snapshot'
+
+on:
+  workflow_call:
+    inputs:
+      n8n_version:
+        description: 'n8n version to build the Daytona snapshot for'
+        required: true
+        type: string
+    secrets:
+      DAYTONA_API_KEY:
+        required: true
+      DAYTONA_API_URL:
+        required: false
+
+  workflow_dispatch:
+    inputs:
+      n8n_version:
+        description: 'n8n version to build the Daytona snapshot for (e.g. 1.123.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-snapshot:
+    name: Build versioned Daytona snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js and build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Build versioned Daytona snapshot
+        env:
+          N8N_VERSION: ${{ inputs.n8n_version }}
+          DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL }}
+        run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"

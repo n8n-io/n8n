@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
+import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -31,7 +31,7 @@ import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
-import { deepCopy, isObjectEmpty } from './utils';
+import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
@@ -311,7 +311,7 @@ export class WorkflowDataProxy {
 				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
-						throw new ApplicationError('Could not find sibling parameter on node', {
+						throw new UnexpectedError('Could not find sibling parameter on node', {
 							extra: { nodeName, parameter: key },
 						});
 					}
@@ -766,6 +766,19 @@ export class WorkflowDataProxy {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
+			}
+
+			// jmespath decodes escape sequences inside quoted identifiers, so
+			// the token check below must run against an unescaped query. Reject
+			// any backslash up front to keep the property-name match meaningful.
+			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
+				throw new ExpressionError(
+					'Cannot access this property in a jmespath query due to security concerns',
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
 			}
 
 			if (!Array.isArray(data) && typeof data === 'object') {
@@ -1229,6 +1242,24 @@ export class WorkflowDataProxy {
 										if (pinnedData) {
 											return that.returnExecutionData(pinnedData[itemIndex], resolveFullItem);
 										}
+										// The active node has not run yet (e.g. partial execution),
+										// so paired item resolution cannot trace through the chain.
+										// Fall back to reading directly from the referenced node's
+										// run data, which is what first()/last()/all() do.
+										const nodeRunData = that.getNodeExecutionOrPinnedData({
+											nodeName,
+										});
+										if (nodeRunData.length) {
+											// In the UI preview itemIndex is always 0, but guard against
+											// out-of-bounds access in case that assumption ever changes.
+											if (itemIndex >= nodeRunData.length) {
+												throw createExpressionError(
+													`"${nodeName}" node has ${nodeRunData.length} item(s) but expression references item ${itemIndex}`,
+													{ itemIndex },
+												);
+											}
+											return that.returnExecutionData(nodeRunData[itemIndex], resolveFullItem);
+										}
 									}
 
 									const executionData = that.connectionInputData;
@@ -1390,7 +1421,9 @@ export class WorkflowDataProxy {
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.first() should have no arguments');
+								throw createExpressionError(
+									"$input.first() takes no arguments. To get items from a specific upstream node, use $('NodeName').first() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;
@@ -1403,7 +1436,9 @@ export class WorkflowDataProxy {
 					if (property === 'last') {
 						return (...args: unknown[]) => {
 							if (args.length) {
-								throw createExpressionError('$input.last() should have no arguments');
+								throw createExpressionError(
+									"$input.last() takes no arguments. To get items from a specific upstream node, use $('NodeName').last() (or $('NodeName').all() for every item).",
+								);
 							}
 
 							const result = that.connectionInputData;

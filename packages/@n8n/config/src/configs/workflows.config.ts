@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -19,10 +20,6 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_ACTIVATION_BATCH_SIZE')
 	activationBatchSize: number = 1;
 
-	/** Whether to build and maintain workflow dependency indexes (for example, for subworkflow callers). */
-	@Env('N8N_WORKFLOWS_INDEXING_ENABLED')
-	indexingEnabled: boolean = true;
-
 	/** Number of workflows to process per batch during dependency indexing on startup. Defaults to 10. */
 	@Env('N8N_WORKFLOW_INDEX_BATCH_SIZE')
 	indexingBatchSize: number = 10;
@@ -30,4 +27,12 @@ export class WorkflowsConfig {
 	/** Whether to use the workflow publication service. Still under development. */
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
 	useWorkflowPublicationService: boolean = false;
+
+	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
+	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
+
+	/** Whether to disable automatic workflow saving in the editor */
+	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
+	autosaveDisabled: boolean = false;
 }

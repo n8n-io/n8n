@@ -255,6 +255,14 @@ export class License implements LicenseProvider {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
+	isCertValid(): boolean {
+		return this.manager?.isValid(false /* useLogger */) ?? false;
+	}
+
+	hasFeatureInCert(feature: BooleanLicenseFeature): boolean {
+		return this.manager?.hasFeatureEnabled(feature, false) ?? false;
+	}
+
 	/** @deprecated Use `LicenseState.isDynamicCredentialsLicensed` instead. */
 	isDynamicCredentialsEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
@@ -278,11 +286,6 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState.isSamlLicensed` instead. */
 	isSamlEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.SAML);
-	}
-
-	/** @deprecated Use `LicenseState.isApiKeyScopesLicensed` instead. */
-	isApiKeyScopesEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES);
 	}
 
 	/** @deprecated Use `LicenseState.isAiAssistantLicensed` instead. */

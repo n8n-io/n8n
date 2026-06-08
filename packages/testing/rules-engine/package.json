@@ -1,0 +1,46 @@
+{
+	"name": "@n8n/rules-engine",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Lightweight rules engine for registering, running, and reporting rule violations",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./ast": {
+			"types": "./dist/ast/index.d.ts",
+			"default": "./dist/ast/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"build": "tsc -p tsconfig.build.json",
+		"build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"test:unit": "vitest run",
+		"test:watch": "vitest",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"typecheck": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"ts-morph": "catalog:"
+	},
+	"devDependencies": {
+		"@n8n/vitest-config": "workspace:*",
+		"@vitest/coverage-v8": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

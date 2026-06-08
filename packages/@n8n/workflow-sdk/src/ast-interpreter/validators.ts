@@ -40,6 +40,7 @@ export const ALLOWED_SDK_FUNCTIONS = new Set([
 
 	// Utility
 	'fromAi', // NEW: replaces ($) => $.fromAi() pattern
+	'nodeJson',
 ]);
 
 /**
@@ -263,11 +264,7 @@ export function validateIdentifier(
 	sourceCode: string,
 ): void {
 	if (DANGEROUS_GLOBALS.has(name)) {
-		throw new SecurityError(
-			`Access to '${name}' is not allowed`,
-			node.loc ?? undefined,
-			sourceCode,
-		);
+		throw new SecurityError(name, node.loc ?? undefined, sourceCode);
 	}
 }
 
@@ -329,11 +326,7 @@ export function validateMemberExpression(node: MemberExpression, sourceCode: str
 		propName !== undefined &&
 		(propName === '__proto__' || propName === 'prototype' || propName === 'constructor')
 	) {
-		throw new SecurityError(
-			`Access to '${propName}' is not allowed`,
-			node.loc ?? undefined,
-			sourceCode,
-		);
+		throw new SecurityError(propName, node.loc ?? undefined, sourceCode);
 	}
 }
 
@@ -377,6 +370,7 @@ export function getSafeJSONMethod(
  */
 const SAFE_STRING_METHODS: Record<string, (str: string, ...args: unknown[]) => unknown> = {
 	repeat: (str: string, count: unknown) => str.repeat(count as number),
+	trim: (str: string) => str.trim(),
 };
 
 /**

@@ -28,6 +28,7 @@ import { createPinia, PiniaVuePlugin } from 'pinia';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
+import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
 
@@ -50,6 +51,12 @@ app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
 
+// Opt-in component re-render counter for the canvas performance benchmark.
+// No-op unless the N8N_RENDER_TRACKING localStorage flag is set, so it is
+// inert for real users. Must run before mount so the mixin covers every
+// component.
+installRenderTracker(app);
+
 if (import.meta.env.VUE_SCAN) {
 	const { default: VueScan } = await import('z-vue-scan');
 	app.use<VueScanOptions>(VueScan, {
@@ -58,6 +65,10 @@ if (import.meta.env.VUE_SCAN) {
 }
 
 app.mount('#app');
+
+if (import.meta.env.DEV) {
+	void import('@/app/dev/dev-panel').then((m) => m.mountDevPanel());
+}
 
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed

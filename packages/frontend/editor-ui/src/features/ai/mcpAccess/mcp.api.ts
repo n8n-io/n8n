@@ -1,14 +1,29 @@
 import type {
 	ApiKey,
+	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
 } from '@n8n/api-types';
-import type { IWorkflowSettings, WorkflowListItem } from '@/Interface';
+import type { WorkflowListItem } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
 export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
+};
+
+export type ToggleWorkflowsMcpAccessTarget =
+	| { workflowIds: string[] }
+	| { projectId: string }
+	| { folderId: string };
+
+export type ToggleWorkflowsMcpAccessResponse = {
+	updatedCount: number;
+	unchangedCount: number;
+	skippedCount: number;
+	failedCount: number;
+	updatedIds?: string[];
+	unchangedIds?: string[];
 };
 
 export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {
@@ -45,25 +60,31 @@ export async function updateAllowedRedirectUris(
 	return await makeRestApiRequest(context, 'PATCH', '/mcp/oauth/allowed-redirect-uris', { uris });
 }
 
-export async function toggleWorkflowMcpAccessApi(
+/**
+ * Bulk-toggles MCP availability for a set of workflows scoped by either an
+ * explicit id list, a project, or a folder (+ its descendants).
+ */
+export async function toggleWorkflowsMcpAccessApi(
 	context: IRestApiContext,
-	workflowId: string,
+	target: ToggleWorkflowsMcpAccessTarget,
 	availableInMCP: boolean,
-): Promise<{ id: string; settings: IWorkflowSettings | undefined; versionId: string }> {
-	return await makeRestApiRequest(
-		context,
-		'PATCH',
-		`/mcp/workflows/${encodeURIComponent(workflowId)}/toggle-access`,
-		{
-			availableInMCP,
-		},
-	);
+): Promise<ToggleWorkflowsMcpAccessResponse> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/workflows/toggle-access', {
+		availableInMCP,
+		...target,
+	});
 }
 
 export async function fetchOAuthClients(
 	context: IRestApiContext,
 ): Promise<ListOAuthClientsResponseDto> {
 	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients');
+}
+
+export async function fetchInstanceMcpClientStats(
+	context: IRestApiContext,
+): Promise<InstanceMcpClientStatsResponseDto> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients/instance-stats');
 }
 
 export async function deleteOAuthClient(

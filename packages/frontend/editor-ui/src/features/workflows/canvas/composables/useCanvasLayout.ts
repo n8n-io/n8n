@@ -4,13 +4,15 @@ import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vu
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	CanvasNodeRenderType,
+	isCanvasGroupNode,
 	type BoundingBox,
 	type CanvasConnection,
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
-import type { ComputedRef } from 'vue';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import type { ComputedRef, Ref } from 'vue';
+import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -49,7 +51,11 @@ const AI_X_SPACING = GRID_SIZE * 3;
 const AI_Y_SPACING = GRID_SIZE * 8;
 const STICKY_BOTTOM_PADDING = GRID_SIZE * 4;
 
-export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedRef<boolean>) {
+export function useCanvasLayout(
+	canvasId: string,
+	isEmbeddedNdvActive: ComputedRef<boolean>,
+	renderData: Ref<CanvasRenderData>,
+) {
 	const {
 		findNode,
 		findEdge,
@@ -59,10 +65,12 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 	} = useVueFlow(canvasId);
 
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
-		if (target === 'selection') {
-			return { nodes: getSelectedNodes.value, edges: allEdges.value };
-		}
-		return { nodes: allNodes.value, edges: allEdges.value };
+		// Group title-bar nodes are positioned from their nodes' bounding rect, not by dagre.
+		const source = target === 'selection' ? getSelectedNodes.value : allNodes.value;
+		return {
+			nodes: source.filter((node) => !isCanvasGroupNode(node)),
+			edges: allEdges.value,
+		};
 	}
 
 	function sortByPosition(posA: XYPosition, posB: XYPosition): number {
@@ -100,28 +108,11 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 		}
 
 		// Calculate dimensions based on node data
-		if (node.data && node.data.render) {
-			const isConfiguration =
-				node.data.render.type === CanvasNodeRenderType.Default &&
-				node.data.render.options.configuration === true;
-			const isConfigurable =
-				node.data.render.type === CanvasNodeRenderType.Default &&
-				node.data.render.options.configurable === true;
-
-			// Get input/output counts from node data
-			const mainInputCount = node.data.inputs.filter((input) => input.type === 'main').length || 1;
-			const mainOutputCount =
-				node.data.outputs.filter((output) => output.type === 'main').length || 1;
-			const nonMainInputCount =
-				node.data.inputs.filter((input) => input.type !== 'main').length +
-				node.data.outputs.filter((output) => output.type !== 'main').length;
-
-			return calculateNodeSize(
-				isConfiguration,
-				isConfigurable,
-				mainInputCount,
-				mainOutputCount,
-				nonMainInputCount,
+		if (node.data?.render?.type === CanvasNodeRenderType.Default) {
+			return computeNodeDisplaySize(
+				node.id,
+				node.data.render.options,
+				renderData.value,
 				isEmbeddedNdvActive.value,
 			);
 		}
@@ -565,15 +556,19 @@ export function useCanvasLayout(canvasId: string, isEmbeddedNdvActive: ComputedR
 			})
 			.filter(isPresent);
 
+		const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
+
+		const finalNodes = positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
+			return {
+				id,
+				x: snapToGrid(boundingBox.x - anchor.x),
+				y: snapToGrid(boundingBox.y - anchor.y),
+			};
+		});
+
 		return {
 			boundingBox: boundingBoxAfter,
-			nodes: positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
-				return {
-					id,
-					x: boundingBox.x - anchor.x,
-					y: boundingBox.y - anchor.y,
-				};
-			}),
+			nodes: finalNodes,
 		};
 	}
 

@@ -505,10 +505,10 @@ export class McpServer {
 
 				return MessageFormatter.formatToolResult(result);
 			} catch (error) {
-				this.logger.error(
-					`Error while executing Tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
-				);
 				const errorObject = error instanceof Error ? error : new Error(String(error));
+				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
+					error: errorObject,
+				});
 				return MessageFormatter.formatError(errorObject);
 			}
 		});

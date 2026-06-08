@@ -16,7 +16,6 @@ import { logWrapper, N8nBinaryLoader, N8nJsonLoader, metadataFilterField } from 
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
-import 'pdf-parse'; // for pdf
 
 /* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
@@ -40,7 +39,8 @@ export class DocumentDefaultDataLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Default Data Loader',
 		name: 'documentDefaultDataLoader',
-		icon: 'file:binary.svg',
+		icon: 'node:default-data-loader',
+		iconColor: 'gray',
 		group: ['transform'],
 		version: [1, 1.1],
 		defaultVersion: 1.1,

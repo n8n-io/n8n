@@ -2,10 +2,12 @@ import {
 	ApplicationError,
 	type IHttpRequestMethods,
 	isObjectEmpty,
+	sanitizeXmlName,
 	type ICredentialTestRequest,
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
+	UserError,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 import type { Request } from 'aws4';
@@ -18,6 +20,8 @@ import {
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
+import { getProxyForUrl } from 'proxy-from-env';
+import { ProxyAgent } from 'undici';
 
 import { getSystemCredentials } from './system-credentials-utils';
 
@@ -37,6 +41,19 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
 	}
 
 	return false;
+}
+
+const SUPPORTED_AWS_REGIONS: ReadonlySet<string> = new Set(regions.map((r) => r.name));
+
+/**
+ * Ensures the region value belongs to the supported AWS regions list before it
+ * is interpolated into request URLs or signing options. Anything outside the
+ * known set is rejected with a controlled error.
+ */
+export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
+	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+		throw new ApplicationError('Unsupported AWS region');
+	}
 }
 
 /**
@@ -63,6 +80,37 @@ export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: stri
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
 	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
 	return { service, region };
+}
+
+/**
+ * Maps an AWS endpoint subdomain to its SigV4 signing service name.
+ *
+ * Most AWS endpoints sign with the same name as their hostname label, but
+ * some service families (notably Amazon Bedrock) expose multiple endpoint
+ * subdomains that all sign against a single `signingName`. Without this
+ * mapping, `aws4` would derive the signing name from the host and AWS would
+ * reject the request with `SignatureDoesNotMatch`.
+ *
+ * Endpoints that already match their signing name fall through unchanged.
+ *
+ * @param service - Service name as extracted from the endpoint hostname
+ * @returns The SigV4 signing service name
+ */
+function getAwsSigningService(service: string): string {
+	switch (service) {
+		// Mirror AWS SDK Bedrock signing for HTTP Request node AWS credentials:
+		// these endpoint families are signed with the `bedrock` service namespace.
+		// https://docs.aws.amazon.com/bedrock/latest/APIReference/welcome.html#API_Reference_Endpoints
+		// https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonbedrock.html
+		case 'bedrock-runtime':
+		case 'bedrock-agent':
+		case 'bedrock-agent-runtime':
+		case 'bedrock-data-automation':
+		case 'bedrock-data-automation-runtime':
+			return 'bedrock';
+		default:
+			return service;
+	}
 }
 
 /**
@@ -107,6 +155,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 	service: string,
 	region: AWSRegion,
 ): { signOpts: Request; url: string } {
+	assertSupportedAwsRegion(region);
 	let body = requestOptions.body;
 	let endpoint: URL;
 	let query = requestOptions.qs?.query as IDataObject;
@@ -204,6 +253,8 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		bodyContent = params.toString();
 		contentTypeHeader = 'application/x-www-form-urlencoded';
 	}
+
+	const signingService = getAwsSigningService(service);
 	const signOpts = {
 		...requestOptions,
 		headers: {
@@ -215,6 +266,7 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		path,
 		body: bodyContent,
 		region,
+		...(signingService !== service && { service: signingService }),
 	} as unknown as Request;
 
 	return { signOpts, url: endpoint.origin + path };
@@ -241,6 +293,18 @@ export async function assumeRole(
 	secretAccessKey: string;
 	sessionToken: string;
 }> {
+	assertSupportedAwsRegion(region);
+
+	if (!credentials.roleArn || credentials.roleArn.trim() === '') {
+		throw new UserError('Role ARN is required when assuming a role.');
+	}
+	if (!credentials.externalId || credentials.externalId.trim() === '') {
+		throw new UserError('External ID is required when assuming a role.');
+	}
+	if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
+		throw new UserError('Role Session Name is required when assuming a role.');
+	}
+
 	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
@@ -315,11 +379,15 @@ export async function assumeRole(
 		throw new ApplicationError('Failed to sign STS request');
 	}
 
-	const response = await fetch(stsEndpoint, {
+	const proxyUrl = getProxyForUrl(stsEndpoint);
+	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+	const requestInit: RequestInit & { dispatcher?: unknown } = {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,
 		body: bodyContent,
-	});
+		...(dispatcher ? { dispatcher } : {}),
+	};
+	const response = await fetch(stsEndpoint, requestInit);
 
 	if (!response.ok) {
 		const errorText = await response.text();
@@ -330,13 +398,21 @@ export async function assumeRole(
 
 	const responseText = await response.text();
 	const responseData = await new Promise<IDataObject>((resolve, reject) => {
-		parseString(responseText, { explicitArray: false }, (err: any, data: IDataObject) => {
-			if (err) {
-				reject(err);
-			} else {
-				resolve(data);
-			}
-		});
+		parseString(
+			responseText,
+			{
+				explicitArray: false,
+				tagNameProcessors: [sanitizeXmlName],
+				attrNameProcessors: [sanitizeXmlName],
+			},
+			(err: any, data: IDataObject) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(data);
+				}
+			},
+		);
 	});
 
 	const assumeRoleResult = (responseData.AssumeRoleResponse as IDataObject)

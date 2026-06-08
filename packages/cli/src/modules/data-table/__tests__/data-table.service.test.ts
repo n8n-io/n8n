@@ -5,15 +5,16 @@ import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
 
 import type { DataTableColumn } from '../data-table-column.entity';
+import type { DataTable } from '../data-table.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
+import { EventService } from '@/events/event.service';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 import { RoleService } from '@/services/role.service';
 
@@ -27,6 +28,7 @@ describe('DataTableService', () => {
 	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
 	let mockRoleService: jest.Mocked<RoleService>;
 	let mockCsvImportService: jest.Mocked<DataTableCsvImportService>;
+	let mockEventService: jest.Mocked<EventService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -41,6 +43,7 @@ describe('DataTableService', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
+		mockEventService = mockInstance(EventService);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
@@ -54,6 +57,7 @@ describe('DataTableService', () => {
 			mockProjectRelationRepository,
 			mockRoleService,
 			mockCsvImportService,
+			mockEventService,
 		);
 
 		jest.clearAllMocks();

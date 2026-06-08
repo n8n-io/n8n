@@ -1,12 +1,19 @@
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
+import { toValue, computed, ref, watchEffect, shallowRef, onScopeDispose } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(
@@ -59,6 +66,7 @@ function createWorkflowDiff(
 	workflowNodes: Ref<INodeUi[]>,
 	workflowConnections: Ref<IConnections>,
 	workflowObjectRef: Ref<Workflow>,
+	renderData: Ref<CanvasRenderData>,
 ) {
 	// Call useCanvasMapping at setup time, not inside computed
 	// This is required because useCanvasMapping uses inject() internally
@@ -66,6 +74,7 @@ function createWorkflowDiff(
 		nodes: workflowNodes,
 		connections: workflowConnections,
 		workflowObject: workflowObjectRef,
+		renderData,
 	});
 
 	const canvasData = computed(() => {
@@ -102,21 +111,72 @@ function createWorkflowDiff(
 	};
 }
 
+function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>, side: string) {
+	const renderData = shallowRef<CanvasRenderData>({
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+		pinnedDataByNodeName: {},
+		executionIssuesByNodeName: new Map(),
+	});
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
+
+	watchEffect(() => {
+		const wf = workflowRef.value;
+		if (!wf?.id) return;
+
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+		}
+
+		const versionId = wf.versionId ?? `diff-${side}`;
+		const docId = createWorkflowDocumentId(wf.id, versionId);
+
+		workflowDocumentStore = useWorkflowDocumentStore(docId);
+		workflowDocumentStore.hydrate({ ...wf, versionId } as IWorkflowDb);
+		renderData.value = useWorkflowDocumentRenderData(docId);
+	});
+
+	function dispose() {
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+			workflowDocumentStore = null;
+		}
+	}
+
+	return { renderData, dispose };
+}
+
 export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.createWorkflowObject);
-	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.createWorkflowObject);
+	const sourceRefs = createWorkflowRefs(
+		sourceWorkflow,
+		workflowDocumentStore.value.createWorkflowObject,
+	);
+	const targetRefs = createWorkflowRefs(
+		targetWorkflow,
+		workflowDocumentStore.value.createWorkflowObject,
+	);
+
+	const { renderData: sourceRenderData, dispose: disposeSource } = createDiffRenderData(
+		sourceRefs.workflowRef,
+		'source',
+	);
+	const { renderData: targetRenderData, dispose: disposeTarget } = createDiffRenderData(
+		targetRefs.workflowRef,
+		'target',
+	);
 
 	const sourceDiff = createWorkflowDiff(
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		sourceRefs.workflowConnections,
 		sourceRefs.workflowObjectRef,
+		sourceRenderData,
 	);
 
 	const targetDiff = createWorkflowDiff(
@@ -124,7 +184,13 @@ export const useWorkflowDiff = (
 		targetRefs.workflowNodes,
 		targetRefs.workflowConnections,
 		targetRefs.workflowObjectRef,
+		targetRenderData,
 	);
+
+	onScopeDispose(() => {
+		disposeSource();
+		disposeTarget();
+	});
 
 	// Expose canvas data as source/target for backwards compatibility
 	const source = sourceDiff.canvasData;
@@ -209,6 +275,8 @@ export const useWorkflowDiff = (
 	return {
 		source,
 		target,
+		sourceRenderData,
+		targetRenderData,
 		nodesDiff,
 		connectionsDiff,
 	};

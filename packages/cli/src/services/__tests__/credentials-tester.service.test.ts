@@ -105,6 +105,46 @@ describe('CredentialsTester', () => {
 			expect(redactedMessage.message).toBe('Test failed for apiKey *****key');
 		});
 
+		it('should redact secrets for bracket-notation external secret expressions', async () => {
+			mockTestFunction.mockResolvedValue({
+				status: 'Error',
+				message: 'Test failed for apiKey secret_api_key',
+			});
+
+			const computedCredentialsData = {
+				testNestedData: {
+					access_token: 'abc123',
+					secretData: {
+						apiKey: 'secret_api_key',
+					},
+				},
+			};
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(computedCredentialsData);
+
+			const rawCredentialsData = {
+				...computedCredentialsData,
+				testNestedData: {
+					...computedCredentialsData.testNestedData,
+					secretData: {
+						apiKey: "={{ $secrets['vault']['apiKey'] }}",
+					},
+				},
+			};
+			const redactedMessage = await credentialsTester.testCredentials(
+				'user-id',
+				'testCredentials',
+				{
+					id: 'credential-id',
+					name: 'credential-name',
+					type: 'oAuth2Api',
+					data: rawCredentialsData,
+				},
+			);
+
+			expect(redactedMessage.status).toBe('Error');
+			expect(redactedMessage.message).toBe('Test failed for apiKey *****key');
+		});
+
 		it('should not redact secrets with value shorter than 3 characters', async () => {
 			mockTestFunction.mockResolvedValue({
 				status: 'Error',

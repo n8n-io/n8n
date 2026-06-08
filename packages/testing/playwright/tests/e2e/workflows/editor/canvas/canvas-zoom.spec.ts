@@ -241,7 +241,7 @@ test.describe(
 			await n8n.canvas.nodeOverflowButton('n8n').click();
 			await n8n.canvas.getContextMenuItem('open').click();
 
-			await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(1);
+			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
 		});
 
 		test.fixme('should open and close the about modal on keyboard shortcut', async ({ n8n }) => {

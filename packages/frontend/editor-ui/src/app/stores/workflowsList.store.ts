@@ -8,6 +8,7 @@ import * as workflowsApi from '@/app/api/workflows';
 import { makeRestApiRequest, type WorkflowHistory } from '@n8n/rest-api-client';
 import { computed, ref } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const rootStore = useRootStore();
@@ -89,7 +90,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	}
 
 	// Methods - Fetching
-	async function fetchWorkflowsPage(
+	async function fetchWorkflowsPageWithCount(
 		projectId?: string,
 		page = 1,
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
@@ -105,7 +106,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		} = {},
 		includeFolders = false,
 		onlySharedWithMe = false,
-	): Promise<WorkflowListResource[]> {
+	): Promise<{ data: WorkflowListResource[]; count: number }> {
 		const filter = { ...filters, projectId };
 		const options = {
 			skip: (page - 1) * pageSize,
@@ -134,6 +135,35 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 					versionId: '',
 				});
 			});
+		return { data, count };
+	}
+
+	async function fetchWorkflowsPage(
+		projectId?: string,
+		page = 1,
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+		sortBy?: string,
+		filters: {
+			query?: string;
+			tags?: string[];
+			active?: boolean;
+			isArchived?: boolean;
+			parentFolderId?: string;
+			availableInMCP?: boolean;
+			triggerNodeTypes?: string[];
+		} = {},
+		includeFolders = false,
+		onlySharedWithMe = false,
+	): Promise<WorkflowListResource[]> {
+		const { data } = await fetchWorkflowsPageWithCount(
+			projectId,
+			page,
+			pageSize,
+			sortBy,
+			filters,
+			includeFolders,
+			onlySharedWithMe,
+		);
 		return data;
 	}
 
@@ -208,6 +238,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	async function deleteWorkflow(id: string) {
 		await makeRestApiRequest(rootStore.restApiContext, 'DELETE', `/workflows/${id}`);
 		removeWorkflow(id);
+		useFavoritesStore().removeFavoriteLocally(id, 'workflow');
 	}
 
 	async function archiveWorkflowInList(
@@ -268,6 +299,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		setWorkflowInactiveInCache,
 
 		// Fetching
+		fetchWorkflowsPageWithCount,
 		fetchWorkflowsPage,
 		searchWorkflows,
 		fetchAllWorkflows,

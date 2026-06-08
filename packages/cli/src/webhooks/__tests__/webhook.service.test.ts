@@ -34,6 +34,7 @@ describe('WebhookService', () => {
 	beforeEach(() => {
 		config.load(config.default);
 		jest.clearAllMocks();
+		cacheService.set.mockResolvedValue(undefined);
 	});
 
 	[true, false].forEach((isCacheEnabled) => {
@@ -511,6 +512,38 @@ describe('WebhookService', () => {
 
 			expect(result).toEqual(responseData);
 			expect(nodeType.webhook).toHaveBeenCalled();
+		});
+
+		test('should run close functions after webhook completes', async () => {
+			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const nodeType = mock<INodeType>({
+				webhook: jest.fn().mockImplementation(async function (this: any) {
+					this.closeFunctions.push(closeFunction);
+					return responseData;
+				}),
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await webhookService.runWebhook(workflow, webhookData, node, additionalData, 'trigger', null);
+
+			expect(closeFunction).toHaveBeenCalledTimes(1);
+		});
+
+		test('should run close functions even when webhook throws', async () => {
+			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const nodeType = mock<INodeType>({
+				webhook: jest.fn().mockImplementation(async function (this: any) {
+					this.closeFunctions.push(closeFunction);
+					throw new Error('webhook failed');
+				}),
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			await expect(
+				webhookService.runWebhook(workflow, webhookData, node, additionalData, 'trigger', null),
+			).rejects.toThrow('webhook failed');
+
+			expect(closeFunction).toHaveBeenCalledTimes(1);
 		});
 	});
 

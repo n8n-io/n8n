@@ -9,7 +9,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { PublicUser, User } from '@n8n/db';
+import type { Project, PublicUser, User } from '@n8n/db';
 import {
 	FolderRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -27,6 +27,7 @@ import { v4 as uuid } from 'uuid';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import { ExecutionService } from '@/executions/execution.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
@@ -55,6 +56,8 @@ describe('GET /users', () => {
 	let owner: User;
 	let member1: User;
 	let member2: User;
+	/** Team project where `member1` and `member2` are linked (for project-scoped listing as a member). */
+	let sharedListTeamProject: Project;
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
 	let userRepository: UserRepository;
@@ -91,7 +94,9 @@ describe('GET /users', () => {
 			mfaEnabled: true,
 		});
 
-		for (let i = 0; i < 10; i++) {
+		sharedListTeamProject = await createTeamProject('shared-list-project', member1);
+		await linkUserToProject(member2, sharedListTeamProject, 'project:viewer');
+		for (let i = 0; i < 9; i++) {
 			await createTeamProject(`project${i}`, member1);
 		}
 
@@ -584,26 +589,19 @@ describe('GET /users', () => {
 					)
 					.expect(200);
 
-				expect(response.body).toEqual({
-					data: {
-						count: 1,
-						items: [
-							{
-								id: expect.any(String),
-								firstName: expect.any(String),
-								projectRelations: [
-									{
-										id: project.id,
-										role: 'project:admin',
-										name: project.name, // Ensure the project name is included
-									},
-								],
-							},
-						],
-					},
-				});
-
-				expect(response.body.data.items[0].projectRelations).toHaveLength(1);
+				expect(response.body.data.count).toBe(1);
+				expect(response.body.data.items).toHaveLength(1);
+				const [userWithProjects] = response.body.data.items;
+				expect(userWithProjects.firstName).toBe(member2.firstName);
+				expect(userWithProjects.projectRelations).toEqual(
+					expect.arrayContaining([
+						{
+							id: project.id,
+							role: 'project:admin',
+							name: project.name,
+						},
+					]),
+				);
 			});
 
 			test('should expand on projects and hide personal projects', async () => {
@@ -641,6 +639,7 @@ describe('GET /users', () => {
 					lastName: 'PendingLastName',
 					password: null,
 				});
+				await linkUserToProject(pendingUser, sharedListTeamProject, 'project:viewer');
 			});
 
 			afterAll(async () => {
@@ -668,7 +667,10 @@ describe('GET /users', () => {
 			});
 
 			test('should not include inviteAcceptUrl for pending users, if member requests it', async () => {
-				const response = await memberAgent.get('/users').expect(200);
+				const response = await memberAgent
+					.get('/users')
+					.query(`filter={ "projectId": "${sharedListTeamProject.id}" }`)
+					.expect(200);
 
 				const responseData = response.body.data as {
 					count: number;
@@ -823,15 +825,18 @@ describe('GET /users', () => {
 			});
 		});
 
-		describe('field restrictions based on user:create scope', () => {
-			test('should return limited fields for members without user:create scope', async () => {
-				const response = await memberAgent.get('/users').expect(200);
+		describe('field restrictions based on role', () => {
+			test('should return limited fields for members', async () => {
+				const response = await memberAgent
+					.get('/users')
+					.query(`filter={ "projectId": "${sharedListTeamProject.id}" }`)
+					.expect(200);
 
 				const users = response.body.data.items;
 
 				expect(users).toBeInstanceOf(Array);
 
-				// Fields that should be restricted for members without user:create scope
+				// Fields that should be restricted for members (non-owner, non-admin roles)
 				const restrictionsFields = [
 					'mfaEnabled',
 					'settings',
@@ -865,7 +870,7 @@ describe('GET /users', () => {
 				});
 			});
 
-			test('should return full fields for owners/admins with user:create scope', async () => {
+			test('should return full fields for owners and admins', async () => {
 				const response = await ownerAgent.get('/users').expect(200);
 
 				const users = response.body.data.items;
@@ -877,6 +882,18 @@ describe('GET /users', () => {
 				expect(userWithMfa).toHaveProperty('mfaEnabled', true);
 				expect(userWithMfa).toHaveProperty('isOwner');
 				expect(userWithMfa).toHaveProperty('signInType');
+			});
+
+			test('should return 404 when a member lists users for a project they are not in', async () => {
+				const memberOnlyProject = await createTeamProject('member-inaccessible-project', owner);
+
+				const response = await testServer
+					.authAgentFor(member2)
+					.get('/users')
+					.query(`filter={ "projectId": "${memberOnlyProject.id}" }`);
+
+				expect(response.status).toBe(404);
+				expect(response.body.message).toMatch(/project/i);
 			});
 		});
 	});
@@ -1711,5 +1728,42 @@ describe('PATCH /users/:id/role', () => {
 		const user = await getUserById(member.id);
 
 		expect(user.role.slug).toBe(customRole);
+	});
+
+	describe('when instance roles are managed by provisioning', () => {
+		let provisioningService: ProvisioningService;
+		let savedConfig: Record<string, unknown>;
+
+		beforeEach(async () => {
+			provisioningService = Container.get(ProvisioningService);
+			await provisioningService.getConfig();
+			// @ts-expect-error - provisioningConfig is private
+			savedConfig = { ...provisioningService.provisioningConfig };
+		});
+
+		afterEach(() => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig = { ...savedConfig };
+		});
+
+		test('should return 403 when SSO provider controls instance roles', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesProvisionInstanceRole = true;
+
+			await ownerAgent
+				.patch(`/users/${member.id}/role`)
+				.send({ newRoleName: 'global:admin' })
+				.expect(403);
+		});
+
+		test('should return 403 when expression-based role mapping is active', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			await ownerAgent
+				.patch(`/users/${member.id}/role`)
+				.send({ newRoleName: 'global:admin' })
+				.expect(403);
+		});
 	});
 });

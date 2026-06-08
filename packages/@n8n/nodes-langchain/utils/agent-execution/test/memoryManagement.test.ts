@@ -1,3 +1,4 @@
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	HumanMessage,
@@ -6,8 +7,8 @@ import {
 	ToolMessage,
 	trimMessages,
 } from '@langchain/core/messages';
-import { mock } from 'jest-mock-extended';
-import type { BaseChatMemory } from '@langchain/classic/memory';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	loadMemory,
@@ -18,17 +19,17 @@ import {
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
-jest.mock('@langchain/core/messages', () => ({
-	...jest.requireActual('@langchain/core/messages'),
-	trimMessages: jest.fn(),
+vi.mock('@langchain/core/messages', async () => ({
+	...(await vi.importActual('@langchain/core/messages')),
+	trimMessages: vi.fn(),
 }));
 
 describe('memoryManagement', () => {
-	let mockMemory: jest.Mocked<BaseChatMemory>;
-	let mockModel: jest.Mocked<BaseChatModel>;
+	let mockMemory: Mocked<BaseChatMemory>;
+	let mockModel: Mocked<BaseChatModel>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockMemory = mock<BaseChatMemory>();
 		mockModel = mock<BaseChatModel>();
 	});
@@ -180,7 +181,7 @@ describe('memoryManagement', () => {
 			];
 
 			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
-			(trimMessages as jest.Mock).mockResolvedValue(trimmedHistory);
+			(trimMessages as Mock).mockResolvedValue(trimmedHistory);
 
 			const result = await loadMemory(mockMemory, mockModel, 2000);
 
@@ -257,12 +258,12 @@ describe('memoryManagement', () => {
 	describe('extractToolCallId', () => {
 		beforeEach(() => {
 			// Mock Date.now() to return consistent values for synthetic IDs
-			jest.spyOn(Date, 'now').mockReturnValue(1234567890);
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(Date, 'now').mockReturnValue(1234567890);
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should extract string ID directly', () => {
@@ -318,11 +319,11 @@ describe('memoryManagement', () => {
 
 	describe('buildMessagesFromSteps', () => {
 		beforeEach(() => {
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should build messages with proper AIMessage from messageLog', () => {
@@ -443,15 +444,15 @@ describe('memoryManagement', () => {
 		let mockChatHistory: any;
 
 		beforeEach(() => {
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 			mockChatHistory = {
-				addMessages: jest.fn().mockResolvedValue(undefined),
+				addMessages: vi.fn().mockResolvedValue(undefined),
 			};
 			mockMemory.chatHistory = mockChatHistory;
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should use message-based storage when steps are provided and addMessages is available', async () => {

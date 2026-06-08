@@ -6,6 +6,7 @@ import {
 	N8nSelect2,
 	N8nSelect2Item,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
@@ -26,6 +27,7 @@ import ProjectCustomRolesUpgradeModal from './ProjectCustomRolesUpgradeModal.vue
 
 interface RoleSelectItem extends SelectItemProps {
 	role?: Role;
+	requiresUpgrade?: boolean;
 }
 
 const props = defineProps<{
@@ -35,6 +37,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:role': [payload: { role: Role['slug']; userId: string }];
+	'show-role-upgrade-dialog': [];
 }>();
 
 const i18n = useI18n();
@@ -103,6 +106,7 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 				value: role.slug,
 				label: role.displayName,
 				role,
+				requiresUpgrade: !role.licensed,
 			});
 		});
 	}
@@ -123,6 +127,7 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 				label: role.displayName,
 				disabled: !role.licensed,
 				role,
+				requiresUpgrade: !role.licensed,
 			});
 		});
 	}
@@ -134,9 +139,12 @@ const onRoleSelect = (value: SelectValue | undefined) => {
 	if (!value || typeof value !== 'string') return;
 	const role = props.roles.find((r) => r.slug === value);
 	if (role && !role.licensed) {
-		// Show upgrade modal for unlicensed roles
 		closeDropdown();
-		upgradeModalVisible.value = true;
+		if (role.systemRole) {
+			emit('show-role-upgrade-dialog');
+		} else {
+			upgradeModalVisible.value = true;
+		}
 		return;
 	}
 
@@ -160,6 +168,10 @@ const onAddCustomRoleClick = () => {
 		void router.push({ name: VIEWS.PROJECT_NEW_ROLE });
 	}
 };
+
+const isUnavailableRoleItem = (item: SelectItemProps) => {
+	return item.requiresUpgrade === true;
+};
 </script>
 
 <template>
@@ -178,9 +190,15 @@ const onAddCustomRoleClick = () => {
 		>
 			<!-- Custom trigger to match original styling -->
 			<template #default>
-				<span :class="$style.triggerContent">
-					{{ selectedRole?.displayName }}
-				</span>
+				<N8nTooltip
+					:content="selectedRole?.displayName"
+					:disabled="!selectedRole || dropdownOpen"
+					placement="top"
+				>
+					<span :class="$style.triggerContent">
+						{{ selectedRole?.displayName }}
+					</span>
+				</N8nTooltip>
 			</template>
 
 			<!-- Search input header -->
@@ -206,7 +224,7 @@ const onAddCustomRoleClick = () => {
 								<N8nText
 									tag="span"
 									size="medium"
-									:color="item.disabled ? 'text-light' : 'text-dark'"
+									:color="isUnavailableRoleItem(item) ? 'text-light' : 'text-dark'"
 									:class="$style.itemLabel"
 								>
 									{{ item.label }}
@@ -214,7 +232,7 @@ const onAddCustomRoleClick = () => {
 							</template>
 							<template #item-trailing>
 								<N8nBadge
-									v-if="item.disabled && hasCustomRolesLicense"
+									v-if="isUnavailableRoleItem(item)"
 									theme="warning"
 									:class="$style.upgradeBadge"
 								>

@@ -3,12 +3,19 @@ import { ref, computed } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { ButtonSize } from '@n8n/design-system/types';
 
-const props = defineProps<{
-	creditsRemaining?: number;
-	creditsQuota?: number;
-	isLowCredits: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		creditsRemaining?: number;
+		creditsQuota?: number;
+		isLowCredits: boolean;
+		buttonSize?: ButtonSize;
+	}>(),
+	{
+		buttonSize: 'large',
+	},
+);
 
 const emit = defineEmits<{
 	'upgrade-click': [];
@@ -18,9 +25,13 @@ const i18n = useI18n();
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement>();
 
-onClickOutside(dropdownRef, () => {
-	isOpen.value = false;
-});
+onClickOutside(
+	dropdownRef,
+	() => {
+		isOpen.value = false;
+	},
+	{ ignore: ['.n8n-tooltip'] },
+);
 
 const hasCredits = computed(() => {
 	return props.creditsQuota !== undefined && props.creditsRemaining !== undefined;
@@ -71,16 +82,16 @@ function onGetMoreCredits() {
 <template>
 	<div ref="dropdownRef" :class="$style.wrapper">
 		<N8nButton
-			icon="settings2"
+			icon="circle-dollar-sign"
 			variant="ghost"
-			size="large"
+			:size="props.buttonSize"
 			icon-only
 			:class="{ [$style.active]: isOpen }"
-			data-test-id="credits-settings-button"
+			data-test-id="credits-dropdown-button"
 			@click="toggleDropdown"
 		/>
 		<Transition name="dropdown">
-			<div v-if="isOpen" :class="$style.dropdown" data-test-id="credits-settings-dropdown">
+			<div v-if="isOpen" :class="$style.dropdown" data-test-id="credits-dropdown">
 				<div v-if="hasCredits" :class="$style.creditsSection">
 					<div :class="$style.creditsHeader">
 						<div :class="$style.creditsLabel">

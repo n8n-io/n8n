@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -11,6 +12,7 @@ import { createGetExecutionTool } from '../tools/get-execution.tool';
 describe('get-execution MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let executionRepository: ExecutionRepository;
+	let executionPersistence: ExecutionPersistence;
 	let workflowFinderService: WorkflowFinderService;
 	let telemetry: Telemetry;
 
@@ -23,6 +25,7 @@ describe('get-execution MCP tool', () => {
 
 	beforeEach(() => {
 		executionRepository = mockInstance(ExecutionRepository);
+		executionPersistence = mockInstance(ExecutionPersistence);
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
@@ -50,7 +53,7 @@ describe('get-execution MCP tool', () => {
 
 	describe('handler tests', () => {
 		describe('execution retrieval', () => {
-			test('throws error when execution does not exist', async () => {
+			test('returns generic error when execution is not found for workflow', async () => {
 				const tool = createGetExecutionTool(
 					user,
 					executionRepository,
@@ -60,7 +63,6 @@ describe('get-execution MCP tool', () => {
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
 				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
-				(executionRepository.existsBy as jest.Mock).mockResolvedValue(false);
 
 				const result = await tool.handler(
 					{
@@ -76,38 +78,10 @@ describe('get-execution MCP tool', () => {
 				expect(executionRepository.findIfAccessible).toHaveBeenCalledWith('missing-execution', [
 					'workflow-1',
 				]);
+				// Must not leak whether the execution exists in another workflow
 				expect(result.structuredContent).toMatchObject({
 					execution: null,
-					error: "Execution with ID 'missing-execution' does not exist",
-				});
-			});
-
-			test('throws error when execution does not belong to workflow', async () => {
-				const tool = createGetExecutionTool(
-					user,
-					executionRepository,
-					workflowFinderService,
-					telemetry,
-				);
-
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
-				(executionRepository.existsBy as jest.Mock).mockResolvedValue(true);
-
-				const result = await tool.handler(
-					{
-						workflowId: 'workflow-1',
-						executionId: 'execution-1',
-						includeData: undefined,
-						nodeNames: undefined,
-						truncateData: undefined,
-					},
-					{} as never,
-				);
-
-				expect(result.structuredContent).toMatchObject({
-					execution: null,
-					error: "Execution 'execution-1' does not belong to workflow 'workflow-1'",
+					error: "Execution 'missing-execution' not found for workflow 'workflow-1'",
 				});
 			});
 
@@ -180,7 +154,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -282,7 +258,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -337,7 +315,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -401,7 +381,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -456,7 +438,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -513,7 +497,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -581,7 +567,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -623,7 +611,9 @@ describe('get-execution MCP tool', () => {
 				};
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findWithUnflattenedData as jest.Mock).mockResolvedValue(mockExecution);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
 
 				const result = await tool.handler(
 					{
@@ -723,6 +713,70 @@ describe('get-execution MCP tool', () => {
 						retrySuccessId: 'execution-2',
 					},
 				});
+			});
+
+			test('handles execution data with circular references', async () => {
+				const tool = createGetExecutionTool(
+					user,
+					executionRepository,
+					workflowFinderService,
+					telemetry,
+				);
+
+				const mockExecutionData = createEmptyRunExecutionData();
+				// Create circular reference in node output data
+				const circularObj: Record<string, string | Record<string, unknown>> = { value: 'test' };
+				circularObj.self = circularObj;
+
+				mockExecutionData.resultData.runData = {
+					Node1: [
+						{
+							executionIndex: 0,
+							startTime: 0,
+							executionTime: 100,
+							source: [],
+							data: { main: [[{ json: circularObj }]] },
+						},
+					],
+				};
+
+				const mockExecution = {
+					id: 'execution-1',
+					workflowId: 'workflow-1',
+					mode: 'manual',
+					status: 'success',
+					startedAt: new Date('2025-01-01T00:00:00.000Z'),
+					stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+					retryOf: null,
+					retrySuccessId: null,
+					waitTill: null,
+					data: mockExecutionData,
+				};
+
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as jest.Mock).mockResolvedValue(
+					mockExecution,
+				);
+
+				const result = await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData: true,
+						nodeNames: undefined,
+						truncateData: undefined,
+					},
+					{} as never,
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					execution: {
+						id: 'execution-1',
+						status: 'success',
+					},
+				});
+				// Should not return an error — circular refs must be handled gracefully
+				expect(result.structuredContent).not.toHaveProperty('error');
 			});
 
 			test('handles execution with waitTill', async () => {

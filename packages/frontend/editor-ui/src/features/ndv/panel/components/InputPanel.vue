@@ -2,16 +2,23 @@
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
-	type Workflow,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -20,6 +27,7 @@ import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
+import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -29,12 +37,10 @@ import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: Workflow;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -81,6 +87,7 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	openSettings: [];
 	displayModeChange: [IRunDataDisplayMode];
 }>();
 
@@ -101,9 +108,21 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowState = injectWorkflowState();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const uiStore = useUIStore();
+
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
+
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+};
 
 const activeNode = computed(
 	() => workflowDocumentStore?.value?.getNodeByName(props.activeNodeName) ?? null,
@@ -112,7 +131,7 @@ const activeNode = computed(
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {
@@ -143,12 +162,12 @@ const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
 	let outputs = activeNodeType.value?.outputs ?? [];
 
-	if (props.workflowObject && activeNode.value) {
-		const node = props.workflowObject.getNode(activeNode.value.name);
+	if (activeNode.value) {
+		const node = workflowDocumentStore.value.getNodeByName(activeNode.value.name);
 
 		if (node && activeNodeType.value) {
-			inputs = NodeHelpers.getNodeInputs(props.workflowObject, node, activeNodeType.value);
-			outputs = NodeHelpers.getNodeOutputs(props.workflowObject, node, activeNodeType.value);
+			inputs = NodeHelpers.getNodeInputs(workflowObject.value, node, activeNodeType.value);
+			outputs = NodeHelpers.getNodeOutputs(workflowObject.value, node, activeNodeType.value);
 		}
 	}
 
@@ -177,16 +196,16 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowState.executingNode.executingNode;
+	const executingNode = workflowExecutionStateStore.value.executingNode.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowState.executingNode.isNodeExecuting(props.currentNodeName)
+		workflowExecutionStateStore.value.executingNode.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -194,7 +213,8 @@ const isExecutingPrevious = computed(() => {
 	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
 			(node) =>
-				workflowState.executingNode.isNodeExecuting(node.name) || node.name === triggeredNode,
+				workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.name) ||
+				node.name === triggeredNode,
 		);
 	}
 	return false;
@@ -202,7 +222,7 @@ const isExecutingPrevious = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowObject.value.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
@@ -229,7 +249,7 @@ const parentNodes = computed(() => {
 		return [];
 	}
 
-	const parents = props.workflowObject
+	const parents = workflowObject.value
 		.getParentNodesByDepth(activeNode.value.name)
 		.filter((parent) => parent.name !== activeNode.value?.name);
 	return uniqBy(parents, (parent) => parent.name);
@@ -249,12 +269,15 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return (
-		parentNode &&
-		waitingNodeTooltip(
-			workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
-			props.workflowObject,
-		)
+	if (!parentNode) return '';
+
+	const runData = workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
+	const parentRunData = runData?.[parentNode.name]?.[0];
+
+	return waitingNodeTooltip(
+		workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
+		workflowObject.value,
+		parentRunData?.metadata,
 	);
 });
 
@@ -445,7 +468,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -459,7 +481,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
@@ -660,6 +681,26 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
 		</template>
 	</RunData>
 </template>

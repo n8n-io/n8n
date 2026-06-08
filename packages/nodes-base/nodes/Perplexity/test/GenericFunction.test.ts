@@ -5,7 +5,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { sendErrorPostReceive } from '../GenericFunctions';
+import {
+	agentErrorPostReceive,
+	embeddingsErrorPostReceive,
+	searchErrorPostReceive,
+	sendErrorPostReceive,
+} from '../GenericFunctions';
 
 // Mock implementation for `this` in `sendErrorPostReceive`
 const mockExecuteSingleFunctions = {
@@ -60,19 +65,13 @@ describe('Generic Functions', () => {
 				},
 			};
 
-			await expect(
-				sendErrorPostReceive.call(
-					mockExecuteSingleFunctions,
-					testData,
-					errorResponse as unknown as IN8nHttpFullResponse,
-				),
-			).rejects.toThrowError(
-				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid model',
-					description:
-						'The model is not valid. Permitted models can be found in the documentation at https://docs.perplexity.ai/guides/model-cards.',
-				}),
+			const execution = sendErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				errorResponse as unknown as IN8nHttpFullResponse,
 			);
+			await expect(execution).rejects.toThrow(NodeApiError);
+			await expect(execution).rejects.toThrow('Invalid model');
 		});
 
 		it('should throw NodeApiError with "Invalid parameter" message if error type is invalid_parameter', async () => {
@@ -86,19 +85,13 @@ describe('Generic Functions', () => {
 				},
 			};
 
-			await expect(
-				sendErrorPostReceive.call(
-					mockExecuteSingleFunctions,
-					testData,
-					errorResponse as unknown as IN8nHttpFullResponse,
-				),
-			).rejects.toThrowError(
-				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid parameter provided.',
-					description:
-						'Please check all input parameters and ensure they are correctly formatted. Valid values can be found in the documentation at https://docs.perplexity.ai/api-reference/chat-completions.',
-				}),
+			const execution = sendErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				errorResponse as unknown as IN8nHttpFullResponse,
 			);
+			await expect(execution).rejects.toThrow(NodeApiError);
+			await expect(execution).rejects.toThrow('Invalid parameter provided.');
 		});
 
 		it('should handle "invalid_model" error with itemIndex', async () => {
@@ -113,18 +106,13 @@ describe('Generic Functions', () => {
 				},
 			};
 
-			await expect(
-				sendErrorPostReceive.call(
-					mockExecuteSingleFunctions,
-					testData,
-					errorResponse as unknown as IN8nHttpFullResponse,
-				),
-			).rejects.toThrowError(
-				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Invalid model',
-					description: 'Permitted models documentation...',
-				}),
+			const execution = sendErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				errorResponse as unknown as IN8nHttpFullResponse,
 			);
+			await expect(execution).rejects.toThrow(NodeApiError);
+			await expect(execution).rejects.toThrow('Invalid model');
 		});
 
 		it('should handle "invalid_parameter" error with non-string message', async () => {
@@ -138,18 +126,13 @@ describe('Generic Functions', () => {
 				},
 			};
 
-			await expect(
-				sendErrorPostReceive.call(
-					mockExecuteSingleFunctions,
-					testData,
-					errorResponse as unknown as IN8nHttpFullResponse,
-				),
-			).rejects.toThrowError(
-				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'An unexpected issue occurred.',
-					description: 'Please check parameters...',
-				}),
+			const execution = sendErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				errorResponse as unknown as IN8nHttpFullResponse,
 			);
+			await expect(execution).rejects.toThrow(NodeApiError);
+			await expect(execution).rejects.toThrow('An unexpected issue occurred.');
 		});
 
 		it('should throw generic error for unknown error type', async () => {
@@ -163,18 +146,13 @@ describe('Generic Functions', () => {
 				},
 			};
 
-			await expect(
-				sendErrorPostReceive.call(
-					mockExecuteSingleFunctions,
-					testData,
-					errorResponse as unknown as IN8nHttpFullResponse,
-				),
-			).rejects.toThrowError(
-				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Internal server error.',
-					description: 'Refer to API documentation...',
-				}),
+			const execution = sendErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				errorResponse as unknown as IN8nHttpFullResponse,
 			);
+			await expect(execution).rejects.toThrow(NodeApiError);
+			await expect(execution).rejects.toThrow('Internal server error.');
 		});
 
 		it('should include itemIndex in error message when present', async () => {
@@ -189,15 +167,174 @@ describe('Generic Functions', () => {
 				},
 			};
 
+			const execution = sendErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				errorResponse as unknown as IN8nHttpFullResponse,
+			);
+			await expect(execution).rejects.toThrow(NodeApiError);
+			await expect(execution).rejects.toThrow('Error with item [Item 2].');
+		});
+	});
+
+	describe('agentErrorPostReceive', () => {
+		let testData: INodeExecutionData[];
+		let testResponse: IN8nHttpFullResponse;
+
+		beforeEach(() => {
+			testData = [{ json: {} }];
+			testResponse = { statusCode: 200, headers: {}, body: {} };
+		});
+
+		it('should return data if status code is not 4xx or 5xx', async () => {
+			const result = await agentErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+			expect(result).toEqual(testData);
+		});
+
+		it('should throw NodeApiError if status code is 4xx', async () => {
+			testResponse.statusCode = 400;
+			testResponse.body = { error: { message: 'Bad request' } };
 			await expect(
-				sendErrorPostReceive.call(
+				agentErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should throw NodeApiError if status code is 5xx', async () => {
+			testResponse.statusCode = 500;
+			testResponse.body = { error: { message: 'Server error' } };
+			await expect(
+				agentErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should use statusMessage as fallback when error message is not a string', async () => {
+			const errorResponse = {
+				statusCode: 400,
+				statusMessage: 'Bad Request',
+				headers: {},
+				body: { error: { message: { detail: 'complex error' } } },
+			};
+			await expect(
+				agentErrorPostReceive.call(
 					mockExecuteSingleFunctions,
 					testData,
 					errorResponse as unknown as IN8nHttpFullResponse,
 				),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should include agent API documentation in the description', async () => {
+			testResponse.statusCode = 400;
+			testResponse.body = { error: { message: 'Invalid param' } };
+			await expect(
+				agentErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
 			).rejects.toThrowError(
-				new NodeApiError(mockExecuteSingleFunctions.getNode(), errorResponse.body, {
-					message: 'Error with item [Item 2].',
+				expect.objectContaining({
+					description: expect.stringContaining(
+						'https://docs.perplexity.ai/api-reference/agent-post',
+					),
+				}),
+			);
+		});
+	});
+
+	describe('searchErrorPostReceive', () => {
+		let testData: INodeExecutionData[];
+		let testResponse: IN8nHttpFullResponse;
+
+		beforeEach(() => {
+			testData = [{ json: {} }];
+			testResponse = { statusCode: 200, headers: {}, body: {} };
+		});
+
+		it('should return data if status code is not 4xx or 5xx', async () => {
+			const result = await searchErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+			expect(result).toEqual(testData);
+		});
+
+		it('should throw NodeApiError if status code is 4xx', async () => {
+			testResponse.statusCode = 400;
+			testResponse.body = { error: { message: 'Bad request' } };
+			await expect(
+				searchErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should throw NodeApiError if status code is 5xx', async () => {
+			testResponse.statusCode = 500;
+			testResponse.body = { error: { message: 'Server error' } };
+			await expect(
+				searchErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should include search API documentation in the description', async () => {
+			testResponse.statusCode = 400;
+			testResponse.body = { error: { message: 'Invalid query' } };
+			await expect(
+				searchErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrowError(
+				expect.objectContaining({
+					description: expect.stringContaining(
+						'https://docs.perplexity.ai/api-reference/search-post',
+					),
+				}),
+			);
+		});
+	});
+
+	describe('embeddingsErrorPostReceive', () => {
+		let testData: INodeExecutionData[];
+		let testResponse: IN8nHttpFullResponse;
+
+		beforeEach(() => {
+			testData = [{ json: {} }];
+			testResponse = { statusCode: 200, headers: {}, body: {} };
+		});
+
+		it('should return data if status code is not 4xx or 5xx', async () => {
+			const result = await embeddingsErrorPostReceive.call(
+				mockExecuteSingleFunctions,
+				testData,
+				testResponse,
+			);
+			expect(result).toEqual(testData);
+		});
+
+		it('should throw NodeApiError if status code is 4xx', async () => {
+			testResponse.statusCode = 400;
+			testResponse.body = { error: { message: 'Bad request' } };
+			await expect(
+				embeddingsErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should throw NodeApiError if status code is 5xx', async () => {
+			testResponse.statusCode = 500;
+			testResponse.body = { error: { message: 'Server error' } };
+			await expect(
+				embeddingsErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should include embeddings API documentation in the description', async () => {
+			testResponse.statusCode = 400;
+			testResponse.body = { error: { message: 'Invalid input' } };
+			await expect(
+				embeddingsErrorPostReceive.call(mockExecuteSingleFunctions, testData, testResponse),
+			).rejects.toThrowError(
+				expect.objectContaining({
+					description: expect.stringContaining(
+						'https://docs.perplexity.ai/api-reference/embeddings-post',
+					),
 				}),
 			);
 		});

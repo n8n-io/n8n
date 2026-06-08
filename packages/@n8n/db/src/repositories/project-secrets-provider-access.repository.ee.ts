@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
 
 import { ProjectSecretsProviderAccess } from '../entities';
 import type { SecretsProviderAccessRole } from '../entities';
@@ -25,8 +25,11 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 		});
 	}
 
-	async deleteByConnectionId(secretsProviderConnectionId: number): Promise<void> {
-		await this.delete({ secretsProviderConnectionId });
+	async deleteByConnectionId(
+		secretsProviderConnectionId: number,
+		entityManager: EntityManager = this.manager,
+	): Promise<void> {
+		await entityManager.delete(this.target, { secretsProviderConnectionId });
 	}
 
 	async updateProjectAccess(

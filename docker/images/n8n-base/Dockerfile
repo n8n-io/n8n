@@ -1,6 +1,8 @@
-ARG NODE_VERSION=24.13.1
+ARG NODE_VERSION=24.15.0
 
-FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
+# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# Bump the digest together with the tag when updating the base image.
+FROM dhi.io/node:24.15.0-alpine3.22-dev@sha256:a7eead704e9bd2d7a4c1b52cf595848f180365eba7c15a185ce1c3a690c1a19d
 
 ARG NODE_VERSION
 
@@ -19,7 +21,7 @@ RUN apk add --no-cache busybox-binsh && \
         git \
         openssh \
         openssl \
-        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
+        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (GPL-2.0); see SEC-398 + NODE-4184` \
         tini \
         tzdata \
         ca-certificates \

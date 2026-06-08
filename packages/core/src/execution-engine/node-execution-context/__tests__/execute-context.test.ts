@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -12,13 +11,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	ExpressionError,
-	NodeConnectionTypes,
-	type WorkflowExpression,
-} from 'n8n-workflow';
+import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
@@ -66,14 +62,18 @@ describe('ExecuteContext', () => {
 		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];
 	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const closeFn = jest.fn();
+	const closeFn = vi.fn();
 	const abortSignal = mock<AbortSignal>();
 
 	const executeContext = new ExecuteContext(
@@ -192,7 +192,7 @@ describe('ExecuteContext', () => {
 		});
 
 		it('should not validate parameter if skipValidation in options', () => {
-			const validateSpy = jest.spyOn(validateUtil, 'validateValueAgainstSchema');
+			const validateSpy = vi.spyOn(validateUtil, 'validateValueAgainstSchema');
 
 			executeContext.getNodeParameter('testParameter', 0, '', {
 				skipValidation: true,
@@ -208,6 +208,7 @@ describe('ExecuteContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials = await executeContext.getCredentials<ICredentialDataDecryptedObject>(
 				testCredentialType,
@@ -260,7 +261,7 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			const sendMessageSpy = jest.spyOn(manualModeContext, 'sendMessageToUI');
+			const sendMessageSpy = vi.spyOn(manualModeContext, 'sendMessageToUI');
 
 			manualModeContext.logNodeOutput(json, numberArg, stringArg);
 
@@ -275,7 +276,7 @@ describe('ExecuteContext', () => {
 	describe('sendChunk', () => {
 		test('should send call hook with structured chunk', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
-				runHook: jest.fn(),
+				runHook: vi.fn(),
 			});
 			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
@@ -315,7 +316,7 @@ describe('ExecuteContext', () => {
 
 		test('should send chunk without content when content is undefined', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
-				runHook: jest.fn(),
+				runHook: vi.fn(),
 			});
 			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
@@ -381,6 +382,29 @@ describe('ExecuteContext', () => {
 	describe('isToolExecution', () => {
 		it('should return false for regular workflow execution', () => {
 			expect(executeContext.isToolExecution()).toBe(false);
+		});
+	});
+
+	describe('getRuntimeCredential', () => {
+		beforeEach(() => {
+			additionalData.getRuntimeCredential.mockReset();
+		});
+
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
+
+			const result = await executeContext.getRuntimeCredential('api_key');
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
+
+			const result = await executeContext.getRuntimeCredential('missing');
+
+			expect(result).toBeUndefined();
 		});
 	});
 });

@@ -1,3 +1,4 @@
+import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
@@ -29,6 +30,7 @@ export const toolsAgentProperties: INodeProperties = {
 	placeholder: 'Add Option',
 	options: [
 		...commonOptions,
+		autoSaveHighlightedDataProperty,
 		enableStreaminOption,
 		getBatchingOptionFields(undefined, 1),
 		maxTokensFromMemoryOption,

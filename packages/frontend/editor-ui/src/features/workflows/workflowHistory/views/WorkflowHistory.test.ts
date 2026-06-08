@@ -50,7 +50,34 @@ const versionId = faker.string.nanoid();
 const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
+			Modal: defineComponent({
+				template: '<div><slot name="content" /></div>',
+			}),
+			WorkflowHistoryDiff: defineComponent({
+				emits: ['versionsChange', 'close'],
+				template: `<div>
+					<button
+						data-test-id="stub-diff-emit-same"
+						@click="$emit('versionsChange', { sourceVersionId: 'v-source', targetVersionId: 'v-target' })"
+					/>
+					<button
+						data-test-id="stub-diff-emit-other"
+						@click="$emit('versionsChange', { sourceVersionId: 'v-other-source', targetVersionId: 'v-other-target' })"
+					/>
+				</div>`,
+			}),
 			WorkflowHistoryContent: true,
+			WorkflowPublishTimelineContent: defineComponent({
+				props: {
+					id: {
+						type: String,
+						default: versionId,
+					},
+				},
+				template: `<div>
+						<button data-test-id="stub-publish-timeline-select" @click="() => $emit('selectVersion', id)" />
+					</div>`,
+			}),
 			WorkflowHistoryList: defineComponent({
 				props: {
 					id: {
@@ -112,6 +139,7 @@ describe('WorkflowHistory', () => {
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId: versionData.versionId },
+				query: route.query,
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened workflow history', {
 				instance_id: '',
@@ -211,7 +239,7 @@ describe('WorkflowHistory', () => {
 		await waitFor(() => {
 			expect(router.resolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: newWorkflowId },
+				params: { workflowId: newWorkflowId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User cloned version', {
 				instance_id: '',
@@ -232,6 +260,89 @@ describe('WorkflowHistory', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User downloaded version', {
 				instance_id: '',
 				workflow_id: workflowId,
+			});
+		});
+	});
+
+	describe('publish timeline', () => {
+		const cleanRouteState = () => {
+			Object.keys(route.params).forEach((key) => delete route.params[key]);
+			Object.keys(route.query).forEach((key) => delete route.query[key]);
+		};
+
+		beforeEach(cleanRouteState);
+		afterEach(cleanRouteState);
+
+		it('should track telemetry when landing on the publish timeline tab via query param', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('User opened publish timeline', {
+					instance_id: '',
+					workflow_id: workflowId,
+				});
+			});
+		});
+
+		it('should not track publish timeline telemetry when landing on the history tab', async () => {
+			route.params.workflowId = workflowId;
+
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User opened workflow history',
+					expect.anything(),
+				);
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User opened publish timeline',
+				expect.anything(),
+			);
+		});
+
+		it('should track telemetry when switching to the publish timeline tab', async () => {
+			route.params.workflowId = workflowId;
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				within(getByTestId('tab-publishTimeline')).getByText('Publish Timeline'),
+			);
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('User opened publish timeline', {
+					instance_id: '',
+					workflow_id: workflowId,
+				});
+			});
+		});
+
+		it('should track telemetry when selecting a version from the publish timeline', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('stub-publish-timeline-select'));
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User selected version from publish timeline',
+					{
+						instance_id: '',
+						workflow_id: workflowId,
+					},
+				);
+				expect(router.push).toHaveBeenCalledWith({
+					name: VIEWS.WORKFLOW_HISTORY,
+					params: { workflowId, versionId },
+				});
 			});
 		});
 	});
@@ -287,6 +398,48 @@ describe('WorkflowHistory', () => {
 				query: expect.objectContaining({ diffWith: expect.anything() }),
 			}),
 		);
+	});
+
+	describe('diff versions route sync', () => {
+		const setupDiffRouteSyncState = () => {
+			Object.keys(route.params).forEach((key) => delete route.params[key]);
+			Object.keys(route.query).forEach((key) => delete route.query[key]);
+			settingsStore.settings.enterprise.workflowDiffs = true;
+			route.params.workflowId = workflowId;
+			route.params.versionId = 'v-target';
+			route.query.diffWith = 'v-source';
+		};
+
+		it('should not push route when emitted diff versions already match current URL', async () => {
+			setupDiffRouteSyncState();
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			await userEvent.click(getByTestId('stub-diff-emit-same'));
+
+			expect(router.push).not.toHaveBeenCalled();
+		});
+
+		it('should push route when emitted diff versions differ from current URL', async () => {
+			setupDiffRouteSyncState();
+			route.query.preserve = 'yes';
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			await userEvent.click(getByTestId('stub-diff-emit-other'));
+
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId,
+					versionId: 'v-other-target',
+				},
+				query: {
+					diffWith: 'v-other-source',
+					preserve: 'yes',
+				},
+			});
+		});
 	});
 
 	it('should display archived tag on header if workflow is archived', async () => {

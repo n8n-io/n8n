@@ -23,8 +23,8 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
-	isDomainAllowed,
 	ensureError,
+	setSafeObjectProperty,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -34,6 +34,7 @@ import { mainProperties } from './Description';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
+	getAllowedDomains,
 	getOAuth2AdditionalParameters,
 	getSecrets,
 	prepareRequestBody,
@@ -55,6 +56,15 @@ function toText<T>(data: T) {
 	}
 	return data;
 }
+
+function isEmptyResponseBody(body: unknown): body is string {
+	return typeof body === 'string' && body.trim().length === 0;
+}
+
+function isPaginationRequestType(value: string): value is 'body' | 'headers' | 'qs' {
+	return value === 'body' || value === 'headers' || value === 'qs';
+}
+
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -159,37 +169,57 @@ export class HttpRequestV3 implements INodeType {
 			options: IRequestOptions;
 			authKeys: IAuthDataSanitizeKeys;
 			credentialType?: string;
+			responseFileName?: string;
 		}> = [];
 
 		const updadeQueryParameter = updadeQueryParameterConfig(nodeVersion);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				let allowedDomains: string | undefined;
 				if (authentication === 'genericCredentialType') {
 					genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
 					if (genericCredentialType === 'httpBasicAuth') {
 						httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpBasicAuth);
 					} else if (genericCredentialType === 'httpBearerAuth') {
 						httpBearerAuth = await this.getCredentials('httpBearerAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpBearerAuth);
 					} else if (genericCredentialType === 'httpDigestAuth') {
 						httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpDigestAuth);
 					} else if (genericCredentialType === 'httpHeaderAuth') {
 						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
 					} else if (genericCredentialType === 'httpQueryAuth') {
 						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
 					} else if (genericCredentialType === 'httpCustomAuth') {
 						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpCustomAuth);
 					} else if (genericCredentialType === 'oAuth1Api') {
 						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
 					} else if (genericCredentialType === 'oAuth2Api') {
 						oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
 					}
 				} else if (authentication === 'predefinedCredentialType') {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+					let nodeCredentialData: ICredentialDataDecryptedObject | undefined;
+					try {
+						nodeCredentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+							nodeCredentialType,
+							itemIndex,
+						);
+					} catch {}
+					if (nodeCredentialData) {
+						allowedDomains = getAllowedDomains(this.getNode(), nodeCredentialData);
+					}
 				}
 
-				const url = this.getNodeParameter('url', itemIndex);
+				let url = this.getNodeParameter('url', itemIndex);
 
 				if (typeof url !== 'string') {
 					const actualType = url === null ? 'null' : typeof url;
@@ -199,66 +229,17 @@ export class HttpRequestV3 implements INodeType {
 					);
 				}
 
+				url = url.trim();
+
+				if (!url) {
+					throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+				}
+
 				if (!url.startsWith('http://') && !url.startsWith('https://')) {
 					throw new NodeOperationError(
 						this.getNode(),
 						`Invalid URL: ${url}. URL must start with "http" or "https".`,
 					);
-				}
-
-				const checkDomainRestrictions = async (
-					credentialData: ICredentialDataDecryptedObject,
-					url: string,
-					credentialType?: string,
-				) => {
-					if (credentialData.allowedHttpRequestDomains === 'domains') {
-						const allowedDomains = credentialData.allowedDomains as string;
-
-						if (!allowedDomains || allowedDomains.trim() === '') {
-							throw new NodeOperationError(
-								this.getNode(),
-								'No allowed domains specified. Configure allowed domains or change restriction setting.',
-							);
-						}
-
-						if (!isDomainAllowed(url, { allowedDomains })) {
-							const credentialInfo = credentialType ? ` (${credentialType})` : '';
-							throw new NodeOperationError(
-								this.getNode(),
-								`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
-									`Only the following domains are allowed: ${allowedDomains}`,
-							);
-						}
-					} else if (credentialData.allowedHttpRequestDomains === 'none') {
-						throw new NodeOperationError(
-							this.getNode(),
-							'This credential is configured to prevent use within an HTTP Request node',
-						);
-					}
-				};
-
-				if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
-				if (httpBearerAuth) await checkDomainRestrictions(httpBearerAuth, url);
-				if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
-				if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
-				if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
-				if (httpCustomAuth) await checkDomainRestrictions(httpCustomAuth, url);
-				if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
-				if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
-
-				if (nodeCredentialType) {
-					try {
-						const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
-						await checkDomainRestrictions(credentialData, url, nodeCredentialType);
-					} catch (error) {
-						if (
-							error.message?.includes('Domain not allowed') ||
-							error.message?.includes('configured to prevent') ||
-							error.message?.includes('No allowed domains specified')
-						) {
-							throw error;
-						}
-					}
 				}
 
 				const provideSslCertificates = this.getNodeParameter(
@@ -367,6 +348,7 @@ export class HttpRequestV3 implements INodeType {
 					resolveWithFullResponse: true,
 					sendCredentialsOnCrossOriginRedirect:
 						sendCredentialsOnCrossOriginRedirect ?? defaultSendCredentialsOnCrossOriginRedirect,
+					allowedDomains,
 				};
 
 				if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
@@ -412,9 +394,12 @@ export class HttpRequestV3 implements INodeType {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 						let uploadData: Buffer | Readable;
+						let knownLength: number | undefined;
 
 						if (binaryData.id) {
 							uploadData = await this.helpers.getBinaryStream(binaryData.id);
+							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+							knownLength = metadata.fileSize;
 						} else {
 							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
@@ -424,6 +409,7 @@ export class HttpRequestV3 implements INodeType {
 							options: {
 								filename: binaryData.fileName,
 								contentType: binaryData.mimeType,
+								...(knownLength !== undefined && { knownLength }),
 							},
 						};
 						return accumulator;
@@ -631,7 +617,8 @@ export class HttpRequestV3 implements INodeType {
 				requests.push({
 					options: requestOptions,
 					authKeys: authDataKeys,
-					credentialType: nodeCredentialType,
+					credentialType: nodeCredentialType ?? genericCredentialType,
+					responseFileName,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -653,18 +640,24 @@ export class HttpRequestV3 implements INodeType {
 						if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
 							throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
 						}
-						continueExpression = `={{ !(${pagination.completeExpression.trim().slice(3, -2)}) }}`;
+						const completionExpression = pagination.completeExpression.trim().slice(3, -2);
+						if (response?.response?.neverError) {
+							continueExpression = `={{ !(${completionExpression}) }}`;
+						} else {
+							// In paginated mode, non-2xx responses are surfaced as errors via the helper when
+							// another request is requested. For "other", force that error path unless Never Error is enabled.
+							continueExpression = `={{ !(${completionExpression}) || ($response.statusCode < 200 || $response.statusCode >= 300) }}`;
+						}
 					}
 
 					const paginationData: PaginationOptions = {
 						continue: continueExpression,
-						request: {},
+						request: Object.create(null) as Record<string, unknown>,
 						requestInterval: pagination.requestInterval,
 					};
 
 					if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 						// Iterate over all parameters and add them to the request
-						paginationData.request = {};
 						const { parameters } = pagination.parameters;
 						if (
 							parameters.length === 1 &&
@@ -677,9 +670,6 @@ export class HttpRequestV3 implements INodeType {
 							);
 						}
 						pagination.parameters.parameters.forEach((parameter, index) => {
-							if (!paginationData.request[parameter.type]) {
-								paginationData.request[parameter.type] = {};
-							}
 							const parameterName = parameter.name;
 							if (parameterName === '') {
 								throw new NodeOperationError(
@@ -687,6 +677,18 @@ export class HttpRequestV3 implements INodeType {
 									`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
 								);
 							}
+
+							if (!isPaginationRequestType(parameter.type)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Parameter type must be one of: body, headers, qs for parameter [${
+										index + 1
+									}] in pagination settings`,
+								);
+							}
+
+							paginationData.request[parameter.type] ??= Object.create(null);
+
 							const parameterValue = parameter.value;
 							if (parameterValue === '') {
 								throw new NodeOperationError(
@@ -696,7 +698,12 @@ export class HttpRequestV3 implements INodeType {
 									}] in pagination settings, omitting it will result in an infinite loop`,
 								);
 							}
-							paginationData.request[parameter.type]![parameterName] = parameterValue;
+
+							setSafeObjectProperty(
+								paginationData.request[parameter.type]!,
+								parameterName,
+								parameterValue,
+							);
 						});
 					} else if (pagination.paginationMode === 'responseContainsNextURL') {
 						paginationData.request.url = pagination.nextURL;
@@ -778,6 +785,18 @@ export class HttpRequestV3 implements INodeType {
 
 				errorItems[itemIndex] = error.message;
 
+				// Ensure requests[] stays index-aligned with requestPromises[]/items[].
+				// If an item failed during request building, its slot may be empty.
+				// Assign a placeholder at the exact index so later items don't shift.
+				// Assign a placeholder with an empty options object to keep types happy.
+				// Error items are skipped before options is ever read.
+				if (!requests[itemIndex]) {
+					requests[itemIndex] = {
+						options: {} as IRequestOptions,
+						authKeys: {},
+					};
+				}
+
 				continue;
 			}
 		}
@@ -796,9 +815,8 @@ export class HttpRequestV3 implements INodeType {
 								const { options, authKeys, credentialType } = requests[itemIndex];
 								let secrets: string[] = [];
 								if (credentialType) {
-									const properties = this.getCredentialsProperties(credentialType);
 									const credentials = await this.getCredentials(credentialType, itemIndex);
-									secrets = getSecrets(properties, credentials);
+									secrets = getSecrets(credentials);
 								}
 								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
 								sanitizedRequests.push(sanitizedRequestOptions);
@@ -821,6 +839,8 @@ export class HttpRequestV3 implements INodeType {
 
 					continue;
 				}
+
+				const { responseFileName } = requests[itemIndex];
 
 				if (responseData!.status !== 'fulfilled') {
 					if (responseData.reason.statusCode === 429) {
@@ -914,11 +934,13 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								response.body = jsonParse(data, {
-									...(neverError
-										? { fallbackValue: {} }
-										: { errorMessage: 'Invalid JSON in response body' }),
-								});
+								response.body = isEmptyResponseBody(data)
+									? {}
+									: jsonParse(data, {
+											...(neverError
+												? { fallbackValue: {} }
+												: { errorMessage: 'Invalid JSON in response body' }),
+										});
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 							responseFormat = 'file';
@@ -993,7 +1015,8 @@ export class HttpRequestV3 implements INodeType {
 
 						preparedBinaryData.fileName = setFilename(
 							preparedBinaryData,
-							requestOptions,
+							// options is always set here: error items are skipped before this branch
+							requests[itemIndex].options,
 							responseFileName,
 						);
 
@@ -1040,14 +1063,18 @@ export class HttpRequestV3 implements INodeType {
 							}
 
 							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-								try {
-									returnItem.body = JSON.parse(returnItem.body);
-								} catch (error) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Response body is not valid JSON. Change "Response Format" to "Text"',
-										{ itemIndex },
-									);
+								if (isEmptyResponseBody(returnItem.body)) {
+									returnItem.body = {};
+								} else {
+									try {
+										returnItem.body = JSON.parse(returnItem.body);
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
+									}
 								}
 							}
 
@@ -1059,16 +1086,20 @@ export class HttpRequestV3 implements INodeType {
 							});
 						} else {
 							if (responseFormat === 'json' && typeof response === 'string') {
-								try {
-									if (typeof response !== 'object') {
-										response = JSON.parse(response);
+								if (isEmptyResponseBody(response)) {
+									response = {};
+								} else {
+									try {
+										if (typeof response !== 'object') {
+											response = JSON.parse(response);
+										}
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
 									}
-								} catch (error) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Response body is not valid JSON. Change "Response Format" to "Text"',
-										{ itemIndex },
-									);
 								}
 							}
 

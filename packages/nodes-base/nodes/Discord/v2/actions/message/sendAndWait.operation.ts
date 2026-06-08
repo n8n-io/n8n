@@ -5,11 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { configureWaitTillDate } from '../../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { getSendAndWaitProperties } from '../../../../../utils/sendAndWait/utils';
 import {
 	createSendAndWaitMessageBody,
 	parseDiscordError,
-	prepareErrorData,
 	sendDiscordMessage,
 } from '../../helpers/utils';
 import { sendToProperties } from '../common.description';
@@ -45,11 +45,14 @@ export async function execute(
 		const err = parseDiscordError.call(this, error, 0);
 
 		if (this.continueOnFail()) {
-			return prepareErrorData.call(this, err, 0);
+			return [{ json: { error: err.message } }];
 		}
 
 		throw err;
 	}
 
+	const waitTill = configureWaitTillDate(this);
+
+	await this.putExecutionToWait(waitTill);
 	return items;
 }

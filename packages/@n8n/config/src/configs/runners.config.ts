@@ -1,8 +1,10 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
+const positiveIntSchema = z.number({ coerce: true }).int().positive();
 
 export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
@@ -50,7 +52,7 @@ export class TaskRunnersConfig {
 	 * Kept high for backwards compatibility - n8n v3 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 300; // 5 minutes
+	taskTimeout: number = 5 * Time.minutes.toSeconds;
 
 	/**
 	 * How long (in seconds) a task request can wait for a runner to become
@@ -63,6 +65,13 @@ export class TaskRunnersConfig {
 	/** Interval in seconds between heartbeats from runner to broker; missing heartbeats abort the task (and restart the runner in internal mode). Must be > 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
+
+	/**
+	 * How long (in seconds) a grant token is valid for runner authentication.
+	 * Increase on slow hardware where the runner needs more time to start.
+	 */
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', positiveIntSchema)
+	grantTokenTtl: number = 30;
 
 	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**

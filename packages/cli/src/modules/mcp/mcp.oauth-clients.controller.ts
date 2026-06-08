@@ -1,5 +1,6 @@
 import {
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
@@ -51,6 +52,17 @@ export class McpOAuthClientsController {
 	}
 
 	/**
+	 * Instance-wide MCP OAuth client capacity stats. Admin-only — gated by
+	 * the `mcp:manage` global scope, matching the existing administrative
+	 * MCP settings endpoint.
+	 */
+	@GlobalScope('mcp:manage')
+	@Get('/instance-stats')
+	async getInstanceStats(): Promise<InstanceMcpClientStatsResponseDto> {
+		return await this.mcpOAuthService.getInstanceClientStats();
+	}
+
+	/**
 	 * Delete an OAuth client by ID
 	 * This will cascade delete all related tokens, authorization codes, and user consents
 	 */
@@ -68,7 +80,7 @@ export class McpOAuthClientsController {
 		});
 
 		try {
-			await this.mcpOAuthService.deleteClient(clientId);
+			await this.mcpOAuthService.deleteClient(clientId, req.user.id);
 
 			this.logger.info('OAuth client deleted successfully', {
 				clientId,

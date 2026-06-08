@@ -6,7 +6,7 @@ import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
@@ -35,6 +35,7 @@ describe('PrometheusMetricsService', () => {
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let storageConfig: StorageConfig;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -56,6 +57,7 @@ describe('PrometheusMetricsService', () => {
 					includeWorkflowExecutionDuration: false,
 					includeWorkflowNameLabel: false,
 					includeWorkflowStatistics: false,
+					includeExecutionDataMetrics: false,
 					activeWorkflowCountInterval: 30,
 					workflowStatisticsInterval: 30,
 				},
@@ -78,6 +80,7 @@ describe('PrometheusMetricsService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
 		licenseMetricsRepository = mock<LicenseMetricsRepository>();
+		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -87,6 +90,7 @@ describe('PrometheusMetricsService', () => {
 			instanceSettings,
 			workflowRepository,
 			licenseMetricsRepository,
+			storageConfig,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -103,6 +107,12 @@ describe('PrometheusMetricsService', () => {
 		prometheusMetricsService.disableAllLabels();
 	});
 
+	/** Capture the handler registered via `eventService.on(eventName, handler)`. */
+	const getEventServiceHandler = (eventName: string) => {
+		const call = (eventService.on as jest.Mock).mock.calls.find((c) => c[0] === eventName);
+		return call ? call[1] : undefined;
+	};
+
 	describe('constructor', () => {
 		it('should enable metrics based on global config', async () => {
 			const customGlobalConfig = { ...globalConfig };
@@ -113,6 +123,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -258,8 +269,8 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
-			expect(eventService.on).not.toHaveBeenCalled();
+			expect(promClient.Counter).toHaveBeenCalledTimes(6); // token exchange metrics (always registered)
+			expect(eventService.on).toHaveBeenCalledTimes(6); // token exchange event listeners
 		});
 
 		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
@@ -271,8 +282,8 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
-			expect(eventService.on).not.toHaveBeenCalled();
+			expect(promClient.Counter).toHaveBeenCalledTimes(6); // token exchange metrics (always registered)
+			expect(eventService.on).toHaveBeenCalledTimes(6); // token exchange event listeners
 		});
 
 		it('should setup active workflow count metric', async () => {
@@ -822,6 +833,245 @@ describe('PrometheusMetricsService', () => {
 			const mockSet = jest.fn();
 			expect(() => config.collect.call({ set: mockSet })).not.toThrow();
 			expect(mockSet).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('token exchange metrics', () => {
+		it('should register all 6 token exchange counters on init', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_requests_total',
+				help: 'Total number of token exchange requests.',
+				labelNames: ['result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_failures_total',
+				help: 'Total number of token exchange failures broken down by reason.',
+				labelNames: ['reason'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_embed_login_requests_total',
+				help: 'Total number of embed login requests.',
+				labelNames: ['result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_embed_login_failures_total',
+				help: 'Total number of embed login failures broken down by reason.',
+				labelNames: ['reason'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_jit_provisioning_total',
+				help: 'Total number of users JIT-provisioned via token exchange.',
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_token_exchange_identity_linked_total',
+				help: 'Total number of external identities linked to existing users via token exchange.',
+			});
+		});
+
+		it('should pre-seed result label combos on request counters', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ result: 'success' }, 0);
+			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ result: 'failure' }, 0);
+		});
+
+		it('should increment token exchange success counter on token-exchange-succeeded', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-succeeded');
+			handler({});
+
+			// @ts-expect-error private field
+			const succeedReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
+			expect(succeedReqCounter?.inc).toHaveBeenCalledWith({ result: 'success' }, 1);
+		});
+
+		it('should increment token exchange failure counter on token-exchange-failed', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-failed');
+			handler({ failureReason: 'unknown_key' });
+
+			// @ts-expect-error private field
+			const failReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
+			expect(failReqCounter?.inc).toHaveBeenCalledWith({ result: 'failure' }, 1);
+			// @ts-expect-error private field
+			const failuresCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
+			expect(failuresCounter?.inc).toHaveBeenCalledWith({ reason: 'unknown_key' }, 1);
+		});
+
+		it('should pass through "other" failure reason', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-failed');
+			handler({ failureReason: 'other' });
+
+			// @ts-expect-error private field
+			const otherCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
+			expect(otherCounter?.inc).toHaveBeenCalledWith({ reason: 'other' }, 1);
+		});
+
+		it('should pass through "role_not_allowed" failure reason', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-failed');
+			// @ts-expect-error private field
+			const roleCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
+
+			handler({ failureReason: 'role_not_allowed' });
+			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
+		});
+
+		it('should increment embed login success counter on embed-login', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('embed-login');
+			handler({});
+
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
+				{ result: 'success' },
+				1,
+			);
+		});
+
+		it('should increment embed login failure counter on embed-login-failed', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('embed-login-failed');
+			handler({ failureReason: 'invalid_signature' });
+
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
+				{ result: 'failure' },
+				1,
+			);
+			// @ts-expect-error private field
+			expect(prometheusMetricsService.counters.embedLoginFailuresTotal?.inc).toHaveBeenCalledWith(
+				{ reason: 'invalid_signature' },
+				1,
+			);
+		});
+
+		it('should increment JIT provisioning counter on token-exchange-user-provisioned', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-user-provisioned');
+			handler({});
+
+			// @ts-expect-error private field
+			const jitCounter = prometheusMetricsService.counters.tokenExchangeJitProvisioningTotal;
+			expect(jitCounter?.inc).toHaveBeenCalledWith(1);
+		});
+
+		it('should increment identity linked counter on token-exchange-identity-linked', async () => {
+			await prometheusMetricsService.init(app);
+
+			const handler = getEventServiceHandler('token-exchange-identity-linked');
+			handler({});
+
+			// @ts-expect-error private field
+			const linkedCounter = prometheusMetricsService.counters.tokenExchangeIdentityLinkedTotal;
+			expect(linkedCounter?.inc).toHaveBeenCalledWith(1);
+		});
+	});
+
+	describe('execution data metrics', () => {
+		it('should register execution data metrics and set a storage-mode gauge when enabled', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_reads_total',
+				help: 'Total number of execution data reads.',
+				labelNames: ['mode', 'result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_writes_total',
+				help: 'Total number of execution data writes.',
+				labelNames: ['mode', 'result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_unreadable_bundles_total' }),
+			);
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_read_duration_seconds' }),
+			);
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_write_duration_seconds' }),
+			);
+			expect(promClient.Gauge).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_storage_mode', labelNames: ['mode'] }),
+			);
+
+			// @ts-expect-error private field
+			const gauge = prometheusMetricsService.gauges.executionDataStorageMode;
+			expect(gauge.set).toHaveBeenCalledWith({ mode: 'db' }, 0);
+			expect(gauge.set).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(gauge.set).toHaveBeenCalledWith({ mode: 'db' }, 1); // configured mode (storageConfig.modeTag)
+		});
+
+		it('should not register execution data metrics when disabled', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_reads_total' }),
+			);
+		});
+
+		it('should count a read and observe its duration (seconds) on a successful read event', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			getEventServiceHandler('execution-data-read')({
+				mode: 'db',
+				durationMs: 200,
+				success: true,
+				unreadableBundles: 0,
+			});
+
+			// @ts-expect-error private field
+			const reads = prometheusMetricsService.counters.executionDataReadsTotal;
+			expect(reads?.inc).toHaveBeenCalledWith({ mode: 'db', result: 'success' }, 1);
+			// @ts-expect-error private field
+			const histogram = prometheusMetricsService.histograms.executionDataReadDuration;
+			expect(histogram.observe).toHaveBeenCalledWith({ mode: 'db' }, 0.2);
+		});
+
+		it('should count unreadable bundles reported by a read event', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			getEventServiceHandler('execution-data-read')({
+				mode: 'fs',
+				durationMs: 5,
+				success: true,
+				unreadableBundles: 3,
+			});
+
+			// @ts-expect-error private field
+			const unreadable = prometheusMetricsService.counters.executionDataUnreadableBundlesTotal;
+			expect(unreadable?.inc).toHaveBeenCalledWith({ mode: 'fs' }, 3);
+		});
+
+		it('should count a failed write without observing its duration', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			getEventServiceHandler('execution-data-write')({
+				mode: 'db',
+				durationMs: 10,
+				success: false,
+			});
+
+			// @ts-expect-error private field
+			const writes = prometheusMetricsService.counters.executionDataWritesTotal;
+			expect(writes?.inc).toHaveBeenCalledWith({ mode: 'db', result: 'failure' }, 1);
+			// @ts-expect-error private field
+			const histogram = prometheusMetricsService.histograms.executionDataWriteDuration;
+			expect(histogram.observe).not.toHaveBeenCalled();
 		});
 	});
 });

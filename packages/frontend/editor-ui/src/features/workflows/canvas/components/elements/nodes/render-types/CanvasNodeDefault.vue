@@ -4,6 +4,7 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
@@ -16,7 +17,7 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -32,24 +33,28 @@ const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
+	name,
 	label,
 	subtitle,
-	inputs,
-	outputs,
 	connections,
 	isDisabled,
 	isReadOnly,
 	isSelected,
-	hasPinnedData,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasExecutionErrors,
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const renderData = injectCanvasRenderData();
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const hasExecutionErrors = computed(
+	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -82,7 +87,11 @@ const classes = computed(() => {
 	};
 });
 
-const iconSize = computed(() => (renderOptions.value.configuration ? 30 : 40));
+const iconSize = computed(() => {
+	const iconName = iconSource.value?.type === 'icon' ? iconSource.value.name : undefined;
+	if (renderOptions.value.configuration) return getNodeIconSize('configuration', iconName);
+	return getNodeIconSize('canvas', iconName);
+});
 
 const nodeSize = computed(() =>
 	calculateNodeSize(

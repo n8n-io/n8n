@@ -29,7 +29,7 @@ vi.mock('@/app/composables/useToast', () => ({
 const routes = [
 	{ path: '/', name: 'home', component: { template: '<div></div>' } },
 	{
-		path: '/workflow/:name/debug/:executionId',
+		path: '/workflow/:workflowId/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
 		component: { template: '<div></div>' },
 	},

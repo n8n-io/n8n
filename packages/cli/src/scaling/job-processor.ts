@@ -12,6 +12,7 @@ import {
 import type { Tool } from '@langchain/core/tools';
 import type {
 	ExecutionStatus,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -20,9 +21,11 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 	CloseFunction,
+	GenericValue,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
+	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	Workflow,
 	UnexpectedError,
@@ -32,6 +35,7 @@ import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -59,6 +63,7 @@ export class JobProcessor {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
@@ -72,7 +77,7 @@ export class JobProcessor {
 	async processJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -166,7 +171,9 @@ export class JobProcessor {
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
+				pushRef,
+			}) as (type: string, data: IDataObject | IDataObject[]) => void;
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
@@ -293,6 +300,10 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
+		if (run?.status === 'canceled') {
+			throw new ManualExecutionCancelledError(executionId);
+		}
+
 		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
 			? this.deriveJobFinishedProps(run, startedAt)
 			: await this.fetchJobFinishedResult(executionId);
@@ -388,11 +399,12 @@ export class JobProcessor {
 			lastNodeExecuted: run.data.resultData.lastNodeExecuted,
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
+			waitTill: run.waitTill ?? null,
 		};
 	}
 
 	private async fetchJobFinishedResult(executionId: string): Promise<JobFinishedProps> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -412,6 +424,7 @@ export class JobProcessor {
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 			usedDynamicCredentials: !!execution.data?.executionData?.runtimeData?.credentials,
 			metadata: execution.data?.resultData?.metadata,
+			waitTill: execution.waitTill ?? null,
 		};
 	}
 
@@ -537,7 +550,10 @@ export class JobProcessor {
 
 				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
 
-				const response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				let response: IDataObject | IDataObject[] | GenericValue | GenericValue[] = [];
+				if (Array.isArray(result)) {
+					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				}
 
 				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
 					[{ json: { response } as INodeExecutionData['json'] }],

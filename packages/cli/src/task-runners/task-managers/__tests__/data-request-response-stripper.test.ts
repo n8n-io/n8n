@@ -190,6 +190,23 @@ describe('DataRequestResponseStripper', () => {
 		});
 	});
 
+	describe('resumeToken', () => {
+		it('should preserve resumeToken when all data is requested', () => {
+			const result = new DataRequestResponseStripper(taskData, allDataParam).strip();
+
+			expect(result.runExecutionData.resumeToken).toBe(taskData.runExecutionData.resumeToken);
+		});
+
+		it('should preserve resumeToken when stripping with partial dataOfNodes', () => {
+			const result = new DataRequestResponseStripper(
+				taskData,
+				newRequestParam({ dataOfNodes: [codeNode.name], prevNode: false }),
+			).strip();
+
+			expect(result.runExecutionData.resumeToken).toBe(taskData.runExecutionData.resumeToken);
+		});
+	});
+
 	describe('envProviderState', () => {
 		it("should filter out envProviderState when it's not requested", () => {
 			const dataRequestResponseBuilder = new DataRequestResponseStripper(

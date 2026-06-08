@@ -1,0 +1,26 @@
+{
+	"id": "2.1-read-local-context-doc",
+	"category": "filesystem-read",
+	"prompt": "I have a file called client-requirements.md describing a workflow I need to build. Can you read it and tell me what trigger type and notification channel it specifies?",
+	"setup": {
+		"seedFiles": [{ "from": "client-requirements.md", "to": "client-requirements.md" }]
+	},
+	"budgets": { "maxToolCalls": 15, "maxDurationMs": 180000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "read_file" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 15,
+			"maxToolResultTokensEst": 30000,
+			"maxSingleToolResultTokensEst": 15000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["webhook"],
+			"allOf": ["webhook", "slack|sales-leads"]
+		}
+	],
+	"tags": ["filesystem-read", "regression"]
+}

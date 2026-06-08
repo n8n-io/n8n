@@ -33,6 +33,7 @@ import * as utils from '../shared/utils/';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 
@@ -765,6 +766,7 @@ describe('GET /workflows/:id/:versionId', () => {
 			description: 'Version Description',
 			nodes: versionData.nodes,
 			connections: versionData.connections,
+			nodeGroups: [],
 			authors: 'Test User',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			createdAt: expect.any(String),
@@ -1246,7 +1248,140 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 });
 
+describe('POST /workflows/:id/archive', () => {
+	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/archive', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/archive', 'abcXYZ'),
+	);
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post(
+			'/workflows/00000000-0000-0000-0000-000000000000/archive',
+		);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should archive workflow and return 200', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(true);
+		expect(response.body.id).toBe(workflow.id);
+	});
+
+	test('should return 200 when already archived (idempotent)', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const second = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+		expect(second.statusCode).toBe(200);
+		expect(second.body.isArchived).toBe(true);
+	});
+
+	test('should return 403 when user lacks workflow:delete permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Delete',
+			description: 'Can read and update workflows but not delete or archive them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.isArchived).toBe(false);
+	});
+});
+
+describe('POST /workflows/:id/unarchive', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('post', '/workflows/2/unarchive', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/workflows/2/unarchive', 'abcXYZ'),
+	);
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post(
+			'/workflows/00000000-0000-0000-0000-000000000000/unarchive',
+		);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when workflow is not archived', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 403 when user lacks workflow:delete permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Delete',
+			description: 'Can read and update workflows but not delete or archive them',
+		});
+
+		const teamProject = await createTeamProject('Test Project Unarchive', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.isArchived).toBe(true);
+	});
+
+	test('should unarchive workflow and return 200', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(false);
+		expect(response.body.id).toBe(workflow.id);
+	});
+});
+
 describe('POST /workflows', () => {
+	const triggerNode = {
+		id: 'uuid-1234',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const mockPostWorkflowPayload = (name = 'testing') => ({
+		name,
+		nodes: [triggerNode],
+		connections: {},
+		settings: { executionOrder: 'v1' },
+	});
+
 	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('post', '/workflows', 'abcXYZ'));
@@ -1256,8 +1391,9 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should create workflow', async () => {
-		const payload = {
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'testing',
 			nodes: [
 				{
@@ -1270,6 +1406,39 @@ describe('POST /workflows', () => {
 				},
 			],
 			connections: {},
+			settings: {},
+			pinData: { Start: [{ json: { data: largeValue } }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Pinned data exceeds');
+	});
+
+	test('should create workflow', async () => {
+		const payload = {
+			...mockPostWorkflowPayload(),
+			nodes: [
+				triggerNode,
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Tagged NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [460, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Tagged NoOp', type: 'main', index: 0 }]],
+				},
+			},
 			staticData: null,
 			settings: {
 				saveExecutionProgress: true,
@@ -1281,6 +1450,10 @@ describe('POST /workflows', () => {
 				executionOrder: 'v1',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1323,23 +1496,40 @@ describe('POST /workflows', () => {
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should assign webhookId to webhook nodes created via public API', async () => {
+		const payload = {
+			name: 'webhook-test',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: { path: 'test-hook', httpMethod: 'POST' },
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [250, 300],
+				},
+			],
+			connections: {},
+			settings: {
+				executionOrder: 'v1',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.nodes[0].webhookId).toBeDefined();
+		expect(typeof response.body.nodes[0].webhookId).toBe('string');
 	});
 
 	test('should always create workflow history version', async () => {
 		const payload = {
-			name: 'testing',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
-			connections: {},
+			...mockPostWorkflowPayload(),
 			staticData: null,
 			settings: {
 				saveExecutionProgress: true,
@@ -1371,6 +1561,63 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
+	test('should create workflow in a team project when projectId is provided', async () => {
+		const teamProject = await createTeamProject(undefined, member);
+
+		const payload = mockPostWorkflowPayload('testing-in-project');
+
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { name, createdAt } = response.body;
+
+		expect(name).toBe(payload.name);
+		expect(createdAt).toBeDefined();
+
+		const workflowInProject = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: teamProject.id,
+				workflowId: response.body.id,
+			},
+			relations: ['workflow'],
+		});
+
+		expect(workflowInProject?.workflow.name).toBe(payload.name);
+		expect(workflowInProject?.workflow.createdAt.toISOString()).toBe(createdAt);
+		expect(workflowInProject?.role).toEqual('workflow:owner');
+	});
+
+	test('should return 404 when projectId does not exist', async () => {
+		const payload = mockPostWorkflowPayload();
+
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: 'non-existing-id',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user has no access to the project', async () => {
+		const teamProject = await createTeamProject(undefined, owner);
+
+		const payload = mockPostWorkflowPayload();
+
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to save the workflow in this project.",
+		});
+	});
+
 	test('should not add a starting node if the payload has no starting nodes', async () => {
 		const response = await authMemberAgent.post('/workflows').send({
 			name: 'testing',
@@ -1398,6 +1645,145 @@ describe('POST /workflows', () => {
 		const found = response.body.nodes.find((node: INode) => STARTING_NODES.includes(node.type));
 
 		expect(found).toBeUndefined();
+	});
+});
+
+describe('POST /workflows redaction floor enforcement', () => {
+	const redactionTrigger = {
+		id: 'uuid-redaction',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const postWorkflow = async (settings: Record<string, unknown>) =>
+		await authOwnerAgent.post('/workflows').send({
+			name: 'redaction-floor',
+			nodes: [redactionTrigger],
+			connections: {},
+			settings,
+		});
+
+	beforeEach(() => {
+		// Floor = Production, with data redaction licensed so accepted policies are
+		// persisted/seeded rather than stripped on save. The spy survives the global
+		// restoreMocks reset by being set per-test.
+		license.enable('feat:dataRedaction');
+		jest
+			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
+			.mockResolvedValue('production');
+	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
+
+	test('rejects a workflow whose redaction policy is weaker than the floor with 422', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'none' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toBe(
+			'Workflow redaction policy cannot be weaker than the instance floor.',
+		);
+	});
+
+	test('seeds the floor policy when the redaction policy is omitted', async () => {
+		const response = await postWorkflow({ executionOrder: 'v1' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+
+	test('persists a redaction policy that exceeds the floor', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('all');
+	});
+
+	test('rejects manual-only, which does not redact production, with 422', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'manual-only' });
+
+		expect(response.statusCode).toBe(422);
+	});
+
+	test('persists non-manual, which exactly meets the production floor', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'non-manual' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+});
+
+describe('PUT /workflows/:id redaction floor enforcement', () => {
+	const redactionTrigger = {
+		id: 'uuid-redaction',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const putWorkflow = async (id: string, settings: Record<string, unknown>) =>
+		await authOwnerAgent.put(`/workflows/${id}`).send({
+			name: 'redaction-floor',
+			nodes: [redactionTrigger],
+			connections: {},
+			staticData: null,
+			settings,
+		});
+
+	beforeEach(() => {
+		license.enable('feat:dataRedaction');
+		jest
+			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
+			.mockResolvedValue('production');
+	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
+
+	// Parity with POST: the update endpoint already enforced the floor; these prove the
+	// two endpoints reject and accept the same payloads (the ticket's consistency claim).
+	test('rejects a sub-floor redaction policy with 422', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'none' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toBe(
+			'Workflow redaction policy cannot be weaker than the instance floor.',
+		);
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
+	});
+
+	test('rejects manual-only, which does not redact production, with 422', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'manual-only' });
+
+		expect(response.statusCode).toBe(422);
+	});
+
+	test('does not seed a redaction policy when the update omits it', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { executionOrder: 'v1' });
+
+		expect(response.statusCode).toBe(200);
+		// Unlike create, update never seeds — an absent field leaves the policy unset.
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
+	});
+
+	test('persists a redaction policy that meets the floor', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
 	});
 });
 
@@ -1461,6 +1847,57 @@ describe('PUT /workflows/:id', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject workflow update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+			pinData: { Start: [{ json: { data: largeValue } }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Pinned data exceeds');
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflowWithHistory(
+			{ pinData: { Start: [{ json: { data: largeValue } }] } },
+			member,
+		);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'updated name',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('updated name');
+	});
+
 	test('should update workflow', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const payload = {
@@ -1481,6 +1918,12 @@ describe('PUT /workflows/:id', () => {
 					type: 'n8n-nodes-base.cron',
 					typeVersion: 1,
 					position: [400, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
 				},
 			],
 			connections: {},
@@ -1494,6 +1937,10 @@ describe('PUT /workflows/:id', () => {
 				timezone: 'America/New_York',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1535,6 +1982,8 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(payload.name);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
@@ -1745,6 +2194,78 @@ describe('PUT /workflows/:id', () => {
 			timezone: 'Europe/London', // Updated
 			callerPolicy: 'workflowsFromSameOwner', // Added
 		});
+	});
+
+	test('should preserve availableInMCP when settings are updated without it', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { saveManualExecutions: true },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.availableInMCP).toBe(true);
+	});
+
+	test('should allow explicitly setting availableInMCP to false', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { availableInMCP: false },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.availableInMCP).toBe(false);
+	});
+
+	test('should preserve non-default callerPolicy when settings are updated without it', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { callerPolicy: 'none' },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { saveManualExecutions: true },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.callerPolicy).toBe('none');
 	});
 });
 

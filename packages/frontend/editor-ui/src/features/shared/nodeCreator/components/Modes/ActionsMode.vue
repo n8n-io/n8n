@@ -273,7 +273,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
 		<div :class="$style.banner" v-if="quickConnect">
-			<QuickConnectBanner :text="quickConnect.text" />
+			<QuickConnectBanner :text="quickConnect.text" :disclaimer="quickConnect.disclaimer" />
 		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>

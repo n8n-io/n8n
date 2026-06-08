@@ -28,12 +28,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -87,13 +83,8 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
-);
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -191,12 +182,15 @@ const isFormValid = computed(() => {
 	return issues === null;
 });
 
-const destinationNode = computed(
-	() => workflowDocumentStore?.value?.getNodeByName(destination.id ?? '') ?? null,
+const destinationNode = computed(() =>
+	workflowDocumentStore.value.getNodeByName(destination.id ?? ''),
 );
 
 watch(
-	() => destinationNode.value?.credentials,
+	() =>
+		Object.keys(destinationNode.value?.credentials ?? {}).length === 0
+			? null
+			: destinationNode.value?.credentials,
 	(newCredentials) => {
 		unchanged.value = false;
 		if (newCredentials) {
@@ -227,9 +221,9 @@ function onLabelChange(value: string) {
 }
 
 function setupNode(options: MessageEventBusDestinationOptions) {
-	workflowDocumentStore?.value?.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
-	workflowDocumentStore?.value?.addNode(destinationToFakeINodeUi(options));
+	workflowDocumentStore.value.removeNode(node.value);
+	ndvStore.value.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
 }
@@ -294,7 +288,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowDocumentStore?.value?.updateNodeProperties({
+	workflowDocumentStore.value.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
@@ -334,12 +328,12 @@ async function removeThis() {
 
 function onModalClose() {
 	if (!hasOnceBeenSaved.value) {
-		workflowDocumentStore?.value?.removeNode(node.value);
+		workflowDocumentStore.value.removeNode(node.value);
 		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.markStateClean();
 }

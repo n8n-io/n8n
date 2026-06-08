@@ -17,10 +17,12 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type * as openidClientTypes from 'openid-client';
 import { EnvHttpProxyAgent } from 'undici';
+import { inspect } from 'util';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -41,11 +43,17 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	loginEnabled: false,
 	prompt: 'select_account',
 	authenticationContextClassReference: [],
+	additionalScopes: '',
 };
 
 type OidcRuntimeConfig = Pick<
 	OidcConfigDto,
-	'clientId' | 'clientSecret' | 'loginEnabled' | 'prompt' | 'authenticationContextClassReference'
+	| 'clientId'
+	| 'clientSecret'
+	| 'loginEnabled'
+	| 'prompt'
+	| 'authenticationContextClassReference'
+	| 'additionalScopes'
 > & {
 	discoveryEndpoint: URL;
 };
@@ -54,6 +62,24 @@ const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
 	...DEFAULT_OIDC_CONFIG,
 	discoveryEndpoint: new URL('http://n8n.io/not-set'),
 };
+
+/**
+ * Serialises arbitrary error causes for logging. `util.inspect` is circular-ref
+ * safe, so values like `fetch` `Response` objects carried on `oauth4webapi`
+ * errors get fully rendered instead of swallowed by `JSON.stringify`.
+ * `breakLength: 120` keeps individual log lines within typical shipper limits.
+ */
+function safeStringify(value: unknown): string {
+	try {
+		return inspect(value, { depth: 3, breakLength: 120 });
+	} catch {
+		try {
+			return Object.prototype.toString.call(value);
+		} catch {
+			return '[unserializable]';
+		}
+	}
+}
 
 @Service()
 export class OidcService {
@@ -102,19 +128,25 @@ export class OidcService {
 		};
 	}
 
-	generateState() {
+	generateState(testMode = false) {
 		const state = `n8n_state:${randomUUID()}`;
+		const payload: Record<string, unknown> = { state };
+		if (testMode) {
+			payload.testMode = true;
+		}
 		return {
-			signed: this.jwtService.sign({ state }, { expiresIn: '15m' }),
+			signed: this.jwtService.sign(payload, { expiresIn: '15m' }),
 			plaintext: state,
 		};
 	}
 
-	verifyState(signedState: string) {
+	verifyState(signedState: string): { state: string; testMode?: boolean } {
 		let state: string;
+		let testMode: boolean | undefined;
 		try {
 			const decodedState = this.jwtService.verify(signedState);
 			state = decodedState?.state;
+			testMode = decodedState?.testMode;
 		} catch (error) {
 			this.logger.error('Failed to verify state', { error });
 			throw new BadRequestError('Invalid state');
@@ -140,7 +172,7 @@ export class OidcService {
 			this.logger.error('Provided state is not formatted correctly');
 			throw new BadRequestError('Invalid state');
 		}
-		return state;
+		return { state, testMode };
 	}
 
 	generateNonce() {
@@ -200,9 +232,12 @@ export class OidcService {
 			provisioningConfig.scopesProvisionProjectRoles;
 
 		// Include the custom n8n scope if provisioning is enabled
-		const scope = provisioningEnabled
+		const baseScope = provisioningEnabled
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
+
+		const additionalScopes = this.oidcConfig.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
@@ -223,7 +258,7 @@ export class OidcService {
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
-		const expectedState = this.verifyState(storedState);
+		const { state: expectedState } = this.verifyState(storedState);
 		const expectedNonce = this.verifyNonce(storedNonce);
 
 		let tokens;
@@ -233,7 +268,7 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			this.logTokenExchangeError(error);
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -257,7 +292,7 @@ export class OidcService {
 				claims.sub,
 			);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
 			throw new BadRequestError('Invalid token');
 		}
 
@@ -279,7 +314,11 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(openidUser.user, claims);
+			await this.applySsoProvisioning(
+				openidUser.user,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
 
 			return openidUser.user;
 		}
@@ -301,7 +340,11 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims);
+			await this.applySsoProvisioning(
+				foundUser,
+				claims as Record<string, unknown>,
+				userInfo as Record<string, unknown>,
+			);
 
 			return foundUser;
 		}
@@ -330,12 +373,145 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(user, claims);
+		await this.applySsoProvisioning(
+			user,
+			claims as Record<string, unknown>,
+			userInfo as Record<string, unknown>,
+		);
 
 		return user;
 	}
 
-	private async applySsoProvisioning(user: User, claims: any) {
+	async generateTestLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		await this.loadOpenIdClient();
+		const config = await this.loadConfig(true);
+
+		const configuration = await this.createProxyAwareConfiguration(
+			config.discoveryEndpoint,
+			config.clientId,
+			config.clientSecret,
+		);
+
+		const state = this.generateState(true);
+		const nonce = this.generateNonce();
+
+		const provisioningConfig = await this.provisioningService.getConfig();
+		const provisioningEnabled =
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles;
+
+		const baseScope = provisioningEnabled
+			? `openid email profile ${provisioningConfig.scopesName}`
+			: 'openid email profile';
+
+		const additionalScopes = config.additionalScopes.trim();
+		const scope = additionalScopes ? `${baseScope} ${additionalScopes}` : baseScope;
+
+		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
+			redirect_uri: this.getCallbackUrl(),
+			response_type: 'code',
+			scope,
+			prompt: config.prompt,
+			state: state.plaintext,
+			nonce: nonce.plaintext,
+			...(config.authenticationContextClassReference.length > 0 && {
+				acr_values: config.authenticationContextClassReference.join(' '),
+			}),
+		});
+
+		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
+	}
+
+	async processTestCallback(
+		callbackUrl: URL,
+		storedState: string,
+		storedNonce: string,
+	): Promise<{ claims: Record<string, unknown>; userInfo: Record<string, unknown> }> {
+		await this.loadOpenIdClient();
+		const config = await this.loadConfig(true);
+
+		const configuration = await this.createProxyAwareConfiguration(
+			config.discoveryEndpoint,
+			config.clientId,
+			config.clientSecret,
+		);
+
+		const { state: expectedState } = this.verifyState(storedState);
+		const expectedNonce = this.verifyNonce(storedNonce);
+
+		let tokens;
+		try {
+			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
+				expectedState,
+				expectedNonce,
+			});
+		} catch (error) {
+			this.logTokenExchangeError(error);
+			throw new BadRequestError('Invalid authorization code');
+		}
+
+		let claims;
+		try {
+			claims = tokens.claims();
+		} catch (error) {
+			this.logger.error('Failed to extract claims from tokens', { error });
+			throw new BadRequestError('Invalid token');
+		}
+
+		if (!claims) {
+			throw new ForbiddenError('No claims found in the OIDC token');
+		}
+
+		let userInfo;
+		try {
+			userInfo = await this.openidClient.fetchUserInfo(
+				configuration,
+				tokens.access_token,
+				claims.sub,
+			);
+		} catch (error) {
+			this.logger.error('Failed to fetch user info', { cause: safeStringify(error) });
+			throw new BadRequestError('Invalid token');
+		}
+
+		return {
+			claims: { ...claims },
+			userInfo: { ...userInfo },
+		};
+	}
+
+	/**
+	 * Logs a token-exchange failure with structured oauth2 fields.
+	 * Uses a type guard rather than `as`-cast so TypeScript narrows the shape
+	 * safely; reads fields defensively for any non-object thrown value.
+	 * `cause` is omitted because oauth4webapi's ResponseBodyError stores the
+	 * parsed {error, error_description} JSON as its `.cause`, which would
+	 * duplicate the top-level `oauthError`/`oauthErrorDescription` fields.
+	 */
+	private logTokenExchangeError(error: unknown): void {
+		const isOAuthError = (e: unknown): e is Record<string, unknown> =>
+			typeof e === 'object' && e !== null;
+		const e = isOAuthError(error) ? error : {};
+		this.logger.error('Failed to exchange authorization code for tokens', {
+			oauthError: typeof e.error === 'string' ? e.error : undefined,
+			oauthErrorDescription:
+				typeof e.error_description === 'string' ? e.error_description : undefined,
+			code: typeof e.code === 'string' ? e.code : undefined,
+			message: error instanceof Error ? error.message : safeStringify(error),
+		});
+	}
+
+	private async applySsoProvisioning(
+		user: User,
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
+			const context = buildOidcClaimsContext(claims, userInfo);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			return;
+		}
+
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
@@ -404,7 +580,7 @@ export class OidcService {
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
 				if (oidcConfig.clientSecret && decryptSecret) {
-					oidcConfig.clientSecret = this.cipher.decrypt(oidcConfig.clientSecret);
+					oidcConfig.clientSecret = await this.cipher.decryptV2(oidcConfig.clientSecret);
 				}
 				return {
 					...oidcConfig,
@@ -469,7 +645,7 @@ export class OidcService {
 			key: OIDC_PREFERENCES_DB_KEY,
 			value: JSON.stringify({
 				...newConfig,
-				clientSecret: this.cipher.encrypt(newConfig.clientSecret),
+				clientSecret: await this.cipher.encryptV2(newConfig.clientSecret),
 			}),
 			loadOnStartup: true,
 		});

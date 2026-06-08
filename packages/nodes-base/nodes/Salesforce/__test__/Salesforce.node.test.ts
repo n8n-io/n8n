@@ -1,16 +1,26 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
 
-jest.mock('../GenericFunctions', () => ({
-	getQuery: jest.fn(),
-	salesforceApiRequest: jest.fn(),
-	salesforceApiRequestAllItems: jest.fn(),
-	sortOptions: jest.fn(),
-}));
+jest.mock('../GenericFunctions', () => {
+	const actual = jest.requireActual('../GenericFunctions');
+	return {
+		...actual,
+		getQuery: jest.fn(),
+		salesforceApiRequest: jest.fn(),
+		salesforceApiRequestAllItems: jest.fn(),
+		sortOptions: jest.fn(),
+	};
+});
 
 describe('Salesforce', () => {
 	let node: Salesforce;
@@ -326,6 +336,105 @@ describe('Salesforce', () => {
 					},
 				);
 				expect(result).toEqual([{ name: 'Custom Type', value: 'rt1' }]);
+			});
+
+			it('should properly escape special characters in resource names', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(
+					"Account'; DROP TABLE RecordType--",
+				);
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain("\\'");
+				expect(query).toContain("Account\\'");
+				expect(query).toMatch(
+					/SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = /,
+				);
+
+				expect(query).toContain("WHERE SobjectType = 'Account\\'");
+			});
+
+			it('should handle resource names with backslashes safely', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('Account\\Test');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('\\\\');
+			});
+
+			it('should handle resource names with newlines and control characters', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('Account\nTest\rValue');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('\\n');
+				expect(query).toContain('\\r');
+			});
+
+			it('should handle legitimate custom object names correctly', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockImplementation((param) => {
+					if (param === 'resource') return 'customObject';
+					if (param === 'customObject') return 'My_Custom_Object__c';
+					return '';
+				});
+
+				const mockTypes = [
+					{ Id: 'rt1', Name: 'Type 1', SobjectType: 'My_Custom_Object__c', IsActive: true },
+				];
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockTypes);
+
+				const result = await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('My_Custom_Object__c');
+				expect(result).toEqual([{ name: 'Type 1', value: 'rt1' }]);
+			});
+
+			it('should prevent UNION', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(
+					"Account' UNION SELECT Id, Name FROM User--",
+				);
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain("\\'");
+				expect(query).toContain("Account\\'");
+				expect(query).toContain("WHERE SobjectType = 'Account\\'");
+			});
+
+			it('should handle empty and whitespace resource names', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('  Account  ');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('  Account  ');
 			});
 		});
 
@@ -1371,7 +1480,13 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,FirstName,LastName' }, 'Lead', true);
+				expect(getQuerySpy).toHaveBeenCalledWith(
+					{ fields: 'Id,FirstName,LastName' },
+					'Lead',
+					true,
+					0,
+					1,
+				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -1399,7 +1514,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 50);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 50, 1);
 			});
 
 			it('should handle lead delete operation', async () => {
@@ -1750,7 +1865,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true);
+				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true, 0, 1);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -1778,7 +1893,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Case', false, 25);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Case', false, 25, 1);
 			});
 
 			it('should handle case getAll operation error handling', async () => {
@@ -1950,6 +2065,8 @@ describe('Salesforce', () => {
 							acconuntId: 'acc123', // Note: This is a typo in the original code
 							birthdate: '1990-01-01',
 							firstName: 'Jane',
+							middleName: 'Anne',
+							suffix: 'Jr.',
 							homePhone: '+1987654321',
 							otherCity: 'Other City',
 							department: 'Sales',
@@ -1957,6 +2074,8 @@ describe('Salesforce', () => {
 							otherPhone: '+1555555555',
 							otherState: 'TX',
 							salutation: 'Mrs.',
+							pronouns: 'She/Her',
+							genderIdentity: 'Woman',
 							description: 'Contact description',
 							mailingCity: 'Mailing City',
 							mobilePhone: '+1777777777',
@@ -1971,6 +2090,7 @@ describe('Salesforce', () => {
 							emailBouncedDate: '2023-01-01',
 							mailingPostalCode: '12345',
 							emailBouncedReason: 'Mailbox full',
+							hasOptedOutOfEmail: true,
 							customFieldsUi: {
 								customFieldsValues: [
 									{ fieldId: 'Contact_Custom__c', value: 'Contact Custom Value' },
@@ -2000,6 +2120,8 @@ describe('Salesforce', () => {
 						AccountId: 'acc123',
 						Birthdate: '1990-01-01',
 						FirstName: 'Jane',
+						MiddleName: 'Anne',
+						Suffix: 'Jr.',
 						HomePhone: '+1987654321',
 						OtherCity: 'Other City',
 						Department: 'Sales',
@@ -2007,6 +2129,8 @@ describe('Salesforce', () => {
 						OtherPhone: '+1555555555',
 						OtherState: 'TX',
 						Salutation: 'Mrs.',
+						Pronouns: 'She/Her',
+						GenderIdentity: 'Woman',
 						Description: 'Contact description',
 						MailingCity: 'Mailing City',
 						MobilePhone: '+1777777777',
@@ -2021,6 +2145,7 @@ describe('Salesforce', () => {
 						EmailBouncedDate: '2023-01-01',
 						MailingPostalCode: '12345',
 						EmailBouncedReason: 'Mailbox full',
+						HasOptedOutOfEmail: true,
 						Contact_Custom__c: 'Contact Custom Value',
 					}),
 				);
@@ -2088,6 +2213,8 @@ describe('Salesforce', () => {
 							acconuntId: 'acc999', // Note: This is a typo in the original code
 							birthdate: '1985-05-05',
 							firstName: 'Updated Jane',
+							middleName: 'Updated Anne',
+							suffix: 'Sr.',
 							homePhone: '+1888888888',
 							otherCity: 'Updated Other City',
 							department: 'Updated Sales',
@@ -2095,6 +2222,8 @@ describe('Salesforce', () => {
 							otherPhone: '+1777777777',
 							otherState: 'Updated TX',
 							salutation: 'Dr.',
+							pronouns: 'He/Him',
+							genderIdentity: 'Man',
 							description: 'Updated contact description',
 							mailingCity: 'Updated Mailing City',
 							mobilePhone: '+1666666666',
@@ -2109,6 +2238,7 @@ describe('Salesforce', () => {
 							emailBouncedDate: '2024-01-01',
 							mailingPostalCode: 'Updated 12345',
 							emailBouncedReason: 'Updated Mailbox full',
+							hasOptedOutOfEmail: false,
 							customFieldsUi: {
 								customFieldsValues: [
 									{ fieldId: 'Updated_Contact_Custom__c', value: 'Updated Contact Custom Value' },
@@ -2138,6 +2268,8 @@ describe('Salesforce', () => {
 						AccountId: 'acc999',
 						Birthdate: '1985-05-05',
 						FirstName: 'Updated Jane',
+						MiddleName: 'Updated Anne',
+						Suffix: 'Sr.',
 						HomePhone: '+1888888888',
 						OtherCity: 'Updated Other City',
 						Department: 'Updated Sales',
@@ -2145,6 +2277,8 @@ describe('Salesforce', () => {
 						OtherPhone: '+1777777777',
 						OtherState: 'Updated TX',
 						Salutation: 'Dr.',
+						Pronouns: 'He/Him',
+						GenderIdentity: 'Man',
 						Description: 'Updated contact description',
 						MailingCity: 'Updated Mailing City',
 						MobilePhone: '+1666666666',
@@ -2159,6 +2293,7 @@ describe('Salesforce', () => {
 						EmailBouncedDate: '2024-01-01',
 						MailingPostalCode: 'Updated 12345',
 						EmailBouncedReason: 'Updated Mailbox full',
+						HasOptedOutOfEmail: false,
 						Updated_Contact_Custom__c: 'Updated Contact Custom Value',
 					}),
 				);
@@ -2226,6 +2361,8 @@ describe('Salesforce', () => {
 					{ fields: 'Id,FirstName,LastName' },
 					'Contact',
 					true,
+					0,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -2505,7 +2642,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true, 0, 1);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -2978,7 +3115,17 @@ describe('Salesforce', () => {
 		});
 
 		describe('Error Handling', () => {
-			it('should handle errors with continueOnFail true', async () => {
+			beforeEach(() => {
+				(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
+					(data: object) => [{ json: data }],
+				);
+				(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+					(data: INodeExecutionData[], { itemData }: { itemData: { item: number } }) =>
+						data.map((item) => ({ ...item, pairedItem: { item: itemData.item } })),
+				);
+			});
+
+			it('should output full error details with continueOnFail true', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
 						resource: 'lead',
@@ -2991,12 +3138,112 @@ describe('Salesforce', () => {
 				});
 
 				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
-				salesforceApiRequestSpy.mockRejectedValue(new Error('API Error'));
 
-				await node.execute.call(mockExecuteFunctions);
+				const testError = new NodeApiError(mockExecuteFunctions.getNode(), {
+					message: 'Bad request - please check your parameters',
+					description: "No such column 'Fake_Field__c' on sobject of type Lead",
+					httpCode: '400',
+					error: [
+						{
+							fields: [],
+							message: "No such column 'Fake_Field__c' on sobject of type Lead",
+							errorCode: 'INVALID_FIELD',
+						},
+					],
+				});
+				testError.context = {
+					errorCode: 'INVALID_FIELD',
+					fields: null,
+				};
+
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Bad request - please check your parameters',
+					description: "No such column 'Fake_Field__c' on sobject of type Lead",
+					httpCode: '400',
+					errorCode: 'INVALID_FIELD',
+					fields: null,
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
 			});
 
-			it('should throw error with continueOnFail false', async () => {
+			it('should output fields as comma-separated string when SF returns field-level errors', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+				const testError = new NodeApiError(mockExecuteFunctions.getNode(), {
+					message: 'Bad request - please check your parameters',
+					description: 'Annual Revenue cannot be negative.',
+					httpCode: '400',
+					error: [
+						{
+							fields: ['AnnualRevenue'],
+							message: 'Annual Revenue cannot be negative.',
+							errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+						},
+					],
+				});
+				testError.context = {
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue',
+				};
+
+				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Bad request - please check your parameters',
+					description: 'Annual Revenue cannot be negative.',
+					httpCode: '400',
+					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+					fields: 'AnnualRevenue',
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should output null for all optional fields when error lacks them', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'create',
+						company: 'Test Company',
+						lastname: 'Test',
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('Generic Error'));
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].json).toEqual({
+					error: 'Generic Error',
+					description: null,
+					httpCode: null,
+					errorCode: null,
+					fields: null,
+				});
+				expect(result[0][0].pairedItem).toEqual({ item: 0 });
+			});
+
+			it('should throw error when continueOnFail is false', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
 					const params: Record<string, unknown> = {
 						resource: 'lead',
@@ -3009,8 +3256,8 @@ describe('Salesforce', () => {
 				});
 
 				mockExecuteFunctions.continueOnFail.mockReturnValue(false);
-				const testError = new Error('API Error');
-				salesforceApiRequestSpy.mockRejectedValue(testError);
+
+				salesforceApiRequestSpy.mockRejectedValue(new Error('API Error'));
 
 				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('API Error');
 			});
@@ -3448,6 +3695,7 @@ describe('Salesforce', () => {
 					'Task',
 					false,
 					10,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -3768,6 +4016,8 @@ describe('Salesforce', () => {
 					{ fields: 'Id,Name,ParentId' },
 					'Attachment',
 					true,
+					0,
+					1,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -3806,7 +4056,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Attachment', false, 5);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'Attachment', false, 5, 1);
 			});
 
 			it('should handle attachment getAll operation error handling', async () => {
@@ -3899,6 +4149,139 @@ describe('Salesforce', () => {
 
 				expect(result).toEqual([[{ json: mockSummary, pairedItem: 0 }]]);
 			});
+		});
+	});
+
+	// Coverage for the 9 getAll call sites that previously had no test (Contact limit,
+	// CustomObject limit, Opportunity returnAll/limit, Account returnAll/limit, Task
+	// returnAll, User returnAll/limit) and end-to-end verification that the SF node's
+	// typeVersion is threaded into getQuery (NODE-5116 version-gate wiring).
+	describe('Execute Method - GetAll Query Wiring', () => {
+		const mockGetAll = (resource: string, returnAll: boolean, limit?: number, options = {}) => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+				const params: Record<string, unknown> = {
+					resource,
+					operation: 'getAll',
+					returnAll,
+					...(returnAll ? {} : { limit }),
+					options,
+					customObject: 'CustomObject__c',
+				};
+				return params[param];
+			});
+		};
+
+		it('should call getQuery for contact getAll with limit', async () => {
+			mockGetAll('contact', false, 25);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Contact LIMIT 25');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Contact', false, 25, 1);
+		});
+
+		it('should call getQuery for customObject getAll with limit', async () => {
+			mockGetAll('customObject', false, 10);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM CustomObject__c LIMIT 10');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', false, 10, 1);
+		});
+
+		it('should call getQuery for opportunity getAll with returnAll', async () => {
+			mockGetAll('opportunity', true, undefined, { fields: 'Id,Name' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Name FROM Opportunity');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Name' }, 'Opportunity', true, 0, 1);
+		});
+
+		it('should call getQuery for opportunity getAll with limit', async () => {
+			mockGetAll('opportunity', false, 5);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Opportunity LIMIT 5');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Opportunity', false, 5, 1);
+		});
+
+		it('should call getQuery for account getAll with returnAll', async () => {
+			mockGetAll('account', true, undefined, { fields: 'Id,Name,Type' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Name,Type FROM Account');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Name,Type' }, 'Account', true, 0, 1);
+		});
+
+		it('should call getQuery for account getAll with limit', async () => {
+			mockGetAll('account', false, 15);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Account LIMIT 15');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Account', false, 15, 1);
+		});
+
+		it('should call getQuery for task getAll with returnAll', async () => {
+			mockGetAll('task', true, undefined, { fields: 'Id,Subject' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Subject FROM Task');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject' }, 'Task', true, 0, 1);
+		});
+
+		it('should call getQuery for user getAll with returnAll', async () => {
+			mockGetAll('user', true, undefined, { fields: 'Id,Name,Email' });
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT Id,Name,Email FROM User');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Name,Email' }, 'User', true, 0, 1);
+		});
+
+		it('should call getQuery for user getAll with limit', async () => {
+			mockGetAll('user', false, 20);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM User LIMIT 20');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'User', false, 20, 1);
+		});
+
+		it('should pass typeVersion 1.1 to getQuery when the node is on the new version', async () => {
+			// End-to-end proof that getNode().typeVersion is threaded into getQuery,
+			// so a workflow created on v1.1 actually gets the NODE-5116 fix at runtime.
+			mockNode.typeVersion = 1.1;
+			mockGetAll('lead', false, 10);
+			const getQuerySpy = jest.spyOn(GenericFunctions, 'getQuery');
+			getQuerySpy.mockReturnValue('SELECT * FROM Lead LIMIT 10');
+			salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(getQuerySpy).toHaveBeenCalledWith({}, 'Lead', false, 10, 1.1);
 		});
 	});
 });

@@ -6,11 +6,14 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import type { Workflow } from 'n8n-workflow';
-import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
+import { computed, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import Canvas from './Canvas.vue';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -19,14 +22,14 @@ defineOptions({
 const props = withDefaults(
 	defineProps<{
 		id?: string;
-		workflow: IWorkflowDb;
-		workflowObject: Workflow;
 		fallbackNodes?: IWorkflowDb['nodes'];
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
+		stripedBackground?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -35,29 +38,61 @@ const props = withDefaults(
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
 		suppressInteraction: false,
+		stripedBackground: true,
 	},
 );
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const renderData = computed(() =>
+	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
+);
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
-const workflow = toRef(props, 'workflow');
-const workflowObject = toRef(props, 'workflowObject');
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
 
 const nodes = computed(() => {
 	return props.showFallbackNodes
-		? [...props.workflow.nodes, ...props.fallbackNodes]
-		: props.workflow.nodes;
+		? [...workflowDocumentStore.value.allNodes, ...props.fallbackNodes]
+		: workflowDocumentStore.value.allNodes;
 });
-const connections = computed(() => props.workflow.connections);
+const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const readOnlyRef = computed(() => props.readOnly ?? false);
+const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
+
+const experimentalNdvStore = useExperimentalNdvStore();
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
+const {
+	nodes: mappedWorkflowNodes,
+	connections: mappedConnections,
+	nodeDisplaySizeById,
+} = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
+	renderData,
+	isExperimentalNdvActive,
 });
+
+const mappedGroupVueFlowNodes = computed(() =>
+	mapGroupsToVueFlowNodes({
+		allGroups: workflowDocumentStore.value.allGroups,
+		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+	}),
+);
+
+const mappedNodes = computed(() => [
+	...mappedWorkflowNodes.value,
+	...mappedGroupVueFlowNodes.value,
+]);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {
@@ -147,15 +182,18 @@ defineExpose({
 	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
 		<div id="canvas" :class="$style.canvas">
 			<Canvas
-				v-if="workflow"
 				:id="id"
 				ref="canvas"
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
+				:render-data="renderData"
+				:node-display-size-by-id="nodeDisplaySizeById"
 				:event-bus="eventBus"
 				:read-only="readOnly"
+				:can-execute="canExecute"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
+				:striped-background="stripedBackground"
 				:initial-viewport="initialViewport"
 				v-bind="$attrs"
 			/>

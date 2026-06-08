@@ -100,6 +100,7 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),
 );
@@ -132,6 +133,14 @@ const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
 };
 
+const refreshCredentials = () => {
+	void credentialsStore.fetchAllCredentials({
+		projectId: route?.params?.projectId as string | undefined,
+		includeScopes: true,
+		externalSecretsStore: filters.value.externalSecretsStore,
+	});
+};
+
 const addCredential = () => {
 	setRouteCredentialId('create');
 	telemetry.track('User clicked add cred button', {
@@ -144,6 +153,10 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
 			void router.replace({ params: { credentialId: '' }, query: route.query });
+		}
+		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
+			credentialsStore.pendingOAuthRefresh = false;
+			refreshCredentials();
 		}
 	},
 });
@@ -240,11 +253,7 @@ const initialize = async () => {
 credentialsStore.$onAction(({ name, after }) => {
 	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials({
-				projectId: route?.params?.projectId as string | undefined,
-				includeScopes: true,
-				externalSecretsStore: filters.value.externalSecretsStore,
-			});
+			refreshCredentials();
 		});
 	}
 });
@@ -315,6 +324,7 @@ onMounted(() => {
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"
 				@click="setRouteCredentialId"
+				@connected="refreshCredentials"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">

@@ -23,6 +23,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	close: [];
+	versionsChange: [{ sourceVersionId: string; targetVersionId: string }];
 }>();
 
 const i18n = useI18n();
@@ -96,12 +97,14 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 			versionId: sourceWorkflowVersion.versionId,
 			nodes: sourceWorkflowVersion.nodes,
 			connections: sourceWorkflowVersion.connections,
+			nodeGroups: sourceWorkflowVersion.nodeGroups ?? [],
 		};
 		targetWorkflow.value = {
 			...workflowWithoutPinData,
 			versionId: targetWorkflowVersion.versionId,
 			nodes: targetWorkflowVersion.nodes,
 			connections: targetWorkflowVersion.connections,
+			nodeGroups: targetWorkflowVersion.nodeGroups ?? [],
 		};
 
 		sourceLabel.value = getVersionLabelById(sourceWorkflowVersion.versionId);
@@ -163,6 +166,7 @@ watch(
 watch(
 	[selectedSourceVersionId, selectedTargetVersionId],
 	([sourceVersionId, targetVersionId]) => {
+		emit('versionsChange', { sourceVersionId, targetVersionId });
 		void loadComparedVersions(sourceVersionId, targetVersionId);
 	},
 	{ immediate: true },

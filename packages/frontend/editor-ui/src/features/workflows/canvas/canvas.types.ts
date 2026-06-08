@@ -1,4 +1,10 @@
-import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IConnections,
+	INodeConnections,
+	IWorkflowGroup,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type {
 	DefaultEdge,
 	Node,
@@ -66,12 +72,6 @@ export type CanvasNodeDefaultRender = {
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
-		inputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
-		outputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
@@ -106,19 +106,12 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	inputs: CanvasConnectionPort[];
-	outputs: CanvasConnectionPort[];
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
-		visible: boolean;
-	};
-	pinnedData: {
-		count: number;
 		visible: boolean;
 	};
 	execution: {
@@ -140,6 +133,26 @@ export interface CanvasNodeData {
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
+
+export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
+export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
+export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
+export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+
+export interface CanvasGroupNodeData {
+	group: IWorkflowGroup;
+	nodesRect: { x: number; y: number; width: number; height: number };
+}
+
+export type CanvasGroupNode = Node<CanvasGroupNodeData>;
+
+export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
+
+export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
+export function isCanvasGroupNode(node: { type?: string }): boolean;
+export function isCanvasGroupNode(node: { type?: string }): boolean {
+	return node.type === CANVAS_NODE_GROUP_TYPE;
+}
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
@@ -178,6 +191,10 @@ export type CanvasNodeEventBusEvents = {
 
 export type CanvasEventBusEvents = {
 	fitView: never;
+	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
+	'fitView:onNodesInit': never;
+	/** Deferred setConnections — waits for VueFlow's onNodesInitialized so handles exist. */
+	'setConnections:onNodesInit': IConnections;
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };

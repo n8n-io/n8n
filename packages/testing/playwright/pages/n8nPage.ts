@@ -1,17 +1,19 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
-import { AIBuilderPage } from './AIBuilderPage';
 import { CanvasPage } from './CanvasPage';
 import { ChatHubChatPage } from './ChatHubChatPage';
 import { ChatHubPersonalAgentsPage } from './ChatHubPersonalAgentsPage';
 import { ChatHubSettingsPage } from './ChatHubSettingsPage';
 import { ChatHubWorkflowAgentsPage } from './ChatHubWorkflowAgentsPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
+import { AIBuilderPage } from './components/AIBuilderPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
 import { CommandBar } from './components/CommandBar';
 import { DeleteSecretsProviderModal } from './components/DeleteSecretsProviderModal';
+import { InteractionsPage } from './components/InteractionsPage';
+import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
@@ -20,12 +22,11 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
-import { InteractionsPage } from './InteractionsPage';
+import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
-import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
@@ -48,6 +49,7 @@ import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
+import { BuilderWizardComposer } from '../composables/BuilderWizardComposer';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { DataTableComposer } from '../composables/DataTablesComposer';
@@ -79,6 +81,7 @@ export class n8nPage {
 	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
+	readonly instanceAi: InstanceAiPage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
@@ -125,6 +128,7 @@ export class n8nPage {
 	readonly deleteSecretsProviderModal: DeleteSecretsProviderModal;
 
 	// Composables
+	readonly builderWizardComposer: BuilderWizardComposer;
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
@@ -157,6 +161,7 @@ export class n8nPage {
 		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
+		this.instanceAi = new InstanceAiPage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);
@@ -202,6 +207,7 @@ export class n8nPage {
 		this.deleteSecretsProviderModal = new DeleteSecretsProviderModal(page);
 
 		// Composables
+		this.builderWizardComposer = new BuilderWizardComposer(this);
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);

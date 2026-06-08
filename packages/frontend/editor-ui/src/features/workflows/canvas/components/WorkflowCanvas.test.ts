@@ -2,18 +2,20 @@ import { waitFor } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { Workflow } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { CanvasNodeRenderType } from '../canvas.types';
-import {
-	createTestNode,
-	createTestWorkflow,
-	createTestWorkflowObject,
-	defaultNodeDescriptions,
-} from '@/__tests__/mocks';
+import { CANVAS_NODE_GROUP_ID_PREFIX, CanvasNodeRenderType } from '../canvas.types';
+import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
@@ -23,16 +25,15 @@ vi.mock('@vueuse/core', async () => {
 	};
 });
 
+function setupWorkflow(workflow: IWorkflowDb) {
+	useWorkflowsStore().workflowId = workflow.id;
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
+}
+
 const renderComponent = createComponentRenderer(WorkflowCanvas, {
 	props: {
 		id: 'canvas',
-		workflow: createTestWorkflow({
-			id: '1',
-			name: 'Test Workflow',
-			nodes: [],
-			connections: {},
-		}),
-		workflowObject: {} as Workflow,
 		eventBus: createEventBus(),
 	},
 });
@@ -43,6 +44,15 @@ beforeEach(() => {
 
 	const nodeTypesStore = useNodeTypesStore();
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
+
+	setupWorkflow(
+		createTestWorkflow({
+			id: '1',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+		}),
+	);
 });
 
 afterEach(() => {
@@ -64,12 +74,9 @@ describe('WorkflowCanvas', () => {
 			],
 			connections: { 'Node 1': { main: [[{ node: 'Node 2', type: 'main', index: 0 }]] } },
 		});
-		const { container } = renderComponent({
-			props: {
-				workflow,
-				workflowObject: createTestWorkflowObject(workflow),
-			},
-		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent();
 
 		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
 
@@ -77,6 +84,29 @@ describe('WorkflowCanvas', () => {
 		expect(container.querySelector('[data-id="2"]')).toBeInTheDocument();
 		expect(
 			container.querySelector('[data-id="[1/outputs/main/0][2/inputs/main/0]"]'),
+		).toBeInTheDocument();
+	});
+
+	it('should render workflow node groups from the workflow document store', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		expect(container.querySelector('[data-id="1"]')).toBeInTheDocument();
+		expect(
+			container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
 		).toBeInTheDocument();
 	});
 
@@ -103,13 +133,10 @@ describe('WorkflowCanvas', () => {
 			nodes: [...stickyNodes],
 			connections: {},
 		});
-
-		const workflowObject = createTestWorkflowObject(workflow);
+		setupWorkflow(workflow);
 
 		const { container } = renderComponent({
 			props: {
-				workflow,
-				workflowObject,
 				fallbackNodes,
 				showFallbackNodes: true,
 			},
@@ -137,13 +164,10 @@ describe('WorkflowCanvas', () => {
 			nodes,
 			connections: {},
 		});
-
-		const workflowObject = createTestWorkflowObject(workflow);
+		setupWorkflow(workflow);
 
 		const { container } = renderComponent({
 			props: {
-				workflow,
-				workflowObject,
 				fallbackNodes,
 				showFallbackNodes: false,
 			},

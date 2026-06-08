@@ -20,11 +20,11 @@ describe('TaskBrokerAuthController', () => {
 		},
 		taskRunners: {
 			authToken: 'random-secret',
+			grantTokenTtl: 0.1,
 		},
 	});
-	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
-	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
+	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 	const authController = new TaskBrokerAuthController(authService);
 
 	const createMockGrantTokenReq = (token?: string) =>

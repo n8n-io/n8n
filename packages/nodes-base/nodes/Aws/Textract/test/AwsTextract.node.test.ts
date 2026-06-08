@@ -28,12 +28,14 @@ const mockSimplifiedResponse = {
 
 describe('AWS Textract Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const awsApiRequestSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
-	const simplifySpy = jest.spyOn(GenericFunctions, 'simplify');
+	let awsApiRequestSpy: jest.SpyInstance;
+	let simplifySpy: jest.SpyInstance;
 	const node = new AwsTextract();
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		awsApiRequestSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+		simplifySpy = jest.spyOn(GenericFunctions, 'simplify');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			accessKeyId: 'test-key',
 			secretAccessKey: 'test-secret',

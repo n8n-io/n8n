@@ -38,6 +38,36 @@ describe('sanitizeHtml', () => {
 		expect(result).toBe('<a>Click me</a>');
 	});
 
+	test('should strip href with multiline value', () => {
+		const dirtyHtml = '<a href="javascript:alert(1);//\r\nhttps://x.com">Click</a>';
+		expect(sanitizeHtml(dirtyHtml)).toBe('<a>Click</a>');
+	});
+
+	test('should strip href with embedded newline', () => {
+		const dirtyHtml = '<a href="javascript:void(0);//\nhttps://example.com">Click</a>';
+		expect(sanitizeHtml(dirtyHtml)).toBe('<a>Click</a>');
+	});
+
+	test('should allow valid https href', () => {
+		const dirtyHtml = '<a href="https://example.com">Link</a>';
+		expect(sanitizeHtml(dirtyHtml)).toBe('<a href="https://example.com">Link</a>');
+	});
+
+	test('should allow valid http href', () => {
+		const dirtyHtml = '<a href="http://example.com">Link</a>';
+		expect(sanitizeHtml(dirtyHtml)).toBe('<a href="http://example.com">Link</a>');
+	});
+
+	test('should allow relative href', () => {
+		const dirtyHtml = '<a href="/path/to/page">Link</a>';
+		expect(sanitizeHtml(dirtyHtml)).toBe('<a href="/path/to/page">Link</a>');
+	});
+
+	test('should strip data: URI href', () => {
+		const dirtyHtml = '<a href="data:text/html,<script>alert(1)</script>">Click</a>';
+		expect(sanitizeHtml(dirtyHtml)).toBe('<a>Click</a>');
+	});
+
 	test.each([
 		[
 			'https://www.ex.com/sfefdfd<img/src/onerror=alert(1)>fdf/xdfef.json',

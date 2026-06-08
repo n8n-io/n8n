@@ -3,7 +3,19 @@
  * Pure functions extracted from WorkflowBuilderImpl
  */
 
+import { isPlaceholderValue } from './string-utils';
 import { isTriggerNodeType } from '../utils/trigger-detection';
+
+/**
+ * Assert that input is a plain (non-null, non-array) object.
+ * Throws a descriptive TypeError when called with a string, number, null, or array.
+ */
+export function assertPlainObject(input: unknown, fnName: string, hint: string): void {
+	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+		const received = input === null ? 'null' : Array.isArray(input) ? 'an array' : typeof input;
+		throw new TypeError(`${fnName}() requires ${hint}, but received ${received}.`);
+	}
+}
 
 /**
  * Check if a value contains an n8n expression
@@ -113,6 +125,8 @@ export function findMissingExpressionPrefixes(
 	const issues: Array<{ path: string; value: string }> = [];
 
 	if (typeof value === 'string') {
+		// Skip placeholder markers — their embedded hint is documentation, not an expression.
+		if (isPlaceholderValue(value)) return issues;
 		// If string starts with '=', it's already an expression - {{ }} is valid template syntax inside
 		// Otherwise check if it contains {{ $ pattern (n8n variable reference without = prefix)
 		if (!value.startsWith('=') && value.includes('{{ $')) {
@@ -123,10 +137,6 @@ export function findMissingExpressionPrefixes(
 			issues.push(...findMissingExpressionPrefixes(item, `${path}[${index}]`));
 		});
 	} else if (value && typeof value === 'object') {
-		// Skip PlaceholderValue objects - their hint property is documentation, not actual expressions
-		if ('__placeholder' in value && (value as { __placeholder: boolean }).__placeholder) {
-			return issues;
-		}
 		for (const [key, val] of Object.entries(value)) {
 			const newPath = path ? `${path}.${key}` : key;
 			issues.push(...findMissingExpressionPrefixes(val, newPath));
@@ -170,6 +180,7 @@ export function findInvalidDateMethods(
 	const issues: Array<{ path: string; value: string }> = [];
 
 	if (typeof value === 'string') {
+		if (isPlaceholderValue(value)) return issues;
 		if (hasLuxonToISOStringMisuse(value)) {
 			issues.push({ path, value });
 		}
@@ -178,10 +189,6 @@ export function findInvalidDateMethods(
 			issues.push(...findInvalidDateMethods(item, `${path}[${index}]`));
 		});
 	} else if (value && typeof value === 'object') {
-		// Skip PlaceholderValue objects
-		if ('__placeholder' in value && (value as { __placeholder: boolean }).__placeholder) {
-			return issues;
-		}
 		for (const [key, val] of Object.entries(value)) {
 			const newPath = path ? `${path}.${key}` : key;
 			issues.push(...findInvalidDateMethods(val, newPath));
