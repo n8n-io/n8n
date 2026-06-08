@@ -216,6 +216,70 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(3, { markdown: 'After resume.' });
 		});
 
+		it('includes tool approval details when posting a suspension card', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'tool-1',
+					toolName: 'approval',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'giphy-gif-search',
+						displayName: 'GIPHY GIF Search',
+						args: { query: 'project status', limit: 3 },
+					},
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(componentMapper.toCard).toHaveBeenCalledWith(
+				{
+					title: 'Approval required',
+					components: [
+						{
+							type: 'section',
+							text: 'The agent wants to run this tool: GIPHY GIF Search',
+						},
+						{
+							type: 'fields',
+							fields: [
+								{ label: 'Tool', value: 'GIPHY GIF Search' },
+								{
+									label: 'Input',
+									value: '{\n  "query": "project status",\n  "limit": 3\n}',
+								},
+							],
+						},
+						{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+						{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
+					],
+				},
+				'run-1',
+				'tool-1',
+				undefined,
+				undefined,
+				'test-buffered',
+			);
+			expect(thread.post).toHaveBeenCalledWith({ card: { kind: 'card' } });
+		});
+
 		it('does not post when the buffer is only whitespace', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -441,6 +505,56 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		});
 
+		it('clears assistant status before responding directly to top-level Slack DMs', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = jest.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(
+				1,
+				'D123',
+				'1779466577.518139',
+				'Thinking...',
+				['Thinking...'],
+			);
+			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'D123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+				thread.post.mock.invocationCallOrder[0],
+			);
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+		});
+
 		it('retries top-level Slack assistant status when Slack has not materialized the thread yet', async () => {
 			jest.useFakeTimers();
 			const { bot, handlers } = makeBot();
@@ -491,6 +605,131 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			await jest.advanceTimersByTimeAsync(250);
 			await run;
+		});
+
+		it('does not re-set Slack DM status with a stale retry after it has been cleared', async () => {
+			jest.useFakeTimers();
+			const { bot, handlers } = makeBot();
+			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
+				data: { error: 'invalid_thread_ts' },
+			});
+			const setAssistantStatus = jest
+				.fn()
+				.mockRejectedValueOnce(invalidThreadError)
+				.mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				// Respond (which clears the status) while the initial "Thinking..."
+				// set is still waiting out its retry delay, then keep the stream open
+				// past that delay so the retry would otherwise fire after the clear.
+				executeForChatPublished: jest.fn(async function* (): AsyncGenerator<StreamChunk> {
+					yield { type: 'text-delta', id: 't1', delta: 'Hello' };
+					yield { type: 'message', message: { role: 'assistant', content: [] } };
+					await new Promise((resolve) => setTimeout(resolve, 2000));
+					yield { type: 'finish', finishReason: 'stop' };
+				}),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Let the response flush and clear the status, then run past the retry
+			// delay and finish the stream.
+			await jest.advanceTimersByTimeAsync(2000);
+			await run;
+
+			const thinkingCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...');
+			const clearCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === '');
+			// The cleared retry must not re-set "Thinking..." — only the initial set.
+			expect(thinkingCalls).toHaveLength(1);
+			expect(clearCalls).toHaveLength(1);
+			// The last status written must be the clear, never a stale "Thinking...".
+			expect(setAssistantStatus.mock.calls.at(-1)?.[2]).toBe('');
+		});
+
+		it('waits for an in-flight Slack DM status set to settle before clearing', async () => {
+			const { bot, handlers } = makeBot();
+			// Keep the initial "Thinking..." set in flight; the empty-status clear
+			// resolves immediately. Aborting can't recall an in-flight remote write,
+			// so the clear must wait for the set to land before overwriting it.
+			let resolveSet!: () => void;
+			const setInFlight = new Promise<void>((resolve) => {
+				resolveSet = resolve;
+			});
+			const setAssistantStatus = jest.fn(async (_channel: string, _ts: string, status: string) => {
+				if (status === 'Thinking...') await setInFlight;
+			});
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: jest.fn(() =>
+					toStream([
+						{ type: 'text-delta', id: 't1', delta: 'Hello' },
+						{ type: 'finish', finishReason: 'stop' },
+					]),
+				),
+				resumeForChat: jest.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Drain everything that can proceed. The clear is blocked on the
+			// in-flight set, so the empty-status write must not have happened yet.
+			for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve));
+
+			expect(setAssistantStatus).toHaveBeenCalledTimes(1);
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(
+				'D123',
+				'1779466577.518139',
+				'Thinking...',
+				['Thinking...'],
+			);
+
+			// Let the in-flight set land; only now may the clear overwrite it.
+			resolveSet();
+			await run;
+
+			expect(setAssistantStatus).toHaveBeenCalledTimes(2);
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
 		it('sets a thinking status before resuming a Slack action', async () => {

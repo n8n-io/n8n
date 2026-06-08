@@ -40,6 +40,7 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
@@ -251,6 +252,16 @@ export interface InstanceAiWorkflowService {
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Cheap version-only lookup. The adapter projects just `versionId` and
+	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
+	 *  Use to validate per-session caches when the body isn't needed. */
+	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Single fetch returning the SDK WorkflowJSON together with the version it
+	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
+	 *  versionId you'll pin to it land in one round-trip. */
+	getWorkflowSnapshot(
+		workflowId: string,
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
@@ -713,11 +724,7 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
-	/**
-	 * Curated workflow-template provider for the sandbox setup. When absent or
-	 * when the service returns an empty bundle, the sandbox is created without
-	 * an `examples/` directory and the agent operates without template hints.
-	 */
+	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
@@ -732,6 +739,8 @@ export interface InstanceAiContext {
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
+	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
+	allowedRunWorkflowNames?: ReadonlySet<string>;
 	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
 	requireRunWorkflowApproval?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
@@ -785,6 +794,8 @@ export interface InstanceAiContext {
 		 * exists and the builder may retry directly without creating a new plan.
 		 */
 		allowPostPlanWorkflowCreate?: boolean;
+		/** True when the active planned build task's final deliverable is a supporting workflow. */
+		isSupportingWorkflowTask?: boolean;
 		plannedTaskService?: PlannedTaskService;
 		workflowTaskService?: WorkflowTaskService;
 		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
@@ -813,6 +824,12 @@ export interface PlannedTask {
 	tools?: string[];
 	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
 	workflowId?: string;
+	/**
+	 * True when the build-workflow task's final deliverable is intentionally a
+	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
+	 * larger main-workflow task should not set this.
+	 */
+	isSupportingWorkflow?: boolean;
 }
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -843,11 +860,22 @@ export interface PlannedTaskGraph {
 	tasks: PlannedTaskRecord[];
 }
 
+export interface PlannedWorkflowVerification {
+	task: PlannedTaskRecord;
+	obligation: WorkflowVerificationObligation;
+	outcome?: WorkflowBuildOutcome;
+}
+
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| {
+			type: 'orchestrate-workflow-verification';
+			graph: PlannedTaskGraph;
+			verification: PlannedWorkflowVerification;
+	  }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
 
@@ -907,7 +935,10 @@ export interface PlannedTaskService {
 	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
-		options?: { availableSlots?: number },
+		options?: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		},
 	): Promise<PlannedTaskSchedulerAction>;
 	clear(threadId: string): Promise<void>;
 	/** Transition an `awaiting_approval` graph → `active` after the user
@@ -1228,6 +1259,8 @@ export interface OrchestrationContext {
 	schedulePlannedTasks?: () => Promise<void>;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
@@ -1254,25 +1287,6 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
-	/**
-	 * Resume info for a suspended sub-agent of this thread, looked up from the
-	 * persisted checkpoint store by the deterministic sub-agent resourceId
-	 * (`instance-ai-subagent:{threadId}:{agentKind}`). Used by the cascading
-	 * suspend path: when the orchestrator's `plan` tool resumes, it calls
-	 * this to find the planner sub-agent's `runId` + suspended `toolCallId`
-	 * + the persistence the planner was running under, so the resume path
-	 * can rebuild the sub-agent with the same persistence and call
-	 * `plannerAgent.resume('stream', resumeData, { runId, toolCallId })`
-	 * without stashing anything across its own suspend/resume cycle.
-	 */
-	findSubAgentResumeInfo?: (agentKind: string) => Promise<
-		| {
-				runId: string;
-				toolCallId: string;
-				persistence: { threadId: string; resourceId: string };
-		  }
-		| undefined
-	>;
 	/**
 	 * Persist the current user message to thread memory immediately, so it
 	 * survives a restart that happens while the orchestrator is suspended on

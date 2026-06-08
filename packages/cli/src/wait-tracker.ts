@@ -7,6 +7,7 @@ import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflo
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -28,6 +29,7 @@ export class WaitTracker {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly ownershipService: OwnershipService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
@@ -99,7 +101,7 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 
 		// Get the data to execute
-		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+		const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -153,7 +155,6 @@ export class WaitTracker {
 					if (!subworkflowResults) return;
 					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 					await updateParentExecutionWithChildResults(
-						this.executionRepository,
 						parentExecution.executionId,
 						subworkflowResults,
 					);

@@ -27,6 +27,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
 import { checkExhaustive } from '@/app/utils/typeGuards';
 import isEqual from 'lodash/isEqual';
+import uniq from 'lodash/uniq';
 import { v4 as uuidv4 } from 'uuid';
 import { sanitizeConnections } from '../utils/workflowUtils';
 
@@ -322,16 +323,23 @@ export function useWorkflowExtraction() {
 			})
 		)[0];
 
+		addReplacementNodeToSelectionGroup(
+			selection.map((node) => node.id),
+			executeWorkflowNode.id,
+		);
+
 		if (endId)
 			canvasOperations.replaceNodeConnections(endId, executeWorkflowNode.id, {
 				...CANVAS_HISTORY_OPTIONS,
 				replaceInputs: false,
+				validateNodeGroups: false,
 			});
 
 		if (startId)
 			canvasOperations.replaceNodeConnections(startId, executeWorkflowNode.id, {
 				...CANVAS_HISTORY_OPTIONS,
 				replaceOutputs: false,
+				validateNodeGroups: false,
 			});
 
 		canvasOperations.deleteNodes(
@@ -354,6 +362,18 @@ export function useWorkflowExtraction() {
 
 		uiStore.markStateDirty();
 		historyStore.stopRecordingUndo();
+	}
+
+	function addReplacementNodeToSelectionGroup(selectionIds: string[], replacementNodeId: string) {
+		const affectedGroupIds = uniq(
+			selectionIds
+				.map((nodeId) => workflowDocumentStore.value.getGroupForNode(nodeId)?.id)
+				.filter((id): id is string => id !== undefined),
+		);
+
+		if (affectedGroupIds.length !== 1) return;
+
+		workflowDocumentStore.value.addNodesToGroup(affectedGroupIds[0], [replacementNodeId]);
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {

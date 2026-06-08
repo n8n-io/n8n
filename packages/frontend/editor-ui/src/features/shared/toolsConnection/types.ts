@@ -95,20 +95,9 @@ export const SECTION_TAB: Record<SectionKey, TabId> = {
 
 export const TAB_ORDER: TabId[] = ['services', 'agents', 'data', 'workflows'];
 
-export interface ToolsConnectionModalProps {
-	open: boolean;
-	items: ToolConnectionItem[];
-	sections: SectionKey[];
-	detailItem?: ToolConnectionItem | null;
-}
-
 export type FlattenedRow =
 	| { kind: 'section-header'; key: string; section: SectionKey; title: string; count: number }
-	| { kind: 'item'; key: string; item: ToolConnectionItem };
-
-export interface ConnectionEventPayload {
-	item: ToolConnectionItem;
-}
+	| { kind: 'item'; key: string; section: SectionKey; item: ToolConnectionItem };
 
 export interface PickableCredential {
 	id: string;

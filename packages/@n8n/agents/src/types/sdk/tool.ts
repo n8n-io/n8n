@@ -51,8 +51,10 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	 * the execution engine to halt. Code after `return await ctx.suspend()` is unreachable.
 	 */
 	suspend: (payload: S) => Promise<never>;
-	/** Data from the consumer after resume. Undefined on first invocation. */
+	/** Data from the consumer after resume. Undefined on first invocation or when cancelled. */
 	resumeData: R | undefined;
+	/** Set when the resume was a cancellation and the tool opted in via `.handleCancellation()`. */
+	cancellation?: { message: string };
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
 	/** Agent run ID for the current execution. */
@@ -80,7 +82,12 @@ export interface BuiltTool {
 	readonly systemInstruction?: string;
 	readonly suspendSchema?: ZodType | JSONSchema7;
 	readonly resumeSchema?: ZodType | JSONSchema7;
-	readonly withDefaultApproval?: boolean;
+	readonly approval?: {
+		readonly required: boolean;
+		readonly conditional?: boolean;
+	};
+	/** When `true`, the handler is called on cancellation with `ctx.cancellation` set instead of being bypassed. */
+	readonly handleCancellation?: boolean;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.

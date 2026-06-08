@@ -24,7 +24,13 @@ const {
 	setCredentialsMock: vi.fn(),
 }));
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: routerPush, replace: routerReplace }),
+	useRouter: () => ({
+		push: routerPush,
+		replace: routerReplace,
+		resolve: (to: { name?: string; params?: Record<string, string> }) => ({
+			href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
+		}),
+	}),
 	useRoute: () => ({
 		name: routeName,
 		params: { projectId: 'p1', agentId: 'a1' },
@@ -100,11 +106,13 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		resetForAgentSwitch: vi.fn(),
 		captureToolsBaseline: vi.fn(),
 		captureSkillsBaseline: vi.fn(),
+		captureTasksBaseline: vi.fn(),
 		fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 		recordConfigEdit: vi.fn(),
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
 		trackSkillsAdded: vi.fn(),
+		trackTasksChanged: vi.fn(),
 		trackOpenedToolFromList: vi.fn(),
 		trackOpenedSkillFromList: vi.fn(),
 		trackOpenedAddSkillModal: vi.fn(),
@@ -312,22 +320,22 @@ const commonStubs = {
 			'agentId',
 			'projectName',
 			'headerActions',
-			'mode',
-			'currentSessionTitle',
-			'sessionOptions',
 			'beforeRevertToPublished',
 		],
 		emits: [
 			'header-action',
 			'open-preview',
-			'new-chat',
-			'close-preview',
-			'session-select',
 			'published',
 			'unpublished',
 			'reverted',
 			'switch-agent',
 		],
+	},
+	AgentBuilderPreviewHeader: {
+		name: 'AgentBuilderPreviewHeader',
+		template: '<div data-testid="stub-agent-builder-preview-header"></div>',
+		props: ['breadcrumbItems', 'sessionTitle', 'sessionId', 'sessionOptions'],
+		emits: ['breadcrumb-select', 'session-select', 'new-chat', 'close-preview'],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, credentials, sessions list)
@@ -454,11 +462,13 @@ describe('AgentBuilderView — preview routing', () => {
 
 		const wrapper = await renderView();
 		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const header = wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' });
 
 		expect(preview.exists()).toBe(true);
 		expect(preview.props('effectiveSessionId')).toBe('thread-1');
-		expect(header.props('mode')).toBe('preview');
+		expect(header.exists()).toBe(true);
+		expect(header.props('sessionId')).toBe('thread-1');
+		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
 	});

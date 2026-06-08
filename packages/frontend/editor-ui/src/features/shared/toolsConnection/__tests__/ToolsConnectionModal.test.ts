@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer, renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+
+const scrollToKeyMock = vi.hoisted(() => vi.fn());
 
 // N8nDialog teleports out of the tree (Reka UI's DialogPortal) and
 // N8nRecycleScroller virtualises by offsetHeight which is 0 in jsdom. Replace
@@ -22,6 +24,9 @@ vi.mock('@n8n/design-system', async () => {
 	const N8nRecycleScroller = {
 		name: 'N8nRecycleScroller',
 		props: ['items', 'itemSize', 'itemKey'],
+		methods: {
+			scrollToKey: scrollToKeyMock,
+		},
 		template: `
 			<div>
 				<div v-for="item in items" :key="item[itemKey]">
@@ -41,6 +46,10 @@ import type { SectionKey, ToolConnectionItem } from '../types';
 const renderModal = createComponentRenderer(ToolsConnectionModal);
 
 const ALL_SECTIONS: SectionKey[] = ['connected', 'nodes', 'workflows'];
+
+beforeEach(() => {
+	scrollToKeyMock.mockClear();
+});
 
 function renderWith(
 	props: Partial<{
@@ -220,9 +229,20 @@ describe('ToolsConnectionModal', () => {
 
 		await fireEvent.click(workflowsTab);
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+		expect(scrollToKeyMock).toHaveBeenLastCalledWith('header:workflows');
 
 		await fireEvent.click(servicesTab);
 		expect(queryByText('Notion onboarding flow')).toBeTruthy();
+		expect(scrollToKeyMock).toHaveBeenLastCalledWith('header:nodes');
+	});
+
+	it('focuses the search input when the modal opens', async () => {
+		const { getByPlaceholderText } = renderWith({ sections: ['nodes'] });
+
+		const inputEl = getByPlaceholderText('Search all tools...') as HTMLInputElement;
+		await waitFor(() => {
+			expect(document.activeElement).toBe(inputEl);
+		});
 	});
 
 	it('emits update:detailItem(null) when the back button is clicked', async () => {
@@ -237,18 +257,17 @@ describe('ToolsConnectionModal', () => {
 	it('emits open-detail when a row is clicked', async () => {
 		const { getAllByTestId, emitted } = renderWith({ sections: ['nodes'] });
 
-		const rows = getAllByTestId('tools-connection-row');
+		const rows = getAllByTestId('tools-connection-row-main');
 		await fireEvent.click(rows[0]);
 
 		expect(emitted()['open-detail']).toBeTruthy();
 		expect(emitted()['update:detailItem']).toBeTruthy();
 	});
 
-	it('forwards the connect event from a row Connect button without navigating to detail', async () => {
+	it('forwards connect when a row connect button is clicked', async () => {
 		const { getAllByTestId, emitted } = renderWith({ sections: ['nodes'] });
 
-		const connectButtons = getAllByTestId('tools-connection-row-connect');
-		await fireEvent.click(connectButtons[0]);
+		await fireEvent.click(getAllByTestId('tools-connection-row-connect')[0]);
 
 		expect(emitted().connect).toBeTruthy();
 		expect(emitted()['open-detail']).toBeUndefined();

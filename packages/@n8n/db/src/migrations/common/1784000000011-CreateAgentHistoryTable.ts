@@ -43,7 +43,9 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 				onDelete: 'SET NULL',
 			}).withTimestamps;
 
-		await addColumns('agents', [column('activeVersionId').varchar(36)]);
+		await addColumns('agents', [column('activeVersionId').varchar(36)], {
+			recreatesOnSqlite: true,
+		});
 		await addForeignKey(
 			'agents',
 			'activeVersionId',
@@ -59,7 +61,9 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 		await dropTable('agent_published_version');
 
 		// These columns were left from previous refactors and never actually used in the live system
-		await dropColumns('agents', ['credentialId', 'provider', 'model']);
+		await dropColumns('agents', ['credentialId', 'provider', 'model'], {
+			recreatesOnSqlite: true,
+		});
 	}
 
 	async down(ctx: MigrationContext) {
@@ -67,11 +71,15 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 		const { createTable, addColumns, dropForeignKey, dropColumns, dropTable, column } =
 			schemaBuilder;
 
-		await addColumns('agents', [
-			column('credentialId').varchar(255),
-			column('provider').varchar(128),
-			column('model').varchar(128),
-		]);
+		await addColumns(
+			'agents',
+			[
+				column('credentialId').varchar(255),
+				column('provider').varchar(128),
+				column('model').varchar(128),
+			],
+			{ recreatesOnSqlite: true },
+		);
 
 		await createTable('agent_published_version')
 			.withColumns(
@@ -99,7 +107,7 @@ export class CreateAgentHistoryTable1784000000011 implements ReversibleMigration
 		await this.restoreActiveHistoryToPublishedVersion(ctx);
 
 		await dropForeignKey('agents', 'activeVersionId', ['agent_history', 'versionId']);
-		await dropColumns('agents', ['activeVersionId']);
+		await dropColumns('agents', ['activeVersionId'], { recreatesOnSqlite: true });
 		await dropTable('agent_history');
 	}
 

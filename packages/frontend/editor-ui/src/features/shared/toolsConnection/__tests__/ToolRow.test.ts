@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -79,16 +80,24 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']?.[0]).toEqual([connected]);
 	});
 
-	it('emits open-detail when an mcp-server row is clicked', async () => {
+	it('emits open-detail when the main row action is clicked', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
-		const row = getByTestId('tools-connection-row');
-		await fireEvent.click(row);
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
 
 		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
 	});
 
-	it('fires connect exactly once when clicking the Connect action and does not bubble open-detail', async () => {
+	it('emits open-detail when the main row action is keyboard activated', async () => {
+		const { getByTestId, emitted } = render(baseMcp);
+
+		getByTestId('tools-connection-row-main').focus();
+		await userEvent.keyboard('{Enter}');
+
+		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
+	});
+
+	it('does not fire open-detail when clicking the Connect action', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 
 		await fireEvent.click(getByTestId('tools-connection-row-connect'));
@@ -96,19 +105,23 @@ describe('ToolRow', () => {
 		expect(emitted()['open-detail']).toBeUndefined();
 	});
 
-	it('emits open-detail (not connect) when the row body is clicked', async () => {
-		const { getByTestId, emitted } = render(baseMcp);
-
-		await fireEvent.click(getByTestId('tools-connection-row'));
-		expect(emitted()['open-detail']?.[0]).toEqual([baseMcp]);
-		expect(emitted().connect).toBeUndefined();
-	});
-
 	it('emits open-detail when a node row is clicked', async () => {
 		const { getByTestId, emitted } = render(baseNode);
 
-		await fireEvent.click(getByTestId('tools-connection-row'));
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
 		expect(emitted()['open-detail']?.[0]).toEqual([baseNode]);
+	});
+
+	it('keeps row actions as sibling interactive controls', () => {
+		const { getByTestId } = render(baseMcp);
+
+		expect(getByTestId('tools-connection-row').getAttribute('role')).toBeNull();
+		expect(getByTestId('tools-connection-row-main').tagName).toBe('BUTTON');
+		expect(
+			getByTestId('tools-connection-row-main').contains(
+				getByTestId('tools-connection-row-connect'),
+			),
+		).toBe(false);
 	});
 
 	it('renders a file-type iconSource as an N8nNodeIcon img', () => {

@@ -13,6 +13,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('vue-router', async () => ({
@@ -31,6 +32,17 @@ vi.mock('@/app/composables/useToast', () => ({
 		showMessage: vi.fn(),
 	}),
 }));
+
+const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock }),
+}));
+
+vi.mock('@/features/resolvers/composables/useDynamicCredentials', async () => {
+	const { ref } = await vi.importActual<typeof import('vue')>('vue');
+	return { useDynamicCredentials: () => ({ isEnabled: ref(true) }) };
+});
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -945,6 +957,94 @@ describe('CredentialEdit', () => {
 
 			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+		});
+
+		describe('switching a connected private credential to static', () => {
+			test('shows the confirmation modal when the current user just connected, even if the server count is stale', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				// connectedByMe reflects the in-session connection; connectedUserCount is the
+				// stale server value (0) that does not yet include the current user.
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: true,
+					connectedByMe: true,
+					connectedUserCount: 0,
+				});
+
+				const { getByRole } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+				await userEvent.click(getByRole('switch'));
+
+				await retry(() => expect(confirmMock).toHaveBeenCalled());
+				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
+			});
+
+			test('does not show the confirmation modal when no users are connected', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: true,
+					connectedByMe: false,
+					connectedUserCount: 0,
+				});
+
+				const { getByRole } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+				await userEvent.click(getByRole('switch'));
+
+				expect(confirmMock).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('switching a static credential to private', () => {
+			test('resets the connected state so no Disconnect button is shown', async () => {
+				confirmMock.mockResolvedValue('confirm');
+				const pinia = createPiniaForBannerTest();
+				// A static credential whose per-user connection flag leaked over from a
+				// prior in-session connect. Switching it to private must not carry that
+				// connected state over, since no end-user connection exists yet.
+				const credentialsStore = setupOAuthCredential({
+					isResolvable: false,
+					connectedByMe: true,
+					oauthTokenData: false,
+				});
+
+				const { queryByTestId, getByTestId } = renderComponent({
+					props: {
+						activeId: 'cred-banner',
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'edit',
+					},
+					pinia,
+				});
+
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+				await retry(() => expect(getByTestId('dynamic-credentials-toggle')).toBeVisible());
+
+				await userEvent.click(getByTestId('dynamic-credentials-toggle'));
+
+				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
+				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();
+				expect(queryByTestId('oauth-disconnect-button')).not.toBeInTheDocument();
+			});
 		});
 	});
 });

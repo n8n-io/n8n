@@ -164,7 +164,7 @@ const hasMetadata = computed(
 .metadataLabel {
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
-	font-size: 11px;
+	font-size: var(--font-size--3xs);
 }
 
 .metadataLink {
