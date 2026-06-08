@@ -36,7 +36,12 @@ let _resetCache: typeof import('../discover.service')._resetCache;
 
 beforeAll(async () => {
 	({ buildDiscoverResponse, _resetCache } = await import('../discover.service'));
-});
+	// Warm the registry once. The first call cold-loads and transforms all
+	// handler modules (and their transitive graph) through Vite, which can
+	// approach the default 5s test timeout. Paying it here in the hook keeps
+	// the individual tests fast and non-flaky.
+	await buildDiscoverResponse([] as ApiKeyScope[]);
+}, 30_000);
 
 beforeEach(() => {
 	_resetCache();

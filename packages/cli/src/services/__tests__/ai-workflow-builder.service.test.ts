@@ -5,9 +5,10 @@ import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
-import type * as fs from 'node:fs';
-import type * as fsp from 'node:fs/promises';
-import type { Mock, Mocked, MockedClass } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Mock, MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
@@ -31,8 +32,6 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 	}),
 }));
 vi.mock('@n8n_io/ai-assistant-sdk');
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
 
 const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as MockedClass<
 	typeof AiWorkflowBuilderService
@@ -792,8 +791,6 @@ describe('WorkflowBuilderService', () => {
 });
 
 describe('WorkflowBuilderService - node type loading', () => {
-	const packageDir = '/test/nodes-base';
-
 	const nodeTypeDescription = {
 		name: 'httpRequest',
 		displayName: 'HTTP Request',
@@ -806,41 +803,48 @@ describe('WorkflowBuilderService - node type loading', () => {
 		group: ['output'],
 	};
 
-	beforeEach(async () => {
+	// `n8n-core` is externalized to its built dist in the cli vitest config, so the
+	// `node:fs` calls inside the real LazyPackageDirectoryLoader run in native Node
+	// and can't be intercepted by `vi.mock`. Instead, lay down a real package
+	// directory on disk for the loader to read.
+	let packageDir: string;
+
+	beforeAll(() => {
+		packageDir = mkdtempSync(join(tmpdir(), 'n8n-nodes-base-'));
+		mkdirSync(join(packageDir, 'dist', 'known'), { recursive: true });
+		mkdirSync(join(packageDir, 'dist', 'types'), { recursive: true });
+
+		writeFileSync(
+			join(packageDir, 'package.json'),
+			JSON.stringify({
+				name: 'n8n-nodes-base',
+				version: '1.0.0',
+				n8n: { nodes: [], credentials: [] },
+			}),
+		);
+		writeFileSync(
+			join(packageDir, 'dist', 'known', 'nodes.json'),
+			JSON.stringify({
+				httpRequest: {
+					className: 'HttpRequest',
+					sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
+				},
+			}),
+		);
+		writeFileSync(join(packageDir, 'dist', 'known', 'credentials.json'), JSON.stringify({}));
+		writeFileSync(
+			join(packageDir, 'dist', 'types', 'nodes.json'),
+			JSON.stringify([nodeTypeDescription]),
+		);
+		writeFileSync(join(packageDir, 'dist', 'types', 'credentials.json'), JSON.stringify([]));
+	});
+
+	afterAll(() => {
+		rmSync(packageDir, { recursive: true, force: true });
+	});
+
+	beforeEach(() => {
 		MockedAiWorkflowBuilderService.mockClear();
-
-		// Mock node:fs so LazyPackageDirectoryLoader can "read" from disk.
-		// Use `import` (not `require`) so we get the globally-mocked module.
-		const fsModule = (await import('node:fs')) as unknown as Mocked<typeof fs>;
-		const fspModule = (await import('node:fs/promises')) as unknown as Mocked<typeof fsp>;
-
-		fsModule.realpathSync.mockReturnValue(packageDir);
-		fsModule.readFileSync.mockImplementation((filePath: unknown) => {
-			if (String(filePath).endsWith('package.json')) {
-				return JSON.stringify({
-					name: 'n8n-nodes-base',
-					version: '1.0.0',
-					n8n: { nodes: [], credentials: [] },
-				});
-			}
-			throw new Error(`Unexpected readFileSync: ${String(filePath)}`);
-		});
-
-		fspModule.readFile.mockImplementation(async (filePath: unknown) => {
-			const p = String(filePath);
-			if (p.endsWith('known/nodes.json')) {
-				return JSON.stringify({
-					httpRequest: {
-						className: 'HttpRequest',
-						sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
-					},
-				});
-			}
-			if (p.endsWith('known/credentials.json')) return JSON.stringify({});
-			if (p.endsWith('types/nodes.json')) return JSON.stringify([nodeTypeDescription]);
-			if (p.endsWith('types/credentials.json')) return JSON.stringify([]);
-			throw new Error(`Unexpected readFile: ${p}`);
-		});
 	});
 
 	it('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
@@ -854,7 +858,7 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 		);
 
-		// Real LazyPackageDirectoryLoader reading from the mocked filesystem
+		// Real LazyPackageDirectoryLoader reading from the real fixture directory
 		const loader = new LazyPackageDirectoryLoader(packageDir);
 		await loader.loadAll();
 		loadNodesAndCredentials.loaders[loader.packageName] = loader;
