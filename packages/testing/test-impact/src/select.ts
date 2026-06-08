@@ -12,7 +12,7 @@
 
 import * as fs from 'node:fs';
 
-import { filterImpactfulChanges } from './changes.js';
+import { dropDevDepOnlyDeps, filterImpactfulChanges } from './changes.js';
 import {
 	type ImpactMap,
 	type InternedImpactMap,
@@ -29,6 +29,11 @@ export interface SelectTestsInput {
 	mapFile?: string;
 	/** Path to a newline/comma separated list of every known spec. */
 	allSpecsFile?: string;
+	/** before/after content of each changed package.json (caller reads from git),
+	 *  keyed by path. When supplied, a devDependencies-only manifest change drops
+	 *  the lockfile + manifests from selection — a devDep can't reach the runtime
+	 *  bundle the E2E suite exercises. */
+	manifests?: Record<string, { before: string; after: string }>;
 }
 
 export interface SelectTestsResult extends ResolveResult {
@@ -71,7 +76,9 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	// Drop non-impactful paths (repo tooling / docs / named config) up front so
 	// they never trip the unmapped→broad fallback. A change that's *only* such
 	// files yields an empty set → scoped/0 → the caller skips E2E.
-	const changed = filterImpactfulChanges(input.changedFiles).map((file) => ({ file }));
+	let impactful = filterImpactfulChanges(input.changedFiles);
+	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
+	const changed = impactful.map((file) => ({ file }));
 	// The live V8 selection runs through the pipeline as the single selection
 	// mechanism; the AST / dep-graph selectors join this array later. Sibling
 	// fallback scopes a new/unmapped file to its nearest covered directory.

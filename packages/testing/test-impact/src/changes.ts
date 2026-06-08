@@ -50,3 +50,69 @@ export function isNonImpactful(file: string): boolean {
 export function filterImpactfulChanges(files: string[]): string[] {
 	return files.filter((file) => !isNonImpactful(file));
 }
+
+/** A package.json change classified by which dependency sections moved. */
+export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'none';
+
+type ManifestJson = Record<string, Record<string, string> | undefined>;
+const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const;
+
+function parseManifest(raw: string): ManifestJson {
+	try {
+		return JSON.parse(raw) as ManifestJson;
+	} catch {
+		return {};
+	}
+}
+
+function sectionChanged(before: ManifestJson, after: ManifestJson, section: string): boolean {
+	const b = before[section] ?? {};
+	const a = after[section] ?? {};
+	for (const key of new Set([...Object.keys(b), ...Object.keys(a)])) {
+		if (b[key] !== a[key]) return true;
+	}
+	return false;
+}
+
+/**
+ * Classify a package.json change by the dependency sections it touched:
+ *  - `runtime`     — a runtime section (dependencies / optional / peer) moved, so
+ *                    it can reach the bundle the E2E suite exercises.
+ *  - `devDep-only` — only devDependencies moved → cannot reach the runtime bundle.
+ *  - `none`        — no dependency section moved (scripts / version / engines / …).
+ * Unparseable content is treated as an empty manifest.
+ */
+export function classifyManifestChange(before: string, after: string): ManifestChangeKind {
+	const b = parseManifest(before);
+	const a = parseManifest(after);
+	if (RUNTIME_SECTIONS.some((s) => sectionChanged(b, a, s))) return 'runtime';
+	return sectionChanged(b, a, 'devDependencies') ? 'devDep-only' : 'none';
+}
+
+const isManifest = (f: string): boolean => /(^|\/)package\.json$/.test(f);
+const isLockfile = (f: string): boolean => f === 'pnpm-lock.yaml';
+
+/**
+ * Drop the lockfile + manifests from a changed-file set when the dependency
+ * change is provably devDependencies-only — a devDep can't reach the runtime
+ * bundle, so it must not force broad. `manifests` maps each changed package.json
+ * path to its before/after content (the caller reads these from git).
+ *
+ * Conservative by construction — never drops without positive evidence:
+ *  - any runtime-section change → keep everything (real dep change);
+ *  - a changed package.json with no supplied diff → treated as runtime;
+ *  - a lockfile change with no changed package.json at all (transitive bump) → kept.
+ */
+export function dropDevDepOnlyDeps(
+	files: string[],
+	manifests: Record<string, { before: string; after: string }>,
+): string[] {
+	const changedManifests = files.filter(isManifest);
+	if (changedManifests.length === 0) return files;
+	const kinds = changedManifests.map((f) =>
+		manifests[f] ? classifyManifestChange(manifests[f].before, manifests[f].after) : 'runtime',
+	);
+	if (kinds.includes('runtime')) return files;
+	if (!kinds.includes('devDep-only')) return files;
+	return files.filter((f) => !isLockfile(f) && !isManifest(f));
+}
