@@ -1,13 +1,13 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
-import type { TranslationRequest } from '@/controllers/translation.controller';
+import type { TranslationRequest } from '@/controllers/translation.controller.js';
 import {
 	TranslationController,
 	CREDENTIAL_TRANSLATIONS_DIR,
-} from '@/controllers/translation.controller';
-import type { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+} from '@/controllers/translation.controller.js';
+import type { CredentialTypes } from '@/credential-types.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
 describe('TranslationController', () => {
 	const credentialTypes = mock<CredentialTypes>();

@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { IWebhookResponseData } from 'n8n-workflow';
 
-import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor';
+import { extractWebhookOnReceivedResponse } from '@/webhooks/webhook-on-received-response-extractor.js';
 
 describe('extractWebhookOnReceivedResponse', () => {
 	const webhookResultData = mock<IWebhookResponseData>();

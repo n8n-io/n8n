@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
 const cacheService = Container.get(CacheService);
 const store = mock<NonNullable<CacheService['cache']>['store']>({ isCacheable: () => true });

@@ -14,26 +14,26 @@ import {
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { MfaService } from '@/mfa/mfa.service';
-import { PostHogClient } from '@/posthog';
-import { AuthlessRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry.js';
+import { AuthService } from '@/auth/auth.service.js';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { EventService } from '@/events/event.service.js';
+import { License } from '@/license.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { AuthlessRequest } from '@/requests.js';
+import { UserService } from '@/services/user.service.js';
 import {
 	getCurrentAuthenticationMethod,
 	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
-import '../auth/handlers/email.auth-handler';
+} from '@/sso.ee/sso-helpers.js';
+import '../auth/handlers/email.auth-handler.js';
 
 @RestController()
 export class AuthController {

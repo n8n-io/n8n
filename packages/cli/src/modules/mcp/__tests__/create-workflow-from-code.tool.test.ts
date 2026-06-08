@@ -3,14 +3,14 @@ import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
+import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool.js';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { NodeTypes } from '@/node-types';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { NodeTypes } from '@/node-types.js';
+import { UrlService } from '@/services/url.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 // Mock credentials auto-assign
 const mockAutoPopulateNodeCredentials = jest.fn();

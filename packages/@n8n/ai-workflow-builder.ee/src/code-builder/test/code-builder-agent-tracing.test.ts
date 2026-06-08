@@ -15,7 +15,7 @@ import {
 } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
-import { CodeBuilderAgent } from '../code-builder-agent';
+import { CodeBuilderAgent } from '../code-builder-agent.js';
 
 // Mock workflow-sdk to control parse/validate behavior
 vi.mock('@n8n/workflow-sdk', () => ({

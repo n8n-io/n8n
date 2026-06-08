@@ -1,13 +1,13 @@
 import type { SecretProviderTypeResponse, SecretsProviderType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { AwsSecretsManager } from './providers/aws-secrets-manager';
-import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault';
-import { GcpSecretsManager } from './providers/gcp-secrets-manager/gcp-secrets-manager';
-import { InfisicalProvider } from './providers/infisical';
-import { OnePasswordProvider } from './providers/one-password';
-import { VaultProvider } from './providers/vault';
-import type { SecretsProvider } from './types';
+import { AwsSecretsManager } from './providers/aws-secrets-manager.js';
+import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault.js';
+import { GcpSecretsManager } from './providers/gcp-secrets-manager/gcp-secrets-manager.js';
+import { InfisicalProvider } from './providers/infisical.js';
+import { OnePasswordProvider } from './providers/one-password.js';
+import { VaultProvider } from './providers/vault.js';
+import type { SecretsProvider } from './types.js';
 
 @Service()
 export class ExternalSecretsProviders {

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 
-import { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
+import { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity.js';
 
 @Service()
 export class ChatHubAgentRepository extends Repository<ChatHubAgent> {

@@ -8,11 +8,11 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { feedbackKey } from './feedback';
-import type { ExampleResult, Feedback, RunSummary } from './harness-types';
-import type { EvalLogger } from './logger';
-import { selectScoringItems, calculateFiniteAverage } from './score-calculator';
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import { feedbackKey } from './feedback.js';
+import type { ExampleResult, Feedback, RunSummary } from './harness-types.js';
+import type { EvalLogger } from './logger.js';
+import { selectScoringItems, calculateFiniteAverage } from './score-calculator.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 /**
  * Interface for saving evaluation artifacts to disk.

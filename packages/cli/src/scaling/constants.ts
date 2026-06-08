@@ -1,4 +1,4 @@
-import type { PubSub } from './pubsub/pubsub.types';
+import type { PubSub } from './pubsub/pubsub.types.js';
 
 export const QUEUE_NAME = 'jobs';
 

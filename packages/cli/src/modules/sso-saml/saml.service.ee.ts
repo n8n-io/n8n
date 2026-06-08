@@ -17,33 +17,33 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder.js';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { UrlService } from '@/services/url.service.js';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,
 	isSamlLoginEnabled,
 	isSsoJustInTimeProvisioningEnabled,
 	reloadAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
+} from '@/sso.ee/sso-helpers.js';
 
-import { SAML_PREFERENCES_DB_KEY } from './constants';
-import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
-import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
+import { SAML_PREFERENCES_DB_KEY } from './constants.js';
+import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error.js';
+import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error.js';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
 	setSamlLoginEnabled,
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
-} from './saml-helpers';
-import { SamlValidator } from './saml-validator';
-import { getServiceProviderInstance } from './service-provider.ee';
-import type { SamlLoginBinding, SamlUserAttributes } from './types';
+} from './saml-helpers.js';
+import { SamlValidator } from './saml-validator.js';
+import { getServiceProviderInstance } from './service-provider.ee.js';
+import type { SamlLoginBinding, SamlUserAttributes } from './types.js';
 
 const TEST_CONFIG_TTL_MS = 10 * 60 * 1000;
 const TEST_CONFIG_CACHE_PREFIX = 'saml:pending-test-config:';
@@ -458,7 +458,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}

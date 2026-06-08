@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import type { SentMessage } from 'chat';
 import { z } from 'zod';
 
+<<<<<<< HEAD
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
 import {
@@ -10,19 +11,25 @@ import {
 	type ShortenCallback,
 } from './component-mapper';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
+=======
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { ChatIntegrationService, type ChatInstance } from './chat-integration.service.js';
+import { ComponentMapper, RICH_INTERACTION_RESUME_JSON_SCHEMA } from './component-mapper.js';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	connectionUnavailable,
 	integrationError,
 	normalizePlatformId,
-} from './integration-helpers';
+} from './integration-helpers.js';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
-} from './integration-tools';
-import { subscribeSlackThread } from './platforms/slack-operations';
+} from './integration-tools.js';
+import { subscribeSlackThread } from './platforms/slack-operations.js';
 
 const messageSchema = z
 	.object({

@@ -8,12 +8,12 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { StreamOutput } from '../../types/streaming';
-import { FIX_VALIDATION_ERRORS_INSTRUCTION } from '../constants';
-import type { WarningTracker } from '../state/warning-tracker';
-import type { ParseAndValidateResult } from '../types';
-import { pushValidationFeedback } from '../utils/content-extractors';
-import { formatWarnings } from '../utils/format-warnings';
+import type { StreamOutput } from '../../types/streaming.js';
+import { FIX_VALIDATION_ERRORS_INSTRUCTION } from '../constants.js';
+import type { WarningTracker } from '../state/warning-tracker.js';
+import type { ParseAndValidateResult } from '../types.js';
+import { pushValidationFeedback } from '../utils/content-extractors.js';
+import { formatWarnings } from '../utils/format-warnings.js';
 
 /**
  * Parse and validate function type

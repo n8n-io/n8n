@@ -1,7 +1,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry';
-import type { PromptContext } from './types';
+import { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry.js';
+import type { PromptContext } from './types.js';
 
 // Mock node definition for testing
 const mockNodeDefinition: INodeTypeDescription = {

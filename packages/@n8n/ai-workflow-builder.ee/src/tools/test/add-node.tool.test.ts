@@ -19,8 +19,8 @@ import {
 	buildAddNodeInput,
 	REASONING,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createAddNodeTool } from '../add-node.tool';
+} from '../../../test/test-utils.js';
+import { createAddNodeTool } from '../add-node.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

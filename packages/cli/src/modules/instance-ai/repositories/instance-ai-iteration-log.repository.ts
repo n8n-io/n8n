@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { InstanceAiIterationLog } from '../entities/instance-ai-iteration-log.entity';
+import { InstanceAiIterationLog } from '../entities/instance-ai-iteration-log.entity.js';
 
 @Service()
 export class InstanceAiIterationLogRepository extends Repository<InstanceAiIterationLog> {

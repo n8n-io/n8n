@@ -1,7 +1,7 @@
 import { CompactEncrypt, exportJWK, generateKeyPair, importJWK } from 'jose';
 import type { CryptoKey } from 'jose';
 
-import { decryptJweToken, decryptJweTokenData, isJweToken } from '../oauth-jwe.utils';
+import { decryptJweToken, decryptJweTokenData, isJweToken } from '../oauth-jwe.utils.js';
 
 const ALG = 'RSA-OAEP-256';
 const ENC = 'A256GCM';

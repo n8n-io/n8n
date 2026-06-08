@@ -8,7 +8,7 @@ import type {
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data.js';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -21,18 +21,18 @@ import {
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
-import { TestRunnerService } from '../test-runner.service.ee';
-import type { WorkflowCompilerService } from '../workflow-compiler.service';
+import { TestRunnerService } from '../test-runner.service.ee.js';
+import type { WorkflowCompilerService } from '../workflow-compiler.service.js';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
-import type { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee.js';
+import type { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 
 // Tier high enough that the resolver's tier-default branch lifts the cap to
 // 5, which is greater than every concurrency value used in these tests.

@@ -1,7 +1,7 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { ClusterCheckContext } from '@n8n/decorators';
 
-import { HostIdClashCheck } from '../../checks/hostid-clash.check';
+import { HostIdClashCheck } from '../../checks/hostid-clash.check.js';
 
 const makeInstance = (override: Partial<InstanceRegistration> = {}): InstanceRegistration => ({
 	schemaVersion: 1 as const,

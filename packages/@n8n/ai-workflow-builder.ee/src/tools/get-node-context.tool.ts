@@ -4,14 +4,14 @@ import type { IConnections, NodeConnectionType } from 'n8n-workflow';
 import { isNodeConnectionType, mapConnectionsByDestination } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import type { SimpleWorkflow } from '../types/workflow';
-import { isTriggerNodeType } from '../utils/node-helpers';
-import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
-import { truncateJson } from '../utils/truncate-json';
-import { createProgressReporter } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getEffectiveWorkflow, getWorkflowState } from './helpers/state';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
+import { isTriggerNodeType } from '../utils/node-helpers.js';
+import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor.js';
+import { truncateJson } from '../utils/truncate-json.js';
+import { createProgressReporter } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getEffectiveWorkflow, getWorkflowState } from './helpers/state.js';
 
 const DISPLAY_TITLE = 'Getting node context';
 

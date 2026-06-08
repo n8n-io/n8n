@@ -5,27 +5,27 @@
  */
 
 // Agent
-export { CodeBuilderAgent } from './code-builder-agent';
+export { CodeBuilderAgent } from './code-builder-agent.js';
 
 // Types
-export type { CodeBuilderAgentConfig, ParseAndValidateResult, ValidationWarning } from './types';
+export type { CodeBuilderAgentConfig, ParseAndValidateResult, ValidationWarning } from './types.js';
 
 // Code Workflow Builder
-export { CodeWorkflowBuilder } from './code-workflow-builder';
-export type { CodeWorkflowBuilderConfig, HistoryContext } from './code-workflow-builder';
+export { CodeWorkflowBuilder } from './code-workflow-builder.js';
+export type { CodeWorkflowBuilderConfig, HistoryContext } from './code-workflow-builder.js';
 
 // Session utilities
-export { generateCodeBuilderThreadId } from './utils/code-builder-session';
+export { generateCodeBuilderThreadId } from './utils/code-builder-session.js';
 
 // Core utilities for MCP integration
-export { ParseValidateHandler, WorkflowCodeParseError } from './handlers/parse-validate-handler';
-export { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
-export { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
-export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
-export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-code';
+export { ParseValidateHandler, WorkflowCodeParseError } from './handlers/parse-validate-handler.js';
+export { createCodeBuilderSearchTool } from './tools/code-builder-search.tool.js';
+export { createCodeBuilderGetTool } from './tools/code-builder-get.tool.js';
+export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool.js';
+export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-code.js';
 
 // SDK reference content (raw, unescaped curly braces)
-export { WORKFLOW_PATTERNS } from './prompts';
+export { WORKFLOW_PATTERNS } from './prompts/index.js';
 export {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
@@ -44,4 +44,4 @@ export {
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
-} from './constants';
+} from './constants.js';

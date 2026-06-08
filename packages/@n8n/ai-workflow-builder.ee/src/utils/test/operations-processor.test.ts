@@ -1,9 +1,9 @@
 import type { INode, IConnections } from 'n8n-workflow';
 
-import { createNode, createWorkflow } from '../../../test/test-utils';
-import type { SimpleWorkflow, WorkflowOperation } from '../../types/workflow';
-import type { WorkflowState } from '../../workflow-state';
-import { applyOperations, processOperations } from '../operations-processor';
+import { createNode, createWorkflow } from '../../../test/test-utils.js';
+import type { SimpleWorkflow, WorkflowOperation } from '../../types/workflow.js';
+import type { WorkflowState } from '../../workflow-state.js';
+import { applyOperations, processOperations } from '../operations-processor.js';
 
 describe('operations-processor', () => {
 	describe('applyOperations', () => {

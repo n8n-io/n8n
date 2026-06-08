@@ -8,12 +8,12 @@ import { mkdir, readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentFile } from './entities/agent-file.entity';
-import { AgentFileRepository } from './repositories/agent-file.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import { AgentFile } from './entities/agent-file.entity.js';
+import { AgentFileRepository } from './repositories/agent-file.repository.js';
+import { AgentRepository } from './repositories/agent.repository.js';
 
 /**
  * A knowledge file as seen by the agent runtime's `search_knowledge` tool.

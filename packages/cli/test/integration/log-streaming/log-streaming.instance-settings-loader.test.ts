@@ -4,9 +4,9 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { InstanceBootstrappingError } from '@/instance-settings-loader/instance-bootstrapping.error';
-import { LogStreamingInstanceSettingsLoader } from '@/instance-settings-loader/loaders/log-streaming.instance-settings-loader';
-import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
+import { InstanceBootstrappingError } from '@/instance-settings-loader/instance-bootstrapping.error.js';
+import { LogStreamingInstanceSettingsLoader } from '@/instance-settings-loader/loaders/log-streaming.instance-settings-loader.js';
+import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository.js';
 
 beforeAll(async () => {
 	await testModules.loadModules(['log-streaming']);

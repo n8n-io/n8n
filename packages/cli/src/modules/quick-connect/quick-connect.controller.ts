@@ -2,7 +2,7 @@ import { GetQuickConnectApiKeyDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 
-import { QuickConnectService } from './quick-connect.service';
+import { QuickConnectService } from './quick-connect.service.js';
 
 @RestController('/quick-connect')
 export class QuickConnectController {

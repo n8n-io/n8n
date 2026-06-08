@@ -1,15 +1,15 @@
 import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
 
 import {
 	createFailure,
 	type CredentialBinding,
 	type CredentialResolution,
 	type CredentialResolutionFailure,
-} from './credential.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+} from './credential.types.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 export interface CredentialMatcherContext {
 	targetProject: Project;

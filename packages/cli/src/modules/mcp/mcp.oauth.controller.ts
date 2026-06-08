@@ -9,12 +9,12 @@ import { Get, Options, RootLevelController, StaticRouterMetadata } from '@n8n/de
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@/services/url.service.js';
 
-import { McpOAuthService, SUPPORTED_SCOPES } from './mcp-oauth-service';
-import { MCP_ACCESS_DISABLED_ERROR_MESSAGE } from './mcp.constants';
-import { buildMcpClientLimitReachedMessage } from './mcp.errors';
-import { McpSettingsService } from './mcp.settings.service';
+import { McpOAuthService, SUPPORTED_SCOPES } from './mcp-oauth-service.js';
+import { MCP_ACCESS_DISABLED_ERROR_MESSAGE } from './mcp.constants.js';
+import { buildMcpClientLimitReachedMessage } from './mcp.errors.js';
+import { McpSettingsService } from './mcp.settings.service.js';
 
 const mcpOAuthService = Container.get(McpOAuthService);
 const mcpSettingsService = Container.get(McpSettingsService);

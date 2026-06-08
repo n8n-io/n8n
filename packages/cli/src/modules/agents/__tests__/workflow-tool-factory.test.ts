@@ -3,16 +3,23 @@ import type { WorkflowRepository, UserRepository } from '@n8n/db';
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { ActiveExecutions } from '@/active-executions';
+=======
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { ExecutionRepository } from '@n8n/db';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import {
 	normalizeTriggerInput,
 	resolveWorkflowTool,
 	validateCompatibility,
-} from '../tools/workflow-tool-factory';
-import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
+} from '../tools/workflow-tool-factory.js';
+import type { WorkflowToolContext } from '../tools/workflow-tool-factory.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

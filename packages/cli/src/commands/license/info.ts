@@ -1,9 +1,9 @@
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { License } from '@/license';
+import { License } from '@/license.js';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 @Command({
 	name: 'license:info',

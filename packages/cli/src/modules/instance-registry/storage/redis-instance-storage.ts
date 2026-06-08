@@ -5,11 +5,16 @@ import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@/services/redis-client.service.js';
 
-import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../instance-registry.types';
-import type { InstanceStorage } from './instance-storage.interface';
-import { CLEANUP_SCRIPT, READ_ALL_SCRIPT, REGISTER_SCRIPT, UNREGISTER_SCRIPT } from './lua-scripts';
+import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../instance-registry.types.js';
+import type { InstanceStorage } from './instance-storage.interface.js';
+import {
+	CLEANUP_SCRIPT,
+	READ_ALL_SCRIPT,
+	REGISTER_SCRIPT,
+	UNREGISTER_SCRIPT,
+} from './lua-scripts.js';
 
 @Service()
 export class RedisInstanceStorage implements InstanceStorage {

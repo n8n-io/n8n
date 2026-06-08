@@ -5,22 +5,22 @@
  * All evaluators are independent and can run in parallel.
  */
 
-export { createLLMJudgeEvaluator } from './llm-judge';
-export { createProgrammaticEvaluator } from './programmatic';
+export { createLLMJudgeEvaluator } from './llm-judge/index.js';
+export { createProgrammaticEvaluator } from './programmatic/index.js';
 export {
 	createPairwiseEvaluator,
 	type PairwiseEvaluatorOptions,
-} from './pairwise';
+} from './pairwise/index.js';
 export {
 	createSimilarityEvaluator,
 	type SimilarityEvaluatorOptions,
-} from './similarity';
+} from './similarity/index.js';
 export {
 	createResponderEvaluator,
 	type ResponderEvaluationContext,
-} from './responder';
-export { createExecutionEvaluator } from './execution';
+} from './responder/index.js';
+export { createExecutionEvaluator } from './execution/index.js';
 export {
 	createBinaryChecksEvaluator,
 	type BinaryChecksEvaluatorOptions,
-} from './binary-checks';
+} from './binary-checks/index.js';

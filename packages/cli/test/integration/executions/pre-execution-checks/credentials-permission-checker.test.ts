@@ -16,14 +16,14 @@ import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
-import { OwnershipService } from '@/services/ownership.service';
-import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
-import { createOwner, createUser } from '@test-integration/db/users';
-import type { SaveCredentialFunction } from '@test-integration/types';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/index.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { NodeTypes } from '@/node-types.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { affixRoleToSaveCredential } from '@test-integration/db/credentials.js';
+import { createOwner, createUser } from '@test-integration/db/users.js';
+import type { SaveCredentialFunction } from '@test-integration/types.js';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data.js';
 
 const ownershipService = mockInstance(OwnershipService);
 

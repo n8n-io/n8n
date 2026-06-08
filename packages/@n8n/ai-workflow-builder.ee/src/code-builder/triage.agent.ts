@@ -3,17 +3,17 @@ import type { AIMessageChunk, BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
 import type { Logger } from '@n8n/backend-common';
 
-import type { AssistantHandler } from '@/assistant/assistant-handler';
-import type { StreamWriter } from '@/assistant/types';
-import { extractTextContent } from '@/code-builder/utils/content-extractors';
-import { MAX_TRIAGE_ITERATIONS } from '@/constants';
-import { prompt } from '@/prompts/builder';
-import type { StreamChunk, StreamOutput } from '@/types/streaming';
-import { buildSelectedNodesSummary, buildWorkflowSummary } from '@/utils/context-builders';
-import type { ChatPayload } from '@/workflow-builder-agent';
+import type { AssistantHandler } from '@/assistant/assistant-handler.js';
+import type { StreamWriter } from '@/assistant/types.js';
+import { extractTextContent } from '@/code-builder/utils/content-extractors.js';
+import { MAX_TRIAGE_ITERATIONS } from '@/constants.js';
+import { prompt } from '@/prompts/builder/index.js';
+import type { StreamChunk, StreamOutput } from '@/types/streaming.js';
+import { buildSelectedNodesSummary, buildWorkflowSummary } from '@/utils/context-builders.js';
+import type { ChatPayload } from '@/workflow-builder-agent.js';
 
-import { ASK_ASSISTANT_TOOL } from './tools/ask-assistant.tool';
-import { BUILD_WORKFLOW_TOOL } from './tools/build-workflow.tool';
+import { ASK_ASSISTANT_TOOL } from './tools/ask-assistant.tool.js';
+import { BUILD_WORKFLOW_TOOL } from './tools/build-workflow.tool.js';
 
 type TriageConversationEntry =
 	| { type: 'build-request'; message: string }

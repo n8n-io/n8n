@@ -10,7 +10,7 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@/services/role.service.js';
 
 @Service()
 export class SecuritySettingsService {

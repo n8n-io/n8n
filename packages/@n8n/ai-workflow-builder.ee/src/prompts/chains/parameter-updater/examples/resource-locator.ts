@@ -1,4 +1,4 @@
-import type { NodeTypeExamples } from '../types';
+import type { NodeTypeExamples } from '../types.js';
 
 export const RESOURCE_LOCATOR_EXAMPLES: NodeTypeExamples = {
 	patterns: ['*'],

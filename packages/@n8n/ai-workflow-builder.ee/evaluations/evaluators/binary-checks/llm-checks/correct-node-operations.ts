@@ -1,4 +1,4 @@
-import { createLlmCheck } from './create-llm-check';
+import { createLlmCheck } from './create-llm-check.js';
 
 export const correctNodeOperations = createLlmCheck({
 	name: 'correct_node_operations',

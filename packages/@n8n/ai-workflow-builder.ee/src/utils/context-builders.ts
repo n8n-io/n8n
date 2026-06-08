@@ -1,16 +1,16 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 
-import { MAX_AI_RESPONSE_CHARS } from '../constants';
-import { mermaidStringify } from '../tools/utils/mermaid.utils';
-import type { CoordinationLogEntry } from '../types/coordination';
-import type { DiscoveryContext } from '../types/discovery-types';
-import type { QuestionResponse } from '../types/planning';
-import type { SimpleWorkflow } from '../types/workflow';
-import type { ChatPayload } from '../workflow-builder-agent';
-import { isTriggerNodeType } from './node-helpers';
-import { trimWorkflowJSON } from './trim-workflow-context';
-import { truncateJson } from './truncate-json';
+import { MAX_AI_RESPONSE_CHARS } from '../constants.js';
+import { mermaidStringify } from '../tools/utils/mermaid.utils.js';
+import type { CoordinationLogEntry } from '../types/coordination.js';
+import type { DiscoveryContext } from '../types/discovery-types.js';
+import type { QuestionResponse } from '../types/planning.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
+import type { ChatPayload } from '../workflow-builder-agent.js';
+import { isTriggerNodeType } from './node-helpers.js';
+import { trimWorkflowJSON } from './trim-workflow-context.js';
+import { truncateJson } from './truncate-json.js';
 
 // ============================================================================
 // WORKFLOW CONTEXT BUILDERS

@@ -14,9 +14,9 @@ import {
 	createNodeTypeWithResourceLocator,
 	mockResourceLocatorCallback,
 	createResourceLocatorResults,
-} from '../../../test/test-utils';
-import type { ResourceLocatorCallback } from '../../types/callbacks';
-import { createGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool';
+} from '../../../test/test-utils.js';
+import type { ResourceLocatorCallback } from '../../types/callbacks.js';
+import { createGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool.js';
 
 vi.mock('@langchain/langgraph', () => ({
 	getCurrentTaskInput: vi.fn(),

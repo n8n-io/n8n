@@ -12,7 +12,7 @@ const mockedReadFileSync = readFileSync as MockedFunction<typeof readFileSync>;
 const mockedExistsSync = existsSync as MockedFunction<typeof existsSync>;
 
 // Import after mocking
-import { loadNodesFromFile } from './load-nodes';
+import { loadNodesFromFile } from './load-nodes.js';
 
 describe('loadNodesFromFile', () => {
 	beforeEach(() => {

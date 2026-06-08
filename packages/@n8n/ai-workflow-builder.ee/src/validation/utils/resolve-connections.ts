@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { Expression } from 'n8n-workflow';
 
-import type { NodeResolvedConnectionTypesInfo } from '../types';
+import type { NodeResolvedConnectionTypesInfo } from '../types.js';
 
 function isDynamicConnectionsExpression(
 	connections: Array<NodeConnectionType | INodeInputConfiguration> | ExpressionString,

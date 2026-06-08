@@ -8,10 +8,10 @@ import {
 import type { Project, User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createDataTable } from '@test-integration/db/data-tables';
-import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
-import type { SuperAgentTest } from '@test-integration/types';
-import * as utils from '@test-integration/utils';
+import { createDataTable } from '@test-integration/db/data-tables.js';
+import { createOwner, createMember, createAdmin } from '@test-integration/db/users.js';
+import type { SuperAgentTest } from '@test-integration/types.js';
+import * as utils from '@test-integration/utils/index.js';
 
 let owner: User;
 let member: User;

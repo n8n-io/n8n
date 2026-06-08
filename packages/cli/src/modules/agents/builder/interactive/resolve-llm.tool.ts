@@ -2,12 +2,12 @@ import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
 import { z } from 'zod';
 
-import { BUILDER_TOOLS } from '../builder-tool-names';
+import { BUILDER_TOOLS } from '../builder-tool-names.js';
 import {
 	LLM_PROVIDER_DEFAULTS,
 	type LlmProviderDefault,
 	type ModelLookupConfig,
-} from './llm-provider-defaults';
+} from './llm-provider-defaults.js';
 
 export interface ModelLookup {
 	list(

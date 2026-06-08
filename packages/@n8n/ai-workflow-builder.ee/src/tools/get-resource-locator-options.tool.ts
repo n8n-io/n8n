@@ -3,18 +3,18 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription, INodePropertyMode, INodeListSearchItems } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import type { ResourceLocatorCallback } from '../types/callbacks';
-import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, getWorkflowState } from './helpers/state';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import type { ResourceLocatorCallback } from '../types/callbacks.js';
+import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getCurrentWorkflow, getWorkflowState } from './helpers/state.js';
 import {
 	validateNodeExists,
 	findNodeType,
 	createNodeNotFoundError,
 	createNodeTypeNotFoundError,
-} from './helpers/validation';
+} from './helpers/validation.js';
 
 const TOOL_NAME = 'get_resource_locator_options';
 const DISPLAY_TITLE = 'Fetching resource options';

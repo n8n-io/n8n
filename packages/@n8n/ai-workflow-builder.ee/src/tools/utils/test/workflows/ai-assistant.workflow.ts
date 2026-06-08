@@ -1,4 +1,4 @@
-import type { WorkflowMetadata } from '@/types';
+import type { WorkflowMetadata } from '@/types/index.js';
 
 // template for test: https://n8n.io/workflows/8237-personal-life-manager-with-telegram-google-services-and-voice-enabled-ai/
 

@@ -1,19 +1,19 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
-import { DummyProvider, FailedProvider, MockProviders } from '@test/external-secrets/utils';
+import { DummyProvider, FailedProvider, MockProviders } from '@test/external-secrets/utils.js';
 
 import type { SecretsProviderConnectionRepository } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 
-import { ExternalSecretsManager } from '../external-secrets-manager.ee';
-import type { ExternalSecretsConfig } from '../external-secrets.config';
-import type { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
-import type { ExternalSecretsProviderRegistry } from '../provider-registry.service';
-import type { ExternalSecretsRetryManager } from '../retry-manager.service';
-import type { ExternalSecretsSecretsCache } from '../secrets-cache.service';
-import type { ExternalSecretsSettingsStore } from '../settings-store.service';
-import type { ExternalSecretsSettings, SecretsProvider } from '../types';
+import { ExternalSecretsManager } from '../external-secrets-manager.ee.js';
+import type { ExternalSecretsConfig } from '../external-secrets.config.js';
+import type { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service.js';
+import type { ExternalSecretsProviderRegistry } from '../provider-registry.service.js';
+import type { ExternalSecretsRetryManager } from '../retry-manager.service.js';
+import type { ExternalSecretsSecretsCache } from '../secrets-cache.service.js';
+import type { ExternalSecretsSettingsStore } from '../settings-store.service.js';
+import type { ExternalSecretsSettings, SecretsProvider } from '../types.js';
 
 describe('ExternalSecretsManager', () => {
 	jest.useFakeTimers();

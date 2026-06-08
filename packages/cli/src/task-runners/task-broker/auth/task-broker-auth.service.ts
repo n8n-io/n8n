@@ -3,7 +3,7 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes, timingSafeEqual } from 'crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
 @Service()
 export class TaskBrokerAuthService {

@@ -4,7 +4,7 @@
  * Extracted from code-builder-agent.ts for better organization and testability.
  */
 
-import type { BuilderToolBase } from '@/utils/stream-processor';
+import type { BuilderToolBase } from '@/utils/stream-processor.js';
 
 /** Maximum iterations for the agentic loop to prevent infinite loops */
 export const MAX_AGENT_ITERATIONS = 50;

@@ -10,11 +10,11 @@ import { mock } from 'jest-mock-extended';
 import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
-} from '../delegate-sub-agent-tool';
+} from '../delegate-sub-agent-tool.js';
 import type {
 	SubAgentForegroundResult,
 	SubAgentForegroundRunner,
-} from '../sub-agent-foreground-runner';
+} from '../sub-agent-foreground-runner.js';
 
 const projectId = 'project-1';
 const userId = 'user-1';

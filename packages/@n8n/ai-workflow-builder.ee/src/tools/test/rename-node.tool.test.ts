@@ -13,8 +13,8 @@ import {
 	expectToolError,
 	expectWorkflowOperation,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createRenameNodeTool } from '../rename-node.tool';
+} from '../../../test/test-utils.js';
+import { createRenameNodeTool } from '../rename-node.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

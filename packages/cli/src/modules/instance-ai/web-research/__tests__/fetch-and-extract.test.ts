@@ -5,10 +5,10 @@ import type { SsrfBridge } from 'n8n-core';
 import { createResultOk } from 'n8n-workflow';
 import type { LookupFunction } from 'node:net';
 
-import type { DnsResolver } from '@/services/ssrf/dns-resolver';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { DnsResolver } from '@/services/ssrf/dns-resolver.js';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
 
-import { fetchAndExtract } from '../fetch-and-extract';
+import { fetchAndExtract } from '../fetch-and-extract.js';
 
 function createSsrfMock(): jest.Mocked<SsrfBridge> {
 	const ssrf = mock<SsrfBridge>();

@@ -1,12 +1,12 @@
 import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { EvaluationApiError } from '../evaluation-api-error';
-import { EvaluationConfigController } from '../evaluation-config.controller';
-import type { EvaluationConfigService } from '../evaluation-config.service';
+import { EvaluationApiError } from '../evaluation-api-error.js';
+import { EvaluationConfigController } from '../evaluation-config.controller.js';
+import type { EvaluationConfigService } from '../evaluation-config.service.js';
 
 describe('EvaluationConfigController', () => {
 	let controller: EvaluationConfigController;

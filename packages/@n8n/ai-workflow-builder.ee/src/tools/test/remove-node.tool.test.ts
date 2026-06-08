@@ -15,8 +15,8 @@ import {
 	expectNodeRemoved,
 	createConnection,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createRemoveNodeTool } from '../remove-node.tool';
+} from '../../../test/test-utils.js';
+import { createRemoveNodeTool } from '../remove-node.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

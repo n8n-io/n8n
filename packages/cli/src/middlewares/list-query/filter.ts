@@ -1,12 +1,12 @@
 import type { RequestHandler } from 'express';
 
-import { appendListQueryOptions } from '@/requests';
-import * as ResponseHelper from '@/response-helper';
-import { toError } from '@/utils';
+import { appendListQueryOptions } from '@/requests.js';
+import * as ResponseHelper from '@/response-helper.js';
+import { toError } from '@/utils.js';
 
-import { CredentialsFilter } from './dtos/credentials.filter.dto';
-import { UserFilter } from './dtos/user.filter.dto';
-import { WorkflowFilter } from './dtos/workflow.filter.dto';
+import { CredentialsFilter } from './dtos/credentials.filter.dto.js';
+import { UserFilter } from './dtos/user.filter.dto.js';
+import { WorkflowFilter } from './dtos/workflow.filter.dto.js';
 
 export const filterListQueryMiddleware: RequestHandler = async (req, res, next) => {
 	const { filter: rawFilter } = req.query;

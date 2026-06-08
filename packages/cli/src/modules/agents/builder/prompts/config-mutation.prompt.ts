@@ -1,4 +1,4 @@
-import { getConfigRulesSection, getSchemaReferenceSection } from './config-rules.prompt';
+import { getConfigRulesSection, getSchemaReferenceSection } from './config-rules.prompt.js';
 
 export function getConfigMutationPrompt(): string {
 	return `\

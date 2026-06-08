@@ -11,16 +11,16 @@ import { Cipher } from 'n8n-core';
 import { ICredentialContext, ICredentialDataDecryptedObject, jsonParse } from 'n8n-workflow';
 import z from 'zod';
 
-import type { ITokenIdentifier } from './identifiers/identifier-interface';
+import type { ITokenIdentifier } from './identifiers/identifier-interface.js';
 import {
 	OAuth2IntrospectionOptionsSchema,
 	OAuth2TokenIntrospectionIdentifier,
-} from './identifiers/oauth2-introspection-identifier';
+} from './identifiers/oauth2-introspection-identifier.js';
 import {
 	OAuth2UserInfoIdentifier,
 	OAuth2UserInfoOptionsSchema,
-} from './identifiers/oauth2-userinfo-identifier';
-import { DynamicCredentialEntryStorage } from './storage/dynamic-credential-entry-storage';
+} from './identifiers/oauth2-userinfo-identifier.js';
+import { DynamicCredentialEntryStorage } from './storage/dynamic-credential-entry-storage.js';
 
 const OAuthCredentialResolverOptionsSchema = z.discriminatedUnion('validation', [
 	OAuth2IntrospectionOptionsSchema,

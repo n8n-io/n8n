@@ -1,8 +1,8 @@
 import { mock } from 'jest-mock-extended';
 import { promises as dns } from 'node:dns';
 
-import { DnsResolver } from '../dns-resolver';
-import type { InMemoryDnsCache } from '../in-memory-dns-cache.service';
+import { DnsResolver } from '../dns-resolver.js';
+import type { InMemoryDnsCache } from '../in-memory-dns-cache.service.js';
 
 jest.mock('node:dns', () => ({
 	promises: {

@@ -1,7 +1,7 @@
-import { shouldRunIntegrationTests } from '@/chains/test/integration/test-helpers';
-import type { Category } from '@/types';
+import { shouldRunIntegrationTests } from '@/chains/test/integration/test-helpers.js';
+import type { Category } from '@/types/index.js';
 
-import { fetchTemplateList, fetchTemplateByID } from '../../templates';
+import { fetchTemplateList, fetchTemplateByID } from '../../templates.js';
 
 /**
  * Integration tests for templates API

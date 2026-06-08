@@ -22,40 +22,48 @@ import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { EphemeralNodeExecutor } from '@/node-execution';
-import { OauthService } from '@/oauth/oauth.service';
-import { UrlService } from '@/services/url.service';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ActiveExecutions } from '@/active-executions.js';
+import { EphemeralNodeExecutor } from '@/node-execution/index.js';
+import { OauthService } from '@/oauth/oauth.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { Agent } from './entities/agent.entity';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
+import { Agent } from './entities/agent.entity.js';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration.js';
+import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor.js';
+import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor.js';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service.js';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
 	getIntegrationToolConnectionDescriptors,
+<<<<<<< HEAD
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+=======
+} from './integrations/integration-tools.js';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage.js';
+import { N8nMemory } from './integrations/n8n-memory.js';
+import { createGetEnvironmentTool } from './tools/environment-tool.js';
+import { createRichInteractionTool } from './integrations/rich-interaction-tool.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	buildFromJson,
 	type MemoryFactory,
 	type ToolResolver,
-} from './json-config/from-json-config';
-import { buildMcpClientForServer } from './json-config/mcp-client-factory';
-import { AgentRepository } from './repositories/agent.repository';
-import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
-import { AgentsToolsService } from './agents-tools.service';
-import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
-import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+} from './json-config/from-json-config.js';
+import { buildMcpClientForServer } from './json-config/mcp-client-factory.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime.js';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry.js';
+import { AgentKnowledgeCommandService } from './agent-knowledge-command.service.js';
+import { AgentKnowledgeService } from './agent-knowledge.service.js';
+import { AgentsToolsService } from './agents-tools.service.js';
+import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool.js';
+import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner.js';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
@@ -292,7 +300,7 @@ export class AgentRuntimeReconstructionService {
 				if (!userId) {
 					throw new UserError('userId is required when agent uses workflow tools');
 				}
-				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
+				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: this.workflowRunner,
@@ -306,7 +314,7 @@ export class AgentRuntimeReconstructionService {
 			}
 
 			if (ref.type === 'node') {
-				const { resolveNodeTool } = await import('./tools/node-tool-factory');
+				const { resolveNodeTool } = await import('./tools/node-tool-factory.js');
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
@@ -347,7 +355,7 @@ export class AgentRuntimeReconstructionService {
 
 		if (this.isKnowledgeBaseModuleEnabled()) {
 			try {
-				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
+				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool.js');
 				agent.tool(
 					createSearchKnowledgeTool({
 						agentId,

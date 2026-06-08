@@ -19,12 +19,12 @@ import type { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
-import type { StreamOutput } from '../types/streaming';
-import type { ChatPayload } from '../workflow-builder-agent';
-import { CodeBuilderAgent } from './code-builder-agent';
-import { SessionChatHandler } from './handlers/session-chat-handler';
-import type { HistoryContext } from './prompts';
-import type { TokenUsage } from './types';
+import type { StreamOutput } from '../types/streaming.js';
+import type { ChatPayload } from '../workflow-builder-agent.js';
+import { CodeBuilderAgent } from './code-builder-agent.js';
+import { SessionChatHandler } from './handlers/session-chat-handler.js';
+import type { HistoryContext } from './prompts/index.js';
+import type { TokenUsage } from './types.js';
 export type { HistoryContext, TokenUsage };
 
 /**

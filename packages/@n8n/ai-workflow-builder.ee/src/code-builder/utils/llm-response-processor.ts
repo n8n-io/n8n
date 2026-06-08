@@ -10,7 +10,7 @@
 
 import type { AIMessage } from '@langchain/core/messages';
 
-import { extractTextContent, extractThinkingContent } from './content-extractors';
+import { extractTextContent, extractThinkingContent } from './content-extractors.js';
 
 /** Type guard for response metadata with usage info */
 interface ResponseMetadataWithUsage {

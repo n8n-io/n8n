@@ -17,8 +17,8 @@ import {
 } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
-import { CodeBuilderAgent } from '../code-builder-agent';
-import { MAX_VALIDATE_ATTEMPTS } from '../constants';
+import { CodeBuilderAgent } from '../code-builder-agent.js';
+import { MAX_VALIDATE_ATTEMPTS } from '../constants.js';
 
 // Mock workflow-sdk to control parse/validate behavior
 vi.mock('@n8n/workflow-sdk', () => ({

@@ -22,21 +22,21 @@ import {
 import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import type { Invitation } from '@/interfaces';
-import { PostHogClient } from '@/posthog';
-import type { UserRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
-import { UserManagementMailer } from '@/user-management/email';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { Invitation } from '@/interfaces.js';
+import { PostHogClient } from '@/posthog/index.js';
+import type { UserRequest } from '@/requests.js';
+import { UrlService } from '@/services/url.service.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
 
-import { JwtService } from './jwt.service';
-import { OwnershipService } from './ownership.service';
-import { ProjectService } from './project.service.ee';
-import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
+import { JwtService } from './jwt.service.js';
+import { OwnershipService } from './ownership.service.js';
+import { ProjectService } from './project.service.ee.js';
+import { PublicApiKeyService } from './public-api-key.service.js';
+import { RoleService } from './role.service.js';
 
 @Service()
 export class UserService {

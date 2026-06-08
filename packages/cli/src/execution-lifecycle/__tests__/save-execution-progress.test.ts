@@ -4,9 +4,13 @@ import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { saveExecutionProgress } from '../save-execution-progress';
+=======
+import { saveExecutionProgress } from '../save-execution-progress.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 describe('saveExecutionProgress', () => {
 	mockInstance(Logger);

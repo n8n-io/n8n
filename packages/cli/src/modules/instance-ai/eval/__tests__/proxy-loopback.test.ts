@@ -1,4 +1,4 @@
-import { patchNoProxyForLoopback } from '../proxy-loopback';
+import { patchNoProxyForLoopback } from '../proxy-loopback.js';
 
 describe('patchNoProxyForLoopback', () => {
 	const originalNoProxy = process.env.NO_PROXY;

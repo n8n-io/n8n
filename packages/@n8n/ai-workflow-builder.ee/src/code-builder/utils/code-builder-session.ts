@@ -16,8 +16,8 @@ import { HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { MemorySaver, Checkpoint } from '@langchain/langgraph';
 
-import { conversationCompactChain } from '../../chains/conversation-compact';
-import { generateThreadId } from '../../utils/thread-id';
+import { conversationCompactChain } from '../../chains/conversation-compact.js';
+import { generateThreadId } from '../../utils/thread-id.js';
 
 /** Maximum number of conversation entries to retain before compaction */
 const MAX_USER_MESSAGES = 20;

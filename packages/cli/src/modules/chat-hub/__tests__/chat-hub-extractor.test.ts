@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 
-import { ChatHubExtractor } from '../chat-hub-extractor';
+import { ChatHubExtractor } from '../chat-hub-extractor.js';
 
 // Helper function to create trigger items
 const createTriggerItem = (data: Record<string, unknown>): INodeExecutionData => ({

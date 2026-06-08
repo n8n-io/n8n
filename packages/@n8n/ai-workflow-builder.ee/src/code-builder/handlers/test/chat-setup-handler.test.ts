@@ -4,9 +4,9 @@ import { NodeTypeParser } from '@n8n/ai-utilities/node-catalog';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import type { PlanOutput } from '../../../types/planning';
-import type { ChatPayload } from '../../../workflow-builder-agent';
-import { ChatSetupHandler, extractNodeNamesFromPlan } from '../chat-setup-handler';
+import type { PlanOutput } from '../../../types/planning.js';
+import type { ChatPayload } from '../../../workflow-builder-agent.js';
+import { ChatSetupHandler, extractNodeNamesFromPlan } from '../chat-setup-handler.js';
 
 function createMockTool(name: string): StructuredToolInterface {
 	return { name } as unknown as StructuredToolInterface;

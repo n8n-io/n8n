@@ -2,14 +2,14 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { WorkflowSerializer } from './workflow.serializer';
-import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
-import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import { WorkflowSerializer } from './workflow.serializer.js';
+import type { PackageWriter } from '../../io/package-writer.js';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator.js';
+import type { ManifestEntry } from '../../spec/manifest.schema.js';
+import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor.js';
+import type { WorkflowCredentialRequirement } from '../credential/credential.types.js';
 
 export interface WorkflowExportRequest {
 	user: User;

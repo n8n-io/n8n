@@ -16,15 +16,18 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
-import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService } from '../credentials-finder.service';
-import { CredentialsController } from '../credentials.controller';
-import { CredentialsService } from '../credentials.service';
-import * as validation from '../validation';
+import {
+	createNewCredentialsPayload,
+	createdCredentialsWithScopes,
+} from './credentials.test-data.js';
+import type { CredentialDependencyService } from '../credential-dependency.service.js';
+import type { CredentialsFinderService } from '../credentials-finder.service.js';
+import { CredentialsController } from '../credentials.controller.js';
+import { CredentialsService } from '../credentials.service.js';
+import * as validation from '../validation.js';
 
-import * as checkAccess from '@/permissions.ee/check-access';
-import type { CredentialRequest } from '@/requests';
+import * as checkAccess from '@/permissions.ee/check-access.js';
+import type { CredentialRequest } from '@/requests.js';
 
 const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
 

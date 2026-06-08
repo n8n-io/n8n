@@ -1,7 +1,7 @@
-import { runWithOptionalLimiter, withTimeout } from '../../../harness/evaluation-helpers';
-import { createEvaluatorChain, invokeEvaluatorChain } from '../../llm-judge/evaluators/base';
-import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
-import { binaryJudgeResultSchema } from './schemas';
+import { runWithOptionalLimiter, withTimeout } from '../../../harness/evaluation-helpers.js';
+import { createEvaluatorChain, invokeEvaluatorChain } from '../../llm-judge/evaluators/base.js';
+import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types.js';
+import { binaryJudgeResultSchema } from './schemas.js';
 
 const REASONING_FIRST_SUFFIX = `
 

@@ -1,4 +1,4 @@
-import type { NodeTypeExamples } from '../types';
+import type { NodeTypeExamples } from '../types.js';
 
 /** Generic examples for nodes that don't have specific examples */
 export const SIMPLE_UPDATE_EXAMPLES: NodeTypeExamples = {

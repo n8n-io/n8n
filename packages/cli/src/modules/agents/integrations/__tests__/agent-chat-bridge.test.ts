@@ -3,14 +3,14 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
-import { AgentChatBridge } from '../agent-chat-bridge';
+import { AgentChatBridge } from '../agent-chat-bridge.js';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from '../agent-chat-integration';
-import type { ComponentMapper } from '../component-mapper';
-import type { IntegrationMessageContextService } from '../integration-message-context.service';
+} from '../agent-chat-integration.js';
+import type { ComponentMapper } from '../component-mapper.js';
+import type { IntegrationMessageContextService } from '../integration-message-context.service.js';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 type ChatBotLike = ConstructorParameters<typeof AgentChatBridge>[0];

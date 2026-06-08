@@ -83,9 +83,9 @@ import FileType from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { fetchApiDocs } from '../api-docs';
-import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
-import { extractNodeConfig } from '../node-config';
+import { fetchApiDocs } from '../api-docs.js';
+import { buildDateAnchors, createLlmMockHandler } from '../mock-handler.js';
+import { extractNodeConfig } from '../node-config.js';
 
 // `restoreMocks: true` in the root jest.config wipes `.mockImplementation` set
 // inside jest.mock factories before every test, so re-apply the mocks that
@@ -323,7 +323,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = require('../node-config') as {
+		const { extractNodeConfig } = require('../node-config.js') as {
 			extractNodeConfig: jest.Mock;
 		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
@@ -339,7 +339,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = require('../node-config') as {
+		const { extractNodeConfig } = require('../node-config.js') as {
 			extractNodeConfig: jest.Mock;
 		};
 		extractNodeConfig.mockReturnValue('{}');

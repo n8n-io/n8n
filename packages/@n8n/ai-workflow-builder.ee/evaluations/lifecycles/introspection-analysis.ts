@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import type { EvaluationLifecycle, ExampleResult } from '../harness/harness-types';
-import type { EvalLogger } from '../harness/logger';
-import { summarizeIntrospectionResults } from '../summarizers/introspection-summarizer';
+import type { EvaluationLifecycle, ExampleResult } from '../harness/harness-types.js';
+import type { EvalLogger } from '../harness/logger.js';
+import { summarizeIntrospectionResults } from '../summarizers/introspection-summarizer.js';
 
 export interface IntrospectionAnalysisOptions {
 	judgeLlm: BaseChatModel;

@@ -1,9 +1,9 @@
-import type { NodeConfigurationsMap, WorkflowMetadata } from '@/types';
+import type { NodeConfigurationsMap, WorkflowMetadata } from '@/types/index.js';
 
 import {
 	collectSingleNodeConfiguration,
 	addNodeConfigurationToMap,
-} from './node-configuration.utils';
+} from './node-configuration.utils.js';
 
 /**
  * Input type for mermaidStringify when you only have workflow data

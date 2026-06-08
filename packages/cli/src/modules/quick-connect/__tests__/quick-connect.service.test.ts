@@ -3,12 +3,12 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { IQuickConnectHandler } from '../handlers/handler.interface';
-import { QuickConnectConfig } from '../quick-connect.config';
-import { QuickConnectError } from '../quick-connect.errors';
-import { QuickConnectService } from '../quick-connect.service';
+import type { IQuickConnectHandler } from '../handlers/handler.interface.js';
+import { QuickConnectConfig } from '../quick-connect.config.js';
+import { QuickConnectError } from '../quick-connect.errors.js';
+import { QuickConnectService } from '../quick-connect.service.js';
 
 describe('QuickConnectService', () => {
 	let service: QuickConnectService;

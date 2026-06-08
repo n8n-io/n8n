@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository, type EntityManager } from '@n8n/typeorm';
 
-import { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
+import { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity.js';
 
 type AgentTaskSnapshotData = Pick<
 	AgentTaskSnapshot,

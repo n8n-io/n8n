@@ -1,4 +1,4 @@
-import { sanitizeLlmErrorMessage } from '../error-sanitizer';
+import { sanitizeLlmErrorMessage } from '../error-sanitizer.js';
 
 const CLOUDFLARE_HTML = `403 <!DOCTYPE html>
 <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]-->

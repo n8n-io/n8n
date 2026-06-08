@@ -2,10 +2,10 @@ import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import type { Response } from 'express';
 import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { sendPublicApiErrorResponse } from '../public-api-error-response';
+import { sendPublicApiErrorResponse } from '../public-api-error-response.js';
 
 describe('sendPublicApiErrorResponse', () => {
 	const createMockRes = () => {

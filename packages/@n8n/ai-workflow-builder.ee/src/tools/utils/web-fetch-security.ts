@@ -5,10 +5,10 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { getCurrentTaskInput } from '@langchain/langgraph';
 
-import { WEB_FETCH_MAX_PER_TURN } from '@/constants';
+import { WEB_FETCH_MAX_PER_TURN } from '@/constants.js';
 
-import { isAllowedDomain } from './allowed-domains';
-import { isUrlInUserMessages } from './web-fetch.utils';
+import { isAllowedDomain } from './allowed-domains.js';
+import { isUrlInUserMessages } from './web-fetch.utils.js';
 
 export interface WebFetchSecurityManager {
 	isHostAllowed(host: string, url: string): boolean;

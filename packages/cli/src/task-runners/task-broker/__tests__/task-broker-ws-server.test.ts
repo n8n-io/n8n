@@ -3,8 +3,8 @@ import { Time } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { WsStatusCodes } from '@/constants.js';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
 
 const globalConfig = mock<GlobalConfig>({ generic: { gracefulShutdownTimeout: 30 } });
 

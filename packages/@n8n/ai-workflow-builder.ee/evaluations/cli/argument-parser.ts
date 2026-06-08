@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { z } from 'zod';
 
-import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelId } from '@/llm-config';
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+import { AVAILABLE_MODELS, DEFAULT_MODEL, type ModelId } from '@/llm-config.js';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent.js';
 
-import type { LangsmithExampleFilters } from '../harness/harness-types';
-import { DEFAULTS } from '../support/constants';
-import type { StageModels } from '../support/environment';
+import type { LangsmithExampleFilters } from '../harness/harness-types.js';
+import { DEFAULTS } from '../support/constants.js';
+import type { StageModels } from '../support/environment.js';
 
 export type EvaluationSuite =
 	| 'llm-judge'

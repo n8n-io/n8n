@@ -3,8 +3,8 @@ import type { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config'
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
-import type { RedisClientService } from '@/services/redis-client.service';
+import { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service.js';
+import type { RedisClientService } from '@/services/redis-client.service.js';
 
 describe('ChatStreamStateService', () => {
 	const logger = mock<Logger>();

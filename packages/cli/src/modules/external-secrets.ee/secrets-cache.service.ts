@@ -2,9 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError, OperationalError } from 'n8n-workflow';
 
-import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from './constants';
-import { ExternalSecretsProviderRegistry } from './provider-registry.service';
-import type { SecretsProvider } from './types';
+import { EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS } from './constants.js';
+import { ExternalSecretsProviderRegistry } from './provider-registry.service.js';
+import type { SecretsProvider } from './types.js';
 
 /**
  * Manages secrets caching and refresh from providers

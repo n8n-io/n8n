@@ -1,15 +1,15 @@
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { AgentResourceRepository } from '../repositories/agent-resource.repository';
-import { AgentThreadRepository } from '../repositories/agent-thread.repository';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository.js';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository.js';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageSubject,
 	IntegrationSubjectPerson,
 	IntegrationMessageContextStore,
 	IntegrationMessageTarget,
-} from './integration-tools';
+} from './integration-tools.js';
 
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 

@@ -6,14 +6,17 @@ import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { UrlService } from '@/services/url.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { UrlService } from '@/services/url.service.js';
 
-import { AgentRepository } from '../../repositories/agent.repository';
-import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
-import type { SuspendComponent } from '../component-mapper';
-import { loadTelegramAdapter } from '../esm-loader';
-import type { IntegrationAction } from '../integration-tools';
+import { AgentRepository } from '../../repositories/agent.repository.js';
+import {
+	AgentChatIntegration,
+	type AgentChatIntegrationContext,
+} from '../agent-chat-integration.js';
+import type { SuspendComponent } from '../component-mapper.js';
+import { loadTelegramAdapter } from '../esm-loader.js';
+import type { IntegrationAction } from '../integration-tools.js';
 
 /**
  * Telegram platform integration.

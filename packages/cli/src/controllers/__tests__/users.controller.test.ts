@@ -2,13 +2,13 @@ import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 
-import type { EventService } from '@/events/event.service';
-import type { JwtService } from '@/services/jwt.service';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { UrlService } from '@/services/url.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service.js';
+import type { JwtService } from '@/services/jwt.service.js';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import type { UrlService } from '@/services/url.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { UsersController } from '../users.controller';
+import { UsersController } from '../users.controller.js';
 
 describe('UsersController', () => {
 	const eventService = mock<EventService>();

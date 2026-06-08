@@ -7,15 +7,15 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@/services/redis-client.service.js';
 
-import { PubSubEventBus } from './pubsub.eventbus';
-import type { PubSub } from './pubsub.types';
+import { PubSubEventBus } from './pubsub.eventbus.js';
+import type { PubSub } from './pubsub.types.js';
 import {
 	COMMAND_PUBSUB_CHANNEL,
 	WORKER_RESPONSE_PUBSUB_CHANNEL,
 	MCP_RELAY_PUBSUB_CHANNEL,
-} from '../constants';
+} from '../constants.js';
 
 /**
  * Responsible for subscribing to the pubsub channels used by scaling mode.

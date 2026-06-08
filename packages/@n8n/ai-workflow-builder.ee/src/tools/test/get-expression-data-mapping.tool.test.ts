@@ -8,8 +8,8 @@ import {
 	createToolConfig,
 	setupWorkflowStateWithContext,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createGetExpressionDataMappingTool } from '../get-expression-data-mapping.tool';
+} from '../../../test/test-utils.js';
+import { createGetExpressionDataMappingTool } from '../get-expression-data-mapping.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

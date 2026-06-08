@@ -7,15 +7,15 @@ import {
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { saveCredential } from '@test-integration/db/credentials';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { saveCredential } from '@test-integration/db/credentials.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
 
-import { N8nPackagesService } from '../n8n-packages.service';
-import { readExport } from './utils/tar-support';
+import { N8nPackagesService } from '../n8n-packages.service.js';
+import { readExport } from './utils/tar-support.js';
 import {
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingCredentialById,
-} from './utils/test-builders';
+} from './utils/test-builders.js';
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);

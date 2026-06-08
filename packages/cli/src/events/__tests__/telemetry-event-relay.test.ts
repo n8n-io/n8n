@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+import type { NodeTypes } from '@/node-types.js';
+import { mockInstance } from '@n8n/backend-test-utils';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
@@ -24,6 +29,7 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import { N8N_VERSION } from '@/constants';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { EventService } from '@/events/event.service';
@@ -33,6 +39,19 @@ import type { License } from '@/license';
 import { OtelConfig } from '@/modules/otel/otel.config';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+=======
+import { N8N_VERSION } from '@/constants.js';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import {
+	TelemetryEventRelay,
+	getSemanticVersioning,
+} from '@/events/relays/telemetry.event-relay.js';
+import type { License } from '@/license.js';
+import { OtelConfig } from '@/modules/otel/otel.config.js';
+import type { Telemetry } from '@/telemetry/index.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 

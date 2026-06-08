@@ -9,11 +9,11 @@ import jwt from 'jsonwebtoken';
 
 import { InstanceSettings } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
-import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
+import { EventService } from '@/events/event.service.js';
+import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config.js';
 
-import { createOwner, createUser } from '../shared/db/users';
-import * as utils from '../shared/utils';
+import { createOwner, createUser } from '../shared/db/users.js';
+import * as utils from '../shared/utils/index.js';
 
 // --- RSA key pair for signing test JWTs ---
 

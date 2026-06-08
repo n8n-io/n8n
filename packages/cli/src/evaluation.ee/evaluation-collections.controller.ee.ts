@@ -8,11 +8,11 @@ import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { PostHogClient } from '@/posthog';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { PostHogClient } from '@/posthog/index.js';
 
-import { EvaluationCollectionService } from './evaluation-collection.service';
+import { EvaluationCollectionService } from './evaluation-collection.service.js';
 
 type WorkflowParam = { workflowId: string };
 type CollectionParam = { workflowId: string; collectionId: string };

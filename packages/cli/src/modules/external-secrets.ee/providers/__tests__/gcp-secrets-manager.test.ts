@@ -3,8 +3,8 @@ import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import type { google } from '@google-cloud/secret-manager/build/protos/protos';
 import { mock } from 'jest-mock-extended';
 
-import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
-import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
+import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager.js';
+import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types.js';
 
 jest.mock('@google-cloud/secret-manager');
 

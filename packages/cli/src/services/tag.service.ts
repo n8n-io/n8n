@@ -2,8 +2,8 @@ import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
+import { ExternalHooks } from '@/external-hooks.js';
+import { validateEntity } from '@/generic-helpers.js';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 

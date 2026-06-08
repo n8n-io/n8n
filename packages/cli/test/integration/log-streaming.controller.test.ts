@@ -3,14 +3,14 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service.js';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { createUser } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils';
+import { createUser } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils/index.js';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 

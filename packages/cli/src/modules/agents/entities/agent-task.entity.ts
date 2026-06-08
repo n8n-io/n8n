@@ -10,7 +10,7 @@ import {
 	type Relation,
 } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity';
+import { Agent } from './agent.entity.js';
 
 /** A scheduled, recurring objective an agent runs on its own cron. */
 @Entity({ name: 'agent_task_definition' })

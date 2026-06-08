@@ -22,17 +22,22 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+=======
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { ChatHubExecutionService } from './chat-hub-execution.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
-import { ChatHubSessionRepository } from './chat-session.repository';
+import { ChatHubAgentService } from './chat-hub-agent.service.js';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service.js';
+import { ChatHubExecutionService } from './chat-hub-execution.service.js';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service.js';
+import { PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants.js';
+import { ChatHubSettingsService } from './chat-hub.settings.service.js';
+import { ChatHubSessionRepository } from './chat-session.repository.js';
 
 @Service()
 export class ChatHubTitleService {

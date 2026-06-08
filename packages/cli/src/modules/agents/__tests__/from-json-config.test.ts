@@ -7,8 +7,8 @@ import {
 	RunnableAgentJsonConfigSchema,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { buildFromJson } from '../json-config/from-json-config';
-import type { ToolExecutor } from '../json-config/from-json-config';
+import { buildFromJson } from '../json-config/from-json-config.js';
+import type { ToolExecutor } from '../json-config/from-json-config.js';
 
 type EmbeddingProviderOpts = {
 	apiKey?: string;

@@ -7,12 +7,12 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service.js';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
-import { createUserShell } from './shared/db/users';
-import * as utils from './shared/utils/';
+import { createUserShell } from './shared/db/users.js';
+import * as utils from './shared/utils//index.js';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 

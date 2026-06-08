@@ -1,4 +1,4 @@
-import type { CoordinationLogEntry, CoordinationMetadata } from '../../types/coordination';
+import type { CoordinationLogEntry, CoordinationMetadata } from '../../types/coordination.js';
 import {
 	getLastCompletedPhase,
 	getPhaseEntry,
@@ -9,7 +9,7 @@ import {
 	hasErrorInLog,
 	getErrorEntry,
 	summarizeCoordinationLog,
-} from '../coordination-log';
+} from '../coordination-log.js';
 
 describe('coordination-log utilities', () => {
 	const createMetadata = (phase: 'discovery' | 'builder' | 'assistant'): CoordinationMetadata => {

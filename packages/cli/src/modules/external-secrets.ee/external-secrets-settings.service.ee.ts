@@ -2,7 +2,7 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING } from '@n8n/permissions';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@/services/role.service.js';
 
 @Service()
 export class ExternalSecretsSettingsService {

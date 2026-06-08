@@ -25,7 +25,7 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
-import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiService } from '../instance-ai.service.js';
 
 /**
  * Regression: planned-task workflow runs (build agent, checkpoint verifications)

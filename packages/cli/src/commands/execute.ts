@@ -5,13 +5,13 @@ import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow'
 import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { WorkflowRunner } from '@/workflow-runner';
+import { ActiveExecutions } from '@/active-executions.js';
+import { EventService } from '@/events/event.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { BaseCommand } from './base-command';
+import { BaseCommand } from './base-command.js';
 
 const flagsSchema = z.object({
 	id: z.string().describe('id of the workflow to execute').optional(),

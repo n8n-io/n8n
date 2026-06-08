@@ -1,4 +1,4 @@
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAuthFetch } from '@/utils/auth-fetch.js';
 
 const proxyFetchMock = jest.fn();
 jest.mock('@n8n/ai-utilities', () => ({

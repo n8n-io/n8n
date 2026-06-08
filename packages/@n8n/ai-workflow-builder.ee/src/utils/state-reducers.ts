@@ -1,4 +1,4 @@
-import type { WorkflowMetadata } from '../types';
+import type { WorkflowMetadata } from '../types/index.js';
 
 /**
  * Reducer for appending arrays with null/empty check.

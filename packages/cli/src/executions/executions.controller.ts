@@ -2,17 +2,17 @@ import type { User, ExecutionSummaries } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import { ExecutionService } from './execution.service';
-import { EnterpriseExecutionsService } from './execution.service.ee';
-import { ExecutionRequest } from './execution.types';
-import { parseRangeQuery } from './parse-range-query.middleware';
-import { validateExecutionUpdatePayload } from './validation';
+import { ExecutionService } from './execution.service.js';
+import { EnterpriseExecutionsService } from './execution.service.ee.js';
+import { ExecutionRequest } from './execution.types.js';
+import { parseRangeQuery } from './parse-range-query.middleware.js';
+import { validateExecutionUpdatePayload } from './validation.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
-import { isPositiveInteger } from '@/utils';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { License } from '@/license.js';
+import { isPositiveInteger } from '@/utils.js';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service.js';
 
 @RestController('/executions')
 export class ExecutionsController {

@@ -1,4 +1,4 @@
-import type { EvaluationResult, CategoryScore } from './evaluation';
+import type { EvaluationResult, CategoryScore } from './evaluation.js';
 import {
 	calculateWeightedScore,
 	generateEvaluationSummary,
@@ -6,7 +6,7 @@ import {
 	LLM_JUDGE_CATEGORY_WEIGHTS,
 	TOTAL_WEIGHT_WITHOUT_STRUCTURAL,
 	TOTAL_WEIGHT_WITH_STRUCTURAL,
-} from './workflow-evaluator';
+} from './workflow-evaluator.js';
 
 /**
  * Creates a minimal category score for testing.

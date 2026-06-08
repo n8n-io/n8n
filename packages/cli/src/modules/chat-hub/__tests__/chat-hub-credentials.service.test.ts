@@ -9,12 +9,12 @@ import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { INodeCredentials } from 'n8n-workflow';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
-import { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import { ChatHubCredentialsService } from '../chat-hub-credentials.service.js';
 
 const CREDENTIAL_ID = 'credential-id-123';
 const PERSONAL_PROJECT_ID = 'personal-project-id';

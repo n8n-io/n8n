@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, LessThan, Repository } from '@n8n/typeorm';
 
-import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import { AgentExecutionThread } from '../entities/agent-execution-thread.entity.js';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
 

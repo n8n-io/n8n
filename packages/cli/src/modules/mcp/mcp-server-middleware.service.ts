@@ -3,15 +3,15 @@ import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
 import { ensureError } from 'n8n-workflow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { JwtService } from '@/services/jwt.service';
-import { Telemetry } from '@/telemetry';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import type { TelemetryAuthContext, UserWithContext } from './mcp.types';
-import { getClientInfo } from './mcp.utils';
+import { McpServerApiKeyService } from './mcp-api-key.service.js';
+import { McpOAuthTokenService } from './mcp-oauth-token.service.js';
+import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants.js';
+import type { TelemetryAuthContext, UserWithContext } from './mcp.types.js';
+import { getClientInfo } from './mcp.utils.js';
 
 /**
  * MCP Server Middleware Service

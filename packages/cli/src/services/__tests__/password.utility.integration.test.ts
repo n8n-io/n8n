@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { PasswordUtility } from '@/services/password.utility';
+import { PasswordUtility } from '@/services/password.utility.js';
 
 function toComponents(hash: string) {
 	const BCRYPT_HASH_REGEX =

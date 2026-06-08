@@ -11,8 +11,11 @@ import {
 	setupWorkflowState,
 	expectToolSuccess,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createValidateStructureTool, VALIDATE_STRUCTURE_TOOL } from '../validate-structure.tool';
+} from '../../../test/test-utils.js';
+import {
+	createValidateStructureTool,
+	VALIDATE_STRUCTURE_TOOL,
+} from '../validate-structure.tool.js';
 
 vi.mock('@langchain/langgraph', () => ({
 	getCurrentTaskInput: vi.fn(),

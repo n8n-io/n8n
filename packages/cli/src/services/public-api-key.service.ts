@@ -8,9 +8,9 @@ import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from
 import type { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { JwtService } from './jwt.service';
+import { JwtService } from './jwt.service.js';
 
 export const API_KEY_AUDIENCE = 'public-api';
 export const API_KEY_ISSUER = 'n8n';

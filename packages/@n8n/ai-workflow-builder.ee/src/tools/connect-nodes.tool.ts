@@ -3,25 +3,29 @@ import type { Logger } from '@n8n/backend-common';
 import { type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
 
 import {
 	ConnectionError,
 	NodeNotFoundError,
 	NodeTypeNotFoundError,
 	ValidationError,
-} from '../errors';
-import type { SimpleWorkflow } from '../types/workflow';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, getWorkflowState, updateWorkflowConnections } from './helpers/state';
-import { validateNodeExists } from './helpers/validation';
+} from '../errors/index.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import {
+	getCurrentWorkflow,
+	getWorkflowState,
+	updateWorkflowConnections,
+} from './helpers/state.js';
+import { validateNodeExists } from './helpers/validation.js';
 import {
 	validateConnection,
 	formatConnectionMessage,
 	inferConnectionType,
-} from './utils/connection.utils';
-import type { ConnectNodesOutput } from '../types/tools';
+} from './utils/connection.utils.js';
+import type { ConnectNodesOutput } from '../types/tools.js';
 
 /**
  * Schema for node connection

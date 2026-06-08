@@ -2,11 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { Get, Post, RestController, GlobalScope, Middleware } from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { ExternalSecretsProviders } from './external-secrets-providers.ee';
-import { ExternalSecretsService } from './external-secrets.service.ee';
-import { ExternalSecretsRequest } from './types';
+import { ExternalSecretsProviders } from './external-secrets-providers.ee.js';
+import { ExternalSecretsService } from './external-secrets.service.ee.js';
+import { ExternalSecretsRequest } from './types.js';
 
 @RestController('/external-secrets')
 export class ExternalSecretsController {

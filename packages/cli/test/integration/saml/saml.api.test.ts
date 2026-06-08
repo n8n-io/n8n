@@ -30,23 +30,23 @@ import {
 	RSA_MISMATCHED_CERTIFICATE,
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
-} from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
+} from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures.js';
 
-import { TEMPLATES_DIR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
-import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import { TEMPLATES_DIR } from '@/constants.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers.js';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee.js';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
-import { createHandlebarsEngine } from '@/utils/handlebars.util';
+} from '@/sso.ee/sso-helpers.js';
+import { createHandlebarsEngine } from '@/utils/handlebars.util.js';
 
-import { sampleConfig } from './sample-metadata';
-import { createOwner, createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+import { sampleConfig } from './sample-metadata.js';
+import { createOwner, createUser } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 let someUser: User;
 let owner: User;

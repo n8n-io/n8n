@@ -2,11 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
-import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import { McpOAuthHelpers } from './mcp-oauth.helpers';
-import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository.js';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository.js';
+import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service.js';
+import { McpOAuthHelpers } from './mcp-oauth.helpers.js';
+import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service.js';
 
 /**
  * Manages OAuth consent flow for MCP server

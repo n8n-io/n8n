@@ -48,6 +48,7 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+<<<<<<< HEAD
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -64,6 +65,22 @@ import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
+=======
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { Push } from '@/push/index.js';
+import type { UrlService } from '@/services/url.service.js';
+
+import type { EvalExecutionService } from '../eval/execution.service.js';
+import type { InProcessEventBus } from '../event-bus/in-process-event-bus.js';
+import type { LocalGateway } from '../filesystem/local-gateway.js';
+import type { InstanceAiMemoryService } from '../instance-ai-memory.service.js';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service.js';
+import { InstanceAiController } from '../instance-ai.controller.js';
+import type { InstanceAiService } from '../instance-ai.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';

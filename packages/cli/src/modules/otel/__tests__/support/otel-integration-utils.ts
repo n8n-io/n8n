@@ -8,17 +8,17 @@ import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 
-import { TestNodeWithTracing } from './test-node-with-tracing';
+import { TestNodeWithTracing } from './test-node-with-tracing.js';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
 import { readFileSync } from 'fs';
 import path from 'path';
 
-import { WorkflowRunner } from '@/workflow-runner';
-import { OtelConfig } from '../../otel.config';
-import * as utils from '@test-integration/utils';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { OtelConfig } from '../../otel.config.js';
+import * as utils from '@test-integration/utils/index.js';
 
-import { OtelTestProvider } from './otel-test-provider';
+import { OtelTestProvider } from './otel-test-provider.js';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 

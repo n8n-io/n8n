@@ -28,12 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
+import { OwnershipService } from './ownership.service.js';
+import { RoleService } from './role.service.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -78,43 +78,43 @@ export class ProjectService {
 	) {}
 
 	private get workflowService() {
-		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
+		return import('@/workflows/workflow.service.js').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
+		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
 	}
 
 	private get folderService() {
-		return import('@/services/folder.service').then(({ FolderService }) =>
+		return import('@/services/folder.service.js').then(({ FolderService }) =>
 			Container.get(FolderService),
 		);
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}
 
 	private get secretsProvidersConnectionsService() {
-		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
 		);
 	}
 
 	private get agentRepository() {
-		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+		return import('@/modules/agents/repositories/agent.repository.js').then(({ AgentRepository }) =>
 			Container.get(AgentRepository),
 		);
 	}
 
 	private get agentKnowledgeService() {
-		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+		return import('@/modules/agents/agent-knowledge.service.js').then(({ AgentKnowledgeService }) =>
 			Container.get(AgentKnowledgeService),
 		);
 	}

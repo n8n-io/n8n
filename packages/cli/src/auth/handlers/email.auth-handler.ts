@@ -4,9 +4,9 @@ import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable } from '@n8n/di';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { EventService } from '@/events/event.service';
-import { PasswordUtility } from '@/services/password.utility';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { EventService } from '@/events/event.service.js';
+import { PasswordUtility } from '@/services/password.utility.js';
 
 @AuthHandler()
 export class EmailAuthHandler implements IPasswordAuthHandler<User> {

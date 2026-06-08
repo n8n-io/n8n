@@ -14,8 +14,8 @@ import {
 	setupWorkflowStateWithContext,
 	setupAIWorkflowConnections,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createGetNodeContextTool } from '../get-node-context.tool';
+} from '../../../test/test-utils.js';
+import { createGetNodeContextTool } from '../get-node-context.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

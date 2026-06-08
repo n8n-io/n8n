@@ -2,12 +2,12 @@ import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import { ListProjectsQueryDto } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 import type { Response } from 'express';
-import { ProjectController } from '@/controllers/project.controller';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { UserManagementMailer } from '@/user-management/email';
+import { ProjectController } from '@/controllers/project.controller.js';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { UserManagementMailer } from '@/user-management/email/index.js';
 
 describe('ProjectController', () => {
 	const eventService = mock<EventService>();

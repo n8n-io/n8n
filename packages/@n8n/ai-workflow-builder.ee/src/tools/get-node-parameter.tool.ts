@@ -4,15 +4,15 @@ import get from 'lodash/get';
 import type { INode, NodeParameterValueType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MAX_PARAMETER_VALUE_LENGTH } from '@/constants';
-import { createNodeParameterTooLargeError, getEffectiveWorkflow } from '@/tools/helpers';
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import { MAX_PARAMETER_VALUE_LENGTH } from '@/constants.js';
+import { createNodeParameterTooLargeError, getEffectiveWorkflow } from '@/tools/helpers/index.js';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
-import type { GetNodeParameterOutput } from '../types/tools';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { validateNodeExists, createNodeNotFoundError } from './helpers/validation.js';
+import type { GetNodeParameterOutput } from '../types/tools.js';
 
 const DISPLAY_TITLE = 'Getting node parameter';
 

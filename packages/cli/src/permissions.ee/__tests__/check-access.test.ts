@@ -10,11 +10,11 @@ import { Container } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { RoleService } from '@/services/role.service.js';
 
-import { userHasScopes } from '../check-access';
+import { userHasScopes } from '../check-access.js';
 
 describe('userHasScopes', () => {
 	let findByWorkflowMock: jest.Mock;

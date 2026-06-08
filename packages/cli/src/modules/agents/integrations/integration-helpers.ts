@@ -1,4 +1,4 @@
-import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
+import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes.js';
 
 export interface IntegrationErrorResponse {
 	ok: false;

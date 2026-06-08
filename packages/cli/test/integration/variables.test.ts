@@ -2,17 +2,17 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import type { Project, Variables } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 import {
 	createProjectVariable,
 	createVariable,
 	getVariableById,
 	getVariableByKey,
-} from '@test-integration/db/variables';
+} from '@test-integration/db/variables.js';
 
-import { createOwner, createUser } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import { createOwner, createUser } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

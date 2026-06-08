@@ -1,8 +1,8 @@
 import { mock } from 'jest-mock-extended';
 
-import type { InstanceAiRunSnapshot } from '../../entities/instance-ai-run-snapshot.entity';
-import type { InstanceAiRunSnapshotRepository } from '../../repositories/instance-ai-run-snapshot.repository';
-import { DbSnapshotStorage } from '../db-snapshot-storage';
+import type { InstanceAiRunSnapshot } from '../../entities/instance-ai-run-snapshot.entity.js';
+import type { InstanceAiRunSnapshotRepository } from '../../repositories/instance-ai-run-snapshot.repository.js';
+import { DbSnapshotStorage } from '../db-snapshot-storage.js';
 
 function makeRow(overrides: Partial<InstanceAiRunSnapshot> = {}): InstanceAiRunSnapshot {
 	return {

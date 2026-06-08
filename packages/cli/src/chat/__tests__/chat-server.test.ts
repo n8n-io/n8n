@@ -6,9 +6,9 @@ import { mock, mockReset } from 'jest-mock-extended';
 import type { WebSocket } from 'ws';
 import type { WebSocketServer } from 'ws';
 
-import { ChatServer } from '../chat-server';
-import type { ChatService } from '../chat-service';
-import type { ChatRequest } from '../chat-service.types';
+import { ChatServer } from '../chat-server.js';
+import type { ChatService } from '../chat-service.js';
+import type { ChatRequest } from '../chat-service.types.js';
 
 jest.mock('ws');
 

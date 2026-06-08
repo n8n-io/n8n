@@ -1,21 +1,21 @@
 import { z } from 'zod';
 
-import type { ChatInstance } from '../chat-integration.service';
+import type { ChatInstance } from '../chat-integration.service.js';
 import {
 	integrationError,
 	isRecord,
 	stringValue,
 	unsupportedAction,
 	unsupportedQuery,
-} from '../integration-helpers';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
+} from '../integration-helpers.js';
+import { INTEGRATION_ERROR_CODES } from '../integration-error-codes.js';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
-} from '../integration-tools';
+} from '../integration-tools.js';
 
 const PLATFORM = 'slack';
 

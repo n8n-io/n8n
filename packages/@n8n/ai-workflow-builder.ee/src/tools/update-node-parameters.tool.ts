@@ -13,27 +13,27 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context.js';
 
-import { createParameterUpdaterChain } from '../chains/parameter-updater';
-import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors';
-import type { UpdateNodeParametersOutput } from '../types/tools';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state';
+import { createParameterUpdaterChain } from '../chains/parameter-updater.js';
+import { ValidationError, ParameterUpdateError, ToolExecutionError } from '../errors/index.js';
+import type { UpdateNodeParametersOutput } from '../types/tools.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getCurrentWorkflow, getWorkflowState, updateNodeInWorkflow } from './helpers/state.js';
 import {
 	validateNodeExists,
 	findNodeType,
 	createNodeNotFoundError,
 	createNodeTypeNotFoundError,
-} from './helpers/validation';
+} from './helpers/validation.js';
 import {
 	extractNodeParameters,
 	formatChangesForPrompt,
 	updateNodeWithParameters,
 	fixExpressionPrefixes,
-} from './utils/parameter-update.utils';
+} from './utils/parameter-update.utils.js';
 
 /**
  * Schema for update node parameters input

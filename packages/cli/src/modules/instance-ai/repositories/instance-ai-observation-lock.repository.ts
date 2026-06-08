@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { InstanceAiObservationLock } from '../entities/instance-ai-observation-lock.entity';
+import { InstanceAiObservationLock } from '../entities/instance-ai-observation-lock.entity.js';
 
 @Service()
 export class InstanceAiObservationLockRepository extends Repository<InstanceAiObservationLock> {

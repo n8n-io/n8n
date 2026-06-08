@@ -2,8 +2,8 @@ import { AGENT_TASK_ID_MAX_LENGTH } from '@n8n/api-types';
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
-import { AgentHistory } from './agent-history.entity';
-import { Agent } from './agent.entity';
+import { AgentHistory } from './agent-history.entity.js';
+import { Agent } from './agent.entity.js';
 
 /**
  * One conversation between a user and an agent. Aggregates per-session

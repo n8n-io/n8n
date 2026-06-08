@@ -3,7 +3,7 @@ import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
 
-import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
+import { EncryptionBootstrapService } from '../encryption-bootstrap.service.js';
 
 const INSTANCE_ENCRYPTION_KEY = 'legacy-encryption-key';
 

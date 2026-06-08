@@ -1,14 +1,14 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { RunnableConfig } from '@langchain/core/runnables';
 
-import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain';
-import type { SimpleWorkflow } from '../../../src/types/workflow';
+import { evaluateWorkflowPairwise, type PairwiseEvaluationResult } from './judge-chain.js';
+import type { SimpleWorkflow } from '../../../src/types/workflow.js';
 import {
 	getTracingCallbacks,
 	runWithOptionalLimiter,
 	withTimeout,
-} from '../../harness/evaluation-helpers';
-import type { EvaluationContext } from '../../harness/harness-types';
+} from '../../harness/evaluation-helpers.js';
+import type { EvaluationContext } from '../../harness/harness-types.js';
 
 // ============================================================================
 // Types

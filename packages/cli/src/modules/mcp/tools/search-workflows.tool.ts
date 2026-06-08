@@ -1,8 +1,8 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { SEARCH_WORKFLOWS_SORT_BY_VALUES } from '../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { SEARCH_WORKFLOWS_SORT_BY_VALUES } from '../mcp.types.js';
 import type {
 	ToolDefinition,
 	SearchWorkflowsParams,
@@ -10,12 +10,12 @@ import type {
 	SearchWorkflowsItem,
 	SearchWorkflowsSortBy,
 	UserCalledMCPToolEventPayload,
-} from '../mcp.types';
+} from '../mcp.types.js';
 
-import type { ListQuery } from '@/requests';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowService } from '@/workflows/workflow.service';
-import { createLimitSchema } from './schemas';
+import type { ListQuery } from '@/requests.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
+import { createLimitSchema } from './schemas.js';
 
 const MAX_RESULTS = 200;
 

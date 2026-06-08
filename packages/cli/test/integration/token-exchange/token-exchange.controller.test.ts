@@ -4,19 +4,19 @@ import { Container } from '@n8n/di';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
-import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
-import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
-import { TOKEN_EXCHANGE_GRANT_TYPE } from '@/modules/token-exchange/token-exchange.schemas';
+import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service.js';
+import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config.js';
+import { TOKEN_EXCHANGE_GRANT_TYPE } from '@/modules/token-exchange/token-exchange.schemas.js';
 import {
 	TOKEN_EXCHANGE_ISSUER,
 	type IssuedJwtPayload,
 	type TokenExchangeSuccessResponse,
-} from '@/modules/token-exchange/token-exchange.types';
-import { JwtService } from '@/services/jwt.service';
+} from '@/modules/token-exchange/token-exchange.types.js';
+import { JwtService } from '@/services/jwt.service.js';
 import { InstanceSettings } from 'n8n-core';
 
-import { createUser } from '../shared/db/users';
-import * as utils from '../shared/utils';
+import { createUser } from '../shared/db/users.js';
+import * as utils from '../shared/utils/index.js';
 
 // Must be set before module init reads the env var.
 process.env.N8N_ENV_FEAT_TOKEN_EXCHANGE = 'true';

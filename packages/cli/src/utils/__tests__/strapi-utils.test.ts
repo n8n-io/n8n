@@ -1,7 +1,7 @@
 import nock from 'nock';
 import axios from 'axios';
 
-import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
+import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils.js';
 
 describe('Strapi utils', () => {
 	describe('paginatedRequest', () => {

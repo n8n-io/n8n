@@ -5,22 +5,22 @@ import { CronJob } from 'cron';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { AgentTaskService } from '../agent-task.service';
-import type { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentTask } from '../entities/agent-task.entity';
-import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
+import { AgentTaskService } from '../agent-task.service.js';
+import type { AgentsService } from '../agents.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { AgentTask } from '../entities/agent-task.entity.js';
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 import type {
 	AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
-} from '../repositories/agent-task-run-lock.repository';
-import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
-import type { AgentTaskRepository } from '../repositories/agent-task.repository';
+} from '../repositories/agent-task-run-lock.repository.js';
+import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository.js';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository.js';
 
 // Keep cron validation + next-occurrence real; only the live CronJob is mocked.
 jest.mock('cron', () => {

@@ -6,15 +6,15 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import nock from 'nock';
 
-import * as utils from '../shared/utils';
-import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
-import { Telemetry } from '@/telemetry';
-import { saveCredential } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { CredentialsHelper } from '@/credentials-helper';
+import * as utils from '../shared/utils/index.js';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { saveCredential } from '../shared/db/credentials.js';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
 
-import { createUser } from '../shared/db/users';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { createUser } from '../shared/db/users.js';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver.js';
 
 mockInstance(Telemetry);
 

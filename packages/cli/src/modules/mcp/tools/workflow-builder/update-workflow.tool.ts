@@ -2,6 +2,7 @@ import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/d
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
+<<<<<<< HEAD
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
@@ -10,24 +11,33 @@ import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
+=======
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check.js';
+import { MCP_UPDATE_WORKFLOW_TOOL } from './constants.js';
+import { validateCredentialReferences } from './credential-validation.js';
+import { autoPopulateNodeCredentials } from './credentials-auto-assign.js';
+import { validateDataTableReferencesForUpdate } from './data-table-validation.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
 	type PartialUpdateOperation,
-} from './workflow-operations';
+} from './workflow-operations.js';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
-import { resolveNodeWebhookIds } from '@/workflow-helpers';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { UrlService } from '@/services/url.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import { resolveNodeWebhookIds } from '@/workflow-helpers.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { getMcpWorkflow } from '../workflow-validation.utils.js';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 

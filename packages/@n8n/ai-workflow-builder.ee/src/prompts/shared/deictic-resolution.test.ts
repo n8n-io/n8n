@@ -1,4 +1,4 @@
-import { buildDeicticResolutionPrompt, type DeicticExamples } from './deictic-resolution';
+import { buildDeicticResolutionPrompt, type DeicticExamples } from './deictic-resolution.js';
 
 describe('buildDeicticResolutionPrompt', () => {
 	describe('basic structure', () => {

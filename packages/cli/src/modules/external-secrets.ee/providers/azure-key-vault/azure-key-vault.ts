@@ -3,9 +3,9 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-import type { AzureKeyVaultContext } from './types';
-import { DOCS_HELP_NOTICE } from '../../constants';
-import { SecretsProvider } from '../../types';
+import type { AzureKeyVaultContext } from './types.js';
+import { DOCS_HELP_NOTICE } from '../../constants.js';
+import { SecretsProvider } from '../../types.js';
 
 export class AzureKeyVault extends SecretsProvider {
 	name = 'azureKeyVault';

@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME } from '@/constants.js';
 
 const BROWSER_ID_COOKIE_NAME = 'n8n-browserId';
 

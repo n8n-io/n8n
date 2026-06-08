@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { toSaveSettings } from '../to-save-settings';
+import { toSaveSettings } from '../to-save-settings.js';
 
 const globalConfig = Container.get(GlobalConfig);
 

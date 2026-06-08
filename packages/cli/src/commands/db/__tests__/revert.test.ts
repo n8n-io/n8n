@@ -4,7 +4,7 @@ import type { IrreversibleMigration, ReversibleMigration } from '@n8n/db';
 import type { Migration, MigrationExecutor, DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import { main } from '@/commands/db/revert';
+import { main } from '@/commands/db/revert.js';
 
 const logger = mockInstance(Logger);
 

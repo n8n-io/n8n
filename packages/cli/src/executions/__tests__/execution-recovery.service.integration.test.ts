@@ -16,6 +16,7 @@ import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 import { v4 as uuid } from 'uuid';
 
+<<<<<<< HEAD
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -26,9 +27,20 @@ import { ExecutionRecoveryService } from '@/executions/execution-recovery.servic
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { createExecution } from '@test-integration/db/executions';
+=======
+import { ARTIFICIAL_TASK_DATA } from '@/constants.js';
+import { NodeCrashedError } from '@/errors/node-crashed.error.js';
+import { WorkflowCrashedError } from '@/errors/workflow-crashed.error.js';
+import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes/index.js';
+import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node.js';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service.js';
+import { Push } from '@/push/index.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { createExecution } from '@test-integration/db/executions.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
-import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
-import { setupMessages } from './utils';
+import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants.js';
+import { setupMessages } from './utils.js';
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);

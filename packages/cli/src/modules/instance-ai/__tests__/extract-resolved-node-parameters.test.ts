@@ -10,10 +10,14 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeTypes } from '@/node-types';
+=======
+import type { NodeTypes } from '@/node-types.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
-import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters';
+import { extractResolvedNodeParameters } from '../extract-resolved-node-parameters.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString, IsBoolean } from 'class-validator';
 
-import { BaseFilter } from './base.filter.dto';
+import { BaseFilter } from './base.filter.dto.js';
 
 export class UserFilter extends BaseFilter {
 	@IsString()

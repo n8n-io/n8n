@@ -1,6 +1,6 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-import { InProcessEventBus } from '../in-process-event-bus';
+import { InProcessEventBus } from '../in-process-event-bus.js';
 
 function makeEvent(type: string, runId: string): InstanceAiEvent {
 	return {

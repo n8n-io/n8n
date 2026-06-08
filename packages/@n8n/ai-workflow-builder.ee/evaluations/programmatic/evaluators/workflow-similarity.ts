@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import type { SimpleWorkflow } from '@/types';
-import type { ProgrammaticViolationName, SingleEvaluatorResult } from '@/validation/types';
+import type { SimpleWorkflow } from '@/types/index.js';
+import type { ProgrammaticViolationName, SingleEvaluatorResult } from '@/validation/types.js';
 
 const execFileAsync = promisify(execFile);
 

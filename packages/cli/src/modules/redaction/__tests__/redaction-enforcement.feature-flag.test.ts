@@ -1,7 +1,7 @@
 import {
 	N8N_ENV_FEAT_REDACTION_ENFORCEMENT,
 	isRedactionEnforcementEnabled,
-} from '../redaction-enforcement.feature-flag';
+} from '../redaction-enforcement.feature-flag.js';
 
 describe('isRedactionEnforcementEnabled', () => {
 	const original = process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];

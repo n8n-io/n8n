@@ -12,7 +12,7 @@ import {
 	SIMPLE_UPDATE_EXAMPLES,
 	SWITCH_NODE_EXAMPLES,
 	TOOL_NODE_EXAMPLES,
-} from './examples';
+} from './examples/index.js';
 import {
 	EMBEDDING_NODES_GUIDE,
 	GMAIL_GUIDE,
@@ -25,8 +25,8 @@ import {
 	SYSTEM_MESSAGE_GUIDE,
 	TEXT_FIELDS_GUIDE,
 	TOOL_NODES_GUIDE,
-} from './guides';
-import type { NodeTypeExamples, NodeTypeGuide, NodeTypePattern, PromptContext } from './types';
+} from './guides/index.js';
+import type { NodeTypeExamples, NodeTypeGuide, NodeTypePattern, PromptContext } from './types.js';
 
 // ============================================================================
 // Centralized Registration

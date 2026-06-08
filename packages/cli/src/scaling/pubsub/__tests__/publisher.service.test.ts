@@ -4,10 +4,10 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@/services/redis-client.service.js';
 
-import { Publisher } from '../publisher.service';
-import type { PubSub } from '../pubsub.types';
+import { Publisher } from '../publisher.service.js';
+import type { PubSub } from '../pubsub.types.js';
 
 describe('Publisher', () => {
 	const client = mock<SingleNodeClient>();

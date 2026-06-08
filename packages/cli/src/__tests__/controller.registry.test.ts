@@ -25,12 +25,12 @@ import { agent as testAgent } from 'supertest';
 import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
-import type { AuthService } from '@/auth/auth.service';
-import { ControllerRegistry } from '@/controller.registry';
-import type { License } from '@/license';
-import type { LastActiveAtService } from '@/services/last-active-at.service';
-import { RateLimitService } from '@/services/rate-limit.service';
-import type { SuperAgentTest } from '@test-integration/types';
+import type { AuthService } from '@/auth/auth.service.js';
+import { ControllerRegistry } from '@/controller.registry.js';
+import type { License } from '@/license.js';
+import type { LastActiveAtService } from '@/services/last-active-at.service.js';
+import { RateLimitService } from '@/services/rate-limit.service.js';
+import type { SuperAgentTest } from '@test-integration/types.js';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();

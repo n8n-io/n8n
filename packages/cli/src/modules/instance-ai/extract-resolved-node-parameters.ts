@@ -25,9 +25,13 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import type { NodeTypes } from '@/node-types';
+=======
+import type { NodeTypes } from '@/node-types.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /**
  * Maximum characters for a single resolved parameter leaf. Resolved parameter

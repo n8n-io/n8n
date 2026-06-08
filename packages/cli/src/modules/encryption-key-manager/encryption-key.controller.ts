@@ -7,9 +7,9 @@ import {
 import { type DeploymentKey } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Query, RestController } from '@n8n/decorators';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import { KeyManagerService } from './key-manager.service';
+import { KeyManagerService } from './key-manager.service.js';
 
 function toResponseDto(row: DeploymentKey): EncryptionKey {
 	return {

@@ -1,10 +1,16 @@
 import { Container } from '@n8n/di';
 
+<<<<<<< HEAD
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
 import type { ButtonStyle, CardElement } from 'chat';
 
 type ComponentText = string | { text?: string; [key: string]: unknown };
+=======
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { loadChatSdk } from './esm-loader.js';
+import type { CardElement } from 'chat';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.

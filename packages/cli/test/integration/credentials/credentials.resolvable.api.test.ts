@@ -13,6 +13,7 @@ import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,
 	SYSTEM_RESOLVER_TYPE,
+<<<<<<< HEAD
 } from '@/modules/dynamic-credentials.ee/constants';
 import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
@@ -26,6 +27,17 @@ import {
 } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
+=======
+} from '@/modules/dynamic-credentials.ee/constants.js';
+import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage.js';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.js';
+import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository.js';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { saveCredential } from '../shared/db/credentials.js';
+import { createMember } from '../shared/db/users.js';
+import { setupTestServer } from '../shared/utils/index.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 mockInstance(Telemetry);
 

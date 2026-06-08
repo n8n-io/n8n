@@ -1,7 +1,7 @@
 import type { INode, IConnections, INodeTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow.js';
 
 /**
  * Minimal INodeTypes implementation for use with Workflow.renameNode().

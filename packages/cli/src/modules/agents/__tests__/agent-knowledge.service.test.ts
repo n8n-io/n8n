@@ -6,12 +6,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
-import type { AgentRepository } from '../repositories/agent.repository';
+import { AgentKnowledgeService } from '../agent-knowledge.service.js';
+import type { AgentFileRepository } from '../repositories/agent-file.repository.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
 
 jest.unmock('node:fs');
 jest.unmock('node:fs/promises');

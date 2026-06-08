@@ -10,12 +10,12 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { Push } from '@/push';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import type { Push } from '@/push/index.js';
 
-import { CheckService, computeDiff } from '../checks/check.service';
-import type { InstanceRegistryService } from '../instance-registry.service';
-import { REGISTRY_CONSTANTS } from '../instance-registry.types';
+import { CheckService, computeDiff } from '../checks/check.service.js';
+import type { InstanceRegistryService } from '../instance-registry.service.js';
+import { REGISTRY_CONSTANTS } from '../instance-registry.types.js';
 
 const makeLogger = () => {
 	const logger = mock<Logger>();

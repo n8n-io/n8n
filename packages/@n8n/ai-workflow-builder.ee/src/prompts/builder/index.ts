@@ -13,7 +13,7 @@
  * ```
  */
 
-export { PromptBuilder, prompt } from './prompt-builder';
+export { PromptBuilder, prompt } from './prompt-builder.js';
 
 export type {
 	ContentOrFactory,
@@ -21,4 +21,4 @@ export type {
 	PromptBuilderOptions,
 	SectionFormat,
 	SectionOptions,
-} from './types';
+} from './types.js';

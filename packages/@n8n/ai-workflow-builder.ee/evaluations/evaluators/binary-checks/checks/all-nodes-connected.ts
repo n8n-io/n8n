@@ -1,6 +1,6 @@
 import { getChildNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
-import type { BinaryCheck, SimpleWorkflow } from '../types';
+import type { BinaryCheck, SimpleWorkflow } from '../types.js';
 
 const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 

@@ -1,5 +1,5 @@
-import { EventService } from '@/events/event.service';
-import { RelayEventMap } from '@/events/maps/relay.event-map';
+import { EventService } from '@/events/event.service.js';
+import { RelayEventMap } from '@/events/maps/relay.event-map.js';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';

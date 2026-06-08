@@ -5,22 +5,26 @@ import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { FolderService } from '@/services/folder.service';
-import { ProjectService } from '@/services/project.service.ee';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { FolderService } from '@/services/folder.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
 
-import { CredentialImporter } from '../entities/credential/credential-importer';
-import { resolvedBindingsToSummaries } from '../entities/credential/credential.types';
-import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
-import { TarPackageReader } from '../io/tar/tar-package-reader';
-import type { ImportPackageRequest, ImportResult, PreparedWorkflow } from '../n8n-packages.types';
-import { packageManifestSchema } from '../spec/manifest.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+import { CredentialImporter } from '../entities/credential/credential-importer.js';
+import { resolvedBindingsToSummaries } from '../entities/credential/credential.types.js';
+import { WorkflowSerializer } from '../entities/workflow/workflow.serializer.js';
+import { TarPackageReader } from '../io/tar/tar-package-reader.js';
+import type {
+	ImportPackageRequest,
+	ImportResult,
+	PreparedWorkflow,
+} from '../n8n-packages.types.js';
+import { packageManifestSchema } from '../spec/manifest.schema.js';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema.js';
 
 const MEGABYTE_IN_BYTES = 1024 * 1024;
 

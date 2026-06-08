@@ -7,7 +7,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import { DataRequestResponseStripper } from '../data-request-response-stripper';
+import { DataRequestResponseStripper } from '../data-request-response-stripper.js';
 
 const triggerNode: INode = mock<INode>({
 	name: 'Trigger',

@@ -2,10 +2,10 @@ import { upsertEvaluationConfigSchema } from '@n8n/api-types';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Delete, Get, Post, Put, RestController } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { EvaluationConfigService } from './evaluation-config.service';
+import { EvaluationConfigService } from './evaluation-config.service.js';
 
 type WorkflowParam = { workflowId: string };
 type ConfigParam = { workflowId: string; configId: string };

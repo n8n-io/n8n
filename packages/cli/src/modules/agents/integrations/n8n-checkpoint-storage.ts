@@ -8,7 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository.js';
 
 type CheckpointStatus =
 	| {

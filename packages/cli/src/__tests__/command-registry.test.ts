@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { z } from 'zod';
 
-import { CommandRegistry } from '../command-registry';
+import { CommandRegistry } from '../command-registry.js';
 
 jest.mock('fast-glob');
 

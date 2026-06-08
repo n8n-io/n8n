@@ -9,11 +9,11 @@ import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
-import { OauthService, OauthVersion } from '@/oauth/oauth.service';
-import { OAuthRequest } from '@/requests';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
+import { OauthService, OauthVersion } from '@/oauth/oauth.service.js';
+import { OAuthRequest } from '@/requests.js';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {

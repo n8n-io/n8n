@@ -1,4 +1,4 @@
-import { createLlmCheck } from '../create-llm-check';
+import { createLlmCheck } from '../create-llm-check.js';
 
 describe('createLlmCheck', () => {
 	it('returns pass: true with "Skipped" comment when no LLM provided', async () => {

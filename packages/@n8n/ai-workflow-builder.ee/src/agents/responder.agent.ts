@@ -11,28 +11,28 @@ import {
 	buildRecursionErrorNoWorkflowGuidance,
 	buildRecursionErrorWithWorkflowGuidance,
 	buildResponderPrompt,
-} from '@/prompts';
-import type { CoordinationLogEntry } from '@/types/coordination';
-import type { DiscoveryContext } from '@/types/discovery-types';
-import type { SimpleWorkflow } from '@/types/workflow';
+} from '@/prompts/index.js';
+import type { CoordinationLogEntry } from '@/types/coordination.js';
+import type { DiscoveryContext } from '@/types/discovery-types.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 import {
 	buildSelectedNodesContextBlock,
 	buildSimplifiedExecutionContext,
 	buildWorkflowOverview,
-} from '@/utils/context-builders';
+} from '@/utils/context-builders.js';
 import {
 	getBuilderOutput,
 	getErrorEntry,
 	hasRecursionErrorsCleared,
-} from '@/utils/coordination-log';
-import { extractDataTableInfo } from '@/utils/data-table-helpers';
-import type { ChatPayload } from '@/workflow-builder-agent';
+} from '@/utils/coordination-log.js';
+import { extractDataTableInfo } from '@/utils/data-table-helpers.js';
+import type { ChatPayload } from '@/workflow-builder-agent.js';
 
 import {
 	createIntrospectTool,
 	extractIntrospectionEventsFromMessages,
 	type IntrospectionEvent,
-} from '../tools/introspect.tool';
+} from '../tools/introspect.tool.js';
 
 /**
  * Context required for the responder to generate a response

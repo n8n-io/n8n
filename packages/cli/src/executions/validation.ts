@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { ExecutionRequest } from '@/executions/execution.types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { ExecutionRequest } from '@/executions/execution.types.js';
 
 const executionUpdateSchema = z.object({
 	tags: z.array(z.string()).optional(),

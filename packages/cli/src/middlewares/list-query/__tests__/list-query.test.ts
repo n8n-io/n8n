@@ -1,13 +1,13 @@
 import type { ListQueryDb } from '@n8n/db';
 import type { Response, NextFunction } from 'express';
 
-import { filterListQueryMiddleware } from '@/middlewares/list-query/filter';
-import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination';
-import { selectListQueryMiddleware } from '@/middlewares/list-query/select';
-import type { ListQuery } from '@/requests';
-import * as ResponseHelper from '@/response-helper';
+import { filterListQueryMiddleware } from '@/middlewares/list-query/filter.js';
+import { paginationListQueryMiddleware } from '@/middlewares/list-query/pagination.js';
+import { selectListQueryMiddleware } from '@/middlewares/list-query/select.js';
+import type { ListQuery } from '@/requests.js';
+import * as ResponseHelper from '@/response-helper.js';
 
-import { sortByQueryMiddleware } from '../sort-by';
+import { sortByQueryMiddleware } from '../sort-by.js';
 
 describe('List query middleware', () => {
 	let mockReq: ListQuery.Request;

@@ -2,9 +2,9 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createOwner, createMember } from '@test-integration/db/users';
-import type { SuperAgentTest } from '@test-integration/types';
-import * as utils from '@test-integration/utils';
+import { createOwner, createMember } from '@test-integration/db/users.js';
+import type { SuperAgentTest } from '@test-integration/types.js';
+import * as utils from '@test-integration/utils/index.js';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['data-table'],

@@ -2,19 +2,19 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants.js';
 
-import { CredentialExporter } from './entities/credential/credential.exporter';
-import { WorkflowExporter } from './entities/workflow/workflow.exporter';
-import { ImportPipeline } from './engine/import-pipeline';
-import { TarPackageWriter } from './io/tar/tar-package-writer';
+import { CredentialExporter } from './entities/credential/credential.exporter.js';
+import { WorkflowExporter } from './entities/workflow/workflow.exporter.js';
+import { ImportPipeline } from './engine/import-pipeline.js';
+import { TarPackageWriter } from './io/tar/tar-package-writer.js';
 import type {
 	ExportWorkflowsRequest,
 	ImportPackageRequest,
 	ImportResult,
-} from './n8n-packages.types';
-import { FORMAT_VERSION } from './spec/constants';
-import { packageManifestSchema } from './spec/manifest.schema';
+} from './n8n-packages.types.js';
+import { FORMAT_VERSION } from './spec/constants.js';
+import { packageManifestSchema } from './spec/manifest.schema.js';
 
 @Service()
 export class N8nPackagesService {

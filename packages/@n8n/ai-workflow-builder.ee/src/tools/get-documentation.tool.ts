@@ -1,18 +1,21 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 
-import { ValidationError, ToolExecutionError } from '@/errors';
-import { prompt } from '@/prompts/builder';
-import { recommendations, formatRecommendation } from '@/prompts/shared/node-recommendations';
-import { documentation } from '@/tools/best-practices';
-import { createProgressReporter } from '@/tools/helpers/progress';
-import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
-import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
+import { ValidationError, ToolExecutionError } from '@/errors/index.js';
+import { prompt } from '@/prompts/builder/index.js';
+import {
+	recommendations,
+	formatRecommendation,
+} from '@/prompts/shared/node-recommendations/index.js';
+import { documentation } from '@/tools/best-practices/index.js';
+import { createProgressReporter } from '@/tools/helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response.js';
+import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization.js';
 import {
 	type RecommendationCategoryType,
 	RecommendationCategory,
-} from '@/types/node-recommendations';
-import type { BuilderToolBase } from '@/utils/stream-processor';
+} from '@/types/node-recommendations.js';
+import type { BuilderToolBase } from '@/utils/stream-processor.js';
 
 /**
  * Documentation type enum

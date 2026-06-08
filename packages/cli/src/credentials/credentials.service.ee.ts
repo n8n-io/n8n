@@ -7,17 +7,17 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleService } from '@/services/role.service.js';
 
-import { CredentialsFinderService } from './credentials-finder.service';
-import { CredentialsService } from './credentials.service';
-import { validateAccessToReferencedSecretProviders } from './validation';
+import { CredentialsFinderService } from './credentials-finder.service.js';
+import { CredentialsService } from './credentials.service.js';
+import { validateAccessToReferencedSecretProviders } from './validation.js';
 
 @Service()
 export class EnterpriseCredentialsService {

@@ -11,7 +11,7 @@ import type {
 	BatchWorkflowDetectionReport,
 	InstanceDetectionReport,
 	WorkflowDetectionReport,
-} from './detection.types';
+} from './detection.types.js';
 
 export const enum BreakingChangeCategory {
 	workflow = 'workflow',

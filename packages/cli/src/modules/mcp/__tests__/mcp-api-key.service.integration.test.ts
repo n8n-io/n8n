@@ -4,14 +4,14 @@ import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
-import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
-import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
-import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
+import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy.js';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types.js';
+import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy.js';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users.js';
 
-import { McpServerApiKeyService } from '../mcp-api-key.service';
+import { McpServerApiKeyService } from '../mcp-api-key.service.js';
 
 function makeScopedJwt(
 	jwtService: JwtService,

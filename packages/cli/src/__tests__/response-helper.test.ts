@@ -2,8 +2,8 @@ import { QueryFailedError } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { isUniqueConstraintError, sendErrorResponse } from '@/response-helper';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error.js';
+import { isUniqueConstraintError, sendErrorResponse } from '@/response-helper.js';
 
 describe('sendErrorResponse', () => {
 	let mockResponse: Response;

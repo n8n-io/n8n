@@ -2,13 +2,13 @@ import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import type { GetExecutionSchemaOutput } from '../types/tools';
-import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
-import { truncateJson } from '../utils/truncate-json';
-import { createProgressReporter } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import type { GetExecutionSchemaOutput } from '../types/tools.js';
+import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor.js';
+import { truncateJson } from '../utils/truncate-json.js';
+import { createProgressReporter } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getWorkflowState } from './helpers/state.js';
 
 const DISPLAY_TITLE = 'Getting execution schema';
 

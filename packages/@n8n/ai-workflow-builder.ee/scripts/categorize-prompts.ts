@@ -5,9 +5,9 @@ import pLimit from 'p-limit';
 import { join } from 'path';
 import pc from 'picocolors';
 
-import { promptCategorizationChain } from '../src/chains/prompt-categorization';
-import { setupIntegrationLLM } from '../src/chains/test/integration/test-helpers';
-import { TechniqueDescription } from '../src/types/categorization';
+import { promptCategorizationChain } from '../src/chains/prompt-categorization.js';
+import { setupIntegrationLLM } from '../src/chains/test/integration/test-helpers.js';
+import { TechniqueDescription } from '../src/types/categorization.js';
 
 // import { userPrompts } from '.prompts/100x3-prompts';
 

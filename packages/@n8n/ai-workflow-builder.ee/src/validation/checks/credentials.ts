@@ -1,8 +1,8 @@
 import { isExpression } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import type { ProgrammaticViolation } from '../types';
+import type { ProgrammaticViolation } from '../types.js';
 
 // Patterns for credential-like field names in Set nodes
 const CREDENTIAL_FIELD_PATTERNS = [

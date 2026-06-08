@@ -8,7 +8,7 @@ import { trace } from '@opentelemetry/api';
 import { mock } from 'jest-mock-extended';
 import promClient from 'prom-client';
 
-import { ExpressionObservabilityProvider } from '../expression-observability.provider';
+import { ExpressionObservabilityProvider } from '../expression-observability.provider.js';
 
 const scopedLogger = mock<Logger>();
 

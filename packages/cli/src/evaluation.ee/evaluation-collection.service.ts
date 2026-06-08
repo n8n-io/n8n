@@ -20,11 +20,11 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { Telemetry } from '@/telemetry';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 
 /**
  * Bare shape of the {@link EvaluationCollection} fields the service uses for

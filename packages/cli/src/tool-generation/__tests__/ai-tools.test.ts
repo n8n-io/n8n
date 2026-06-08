@@ -1,7 +1,7 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { convertNodeToAiTool, createAiTools } from '../ai-tools';
+import { convertNodeToAiTool, createAiTools } from '../ai-tools.js';
 
 describe('ai-tools', () => {
 	describe('convertNodeToAiTool', () => {

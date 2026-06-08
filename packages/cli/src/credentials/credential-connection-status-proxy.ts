@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
-import type { ICredentialConnectionStatusProvider } from './credential-connection-status-provider.interface';
+import type { ICredentialConnectionStatusProvider } from './credential-connection-status-provider.interface.js';
 
 /**
  * Proxy between the core credentials service and module-owned per-user

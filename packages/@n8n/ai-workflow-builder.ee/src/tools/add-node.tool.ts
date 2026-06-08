@@ -2,22 +2,22 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { NodeTypeNotFoundError, ToolExecutionError, ValidationError } from '../errors';
+import { NodeTypeNotFoundError, ToolExecutionError, ValidationError } from '../errors/index.js';
 import {
 	createNodeInstance,
 	generateUniqueName,
 	type NodeSettings,
-} from './utils/node-creation.utils';
-import { calculateNodePosition } from './utils/node-positioning.utils';
-import { isSubNode } from '../utils/node-helpers';
-import { createProgressReporter } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
-import { findNodeType } from './helpers/validation';
-import type { AddedNode } from '../types/nodes';
-import type { AddNodeOutput } from '../types/tools';
+} from './utils/node-creation.utils.js';
+import { calculateNodePosition } from './utils/node-positioning.utils.js';
+import { isSubNode } from '../utils/node-helpers.js';
+import { createProgressReporter } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state.js';
+import { findNodeType } from './helpers/validation.js';
+import type { AddedNode } from '../types/nodes.js';
+import type { AddNodeOutput } from '../types/tools.js';
 
 /**
  * Schema for optional node execution settings

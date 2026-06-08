@@ -1,4 +1,4 @@
-import { HostnameMatcher } from '../hostname-matcher';
+import { HostnameMatcher } from '../hostname-matcher.js';
 
 describe('HostnameMatcher', () => {
 	describe('wildcard patterns', () => {

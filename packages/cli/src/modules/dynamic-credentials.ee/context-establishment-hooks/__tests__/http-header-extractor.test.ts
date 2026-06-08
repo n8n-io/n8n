@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 
-import { HttpHeaderExtractor } from '../http-header-extractor';
-import { createOptions, createTriggerItem } from './utils';
+import { HttpHeaderExtractor } from '../http-header-extractor.js';
+import { createOptions, createTriggerItem } from './utils.js';
 
 describe('HttpHeaderExtractor', () => {
 	let extractor: HttpHeaderExtractor;

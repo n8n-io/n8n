@@ -14,8 +14,8 @@ import type {
 	SdkSummaryMessage,
 	SdkTextMessage,
 	StreamWriter,
-} from './types';
-import { STREAM_SEPARATOR } from '../constants';
+} from './types.js';
+import { STREAM_SEPARATOR } from '../constants.js';
 import type {
 	AgentMessageChunk,
 	AgentSuggestionChunk,
@@ -23,7 +23,7 @@ import type {
 	StreamChunk,
 	SummaryChunk,
 	ToolProgressChunk,
-} from '../types/streaming';
+} from '../types/streaming.js';
 
 const SUMMARY_MAX_LENGTH = 200;
 

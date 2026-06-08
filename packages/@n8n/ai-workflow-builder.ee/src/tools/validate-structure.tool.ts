@@ -2,13 +2,13 @@ import { tool } from '@langchain/core/tools';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-import { validateConnections, validateTrigger } from '@/validation/checks';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
+import { validateConnections, validateTrigger } from '@/validation/checks/index.js';
 
-import { ToolExecutionError, ValidationError } from '../errors';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createErrorResponse, createSuccessResponse } from './helpers/response';
-import { getEffectiveWorkflow } from './helpers/state';
+import { ToolExecutionError, ValidationError } from '../errors/index.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createErrorResponse, createSuccessResponse } from './helpers/response.js';
+import { getEffectiveWorkflow } from './helpers/state.js';
 
 const validateStructureSchema = z.object({}).strict().default({});
 

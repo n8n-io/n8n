@@ -1,8 +1,8 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { z } from 'zod';
 
-import { createEvaluatorChain, invokeEvaluatorChain } from './base';
-import type { EvaluationInput } from '../evaluation';
+import { createEvaluatorChain, invokeEvaluatorChain } from './base.js';
+import type { EvaluationInput } from '../evaluation.js';
 
 // Schema for node configuration evaluation result
 const nodeConfigurationResultSchema = z.object({

@@ -10,11 +10,11 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
+import { UserFavoriteRepository } from './database/repositories/user-favorite.repository.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
 
 import type { FavoriteResourceType } from '@n8n/api-types';
 

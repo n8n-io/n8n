@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 
-import type { Middleware } from './middlewares/global.middleware';
+import type { Middleware } from './middlewares/global.middleware.js';
 
 /**
  * Final handler in a public API route tuple. `TReq` must be an `AuthenticatedRequest`

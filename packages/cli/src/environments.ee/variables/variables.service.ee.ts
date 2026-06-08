@@ -9,14 +9,14 @@ import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
-import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProjectService } from '@/services/project.service.ee';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error.js';
+import { VariableValidationError } from '@/errors/variable-validation.error.js';
+import { EventService } from '@/events/event.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {
 	'variable:list': 'projectVariable:list',

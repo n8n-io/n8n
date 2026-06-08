@@ -25,14 +25,14 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { CredentialResolutionError } from './errors/credential-resolution.error';
-import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
-import { SystemResolverModificationError } from './errors/system-resolver-modification.error';
-import { DynamicCredentialResolverService } from './services/credential-resolver.service';
+import { CredentialResolutionError } from './errors/credential-resolution.error.js';
+import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error.js';
+import { SystemResolverModificationError } from './errors/system-resolver-modification.error.js';
+import { DynamicCredentialResolverService } from './services/credential-resolver.service.js';
 
 @RestController('/credential-resolvers')
 export class CredentialResolversController {

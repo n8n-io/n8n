@@ -5,8 +5,8 @@ import { Container } from '@n8n/di';
 import { staticRolesWithScope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
-import { RoleCacheService } from '@/services/role-cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import { RoleCacheService } from '@/services/role-cache.service.js';
 
 // Mock static function
 jest.mock('@n8n/permissions', () => ({

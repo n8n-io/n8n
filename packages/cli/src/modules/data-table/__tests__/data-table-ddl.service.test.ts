@@ -2,8 +2,8 @@ import { testModules } from '@n8n/backend-test-utils';
 import type { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import { DataTableDDLService } from '../data-table-ddl.service';
-import * as sqlUtils from '../utils/sql-utils';
+import { DataTableDDLService } from '../data-table-ddl.service.js';
+import * as sqlUtils from '../utils/sql-utils.js';
 
 // Mock the sql-utils module
 jest.mock('../utils/sql-utils', () => ({

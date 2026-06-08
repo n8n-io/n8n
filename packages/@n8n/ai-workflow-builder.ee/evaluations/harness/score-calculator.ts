@@ -5,7 +5,7 @@
  * feedback from multiple evaluators.
  */
 
-import type { Feedback } from './harness-types';
+import type { Feedback } from './harness-types.js';
 
 /**
  * Weights for each evaluator type.

@@ -9,7 +9,7 @@ import {
 	extractToolMessagesForPersistence,
 	filterOutSubgraphToolMessages,
 	executeSubgraphTools,
-} from '../subgraph-helpers';
+} from '../subgraph-helpers.js';
 
 describe('subgraph-helpers', () => {
 	describe('extractUserRequest', () => {

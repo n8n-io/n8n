@@ -4,11 +4,11 @@ import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Get, Middleware, RestController } from '@n8n/decorators';
 import { Response, NextFunction } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { IWorkflowStatisticsDataLoaded } from '@/interfaces.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { StatisticsRequest } from './workflow-statistics.types';
+import { StatisticsRequest } from './workflow-statistics.types.js';
 
 interface WorkflowStatisticsData<T> {
 	productionSuccess: T;

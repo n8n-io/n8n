@@ -15,12 +15,12 @@ import {
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 
-import type { PlanOutput } from '../../types/planning';
-import { formatPlanAsText } from '../../utils/plan-helpers';
-import type { ExpressionValue } from '../../workflow-builder-agent';
-import { formatCodeWithLineNumbers } from '../handlers/text-editor-handler';
-import { type ConversationEntry, entryToString } from '../utils/code-builder-session';
-import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
+import type { PlanOutput } from '../../types/planning.js';
+import { formatPlanAsText } from '../../utils/plan-helpers.js';
+import type { ExpressionValue } from '../../workflow-builder-agent.js';
+import { formatCodeWithLineNumbers } from '../handlers/text-editor-handler.js';
+import { type ConversationEntry, entryToString } from '../utils/code-builder-session.js';
+import { SDK_IMPORT_STATEMENT } from '../utils/extract-code.js';
 
 /**
  * Escape curly brackets for LangChain prompt templates

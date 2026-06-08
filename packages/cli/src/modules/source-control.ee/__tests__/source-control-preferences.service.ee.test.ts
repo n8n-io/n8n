@@ -7,10 +7,10 @@ import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
+import { SourceControlPreferencesService } from '../source-control-preferences.service.ee.js';
+import type { SourceControlPreferences } from '../types/source-control-preferences.js';
 
 // Restore real fs modules for these tests since we need actual file operations
 jest.unmock('node:fs');

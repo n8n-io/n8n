@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 
-import type { CorsService } from '@/services/cors-service';
+import type { CorsService } from '@/services/cors-service.js';
 
-import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
-import { DynamicCredentialCorsService } from '../dynamic-credential-cors.service';
+import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config.js';
+import { DynamicCredentialCorsService } from '../dynamic-credential-cors.service.js';
 
 describe('DynamicCredentialCorsService', () => {
 	let mockCorsService: jest.Mocked<CorsService>;

@@ -14,17 +14,17 @@ import {
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee.js';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
 
-import { createDummyProvider, MockProviders } from '../../shared/external-secrets/utils';
-import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
-import { createAdmin, createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { createDummyProvider, MockProviders } from '../../shared/external-secrets/utils.js';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles.js';
+import { createAdmin, createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 import { Cipher } from 'n8n-core';
-import { mockCipher } from '@test/mocking';
+import { mockCipher } from '@test/mocking.js';
 
 const resetManager = async () => {
 	const manager = Container.get(ExternalSecretsManager);

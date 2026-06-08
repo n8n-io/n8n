@@ -8,25 +8,25 @@ import type { Logger } from '@n8n/backend-common';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { OauthService } from '@/oauth/oauth.service';
-import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
+import type { OauthService } from '@/oauth/oauth.service.js';
+import type { UrlService } from '@/services/url.service.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import type { AgentsToolsService } from '../agents-tools.service';
-import type { Agent } from '../entities/agent.entity';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service.js';
+import type { AgentsToolsService } from '../agents-tools.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
+import type { N8nMemory } from '../integrations/n8n-memory.js';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { ToolExecutor } from '../json-config/from-json-config';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { ToolExecutor } from '../json-config/from-json-config.js';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
+import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service.js';
+import type { AgentKnowledgeService } from '../agent-knowledge.service.js';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner.js';
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();

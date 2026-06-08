@@ -8,13 +8,13 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
 
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
-import { createOwnerWithApiKey } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types.js';
+import { createOwnerWithApiKey } from '@test-integration/db/users.js';
+import { retryUntil } from '@test-integration/retry-until.js';
 
-import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
-import { JwtService } from '../jwt.service';
-import { API_KEY_ISSUER } from '../public-api-key.service';
+import { ApiKeyAuthStrategy } from '../api-key-auth.strategy.js';
+import { JwtService } from '../jwt.service.js';
+import { API_KEY_ISSUER } from '../public-api-key.service.js';
 
 const mockReqWith = (apiKey: string): AuthenticatedRequest =>
 	mock<AuthenticatedRequest>({

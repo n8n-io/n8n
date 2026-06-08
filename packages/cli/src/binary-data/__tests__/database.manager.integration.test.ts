@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
-import { DatabaseManager } from '@/binary-data/database.manager';
+import { DatabaseManager } from '@/binary-data/database.manager.js';
 
 jest.unmock('node:fs/promises');
 

@@ -1,6 +1,6 @@
 import type { INode, IConnections, IWorkflowSettings, IWorkflowGroup } from 'n8n-workflow';
 
-import type { RemoteResourceOwner } from './resource-owner';
+import type { RemoteResourceOwner } from './resource-owner.js';
 
 export interface ExportableWorkflow {
 	id: string;

@@ -1,4 +1,4 @@
-import { buildAskQuestionTool } from '../ask-question.tool';
+import { buildAskQuestionTool } from '../ask-question.tool.js';
 
 interface TestCtx {
 	resumeData?: unknown;

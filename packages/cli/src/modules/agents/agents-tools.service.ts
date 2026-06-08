@@ -11,10 +11,10 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform.js';
 
-import { NodeCatalogService } from '@/node-catalog';
-import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
+import { NodeCatalogService } from '@/node-catalog/index.js';
+import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution/index.js';
 
 type NodeRequest =
 	| string

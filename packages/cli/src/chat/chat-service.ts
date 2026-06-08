@@ -14,19 +14,19 @@ import {
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
-import { ChatExecutionManager } from './chat-execution-manager';
+import { ChatExecutionManager } from './chat-execution-manager.js';
 import {
 	chatMessageSchema,
 	type ChatMessage,
 	type ChatRequest,
 	Session,
-} from './chat-service.types';
+} from './chat-service.types.js';
 import {
 	getLastNodeExecuted,
 	getLastNodeMessage,
 	getMessage,
 	shouldResumeImmediately,
-} from './utils';
+} from './utils.js';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;

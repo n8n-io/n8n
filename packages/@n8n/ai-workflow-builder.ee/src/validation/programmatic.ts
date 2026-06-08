@@ -10,9 +10,9 @@ import {
 	validateTools,
 	validateTrigger,
 	validateWebhookResponse,
-} from '@/validation/checks';
+} from '@/validation/checks/index.js';
 
-import type { ProgrammaticChecksResult, ProgrammaticEvaluationInput } from './types';
+import type { ProgrammaticChecksResult, ProgrammaticEvaluationInput } from './types.js';
 
 export function programmaticValidation(
 	input: ProgrammaticEvaluationInput,

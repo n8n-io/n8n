@@ -5,11 +5,11 @@ import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import {
 	extractProviderKeysFromExpression,
 	getExternalSecretExpressionPaths,
-} from './external-secrets.utils';
+} from './external-secrets.utils.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 
 // #region External Secrets
 

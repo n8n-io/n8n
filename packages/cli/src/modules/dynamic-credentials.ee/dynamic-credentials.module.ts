@@ -13,24 +13,26 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		if (!isFeatureFlagEnabled()) {
 			return;
 		}
-		await import('./dynamic-credentials.controller');
-		await import('./credential-resolvers.controller');
-		await import('./context-establishment-hooks');
-		await import('./credential-resolvers');
+		await import('./dynamic-credentials.controller.js');
+		await import('./credential-resolvers.controller.js');
+		await import('./context-establishment-hooks/index.js');
+		await import('./credential-resolvers/index.js');
 		const {
 			DynamicCredentialResolverRegistry,
 			DynamicCredentialStorageService,
 			DynamicCredentialService,
 			N8nResolverSeeder,
 			CredentialConnectionStatusService,
-		} = await import('./services');
-		await import('./workflow-status.controller');
+		} = await import('./services/index.js');
+		await import('./workflow-status.controller.js');
 
 		await Container.get(DynamicCredentialResolverRegistry).init();
 		await Container.get(N8nResolverSeeder).seed();
 
 		// Register the credential resolution provider with CredentialsHelper
-		const { DynamicCredentialsProxy } = await import('../../credentials/dynamic-credentials-proxy');
+		const { DynamicCredentialsProxy } = await import(
+			'../../credentials/dynamic-credentials-proxy.js'
+		);
 		const credentialsProxy = Container.get(DynamicCredentialsProxy);
 		const dynamicCredentialService = Container.get(DynamicCredentialService);
 		const dynamicCredentialStorageService = Container.get(DynamicCredentialStorageService);
@@ -40,7 +42,7 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		// Register the per-user connection status provider so the credentials
 		// service can populate `connectedByMe` on responses.
 		const { CredentialConnectionStatusProxy } = await import(
-			'../../credentials/credential-connection-status-proxy'
+			'../../credentials/credential-connection-status-proxy.js'
 		);
 		Container.get(CredentialConnectionStatusProxy).setProvider(
 			Container.get(CredentialConnectionStatusService),
@@ -51,10 +53,14 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		if (!isFeatureFlagEnabled()) {
 			return [];
 		}
-		const { DynamicCredentialResolver } = await import('./database/entities/credential-resolver');
-		const { DynamicCredentialEntry } = await import('./database/entities/dynamic-credential-entry');
+		const { DynamicCredentialResolver } = await import(
+			'./database/entities/credential-resolver.js'
+		);
+		const { DynamicCredentialEntry } = await import(
+			'./database/entities/dynamic-credential-entry.js'
+		);
 		const { DynamicCredentialUserEntry } = await import(
-			'./database/entities/dynamic-credential-user-entry'
+			'./database/entities/dynamic-credential-user-entry.js'
 		);
 
 		return [DynamicCredentialResolver, DynamicCredentialEntry, DynamicCredentialUserEntry];
@@ -65,7 +71,7 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			return {};
 		}
 		const { CredentialCheckProxyService } = await import(
-			'./services/credential-check-proxy.service'
+			'./services/credential-check-proxy.service.js'
 		);
 		return { credentialCheckProxy: Container.get(CredentialCheckProxyService) };
 	}

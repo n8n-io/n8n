@@ -1,4 +1,4 @@
-import type { NodeTypeExamples } from '../types';
+import type { NodeTypeExamples } from '../types.js';
 
 export const SWITCH_NODE_EXAMPLES: NodeTypeExamples = {
 	patterns: ['n8n-nodes-base.switch'],

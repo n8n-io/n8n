@@ -16,20 +16,31 @@ export class InstanceAiModule implements ModuleInterface {
 		const logger = Container.get(Logger).scoped('instance-ai');
 		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
 
-		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service.js');
 		await Container.get(InstanceAiSettingsService).loadFromDb();
-		await import('./instance-ai.controller');
-		await import('./mcp/instance-ai-mcp-connection.controller');
+		await import('./instance-ai.controller.js');
+		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
-			await import('./instance-ai-test.controller');
+			await import('./instance-ai-test.controller.js');
 		}
+<<<<<<< HEAD
+=======
+
+		// Fire-and-forget: clean up expired conversation threads on startup
+		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service.js');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const aiService = Container.get(InstanceAiService);
+		void Container.get(InstanceAiMemoryService)
+			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
+			.catch(() => undefined);
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 	}
 
 	async settings() {
 		const { GlobalConfig } = await import('@n8n/config');
-		const { InstanceAiService } = await import('./instance-ai.service');
-		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
@@ -48,24 +59,26 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity');
-		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity');
-		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity');
-		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
-		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
-		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
-		const { InstanceAiPendingConfirmation } = await import(
-			'./entities/instance-ai-pending-confirmation.entity'
+		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
+		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
+		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
+		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity.js');
+		const { InstanceAiIterationLog } = await import(
+			'./entities/instance-ai-iteration-log.entity.js'
 		);
-		const { InstanceAiObservation } = await import('./entities/instance-ai-observation.entity');
+		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity.js');
+		const { InstanceAiPendingConfirmation } = await import(
+			'./entities/instance-ai-pending-confirmation.entity.js'
+		);
+		const { InstanceAiObservation } = await import('./entities/instance-ai-observation.entity.js');
 		const { InstanceAiObservationCursor } = await import(
-			'./entities/instance-ai-observation-cursor.entity'
+			'./entities/instance-ai-observation-cursor.entity.js'
 		);
 		const { InstanceAiObservationLock } = await import(
-			'./entities/instance-ai-observation-lock.entity'
+			'./entities/instance-ai-observation-lock.entity.js'
 		);
 		const { InstanceAiMcpRegistryConnection } = await import(
-			'./entities/instance-ai-mcp-registry-connection.entity'
+			'./entities/instance-ai-mcp-registry-connection.entity.js'
 		);
 
 		return [
@@ -85,7 +98,7 @@ export class InstanceAiModule implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
-		const { InstanceAiService } = await import('./instance-ai.service');
+		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();
 	}
 }

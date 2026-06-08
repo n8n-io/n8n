@@ -12,28 +12,35 @@ import { Credentials } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { AuthService } from '@/auth/auth.service.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service.js';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
 import {
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
 	type CreateCsrfStateData,
 	type OAuth1CredentialData,
+<<<<<<< HEAD
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+=======
+} from '@/oauth/oauth.service.js';
+import type { OAuthRequest } from '@/requests.js';
+import { UrlService } from '@/services/url.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 jest.mock('@/workflow-execute-additional-data');
 jest.mock('axios');

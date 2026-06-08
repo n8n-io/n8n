@@ -1,4 +1,4 @@
-import { renderOidcTestSuccess } from '../views/oidc-test-result';
+import { renderOidcTestSuccess } from '../views/oidc-test-result.js';
 
 describe('renderOidcTestSuccess', () => {
 	const claims = { sub: 'user-1', acr: 'urn:loa:1' };

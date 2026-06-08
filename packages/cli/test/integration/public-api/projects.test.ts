@@ -8,14 +8,14 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { Telemetry } from '@/telemetry';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { Telemetry } from '@/telemetry/index.js';
 import {
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 	createMember,
-} from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+} from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
 describe('Projects in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });

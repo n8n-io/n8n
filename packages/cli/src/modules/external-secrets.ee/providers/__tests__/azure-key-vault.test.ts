@@ -3,8 +3,8 @@ import type { KeyVaultSecret } from '@azure/keyvault-secrets';
 import { mock } from 'jest-mock-extended';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
-import type { AzureKeyVaultContext } from '../azure-key-vault/types';
+import { AzureKeyVault } from '../azure-key-vault/azure-key-vault.js';
+import type { AzureKeyVaultContext } from '../azure-key-vault/types.js';
 
 jest.mock('@azure/identity');
 jest.mock('@azure/keyvault-secrets');

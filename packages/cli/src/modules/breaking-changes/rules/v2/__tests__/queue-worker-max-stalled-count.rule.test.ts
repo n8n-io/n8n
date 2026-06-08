@@ -1,4 +1,4 @@
-import { QueueWorkerMaxStalledCountRule } from '../queue-worker-max-stalled-count.rule';
+import { QueueWorkerMaxStalledCountRule } from '../queue-worker-max-stalled-count.rule.js';
 
 describe('QueueWorkerMaxStalledCountRule', () => {
 	let rule: QueueWorkerMaxStalledCountRule;

@@ -1,6 +1,6 @@
-import type { ChatPayload } from '../../workflow-builder-agent';
-import { CodeWorkflowBuilder, createCodeWorkflowBuilder } from '../code-workflow-builder';
-import type { CodeWorkflowBuilderConfig } from '../code-workflow-builder';
+import type { ChatPayload } from '../../workflow-builder-agent.js';
+import { CodeWorkflowBuilder, createCodeWorkflowBuilder } from '../code-workflow-builder.js';
+import type { CodeWorkflowBuilderConfig } from '../code-workflow-builder.js';
 
 // Create a mock LLM that returns valid planning response
 const createMockLLM = () => {

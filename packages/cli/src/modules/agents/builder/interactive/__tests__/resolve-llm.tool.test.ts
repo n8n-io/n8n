@@ -1,7 +1,7 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
 
-import type { ModelLookup } from '../resolve-llm.tool';
-import { buildResolveLlmTool } from '../resolve-llm.tool';
+import type { ModelLookup } from '../resolve-llm.tool.js';
+import { buildResolveLlmTool } from '../resolve-llm.tool.js';
 
 function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 	return {

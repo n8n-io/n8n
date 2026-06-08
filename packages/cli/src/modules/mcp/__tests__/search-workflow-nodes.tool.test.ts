@@ -1,11 +1,11 @@
 import { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool.js';
 
-import type { NodeCatalogService } from '@/node-catalog';
-import type { Telemetry } from '@/telemetry';
+import type { NodeCatalogService } from '@/node-catalog/index.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: {

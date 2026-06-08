@@ -52,10 +52,14 @@ jest.mock('../esm-loader', () => {
 	};
 });
 
+<<<<<<< HEAD
 import { ComponentMapper } from '../component-mapper';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
 import { Container } from '@n8n/di';
+=======
+import { ComponentMapper } from '../component-mapper.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 describe('ComponentMapper', () => {
 	let mapper: ComponentMapper;

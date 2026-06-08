@@ -1,4 +1,4 @@
-import { getBuilderRuntimeSkills } from '../skills';
+import { getBuilderRuntimeSkills } from '../skills/index.js';
 
 describe('agents builder integrations prompt', () => {
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {

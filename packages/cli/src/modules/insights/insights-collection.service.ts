@@ -11,12 +11,12 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
+import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata.js';
+import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw.js';
 
-import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
-import { InsightsConfig } from './insights.config';
+import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository.js';
+import { InsightsRawRepository } from './database/repositories/insights-raw.repository.js';
+import { InsightsConfig } from './insights.config.js';
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	success: false,

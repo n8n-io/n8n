@@ -1,13 +1,13 @@
 import type { Project, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import { MustPreexistCredentialMissingModeHandler } from '../credential-missing-mode';
-import type { CredentialMissingModeHandler } from '../credential-missing-mode';
-import { CredentialMissingModeFactory } from '../credential-missing-mode-factory';
-import type { CredentialMissingModeContext } from '../credential.types';
-import { createFailure } from '../credential.types';
+import { MustPreexistCredentialMissingModeHandler } from '../credential-missing-mode.js';
+import type { CredentialMissingModeHandler } from '../credential-missing-mode.js';
+import { CredentialMissingModeFactory } from '../credential-missing-mode-factory.js';
+import type { CredentialMissingModeContext } from '../credential.types.js';
+import { createFailure } from '../credential.types.js';
 
 const context: CredentialMissingModeContext = {
 	requirements: undefined,

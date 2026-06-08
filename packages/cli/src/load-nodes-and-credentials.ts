@@ -39,8 +39,8 @@ import {
 import path from 'path';
 import picocolors from 'picocolors';
 
-import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { createAiTools, createHitlTools } from '@/tool-generation';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants.js';
+import { createAiTools, createHitlTools } from '@/tool-generation/index.js';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -638,7 +638,7 @@ export class LoadNodesAndCredentials {
 
 		const { subscribe } = await import('@parcel/watcher');
 
-		const { Push } = await import('@/push');
+		const { Push } = await import('@/push/index.js');
 		const push = Container.get(Push);
 
 		for (const loader of Object.values(this.loaders)) {

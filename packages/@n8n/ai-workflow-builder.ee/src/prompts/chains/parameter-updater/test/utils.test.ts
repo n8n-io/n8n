@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { hasResourceLocatorParameters } from '../utils';
+import { hasResourceLocatorParameters } from '../utils.js';
 
 // Mock node type definition
 const mockSetNodeDefinition: INodeTypeDescription = {

@@ -9,7 +9,7 @@ import {
 	findInvalidAiToolSources,
 	formatInvalidAiToolSourceMessage,
 	type NodeOutputsResolver,
-} from '../tools/workflow-builder/connection-structure-check';
+} from '../tools/workflow-builder/connection-structure-check.js';
 
 const agentNode = (name: string) => ({
 	id: name,

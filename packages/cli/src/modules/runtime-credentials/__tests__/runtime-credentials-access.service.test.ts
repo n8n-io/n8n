@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import type { IRunExecutionData } from 'n8n-workflow';
 
-import { RuntimeCredentialsAccessService } from '../runtime-credentials-access.service';
+import { RuntimeCredentialsAccessService } from '../runtime-credentials-access.service.js';
 
 const ENCRYPTED_BLOB = 'encrypted-blob-placeholder';
 

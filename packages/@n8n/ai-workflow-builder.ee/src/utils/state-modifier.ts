@@ -4,13 +4,13 @@ import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Logger } from '@n8n/backend-common';
 
-import { cleanupDanglingToolCallMessages } from './cleanup-dangling-tool-call-messages';
-import { estimateTokenCountFromMessages } from './token-usage';
-import { conversationCompactChain } from '../chains/conversation-compact';
-import { workflowNameChain } from '../chains/workflow-name';
-import type { CoordinationLogEntry } from '../types/coordination';
-import { createStateManagementMetadata } from '../types/coordination';
-import type { SimpleWorkflow } from '../types/workflow';
+import { cleanupDanglingToolCallMessages } from './cleanup-dangling-tool-call-messages.js';
+import { estimateTokenCountFromMessages } from './token-usage.js';
+import { conversationCompactChain } from '../chains/conversation-compact.js';
+import { workflowNameChain } from '../chains/workflow-name.js';
+import type { CoordinationLogEntry } from '../types/coordination.js';
+import { createStateManagementMetadata } from '../types/coordination.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
 
 export type StateModificationAction =
 	| 'compact_messages'

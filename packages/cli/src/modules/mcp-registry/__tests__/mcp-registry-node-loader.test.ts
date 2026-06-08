@@ -3,15 +3,16 @@ import { mock } from 'jest-mock-extended';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, NodeLoader } from 'n8n-workflow';
 
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 
 const logger = mock<Logger>();
 
-import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
+import { McpRegistryNodeLoader } from '../mcp-registry-node-loader.js';
 import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+<<<<<<< HEAD
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
@@ -19,6 +20,11 @@ import {
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
+=======
+} from '../node-description-transform.js';
+import type { McpRegistryServer } from '../registry/mcp-registry.types.js';
+import { notionMockServer } from '../registry/mock-servers.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',

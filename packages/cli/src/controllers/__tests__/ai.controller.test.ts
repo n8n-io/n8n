@@ -8,13 +8,13 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
-import { AiController, type FlushableResponse } from '../ai.controller';
+import { AiController, type FlushableResponse } from '../ai.controller.js';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { AiUsageService } from '@/services/ai-usage.service';
-import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
-import type { AiService } from '@/services/ai.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import type { AiGatewayService } from '@/services/ai-gateway.service.js';
+import type { AiUsageService } from '@/services/ai-usage.service.js';
+import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service.js';
+import type { AiService } from '@/services/ai.service.js';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();

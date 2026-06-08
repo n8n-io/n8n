@@ -6,8 +6,8 @@ import { mock } from 'jest-mock-extended';
 import type { IRun, INode, ITaskData } from 'n8n-workflow';
 import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { createExecution } from '@test-integration/db/executions';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { createExecution } from '@test-integration/db/executions.js';
 
 describe('workflow-helpers', () => {
 	let executionRepository: ExecutionRepository;

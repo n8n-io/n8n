@@ -6,7 +6,7 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 
-import { LocalGateway } from './local-gateway';
+import { LocalGateway } from './local-gateway.js';
 
 interface UserGatewayState {
 	gateway: LocalGateway;

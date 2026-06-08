@@ -5,8 +5,8 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { PassThrough } from 'node:stream';
 
-import { N8nPackagesController } from '../n8n-packages.controller';
-import type { N8nPackagesService } from '../n8n-packages.service';
+import { N8nPackagesController } from '../n8n-packages.controller.js';
+import type { N8nPackagesService } from '../n8n-packages.service.js';
 
 describe('n8n-packages export', () => {
 	describe('exportWorkflows', () => {

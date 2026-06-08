@@ -1,4 +1,4 @@
-import { formatAnswersForDiscovery } from '../submit-questions.tool';
+import { formatAnswersForDiscovery } from '../submit-questions.tool.js';
 
 const sampleQuestions = [
 	{

@@ -1,5 +1,5 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { CredentialTypes } from '@/credential-types';
+import { CredentialTypes } from '@/credential-types.js';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
@@ -7,16 +7,16 @@ import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+import { createOwnerWithApiKey } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 import {
 	buildImportPackageBuffer,
 	serializedWorkflowWithCredential,
-} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
-import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
-import { Telemetry } from '@/telemetry';
+} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures.js';
+import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 mockInstance(Telemetry);
 

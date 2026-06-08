@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { paginatedRequest, type StrapiFilters } from '@/utils/strapi-utils';
+import { paginatedRequest, type StrapiFilters } from '@/utils/strapi-utils.js';
 
 export type StrapiCommunityNodeType = {
 	id: number;

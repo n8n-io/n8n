@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
-import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { LoadNodesAndCredentials } from '../load-nodes-and-credentials.js';
 
 jest.mock('lodash/debounce', () => (fn: () => void) => fn);
 
@@ -514,7 +514,7 @@ describe('LoadNodesAndCredentials', () => {
 
 		beforeEach(async () => {
 			// Import the mocked functions
-			const toolGeneration = await import('@/tool-generation');
+			const toolGeneration = await import('@/tool-generation/index.js');
 			createAiTools = toolGeneration.createAiTools as jest.Mock;
 			createHitlTools = toolGeneration.createHitlTools as jest.Mock;
 

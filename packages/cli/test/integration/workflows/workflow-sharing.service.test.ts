@@ -4,10 +4,10 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service.js';
 
-import { createUser } from '../shared/db/users';
+import { createUser } from '../shared/db/users.js';
 
 let owner: User;
 let member: User;

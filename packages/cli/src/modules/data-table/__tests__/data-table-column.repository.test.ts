@@ -2,12 +2,12 @@ import { testModules } from '@n8n/backend-test-utils';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import { DataTableColumn } from '../data-table-column.entity';
-import { DataTableColumnRepository } from '../data-table-column.repository';
-import type { DataTableDDLService } from '../data-table-ddl.service';
-import { DataTable } from '../data-table.entity';
-import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
-import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
+import { DataTableColumn } from '../data-table-column.entity.js';
+import { DataTableColumnRepository } from '../data-table-column.repository.js';
+import type { DataTableDDLService } from '../data-table-ddl.service.js';
+import { DataTable } from '../data-table.entity.js';
+import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error.js';
+import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error.js';
 
 describe('DataTableColumnRepository', () => {
 	let repository: DataTableColumnRepository;

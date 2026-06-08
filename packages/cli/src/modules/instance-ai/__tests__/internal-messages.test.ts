@@ -1,4 +1,4 @@
-import { cleanStoredUserMessage, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages';
+import { cleanStoredUserMessage, AUTO_FOLLOW_UP_MESSAGE } from '../internal-messages.js';
 
 describe('cleanStoredUserMessage', () => {
 	it('returns plain text unchanged', () => {

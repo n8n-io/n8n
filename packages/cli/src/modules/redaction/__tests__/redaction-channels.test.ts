@@ -1,6 +1,6 @@
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { channelsToPolicy, policyToChannels } from '../redaction-channels';
+import { channelsToPolicy, policyToChannels } from '../redaction-channels.js';
 
 describe('redaction-channels', () => {
 	describe('policyToChannels', () => {

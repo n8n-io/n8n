@@ -8,13 +8,13 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { CodeWorkflowBuilder } from '@/code-builder';
-import type { HistoryContext } from '@/code-builder';
-import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
-import type { CoordinationLogEntry } from '@/types/coordination';
-import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
-import type { SimpleWorkflow } from '@/types/workflow';
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+import { CodeWorkflowBuilder } from '@/code-builder/index.js';
+import type { HistoryContext } from '@/code-builder/index.js';
+import type { ConversationEntry } from '@/code-builder/utils/code-builder-session.js';
+import type { CoordinationLogEntry } from '@/types/coordination.js';
+import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent.js';
 
 /** Type guard for SimpleWorkflow */
 function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
@@ -32,24 +32,24 @@ import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
-} from './argument-parser';
-import { buildCIMetadata } from './ci-metadata';
+} from './argument-parser.js';
+import { buildCIMetadata } from './ci-metadata.js';
 import {
 	loadTestCasesFromCsv,
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
-} from './csv-prompt-loader';
-import { sendWebhookNotification } from './webhook';
-import { WorkflowGenerationError } from '../errors';
+} from './csv-prompt-loader.js';
+import { sendWebhookNotification } from './webhook.js';
+import { WorkflowGenerationError } from '../errors.js';
 import {
 	collectAgentTextResponse,
 	extractSubgraphMetrics,
 	getChatPayload,
-} from '../harness/evaluation-helpers';
-import type { DatasetInputContext } from '../harness/harness-types';
-import { createLogger } from '../harness/logger';
-import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
-import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
+} from '../harness/evaluation-helpers.js';
+import type { DatasetInputContext } from '../harness/harness-types.js';
+import { createLogger } from '../harness/logger.js';
+import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner.js';
+import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler.js';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
@@ -65,17 +65,17 @@ import {
 	type Evaluator,
 	type EvaluationContext,
 	type GenerationResult,
-} from '../index';
-import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
-import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
-import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
+} from '../index.js';
+import { generateRunId, isWorkflowStateValues } from '../langsmith/types.js';
+import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis.js';
+import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants.js';
 import {
 	setupTestEnvironment,
 	createAgent,
 	resolveNodesBasePath,
 	type ResolvedStageLLMs,
-} from '../support/environment';
-import { generateEvalPinData } from '../support/pin-data-generator';
+} from '../support/environment.js';
+import { generateEvalPinData } from '../support/pin-data-generator.js';
 
 /**
  * Type guard for workflow update chunks from streaming output.

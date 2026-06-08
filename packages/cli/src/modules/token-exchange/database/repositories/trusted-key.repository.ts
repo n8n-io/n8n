@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { TrustedKeyEntity } from '../entities/trusted-key.entity';
+import { TrustedKeyEntity } from '../entities/trusted-key.entity.js';
 
 @Service()
 export class TrustedKeyRepository extends Repository<TrustedKeyEntity> {

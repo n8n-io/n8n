@@ -7,11 +7,11 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
-import type { IWorkflowWithVersionMetadata } from '@/interfaces';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces.js';
 
-import '../../zod-alias-support';
+import '../../zod-alias-support.js';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),

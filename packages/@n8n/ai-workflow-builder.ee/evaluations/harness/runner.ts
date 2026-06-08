@@ -5,8 +5,8 @@ import { traceable } from 'langsmith/traceable';
 import type { IPinData } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
-import { toLangsmithEvaluationResult } from './feedback';
+import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers.js';
+import { toLangsmithEvaluationResult } from './feedback.js';
 import {
 	isGenerationResult,
 	type DatasetInputContext,
@@ -25,18 +25,18 @@ import {
 	type LangsmithExampleFilters,
 	type LlmCallLimiter,
 	type GenerationResult,
-} from './harness-types';
-import type { EvalLogger } from './logger';
-import { createArtifactSaver, type ArtifactSaver } from './output';
+} from './harness-types.js';
+import type { EvalLogger } from './logger.js';
+import { createArtifactSaver, type ArtifactSaver } from './output.js';
 import {
 	calculateWeightedScore,
 	selectScoringItems,
 	calculateFiniteAverage,
-} from './score-calculator';
+} from './score-calculator.js';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
-import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { ChatPayload } from '../../src/workflow-builder-agent';
-import { extractMessageContent } from '../langsmith/types';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { ChatPayload } from '../../src/workflow-builder-agent.js';
+import { extractMessageContent } from '../langsmith/types.js';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
 

@@ -1,5 +1,5 @@
 import { mergeConfig } from 'vite';
-import { baseConfig } from './vitest.config.base';
+import { baseConfig } from './vitest.config.base.js';
 
 // Run only integration tests (`*.integration.test.ts`). These make real calls to
 // external services and self-skip unless ENABLE_INTEGRATION_TESTS=true is set.

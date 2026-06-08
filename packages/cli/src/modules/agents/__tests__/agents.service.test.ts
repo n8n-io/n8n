@@ -8,17 +8,18 @@ import type { CredentialsEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { Telemetry } from '@/telemetry';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
-import { AgentSkillsService } from '../agent-skills.service';
-import type { AgentsToolsService } from '../agents-tools.service';
+import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service.js';
+import { AgentSkillsService } from '../agent-skills.service.js';
+import type { AgentsToolsService } from '../agents-tools.service.js';
 import type { Logger } from '@n8n/backend-common';
+<<<<<<< HEAD
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -36,21 +37,40 @@ import { ChatIntegrationService } from '../integrations/chat-integration.service
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
+=======
+import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
+import type { OauthService } from '@/oauth/oauth.service.js';
+import type { UrlService } from '@/services/url.service.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service.js';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
+import { AgentTaskService } from '../agent-task.service.js';
+import { AgentsService, chatThreadId } from '../agents.service.js';
+import type { AgentHistory } from '../entities/agent-history.entity.js';
+import type { Agent } from '../entities/agent.entity.js';
+import { ChatIntegrationService } from '../integrations/chat-integration.service.js';
+import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor.js';
+import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor.js';
+import { IntegrationMessageContextService } from '../integrations/integration-message-context.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from '../integrations/agent-chat-integration';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
-import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
-import type { AgentTaskRepository } from '../repositories/agent-task.repository';
-import type { AgentRepository } from '../repositories/agent.repository';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
-import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
+} from '../integrations/agent-chat-integration.js';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
+import type { N8nMemory } from '../integrations/n8n-memory.js';
+import type { AgentExecutionService } from '../agent-execution.service.js';
+import type { AgentKnowledgeService } from '../agent-knowledge.service.js';
+import type { AgentHistoryRepository } from '../repositories/agent-history.repository.js';
+import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository.js';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner.js';
+import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity.js';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

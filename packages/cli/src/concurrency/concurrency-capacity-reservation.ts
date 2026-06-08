@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import type {
 	CapacityTarget,
 	ConcurrencyControlService,
-} from '@/concurrency/concurrency-control.service';
+} from '@/concurrency/concurrency-control.service.js';
 
 /**
  * Represents a reservation of capacity from the concurrency control service.

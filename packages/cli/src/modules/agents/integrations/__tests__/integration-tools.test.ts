@@ -9,7 +9,7 @@ import {
 	type IntegrationActionExecutor,
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
-} from '../integration-tools';
+} from '../integration-tools.js';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slackA: AgentIntegrationConfig = {

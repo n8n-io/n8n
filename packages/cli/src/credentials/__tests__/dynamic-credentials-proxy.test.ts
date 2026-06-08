@@ -10,12 +10,12 @@ import type {
 	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
-} from '../credential-resolution-provider.interface';
+} from '../credential-resolution-provider.interface.js';
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
-} from '../dynamic-credential-storage.interface';
-import { DynamicCredentialsProxy } from '../dynamic-credentials-proxy';
+} from '../dynamic-credential-storage.interface.js';
+import { DynamicCredentialsProxy } from '../dynamic-credentials-proxy.js';
 
 describe('DynamicCredentialsProxy', () => {
 	let proxy: DynamicCredentialsProxy;

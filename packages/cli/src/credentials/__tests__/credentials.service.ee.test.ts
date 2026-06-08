@@ -3,14 +3,14 @@ import type { User, CredentialsEntity, Project } from '@n8n/db';
 import type { SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import type { OwnershipService } from '@/services/ownership.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { RoleService } from '@/services/role.service.js';
 
 describe('EnterpriseCredentialsService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();

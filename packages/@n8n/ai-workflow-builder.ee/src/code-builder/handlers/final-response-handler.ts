@@ -8,11 +8,11 @@
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { WarningTracker } from '../state/warning-tracker';
-import type { ParseAndValidateResult, WorkflowCodeOutput } from '../types';
-import { extractTextContent, pushValidationFeedback } from '../utils/content-extractors';
-import { extractWorkflowCode } from '../utils/extract-code';
-import { formatWarnings } from '../utils/format-warnings';
+import type { WarningTracker } from '../state/warning-tracker.js';
+import type { ParseAndValidateResult, WorkflowCodeOutput } from '../types.js';
+import { extractTextContent, pushValidationFeedback } from '../utils/content-extractors.js';
+import { extractWorkflowCode } from '../utils/extract-code.js';
+import { formatWarnings } from '../utils/format-warnings.js';
 
 /**
  * Parse and validate function type

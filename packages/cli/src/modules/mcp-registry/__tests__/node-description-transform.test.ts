@@ -4,6 +4,7 @@ import {
 	getMcpRegistryCredentialTypeName,
 	serverToNodeDescription,
 	serverToCredentialDescription,
+<<<<<<< HEAD
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
@@ -11,6 +12,11 @@ import {
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
+=======
+} from '../node-description-transform.js';
+import type { McpRegistryServer } from '../registry/mcp-registry.types.js';
+import { notionMockServer } from '../registry/mock-servers.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',

@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { CredentialMatcher } from './credential-matcher';
-import { IdBasedCredentialMatcher } from './id-based-credential-matcher';
-import type { CredentialMatchingMode } from '../../n8n-packages.types';
+import type { CredentialMatcher } from './credential-matcher.js';
+import { IdBasedCredentialMatcher } from './id-based-credential-matcher.js';
+import type { CredentialMatchingMode } from '../../n8n-packages.types.js';
 
 @Service()
 export class CredentialMatcherFactory {

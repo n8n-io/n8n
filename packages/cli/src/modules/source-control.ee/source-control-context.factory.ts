@@ -5,7 +5,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsWhere } from '@n8n/typeorm';
 
-import { SourceControlContext } from './types/source-control-context';
+import { SourceControlContext } from './types/source-control-context.js';
 
 @Service()
 export class SourceControlContextFactory {

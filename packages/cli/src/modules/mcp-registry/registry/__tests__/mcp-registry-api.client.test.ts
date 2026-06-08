@@ -1,6 +1,6 @@
-import { paginatedRequest } from '@/utils/strapi-utils';
+import { paginatedRequest } from '@/utils/strapi-utils.js';
 
-import { McpRegistryApiClient } from '../mcp-registry-api.client';
+import { McpRegistryApiClient } from '../mcp-registry-api.client.js';
 
 jest.mock('@/utils/strapi-utils', () => ({
 	paginatedRequest: jest.fn(),

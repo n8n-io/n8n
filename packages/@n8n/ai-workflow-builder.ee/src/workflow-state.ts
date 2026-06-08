@@ -1,10 +1,13 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { SimpleWorkflow, WorkflowMetadata, WorkflowOperation } from './types';
-import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
-import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
-import type { ChatPayload } from './workflow-builder-agent';
+import type { SimpleWorkflow, WorkflowMetadata, WorkflowOperation } from './types/index.js';
+import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers.js';
+import type {
+	ProgrammaticEvaluationResult,
+	TelemetryValidationStatus,
+} from './validation/types.js';
+import type { ChatPayload } from './workflow-builder-agent.js';
 
 /**
  * Reducer for collecting workflow operations from parallel tool executions.

@@ -17,15 +17,15 @@ import type { Logger } from '@n8n/backend-common';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL } from '../constants';
-import { buildCodeBuilderPrompt, type HistoryContext } from '../prompts';
-import { TextEditorHandler } from './text-editor-handler';
-import { TextEditorToolHandler } from './text-editor-tool-handler';
-import type { TextEditorCommand } from './text-editor.types';
-import type { PlanOutput } from '../../types/planning';
-import type { ChatPayload } from '../../workflow-builder-agent';
-import type { ParseAndValidateResult } from '../types';
-import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
+import { TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL } from '../constants.js';
+import { buildCodeBuilderPrompt, type HistoryContext } from '../prompts/index.js';
+import { TextEditorHandler } from './text-editor-handler.js';
+import { TextEditorToolHandler } from './text-editor-tool-handler.js';
+import type { TextEditorCommand } from './text-editor.types.js';
+import type { PlanOutput } from '../../types/planning.js';
+import type { ChatPayload } from '../../workflow-builder-agent.js';
+import type { ParseAndValidateResult } from '../types.js';
+import { SDK_IMPORT_STATEMENT } from '../utils/extract-code.js';
 
 /**
  * Parse and validate function type

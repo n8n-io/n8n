@@ -1,6 +1,6 @@
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { ExecutionRef } from './types';
+import type { ExecutionRef } from './types.js';
 
 /**
  * Thrown when the filesystem store fails to persist execution data,

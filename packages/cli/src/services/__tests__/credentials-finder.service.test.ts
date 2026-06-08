@@ -18,8 +18,8 @@ import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { mockInstance } from '@n8n/backend-test-utils';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { RoleService } from '../role.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { RoleService } from '../role.service.js';
 
 describe('CredentialsFinderService', () => {
 	const roleService = mockInstance(RoleService);

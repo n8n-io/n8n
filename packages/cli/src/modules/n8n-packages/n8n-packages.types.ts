@@ -1,6 +1,6 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 
-export type { CredentialResolution } from './entities/credential/credential.types';
+export type { CredentialResolution } from './entities/credential/credential.types.js';
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';

@@ -18,7 +18,7 @@ export {
 	type PromptBuilderOptions,
 	type SectionFormat,
 	type SectionOptions,
-} from './builder';
+} from './builder/index.js';
 
 // Agent prompts
 export {
@@ -26,16 +26,23 @@ export {
 	exampleCategorizations,
 	formatTechniqueList,
 	formatExampleCategorizations,
+<<<<<<< HEAD
 } from './agents/discovery.prompt';
 export { buildSupervisorPrompt } from './agents/supervisor.prompt';
 export { buildPlannerPrompt, buildPlannerContext } from './agents/planner.prompt';
+=======
+	type DiscoveryPromptOptions,
+} from './agents/discovery.prompt.js';
+export { buildSupervisorPrompt } from './agents/supervisor.prompt.js';
+export { buildPlannerPrompt, buildPlannerContext } from './agents/planner.prompt.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 export {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
-} from './agents/responder.prompt';
+} from './agents/responder.prompt.js';
 
 // Chain prompts
 export {
@@ -43,9 +50,9 @@ export {
 	examplePrompts,
 	formatExamplePrompts,
 	formatTechniqueList as formatCategorizationTechniqueList,
-} from './chains/categorization.prompt';
-export { compactPromptTemplate } from './chains/compact.prompt';
-export { workflowNamingPromptTemplate } from './chains/workflow-name.prompt';
+} from './chains/categorization.prompt.js';
+export { compactPromptTemplate } from './chains/compact.prompt.js';
+export { workflowNamingPromptTemplate } from './chains/workflow-name.prompt.js';
 
 // Parameter updater prompts
 export {
@@ -70,11 +77,11 @@ export {
 	RESOURCE_LOCATOR_GUIDE,
 	SYSTEM_MESSAGE_GUIDE,
 	TEXT_FIELDS_GUIDE,
-} from './chains/parameter-updater';
+} from './chains/parameter-updater/index.js';
 
 export type {
 	NodeTypeGuide,
 	NodeTypeExamples,
 	NodeTypePattern,
 	PromptContext,
-} from './chains/parameter-updater';
+} from './chains/parameter-updater/index.js';

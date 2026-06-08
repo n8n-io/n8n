@@ -5,8 +5,8 @@ import { DataSource, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
+import { AgentHistory } from '../entities/agent-history.entity.js';
+import type { Agent } from '../entities/agent.entity.js';
 
 /**
  * Render a User's display name for the snapshot `author` column. Treats

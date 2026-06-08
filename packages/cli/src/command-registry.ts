@@ -5,7 +5,7 @@ import glob from 'fast-glob';
 import picocolors from 'picocolors';
 import { z, ZodError } from 'zod';
 
-import './zod-alias-support';
+import './zod-alias-support.js';
 
 /**
  * Registry that manages CLI commands, their execution, and metadata.

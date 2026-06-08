@@ -5,12 +5,12 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
-import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
-import { EventService } from '@/events/event.service';
-import type { OAuthRequest } from '@/requests';
-import { OauthService } from '@/oauth/oauth.service';
-import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller.js';
+import { EventService } from '@/events/event.service.js';
+import type { OAuthRequest } from '@/requests.js';
+import { OauthService } from '@/oauth/oauth.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
 
 jest.mock('axios');
 jest.mock('@n8n/client-oauth2');

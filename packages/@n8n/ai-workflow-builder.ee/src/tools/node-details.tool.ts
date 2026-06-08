@@ -9,19 +9,19 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
-import type { NodeConfigurationEntry } from '@/types';
-import type { BuilderToolBase } from '@/utils/stream-processor';
+import { MAX_NODE_EXAMPLE_CHARS } from '@/constants.js';
+import type { NodeConfigurationEntry } from '@/types/index.js';
+import type { BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
-import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
-import type { NodeDetails } from '../types/nodes';
-import type { NodeDetailsOutput, WorkflowMetadata } from '../types/tools';
-import { getNodeConfigurationsFromTemplates } from './utils/node-configuration.utils';
-import { fetchWorkflowsFromTemplates } from './web/templates';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getWorkflowState } from './helpers/state.js';
+import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation.js';
+import type { NodeDetails } from '../types/nodes.js';
+import type { NodeDetailsOutput, WorkflowMetadata } from '../types/tools.js';
+import { getNodeConfigurationsFromTemplates } from './utils/node-configuration.utils.js';
+import { fetchWorkflowsFromTemplates } from './web/templates.js';
 
 /** Maximum number of example configurations to include */
 const MAX_NODE_EXAMPLES = 5;

@@ -4,12 +4,16 @@ import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
+<<<<<<< HEAD
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import { RoleService } from '@/services/role.service';
+=======
+import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
-import { SYSTEM_RESOLVER_ID } from '../constants';
-import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry';
-import { DynamicCredentialUserEntryRepository } from '../database/repositories/dynamic-credential-user-entry.repository';
+import { SYSTEM_RESOLVER_ID } from '../constants.js';
+import { DynamicCredentialUserEntry } from '../database/entities/dynamic-credential-user-entry.js';
+import { DynamicCredentialUserEntryRepository } from '../database/repositories/dynamic-credential-user-entry.repository.js';
 
 type CredentialUserPair = { credentialId: string; userId: string };
 

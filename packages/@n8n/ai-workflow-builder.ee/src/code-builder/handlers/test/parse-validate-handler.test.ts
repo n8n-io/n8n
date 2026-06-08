@@ -6,7 +6,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
-import { ParseValidateHandler } from '../parse-validate-handler';
+import { ParseValidateHandler } from '../parse-validate-handler.js';
 
 // Mock the workflow-sdk module
 vi.mock('@n8n/workflow-sdk', () => ({

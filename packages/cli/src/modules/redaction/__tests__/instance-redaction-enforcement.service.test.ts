@@ -4,10 +4,10 @@ import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
-import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag';
+import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
+import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag.js';
 
 const KEY = 'redaction.enforcement';
 

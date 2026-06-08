@@ -1,4 +1,8 @@
-import { extractWorkflowCode, stripImportStatements, SDK_IMPORT_STATEMENT } from '../extract-code';
+import {
+	extractWorkflowCode,
+	stripImportStatements,
+	SDK_IMPORT_STATEMENT,
+} from '../extract-code.js';
 
 describe('extractWorkflowCode', () => {
 	it('should extract code from typescript code block', () => {

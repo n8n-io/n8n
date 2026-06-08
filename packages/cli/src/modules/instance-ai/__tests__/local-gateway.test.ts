@@ -1,5 +1,5 @@
-import { LocalGateway } from '../filesystem/local-gateway';
-import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway';
+import { LocalGateway } from '../filesystem/local-gateway.js';
+import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway.js';
 import type { McpTool } from '@n8n/api-types';
 
 const SAMPLE_TOOL: McpTool = {

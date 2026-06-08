@@ -23,8 +23,8 @@ import {
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
+import { EventService } from '@/events/event.service.js';
+import { RoleService } from '@/services/role.service.js';
 
 @RestController('/roles')
 export class RoleController {

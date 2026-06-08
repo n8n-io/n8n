@@ -3,10 +3,10 @@ import type { ExecutionsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
-import { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
-import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service.js';
+import { ChatStreamService } from '@/modules/chat-hub/chat-stream.service.js';
+import type { Push } from '@/push/index.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
 describe('ChatStreamService', () => {
 	const logger = mock<Logger>();

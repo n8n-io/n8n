@@ -3,10 +3,10 @@ import { Tool } from '@n8n/agents/tool';
 import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
 import { z } from 'zod';
 
-import type { OauthService } from '@/oauth/oauth.service';
+import type { OauthService } from '@/oauth/oauth.service.js';
 
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
-import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildMcpClientForServer } from '../json-config/mcp-client-factory.js';
+import { BUILDER_TOOLS } from './builder-tool-names.js';
 
 export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;

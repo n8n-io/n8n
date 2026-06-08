@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 
-import { TypedEmitter } from '@/typed-emitter';
+import { TypedEmitter } from '@/typed-emitter.js';
 
 type ConcurrencyEvents = {
 	'execution-throttled': { executionId: string };

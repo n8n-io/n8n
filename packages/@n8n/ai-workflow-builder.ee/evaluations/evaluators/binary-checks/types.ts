@@ -1,9 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import type { LlmCallLimiter } from '../../harness/harness-types';
+import type { LlmCallLimiter } from '../../harness/harness-types.js';
 
 export interface BinaryCheckResult {
 	pass: boolean;

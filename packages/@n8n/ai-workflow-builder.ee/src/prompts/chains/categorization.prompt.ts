@@ -1,6 +1,6 @@
 import { PromptTemplate } from '@langchain/core/prompts';
 
-import { WorkflowTechnique, TechniqueDescription } from '@/types/categorization';
+import { WorkflowTechnique, TechniqueDescription } from '@/types/categorization.js';
 
 /** Few-shot examples for prompt categorization - helps LLM understand expected output format */
 export const examplePrompts = [

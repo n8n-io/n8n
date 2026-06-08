@@ -33,6 +33,7 @@ import {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
+<<<<<<< HEAD
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -40,6 +41,14 @@ import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+=======
+import { EventService } from '@/events/event.service.js';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils.js';
+import { ManualExecutionService } from '@/manual-execution.service.js';
+import { NodeTypes } from '@/node-types.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import type {
 	Job,
@@ -51,7 +60,7 @@ import type {
 	McpResponseMessage,
 	RunningJob,
 	SendChunkMessage,
-} from './scaling.types';
+} from './scaling.types.js';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.

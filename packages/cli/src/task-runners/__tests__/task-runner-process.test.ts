@@ -4,10 +4,10 @@ import { TaskRunnersConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { ChildProcess, SpawnOptions } from 'node:child_process';
 
-import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
-import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service.js';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js.js';
 
-import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
+import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events.js';
 
 const spawnMock = jest.fn(() =>
 	mock<ChildProcess>({

@@ -2,11 +2,11 @@ import type { NextFunction, Request, Response } from 'express';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
-import type { SecretsProvidersConnectionsService } from '../secrets-providers-connections.service.ee';
-import { SecretProvidersConnectionsController } from '../secrets-providers-connections.controller.ee';
-import { ExternalSecretsConfig } from '../external-secrets.config';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import * as responseHelper from '@/response-helper';
+import type { SecretsProvidersConnectionsService } from '../secrets-providers-connections.service.ee.js';
+import { SecretProvidersConnectionsController } from '../secrets-providers-connections.controller.ee.js';
+import { ExternalSecretsConfig } from '../external-secrets.config.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import * as responseHelper from '@/response-helper.js';
 
 jest.mock('@/response-helper', () => ({
 	sendErrorResponse: jest.fn(),

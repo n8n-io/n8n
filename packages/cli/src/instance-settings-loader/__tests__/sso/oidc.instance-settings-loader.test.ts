@@ -4,7 +4,7 @@ import type { SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import { OidcInstanceSettingsLoader } from '../../loaders/sso/oidc.instance-settings-loader';
+import { OidcInstanceSettingsLoader } from '../../loaders/sso/oidc.instance-settings-loader.js';
 
 describe('OidcInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });

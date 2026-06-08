@@ -2,8 +2,8 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
-import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
-import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
+import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity.js';
+import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository.js';
 import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 /**

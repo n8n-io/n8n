@@ -27,14 +27,14 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { CredentialsHelper } from '@/credentials-helper';
-import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import type { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import type { AiGatewayService } from '@/services/ai-gateway.service.js';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
@@ -1138,7 +1138,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {
@@ -1172,7 +1172,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const { CredentialResolutionError } = await import(
-				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error.js'
 			);
 
 			const resolvableCredentialEntity = {

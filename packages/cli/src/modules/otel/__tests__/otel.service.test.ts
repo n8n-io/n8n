@@ -3,8 +3,8 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { Logger } from '@n8n/backend-common';
 
-import { OtelConfig } from '../otel.config';
-import { OtelService } from '../otel.service';
+import { OtelConfig } from '../otel.config.js';
+import { OtelService } from '../otel.service.js';
 
 const start = jest.fn();
 const shutdown = jest.fn();

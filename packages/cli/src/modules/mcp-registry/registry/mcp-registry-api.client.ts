@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 
-import { paginatedRequest } from '@/utils/strapi-utils';
+import { paginatedRequest } from '@/utils/strapi-utils.js';
 
-import type { McpRegistryServer } from './mcp-registry.types';
+import type { McpRegistryServer } from './mcp-registry.types.js';
 
 export type McpRegistryServerMetadata = Pick<McpRegistryServer, 'slug' | 'version' | 'updatedAt'>;
 

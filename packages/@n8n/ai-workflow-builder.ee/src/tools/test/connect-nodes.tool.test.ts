@@ -18,8 +18,8 @@ import {
 	buildConnectNodesInput,
 	type ParsedToolContent,
 	createNodeType,
-} from '../../../test/test-utils';
-import { createConnectNodesTool } from '../connect-nodes.tool';
+} from '../../../test/test-utils.js';
+import { createConnectNodesTool } from '../connect-nodes.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

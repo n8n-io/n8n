@@ -8,14 +8,14 @@ import {
 	expectToolSuccess,
 	type ParsedToolContent,
 	createNode,
-} from '../../../test/test-utils';
-import type { WorkflowMetadata } from '../../types/tools';
+} from '../../../test/test-utils.js';
+import type { WorkflowMetadata } from '../../types/tools.js';
 import {
 	createGetNodeConfigurationExamplesTool,
 	createGetNodeConnectionExamplesTool,
-} from '../get-node-examples.tool';
-import type { FetchWorkflowsResult } from '../web/templates';
-import * as templates from '../web/templates';
+} from '../get-node-examples.tool.js';
+import type { FetchWorkflowsResult } from '../web/templates.js';
+import * as templates from '../web/templates.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

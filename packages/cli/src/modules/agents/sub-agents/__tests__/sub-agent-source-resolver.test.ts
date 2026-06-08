@@ -2,11 +2,11 @@ import { type AgentJsonConfig } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
 import { mock } from 'jest-mock-extended';
 
-import type { AgentHistory } from '../../entities/agent-history.entity';
-import type { Agent } from '../../entities/agent.entity';
-import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
-import type { AgentRepository } from '../../repositories/agent.repository';
-import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
+import type { AgentHistory } from '../../entities/agent-history.entity.js';
+import type { Agent } from '../../entities/agent.entity.js';
+import type { AgentHistoryRepository } from '../../repositories/agent-history.repository.js';
+import type { AgentRepository } from '../../repositories/agent.repository.js';
+import { SubAgentSourceResolver } from '../sub-agent-source-resolver.js';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';

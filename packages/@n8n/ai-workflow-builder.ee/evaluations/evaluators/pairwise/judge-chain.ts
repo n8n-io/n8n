@@ -2,10 +2,10 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
-import type { EvalCriteria } from './judge-panel';
-import { prompt } from '../../../src/prompts/builder';
-import type { SimpleWorkflow } from '../../../src/types/workflow';
-import { createEvaluatorChain, invokeEvaluatorChain } from '../llm-judge/evaluators/base';
+import type { EvalCriteria } from './judge-panel.js';
+import { prompt } from '../../../src/prompts/builder/index.js';
+import type { SimpleWorkflow } from '../../../src/types/workflow.js';
+import { createEvaluatorChain, invokeEvaluatorChain } from '../llm-judge/evaluators/base.js';
 
 export interface PairwiseEvaluationInput {
 	evalCriteria: EvalCriteria;

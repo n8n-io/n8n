@@ -17,26 +17,26 @@ import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import { License } from '@/license';
-import { containsExpression } from '@/utils';
+import { License } from '@/license.js';
+import { containsExpression } from '@/utils.js';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
-} from './constants';
-import type { StatusExportableCredential } from './types/exportable-credential';
+} from './constants.js';
+import type { StatusExportableCredential } from './types/exportable-credential.js';
 import type {
 	ExportableDataTable,
 	ExportableDataTableColumn,
 	StatusExportableDataTable,
-} from './types/exportable-data-table';
-import type { ExportedFolders } from './types/exportable-folders';
-import type { KeyPair } from './types/key-pair';
-import type { KeyPairType } from './types/key-pair-type';
-import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+} from './types/exportable-data-table.js';
+import type { ExportedFolders } from './types/exportable-folders.js';
+import type { KeyPair } from './types/key-pair.js';
+import type { KeyPairType } from './types/key-pair-type.js';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner.js';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id.js';
 
 export function sanitizeCredentialData(
 	data: ICredentialDataDecryptedObject,

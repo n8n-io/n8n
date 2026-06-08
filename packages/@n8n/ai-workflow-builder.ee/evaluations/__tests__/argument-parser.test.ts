@@ -1,4 +1,4 @@
-import { parseEvaluationArgs, type EvaluationSuite } from '../cli/argument-parser';
+import { parseEvaluationArgs, type EvaluationSuite } from '../cli/argument-parser.js';
 
 describe('argument-parser', () => {
 	describe('suite options', () => {

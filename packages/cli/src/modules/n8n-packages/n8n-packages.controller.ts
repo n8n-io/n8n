@@ -4,7 +4,7 @@ import { Body, Licensed, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { Readable } from 'node:stream';
 
-import { N8nPackagesService } from './n8n-packages.service';
+import { N8nPackagesService } from './n8n-packages.service.js';
 
 @RestController('/n8n-packages')
 export class N8nPackagesController {

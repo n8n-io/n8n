@@ -1,5 +1,5 @@
 import { type Logger } from '@n8n/backend-common';
-import { ExportService } from '../export.service';
+import { ExportService } from '../export.service.js';
 import { type DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
@@ -97,7 +97,7 @@ describe('ExportService', () => {
 		jest.mocked(appendFile).mockResolvedValue(undefined);
 
 		// Mock the compression utility
-		const { compressFolder } = require('@/utils/compression.util');
+		const { compressFolder } = require('@/utils/compression.util.js');
 		jest.mocked(compressFolder).mockResolvedValue(undefined);
 
 		exportService = new ExportService(mockLogger, mockDataSource, mockCipher);

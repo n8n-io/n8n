@@ -3,26 +3,26 @@ import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backe
 import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { createMember, createOwner } from '@test-integration/db/users';
-import { LicenseMocker } from '@test-integration/license';
+import { CredentialTypes } from '@/credential-types.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { EventService } from '@/events/event.service.js';
+import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
+import { LicenseMocker } from '@test-integration/license.js';
 
-import { TarPackageWriter } from '../io/tar/tar-package-writer';
-import { N8nPackagesService } from '../n8n-packages.service';
-import { FORMAT_VERSION } from '../spec/constants';
+import { TarPackageWriter } from '../io/tar/tar-package-writer.js';
+import { N8nPackagesService } from '../n8n-packages.service.js';
+import { FORMAT_VERSION } from '../spec/constants.js';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
-} from './fixtures/package-fixtures';
-import { streamToBuffer } from './utils/tar-support';
-import type { ImportPackageRequest } from '../n8n-packages.types';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+} from './fixtures/package-fixtures.js';
+import { streamToBuffer } from './utils/tar-support.js';
+import type { ImportPackageRequest } from '../n8n-packages.types.js';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema.js';
 
 type ImportPackageParams = Omit<
 	ImportPackageRequest,

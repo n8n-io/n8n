@@ -8,7 +8,7 @@ import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
 import type SMTPConnection from 'nodemailer/lib/smtp-connection';
 
-import type { MailData, SendEmailResult } from './interfaces';
+import type { MailData, SendEmailResult } from './interfaces.js';
 
 @Service()
 export class NodeMailer {

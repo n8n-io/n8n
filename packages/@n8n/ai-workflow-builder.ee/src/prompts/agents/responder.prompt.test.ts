@@ -1,6 +1,6 @@
-import type { DataTableInfo } from '@/utils/data-table-helpers';
+import type { DataTableInfo } from '@/utils/data-table-helpers.js';
 
-import { buildDataTableCreationGuidance } from './responder.prompt';
+import { buildDataTableCreationGuidance } from './responder.prompt.js';
 
 describe('buildDataTableCreationGuidance', () => {
 	it('should include column definitions from Set node for row column operations', () => {

@@ -4,14 +4,14 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { generateCodeBuilderThreadId } from '@/code-builder/utils/code-builder-session';
-import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
-import type { HITLHistoryEntry, HITLInterruptValue } from '@/types/planning';
-import { ISessionStorage } from '@/types/session-storage';
-import { isLangchainMessagesArray, LangchainMessage, Session } from '@/types/sessions';
-import { stripAllCacheControlMarkers } from '@/utils/cache-control/helpers';
-import { formatMessages } from '@/utils/stream-processor';
-import { generateThreadId as generateThreadIdUtil } from '@/utils/thread-id';
+import { generateCodeBuilderThreadId } from '@/code-builder/utils/code-builder-session.js';
+import { getBuilderToolsForDisplay } from '@/tools/builder-tools.js';
+import type { HITLHistoryEntry, HITLInterruptValue } from '@/types/planning.js';
+import { ISessionStorage } from '@/types/session-storage.js';
+import { isLangchainMessagesArray, LangchainMessage, Session } from '@/types/sessions.js';
+import { stripAllCacheControlMarkers } from '@/utils/cache-control/helpers.js';
+import { formatMessages } from '@/utils/stream-processor.js';
+import { generateThreadId as generateThreadIdUtil } from '@/utils/thread-id.js';
 
 @Service()
 export class SessionManagerService {

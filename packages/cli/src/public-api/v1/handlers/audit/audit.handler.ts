@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 
-import type { AuditRequest } from '@/public-api/types';
+import type { AuditRequest } from '@/public-api/types.js';
 
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/global.middleware.js';
 
 type AuditHandlers = {
 	generateAudit: PublicAPIEndpoint<AuditRequest.Generate>;
@@ -13,7 +13,7 @@ const auditHandlers: AuditHandlers = {
 	generateAudit: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'securityAudit:generate' }),
 		async (req, res) => {
-			const { SecurityAuditService } = await import('@/security-audit/security-audit.service');
+			const { SecurityAuditService } = await import('@/security-audit/security-audit.service.js');
 			const result = await Container.get(SecurityAuditService).run(
 				req.body?.additionalOptions?.categories,
 				req.body?.additionalOptions?.daysAbandonedWorkflow,

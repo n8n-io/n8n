@@ -3,7 +3,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { NextFunction, Response } from 'express';
 
-import * as middlewares from '../shared/middlewares/global.middleware';
+import * as middlewares from '../shared/middlewares/global.middleware.js';
 
 function buildReq(tokenGrant?: TokenGrant): AuthenticatedRequest {
 	return { headers: {}, query: {}, params: {}, tokenGrant } as unknown as AuthenticatedRequest;

@@ -5,14 +5,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
-import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload.js';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service.js';
 
-import type { PackageRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { isLicensed, publicApiScope } from '../../shared/middlewares/global.middleware';
+import type { PackageRequest } from '../../../types.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
+import { isLicensed, publicApiScope } from '../../shared/middlewares/global.middleware.js';
 
 type ExportWorkflowsRequest = AuthenticatedRequest<{}, {}, { workflowIds: string[] }>;
 

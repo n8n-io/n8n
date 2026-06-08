@@ -10,10 +10,10 @@ import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import type { EventService } from '@/events/event.service.js';
 
-import { PrometheusMetricsService } from '../prometheus-metrics.service';
+import { PrometheusMetricsService } from '../prometheus-metrics.service.js';
 
 const mockMiddleware = (
 	_req: express.Request,

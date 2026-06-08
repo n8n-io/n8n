@@ -45,27 +45,27 @@ import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { isUniqueConstraintError } from '@/response-helper';
+import { isUniqueConstraintError } from '@/response-helper.js';
 
-import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
-import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
-import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
-import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
-import type { AgentMessageEntity } from '../entities/agent-message.entity';
-import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
-import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
-import { AgentObservationEntity } from '../entities/agent-observation.entity';
-import { AgentThreadEntity } from '../entities/agent-thread.entity';
-import { AgentMessageRepository } from '../repositories/agent-message.repository';
-import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository';
-import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
-import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
-import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
-import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
-import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
-import { AgentObservationRepository } from '../repositories/agent-observation.repository';
-import { AgentResourceRepository } from '../repositories/agent-resource.repository';
-import { AgentThreadRepository } from '../repositories/agent-thread.repository';
+import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity.js';
+import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity.js';
+import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity.js';
+import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity.js';
+import type { AgentMessageEntity } from '../entities/agent-message.entity.js';
+import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity.js';
+import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity.js';
+import { AgentObservationEntity } from '../entities/agent-observation.entity.js';
+import { AgentThreadEntity } from '../entities/agent-thread.entity.js';
+import { AgentMessageRepository } from '../repositories/agent-message.repository.js';
+import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository.js';
+import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository.js';
+import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository.js';
+import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository.js';
+import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository.js';
+import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository.js';
+import { AgentObservationRepository } from '../repositories/agent-observation.repository.js';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository.js';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository.js';
 
 const estimateObservationTokens = (text: string) => Math.ceil(text.length / 4);
 

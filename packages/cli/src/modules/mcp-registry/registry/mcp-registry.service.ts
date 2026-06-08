@@ -4,17 +4,17 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Push } from '@/push';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { Push } from '@/push/index.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import { McpRegistryServerRepository } from './mcp-registry-server.repository';
-import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
-import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
-import { McpRegistryApiClient } from './mcp-registry-api.client';
-import type { McpRegistryServer } from './mcp-registry.types';
-import { toEntity, fromEntity } from './mcp-registry.types';
-import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import { McpRegistryServerRepository } from './mcp-registry-server.repository.js';
+import { McpRegistryNodeLoader } from '../mcp-registry-node-loader.js';
+import type { McpRegistryServerMetadata } from './mcp-registry-api.client.js';
+import { McpRegistryApiClient } from './mcp-registry-api.client.js';
+import type { McpRegistryServer } from './mcp-registry.types.js';
+import { toEntity, fromEntity } from './mcp-registry.types.js';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform.js';
 
 type RefreshReason = 'startup' | 'leader-takeover' | 'interval';
 

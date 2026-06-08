@@ -4,10 +4,10 @@ import { Container, Service } from '@n8n/di';
 import type {
 	DisconnectAnalyzer,
 	DisconnectErrorOptions,
-} from '@/task-runners/task-broker/task-broker-types';
+} from '@/task-runners/task-broker/task-broker-types.js';
 
-import { TaskRunnerDisconnectedError } from './errors/task-runner-disconnected-error';
-import { TaskRunnerFailedHeartbeatError } from './errors/task-runner-failed-heartbeat.error';
+import { TaskRunnerDisconnectedError } from './errors/task-runner-disconnected-error.js';
+import { TaskRunnerFailedHeartbeatError } from './errors/task-runner-failed-heartbeat.error.js';
 
 /**
  * Analyzes the disconnect reason of a task runner to provide a more

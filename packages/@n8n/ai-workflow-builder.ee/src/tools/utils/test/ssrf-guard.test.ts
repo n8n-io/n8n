@@ -3,7 +3,7 @@ import {
 	createPassthroughSsrfGuard,
 	findCrossHostRedirectError,
 	isSsrfBlockedError,
-} from '../ssrf-guard';
+} from '../ssrf-guard.js';
 
 describe('ssrf-guard', () => {
 	describe('createPassthroughSsrfGuard', () => {

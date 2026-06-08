@@ -12,20 +12,20 @@ import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import { MfaService } from '@/mfa/mfa.service';
-import { MeRequest } from '@/requests';
-import { PasswordUtility } from '@/services/password.utility';
-import { UserService } from '@/services/user.service';
-import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { AuthService } from '@/auth/auth.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { validateEntity } from '@/generic-helpers.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { MeRequest } from '@/requests.js';
+import { PasswordUtility } from '@/services/password.utility.js';
+import { UserService } from '@/services/user.service.js';
+import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers.js';
 
-import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
+import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto.js';
 
 @RestController('/me')
 export class MeController {

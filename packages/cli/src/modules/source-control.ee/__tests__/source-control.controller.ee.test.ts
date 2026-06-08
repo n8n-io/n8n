@@ -6,15 +6,15 @@ import * as permissions from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
-import type { SourceControlContextFactory } from '../source-control-context.factory';
-import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
-import { SourceControlController } from '../source-control.controller.ee';
-import type { SourceControlService } from '../source-control.service.ee';
-import type { SourceControlRequest } from '../types/requests';
-import { SourceControlContext } from '../types/source-control-context';
-import type { SourceControlGetStatus } from '../types/source-control-get-status';
+import type { SourceControlContextFactory } from '../source-control-context.factory.js';
+import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee.js';
+import { SourceControlController } from '../source-control.controller.ee.js';
+import type { SourceControlService } from '../source-control.service.ee.js';
+import type { SourceControlRequest } from '../types/requests.js';
+import { SourceControlContext } from '../types/source-control-context.js';
+import type { SourceControlGetStatus } from '../types/source-control-get-status.js';
 
 jest.mock('@n8n/permissions', () => {
 	const actual = jest.requireActual('@n8n/permissions');

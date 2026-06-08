@@ -8,9 +8,9 @@ import {
 	TechniqueDescription,
 	WorkflowTechnique,
 	type WorkflowTechniqueType,
-} from '@/types/categorization';
+} from '@/types/categorization.js';
 
-import { prompt } from '../builder';
+import { prompt } from '../builder/index.js';
 
 /** Few-shot examples for technique classification - kept for external use */
 export const exampleCategorizations: Array<{

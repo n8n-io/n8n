@@ -15,9 +15,9 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { hash } from 'bcryptjs';
 
-import { MfaService } from '@/mfa/mfa.service';
-import { TOTPService } from '@/mfa/totp.service';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { TOTPService } from '@/mfa/totp.service.js';
+import { PublicApiKeyService } from '@/services/public-api-key.service.js';
 import type { DeepPartial } from '@n8n/typeorm';
 
 type ApiKeyOptions = {

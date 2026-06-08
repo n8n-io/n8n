@@ -1,10 +1,10 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import { DATA_TABLE_NODE_TYPE, SET_NODE_TYPE } from '@/utils/data-table-helpers';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { DATA_TABLE_NODE_TYPE, SET_NODE_TYPE } from '@/utils/data-table-helpers.js';
 
-import { validateConnections } from './connections';
+import { validateConnections } from './connections.js';
 
 describe('validateConnections', () => {
 	const createMockNodeType = (type: string): INodeTypeDescription =>

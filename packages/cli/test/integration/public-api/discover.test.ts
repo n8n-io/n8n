@@ -1,8 +1,8 @@
 import type { User } from '@n8n/db';
 
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 let owner: User;
 let member: User;

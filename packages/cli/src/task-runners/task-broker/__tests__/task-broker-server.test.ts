@@ -4,10 +4,10 @@ import type { Socket } from 'node:net';
 import request from 'supertest';
 import type { Server as WSServer, WebSocket } from 'ws';
 
-import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
-import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
-import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types';
-import type { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller.js';
+import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server.js';
+import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/task-broker-types.js';
+import type { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
 
 describe('TaskBrokerServer', () => {
 	const createServer = (overrides?: {

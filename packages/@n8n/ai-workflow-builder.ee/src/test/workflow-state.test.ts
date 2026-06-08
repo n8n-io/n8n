@@ -1,5 +1,5 @@
-import type { TelemetryValidationStatus } from '../validation/types';
-import { WorkflowState } from '../workflow-state';
+import type { TelemetryValidationStatus } from '../validation/types.js';
+import { WorkflowState } from '../workflow-state.js';
 
 describe('WorkflowState.validationHistory reducer', () => {
 	// Helper to create TelemetryValidationStatus avoiding ESLint naming-convention warnings

@@ -40,15 +40,16 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { Telemetry } from '@/telemetry';
-import { TtlMap } from '@/utils/ttl-map';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver.js';
+import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { TtlMap } from '@/utils/ttl-map.js';
 
+<<<<<<< HEAD
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -77,6 +78,34 @@ import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+=======
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
+import { markAgentDraftDirty } from './utils/agent-draft.utils.js';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope.js';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper.js';
+import { generateAgentResourceId } from './utils/agent-resource-id.js';
+import { AgentExecutionService } from './agent-execution.service.js';
+import { AgentSkillsService } from './agent-skills.service.js';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names.js';
+import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults.js';
+import { Agent } from './entities/agent.entity.js';
+import { AgentTask } from './entities/agent-task.entity.js';
+import { ExecutionRecorder } from './execution-recorder.js';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration.js';
+import { syncAgentIntegrations } from './integrations/integrations-sync.js';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage.js';
+import { N8nMemory } from './integrations/n8n-memory.js';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition.js';
+import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials.js';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service.js';
+import { AgentHistoryRepository } from './repositories/agent-history.repository.js';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository.js';
+import { AgentTaskRepository } from './repositories/agent-task.repository.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import { type ToolRegistry } from './tool-registry.js';
+import { ChatIntegrationService } from './integrations/chat-integration.service.js';
+import { AgentKnowledgeService } from './agent-knowledge.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 type AgentToolEntries = Agent['tools'];
 
@@ -563,7 +592,7 @@ export class AgentsService {
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
 			// eslint-disable-next-line import-x/no-cycle
-			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+			const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
 			await Container.get(ChatIntegrationService)
 				.syncToConfig(agent, [], credentialIntegrations)
 				.catch((error) =>
@@ -578,7 +607,7 @@ export class AgentsService {
 		// Routed through requestReconcile so the leader owns the cron even when a
 		// follower handled this publish request (multi-main).
 		// eslint-disable-next-line import-x/no-cycle
-		const { AgentTaskService } = await import('./agent-task.service');
+		const { AgentTaskService } = await import('./agent-task.service.js');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)
 			.catch((error) =>
@@ -613,11 +642,11 @@ export class AgentsService {
 		// accepting events immediately — before the 30-minute TTL would have expired.
 		// Lazy import avoids the circular DI dependency (ChatIntegrationService → AgentsService).
 		// eslint-disable-next-line import-x/no-cycle
-		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
 
 		// eslint-disable-next-line import-x/no-cycle
-		const { AgentTaskService } = await import('./agent-task.service');
+		const { AgentTaskService } = await import('./agent-task.service.js');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)
 			.catch((error) =>
@@ -766,7 +795,7 @@ export class AgentsService {
 
 		try {
 			// eslint-disable-next-line import-x/no-cycle
-			const { AgentTaskService } = await import('./agent-task.service');
+			const { AgentTaskService } = await import('./agent-task.service.js');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
 			this.logger.warn('Failed to stop tasks on agent delete', {

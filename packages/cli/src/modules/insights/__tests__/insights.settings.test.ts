@@ -1,7 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
-import { InsightsSettings } from '../insights.settings';
+import { InsightsSettings } from '../insights.settings.js';
 
 describe('InsightsSettings', () => {
 	let licenseMock: jest.Mocked<LicenseState>;

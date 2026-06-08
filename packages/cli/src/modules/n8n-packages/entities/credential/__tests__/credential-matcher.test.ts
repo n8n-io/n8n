@@ -2,15 +2,15 @@ import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { CredentialMatcherContext } from '../credential-matcher';
-import { CredentialMatcherFactory } from '../credential-matcher-factory';
-import { createFailure } from '../credential.types';
-import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
+import type { CredentialMatcherContext } from '../credential-matcher.js';
+import { CredentialMatcherFactory } from '../credential-matcher-factory.js';
+import { createFailure } from '../credential.types.js';
+import { IdBasedCredentialMatcher } from '../id-based-credential-matcher.js';
 
 type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>

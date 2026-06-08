@@ -1,4 +1,4 @@
-import type { Feedback } from './harness-types';
+import type { Feedback } from './harness-types.js';
 
 export interface LangsmithEvaluationResultLike {
 	key: string;

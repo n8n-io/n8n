@@ -2,13 +2,13 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 
-import { createWorkflow } from './mock.utils';
-import { createPublishWorkflowTool } from '../tools/publish-workflow.tool';
+import { createWorkflow } from './mock.utils.js';
+import { createPublishWorkflowTool } from '../tools/publish-workflow.tool.js';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
 describe('publish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

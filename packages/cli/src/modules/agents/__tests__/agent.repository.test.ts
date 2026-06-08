@@ -2,10 +2,10 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking.js';
 
-import { Agent } from '../entities/agent.entity';
-import { AgentRepository } from '../repositories/agent.repository';
+import { Agent } from '../entities/agent.entity.js';
+import { AgentRepository } from '../repositories/agent.repository.js';
 
 const entityManager = mockEntityManager(Agent);
 const mockDataSource = { manager: entityManager };

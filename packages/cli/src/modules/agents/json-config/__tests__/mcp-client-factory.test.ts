@@ -2,9 +2,9 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
-import type { OauthService } from '@/oauth/oauth.service';
+import type { OauthService } from '@/oauth/oauth.service.js';
 
-import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory';
+import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory.js';
 
 // ---------------------------------------------------------------------------
 // Module mocks

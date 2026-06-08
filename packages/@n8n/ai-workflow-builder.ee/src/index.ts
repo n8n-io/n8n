@@ -1,16 +1,17 @@
-export * from './ai-workflow-builder-agent.service';
-export * from './types';
-export * from './workflow-state';
-export { resolveConnections } from '@/validation/utils/resolve-connections';
-export { CodeBuilderAgent, type CodeBuilderAgentConfig } from './code-builder';
-export { CodeWorkflowBuilder, type CodeWorkflowBuilderConfig } from './code-builder';
-export { AssistantHandler } from './assistant';
+export * from './ai-workflow-builder-agent.service.js';
+export * from './types/index.js';
+export * from './workflow-state.js';
+export { resolveConnections } from '@/validation/utils/resolve-connections.js';
+export { CodeBuilderAgent, type CodeBuilderAgentConfig } from './code-builder/index.js';
+export { CodeWorkflowBuilder, type CodeWorkflowBuilderConfig } from './code-builder/index.js';
+export { AssistantHandler } from './assistant/index.js';
 export type {
 	AssistantContext,
 	AssistantResult,
 	AssistantSdkClient,
 	StreamWriter,
-} from './assistant';
+} from './assistant/index.js';
+export type { ChatPayload } from './workflow-builder-agent.js';
 
 // Code builder utilities for MCP integration
 export {
@@ -35,8 +36,8 @@ export {
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
-} from './code-builder';
-export type { ParseAndValidateResult, ValidationWarning } from './code-builder';
+} from './code-builder/index.js';
+export type { ParseAndValidateResult, ValidationWarning } from './code-builder/index.js';
 
 // SSRF guard contract for the web_fetch tool (cli injects its SsrfProtectionService here)
-export { type SsrfGuard, createPassthroughSsrfGuard } from './tools/utils/ssrf-guard';
+export { type SsrfGuard, createPassthroughSsrfGuard } from './tools/utils/ssrf-guard.js';

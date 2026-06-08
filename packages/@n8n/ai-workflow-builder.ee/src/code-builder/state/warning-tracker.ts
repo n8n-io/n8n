@@ -7,7 +7,7 @@
  * stays the same.
  */
 
-import type { ValidationWarning } from '../types';
+import type { ValidationWarning } from '../types.js';
 
 /**
  * Generates a unique key for a warning based on its location.

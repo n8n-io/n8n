@@ -1,6 +1,5 @@
 import { AiWorkflowBuilderService, createPassthroughSsrfGuard } from '@n8n/ai-workflow-builder';
-import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
-import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
+import type { ChatPayload, ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -16,16 +15,16 @@ import type {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
-import { Push } from '@/push';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { getBase } from '@/workflow-execute-additional-data';
+import { N8N_VERSION } from '@/constants.js';
+import { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder/index.js';
+import { Push } from '@/push/index.js';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { getBase } from '@/workflow-execute-additional-data.js';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.

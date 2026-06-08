@@ -4,12 +4,12 @@ import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import type { LogStreamingDestinationService } from '../log-streaming-destination.service';
-import { EventBusController } from '../log-streaming.controller';
+import type { LogStreamingDestinationService } from '../log-streaming-destination.service.js';
+import { EventBusController } from '../log-streaming.controller.js';
 
 describe('EventBusController', () => {
 	const eventBus = mock<MessageEventBus>();

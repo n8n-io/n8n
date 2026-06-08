@@ -1,8 +1,8 @@
 import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { AuthStrategyRegistry } from '../auth-strategy.registry';
-import type { AuthStrategy } from '../auth-strategy.types';
+import { AuthStrategyRegistry } from '../auth-strategy.registry.js';
+import type { AuthStrategy } from '../auth-strategy.types.js';
 
 const makeGrant = (id: string): TokenGrant => ({
 	subject: { ...mock<User>(), id },

@@ -5,9 +5,9 @@ import type {
 	TrustedKeyData,
 	TrustedKeySourceStatus,
 	TrustedKeySourceType,
-} from '@/modules/token-exchange/token-exchange.schemas';
-import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository';
-import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository';
+} from '@/modules/token-exchange/token-exchange.schemas.js';
+import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository.js';
+import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository.js';
 
 const makeSource = (
 	overrides: Partial<{

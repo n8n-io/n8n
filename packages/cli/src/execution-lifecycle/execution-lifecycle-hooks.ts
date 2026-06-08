@@ -22,30 +22,30 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { RedactableExecution } from '@/executions/execution-redaction';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
-import { ExternalHooks } from '@/external-hooks';
-import { Push } from '@/push';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { isWorkflowIdValid } from '@/utils';
-import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
-import { getLastExecutedNodeData } from '@/workflow-helpers';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { EventService } from '@/events/event.service.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { RedactableExecution } from '@/executions/execution-redaction.js';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { Push } from '@/push/index.js';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
+import { isWorkflowIdValid } from '@/utils.js';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type.js';
+import { getLastExecutedNodeData } from '@/workflow-helpers.js';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 // eslint-disable-next-line import-x/no-cycle
-import { executeErrorWorkflow } from './execute-error-workflow';
-import { restoreBinaryDataId } from './restore-binary-data-id';
-import { saveExecutionProgress } from './save-execution-progress';
+import { executeErrorWorkflow } from './execute-error-workflow.js';
+import { restoreBinaryDataId } from './restore-binary-data-id.js';
+import { saveExecutionProgress } from './save-execution-progress.js';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 	updateExistingExecutionMetadata,
-} from './shared/shared-hook-functions';
-import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+} from './shared/shared-hook-functions.js';
+import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings.js';
 
 @Service()
 class ModulesHooksRegistry {

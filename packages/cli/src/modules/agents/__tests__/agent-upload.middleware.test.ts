@@ -1,4 +1,4 @@
-import { isAllowedAgentFile } from '../agent-upload.middleware';
+import { isAllowedAgentFile } from '../agent-upload.middleware.js';
 
 describe('AgentUploadMiddleware', () => {
 	it.each(['data.csv', 'notes.md', 'notes.markdown', 'document.pdf', 'plain.txt'])(

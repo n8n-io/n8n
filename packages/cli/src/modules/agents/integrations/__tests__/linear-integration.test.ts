@@ -1,14 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
-import type { AgentChatIntegrationContext } from '../agent-chat-integration';
-import { LinearIntegration } from '../platforms/linear-integration';
+import type { AgentChatIntegrationContext } from '../agent-chat-integration.js';
+import { LinearIntegration } from '../platforms/linear-integration.js';
 
 jest.mock('../esm-loader', () => ({
 	loadLinearAdapter: jest.fn(),
 }));
 
-import { loadLinearAdapter } from '../esm-loader';
+import { loadLinearAdapter } from '../esm-loader.js';
 
 const mockedLoadLinearAdapter = loadLinearAdapter as jest.MockedFunction<typeof loadLinearAdapter>;
 

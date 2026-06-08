@@ -19,8 +19,8 @@ import {
 } from 'n8n-workflow';
 import { join } from 'path';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { EvalLogger } from '../harness/logger';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { EvalLogger } from '../harness/logger.js';
 
 // ---------------------------------------------------------------------------
 // Types

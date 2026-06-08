@@ -4,10 +4,10 @@ import type { Command } from '@langchain/langgraph';
 import { createResultError, createResultOk } from 'n8n-workflow';
 import type { MockedFunction } from 'vitest';
 
-import type { SsrfGuard } from '@/tools/utils/ssrf-guard';
-import type { WebFetchSecurityManager } from '@/tools/utils/web-fetch-security';
-import { normalizeHost, fetchUrl, extractReadableContent } from '@/tools/utils/web-fetch.utils';
-import { createWebFetchTool } from '@/tools/web-fetch.tool';
+import type { SsrfGuard } from '@/tools/utils/ssrf-guard.js';
+import type { WebFetchSecurityManager } from '@/tools/utils/web-fetch-security.js';
+import { normalizeHost, fetchUrl, extractReadableContent } from '@/tools/utils/web-fetch.utils.js';
+import { createWebFetchTool } from '@/tools/web-fetch.tool.js';
 
 // Mock the LangGraph interrupt
 const mockInterrupt = vi.fn();

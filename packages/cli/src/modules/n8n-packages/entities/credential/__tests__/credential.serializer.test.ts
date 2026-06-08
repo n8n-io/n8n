@@ -1,6 +1,6 @@
 import type { CredentialsEntity } from '@n8n/db';
 
-import { CredentialSerializer } from '../credential.serializer';
+import { CredentialSerializer } from '../credential.serializer.js';
 
 function makeCredential(overrides: Partial<CredentialsEntity> = {}): CredentialsEntity {
 	return {

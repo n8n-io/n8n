@@ -14,4 +14,4 @@ export {
 	applySubgraphCacheMarkers,
 	stripAllCacheControlMarkers,
 	hasCacheControl,
-} from './helpers';
+} from './helpers.js';

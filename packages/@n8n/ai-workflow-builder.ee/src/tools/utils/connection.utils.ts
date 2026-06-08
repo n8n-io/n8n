@@ -10,8 +10,8 @@ import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type {
 	ConnectionValidationResult,
 	InferConnectionTypeResult,
-} from '../../types/connections';
-import { isSubNode } from '../../utils/node-helpers';
+} from '../../types/connections.js';
+import { isSubNode } from '../../utils/node-helpers.js';
 /**
  * Extract connection types from an expression string
  * Looks for patterns like type: "ai_embedding", type: 'main', etc.

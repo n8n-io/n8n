@@ -2,7 +2,7 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { Time } from '@n8n/constants';
 import type { InstanceAiLivenessPolicy, InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
 
-import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
+import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details.js';
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 

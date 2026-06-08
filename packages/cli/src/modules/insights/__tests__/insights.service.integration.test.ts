@@ -15,12 +15,12 @@ import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
-import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from '../insights-collection.service';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
-import { InsightsService } from '../insights.service';
+import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils.js';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
+import { InsightsCollectionService } from '../insights-collection.service.js';
+import type { InsightsCompactionService } from '../insights-compaction.service.js';
+import type { InsightsPruningService } from '../insights-pruning.service.js';
+import { InsightsService } from '../insights.service.js';
 
 describe('InsightsService (Integration)', () => {
 	const today = new Date();

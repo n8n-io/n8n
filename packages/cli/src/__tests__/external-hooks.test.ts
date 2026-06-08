@@ -11,7 +11,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks } from '@/external-hooks.js';
 
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();

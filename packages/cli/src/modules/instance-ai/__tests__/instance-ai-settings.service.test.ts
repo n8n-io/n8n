@@ -2,14 +2,14 @@ import type { InstanceAiConfig } from '@n8n/config';
 import type { SettingsRepository, User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { EventService } from '@/events/event.service';
-import type { AiService } from '@/services/ai.service';
-import type { UserService } from '@/services/user.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { AiService } from '@/services/ai.service.js';
+import type { UserService } from '@/services/user.service.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { InstanceAiSettingsService } from '../instance-ai-settings.service.js';
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{

@@ -4,9 +4,9 @@ import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { createWorkflow } from '../workflows.service';
+import { createWorkflow } from '../workflows.service.js';
 
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
 
 describe('createWorkflow (public API)', () => {
 	const user = mock<User>({ id: 'user-id' });

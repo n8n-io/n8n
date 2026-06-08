@@ -3,12 +3,12 @@ import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INodeCredentials, INodeParameters } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NodeTypes } from '@/node-types';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { NodeTypes } from '@/node-types.js';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { getBase } from '@/workflow-execute-additional-data.js';
 
-import type { ModelLookupConfig } from './interactive/llm-provider-defaults';
+import type { ModelLookupConfig } from './interactive/llm-provider-defaults.js';
 
 @Service()
 export class BuilderModelLookupService {

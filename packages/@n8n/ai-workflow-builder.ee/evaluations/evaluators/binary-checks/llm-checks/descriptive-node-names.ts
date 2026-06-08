@@ -1,4 +1,4 @@
-import { createLlmCheck } from './create-llm-check';
+import { createLlmCheck } from './create-llm-check.js';
 
 export const descriptiveNodeNames = createLlmCheck({
 	name: 'descriptive_node_names',

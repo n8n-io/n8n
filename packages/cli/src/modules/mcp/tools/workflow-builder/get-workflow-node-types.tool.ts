@@ -1,13 +1,13 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
 
-import type { NodeCatalogService } from '@/node-catalog';
-import type { Telemetry } from '@/telemetry';
+import type { NodeCatalogService } from '@/node-catalog/index.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
+import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants.js';
 
 const nodeIdWithDiscriminators = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),

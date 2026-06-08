@@ -3,14 +3,14 @@ import { createTeamProject, mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
-import { Telemetry } from '@/telemetry';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee.js';
+import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { createUser } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils';
+import { createUser } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils/index.js';
 
 let authOwnerAgent: SuperAgentTest;
 let authAdminAgent: SuperAgentTest;

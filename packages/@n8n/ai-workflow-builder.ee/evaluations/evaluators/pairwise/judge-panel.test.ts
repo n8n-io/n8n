@@ -2,9 +2,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import pLimit from 'p-limit';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import { runJudgePanel } from './judge-panel';
+import { runJudgePanel } from './judge-panel.js';
 
 const mockEvaluateWorkflowPairwise = vi.fn();
 

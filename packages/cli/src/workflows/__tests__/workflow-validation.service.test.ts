@@ -8,10 +8,10 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import type { NodeTypes } from '@/node-types';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import type { NodeTypes } from '@/node-types.js';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service.js';
 
 describe('WorkflowValidationService', () => {
 	let service: WorkflowValidationService;

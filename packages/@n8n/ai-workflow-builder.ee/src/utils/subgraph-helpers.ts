@@ -3,10 +3,10 @@ import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
 import { END, isCommand, isGraphInterrupt } from '@langchain/langgraph';
 
-import { stripAllCacheControlMarkers } from './cache-control';
-import { isBaseMessage } from '../types/langchain';
-import type { WorkflowMetadata } from '../types/tools';
-import type { WorkflowOperation } from '../types/workflow';
+import { stripAllCacheControlMarkers } from './cache-control/index.js';
+import { isBaseMessage } from '../types/langchain.js';
+import type { WorkflowMetadata } from '../types/tools.js';
+import type { WorkflowOperation } from '../types/workflow.js';
 
 export interface FetchedUrlContentItem {
 	url: string;

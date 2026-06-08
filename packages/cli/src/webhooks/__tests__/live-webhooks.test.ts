@@ -14,15 +14,15 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import type { NodeTypes } from '@/node-types';
-import { LiveWebhooks } from '@/webhooks/live-webhooks';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import type { WebhookService } from '@/webhooks/webhook.service';
-import type { WebhookRequest } from '@/webhooks/webhook.types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error.js';
+import type { NodeTypes } from '@/node-types.js';
+import { LiveWebhooks } from '@/webhooks/live-webhooks.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import type { WebhookService } from '@/webhooks/webhook.service.js';
+import type { WebhookRequest } from '@/webhooks/webhook.types.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 jest.mock('@/webhooks/webhook-helpers');
 jest.mock('@/workflow-execute-additional-data');

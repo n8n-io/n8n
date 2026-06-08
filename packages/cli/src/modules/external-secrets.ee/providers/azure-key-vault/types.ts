@@ -1,4 +1,4 @@
-import type { SecretsProviderSettings } from '../../types';
+import type { SecretsProviderSettings } from '../../types.js';
 
 export type AzureKeyVaultContext = SecretsProviderSettings<{
 	vaultName: string;

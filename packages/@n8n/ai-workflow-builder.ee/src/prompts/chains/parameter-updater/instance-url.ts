@@ -1,4 +1,4 @@
-import { PromptBuilder } from '@/prompts/builder';
+import { PromptBuilder } from '@/prompts/builder/index.js';
 
 export const instanceUrlPrompt = new PromptBuilder()
 	.section(

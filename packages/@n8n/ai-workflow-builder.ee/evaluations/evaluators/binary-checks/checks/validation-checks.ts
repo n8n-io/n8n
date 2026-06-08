@@ -14,9 +14,9 @@ import {
 	validateParameters,
 	validateTools,
 	validateTrigger,
-} from '@/validation/checks';
+} from '@/validation/checks/index.js';
 
-import { createValidationCheck } from './create-validation-check';
+import { createValidationCheck } from './create-validation-check.js';
 
 export const hasNodes = createValidationCheck({
 	name: 'has_nodes',

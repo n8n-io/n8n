@@ -4,11 +4,11 @@ import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IRun, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
-import type { IWorkflowErrorData } from '@/interfaces';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import type { IWorkflowErrorData } from '@/interfaces.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { UrlService } from '@/services/url.service.js';
 // eslint-disable-next-line import-x/no-cycle
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects

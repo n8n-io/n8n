@@ -7,20 +7,20 @@ import {
 import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { AgentTaskService } from '../agent-task.service';
-import type { AgentsToolsService } from '../agents-tools.service';
-import type { AgentsService } from '../agents.service';
-import type { CredentialTypes } from '@/credential-types';
+import type { AgentTaskService } from '../agent-task.service.js';
+import type { AgentsToolsService } from '../agents-tools.service.js';
+import type { AgentsService } from '../agents.service.js';
+import type { CredentialTypes } from '@/credential-types.js';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
-} from '../builder/agents-builder-tools.service';
-import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
-import { BUILDER_TOOLS } from '../builder/builder-tool-names';
-import type { Agent } from '../entities/agent.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+} from '../builder/agents-builder-tools.service.js';
+import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service.js';
+import { BUILDER_TOOLS } from '../builder/builder-tool-names.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
 
 const ctx = {
 	resumeData: undefined,

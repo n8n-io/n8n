@@ -1,10 +1,10 @@
 import type { INodeTypeDescription, INodeParameters } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
 
-import type { ProgrammaticViolation } from '../types';
-import { isTool } from '../utils/is-tool';
+import type { ProgrammaticViolation } from '../types.js';
+import { isTool } from '../utils/is-tool.js';
 
 function containsFromAi(value: unknown): boolean {
 	if (typeof value !== 'string') {

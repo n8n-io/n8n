@@ -1,4 +1,4 @@
-import { TextEditorHandler, findDivergenceContext } from '../text-editor-handler';
+import { TextEditorHandler, findDivergenceContext } from '../text-editor-handler.js';
 import {
 	NoMatchFoundError,
 	MultipleMatchesError,
@@ -9,7 +9,7 @@ import {
 	FileNotFoundError,
 	BatchReplacementError,
 	type BatchReplaceResult,
-} from '../text-editor.types';
+} from '../text-editor.types.js';
 
 describe('TextEditorHandler', () => {
 	let handler: TextEditorHandler;

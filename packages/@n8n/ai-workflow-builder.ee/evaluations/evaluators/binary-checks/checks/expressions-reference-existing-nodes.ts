@@ -1,4 +1,4 @@
-import type { BinaryCheck, SimpleWorkflow } from '../types';
+import type { BinaryCheck, SimpleWorkflow } from '../types.js';
 
 /**
  * Regex patterns to extract node names from n8n expression syntaxes.

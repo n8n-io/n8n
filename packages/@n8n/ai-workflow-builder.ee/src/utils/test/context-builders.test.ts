@@ -1,10 +1,10 @@
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import type { NodeExecutionSchema, Schema } from 'n8n-workflow';
 
-import { createNode, createWorkflow, createMockRunData } from '../../../test/test-utils';
-import { MAX_AI_RESPONSE_CHARS } from '../../constants';
-import type { CoordinationLogEntry } from '../../types/coordination';
-import type { ChatPayload } from '../../workflow-builder-agent';
+import { createNode, createWorkflow, createMockRunData } from '../../../test/test-utils.js';
+import { MAX_AI_RESPONSE_CHARS } from '../../constants.js';
+import type { CoordinationLogEntry } from '../../types/coordination.js';
+import type { ChatPayload } from '../../workflow-builder-agent.js';
 import {
 	buildSimplifiedExecutionContext,
 	buildConversationContext,
@@ -13,7 +13,7 @@ import {
 	buildExecutionSchemaBlock,
 	buildSelectedNodesContextBlock,
 	buildSelectedNodesSummary,
-} from '../context-builders';
+} from '../context-builders.js';
 
 // Helper to create mock execution schema with proper typing
 const createMockSchema = (value: Schema['value']): Schema => ({

@@ -5,9 +5,9 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
-import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
+import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants.js';
 
-import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error.js';
 
 const ENV_PROVISIONING_MODES = [
 	'disabled',

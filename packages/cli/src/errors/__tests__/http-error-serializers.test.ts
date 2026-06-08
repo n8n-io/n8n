@@ -1,11 +1,11 @@
-import { classifyHttpError } from '@/errors/http-error-classifier';
+import { classifyHttpError } from '@/errors/http-error-classifier.js';
 import {
 	serializeInternalRestError,
 	serializePublicApiError,
-} from '@/errors/http-error-serializers';
-import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
-import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+} from '@/errors/http-error-serializers.js';
+import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error.js';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 describe('http-error-serializers', () => {

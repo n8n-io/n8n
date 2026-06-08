@@ -1,13 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
-import { AgentExecution } from './entities/agent-execution.entity';
-import type { MessageRecord } from './execution-recorder';
-import { N8nMemory } from './integrations/n8n-memory';
-import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
-import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
-import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import { AgentExecutionThread } from './entities/agent-execution-thread.entity.js';
+import { AgentExecution } from './entities/agent-execution.entity.js';
+import type { MessageRecord } from './execution-recorder.js';
+import { N8nMemory } from './integrations/n8n-memory.js';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository.js';
+import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository.js';
+import { AgentExecutionRepository } from './repositories/agent-execution.repository.js';
 
 export interface RecordMessageParams {
 	threadId: string;

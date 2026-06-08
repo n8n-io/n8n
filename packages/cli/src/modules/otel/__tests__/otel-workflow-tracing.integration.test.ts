@@ -4,8 +4,8 @@ import { SpanStatusCode } from '@opentelemetry/api';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { WorkflowRunner } from '@/workflow-runner';
-import { createUser } from '@test-integration/db/users';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import { createUser } from '@test-integration/db/users.js';
 
 import {
 	initOtelTestEnvironment,
@@ -14,12 +14,12 @@ import {
 	waitForExecution,
 	saveAndSetEnv,
 	restoreEnv,
-} from './support/otel-integration-utils';
-import type { OtelTestProvider } from './support/otel-test-provider';
+} from './support/otel-integration-utils.js';
+import type { OtelTestProvider } from './support/otel-test-provider.js';
 import {
 	createMultiNodeWorkflowFixture,
 	createFailingWorkflowFixture,
-} from './support/otel-workflow-fixtures';
+} from './support/otel-workflow-fixtures.js';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;

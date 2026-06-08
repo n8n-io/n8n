@@ -11,10 +11,10 @@ import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
-import config from '@/config';
-import type { EventService } from '@/events/event.service';
+import config from '@/config/index.js';
+import type { EventService } from '@/events/event.service.js';
 
-import { BINARY_AD_ATTRIBUTES } from '../constants';
+import { BINARY_AD_ATTRIBUTES } from '../constants.js';
 import {
 	getLdapIds,
 	createFilter,
@@ -27,8 +27,8 @@ import {
 	getAuthIdentityByLdapId,
 	getUserByEmail,
 	createLdapUserOnLocalDb,
-} from '../helpers.ee';
-import { LdapService } from '../ldap.service.ee';
+} from '../helpers.ee.js';
+import { LdapService } from '../ldap.service.ee.js';
 
 // Mock ldapts client
 jest.mock('ldapts', () => {

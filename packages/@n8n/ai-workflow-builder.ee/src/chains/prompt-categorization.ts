@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
 	formatTechniqueList,
 	promptCategorizationTemplate,
-} from '@/prompts/chains/categorization.prompt';
-import { WorkflowTechnique, type PromptCategorization } from '@/types/categorization';
+} from '@/prompts/chains/categorization.prompt.js';
+import { WorkflowTechnique, type PromptCategorization } from '@/types/categorization.js';
 
 export async function promptCategorizationChain(
 	llm: BaseChatModel,

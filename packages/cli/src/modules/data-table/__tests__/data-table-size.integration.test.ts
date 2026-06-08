@@ -9,13 +9,13 @@ import { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { Telemetry } from '@/telemetry';
-import { createUser } from '@test-integration/db/users';
+import { Telemetry } from '@/telemetry/index.js';
+import { createUser } from '@test-integration/db/users.js';
 
-import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import { DataTableRepository } from '../data-table.repository';
-import { DataTableService } from '../data-table.service';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
+import { DataTableSizeValidator } from '../data-table-size-validator.service.js';
+import { DataTableRepository } from '../data-table.repository.js';
+import { DataTableService } from '../data-table.service.js';
+import { DataTableValidationError } from '../errors/data-table-validation.error.js';
 
 beforeAll(async () => {
 	mockInstance(Telemetry);

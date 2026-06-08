@@ -1,6 +1,6 @@
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { BreakingChangeCategory } from '../../../types';
-import { ProcessEnvAccessRule } from '../process-env-access.rule';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
+import { BreakingChangeCategory } from '../../../types/index.js';
+import { ProcessEnvAccessRule } from '../process-env-access.rule.js';
 
 describe('ProcessEnvAccessRule', () => {
 	let rule: ProcessEnvAccessRule;

@@ -3,7 +3,7 @@ import {
 	formatVersion,
 	parseVersion,
 	versionGte,
-} from '../instance-version-history.types';
+} from '../instance-version-history.types.js';
 
 describe('instance-version-history.types', () => {
 	describe('parseVersion', () => {

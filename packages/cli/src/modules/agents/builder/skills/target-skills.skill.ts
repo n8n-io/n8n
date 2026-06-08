@@ -4,7 +4,7 @@ import {
 	SKILL_BODY_FORMAT_RULE,
 	SKILL_BODY_TEMPLATE,
 	SKILL_DESCRIPTION_RULE,
-} from '../skill-body-template';
+} from '../skill-body-template.js';
 
 export function targetSkillsSkill(): RuntimeSkill {
 	return {

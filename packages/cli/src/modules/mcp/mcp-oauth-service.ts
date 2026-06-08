@@ -15,13 +15,13 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
-import { OAuthClient } from './database/entities/oauth-client.entity';
-import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
-import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { McpClientLimitReachedError } from './mcp.errors';
-import { OAuthSessionService } from './oauth-session.service';
+import { OAuthClient } from './database/entities/oauth-client.entity.js';
+import { OAuthClientRepository } from './database/repositories/oauth-client.repository.js';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository.js';
+import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service.js';
+import { McpOAuthTokenService } from './mcp-oauth-token.service.js';
+import { McpClientLimitReachedError } from './mcp.errors.js';
+import { OAuthSessionService } from './oauth-session.service.js';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 

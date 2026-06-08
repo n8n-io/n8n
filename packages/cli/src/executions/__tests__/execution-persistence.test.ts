@@ -15,6 +15,7 @@ import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
 import type { DbStore } from '@/executions/execution-data/db-store';
@@ -22,6 +23,13 @@ import type { FsStore } from '@/executions/execution-data/fs-store';
 import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+=======
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
+import type { DbStore } from '@/executions/execution-data/db-store.js';
+import type { FsStore } from '@/executions/execution-data/fs-store.js';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 describe('ExecutionPersistence', () => {
 	const executionRepository = mock<ExecutionRepository>();

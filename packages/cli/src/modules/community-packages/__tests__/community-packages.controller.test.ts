@@ -4,16 +4,16 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { Push } from '@/push';
-import type { NodeRequest } from '@/requests';
+import type { EventService } from '@/events/event.service.js';
+import type { Push } from '@/push/index.js';
+import type { NodeRequest } from '@/requests.js';
 
-import type { CommunityNodeTypesService } from '../community-node-types.service';
-import { CommunityPackagesController } from '../community-packages.controller';
-import type { CommunityPackagesConfig } from '../community-packages.config';
-import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
-import type { CommunityPackagesService } from '../community-packages.service';
-import type { InstalledPackages } from '../installed-packages.entity';
+import type { CommunityNodeTypesService } from '../community-node-types.service.js';
+import { CommunityPackagesController } from '../community-packages.controller.js';
+import type { CommunityPackagesConfig } from '../community-packages.config.js';
+import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service.js';
+import type { CommunityPackagesService } from '../community-packages.service.js';
+import type { InstalledPackages } from '../installed-packages.entity.js';
 
 describe('CommunityPackagesController', () => {
 	const logger = mock<Logger>();

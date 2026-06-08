@@ -1,12 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, WorkflowEntity } from '@n8n/db';
 
-import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
+import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool.js';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },

@@ -4,8 +4,8 @@
 
 import type { KVMap } from 'langsmith/schemas';
 
-import type { EvalLogger } from '../harness/logger';
-import { createTraceFilters } from '../langsmith/trace-filters';
+import type { EvalLogger } from '../harness/logger.js';
+import { createTraceFilters } from '../langsmith/trace-filters.js';
 
 describe('trace-filters', () => {
 	it('should not trim messages (keeps array) while still filtering other large state fields', () => {

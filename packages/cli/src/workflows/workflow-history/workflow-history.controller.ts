@@ -6,12 +6,12 @@ import {
 import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Query, Body, Patch, Param, Licensed } from '@n8n/decorators';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { WorkflowHistoryRequest } from '@/requests';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error.js';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
+import { WorkflowHistoryRequest } from '@/requests.js';
 
-import { WorkflowHistoryService } from './workflow-history.service';
+import { WorkflowHistoryService } from './workflow-history.service.js';
 
 const DEFAULT_TAKE = 20;
 

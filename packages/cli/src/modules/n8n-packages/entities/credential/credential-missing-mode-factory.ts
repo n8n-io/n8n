@@ -1,12 +1,12 @@
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
 import {
 	MustPreexistCredentialMissingModeHandler,
 	type CredentialMissingModeHandler,
-} from './credential-missing-mode';
-import type { CredentialMissingMode } from '../../n8n-packages.types';
+} from './credential-missing-mode.js';
+import type { CredentialMissingMode } from '../../n8n-packages.types.js';
 
 @Service()
 export class CredentialMissingModeFactory {

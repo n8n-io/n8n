@@ -3,17 +3,17 @@ import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import jwt from 'jsonwebtoken';
 import { mock } from 'jest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { JwtService } from '@/services/jwt.service';
+import type { JwtService } from '@/services/jwt.service.js';
 
-import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
-import type { TokenExchangeConfig } from '../../token-exchange.config';
-import type { IdentityResolutionService } from '../identity-resolution.service';
-import type { JtiStoreService } from '../jti-store.service';
-import { TokenExchangeService } from '../token-exchange.service';
-import type { TrustedKeyService } from '../trusted-key.service';
+import type { ResolvedTrustedKey } from '../../token-exchange.schemas.js';
+import type { TokenExchangeConfig } from '../../token-exchange.config.js';
+import type { IdentityResolutionService } from '../identity-resolution.service.js';
+import type { JtiStoreService } from '../jti-store.service.js';
+import { TokenExchangeService } from '../token-exchange.service.js';
+import type { TrustedKeyService } from '../trusted-key.service.js';
 
 const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 const trustedKeyStore = mock<TrustedKeyService>();

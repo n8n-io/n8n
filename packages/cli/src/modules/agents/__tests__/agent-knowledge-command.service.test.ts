@@ -2,7 +2,7 @@ import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
+import { AgentKnowledgeCommandService } from '../agent-knowledge-command.service.js';
 
 jest.unmock('node:fs/promises');
 

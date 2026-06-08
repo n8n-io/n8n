@@ -8,15 +8,15 @@ import {
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { Telemetry } from '@/telemetry';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { Telemetry } from '@/telemetry/index.js';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee.js';
 
 import {
 	FIRST_CREDENTIAL_ID,
 	SECOND_CREDENTIAL_ID,
 	THIRD_CREDENTIAL_ID,
 	getWorkflow,
-} from '../shared/workflow';
+} from '../shared/workflow.js';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;

@@ -1,8 +1,8 @@
-import { createAddDataTableRowsTool } from '../../tools/data-table';
+import { createAddDataTableRowsTool } from '../../tools/data-table/index.js';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
 
-import { createTelemetry, user } from './test-utils';
+import { createTelemetry, user } from './test-utils.js';
 
 const createMocks = (overrides?: { insertedRows?: number; error?: Error }) => {
 	const dataTableOps = {

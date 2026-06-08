@@ -4,8 +4,8 @@ import type { EvaluationConfig, EvaluationConfigRepository } from '@n8n/db';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { EvaluationConfigValidator } from '../evaluation-config-validator';
-import { EvaluationConfigService } from '../evaluation-config.service';
+import type { EvaluationConfigValidator } from '../evaluation-config-validator.js';
+import { EvaluationConfigService } from '../evaluation-config.service.js';
 
 function makePayload(over: Partial<UpsertEvaluationConfigDto> = {}): UpsertEvaluationConfigDto {
 	return {

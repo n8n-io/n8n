@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import type { ActionEvent, Author, Chat, Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
 import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
@@ -11,12 +12,27 @@ import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+=======
+import type { AgentsService } from '../agents.service.js';
+import type { RichSuspendPayload } from '../types/index.js';
+import { integrationMemoryResourceId } from '../utils/agent-memory-scope.js';
+import type { AgentChatIntegration } from './agent-chat-integration.js';
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { CallbackStore } from './callback-store.js';
+import { RICH_INTERACTION_RESUME_JSON_SCHEMA, type ComponentMapper } from './component-mapper.js';
+import { IntegrationMessageContextService } from './integration-message-context.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	buildIntegrationConnectionId,
 	type IntegrationMessageContext,
 	type IntegrationMessageSubject,
-} from './integration-tools';
-import { type InternalThread, type TextEndFn, type TextYieldFn, toInternalThreadId } from './types';
+} from './integration-tools.js';
+import {
+	type InternalThread,
+	type TextEndFn,
+	type TextYieldFn,
+	toInternalThreadId,
+} from './types.js';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 interface PlatformAgentContext {

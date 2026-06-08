@@ -5,14 +5,14 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
-import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
-import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
-import { OAuthSessionService } from '../oauth-session.service';
+import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity.js';
+import type { OAuthClient } from '../database/entities/oauth-client.entity.js';
+import { OAuthClientRepository } from '../database/repositories/oauth-client.repository.js';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository.js';
+import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service.js';
+import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service.js';
+import { McpOAuthTokenService } from '../mcp-oauth-token.service.js';
+import { OAuthSessionService } from '../oauth-session.service.js';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;

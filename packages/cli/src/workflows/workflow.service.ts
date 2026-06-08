@@ -41,36 +41,36 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils.js';
+import { WorkflowFinderService } from './workflow-finder.service.js';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service.js';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
-import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
-import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
-import { NodeTypes } from '@/node-types';
-import type { ListQuery } from '@/requests';
-import { hasSharing } from '@/requests';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
-import { TagService } from '@/services/tag.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error.js';
+import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error.js';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { validateEntity } from '@/generic-helpers.js';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service.js';
+import { NodeTypes } from '@/node-types.js';
+import type { ListQuery } from '@/requests.js';
+import { hasSharing } from '@/requests.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleService } from '@/services/role.service.js';
+import { TagService } from '@/services/tag.service.js';
+import * as WorkflowHelpers from '@/workflow-helpers.js';
+import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data.js';
 
-import { WorkflowValidationService } from './workflow-validation.service';
-import { WebhookService } from '@/webhooks/webhook.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { WorkflowValidationService } from './workflow-validation.service.js';
+import { WebhookService } from '@/webhooks/webhook.service.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
 
 @Service()
 export class WorkflowService {
@@ -211,7 +211,7 @@ export class WorkflowService {
 		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
 	>(workflows: T[]): Promise<(T & { hasResolvableCredentials: boolean })[]> {
 		// Use lazy import to avoid circular dependency
-		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+		const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
 
 		const workflowIds = workflows.map((w) => w.id);

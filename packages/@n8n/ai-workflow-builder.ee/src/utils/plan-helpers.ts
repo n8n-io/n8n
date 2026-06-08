@@ -1,4 +1,4 @@
-import type { PlanOutput } from '@/types/planning';
+import type { PlanOutput } from '@/types/planning.js';
 
 /**
  * Format a PlanOutput as human-readable text.

@@ -6,10 +6,10 @@ import { mock } from 'jest-mock-extended';
 import { Cipher, UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType } from 'n8n-workflow';
 
-import type { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { ICredentialsOverwrite } from '@/interfaces';
-import { StaticAuthService } from '@/services/static-auth-service';
+import type { CredentialTypes } from '@/credential-types.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import type { ICredentialsOverwrite } from '@/interfaces.js';
+import { StaticAuthService } from '@/services/static-auth-service.js';
 
 describe('CredentialsOverwrites', () => {
 	const testCredentialType = mock<ICredentialType>({ name: 'test', extends: ['parent'] });
@@ -265,7 +265,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service - need to import the class first
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			publisherMock = { publishCommand: jest.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -530,7 +530,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			publisherMock = { publishCommand: jest.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -920,7 +920,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			publisherMock = { publishCommand: jest.fn() };
 			mockInstance(Publisher, publisherMock);
 

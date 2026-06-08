@@ -3,8 +3,8 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { EXTERNAL_SECRETS_DB_KEY } from './constants';
-import type { ExternalSecretsSettings, SecretsProviderSettings } from './types';
+import { EXTERNAL_SECRETS_DB_KEY } from './constants.js';
+import type { ExternalSecretsSettings, SecretsProviderSettings } from './types.js';
 
 /**
  * Handles encrypted persistence of secrets provider settings

@@ -1,10 +1,10 @@
 import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
 
-import { buildDiscoverResponse } from './discover.service';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { buildDiscoverResponse } from './discover.service.js';
+import type { PublicAPIEndpoint } from '../../shared/handler.types.js';
 
 const API_KEY_AUDIENCE = 'public-api';
 

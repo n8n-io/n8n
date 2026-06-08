@@ -22,24 +22,24 @@ import {
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
-import type { AbstractServer } from '@/abstract-server';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
-import * as CrashJournal from '@/crash-journal';
-import { getDataDeduplicationService } from '@/deduplication';
-import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
-import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
-import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
-import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { AbstractServer } from '@/abstract-server.js';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants.js';
+import * as CrashJournal from '@/crash-journal.js';
+import { getDataDeduplicationService } from '@/deduplication/index.js';
+import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay.js';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay.js';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { License } from '@/license.js';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
+import { NodeTypes } from '@/node-types.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { ShutdownService } from '@/shutdown/shutdown.service.js';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util.js';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -175,7 +175,7 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
 			await Container.get(TaskRunnerModule).start();
 		}
 
@@ -208,7 +208,7 @@ export abstract class BaseCommand<F = never> {
 		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
+				'@/modules/community-packages/community-packages.service.js'
 			);
 			await Container.get(CommunityPackagesService).init();
 		}
@@ -249,7 +249,7 @@ export abstract class BaseCommand<F = never> {
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
 
-		const { DatabaseManager } = await import('@/binary-data/database.manager');
+		const { DatabaseManager } = await import('@/binary-data/database.manager.js');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
 
 		if (isS3WriteMode) {

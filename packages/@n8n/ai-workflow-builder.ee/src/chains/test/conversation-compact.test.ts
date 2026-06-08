@@ -3,7 +3,7 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 
-import { conversationCompactChain } from '../conversation-compact';
+import { conversationCompactChain } from '../conversation-compact.js';
 
 // Mock structured output for testing
 class MockStructuredLLM extends FakeListChatModel {

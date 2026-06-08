@@ -17,7 +17,7 @@ import {
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	partitionAiRoots,
-} from '../workflow-analysis';
+} from '../workflow-analysis.js';
 import { UserError } from 'n8n-workflow';
 
 const mockedCreateEvalAgent = jest.mocked(createEvalAgent);

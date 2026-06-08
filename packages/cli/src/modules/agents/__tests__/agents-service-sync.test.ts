@@ -4,17 +4,17 @@ import type { AgentsConfig } from '@n8n/config';
 import type { ProjectRelationRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentSkillsService } from '../agent-skills.service';
-import { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentExecutionService } from '../agent-execution.service.js';
+import type { AgentSkillsService } from '../agent-skills.service.js';
+import { AgentsService } from '../agents.service.js';
+import type { Agent } from '../entities/agent.entity.js';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
+import type { N8nMemory } from '../integrations/n8n-memory.js';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { AgentRepository } from '../repositories/agent.repository';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service.js';
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {

@@ -5,22 +5,22 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
-} from '@/constants';
-import type { UserLike } from '@/events/maps/relay.event-map';
-import { EventService } from '@/events/event.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { Push } from '@/push';
+} from '@/constants.js';
+import type { UserLike } from '@/events/maps/relay.event-map.js';
+import { EventService } from '@/events/event.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { Push } from '@/push/index.js';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
-import { CommunityNodeTypesService } from './community-node-types.service';
-import { CommunityPackagesConfig } from './community-packages.config';
-import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service';
-import type { CommunityPackages } from './community-packages.types';
-import type { InstalledPackages } from './installed-packages.entity';
-import { executeNpmCommand, isNpmExecErrorWithStdout } from './npm-utils';
+import { CommunityNodeTypesService } from './community-node-types.service.js';
+import { CommunityPackagesConfig } from './community-packages.config.js';
+import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service.js';
+import type { CommunityPackages } from './community-packages.types.js';
+import type { InstalledPackages } from './installed-packages.entity.js';
+import { executeNpmCommand, isNpmExecErrorWithStdout } from './npm-utils.js';
 
 const {
 	PACKAGE_NOT_INSTALLED,

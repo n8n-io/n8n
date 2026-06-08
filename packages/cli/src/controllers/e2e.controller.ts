@@ -22,16 +22,16 @@ import type nodePath from 'node:path';
 import type nodeV8 from 'node:v8';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { inE2ETests } from '@/constants';
-import type { FeatureReturnType } from '@/license';
-import { License } from '@/license';
-import { MfaService } from '@/mfa/mfa.service';
-import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
-import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
-import { FrontendService } from '@/services/frontend.service';
-import { PasswordUtility } from '@/services/password.utility';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { inE2ETests } from '@/constants.js';
+import type { FeatureReturnType } from '@/license.js';
+import { License } from '@/license.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service.js';
+import { Push } from '@/push/index.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { FrontendService } from '@/services/frontend.service.js';
+import { PasswordUtility } from '@/services/password.utility.js';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');

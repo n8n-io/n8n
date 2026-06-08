@@ -13,16 +13,16 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import type { IWorkflowErrorData } from '@/interfaces';
-import type { NodeTypes } from '@/node-types';
-import type { OwnershipService } from '@/services/ownership.service';
-import type { TestWebhooks } from '@/webhooks/test-webhooks';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { toITaskData } from '@test/helpers';
+import type { IWorkflowErrorData } from '@/interfaces.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
+import type { TestWebhooks } from '@/webhooks/test-webhooks.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { toITaskData } from '@test/helpers.js';
 
-import type { WorkflowRequest } from '../workflow.request';
+import type { WorkflowRequest } from '../workflow.request.js';
 
 const webhookNode: INode = {
 	name: 'Webhook',

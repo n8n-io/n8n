@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
 
-import { KeyManagerService } from './key-manager.service';
+import { KeyManagerService } from './key-manager.service.js';
 
 @Service()
 export class EncryptionBootstrapService {

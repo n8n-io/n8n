@@ -9,7 +9,7 @@ import { type Readable } from 'stream';
 import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
 
 const xmlParser = new XmlParser({
 	async: true,

@@ -1,7 +1,7 @@
 import type { Project, User } from '@n8n/db';
 
-import type { CredentialMatchingMode, CredentialMissingMode } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type { CredentialMatchingMode, CredentialMissingMode } from '../../n8n-packages.types.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 export interface WorkflowCredentialRequirement {
 	workflowId: string;

@@ -10,9 +10,9 @@ import {
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import { License } from '@/license';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { License } from '@/license.js';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service.js';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];

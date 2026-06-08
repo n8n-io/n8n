@@ -4,16 +4,22 @@ import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
 import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
+=======
+import type { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
+import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service.js';
+import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import type {
 	ChatHubExecutionStore,
 	ChatHubExecutionContext,
-} from '@/modules/chat-hub/chat-hub-execution-store.service';
-import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository';
-import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
+} from '@/modules/chat-hub/chat-hub-execution-store.service.js';
+import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository.js';
+import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service.js';
 
 const EXECUTION_ID = '12345678';
 const SESSION_ID = 'bbbbbbbb-2222-4000-8000-000000000002';

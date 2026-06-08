@@ -1,9 +1,9 @@
 import { Container } from '@n8n/di';
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-import type { CredentialTypes } from '@/credential-types';
+import type { CredentialTypes } from '@/credential-types.js';
 
-import { extractSharedFields } from '../shared-fields';
+import { extractSharedFields } from '../shared-fields.js';
 
 describe('extractSharedFields', () => {
 	describe('with only static fields', () => {

@@ -1,4 +1,4 @@
-import type { ProgrammaticEvaluationResult, SingleEvaluatorResult } from '@/validation/types';
+import type { ProgrammaticEvaluationResult, SingleEvaluatorResult } from '@/validation/types.js';
 
 /**
  * Importance tiers for score weighting.

@@ -1,4 +1,4 @@
-import { webhookNotFoundErrorMessage } from '@/errors/response-errors/webhook-not-found.error';
+import { webhookNotFoundErrorMessage } from '@/errors/response-errors/webhook-not-found.error.js';
 
 describe('utils test webhookNotFoundErrorMessage ', () => {
 	it('should return a message with path and method', () => {

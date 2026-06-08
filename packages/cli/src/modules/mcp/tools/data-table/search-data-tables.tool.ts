@@ -2,12 +2,12 @@ import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { createLimitSchema, dataTableSchema } from '../schemas';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types.js';
+import { createLimitSchema, dataTableSchema } from '../schemas.js';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { Telemetry } from '@/telemetry';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 const SEARCH_MAX_RESULTS = 100;
 

@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { writeResultsCsv } from '../csv-writer';
-import type { ExampleResult } from '../harness-types';
+import { writeResultsCsv } from '../csv-writer.js';
+import type { ExampleResult } from '../harness-types.js';
 
 describe('writeResultsCsv', () => {
 	let tempDir: string;

@@ -26,21 +26,21 @@ import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository.js';
+import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service.js';
+import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service.js';
 
-import { SourceControlImportService } from '../source-control-import.service.ee';
-import type { SourceControlContextFactory } from '../source-control-context.factory';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
-import type { ExportableFolder } from '../types/exportable-folders';
-import type { ExportableProject } from '../types/exportable-project';
-import { SourceControlContext } from '../types/source-control-context';
+import { SourceControlImportService } from '../source-control-import.service.ee.js';
+import type { SourceControlContextFactory } from '../source-control-context.factory.js';
+import type { SourceControlScopedService } from '../source-control-scoped.service.js';
+import type { ExportableFolder } from '../types/exportable-folders.js';
+import type { ExportableProject } from '../types/exportable-project.js';
+import { SourceControlContext } from '../types/source-control-context.js';
 
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
 jest.mock('fast-glob');
 

@@ -4,11 +4,11 @@ import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { ApiKeyAudience, ensureError } from 'n8n-workflow';
 
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { JwtService } from '@/services/jwt.service';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry.js';
+import { JwtService } from '@/services/jwt.service.js';
 
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
-import { UserWithContext } from './mcp.types';
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository.js';
+import { UserWithContext } from './mcp.types.js';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';

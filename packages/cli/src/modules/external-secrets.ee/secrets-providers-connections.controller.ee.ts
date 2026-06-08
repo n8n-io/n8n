@@ -21,11 +21,11 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { sendErrorResponse } from '@/response-helper';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { sendErrorResponse } from '@/response-helper.js';
 
-import { ExternalSecretsConfig } from './external-secrets.config';
-import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
+import { ExternalSecretsConfig } from './external-secrets.config.js';
+import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee.js';
 
 @RestController('/secret-providers/connections')
 export class SecretProvidersConnectionsController {

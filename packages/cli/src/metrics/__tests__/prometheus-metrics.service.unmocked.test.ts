@@ -6,12 +6,12 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
-import type { EventService } from '@/events/event.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow.js';
+import type { EventService } from '@/events/event.service.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus';
-import { PrometheusMetricsService } from '../prometheus-metrics.service';
+import { MessageEventBus } from '../../eventbus/message-event-bus/message-event-bus.js';
+import { PrometheusMetricsService } from '../prometheus-metrics.service.js';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 

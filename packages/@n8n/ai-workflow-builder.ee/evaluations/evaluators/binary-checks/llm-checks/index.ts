@@ -1,10 +1,10 @@
-import type { BinaryCheck } from '../types';
-import { correctNodeOperations } from './correct-node-operations';
-import { descriptiveNodeNames } from './descriptive-node-names';
-import { fulfillsUserRequest } from './fulfills-user-request';
-import { handlesMultipleItems } from './handles-multiple-items';
-import { responseMatchesWorkflowChanges } from './response-matches-workflow-changes';
-import { validDataFlow } from './valid-data-flow';
+import type { BinaryCheck } from '../types.js';
+import { correctNodeOperations } from './correct-node-operations.js';
+import { descriptiveNodeNames } from './descriptive-node-names.js';
+import { fulfillsUserRequest } from './fulfills-user-request.js';
+import { handlesMultipleItems } from './handles-multiple-items.js';
+import { responseMatchesWorkflowChanges } from './response-matches-workflow-changes.js';
+import { validDataFlow } from './valid-data-flow.js';
 
 export const LLM_CHECKS: BinaryCheck[] = [
 	fulfillsUserRequest,

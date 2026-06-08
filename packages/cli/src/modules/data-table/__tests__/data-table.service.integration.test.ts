@@ -5,16 +5,16 @@ import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataTableRow } from 'n8n-workflow';
 
-import { DataTableRowsRepository } from '../data-table-rows.repository';
-import { DataTableRepository } from '../data-table.repository';
-import { DataTableService } from '../data-table.service';
-import { mockDataTableSizeValidator } from './test-helpers';
-import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
-import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
-import { DataTableNameConflictError } from '../errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
-import { toTableName } from '../utils/sql-utils';
+import { DataTableRowsRepository } from '../data-table-rows.repository.js';
+import { DataTableRepository } from '../data-table.repository.js';
+import { DataTableService } from '../data-table.service.js';
+import { mockDataTableSizeValidator } from './test-helpers.js';
+import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error.js';
+import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error.js';
+import { DataTableNameConflictError } from '../errors/data-table-name-conflict.error.js';
+import { DataTableNotFoundError } from '../errors/data-table-not-found.error.js';
+import { DataTableValidationError } from '../errors/data-table-validation.error.js';
+import { toTableName } from '../utils/sql-utils.js';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);

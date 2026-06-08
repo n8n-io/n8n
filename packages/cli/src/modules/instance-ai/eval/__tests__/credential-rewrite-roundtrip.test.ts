@@ -7,8 +7,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
-import { LlmWireServer } from '../llm-wire-server';
+import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper.js';
+import { LlmWireServer } from '../llm-wire-server.js';
 
 // End-to-end: boot wire server, rewrite openAiApi.url to /eval/<root>/v1,
 // POST to the rewritten URL, verify root-token attribution + envelope shape.

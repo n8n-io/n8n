@@ -3,14 +3,14 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { WorkerServer } from '@/scaling/worker-server';
-import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
-import { RedisClientService } from '@/services/redis-client.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
+import { WorkerServer } from '@/scaling/worker-server.js';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee.js';
+import { RedisClientService } from '@/services/redis-client.service.js';
 
-import { Worker } from '../worker';
+import { Worker } from '../worker.js';
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);

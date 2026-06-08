@@ -7,11 +7,11 @@ import { ErrorReporter } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import { executeErrorWorkflow } from '../execute-error-workflow';
+import { executeErrorWorkflow } from '../execute-error-workflow.js';
 
 describe('executeErrorWorkflow', () => {
 	mockInstance(Logger);

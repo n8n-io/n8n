@@ -1,7 +1,7 @@
-export { createAiTools, convertNodeToAiTool, findLastCalloutIndex } from './ai-tools';
+export { createAiTools, convertNodeToAiTool, findLastCalloutIndex } from './ai-tools.js';
 export {
 	createHitlTools,
 	convertNodeToHitlTool,
 	hasSendAndWaitOperation,
-} from './hitl-tools';
-export { copyCredentialSupport, isFullDescription, setToolCodex } from './utils';
+} from './hitl-tools.js';
+export { copyCredentialSupport, isFullDescription, setToolCodex } from './utils.js';

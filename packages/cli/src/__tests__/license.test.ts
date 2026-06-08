@@ -5,8 +5,8 @@ import { LicenseManager } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
+import { N8N_VERSION } from '@/constants.js';
+import { License } from '@/license.js';
 
 jest.mock('@n8n_io/license-sdk');
 

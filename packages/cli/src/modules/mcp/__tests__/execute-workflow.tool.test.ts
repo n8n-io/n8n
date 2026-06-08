@@ -10,14 +10,14 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { createWorkflow } from './mock.utils';
-import { WorkflowAccessError } from '../mcp.errors';
-import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
+import { createWorkflow } from './mock.utils.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
+import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool.js';
 
-import { McpService } from '@/modules/mcp/mcp.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { McpService } from '@/modules/mcp/mcp.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

@@ -24,24 +24,24 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExternalHooks } from '@/external-hooks';
-import { Push } from '@/push';
-import { ExecutionMetadataService } from '@/services/execution-metadata.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { EventService } from '@/events/event.service.js';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { Push } from '@/push/index.js';
+import { ExecutionMetadataService } from '@/services/execution-metadata.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
 
 import {
 	getLifecycleHooksForSubExecutions,
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
-} from '../execution-lifecycle-hooks';
+} from '../execution-lifecycle-hooks.js';
 
 describe('Execution Lifecycle Hooks', () => {
 	mockInstance(Logger);

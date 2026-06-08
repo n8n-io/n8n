@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { promises as dns } from 'node:dns';
 import type { LookupAddress, LookupOptions } from 'node:dns';
 
-import { InMemoryDnsCache } from './in-memory-dns-cache.service';
+import { InMemoryDnsCache } from './in-memory-dns-cache.service.js';
 
 export type DnsLookupOptions = Pick<
 	LookupOptions,

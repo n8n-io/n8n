@@ -9,7 +9,7 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests.js';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{

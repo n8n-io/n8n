@@ -1,4 +1,4 @@
-import { STREAM_SEPARATOR } from '../../constants';
+import { STREAM_SEPARATOR } from '../../constants.js';
 import type {
 	AgentMessageChunk,
 	AgentSuggestionChunk,
@@ -6,9 +6,14 @@ import type {
 	StreamChunk,
 	SummaryChunk,
 	ToolProgressChunk,
-} from '../../types/streaming';
-import { AssistantHandler } from '../assistant-handler';
-import type { AssistantContext, AssistantSdkClient, SdkStreamChunk, StreamWriter } from '../types';
+} from '../../types/streaming.js';
+import { AssistantHandler } from '../assistant-handler.js';
+import type {
+	AssistantContext,
+	AssistantSdkClient,
+	SdkStreamChunk,
+	StreamWriter,
+} from '../types.js';
 
 /**
  * Create a mock Response with a ReadableStream body encoding the given chunks

@@ -14,18 +14,18 @@ import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import { AiService } from '@/services/ai.service.js';
+import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
 
 import {
 	isSupportedAgentProvider,
 	mapCredentialForProvider,
 	SUPPORTED_AGENT_PROVIDERS,
-} from '../json-config/credential-field-mapping';
-import { BuilderNotConfiguredError } from './errors';
+} from '../json-config/credential-field-mapping.js';
+import { BuilderNotConfiguredError } from './errors.js';
 
 const SETTINGS_KEY = 'agentBuilder.settings';
 

@@ -7,11 +7,11 @@ import type {
 	IExecutionContext,
 } from 'n8n-workflow';
 
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
+import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service.js';
 
 import { ExecutionContextService } from 'n8n-core';
-import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
+import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service.js';
 
 @Service()
 export class CredentialCheckProxyService implements DynamicCredentialCheckProxyProvider {

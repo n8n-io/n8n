@@ -13,41 +13,41 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createCredentials } from '@test-integration/db/credentials';
-import { createDataTable } from '@test-integration/db/data-tables';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
-import { createUser } from '@test-integration/db/users';
+import { createCredentials } from '@test-integration/db/credentials.js';
+import { createDataTable } from '@test-integration/db/data-tables.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags.js';
+import { createUser } from '@test-integration/db/users.js';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import fsp from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 
-import { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTable } from '@/modules/data-table/data-table.entity.js';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from '@/modules/source-control.ee/constants';
-import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
-import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee';
-import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
-import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
-import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
-import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import type { ExportableDataTable } from '@/modules/source-control.ee/types/exportable-data-table';
-import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
-import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
-import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+} from '@/modules/source-control.ee/constants.js';
+import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee.js';
+import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee.js';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee.js';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory.js';
+import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service.js';
+import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee.js';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee.js';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential.js';
+import type { ExportableDataTable } from '@/modules/source-control.ee/types/exportable-data-table.js';
+import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders.js';
+import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow.js';
+import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { EventService } from '@/events/event.service.js';
 
 jest.mock('fast-glob');
 

@@ -14,11 +14,11 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { UserService } from '@/services/user.service';
-import { TypedEmitter } from '@/typed-emitter';
+import { EventService } from '@/events/event.service.js';
+import { UserService } from '@/services/user.service.js';
+import { TypedEmitter } from '@/typed-emitter.js';
 
-import { OwnershipService } from './ownership.service';
+import { OwnershipService } from './ownership.service.js';
 
 const isStatusRootExecution = {
 	success: true,

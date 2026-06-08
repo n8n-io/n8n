@@ -1,7 +1,7 @@
 import { NodeTypeParser, searchCodeBuilderNodes } from '@n8n/ai-utilities/node-catalog';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
-import { createCodeBuilderSearchTool } from '../code-builder-search.tool';
+import { createCodeBuilderSearchTool } from '../code-builder-search.tool.js';
 
 // Mock node type with resource/operation pattern (like Freshservice)
 const mockFreshserviceNode: INodeTypeDescription = {

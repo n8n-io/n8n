@@ -13,6 +13,7 @@ import { mock } from 'jest-mock-extended';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
+<<<<<<< HEAD
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
@@ -25,6 +26,19 @@ import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
+=======
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error.js';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error.js';
+import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import type { ExecutionRequest } from '@/executions/execution.types.js';
+import { ScalingService } from '@/scaling/scaling.service.js';
+import type { Job } from '@/scaling/scaling.types.js';
+import type { WaitTracker } from '@/wait-tracker.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);

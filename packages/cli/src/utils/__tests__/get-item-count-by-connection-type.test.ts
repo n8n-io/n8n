@@ -1,6 +1,6 @@
 import type { ITaskData } from 'n8n-workflow';
 
-import { getItemCountByConnectionType } from '../get-item-count-by-connection-type';
+import { getItemCountByConnectionType } from '../get-item-count-by-connection-type.js';
 
 describe('getItemCountByConnectionType', () => {
 	it('should return an empty object when data is undefined', () => {

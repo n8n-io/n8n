@@ -2,8 +2,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
 import type { INode } from 'n8n-workflow';
 
-import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
-import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
+import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants.js';
+import { isRecord, isJSONRPCRequest } from './mcp.typeguards.js';
 
 type McpExecutionMode = 'manual' | 'production';
 

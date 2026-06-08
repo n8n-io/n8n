@@ -8,13 +8,13 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import { DataTableColumn } from './data-table-column.entity';
-import { DataTableDDLService } from './data-table-ddl.service';
-import { DataTable } from './data-table.entity';
-import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
-import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
-import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
-import { DataTableValidationError } from './errors/data-table-validation.error';
+import { DataTableColumn } from './data-table-column.entity.js';
+import { DataTableDDLService } from './data-table-ddl.service.js';
+import { DataTable } from './data-table.entity.js';
+import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error.js';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error.js';
+import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error.js';
+import { DataTableValidationError } from './errors/data-table-validation.error.js';
 
 @Service()
 export class DataTableColumnRepository extends Repository<DataTableColumn> {

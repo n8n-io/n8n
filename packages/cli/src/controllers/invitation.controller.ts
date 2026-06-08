@@ -5,19 +5,19 @@ import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { PostHogClient } from '@/posthog';
-import { AuthlessRequest } from '@/requests';
-import { PasswordUtility } from '@/services/password.utility';
-import { UserService } from '@/services/user.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { AuthService } from '@/auth/auth.service.js';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { License } from '@/license.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { AuthlessRequest } from '@/requests.js';
+import { PasswordUtility } from '@/services/password.utility.js';
+import { UserService } from '@/services/user.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers.js';
 import { Time } from '@n8n/constants';
 
 @RestController('/invitations')

@@ -12,17 +12,17 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
 	RESPONSE_ERROR_MESSAGES,
-} from '@/constants';
-import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { OAuthRequest } from '@/requests';
-import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
-import { UrlService } from '@/services/url.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+} from '@/constants.js';
+import { AuthService } from '@/auth/auth.service.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { OAuthRequest } from '@/requests.js';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url.js';
+import { UrlService } from '@/services/url.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 import {
 	ClientOAuth2,
 	type ClientOAuth2Options,
@@ -35,11 +35,11 @@ import axios from 'axios';
 import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
-} from '@/controllers/oauth/oauth2-dynamic-client-registration.schema';
+} from '@/controllers/oauth/oauth2-dynamic-client-registration.schema.js';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks } from '@/external-hooks.js';
 import type { AxiosRequestConfig } from 'axios';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
@@ -51,6 +51,7 @@ import {
 	type CreateCsrfStateData,
 	type CsrfState,
 	type OAuth1CredentialData,
+<<<<<<< HEAD
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -72,6 +73,14 @@ export type OauthFlowState = {
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
+=======
+} from './types.js';
+import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { EventService } from '@/events/event.service.js';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';

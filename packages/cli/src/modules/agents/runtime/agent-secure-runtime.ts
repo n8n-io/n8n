@@ -5,8 +5,8 @@ import { readFileSync } from 'fs';
 import type ivm from 'isolated-vm';
 import path from 'path';
 
-import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool';
-import type { ToolExecutor } from '../json-config/from-json-config';
+import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool.js';
+import type { ToolExecutor } from '../json-config/from-json-config.js';
 
 /**
  * Location of the pre-built library bundle (see scripts/bundle-agent-library.mjs).

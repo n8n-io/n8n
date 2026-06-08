@@ -6,14 +6,14 @@ import {
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
-} from '../agent-chat-integration';
-import { loadSlackAdapter } from '../esm-loader';
+} from '../agent-chat-integration.js';
+import { loadSlackAdapter } from '../esm-loader.js';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
 	IntegrationContextQuery,
-} from '../integration-tools';
-import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
+} from '../integration-tools.js';
+import { executeSlackAction, executeSlackContextQuery } from './slack-operations.js';
 
 /**
  * Slack platform integration.

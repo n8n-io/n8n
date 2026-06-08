@@ -8,7 +8,7 @@ import {
 	getNodeConnections,
 	formatConnectionMessage,
 	inferConnectionType,
-} from '../connection.utils';
+} from '../connection.utils.js';
 
 describe('connection.utils', () => {
 	// Mock node types

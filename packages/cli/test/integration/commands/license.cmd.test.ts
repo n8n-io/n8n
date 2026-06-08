@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { ClearLicenseCommand } from '@/commands/license/clear';
-import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import { ClearLicenseCommand } from '@/commands/license/clear.js';
+import { License } from '@/license.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ClearLicenseCommand);

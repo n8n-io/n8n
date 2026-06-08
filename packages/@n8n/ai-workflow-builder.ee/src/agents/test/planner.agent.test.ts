@@ -1,4 +1,4 @@
-import { parsePlanDecision, plannerOutputSchema } from '../planner.agent';
+import { parsePlanDecision, plannerOutputSchema } from '../planner.agent.js';
 
 describe('parsePlanDecision', () => {
 	it('returns approve for valid approve action', () => {

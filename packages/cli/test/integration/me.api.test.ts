@@ -12,10 +12,10 @@ import { Container } from '@n8n/di';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 import validator from 'validator';
 
-import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { createUser, createUserShell } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import { SUCCESS_RESPONSE_BODY } from './shared/constants.js';
+import { createUser, createUserShell } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 

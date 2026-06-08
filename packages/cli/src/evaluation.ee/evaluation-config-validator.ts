@@ -9,10 +9,10 @@ import { Service } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { getChildNodes, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
 
-import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry';
+import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry.js';
 
 const RESERVED_PREFIX = '__eval_';
 

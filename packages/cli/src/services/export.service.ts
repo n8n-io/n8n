@@ -5,10 +5,10 @@ import { Service } from '@n8n/di';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
-import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
+import { validateDbTypeForExportEntities } from '@/utils/validate-database-type.js';
 import { Cipher } from 'n8n-core';
-import { compressFolder } from '@/utils/compression.util';
-import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-utils';
+import { compressFolder } from '@/utils/compression.util.js';
+import { quoteIdentifier, toTableName } from '@/modules/data-table/utils/sql-utils.js';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 

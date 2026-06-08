@@ -6,7 +6,7 @@ import type { BinaryDataService } from 'n8n-core';
 import { FileNotFoundError } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
-import { BinaryDataController } from '../binary-data.controller';
+import { BinaryDataController } from '../binary-data.controller.js';
 
 describe('BinaryDataController', () => {
 	const request = mock<Request>();

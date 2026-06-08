@@ -11,7 +11,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
 // Store mocks for dependencies
 const mockParseEvaluationArgs = vi.fn();
@@ -223,7 +223,7 @@ describe('CLI', () => {
 					{ prompt: 'CSV prompt 2', id: '2' },
 				]);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -247,7 +247,7 @@ describe('CLI', () => {
 					}),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -266,7 +266,7 @@ describe('CLI', () => {
 			it('should use default test case when no prompt source specified', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -286,7 +286,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'llm-judge', backend: 'local' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -300,7 +300,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'llm-judge', backend: 'langsmith' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -314,7 +314,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'pairwise', backend: 'local', numJudges: 5 }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -334,7 +334,7 @@ describe('CLI', () => {
 					createMockArgs({ suite: 'pairwise', backend: 'langsmith' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -348,7 +348,7 @@ describe('CLI', () => {
 			it('should use local mode for backend=local', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'local' }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -362,7 +362,7 @@ describe('CLI', () => {
 			it('should use langsmith mode for backend=langsmith', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'langsmith' }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -381,7 +381,7 @@ describe('CLI', () => {
 					createMockArgs({ backend: 'langsmith', datasetName: 'custom-dataset' }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -396,7 +396,7 @@ describe('CLI', () => {
 				delete process.env.LANGSMITH_DATASET_NAME;
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ backend: 'langsmith' }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -417,7 +417,7 @@ describe('CLI', () => {
 					}),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -437,7 +437,7 @@ describe('CLI', () => {
 			it('should always exit with 0 on successful completion (pass/fail is informational)', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
@@ -445,7 +445,7 @@ describe('CLI', () => {
 			it('should exit with 0 even when pass rate is low', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 5 }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
@@ -453,7 +453,7 @@ describe('CLI', () => {
 			it('should exit with 0 even when no examples', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 0, passed: 0 }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
@@ -467,7 +467,7 @@ describe('CLI', () => {
 					createMockArgs({ featureFlags: { testFlag: true } }),
 				);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -480,7 +480,7 @@ describe('CLI', () => {
 			});
 
 			it('should setup test environment', async () => {
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -490,7 +490,7 @@ describe('CLI', () => {
 			it('should create console lifecycle with verbose option', async () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ verbose: true }));
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit');
 
@@ -511,7 +511,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -529,7 +529,7 @@ describe('CLI', () => {
 				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ webhookUrl: undefined }));
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -548,7 +548,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -572,7 +572,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -597,7 +597,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(summary);
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 
@@ -614,7 +614,7 @@ describe('CLI', () => {
 				);
 				mockRunEvaluation.mockResolvedValue(createMockSummary());
 
-				const { runV2Evaluation } = await import('../cli');
+				const { runV2Evaluation } = await import('../cli/index.js');
 
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 

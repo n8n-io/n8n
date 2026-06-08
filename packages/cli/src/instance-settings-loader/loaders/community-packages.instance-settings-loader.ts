@@ -5,15 +5,15 @@ import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
-import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service.js';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
 import {
 	CommunityPackagesService,
 	isValidVersionSpecifier,
-} from '@/modules/community-packages/community-packages.service';
-import { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
+} from '@/modules/community-packages/community-packages.service.js';
+import { InstalledPackages } from '@/modules/community-packages/installed-packages.entity.js';
 
-import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error.js';
 
 const envPackageSchema = z
 	.object({

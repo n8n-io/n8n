@@ -6,15 +6,15 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
-import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
-import { ExecutionDataWriteError } from './execution-data-write.error';
+import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants.js';
+import { CorruptedExecutionDataError } from './corrupted-execution-data.error.js';
+import { ExecutionDataWriteError } from './execution-data-write.error.js';
 import type {
 	ExecutionDataStore,
 	ExecutionRef,
 	ExecutionDataPayload,
 	ExecutionDataBundle,
-} from './types';
+} from './types.js';
 
 // Max number of bundles read concurrently, to bound open file descriptors.
 const MAX_READ_CONCURRENCY = 50;

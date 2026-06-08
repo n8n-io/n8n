@@ -4,14 +4,19 @@ import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from
 import { ensureError, jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { getMcpWorkflow } from './workflow-validation.utils';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { getMcpWorkflow } from './workflow-validation.utils.js';
 
+<<<<<<< HEAD
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+=======
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),

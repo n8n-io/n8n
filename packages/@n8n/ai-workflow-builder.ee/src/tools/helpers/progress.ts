@@ -6,7 +6,7 @@ import type {
 	ToolError,
 	ProgressReporter,
 	BatchReporter,
-} from '../../types/tools';
+} from '../../types/tools.js';
 
 /**
  * Create a progress reporter for a tool execution

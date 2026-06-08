@@ -2,7 +2,7 @@ import type { StreamChunk } from '@n8n/agents';
 import { scrubSecretsInText } from '@n8n/utils';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
-import type { ToolRegistry } from './tool-registry';
+import type { ToolRegistry } from './tool-registry.js';
 
 /**
  * Walk a nodeParameters tree and substitute templated values with what the

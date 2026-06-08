@@ -2,15 +2,15 @@ import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import type { SimpleWorkflow } from '../types/workflow';
-import { isTriggerNodeType } from '../utils/node-helpers';
-import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor';
-import { truncateJson } from '../utils/truncate-json';
-import { createProgressReporter } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getEffectiveWorkflow } from './helpers/state';
-import { mermaidStringify } from './utils/mermaid.utils';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
+import { isTriggerNodeType } from '../utils/node-helpers.js';
+import type { BuilderTool, BuilderToolBase } from '../utils/stream-processor.js';
+import { truncateJson } from '../utils/truncate-json.js';
+import { createProgressReporter } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getEffectiveWorkflow } from './helpers/state.js';
+import { mermaidStringify } from './utils/mermaid.utils.js';
 
 const DISPLAY_TITLE = 'Getting workflow overview';
 

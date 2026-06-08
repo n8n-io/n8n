@@ -1,5 +1,5 @@
-import type { ExportableVariable } from './exportable-variable';
-import type { TeamResourceOwner } from './resource-owner';
+import type { ExportableVariable } from './exportable-variable.js';
+import type { TeamResourceOwner } from './resource-owner.js';
 
 export interface ExportableProject {
 	id: string;

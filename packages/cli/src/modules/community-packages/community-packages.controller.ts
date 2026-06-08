@@ -1,8 +1,8 @@
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@n8n/decorators';
 
-import { NodeRequest } from '@/requests';
+import { NodeRequest } from '@/requests.js';
 
-import { CommunityPackagesLifecycleService } from './community-packages.lifecycle.service';
+import { CommunityPackagesLifecycleService } from './community-packages.lifecycle.service.js';
 
 @RestController('/community-packages')
 export class CommunityPackagesController {

@@ -18,11 +18,11 @@ import type { Mock, MockedFunction } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { ProgrammaticEvaluationResult } from '@/validation/types';
+import type { ProgrammaticEvaluationResult } from '@/validation/types.js';
 
-import type { ResourceLocatorCallback } from '../src/types/callbacks';
-import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
-import type { SimpleWorkflow } from '../src/types/workflow';
+import type { ResourceLocatorCallback } from '../src/types/callbacks.js';
+import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools.js';
+import type { SimpleWorkflow } from '../src/types/workflow.js';
 
 export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressReporter>();
 

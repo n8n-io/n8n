@@ -34,13 +34,13 @@ import {
 	createEmptyRunExecutionData,
 } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
-import { CredentialsHelper } from '../credentials-helper';
+import { RESPONSE_ERROR_MESSAGES } from '../constants.js';
+import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils.js';
+import { CredentialsHelper } from '../credentials-helper.js';
 
-import { CredentialTypes } from '@/credential-types';
-import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { CredentialTypes } from '@/credential-types.js';
+import { NodeTypes } from '@/node-types.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 

@@ -14,17 +14,17 @@ import type {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error.js';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
-} from '@/webhooks/test-webhook-registrations.service';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import type { WebhookService } from '@/webhooks/webhook.service';
-import type { WebhookRequest } from '@/webhooks/webhook.types';
-import * as AdditionalData from '@/workflow-execute-additional-data';
+} from '@/webhooks/test-webhook-registrations.service.js';
+import { TestWebhooks } from '@/webhooks/test-webhooks.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import type { WebhookService } from '@/webhooks/webhook.service.js';
+import type { WebhookRequest } from '@/webhooks/webhook.types.js';
+import * as AdditionalData from '@/workflow-execute-additional-data.js';
 
 jest.mock('@/workflow-execute-additional-data');
 

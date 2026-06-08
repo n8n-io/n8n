@@ -13,12 +13,12 @@ import axios from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import type { IAgentExecutionTrackProperties, IExecutionTrackProperties } from '@/interfaces';
-import { License } from '@/license';
-import { PostHogClient } from '@/posthog';
+import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants.js';
+import type { IAgentExecutionTrackProperties, IExecutionTrackProperties } from '@/interfaces.js';
+import { License } from '@/license.js';
+import { PostHogClient } from '@/posthog/index.js';
 
-import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee.js';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'

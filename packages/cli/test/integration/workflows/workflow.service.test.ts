@@ -21,22 +21,22 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { NodeTypes } from '@/node-types';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { NodeTypes } from '@/node-types.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleService } from '@/services/role.service.js';
 
-import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
-import { createOwner, createMember } from '../shared/db/users';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
-import { WebhookService } from '@/webhooks/webhook.service';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles.js';
+import { createOwner, createMember } from '../shared/db/users.js';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history.js';
+import { WebhookService } from '@/webhooks/webhook.service.js';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;

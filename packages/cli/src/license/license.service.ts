@@ -5,11 +5,11 @@ import { Service } from '@n8n/di';
 import axios, { AxiosError } from 'axios';
 import { ensureError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { UrlService } from '@/services/url.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error.js';
+import { EventService } from '@/events/event.service.js';
+import { License } from '@/license.js';
+import { UrlService } from '@/services/url.service.js';
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',

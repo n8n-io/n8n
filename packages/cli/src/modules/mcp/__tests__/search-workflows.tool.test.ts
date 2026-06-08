@@ -8,11 +8,11 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
-import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils.js';
+import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool.js';
 
-import { Telemetry } from '@/telemetry';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
 import { v4 as uuid } from 'uuid';
 

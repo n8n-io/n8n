@@ -8,7 +8,7 @@ import {
 	withTimeout,
 	extractSubgraphMetrics,
 	collectAgentTextResponse,
-} from '../harness/evaluation-helpers';
+} from '../harness/evaluation-helpers.js';
 
 describe('evaluation-helpers', () => {
 	describe('withTimeout()', () => {

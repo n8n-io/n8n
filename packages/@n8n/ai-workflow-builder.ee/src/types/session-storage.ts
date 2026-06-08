@@ -1,4 +1,4 @@
-import type { LangchainMessage } from './sessions';
+import type { LangchainMessage } from './sessions.js';
 
 export interface StoredSession {
 	messages: LangchainMessage[];

@@ -8,12 +8,12 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
-import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
-import { SessionManagerService } from '@/session-manager.service';
-import { formatMessages } from '@/utils/stream-processor';
-import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
+import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service.js';
+import { LLMServiceError } from '@/errors/index.js';
+import { anthropicClaudeSonnet45 } from '@/llm-config.js';
+import { SessionManagerService } from '@/session-manager.service.js';
+import { formatMessages } from '@/utils/stream-processor.js';
+import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent.js';
 
 // Types for mock
 type Messages = BaseMessage[] | BaseMessage;

@@ -1,8 +1,8 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { mockClear } from 'jest-mock-extended';
 
-import { mockEntityManager } from '@test/mocking';
-import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
+import { mockEntityManager } from '@test/mocking.js';
+import { WorkflowBuilderSession } from '../workflow-builder-session.entity.js';
 
 // Mock the ai-workflow-builder module to avoid import chain issues
 jest.mock('@n8n/ai-workflow-builder', () => ({
@@ -21,7 +21,7 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 	ISessionStorage: {},
 }));
 
-import { WorkflowBuilderSessionRepository } from '../workflow-builder-session.repository';
+import { WorkflowBuilderSessionRepository } from '../workflow-builder-session.repository.js';
 
 describe('WorkflowBuilderSessionRepository', () => {
 	const entityManager = mockEntityManager(WorkflowBuilderSession);

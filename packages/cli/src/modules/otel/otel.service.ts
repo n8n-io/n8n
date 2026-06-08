@@ -8,10 +8,10 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants.js';
 
-import { OtelConfig } from './otel.config';
-import { ATTR } from './otel.constants';
+import { OtelConfig } from './otel.config.js';
+import { ATTR } from './otel.constants.js';
 
 @Service()
 export class OtelService {

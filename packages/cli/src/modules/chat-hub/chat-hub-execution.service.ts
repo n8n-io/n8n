@@ -25,6 +25,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
+<<<<<<< HEAD
 import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
@@ -33,18 +34,27 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+=======
+import { ActiveExecutions } from '@/active-executions.js';
+import { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
-import { ChatHubExecutionStore } from './chat-hub-execution-store.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { ChatHubExecutionStore } from './chat-hub-execution-store.service.js';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service.js';
 import {
 	EXECUTION_FINISHED_STATUSES,
 	EXECUTION_POLL_INTERVAL,
 	SUPPORTED_RESPONSE_MODES,
-} from './chat-hub.constants';
-import type { NonStreamingResponseMode, ChatTriggerResponseMode } from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatStreamService } from './chat-stream.service';
-import { createStructuredChunkAggregator } from './stream-capturer';
+} from './chat-hub.constants.js';
+import type { NonStreamingResponseMode, ChatTriggerResponseMode } from './chat-hub.types.js';
+import { ChatHubMessageRepository } from './chat-message.repository.js';
+import { ChatStreamService } from './chat-stream.service.js';
+import { createStructuredChunkAggregator } from './stream-capturer.js';
 
 @Service()
 export class ChatHubExecutionService {

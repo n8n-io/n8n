@@ -44,14 +44,14 @@ jest.mock('node:util', () => {
 	};
 });
 
-import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants.js';
 
 import {
 	executeNpmCommand,
 	verifyIntegrity,
 	checkIfVersionExistsOrThrow,
 	executeNpmRequest,
-} from '../npm-utils';
+} from '../npm-utils.js';
 
 describe('executeNpmCommand', () => {
 	const originalPlatform = process.platform;
@@ -450,7 +450,7 @@ describe('executeNpmCommand', () => {
 
 		const importFreshModule = async () => {
 			jest.resetModules();
-			return await import('../npm-utils');
+			return await import('../npm-utils.js');
 		};
 
 		beforeEach(() => {

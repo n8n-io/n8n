@@ -2,13 +2,13 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { AIMessage } from '@langchain/core/messages';
 import type { Mock } from 'vitest';
 
-import type { AssistantHandler } from '@/assistant/assistant-handler';
-import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
-import type { StreamOutput } from '@/types/streaming';
-import type { ChatPayload } from '@/workflow-builder-agent';
+import type { AssistantHandler } from '@/assistant/assistant-handler.js';
+import type { ConversationEntry } from '@/code-builder/utils/code-builder-session.js';
+import type { StreamOutput } from '@/types/streaming.js';
+import type { ChatPayload } from '@/workflow-builder-agent.js';
 
-import { TriageAgent } from '../triage.agent';
-import type { TriageAgentOutcome } from '../triage.agent';
+import { TriageAgent } from '../triage.agent.js';
+import type { TriageAgentOutcome } from '../triage.agent.js';
 
 function createMockPayload(message = 'test message'): ChatPayload {
 	return {

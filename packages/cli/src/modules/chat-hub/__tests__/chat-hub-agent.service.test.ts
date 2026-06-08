@@ -3,22 +3,22 @@ import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import type { ChatHubAgent } from '../chat-hub-agent.entity';
-import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
-import { ChatHubAgentService } from '../chat-hub-agent.service';
-import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
-import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
-import type { ChatHubExecutionService } from '../chat-hub-execution.service';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
-import type { ChatHubToolService } from '../chat-hub-tool.service';
-import type { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import type { ChatHubAgent } from '../chat-hub-agent.entity.js';
+import type { ChatHubAgentRepository } from '../chat-hub-agent.repository.js';
+import { ChatHubAgentService } from '../chat-hub-agent.service.js';
+import type { ChatHubAttachmentService } from '../chat-hub.attachment.service.js';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service.js';
+import type { ChatHubExecutionService } from '../chat-hub-execution.service.js';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service.js';
+import type { ChatHubToolService } from '../chat-hub-tool.service.js';
+import type { ChatHubWorkflowService } from '../chat-hub-workflow.service.js';
 import type { ChatHubAgentKnowledgeItem } from '@n8n/api-types';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
-import type { SemanticSearchOptions } from '../chat-hub.types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { SemanticSearchOptions } from '../chat-hub.types.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
 const mockGetBase = jest.fn();
 jest.mock('@/workflow-execute-additional-data', () => ({

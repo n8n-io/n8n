@@ -37,6 +37,7 @@ import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+<<<<<<< HEAD
 import { EvalExecutionService } from './eval/execution.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -52,6 +53,21 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
+=======
+import { EvalExecutionService } from './eval/execution.service.js';
+import { InProcessEventBus } from './event-bus/in-process-event-bus.js';
+import { InstanceAiMemoryService } from './instance-ai-memory.service.js';
+import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
+import { InstanceAiService } from './instance-ai.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { Push } from '@/push/index.js';
+import { UrlService } from '@/services/url.service.js';
+>>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 type FlushableResponse = Response & { flush?: () => void };
 

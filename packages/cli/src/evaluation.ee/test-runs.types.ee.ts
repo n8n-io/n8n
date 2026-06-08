@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 
-import type { ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests.js';
 
 export declare namespace TestRunsRequest {
 	namespace RouteParams {

@@ -1,6 +1,6 @@
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
 export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
 

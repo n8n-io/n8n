@@ -13,12 +13,12 @@ import { interrupt } from '@langchain/langgraph';
 import { createAgent } from 'langchain';
 import { z } from 'zod';
 
-import { buildPlannerPrompt, buildPlannerContext } from '@/prompts';
-import type { DiscoveryContext } from '@/types/discovery-types';
-import type { PlanDecision, PlanOutput } from '@/types/planning';
-import type { SimpleWorkflow } from '@/types/workflow';
-import { createContextMessage } from '@/utils/context-builders';
-import { formatPlanAsText } from '@/utils/plan-helpers';
+import { buildPlannerPrompt, buildPlannerContext } from '@/prompts/index.js';
+import type { DiscoveryContext } from '@/types/discovery-types.js';
+import type { PlanDecision, PlanOutput } from '@/types/planning.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
+import { createContextMessage } from '@/utils/context-builders.js';
+import { formatPlanAsText } from '@/utils/plan-helpers.js';
 
 // ============================================================================
 // SCHEMA

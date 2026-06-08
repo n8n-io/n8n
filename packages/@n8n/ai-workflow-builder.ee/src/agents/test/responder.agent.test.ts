@@ -6,7 +6,7 @@ import {
 	invokeResponderAgent,
 	type ResponderAgentType,
 	type ResponderContext,
-} from '../responder.agent';
+} from '../responder.agent.js';
 
 describe('invokeResponderAgent', () => {
 	function createMockAgent(responseContent = 'Test response'): ResponderAgentType {

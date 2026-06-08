@@ -3,11 +3,11 @@ import { isAIMessage, ToolMessage } from '@langchain/core/messages';
 import { ToolInputParsingException } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 
-import { ToolExecutionError, WorkflowStateError } from '../errors';
-import type { ToolExecutorOptions } from '../types/config';
-import type { WorkflowMetadata } from '../types/tools';
-import type { WorkflowOperation } from '../types/workflow';
-import type { WorkflowState } from '../workflow-state';
+import { ToolExecutionError, WorkflowStateError } from '../errors/index.js';
+import type { ToolExecutorOptions } from '../types/config.js';
+import type { WorkflowMetadata } from '../types/tools.js';
+import type { WorkflowOperation } from '../types/workflow.js';
+import type { WorkflowState } from '../workflow-state.js';
 
 type StateUpdate = Partial<typeof WorkflowState.State>;
 

@@ -7,12 +7,12 @@ import {
 	findCrossHostRedirectError,
 	isSsrfBlockedError,
 	type SsrfGuard,
-} from './ssrf-guard';
+} from './ssrf-guard.js';
 import {
 	WEB_FETCH_MAX_BYTES,
 	WEB_FETCH_MAX_CONTENT_CHARS,
 	WEB_FETCH_TIMEOUT_MS,
-} from '../../constants';
+} from '../../constants.js';
 
 /** Maximum number of redirects axios will follow before aborting. */
 const WEB_FETCH_MAX_REDIRECTS = 5;

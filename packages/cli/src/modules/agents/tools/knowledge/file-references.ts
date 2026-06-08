@@ -1,6 +1,6 @@
-import type { AgentKnowledgeService } from '../../agent-knowledge.service';
+import type { AgentKnowledgeService } from '../../agent-knowledge.service.js';
 
-import type { ParsedSearchKnowledgeInput } from './schemas';
+import type { ParsedSearchKnowledgeInput } from './schemas.js';
 
 export type WorkspaceFiles = Awaited<ReturnType<AgentKnowledgeService['materializeWorkspace']>>;
 

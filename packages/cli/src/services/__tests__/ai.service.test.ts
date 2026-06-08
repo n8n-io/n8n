@@ -9,10 +9,10 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants';
-import type { License } from '@/license';
+import { N8N_VERSION } from '@/constants.js';
+import type { License } from '@/license.js';
 
-import { AiService } from '../ai.service';
+import { AiService } from '../ai.service.js';
 
 jest.mock('@n8n_io/ai-assistant-sdk', () => ({
 	AiAssistantClient: jest.fn(),

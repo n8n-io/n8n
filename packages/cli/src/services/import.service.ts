@@ -25,19 +25,19 @@ import {
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces.js';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity.js';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service.js';
 import {
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
 	toTableName,
-} from '@/modules/data-table/utils/sql-utils';
-import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { decompressFolder } from '@/utils/compression.util';
-import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
-import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
-import { WorkflowService } from '@/workflows/workflow.service';
+} from '@/modules/data-table/utils/sql-utils.js';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service.js';
+import { decompressFolder } from '@/utils/compression.util.js';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type.js';
+import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 

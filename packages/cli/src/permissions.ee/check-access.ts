@@ -12,9 +12,9 @@ import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { RoleService } from '@/services/role.service.js';
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -127,7 +127,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
-		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository');
+		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository.js');
 		const dataTable = await Container.get(DataTableRepository).findOne({
 			where: { id: dataTableId },
 			relations: ['project'],

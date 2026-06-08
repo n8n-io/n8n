@@ -4,13 +4,13 @@
  * Generates human-readable markdown reports from evaluation results.
  */
 
-import { feedbackKey } from '../harness/feedback';
-import type { ExampleResult, RunSummary } from '../harness/harness-types';
+import { feedbackKey } from '../harness/feedback.js';
+import type { ExampleResult, RunSummary } from '../harness/harness-types.js';
 import {
 	groupByEvaluator,
 	selectScoringItems,
 	calculateFiniteAverage,
-} from '../harness/score-calculator';
+} from '../harness/score-calculator.js';
 
 /**
  * Violation severity levels.

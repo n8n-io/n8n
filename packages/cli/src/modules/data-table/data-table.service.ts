@@ -30,21 +30,21 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
+import { EventService } from '@/events/event.service.js';
+import { RoleService } from '@/services/role.service.js';
 
-import { DataTableColumn } from './data-table-column.entity';
-import { DataTableColumnRepository } from './data-table-column.repository';
-import { DataTableCsvImportService } from './data-table-csv-import.service';
-import { DataTableRowsRepository } from './data-table-rows.repository';
-import { DataTableSizeValidator } from './data-table-size-validator.service';
-import { DataTableRepository } from './data-table.repository';
-import { columnTypeToFieldType } from './data-table.types';
-import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
-import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
-import { DataTableNotFoundError } from './errors/data-table-not-found.error';
-import { DataTableValidationError } from './errors/data-table-validation.error';
-import { normalizeRows } from './utils/sql-utils';
+import { DataTableColumn } from './data-table-column.entity.js';
+import { DataTableColumnRepository } from './data-table-column.repository.js';
+import { DataTableCsvImportService } from './data-table-csv-import.service.js';
+import { DataTableRowsRepository } from './data-table-rows.repository.js';
+import { DataTableSizeValidator } from './data-table-size-validator.service.js';
+import { DataTableRepository } from './data-table.repository.js';
+import { columnTypeToFieldType } from './data-table.types.js';
+import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error.js';
+import { DataTableNameConflictError } from './errors/data-table-name-conflict.error.js';
+import { DataTableNotFoundError } from './errors/data-table-not-found.error.js';
+import { DataTableValidationError } from './errors/data-table-validation.error.js';
+import { normalizeRows } from './utils/sql-utils.js';
 
 @Service()
 export class DataTableService {

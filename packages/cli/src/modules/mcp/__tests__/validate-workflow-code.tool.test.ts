@@ -2,10 +2,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
+import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool.js';
 
-import { NodeTypes } from '@/node-types';
-import { Telemetry } from '@/telemetry';
+import { NodeTypes } from '@/node-types.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 const mockParseAndValidate = jest.fn();
 const mockStripImportStatements = jest.fn((code: string) => code);

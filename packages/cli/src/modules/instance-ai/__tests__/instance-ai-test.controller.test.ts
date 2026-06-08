@@ -15,12 +15,12 @@ import type { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
-import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
-import { InstanceAiTestController } from '../instance-ai-test.controller';
-import type { InstanceAiService } from '../instance-ai.service';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+import type { InstanceAiMemoryService } from '../instance-ai-memory.service.js';
+import { InstanceAiTestController } from '../instance-ai-test.controller.js';
+import type { InstanceAiService } from '../instance-ai.service.js';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository.js';
 
 describe('InstanceAiTestController', () => {
 	const instanceAiService = mock<InstanceAiService>();

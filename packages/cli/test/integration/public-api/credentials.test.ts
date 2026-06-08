@@ -11,17 +11,17 @@ import {
 	randomString,
 } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsTester } from '@/services/credentials-tester.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { CredentialsTester } from '@/services/credentials-tester.service.js';
 
 import {
 	affixRoleToSaveCredential,
 	createCredentials,
 	getCredentialSharings,
-} from '../shared/db/credentials';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+} from '../shared/db/credentials.js';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
+import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 let owner: User;
 let member: User;

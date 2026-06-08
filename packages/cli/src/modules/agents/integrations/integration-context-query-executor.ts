@@ -1,14 +1,14 @@
 import { Service } from '@n8n/di';
 
-import { ChatIntegrationRegistry } from './agent-chat-integration';
-import { ChatIntegrationService } from './chat-integration.service';
-import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
-import { connectionUnavailable, integrationError } from './integration-helpers';
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { ChatIntegrationService } from './chat-integration.service.js';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes.js';
+import { connectionUnavailable, integrationError } from './integration-helpers.js';
 import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryExecutor,
 	IntegrationToolConnectionDescriptor,
-} from './integration-tools';
+} from './integration-tools.js';
 
 /**
  * Thin dispatcher that resolves the platform integration for a descriptor and
@@ -62,4 +62,4 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 
 // Re-export the Linear normalizers used by tests / action executor message-context
 // construction. Tests reference these via this module path.
-export { normalizeLinearComment, normalizeLinearIssue } from './platforms/linear-operations';
+export { normalizeLinearComment, normalizeLinearIssue } from './platforms/linear-operations.js';

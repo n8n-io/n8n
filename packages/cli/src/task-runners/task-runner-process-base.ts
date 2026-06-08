@@ -5,11 +5,11 @@ import { Service } from '@n8n/di';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 
-import { TypedEmitter } from '@/typed-emitter';
+import { TypedEmitter } from '@/typed-emitter.js';
 
-import { forwardToLogger } from './forward-to-logger';
-import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';
-import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
+import { forwardToLogger } from './forward-to-logger.js';
+import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service.js';
+import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events.js';
 
 export type ChildProcess = ReturnType<typeof spawn>;
 

@@ -7,11 +7,11 @@ import { jsonParse } from 'n8n-workflow';
 import * as os from 'os';
 import * as path from 'path';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import type { ExampleResult, RunSummary } from '../harness/harness-types';
-import { createLogger } from '../harness/logger';
-import { createArtifactSaver } from '../harness/output';
+import type { ExampleResult, RunSummary } from '../harness/harness-types.js';
+import { createLogger } from '../harness/logger.js';
+import { createArtifactSaver } from '../harness/output.js';
 
 const silentLogger = createLogger(false);
 

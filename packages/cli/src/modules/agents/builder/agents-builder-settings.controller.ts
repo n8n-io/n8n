@@ -7,9 +7,9 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service.js';
 
 @RestController('/agent-builder')
 export class AgentsBuilderSettingsController {

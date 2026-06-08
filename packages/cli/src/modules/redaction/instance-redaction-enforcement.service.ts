@@ -4,9 +4,9 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
-import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag';
+import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag.js';
 
 const KEY = 'redaction.enforcement';
 

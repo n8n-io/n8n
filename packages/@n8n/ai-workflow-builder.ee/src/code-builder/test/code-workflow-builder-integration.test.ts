@@ -58,13 +58,13 @@ vi.mock('@/multi-agent-workflow-subgraphs', () => ({
 	}),
 }));
 
-import { CodeWorkflowBuilder } from '@/code-builder/code-workflow-builder';
-import type { StreamOutput } from '@/types/streaming';
+import { CodeWorkflowBuilder } from '@/code-builder/code-workflow-builder.js';
+import type { StreamOutput } from '@/types/streaming.js';
 import {
 	WorkflowBuilderAgent,
 	type WorkflowBuilderAgentConfig,
 	type ChatPayload,
-} from '@/workflow-builder-agent';
+} from '@/workflow-builder-agent.js';
 
 describe('CodeWorkflowBuilder Integration', () => {
 	let agent: WorkflowBuilderAgent;

@@ -11,7 +11,7 @@ import type {
 	PlanInterruptValue,
 	QuestionsInterruptValue,
 	WebFetchApprovalInterruptValue,
-} from '../types/planning';
+} from '../types/planning.js';
 import type {
 	AgentMessageChunk,
 	MessagesCompactedChunk,
@@ -21,7 +21,7 @@ import type {
 	WebFetchApprovalChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
-} from '../types/streaming';
+} from '../types/streaming.js';
 
 // ============================================================================
 // TYPES & INTERFACES

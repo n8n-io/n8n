@@ -2,18 +2,18 @@ import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { ConnectionError, NodeNotFoundError, ValidationError } from '../errors';
-import type { RemoveConnectionOutput } from '../types/tools';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import { ConnectionError, NodeNotFoundError, ValidationError } from '../errors/index.js';
+import type { RemoveConnectionOutput } from '../types/tools.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
 import {
 	getCurrentWorkflow,
 	getWorkflowState,
 	removeConnectionFromWorkflow,
-} from './helpers/state';
-import { validateNodeExists } from './helpers/validation';
+} from './helpers/state.js';
+import { validateNodeExists } from './helpers/validation.js';
 
 /**
  * Schema for removing a connection

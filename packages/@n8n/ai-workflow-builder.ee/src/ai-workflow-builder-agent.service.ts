@@ -11,19 +11,19 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { AssistantHandler } from '@/assistant';
-import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
-import { SessionManagerService } from '@/session-manager.service';
-import { SsrfGuard } from '@/tools/utils/ssrf-guard';
-import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
-import type { HITLInterruptValue } from '@/types/planning';
-import { ISessionStorage } from '@/types/session-storage';
+import { AssistantHandler } from '@/assistant/index.js';
+import { LLMServiceError } from '@/errors/index.js';
+import { anthropicClaudeSonnet45 } from '@/llm-config.js';
+import { SessionManagerService } from '@/session-manager.service.js';
+import { SsrfGuard } from '@/tools/utils/ssrf-guard.js';
+import { ResourceLocatorCallbackFactory } from '@/types/callbacks.js';
+import type { HITLInterruptValue } from '@/types/planning.js';
+import { ISessionStorage } from '@/types/session-storage.js';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
 	type ChatPayload,
-} from '@/workflow-builder-agent';
+} from '@/workflow-builder-agent.js';
 
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
 

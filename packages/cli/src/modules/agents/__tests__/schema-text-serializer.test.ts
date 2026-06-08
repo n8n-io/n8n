@@ -2,7 +2,7 @@ import { McpServerConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
+import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -10,10 +10,10 @@ import {
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { cleanupRolesAndScopes } from '../shared/db/roles';
-import { createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { cleanupRolesAndScopes } from '../shared/db/roles.js';
+import { createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });

@@ -14,16 +14,16 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
 
-import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
-import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
-import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { WorkflowRunner } from '@/workflow-runner';
+import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository.js';
+import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository.js';
+import { InsightsCollectionService } from '@/modules/insights/insights-collection.service.js';
+import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service.js';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import * as utils from '../shared/utils';
-import { loadNodesFromDist } from '../shared/utils/node-types-data';
-import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
+import * as utils from '../shared/utils/index.js';
+import { loadNodesFromDist } from '../shared/utils/node-types-data.js';
+import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures.js';
 
 describe('Insights vs Workflow Statistics Integration', () => {
 	beforeAll(async () => {

@@ -2,9 +2,9 @@ import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
 import { SpanStatusCode } from '@opentelemetry/api';
 
-import { OtelTestProvider } from './support/otel-test-provider';
-import { ExecutionLevelTracer } from '../execution-level-tracer';
-import { OtelConfig } from '../otel.config';
+import { OtelTestProvider } from './support/otel-test-provider.js';
+import { ExecutionLevelTracer } from '../execution-level-tracer.js';
+import { OtelConfig } from '../otel.config.js';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;

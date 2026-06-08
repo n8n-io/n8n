@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import {
 	getDateRangesCommonTableExpressionQuery,
 	getDateRangesSelectQuery,
-} from '../insights-by-period-query.helper';
+} from '../insights-by-period-query.helper.js';
 
 describe('getDateRangesCommonTableExpressionQuery', () => {
 	const now = DateTime.utc(2025, 10, 8, 8, 51, 27);

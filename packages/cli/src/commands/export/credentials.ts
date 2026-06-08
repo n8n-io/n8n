@@ -8,10 +8,10 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import z from 'zod';
 
-import type { ICredentialsDecryptedDb } from '@/interfaces';
+import type { ICredentialsDecryptedDb } from '@/interfaces.js';
 
-import { BaseCommand } from '../base-command';
-import '../../zod-alias-support';
+import { BaseCommand } from '../base-command.js';
+import '../../zod-alias-support.js';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all credentials').optional(),

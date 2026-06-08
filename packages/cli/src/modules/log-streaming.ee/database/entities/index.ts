@@ -1,1 +1,1 @@
-export { EventDestinations } from './event-destination.entity';
+export { EventDestinations } from './event-destination.entity.js';

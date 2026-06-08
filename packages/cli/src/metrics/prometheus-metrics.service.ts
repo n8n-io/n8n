@@ -13,13 +13,13 @@ import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
-import { N8N_VERSION } from '@/constants';
-import type { EventMessageTypes } from '@/eventbus';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { N8N_VERSION } from '@/constants.js';
+import type { EventMessageTypes } from '@/eventbus/index.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { EventService } from '@/events/event.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
 
-import type { Includes, MetricCategory, MetricLabel } from './types';
+import type { Includes, MetricCategory, MetricLabel } from './types.js';
 
 /** Bucket boundaries (in seconds) shared by all duration histograms. */
 const DURATION_BUCKETS_SECONDS = [

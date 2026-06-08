@@ -1,6 +1,6 @@
 import type { ExecutionsConfig } from '@n8n/config';
 
-import type { License } from '@/license';
+import type { License } from '@/license.js';
 
 /**
  * Tier defaults applied when neither the env override nor the license quota
