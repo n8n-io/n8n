@@ -18,13 +18,20 @@ jest.unmock('node:fs/promises');
 
 const mockGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
 const mockDestroy = jest.fn<Promise<void>, []>();
+const mockPDFParse = jest.fn().mockImplementation(() => ({
+	getText: mockGetText,
+	destroy: mockDestroy,
+}));
+const MockDOMMatrix = class DOMMatrixMock {};
 
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
-	PDFParse: jest.fn().mockImplementation(() => ({
-		getText: mockGetText,
-		destroy: mockDestroy,
-	})),
+	PDFParse: mockPDFParse,
+}));
+
+jest.mock('@thednp/dommatrix', () => ({
+	__esModule: true,
+	default: MockDOMMatrix,
 }));
 
 jest.mock('@n8n/utils', () => ({
@@ -77,6 +84,7 @@ describe('AgentKnowledgeService', () => {
 		jest.mocked(generateNanoId).mockReset().mockReturnValue('file-1');
 		mockGetText.mockReset();
 		mockDestroy.mockReset().mockResolvedValue(undefined);
+		mockPDFParse.mockClear();
 
 		service = new AgentKnowledgeService(agentRepository, agentFileRepository, binaryDataService);
 	});
@@ -343,6 +351,34 @@ describe('AgentKnowledgeService', () => {
 			fileSizeBytes: 19,
 		});
 		expect(mockDestroy).toHaveBeenCalledTimes(1);
+	});
+
+	it('polyfills DOMMatrix before parsing PDFs when missing from Node globals', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		mockGetText.mockResolvedValue({ text: 'Extracted PDF text', total: 1 });
+
+		const previousDomMatrix = Reflect.get(globalThis, 'DOMMatrix');
+		Reflect.deleteProperty(globalThis, 'DOMMatrix');
+
+		try {
+			await service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'document.pdf',
+					mimetype: 'application/pdf',
+					buffer: Buffer.from('%PDF original bytes'),
+					size: 19,
+				}),
+			]);
+
+			expect(mockPDFParse).toHaveBeenCalledTimes(1);
+			expect(Reflect.get(globalThis, 'DOMMatrix')).toBe(MockDOMMatrix);
+		} finally {
+			if (previousDomMatrix === undefined) {
+				Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			} else {
+				Reflect.set(globalThis, 'DOMMatrix', previousDomMatrix);
+			}
+		}
 	});
 
 	it('rejects PDFs with no extractable text', async () => {

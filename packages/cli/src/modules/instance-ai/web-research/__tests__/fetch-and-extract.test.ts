@@ -10,6 +10,26 @@ import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 
 import { fetchAndExtract } from '../fetch-and-extract';
 
+const mockPdfGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
+const mockPdfGetInfo = jest.fn<Promise<{ info?: { Title?: unknown } }>, []>();
+const mockPdfDestroy = jest.fn<Promise<void>, []>();
+const mockPDFParse = jest.fn().mockImplementation(() => ({
+	getText: mockPdfGetText,
+	getInfo: mockPdfGetInfo,
+	destroy: mockPdfDestroy,
+}));
+const MockDOMMatrix = class DOMMatrixMock {};
+
+jest.mock('pdf-parse', () => ({
+	__esModule: true,
+	PDFParse: mockPDFParse,
+}));
+
+jest.mock('@thednp/dommatrix', () => ({
+	__esModule: true,
+	default: MockDOMMatrix,
+}));
+
 function createSsrfMock(): jest.Mocked<SsrfBridge> {
 	const ssrf = mock<SsrfBridge>();
 	ssrf.validateUrl.mockResolvedValue(createResultOk(undefined));
@@ -61,6 +81,10 @@ describe('fetchAndExtract', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		ssrf = createSsrfMock();
+		mockPdfGetText.mockReset();
+		mockPdfGetInfo.mockReset();
+		mockPdfDestroy.mockReset().mockResolvedValue(undefined);
+		mockPDFParse.mockClear();
 	});
 
 	afterAll(() => {
@@ -122,6 +146,32 @@ describe('fetchAndExtract', () => {
 
 		expect(result.content).toBe(text);
 		expect(result.truncated).toBe(false);
+	});
+
+	it('polyfills DOMMatrix before parsing PDF responses when missing from Node globals', async () => {
+		mockPdfGetText.mockResolvedValue({ text: 'Extracted PDF text', total: 1 });
+		mockPdfGetInfo.mockResolvedValue({ info: { Title: 'Doc' } });
+		globalThis.fetch = jest
+			.fn()
+			.mockResolvedValue(createMockResponse('%PDF', { contentType: 'application/pdf' }));
+
+		const previousDomMatrix = Reflect.get(globalThis, 'DOMMatrix');
+		Reflect.deleteProperty(globalThis, 'DOMMatrix');
+
+		try {
+			const result = await fetchAndExtract('https://example.com/file.pdf', { ssrf });
+
+			expect(mockPDFParse).toHaveBeenCalledTimes(1);
+			expect(result.content).toBe('Extracted PDF text');
+			expect(Reflect.get(globalThis, 'DOMMatrix')).toBe(MockDOMMatrix);
+			expect(mockPdfDestroy).toHaveBeenCalledTimes(1);
+		} finally {
+			if (previousDomMatrix === undefined) {
+				Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			} else {
+				Reflect.set(globalThis, 'DOMMatrix', previousDomMatrix);
+			}
+		}
 	});
 
 	it('truncates content exceeding maxContentLength', async () => {
