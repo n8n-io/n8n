@@ -249,7 +249,7 @@ describe('OAuth1 API', () => {
 
 	describe('per-flow state isolation', () => {
 		const renderCallback = () =>
-			jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -276,7 +276,7 @@ describe('OAuth1 API', () => {
 			const editorBAgent = testServer.authAgentFor(editorB);
 
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			renderCallback();
 
 			mockRequestTokenEndpoint();
@@ -323,7 +323,7 @@ describe('OAuth1 API', () => {
 		it('rejects a replayed OAuth1 callback (state token already consumed)', async () => {
 			const ownerAgent = testServer.authAgentFor(owner);
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			const renderSpy = renderCallback();
 
 			mockRequestTokenEndpoint();

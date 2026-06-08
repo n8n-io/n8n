@@ -4,17 +4,31 @@ import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-const mockButton = vi.fn((opts: any) => ({ type: 'button', ...opts }));
-const mockCard = vi.fn((opts: any) => ({ type: 'card', ...opts }));
-const mockActions = vi.fn((children: any) => ({ type: 'actions', children }));
-const mockCardText = vi.fn((content: any) => ({ type: 'text', content }));
-const mockSection = vi.fn((children: any) => ({ type: 'section', children }));
-const mockDivider = vi.fn(() => ({ type: 'divider' }));
-const mockImage = vi.fn((opts: any) => ({ type: 'image', ...opts }));
-const mockSelect = vi.fn((opts: any) => ({ type: 'select', ...opts }));
-const mockRadioSelect = vi.fn((opts: any) => ({ type: 'radio_select', ...opts }));
-const mockFields = vi.fn((children: any) => ({ type: 'fields', children }));
-const mockField = vi.fn((opts: any) => ({ type: 'field', ...opts }));
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })),
+	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })),
+	mockActions: vi.fn((children: any) => ({ type: 'actions', children })),
+	mockCardText: vi.fn((content: any) => ({ type: 'text', content })),
+	mockSection: vi.fn((children: any) => ({ type: 'section', children })),
+	mockDivider: vi.fn(() => ({ type: 'divider' })),
+	mockImage: vi.fn((opts: any) => ({ type: 'image', ...opts })),
+	mockSelect: vi.fn((opts: any) => ({ type: 'select', ...opts })),
+	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })),
+	mockFields: vi.fn((children: any) => ({ type: 'fields', children })),
+	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })),
+}));
 
 vi.mock('../esm-loader', () => ({
 	loadChatSdk: vi.fn().mockResolvedValue({

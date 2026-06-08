@@ -436,7 +436,7 @@ describe('update-workflow MCP tool', () => {
 				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
 			});
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -449,7 +449,7 @@ describe('update-workflow MCP tool', () => {
 				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
 			});
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -481,7 +481,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			expect(result.isError).toBeUndefined();
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: { skillsUsed: string[] };
 			};
 			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);

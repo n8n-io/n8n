@@ -100,7 +100,13 @@ describe('WaitingWebhooks', () => {
 		 * Arrange
 		 */
 		executionPersistence.findSingleExecution.mockResolvedValue(
-			mock<IExecutionResponse>({ finished: true, workflowData: { nodes: [] } }),
+			mock<IExecutionResponse>({
+				finished: true,
+				// Provide real values for the fields the Workflow constructor reads so
+				// vitest-mock-extended keeps them as plain data rather than auto-mocking
+				// them into functions (whose read-only `.mock` breaks ObservableObject).
+				workflowData: { nodes: [], connections: {}, staticData: {} },
+			}),
 		);
 
 		/**

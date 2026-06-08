@@ -436,7 +436,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		test('omits skillsUsed from telemetry when not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -445,7 +445,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
 			await callHandler({ code: 'const wf = ...', skillsUsed: [] });
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -472,7 +472,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			const result = await callHandler({ code: 'const wf = ...', skillsUsed: oversized });
 
 			expect(result.isError).toBeUndefined();
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: { skillsUsed: string[] };
 			};
 			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);

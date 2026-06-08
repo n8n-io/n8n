@@ -3,12 +3,7 @@ import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-type
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
-import type {
-	User,
-	CredentialsEntity,
-	UserRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import type { User, CredentialsEntity, UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, Mocked } from 'vitest';
@@ -46,6 +41,7 @@ import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.se
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
@@ -1587,7 +1583,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			Container.set(CredentialsService, mock<CredentialsService>());
 
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: {
 					name: 'Test Agent',
 					structuredOutput: vi.fn(),
@@ -1727,7 +1723,7 @@ describe('AgentsService', () => {
 			});
 			// Spy reconstructFromConfig so the real compileIsolated runs and applies
 			// the per-call schema to the builder before it is returned.
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: { name: 'Test Agent', structuredOutput, stream, close: vi.fn() },
 				toolRegistry: {},
 			} as never);
@@ -1770,7 +1766,7 @@ describe('AgentsService', () => {
 					}),
 				},
 			});
-			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+			(vi.spyOn(service as never, 'reconstructFromConfig') as unknown as Mock).mockResolvedValue({
 				agent: { name: 'Test Agent', structuredOutput, stream, close: vi.fn() },
 				toolRegistry: {},
 			} as never);

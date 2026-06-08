@@ -88,7 +88,7 @@ function createLoadNodesAndCredentials(options?: {
 	}
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
-		loaders,
+		loaders: loaders as never,
 		knownCredentials: knownCredentials as never,
 	});
 

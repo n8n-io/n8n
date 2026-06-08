@@ -19,6 +19,7 @@ vi.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type {
 	ExecutionError,
@@ -29,6 +30,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -56,6 +58,9 @@ import {
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeExecution>,
 ): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
+	const executionPersistence = mock<ExecutionPersistence>();
+	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence as never);
 	return {
 		findSingleExecution: vi.fn().mockResolvedValue(execution),
 	};
@@ -2446,6 +2451,9 @@ function createRunAdapterForTests(
 	const mockExecutionRepository = {
 		findSingleExecution: vi.fn().mockResolvedValue(options?.execution),
 	};
+	const mockExecutionPersistence = mock<ExecutionPersistence>();
+	mockExecutionPersistence.findSingleExecution.mockResolvedValue(options?.execution as never);
+	vi.spyOn(Container, 'get').mockReturnValue(mockExecutionPersistence as never);
 	const mockTelemetry = { track: vi.fn() };
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;

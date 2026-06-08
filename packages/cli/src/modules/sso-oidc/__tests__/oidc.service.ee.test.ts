@@ -374,10 +374,10 @@ describe('OidcService', () => {
 		});
 
 		it('logs token-exchange errors with structured oauth fields', async () => {
-			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
-			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
-			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
 
 			const tokenError = Object.assign(
 				new Error('expected expires_in to be a non-negative number'),
@@ -387,7 +387,7 @@ describe('OidcService', () => {
 					code: 'OAUTH_INVALID_RESPONSE_BODY',
 				},
 			);
-			jest.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
+			vi.spyOn(client, 'authorizationCodeGrant').mockRejectedValue(tokenError);
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;

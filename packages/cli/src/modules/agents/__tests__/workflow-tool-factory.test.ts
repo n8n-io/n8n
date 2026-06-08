@@ -1,9 +1,4 @@
-import type {
-	WorkflowRepository,
-	UserRepository,
-	WorkflowEntity,
-	ExecutionRepository,
-} from '@n8n/db';
+import type { WorkflowRepository, UserRepository, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 

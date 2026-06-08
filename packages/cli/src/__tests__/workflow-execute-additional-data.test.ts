@@ -8,7 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ExternalSecretsProxy } from 'n8n-core';
+import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	IExecuteWorkflowInfo,
@@ -22,6 +22,7 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -353,11 +354,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 		describe('sub-workflow execution timeouts', () => {
 			const now = Date.now();
 			const getDeadlineFromNow = (offsetSeconds: number) => now + offsetSeconds * 1000;
-			const WorkflowExecuteMock: jest.Mock = jest.requireMock('n8n-core').WorkflowExecute;
+			const WorkflowExecuteMock = vi.mocked(WorkflowExecute);
 
-			let dateSpy: jest.SpyInstance;
+			let dateSpy: MockInstance;
 			beforeEach(() => {
-				dateSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+				dateSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
 				WorkflowExecuteMock.mockClear();
 			});
 			afterEach(() => {
@@ -365,8 +366,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			const getSubWorkflowDeadline = () =>
-				(WorkflowExecuteMock.mock.calls[0][0] as IWorkflowExecuteAdditionalData)
-					.executionTimeoutTimestamp;
+				WorkflowExecuteMock.mock.calls[0][0].executionTimeoutTimestamp;
 
 			const executeWorkflowWithTimeout = async (opts: {
 				doNotWaitToFinish: boolean;
@@ -389,7 +389,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 							name: 'Sub Workflow',
 							nodes: [],
 							connections: {},
-							// Pass executionTimeout through even when undefined so jest-mock-extended
+							// Pass real values for fields the Workflow constructor reads so
+							// vitest-mock-extended keeps them as plain data rather than auto-mocking
+							// them into functions (whose read-only `.mock` breaks ObservableObject).
+							staticData: {},
+							// Pass executionTimeout through even when undefined so vitest-mock-extended
 							// keeps it as a real `undefined` rather than auto-mocking it into a function.
 							settings: { executionTimeout: opts.subTimeout },
 						}),

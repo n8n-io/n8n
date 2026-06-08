@@ -1,4 +1,5 @@
 import type { ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type {
 	IConnections,
 	INode,
@@ -22,6 +23,9 @@ import { extractResolvedNodeParameters } from '../extract-resolved-node-paramete
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeResolutionExecution>,
 ): Mocked<Pick<ExecutionRepository, 'findSingleExecution'>> {
+	const executionPersistence = mock<ExecutionPersistence>();
+	executionPersistence.findSingleExecution.mockResolvedValue(execution as never);
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence as never);
 	return {
 		findSingleExecution: vi.fn().mockResolvedValue(execution),
 	};

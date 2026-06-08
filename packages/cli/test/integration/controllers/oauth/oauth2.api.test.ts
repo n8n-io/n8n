@@ -242,7 +242,7 @@ describe('OAuth2 API', () => {
 
 	describe('per-flow state isolation', () => {
 		const renderCallback = () =>
-			jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -266,7 +266,7 @@ describe('OAuth2 API', () => {
 			const editorBAgent = testServer.authAgentFor(editorB);
 
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			renderCallback();
 
 			// Both users initiate /auth back-to-back. Under the old behavior the second
@@ -302,7 +302,7 @@ describe('OAuth2 API', () => {
 
 		it('rejects a replayed callback (state token already consumed)', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			const renderSpy = renderCallback();
 
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);

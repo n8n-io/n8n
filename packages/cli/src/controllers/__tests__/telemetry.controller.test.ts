@@ -3,29 +3,32 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 type ProxyResponse = { headers: Record<string, string> };
 type ProxyErrorResponse = {
 	headersSent?: boolean;
-	writeHead: jest.Mock;
-	end: jest.Mock;
+	writeHead: Mock;
+	end: Mock;
 };
 type ProxyOptions = {
 	on?: {
-		proxyReq?: (proxyReq: { removeHeader: jest.Mock }, req: AuthenticatedRequest) => void;
+		proxyReq?: (proxyReq: { removeHeader: Mock }, req: AuthenticatedRequest) => void;
 		proxyRes?: (proxyRes: ProxyResponse) => void;
 		error?: (error: Error, req: AuthenticatedRequest, res: ProxyErrorResponse) => void;
 	};
 };
 
-const mockProxy = jest.fn();
-const mockFixRequestBody = jest.fn();
-let mockProxyOptions: ProxyOptions | undefined;
+const { mockProxy, mockFixRequestBody, proxyState } = vi.hoisted(() => ({
+	mockProxy: vi.fn(),
+	mockFixRequestBody: vi.fn(),
+	proxyState: { options: undefined as ProxyOptions | undefined },
+}));
 
-jest.mock('http-proxy-middleware', () => ({
-	createProxyMiddleware: jest.fn((options: ProxyOptions) => {
-		mockProxyOptions = options;
+vi.mock('http-proxy-middleware', () => ({
+	createProxyMiddleware: vi.fn((options: ProxyOptions) => {
+		proxyState.options = options;
 		return mockProxy;
 	}),
 	fixRequestBody: mockFixRequestBody,
@@ -53,14 +56,14 @@ function createController() {
 
 function createResponse() {
 	const res = {
-		setHeader: jest.fn(),
-		removeHeader: jest.fn(),
-		status: jest.fn(),
-		end: jest.fn(),
-		json: jest.fn(),
+		setHeader: vi.fn(),
+		removeHeader: vi.fn(),
+		status: vi.fn(),
+		end: vi.fn(),
+		json: vi.fn(),
 	};
 	res.status.mockReturnValue(res);
-	return res as unknown as jest.Mocked<Response>;
+	return res as unknown as Mocked<Response>;
 }
 
 function createRequest(headers: Record<string, string> = {}) {
@@ -68,8 +71,8 @@ function createRequest(headers: Record<string, string> = {}) {
 }
 
 function getProxyOptions() {
-	if (!mockProxyOptions) throw new Error('Proxy options were not captured');
-	return mockProxyOptions;
+	if (!proxyState.options) throw new Error('Proxy options were not captured');
+	return proxyState.options;
 }
 
 describe('TelemetryController route access', () => {
@@ -83,9 +86,9 @@ describe('TelemetryController', () => {
 	const originalFetch = global.fetch;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockProxy.mockResolvedValue(undefined);
-		mockProxyOptions = undefined;
+		proxyState.options = undefined;
 	});
 
 	afterEach(() => {
@@ -120,7 +123,7 @@ describe('TelemetryController', () => {
 		const controller = createController();
 		const req = createRequest();
 		const res = createResponse();
-		const next = jest.fn() as NextFunction;
+		const next = vi.fn() as NextFunction;
 
 		await controller.track(req, res, next);
 
@@ -130,7 +133,7 @@ describe('TelemetryController', () => {
 
 	it('keeps proxy request body handling and strips cookies', () => {
 		createController();
-		const proxyReq = { removeHeader: jest.fn() };
+		const proxyReq = { removeHeader: vi.fn() };
 		const req = createRequest();
 
 		getProxyOptions().on?.proxyReq?.(proxyReq, req);
@@ -165,8 +168,8 @@ describe('TelemetryController', () => {
 		const req = createRequest();
 		const res: ProxyErrorResponse = {
 			headersSent: false,
-			writeHead: jest.fn(),
-			end: jest.fn(),
+			writeHead: vi.fn(),
+			end: vi.fn(),
 		};
 
 		getProxyOptions().on?.error?.(new Error('upstream unavailable'), req, res);
@@ -181,9 +184,9 @@ describe('TelemetryController', () => {
 		const controller = createController();
 		const req = createRequest();
 		const res = createResponse();
-		global.fetch = jest.fn().mockResolvedValue({
+		global.fetch = vi.fn().mockResolvedValue({
 			ok: true,
-			json: jest.fn().mockResolvedValue({ source: 'config' }),
+			json: vi.fn().mockResolvedValue({ source: 'config' }),
 		}) as unknown as typeof fetch;
 
 		await controller.sourceConfig(req, res);

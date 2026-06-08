@@ -159,12 +159,12 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('uses a string-compatible object schema when native string tool introspection returns null', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
-		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(null);
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(null);
 		Container.set(NodeTypes, {
-			getByNameAndVersion: jest.fn().mockReturnValue({
+			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Think about something' },
-				supplyData: jest.fn(),
+				supplyData: vi.fn(),
 			}),
 		} as unknown as NodeTypes);
 
