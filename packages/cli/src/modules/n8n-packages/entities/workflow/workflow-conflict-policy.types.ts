@@ -15,6 +15,8 @@ export interface WorkflowImportOutcome {
 export interface PreparedWorkflow {
 	entity: WorkflowEntity;
 	sourceWorkflowId: string;
+	/** Wire 'active' before deserialize drops it; needed for workflowPublishingPolicy. */
+	sourceActive: boolean;
 }
 
 export interface WorkflowConflict {

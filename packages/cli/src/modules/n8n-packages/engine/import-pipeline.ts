@@ -162,7 +162,11 @@ export class ImportPipeline {
 
 			WorkflowHelpers.validateWorkflowStructure(entity);
 
-			prepared.push({ entity, sourceWorkflowId: entry.id });
+			prepared.push({
+				entity,
+				sourceWorkflowId: entry.id,
+				sourceActive: wire.active,
+			});
 		}
 
 		return prepared;

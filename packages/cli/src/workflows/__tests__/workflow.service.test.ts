@@ -26,6 +26,56 @@ jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-helpers');
 jest.mock('@/generic-helpers');
 
+type WorkflowServiceTestDeps = ConstructorParameters<typeof WorkflowService>;
+
+function createWorkflowService(
+	overrides: Partial<{
+		workflowRepository: WorkflowServiceTestDeps[2];
+		ownershipService: WorkflowServiceTestDeps[5];
+		workflowHistoryService: WorkflowServiceTestDeps[7];
+		externalHooks: WorkflowServiceTestDeps[8];
+		activeWorkflowManager: WorkflowServiceTestDeps[9];
+		roleService: WorkflowServiceTestDeps[10];
+		workflowFinderService: WorkflowServiceTestDeps[16];
+		workflowPublishHistoryRepository: WorkflowServiceTestDeps[18];
+		webhookService: WorkflowServiceTestDeps[21];
+		licenseState: WorkflowServiceTestDeps[22];
+		redactionEnforcementService: WorkflowServiceTestDeps[24];
+	}> = {},
+): WorkflowService {
+	const workflowValidationService = Object.assign(mock<WorkflowValidationService>(), {
+		validateCredentialNodeRestrictions: () => ({ isValid: true }),
+	});
+
+	return new WorkflowService(
+		mock(), // logger
+		mock(), // sharedWorkflowRepository
+		overrides.workflowRepository ?? mock(), // workflowRepository
+		mock(), // workflowTagMappingRepository
+		mock(), // binaryDataService
+		overrides.ownershipService ?? mock(), // ownershipService
+		mock(), // tagService
+		overrides.workflowHistoryService ?? mock(), // workflowHistoryService
+		overrides.externalHooks ?? mock(), // externalHooks
+		overrides.activeWorkflowManager ?? mock(), // activeWorkflowManager
+		overrides.roleService ?? mock(), // roleService
+		mock(), // projectService
+		mock(), // executionRepository
+		mock(), // eventService
+		mock(), // globalConfig
+		mock(), // folderRepository
+		overrides.workflowFinderService ?? mock(), // workflowFinderService
+		mock(), // workflowPublishedVersionRepository
+		overrides.workflowPublishHistoryRepository ?? mock(), // workflowPublishHistoryRepository
+		workflowValidationService, // workflowValidationService
+		mock(), // nodeTypes
+		overrides.webhookService ?? mock(), // webhookService
+		overrides.licenseState ?? mock(), // licenseState
+		mock(), // projectRepository
+		overrides.redactionEnforcementService ?? mock(), // redactionEnforcementService
+	);
+}
+
 describe('WorkflowService', () => {
 	describe('getMany()', () => {
 		let workflowService: WorkflowService;
@@ -47,35 +97,11 @@ describe('WorkflowService', () => {
 
 			webhookServiceMock = mock<WebhookService>();
 
-			workflowService = new WorkflowService(
-				mock(), // logger
-				mock(), // sharedWorkflowRepository
-				workflowRepositoryMock as never, // workflowRepository
-				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
-				mock(), // ownershipService
-				mock(), // tagService
-				mock(), // workflowHistoryService
-				mock(), // externalHooks
-				mock(), // activeWorkflowManager
-				roleServiceMock, // roleService
-				mock(), // projectService
-				mock(), // executionRepository
-				mock(), // eventService
-				mock(), // globalConfig
-				mock(), // folderRepository
-				mock(), // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
-				mock(), // workflowPublishHistoryRepository
-				Object.assign(mock<WorkflowValidationService>(), {
-					validateCredentialNodeRestrictions: () => ({ isValid: true }),
-				}), // workflowValidationService
-				mock(), // nodeTypes
-				webhookServiceMock, // webhookService
-				mock(), // licenseState
-				mock(), // projectRepository
-				mock(), // redactionEnforcementService
-			);
+			workflowService = createWorkflowService({
+				workflowRepository: workflowRepositoryMock as never,
+				roleService: roleServiceMock,
+				webhookService: webhookServiceMock,
+			});
 		});
 
 		test('should use default "workflow:read" scope when requiredScopes is not provided', async () => {
@@ -198,35 +224,13 @@ describe('WorkflowService', () => {
 				mock<Project>({ id: 'project-1' }),
 			);
 
-			workflowService = new WorkflowService(
-				mock(), // logger
-				mock(), // sharedWorkflowRepository
-				workflowRepositoryMock as never, // workflowRepository
-				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
-				ownershipServiceMock, // ownershipService
-				mock(), // tagService
-				mock(), // workflowHistoryService
-				mock(), // externalHooks
-				mock(), // activeWorkflowManager
-				mock(), // roleService
-				mock(), // projectService
-				mock(), // executionRepository
-				mock(), // eventService
-				mock(), // globalConfig
-				mock(), // folderRepository
-				workflowFinderServiceMock, // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
-				mock(), // workflowPublishHistoryRepository
-				Object.assign(mock<WorkflowValidationService>(), {
-					validateCredentialNodeRestrictions: () => ({ isValid: true }),
-				}), // workflowValidationService
-				mock(), // nodeTypes
-				mock(), // webhookService
-				licenseStateMock, // licenseState
-				mock(), // projectRepository
-				redactionEnforcementServiceMock, // redactionEnforcementService
-			);
+			workflowService = createWorkflowService({
+				workflowRepository: workflowRepositoryMock as never,
+				ownershipService: ownershipServiceMock,
+				workflowFinderService: workflowFinderServiceMock,
+				licenseState: licenseStateMock,
+				redactionEnforcementService: redactionEnforcementServiceMock,
+			});
 
 			jest.clearAllMocks();
 
@@ -779,6 +783,119 @@ describe('WorkflowService', () => {
 		});
 	});
 
+	describe('update() skipActivation', () => {
+		const userHasScopesMock = jest.mocked(userHasScopes);
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowRepositoryMock: MockProxy<{
+			update: jest.Mock;
+			findOne: jest.Mock;
+		}>;
+		let activateWorkflowSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			jest.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
+			userHasScopesMock.mockResolvedValue(true);
+
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowRepositoryMock = mock();
+
+			const ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+
+			workflowService = createWorkflowService({
+				workflowRepository: workflowRepositoryMock as never,
+				ownershipService: ownershipServiceMock,
+				workflowFinderService: workflowFinderServiceMock,
+			});
+
+			activateWorkflowSpy = jest
+				.spyOn(workflowService, 'activateWorkflow')
+				.mockResolvedValue(mock<WorkflowEntity>());
+		});
+
+		afterEach(() => {
+			activateWorkflowSpy.mockRestore();
+		});
+
+		function setupPublishedWorkflow() {
+			const existingWorkflow = mock<WorkflowEntity>({
+				id: 'workflow-1',
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
+				connections: {},
+				settings: { executionOrder: 'v0' },
+				activeVersionId: 'v1',
+				tags: [],
+			});
+			const updatedWorkflow = mock<WorkflowEntity>({
+				...existingWorkflow,
+				activeVersionId: 'v2',
+				versionId: 'v2',
+			});
+
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(updatedWorkflow);
+
+			return { existingWorkflow, updatedWorkflow };
+		}
+
+		test('should reactivate when publishIfActive is true and skipActivation is not set', async () => {
+			setupPublishedWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{
+					nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
+					connections: {},
+				} as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true, publishIfActive: true },
+			);
+
+			expect(activateWorkflowSpy).toHaveBeenCalledWith(user, 'workflow-1', {
+				versionId: 'v2',
+				source: 'ui',
+			});
+		});
+
+		test('should not reactivate when publishIfActive is true and skipActivation is true', async () => {
+			setupPublishedWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{
+					nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
+					connections: {},
+				} as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true, publishIfActive: true, skipActivation: true },
+			);
+
+			expect(activateWorkflowSpy).not.toHaveBeenCalled();
+		});
+
+		test('should not reactivate on settings change when skipActivation is true', async () => {
+			setupPublishedWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ settings: { executionOrder: 'v1' } } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true, skipActivation: true },
+			);
+
+			expect(activateWorkflowSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('workflow.activate hook', () => {
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
@@ -828,35 +945,14 @@ describe('WorkflowService', () => {
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
 			);
 
-			workflowService = new WorkflowService(
-				mock(), // logger
-				mock(), // sharedWorkflowRepository
-				workflowRepositoryMock, // workflowRepository
-				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
-				mock(), // ownershipService
-				mock(), // tagService
-				workflowHistoryServiceMock, // workflowHistoryService
-				externalHooksMock, // externalHooks
-				activeWorkflowManagerMock, // activeWorkflowManager
-				mock(), // roleService
-				mock(), // projectService
-				mock(), // executionRepository
-				mock(), // eventService
-				mock(), // globalConfig
-				mock(), // folderRepository
-				workflowFinderServiceMock, // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
-				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
-				Object.assign(mock<WorkflowValidationService>(), {
-					validateCredentialNodeRestrictions: () => ({ isValid: true }),
-				}), // workflowValidationService
-				mock(), // nodeTypes
-				mock(), // webhookService
-				mock(), // licenseState
-				mock(), // projectRepository
-				mock(), // redactionEnforcementService
-			);
+			workflowService = createWorkflowService({
+				workflowRepository: workflowRepositoryMock,
+				workflowHistoryService: workflowHistoryServiceMock,
+				externalHooks: externalHooksMock,
+				activeWorkflowManager: activeWorkflowManagerMock,
+				workflowFinderService: workflowFinderServiceMock,
+				workflowPublishHistoryRepository: workflowPublishHistoryRepositoryMock,
+			});
 
 			// Bypass validation internals
 			jest

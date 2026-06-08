@@ -311,6 +311,7 @@ export class WorkflowService {
 			forceSave?: boolean;
 			publicApi?: boolean;
 			publishIfActive?: boolean;
+			skipActivation?: boolean;
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
 			autosaved?: boolean;
@@ -324,6 +325,7 @@ export class WorkflowService {
 			forceSave = false,
 			publicApi = false,
 			publishIfActive = false,
+			skipActivation = false,
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
@@ -565,9 +567,8 @@ export class WorkflowService {
 			source,
 		});
 
-		// Activate workflow if requested, or
-		// Reactivate workflow if settings changed and workflow has an active version
-		if (updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
+		// Activate workflow if requested, or reactivate when settings changed on a published workflow.
+		if (!skipActivation && updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: updatedWorkflow.activeVersionId,
 				source,
