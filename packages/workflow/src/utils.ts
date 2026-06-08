@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
@@ -7,6 +6,7 @@ import merge from 'lodash/merge';
 import path from 'path';
 
 import { ALPHABET } from './constants';
+import { UserError } from './errors/base/user.error';
 import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
@@ -175,7 +175,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 			}
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new ApplicationError(options.errorMessage);
+			throw new UserError(options.errorMessage);
 		}
 
 		throw error;

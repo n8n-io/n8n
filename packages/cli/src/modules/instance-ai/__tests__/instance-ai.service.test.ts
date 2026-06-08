@@ -597,7 +597,7 @@ type ShutdownServiceInternals = {
 	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
 		(threadId: string, options: unknown) => Promise<void>
 	>;
-	gatewayRegistry: { disconnectAll: jest.MockedFunction<() => void> };
+	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxes: Map<
 		string,
 		{
@@ -1065,7 +1065,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
-			gatewayRegistry: { findGateway: jest.Mock };
+			gatewayService: { findGateway: jest.Mock };
 			aiService: { isProxyEnabled: jest.Mock };
 			adapterService: {
 				createContext: jest.Mock;
@@ -1108,7 +1108,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
-		service.gatewayRegistry = { findGateway: jest.fn(() => undefined) };
+		service.gatewayService = { findGateway: jest.fn(() => undefined) };
 		service.aiService = { isProxyEnabled: jest.fn(() => false) };
 		service.adapterService = {
 			createContext: jest.fn(() => ({})),
@@ -1256,7 +1256,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.finalizeRemainingMessageTraceRoots = jest.fn(
 			async (_threadId: string, _options: unknown) => {},
 		);
-		service.gatewayRegistry = { disconnectAll: jest.fn() };
+		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
