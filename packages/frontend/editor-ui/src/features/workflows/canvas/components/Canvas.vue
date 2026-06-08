@@ -589,7 +589,7 @@ function onDeleteSelection() {
 	// Regular workflow nodes go through the existing delete flow
 	if (hasSelection.value) emit('delete:nodes', selectedNodeIds.value);
 
-	// If collapsed group was selected, we need to delete all its members
+	// If collapsed group was selected, delete the group itself - the nodes will remain ungrouped
 	for (const node of selectedNodesAndGroups.value) {
 		if (!isCanvasGroupNode(node)) continue;
 		const data = node.data as CanvasGroupNodeData;

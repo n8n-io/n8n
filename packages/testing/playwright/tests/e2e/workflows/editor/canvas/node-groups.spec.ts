@@ -11,6 +11,10 @@ const PERSISTED_GROUP_TITLE = 'Persisted group';
 const SET_A_NODE_ID = 'b2e0f1a8-5b8f-4b2b-a0c2-9b3e2d2a0002';
 const SET_B_NODE_ID = 'c3f1a2b8-6c9f-4c2c-b0d2-aa4f3e3b0003';
 
+// PERSISTED_FIXTURE has 4 workflow nodes but one group containing 2 of them.
+// Groups load collapsed by default, so only 2 canvas nodes render (trigger + Set C).
+const VISIBLE_NODES_AFTER_COLLAPSED_LOAD = 2;
+
 const requirements: TestRequirements = {
 	storage: {
 		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({
@@ -188,7 +192,7 @@ test.describe(
 			);
 
 			await n8n.page.reload();
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
@@ -232,13 +236,82 @@ test.describe(
 		test.beforeEach(async ({ n8n, setupRequirements }) => {
 			await setupRequirements(requirements);
 			await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
 			await n8n.canvas.clickZoomToFitButton();
 		});
 
 		test('renders groups from nodeGroups without creating them in the UI', async ({ n8n }) => {
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 			await expect(n8n.canvas.getNodeGroupTitle(PERSISTED_GROUP_TITLE)).toBeVisible();
+		});
+	},
+);
+
+test.describe(
+	'Canvas node groups — collapse / expand',
+	{ annotation: [{ type: 'owner', description: 'Adore' }] },
+	() => {
+		test.describe('Default state on workflow load', () => {
+			test.beforeEach(async ({ n8n, setupRequirements }) => {
+				await setupRequirements(requirements);
+				await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
+				await n8n.canvas.clickZoomToFitButton();
+			});
+
+			test('groups load collapsed: frame is hidden, chevron shows expand caption', async ({
+				n8n,
+			}) => {
+				await expect(n8n.canvas.getNodeGroupTitle(PERSISTED_GROUP_TITLE)).toBeVisible();
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeHidden();
+				await expect(n8n.canvas.groupToggleButton(PERSISTED_GROUP_TITLE)).toHaveAttribute(
+					'aria-label',
+					'Expand',
+				);
+			});
+
+			test('clicking the chevron expands the group: frame and chevron caption flip', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.toggleNodeGroup(PERSISTED_GROUP_TITLE);
+
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeVisible();
+				await expect(n8n.canvas.groupToggleButton(PERSISTED_GROUP_TITLE)).toHaveAttribute(
+					'aria-label',
+					'Collapse',
+				);
+			});
+
+			test('clicking the chevron again collapses back', async ({ n8n }) => {
+				await n8n.canvas.toggleNodeGroup(PERSISTED_GROUP_TITLE);
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeVisible();
+
+				await n8n.canvas.toggleNodeGroup(PERSISTED_GROUP_TITLE);
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeHidden();
+			});
+		});
+
+		test.describe('Newly created groups start expanded', () => {
+			test.beforeEach(async ({ n8n, setupRequirements }) => {
+				await setupRequirements(requirements);
+				await n8n.start.fromImportedWorkflow(FIXTURE);
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
+				await n8n.canvas.clickZoomToFitButton();
+				await n8n.canvas.deselectAll();
+			});
+
+			test('a freshly created group is expanded; its frame is visible immediately', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.selectNodes(['Set A', 'Set B']);
+				await n8n.canvas.selectionToolbar.groupButton().click();
+
+				await expect(n8n.canvas.getNodeGroupFrame(DEFAULT_GROUP_TITLE)).toBeVisible();
+				await expect(n8n.canvas.groupToggleButton(DEFAULT_GROUP_TITLE)).toHaveAttribute(
+					'aria-label',
+					'Collapse',
+				);
+			});
 		});
 	},
 );
