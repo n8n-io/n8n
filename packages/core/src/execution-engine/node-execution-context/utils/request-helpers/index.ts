@@ -1,16 +1,18 @@
 export {
+	buildTargetUrl,
 	createFormDataObject,
 	digestAuthAxiosConfig,
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	getUrlFromProxyConfig,
 	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
+	resolveLegacyRequestUrl,
 	searchForHeader,
-	tryParseUrl,
-	buildTargetUrl,
-	getUrlFromProxyConfig,
 	setAxiosAgents,
+	tryParseUrl,
+	validateUrlSsrf,
 } from './axios-utils';
 export {
 	applyPaginationRequestData,

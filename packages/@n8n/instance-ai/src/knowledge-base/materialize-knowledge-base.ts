@@ -4,6 +4,8 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
+import { readdir, readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
 
 import type { Logger } from '../logger';
@@ -25,7 +27,14 @@ import { WORKSPACE_MANIFEST_FILE } from '../workspace/workspace-manifest';
 
 export const SANDBOX_KNOWLEDGE_BASE_DIR = 'knowledge-base';
 export const KNOWLEDGE_BASE_BEST_PRACTICES_DIR = 'best-practices';
+export const KNOWLEDGE_BASE_REFERENCE_DIR = 'reference';
 export const KNOWLEDGE_BASE_INDEX_FILE = 'index.json';
+export const INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR = resolve(
+	__dirname,
+	'..',
+	'..',
+	'knowledge-base',
+);
 export const KNOWLEDGE_BASE_MANIFEST_FILE = WORKSPACE_MANIFEST_FILE;
 export const KNOWLEDGE_BASE_MANIFEST_SCHEMA_VERSION = 4;
 
@@ -41,6 +50,16 @@ export interface KnowledgeBaseBestPracticesIndex {
 	entries: KnowledgeBaseIndexEntry[];
 }
 
+export interface KnowledgeBaseReferenceIndexEntry {
+	id: string;
+	description: string;
+	file: string;
+}
+
+export interface KnowledgeBaseReferenceIndex {
+	entries: KnowledgeBaseReferenceIndexEntry[];
+}
+
 export interface KnowledgeBaseRootIndex {
 	bestPractices: {
 		indexFile: string;
@@ -49,6 +68,10 @@ export interface KnowledgeBaseRootIndex {
 	templates: {
 		indexFile: string;
 		entries: KnowledgeBaseTemplateEntry[];
+	};
+	reference: {
+		indexFile: string;
+		entries: KnowledgeBaseReferenceIndexEntry[];
 	};
 }
 
@@ -107,9 +130,66 @@ function addTemplatesToKnowledgeBaseFiles(
 	return templatesIndex.entries;
 }
 
-export function buildKnowledgeBaseWorkspaceBundle(
+const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
+	Pick<KnowledgeBaseReferenceIndexEntry, 'id' | 'description'> & { fileName: string }
+> = [
+	{
+		id: 'trigger-input-data-shapes',
+		description:
+			'Per-trigger inputData shapes for verify-built-workflow and executions(action="run")',
+		fileName: 'trigger-input-data-shapes.md',
+	},
+];
+
+async function addReferenceFilesToKnowledgeBase(
+	files: Map<string, string>,
+	rootDir: string,
+): Promise<KnowledgeBaseReferenceIndexEntry[]> {
+	const referenceSourceDir = join(
+		INSTANCE_AI_KNOWLEDGE_BASE_SOURCE_DIR,
+		KNOWLEDGE_BASE_REFERENCE_DIR,
+	);
+	const referenceEntries: KnowledgeBaseReferenceIndexEntry[] = [];
+
+	for (const entry of KNOWLEDGE_BASE_REFERENCE_ENTRIES) {
+		const sourcePath = join(referenceSourceDir, entry.fileName);
+		const relativeFilePath = posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, entry.fileName);
+		files.set(
+			posixJoin(rootDir, relativeFilePath),
+			withTrailingNewline(await readFile(sourcePath, 'utf-8')),
+		);
+		referenceEntries.push({
+			id: entry.id,
+			description: entry.description,
+			file: relativeFilePath,
+		});
+	}
+
+	const referenceIndexPath = posixJoin(
+		rootDir,
+		KNOWLEDGE_BASE_REFERENCE_DIR,
+		KNOWLEDGE_BASE_INDEX_FILE,
+	);
+	const referenceIndex: KnowledgeBaseReferenceIndex = { entries: referenceEntries };
+	files.set(referenceIndexPath, stringifyWorkspaceJson(referenceIndex));
+
+	// Guard against unexpected extra files in the source directory during development.
+	const sourceFiles = (await readdir(referenceSourceDir)).filter((name) => name.endsWith('.md'));
+	const expectedFiles = new Set(KNOWLEDGE_BASE_REFERENCE_ENTRIES.map((entry) => entry.fileName));
+	for (const sourceFile of sourceFiles) {
+		if (!expectedFiles.has(sourceFile)) {
+			throw new Error(
+				`Unexpected knowledge-base reference file "${sourceFile}". Add it to KNOWLEDGE_BASE_REFERENCE_ENTRIES.`,
+			);
+		}
+	}
+
+	return referenceEntries;
+}
+
+export async function buildKnowledgeBaseWorkspaceBundle(
 	options: BuildKnowledgeBaseWorkspaceBundleOptions,
-): KnowledgeBaseWorkspaceBundle {
+): Promise<KnowledgeBaseWorkspaceBundle> {
 	const { root, templatesArchive = null, logger } = options;
 	const rootDir = posixJoin(root, SANDBOX_KNOWLEDGE_BASE_DIR);
 	const files = new Map<string, string>();
@@ -145,6 +225,7 @@ export function buildKnowledgeBaseWorkspaceBundle(
 	const templateEntries = templatesArchive
 		? addTemplatesToKnowledgeBaseFiles(files, rootDir, templatesArchive, logger)
 		: [];
+	const referenceEntries = await addReferenceFilesToKnowledgeBase(files, rootDir);
 
 	const rootIndexPath = posixJoin(rootDir, KNOWLEDGE_BASE_INDEX_FILE);
 	const rootIndex: KnowledgeBaseRootIndex = {
@@ -155,6 +236,10 @@ export function buildKnowledgeBaseWorkspaceBundle(
 		templates: {
 			indexFile: posixJoin(KNOWLEDGE_BASE_TEMPLATES_DIR, KNOWLEDGE_BASE_INDEX_FILE),
 			entries: templateEntries,
+		},
+		reference: {
+			indexFile: posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, KNOWLEDGE_BASE_INDEX_FILE),
+			entries: referenceEntries,
 		},
 	};
 	files.set(rootIndexPath, stringifyWorkspaceJson(rootIndex));
@@ -181,7 +266,7 @@ const KNOWLEDGE_BASE_FILE_LABEL = 'Knowledge base file';
 export async function loadPrebakedKnowledgeBaseBundle(
 	options: MaterializeKnowledgeBaseOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle | undefined> {
-	const bundle = buildKnowledgeBaseWorkspaceBundle(options);
+	const bundle = await buildKnowledgeBaseWorkspaceBundle(options);
 
 	return await loadPrebakedWorkspaceBundle({
 		workspace: options.workspace,
@@ -216,7 +301,7 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 		logger: options.logger,
 		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
-		buildBundle: () => buildKnowledgeBaseWorkspaceBundle(options),
+		buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
 		materializedLogMessage: 'Materialized knowledge base into workspace',
 		materializedLogContext: (bundle) => ({
 			root: options.root,
