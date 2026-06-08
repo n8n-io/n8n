@@ -4,7 +4,7 @@
 /**
  * n8n CI Adapter for Test Distribution
  *
- * Thin wrapper that calls `janitor orchestrate` for generic shard distribution,
+ * Thin wrapper that calls `janitor distribute` for generic shard distribution,
  * then maps capabilities to n8n-specific Docker images for the CI matrix.
  *
  * Impact scoping is a domain-partitioned UNION of two analyzers (DEVP-364):
@@ -174,7 +174,7 @@ function logSelectionDecision(decision) {
 }
 
 function getOrchestration(numShards, options = {}) {
-	const cliArgs = ['orchestrate', `--shards=${numShards}`];
+	const cliArgs = ['distribute', `--shards=${numShards}`];
 	const includeFile = options.includeSpecsFile;
 	if (includeFile) cliArgs.push(`--include-specs-file=${includeFile}`);
 	const output = execFileSync('node', [JANITOR_CLI, ...cliArgs], {

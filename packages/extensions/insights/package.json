@@ -60,5 +60,6 @@
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -37,5 +37,6 @@
     "@n8n/permissions": "workspace:*",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -649,8 +649,8 @@ describe('credentials tool', () => {
 			);
 		});
 
-		it('should include projectId in suspend payload when provided', async () => {
-			const context = createMockContext();
+		it("should include the thread's project in the suspend payload", async () => {
+			const context = createMockContext({ projectId: 'proj-1' });
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const suspendFn = vi.fn();
@@ -660,7 +660,6 @@ describe('credentials tool', () => {
 				{
 					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
-					projectId: 'proj-1',
 				},
 				suspendCtx(suspendFn),
 			);
@@ -669,8 +668,8 @@ describe('credentials tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(expect.objectContaining({ projectId: 'proj-1' }));
 		});
 
-		it('should scope credential lookup to projectId when provided', async () => {
-			const context = createMockContext();
+		it("should scope the credential lookup to the thread's project", async () => {
+			const context = createMockContext({ projectId: 'proj-1' });
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const tool = createCredentialsTool(context);
@@ -678,7 +677,6 @@ describe('credentials tool', () => {
 				{
 					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
-					projectId: 'proj-1',
 				},
 				suspendCtx(vi.fn()),
 			);
