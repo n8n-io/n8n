@@ -1,69 +1,87 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIcon } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
+import { computed, onMounted } from 'vue';
+import { N8nButton, N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
+import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '@/app/constants/modals';
+import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import ConnectionRow from './ConnectionRow.vue';
 
-type ConnectionType = 'computer-use' | 'browser-use';
+type SingletonConnectionType = 'computer-use' | 'browser-use';
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+
+type SidebarRowIcon = SingletonConnectionType | 'mcp';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
+const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
+const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 
 const props = defineProps<{
 	dropdownPortalTarget?: HTMLElement;
 }>();
 
-const connections = computed(() => store.connections);
+const singletonConnections = computed(() => store.connections);
+const mcpConnections = computed(() => mcpStore.connections);
 const isVisible = computed(
 	() =>
 		!store.isLocalGatewayDisabledByAdmin &&
 		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
 );
 
-const ICON_MAP: Record<ConnectionType, IconName> = {
+const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 	'computer-use': 'mouse-pointer',
 	'browser-use': 'globe',
+	mcp: 'server',
 };
 
-const baseAddItems: Array<DropdownMenuItemProps<ConnectionType>> = [
-	{
-		id: 'computer-use',
-		label: i18n.baseText('instanceAi.connections.add.computerUse'),
-		icon: { type: 'icon', value: 'mouse-pointer' },
-	},
-];
+/**
+ * Pick the icon variant that best matches the current applied theme. Prefer
+ * a theme-tagged match, then an untagged icon, then any icon. Returns null if
+ * the server has no icons (e.g. the server is no longer in the registry).
+ */
+function pickIconForTheme(
+	icons: McpRegistryServerIconResponse[],
+	appliedTheme: 'light' | 'dark',
+): string | null {
+	if (icons.length === 0) return null;
+	const themed = icons.find((i) => i.theme === appliedTheme);
+	if (themed) return themed.src;
+	const untagged = icons.find((i) => i.theme === undefined);
+	return (untagged ?? icons[0]).src;
+}
 
-const addItems = computed(() => {
-	const added = new Set(connections.value.map((c) => c.type));
-	return baseAddItems.filter((item) => {
-		if (added.has(item.id)) return false;
-		if (store.isLocalGatewayDisabledByAdmin) return false;
-		return true;
-	});
-});
-
-const hasAddableConnection = computed(() => addItems.value.length > 0);
-
-function getRowActions(type: ConnectionType, status: ConnectionStatus): RowAction[] {
+function getSingletonRowActions(
+	type: SingletonConnectionType,
+	status: ConnectionStatus,
+): RowAction[] {
 	if (type === 'browser-use') return ['settings'];
 	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
 	return ['connect', 'remove'];
 }
 
-async function openModal(type: ConnectionType) {
-	// Adding Computer Use from the +menu while the user preference has it
-	// disabled re-enables it. The existing watcher in InstanceAiView triggers
-	// daemon probing/polling.
+const MCP_ROW_ACTIONS: RowAction[] = ['settings', 'remove'];
+
+function iconForConnection(
+	icons: McpRegistryServerIconResponse[],
+): IconName | { type: 'file'; src: string } {
+	const src = pickIconForTheme(icons, uiStore.appliedTheme);
+	return src ? { type: 'file', src } : ICON_MAP.mcp;
+}
+
+async function openSingletonModal(type: SingletonConnectionType) {
 	if (
 		type === 'computer-use' &&
 		!store.isLocalGatewayDisabledByAdmin &&
@@ -79,17 +97,44 @@ async function openModal(type: ConnectionType) {
 	}
 }
 
-async function handleDisconnect(type: ConnectionType) {
+function openToolsConnectionModal() {
+	mcpTelemetry.trackAddMenuMcpSelected();
+	mcpTelemetry.trackModalOpened();
+	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
+}
+
+async function handleSingletonDisconnect(type: SingletonConnectionType) {
 	if (type === 'computer-use') {
 		await store.disconnectComputerUse();
 	}
 }
 
-async function handleRemove(type: ConnectionType) {
+async function handleSingletonRemove(type: SingletonConnectionType) {
 	if (type === 'computer-use') {
 		await store.removeComputerUse();
 	}
 }
+
+async function handleMcpDisconnect(connectionId: string) {
+	await mcpStore.disconnect(connectionId);
+}
+
+function openMcpSettings(connectionId: string) {
+	const connection = mcpStore.connections.find((c) => c.id === connectionId);
+	if (connection) {
+		mcpTelemetry.trackSettingsOpened(connection.serverSlug);
+	}
+	mcpTelemetry.trackModalOpened();
+	uiStore.openModalWithData({
+		name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
+		data: { connectionId },
+	});
+}
+
+onMounted(() => {
+	if (!isMcpFeatureEnabled.value) return;
+	void mcpStore.fetchConnections();
+});
 </script>
 
 <template>
@@ -98,32 +143,43 @@ async function handleRemove(type: ConnectionType) {
 			<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
-			<div v-if="hasAddableConnection" :class="$style.headerActions">
-				<N8nDropdownMenu
-					:items="addItems"
-					:activator-icon="{ type: 'icon', value: 'plus' }"
-					placement="bottom-end"
-					:portal-target="props.dropdownPortalTarget"
+			<div v-if="isMcpFeatureEnabled" :class="$style.headerActions">
+				<N8nIconButton
+					icon="plus"
+					type="tertiary"
+					size="mini"
 					data-test-id="instance-ai-connections-add"
-					@select="openModal"
+					@click="openToolsConnectionModal"
 				/>
 			</div>
 		</div>
 
-		<div v-if="connections.length > 0" :class="$style.list">
+		<div v-if="singletonConnections.length > 0 || mcpConnections.length > 0" :class="$style.list">
 			<ConnectionRow
-				v-for="conn in connections"
+				v-for="conn in singletonConnections"
 				:key="conn.type"
 				:name="conn.name"
 				:subtitle="conn.subtitle"
 				:icon="ICON_MAP[conn.type]"
 				:status="conn.status"
-				:actions="getRowActions(conn.type, conn.status)"
+				:actions="getSingletonRowActions(conn.type, conn.status)"
 				:dropdown-portal-target="props.dropdownPortalTarget"
-				@connect="openModal(conn.type)"
-				@disconnect="handleDisconnect(conn.type)"
-				@open-settings="openModal(conn.type)"
-				@remove="handleRemove(conn.type)"
+				@connect="openSingletonModal(conn.type)"
+				@disconnect="handleSingletonDisconnect(conn.type)"
+				@open-settings="openSingletonModal(conn.type)"
+				@remove="handleSingletonRemove(conn.type)"
+			/>
+			<ConnectionRow
+				v-for="conn in mcpConnections"
+				:key="conn.id"
+				:name="conn.serverTitle"
+				:subtitle="conn.credentialName"
+				:icon="iconForConnection(conn.serverIcons)"
+				status="connected"
+				:actions="MCP_ROW_ACTIONS"
+				:dropdown-portal-target="props.dropdownPortalTarget"
+				@open-settings="openMcpSettings(conn.id)"
+				@remove="handleMcpDisconnect(conn.id)"
 			/>
 		</div>
 
@@ -136,7 +192,7 @@ async function handleRemove(type: ConnectionType) {
 				size="small"
 				:disabled="store.isLocalGatewayDisabledByAdmin"
 				data-test-id="instance-ai-connections-empty-cta"
-				@click="openModal('computer-use')"
+				@click="openSingletonModal('computer-use')"
 			/>
 		</div>
 	</div>
