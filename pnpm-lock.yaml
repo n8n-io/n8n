@@ -5107,6 +5107,9 @@ importers:
       '@n8n/rules-engine':
         specifier: workspace:*
         version: link:../rules-engine
+      '@n8n/test-impact':
+        specifier: workspace:*
+        version: link:../test-impact
       glob:
         specifier: 10.5.0
         version: 10.5.0
@@ -5183,6 +5186,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../janitor
+      '@n8n/test-impact':
+        specifier: workspace:*
+        version: link:../test-impact
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../../@n8n/workflow-sdk
@@ -5274,6 +5280,28 @@ importers:
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/testing/test-impact:
+    dependencies:
+      monocart-coverage-reports:
+        specifier: ^2.12.0
+        version: 2.12.12
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.41
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.1(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -25431,14 +25459,14 @@ snapshots:
       '@jest/test-result': 29.7.0
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.9.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.7.0
-      jest-config: 29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2))
+      jest-config: 29.7.0(@types/node@20.19.41)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2))
       jest-haste-map: 29.7.0
       jest-message-util: 29.7.0
       jest-regex-util: 29.6.3
@@ -25466,14 +25494,14 @@ snapshots:
       '@jest/test-result': 29.7.0
       '@jest/transform': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       ci-info: 3.9.0
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.7.0
-      jest-config: 29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2))
+      jest-config: 29.7.0(@types/node@20.19.41)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2))
       jest-haste-map: 29.7.0
       jest-message-util: 29.7.0
       jest-regex-util: 29.6.3
@@ -25498,7 +25526,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       jest-mock: 29.7.0
 
   '@jest/expect-utils@29.7.0':
@@ -25516,7 +25544,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.3
       '@sinonjs/fake-timers': 10.3.0
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       jest-message-util: 29.7.0
       jest-mock: 29.7.0
       jest-util: 29.7.0
@@ -25608,7 +25636,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
@@ -29111,11 +29139,11 @@ snapshots:
 
   '@types/adm-zip@0.5.7':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/amqplib@0.10.1':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/argparse@1.0.38': {}
 
@@ -29123,15 +29151,15 @@ snapshots:
 
   '@types/asn1@0.2.0':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/autocannon@7.12.7':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/aws4@1.11.2':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/babel__core@7.20.5':
     dependencies:
@@ -29270,7 +29298,7 @@ snapshots:
 
   '@types/formidable@3.4.5':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/fs-extra@9.0.13':
     dependencies:
@@ -29278,16 +29306,16 @@ snapshots:
 
   '@types/ftp@0.3.33':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/glob@8.0.0':
     dependencies:
       '@types/minimatch': 5.1.2
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/gm@1.25.0':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/graceful-fs@4.1.9':
     dependencies:
@@ -29301,7 +29329,7 @@ snapshots:
 
   '@types/http-proxy@1.17.16':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/humanize-duration@3.27.1': {}
 
@@ -29341,7 +29369,7 @@ snapshots:
 
   '@types/jsdom@20.0.1':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       '@types/tough-cookie': 4.0.5
       parse5: 7.1.2
 
@@ -29378,7 +29406,7 @@ snapshots:
 
   '@types/mailparser@3.4.4':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       iconv-lite: 0.6.3
 
   '@types/markdown-it-emoji@2.0.5':
@@ -29420,7 +29448,7 @@ snapshots:
 
   '@types/mssql@9.1.5':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       '@types/tedious': 4.0.14
       tarn: 3.0.2
 
@@ -29444,13 +29472,13 @@ snapshots:
   '@types/nodemailer@7.0.3':
     dependencies:
       '@aws-sdk/client-sesv2': 3.918.0
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
     transitivePeerDependencies:
       - aws-crt
 
   '@types/oracledb@6.10.3':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/pg@8.15.6':
     dependencies:
@@ -29472,14 +29500,14 @@ snapshots:
     dependencies:
       '@types/bluebird': 3.5.37
       '@types/ftp': 0.3.33
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       '@types/promise-ftp-common': 1.1.0
 
   '@types/prop-types@15.7.15': {}
 
   '@types/proxy-from-env@1.0.4':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/psl@1.1.3': {}
 
@@ -29511,7 +29539,7 @@ snapshots:
 
   '@types/resolve@1.17.1':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/responselike@1.0.3':
     dependencies:
@@ -29542,7 +29570,7 @@ snapshots:
   '@types/shelljs@0.8.11':
     dependencies:
       '@types/glob': 8.0.0
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/showdown@1.9.4': {}
 
@@ -29561,18 +29589,18 @@ snapshots:
 
   '@types/ssh2@1.11.6':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/sshpk@1.17.4':
     dependencies:
       '@types/asn1': 0.2.0
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/stack-utils@2.0.3': {}
 
   '@types/stream-chain@2.1.0':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/stream-json@1.7.8':
     dependencies:
@@ -29585,7 +29613,7 @@ snapshots:
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       form-data: 4.0.4
 
   '@types/supertest@6.0.3':
@@ -29600,11 +29628,11 @@ snapshots:
 
   '@types/syslog-client@1.1.2':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/temp@0.9.4':
     dependencies:
@@ -29612,7 +29640,7 @@ snapshots:
 
   '@types/through@0.0.30':
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
 
   '@types/tough-cookie@4.0.5': {}
 
@@ -34181,7 +34209,7 @@ snapshots:
 
   groq-sdk@0.19.0(encoding@0.1.13):
     dependencies:
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       '@types/node-fetch': 2.6.13
       abort-controller: 3.0.0
       agentkeepalive: 4.6.0
@@ -35053,7 +35081,7 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-config@29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)):
+  jest-config@29.7.0(@types/node@20.19.41)(ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2)):
     dependencies:
       '@babel/core': 7.29.0
       '@jest/test-sequencer': 29.7.0
@@ -35078,8 +35106,8 @@ snapshots:
       slash: 3.0.0
       strip-json-comments: 3.1.1
     optionalDependencies:
-      '@types/node': 20.19.21
-      ts-node: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)
+      '@types/node': 20.19.41
+      ts-node: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -35140,7 +35168,7 @@ snapshots:
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
       '@types/jsdom': 20.0.1
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       jest-mock: 29.7.0
       jest-util: 29.7.0
       jsdom: 20.0.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -35224,7 +35252,7 @@ snapshots:
   jest-mock@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       jest-util: 29.7.0
 
   jest-pnp-resolver@1.2.3(jest-resolve@29.7.0):
@@ -35333,7 +35361,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -38518,7 +38546,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.1
-      '@types/node': 20.19.21
+      '@types/node': 20.19.41
       long: 5.3.2
 
   proxy-addr@2.0.7:

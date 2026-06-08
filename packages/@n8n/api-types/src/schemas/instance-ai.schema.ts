@@ -681,6 +681,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
+	projectId: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -837,6 +838,7 @@ export interface InstanceAiThreadInfo {
 	id: string;
 	title?: string;
 	resourceId: string;
+	projectId?: string;
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
@@ -873,6 +875,7 @@ export interface InstanceAiThreadMessagesResponse {
 
 export interface InstanceAiRichMessagesResponse {
 	threadId: string;
+	projectId?: string;
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
