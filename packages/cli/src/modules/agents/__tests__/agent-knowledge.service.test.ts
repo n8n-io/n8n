@@ -1,4 +1,5 @@
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { BinaryDataService } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils';
 import { mock } from 'jest-mock-extended';
@@ -63,6 +64,7 @@ describe('AgentKnowledgeService', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentFileRepository: jest.Mocked<AgentFileRepository>;
 	let binaryDataService: jest.Mocked<BinaryDataService>;
+	let logger: jest.Mocked<Logger>;
 	let transactionManager: jest.Mocked<EntityManager>;
 	let transactionMock: jest.Mock<Promise<unknown>, [(manager: EntityManager) => Promise<unknown>]>;
 	let service: AgentKnowledgeService;
@@ -119,6 +121,7 @@ describe('AgentKnowledgeService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentFileRepository = mock<AgentFileRepository>();
 		binaryDataService = mock<BinaryDataService>();
+		logger = mock<Logger>();
 		transactionManager = mock<EntityManager>();
 		transactionMock = jest.fn();
 		Object.assign(agentRepository, {
@@ -162,7 +165,12 @@ describe('AgentKnowledgeService', () => {
 		mockDestroy.mockReset().mockResolvedValue(undefined);
 
 		writeStreamToSandboxFileMock.mockResolvedValue(undefined);
-		service = new AgentKnowledgeService(agentRepository, agentFileRepository, binaryDataService);
+		service = new AgentKnowledgeService(
+			agentRepository,
+			agentFileRepository,
+			binaryDataService,
+			logger,
+		);
 	});
 
 	it('rejects files for agents outside the project', async () => {

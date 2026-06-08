@@ -108,7 +108,13 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		_expectedManifest: KnowledgeSandboxExpectedManifest,
 		materializeAll: (workspace: KnowledgeSandboxWorkspace) => Promise<void>,
 	): Promise<void> {
-		if (!this.sandboxConfigService.isAvailable()) return;
+		if (!this.sandboxConfigService.isAvailable()) {
+			this.logger.info('Skipping agent knowledge Daytona volume sync; sandbox is unavailable', {
+				projectId,
+				agentId,
+			});
+			return;
+		}
 
 		const cacheKey = buildAgentKnowledgeWorkspaceCacheKey(projectId, agentId);
 		await this.serializeByKey(cacheKey, async () => {
@@ -117,7 +123,18 @@ export class AgentKnowledgeSandboxWorkspaceService {
 				await this.resolveSandboxConfig(userId),
 			);
 			try {
+				this.logger.debug('Created agent knowledge Daytona sync sandbox', {
+					projectId,
+					agentId,
+					sandboxId: workspace.sandbox.id,
+					volumeSubpath: workspace.volumeSubpath,
+				});
 				await this.replaceWorkspaceContents(workspace, materializeAll);
+				this.logger.info('Materialized agent knowledge Daytona volume', {
+					projectId,
+					agentId,
+					volumeSubpath: workspace.volumeSubpath,
+				});
 			} finally {
 				await this.destroySandbox(workspace.sandbox);
 			}
@@ -129,11 +146,25 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		agentId: string,
 		userId: string | undefined,
 	): Promise<void> {
-		if (!this.sandboxConfigService.isAvailable()) return;
+		if (!this.sandboxConfigService.isAvailable()) {
+			this.logger.info('Skipping agent knowledge Daytona volume sync; sandbox is unavailable', {
+				projectId,
+				agentId,
+			});
+			return;
+		}
 
 		try {
+			const startedAt = Date.now();
 			const { storedFiles, expectedManifest } =
 				await this.knowledgeService.resolveCurrentSandboxManifest(agentId, projectId);
+			this.logger.info('Starting agent knowledge Daytona volume sync', {
+				projectId,
+				agentId,
+				fileCount: storedFiles.length,
+				totalBytes: storedFiles.reduce((total, file) => total + file.fileSizeBytes, 0),
+				corpusSignature: expectedManifest.corpusSignature,
+			});
 			await this.syncDaytonaVolumeForAgent(
 				projectId,
 				agentId,
@@ -149,6 +180,13 @@ export class AgentKnowledgeSandboxWorkspaceService {
 					);
 				},
 			);
+			this.logger.info('Completed agent knowledge Daytona volume sync', {
+				projectId,
+				agentId,
+				fileCount: storedFiles.length,
+				durationMs: Date.now() - startedAt,
+				corpusSignature: expectedManifest.corpusSignature,
+			});
 		} catch (error) {
 			this.logger.warn('Failed to sync agent knowledge Daytona volume', {
 				projectId,

@@ -147,6 +147,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			mock<AgentRepository>(),
 			mock<AgentFileRepository>(),
 			mock(),
+			logger,
 		);
 		service = new AgentKnowledgeSandboxWorkspaceService(logger, configService, knowledgeService);
 	});

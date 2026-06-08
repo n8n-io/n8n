@@ -8,6 +8,7 @@ import {
 	type SandboxFilesystem,
 	type SandboxInstance,
 } from '@n8n/agents/sandbox';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { generateNanoId, sanitizeFilename } from '@n8n/utils';
@@ -121,6 +122,7 @@ export class AgentKnowledgeService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly logger: Logger,
 	) {}
 
 	async uploadFiles(
@@ -130,6 +132,18 @@ export class AgentKnowledgeService {
 	): Promise<AgentFileDto[]> {
 		return await this.serializeUploadForAgent(agentId, async () => {
 			const storedFiles: StoredAgentFile[] = [];
+			const requestedFileCount = files.length;
+			const requestedBytes = files.reduce(
+				(total, file) => total + this.getIncomingUploadSizeBytes(file),
+				0,
+			);
+
+			this.logger.info('Starting agent knowledge file upload', {
+				projectId,
+				agentId,
+				fileCount: requestedFileCount,
+				totalBytes: requestedBytes,
+			});
 
 			try {
 				await this.agentRepository.manager.transaction(async (trx) => {
@@ -143,11 +157,27 @@ export class AgentKnowledgeService {
 					}
 				});
 			} catch (error) {
+				this.logger.warn('Failed to store agent knowledge files', {
+					projectId,
+					agentId,
+					fileCount: requestedFileCount,
+					totalBytes: requestedBytes,
+					storedFileCount: storedFiles.length,
+					error: error instanceof Error ? error.message : String(error),
+				});
 				await this.cleanupStoredFiles(storedFiles).catch(() => {});
 				throw error;
 			} finally {
 				await this.cleanupUploadTempFiles(files);
 			}
+
+			this.logger.info('Stored agent knowledge files', {
+				projectId,
+				agentId,
+				fileCount: storedFiles.length,
+				totalBytes: storedFiles.reduce((total, file) => total + file.fileSizeBytes, 0),
+				fileIds: storedFiles.map((file) => file.id),
+			});
 
 			return storedFiles.map((file) => this.toDto(file));
 		});
@@ -502,7 +532,16 @@ export class AgentKnowledgeService {
 				fileSizeBytes: buffer.length,
 			});
 
-			return await repository.save(agentFile);
+			const savedFile = await repository.save(agentFile);
+			this.logger.debug('Stored agent knowledge file', {
+				agentId,
+				fileId,
+				mimeType: storedContent.mimeType,
+				inputBytes: buffer.length,
+				storedBytes: storedContent.buffer.length,
+				convertedPdfToText: this.isPdf(fileName, file.mimetype),
+			});
+			return savedFile;
 		} catch (error) {
 			if (storedBinaryDataId) {
 				await this.binaryDataService.deleteManyByBinaryDataId([storedBinaryDataId]);

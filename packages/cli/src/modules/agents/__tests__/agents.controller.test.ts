@@ -321,14 +321,22 @@ describe('AgentsController file endpoints', () => {
 		expect(result).toBe(files);
 	});
 
-	it('returns uploaded files when Daytona sync helper resolves after handling its own failure', async () => {
+	it('returns uploaded files after starting Daytona sync asynchronously', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
 		const uploadedFiles = [{ originalname: 'notes.md' }] as never;
 		const storedFiles = [{ id: 'file-1', fileName: 'notes.md' }] as never;
+		let syncResolved = false;
+		let resolveSync!: () => void;
+		const syncPromise = new Promise<void>((resolve) => {
+			resolveSync = () => {
+				syncResolved = true;
+				resolve();
+			};
+		});
 		agentKnowledgeService.uploadFiles.mockResolvedValue(storedFiles);
 		agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume.mockImplementationOnce(
-			async () => undefined,
+			async () => await syncPromise,
 		);
 
 		const result = await controller.uploadFiles(
@@ -338,6 +346,7 @@ describe('AgentsController file endpoints', () => {
 			'agent-1',
 		);
 
+		expect(syncResolved).toBe(false);
 		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
@@ -349,6 +358,8 @@ describe('AgentsController file endpoints', () => {
 			undefined,
 		);
 		expect(result).toBe(storedFiles);
+		resolveSync();
+		await syncPromise;
 	});
 
 	it('does not sync the Daytona volume when upload fails', async () => {
@@ -368,11 +379,19 @@ describe('AgentsController file endpoints', () => {
 		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).not.toHaveBeenCalled();
 	});
 
-	it('returns delete success when Daytona sync helper resolves after handling its own failure', async () => {
+	it('returns delete success after starting Daytona sync asynchronously', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
+		let syncResolved = false;
+		let resolveSync!: () => void;
+		const syncPromise = new Promise<void>((resolve) => {
+			resolveSync = () => {
+				syncResolved = true;
+				resolve();
+			};
+		});
 		agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume.mockImplementationOnce(
-			async () => undefined,
+			async () => await syncPromise,
 		);
 
 		const result = await controller.deleteFile(
@@ -383,6 +402,7 @@ describe('AgentsController file endpoints', () => {
 			'file-1',
 		);
 
+		expect(syncResolved).toBe(false);
 		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
 		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).toHaveBeenCalledWith(
 			'project-1',
@@ -390,6 +410,8 @@ describe('AgentsController file endpoints', () => {
 			undefined,
 		);
 		expect(result).toEqual({ success: true });
+		resolveSync();
+		await syncPromise;
 	});
 
 	it('does not sync the Daytona volume when delete fails', async () => {
