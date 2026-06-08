@@ -66,6 +66,7 @@ export function getBuilderSkillRoutingSection(): string {
 			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
 			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
+		'- `agent-builder-resource-locators`: node-tool dynamic selectors and RLC values. Load it after `get_node_types` when a node parameter is a resource locator, dynamic options field, "Name or ID" selector, stable resource ID such as Linear `teamId`, Slack channel, project/calendar/database/table id, or after a `write_config`/`patch_config` dynamic selector error.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
 	];
@@ -130,8 +131,9 @@ Prefer \`$fromAI\` whenever the target agent should decide a value at runtime.
 Do not use \`$fromAI\` for stable resource IDs that the target agent cannot know
 at runtime, such as Linear \`teamId\`, project IDs, channel IDs, calendar IDs,
 database IDs, table IDs, or other dynamic "Name or ID" selectors. Resolve those
-with \`ask_credential\` plus \`get_resource_locator_options\` and write the returned
-\`parameterValue\` into \`nodeParameters\`.
+with the \`agent-builder-resource-locators\` skill, \`ask_credential\`, and
+\`get_resource_locator_options\`; write the returned \`parameterValue\` into
+\`nodeParameters\`.
 
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\`
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\`

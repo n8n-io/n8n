@@ -1,6 +1,11 @@
 import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import {
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	normalizeParameterPath,
+} from '@n8n/ai-utilities/node-catalog';
+import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -59,6 +64,8 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
 
+const FROM_AI_CALL_MARKER = '$fromAI(';
+
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
 	configHash: string | null;
@@ -96,8 +103,46 @@ function rejectIfUnsupportedNativeWebSearch(
 	};
 }
 
+type FromAiParameterPath = {
+	parameterPath: string;
+	jsonPointer: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function escapeJsonPointerPart(part: string): string {
+	return part.replaceAll('~', '~0').replaceAll('/', '~1');
+}
+
+function collectFromAiParameterPaths(
+	value: unknown,
+	pathParts: string[] = [],
+	jsonPointerParts: string[] = pathParts,
+): FromAiParameterPath[] {
+	if (typeof value === 'string') {
+		if (!value.includes(FROM_AI_CALL_MARKER) || pathParts.length === 0) return [];
+
+		return [
+			{
+				parameterPath: pathParts.join('.'),
+				jsonPointer: jsonPointerParts.map(escapeJsonPointerPart).join('/'),
+			},
+		];
+	}
+
+	if (Array.isArray(value)) {
+		return value.flatMap((item, index) =>
+			collectFromAiParameterPaths(item, pathParts, [...jsonPointerParts, String(index)]),
+		);
+	}
+
+	if (!isRecord(value)) return [];
+
+	return Object.entries(value).flatMap(([key, nested]) =>
+		collectFromAiParameterPaths(nested, [...pathParts, key], [...jsonPointerParts, key]),
+	);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -198,6 +243,71 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
+	private getDynamicSelectorPath(
+		nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>,
+		parameterPath: string,
+	): string | null {
+		const normalizedPath = normalizeParameterPath(parameterPath);
+		const pathParts = normalizedPath.split('.');
+
+		for (let length = pathParts.length; length > 0; length--) {
+			const candidatePath = pathParts.slice(0, length).join('.');
+			const property = findNodeParameterProperty(
+				nodeTypeDescription.description.properties,
+				candidatePath,
+			);
+			if (!property) continue;
+
+			const lookup = getDynamicNodeParameterLookup(property);
+			if (lookup) return candidatePath;
+		}
+
+		return null;
+	}
+
+	private rejectIfDynamicSelectorUsesFromAi(
+		config: AgentJsonConfig,
+	): { errors: ConfigValidationError[] } | null {
+		const errors: ConfigValidationError[] = [];
+
+		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
+			if (tool.type !== 'node') continue;
+
+			const fromAiPaths = collectFromAiParameterPaths(tool.node.nodeParameters);
+			if (fromAiPaths.length === 0) continue;
+
+			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
+			try {
+				nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
+					tool.node.nodeType,
+					tool.node.nodeTypeVersion,
+				);
+			} catch {
+				continue;
+			}
+
+			const reportedDynamicPaths = new Set<string>();
+			for (const { parameterPath, jsonPointer } of fromAiPaths) {
+				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
+				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
+
+				reportedDynamicPaths.add(dynamicPath);
+				errors.push({
+					path: `/tools/${toolIndex}/node/nodeParameters/${jsonPointer}`,
+					message:
+						`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
+						'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
+						'use ask_credential if credentials are missing, then call get_resource_locator_options ' +
+						'and write the returned parameterValue into nodeParameters.',
+				});
+			}
+		}
+
+		if (errors.length === 0) return null;
+
+		return { errors };
+	}
+
 	getTools(
 		agentId: string,
 		projectId: string,
@@ -286,6 +396,10 @@ export class AgentsBuilderToolsService {
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(zodResult.data);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, errors: dynamicSelectorFromAi.errors };
 					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 					try {
@@ -394,6 +508,10 @@ export class AgentsBuilderToolsService {
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
+					}
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(zodResult.data);
+					if (dynamicSelectorFromAi) {
+						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
 					}
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 

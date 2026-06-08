@@ -13,6 +13,7 @@ import type { AgentsService } from '../agents.service';
 import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -62,7 +63,7 @@ function makeService() {
 		nodeTypes,
 	);
 
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository };
+	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, nodeTypes };
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -73,6 +74,69 @@ const baseConfig: AgentJsonConfig = {
 	tools: [],
 	skills: [],
 };
+
+const fromAiTeamId =
+	"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('teamId', 'The Linear team ID to create the issue in', 'string') }}";
+
+const fromAiTitle = "={{ $fromAI('title', 'Issue title', 'string') }}";
+
+function makeLinearNodeTypeWithDynamicTeamId(): ReturnType<NodeTypes['getByNameAndVersion']> {
+	return {
+		description: {
+			displayName: 'Linear Tool',
+			name: 'n8n-nodes-base.linearTool',
+			group: ['transform'],
+			description: 'Use Linear in an agent tool.',
+			version: 1.1,
+			defaults: { name: 'Linear Tool' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [
+				{
+					displayName: 'Team Name or ID',
+					name: 'teamId',
+					type: 'options',
+					default: '',
+					required: true,
+					typeOptions: {
+						loadOptionsMethod: 'getTeams',
+					},
+				},
+				{
+					displayName: 'Title',
+					name: 'title',
+					type: 'string',
+					default: '',
+				},
+			],
+		},
+	} as ReturnType<NodeTypes['getByNameAndVersion']>;
+}
+
+function makeLinearToolWithFromAiTeamId(): NonNullable<AgentJsonConfig['tools']>[number] {
+	return {
+		type: 'node',
+		name: 'Linear: Create Issue',
+		description: 'Create a Linear issue',
+		node: {
+			nodeType: 'n8n-nodes-base.linearTool',
+			nodeTypeVersion: 1.1,
+			nodeParameters: {
+				resource: 'issue',
+				operation: 'create',
+				authentication: 'oAuth2',
+				teamId: fromAiTeamId,
+				title: fromAiTitle,
+			},
+			credentials: {
+				linearOAuth2Api: {
+					id: 'linear-credential-id',
+					name: 'Linear account',
+				},
+			},
+		},
+	};
+}
 
 function makeAgent(config: AgentJsonConfig = baseConfig): Agent {
 	return {
@@ -371,6 +435,66 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ integrations: [] }),
 			);
+		});
+
+		it('write_config rejects $fromAI on dynamic node selector parameters', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [makeLinearToolWithFromAiTeamId()],
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledWith('n8n-nodes-base.linearTool', 1.1);
+			expect(result).toEqual({
+				ok: false,
+				errors: [
+					expect.objectContaining({
+						path: '/tools/0/node/nodeParameters/teamId',
+						message: expect.stringContaining('get_resource_locator_options'),
+					}),
+				],
+			});
+		});
+
+		it('patch_config rejects $fromAI on dynamic node selector parameters', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/tools', value: [makeLinearToolWithFromAiTeamId()] },
+					]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				stage: 'schema',
+				errors: [
+					expect.objectContaining({
+						path: '/tools/0/node/nodeParameters/teamId',
+						message: expect.stringContaining('agent-builder-resource-locators'),
+					}),
+				],
+			});
 		});
 
 		it('write_config adds OpenAI native web search defaults', async () => {
