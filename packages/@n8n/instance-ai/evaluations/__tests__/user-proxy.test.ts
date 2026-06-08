@@ -77,7 +77,7 @@ function planReviewEvent(requestId: string): CapturedEvent {
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'plan',
+				toolName: 'create-tasks',
 				args: {},
 				severity: 'info',
 				message: 'Approve plan?',
