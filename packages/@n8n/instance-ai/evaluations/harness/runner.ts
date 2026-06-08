@@ -299,7 +299,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, conversation, logger } = config;
 	const openingMessage = conversation[0]?.text ?? '';
-	const threadId = `eval-${crypto.randomUUID()}`;
+	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -315,6 +315,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		logger.info(
 			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
+
+		await client.ensureThread(threadId);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},

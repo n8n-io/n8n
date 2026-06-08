@@ -1,8 +1,6 @@
 import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from './fixtures';
 
 test.use(instanceAiTestConfig);
-test.skip(true, 'Instance AI expectations are refreshed in the stacked recordings branch');
-
 test.describe(
 	'Instance AI chat basics @capability:proxy',
 	{

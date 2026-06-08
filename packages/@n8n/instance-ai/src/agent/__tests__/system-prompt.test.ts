@@ -97,17 +97,28 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toMatch(/handle a single simple task directly/);
-			expect(prompt).toMatch(/call `create-tasks` for multiple dependent tasks/);
+			expect(prompt).toMatch(/call `create-tasks` with `planningContext\.source: "replan"`/);
 		});
 	});
 
-	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new and multi-workflow work through plan', () => {
+	describe('When to Plan — complexity axis', () => {
+		it('routes clear single-workflow builds directly and uses the planning skill for coordinated work', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
-			expect(prompt).toContain('workflow tasks include any data table names');
+			expect(prompt).toMatch(/Clear single-workflow build, including a new or one-off workflow/);
+			expect(prompt).toContain(
+				'load the `workflow-builder` skill and call `build-workflow` directly',
+			);
+			expect(prompt).toMatch(/Plan-worthy workflow work/);
+			expect(prompt).toContain('load the `planning` skill');
+			expect(prompt).toContain(
+				'call `create-tasks` with `planningContext.source: "planning-skill"`',
+			);
+			expect(prompt).toContain('multiple workflows');
+			expect(prompt).toContain('shared data-table schema');
+			expect(prompt).not.toContain('call `plan`');
+			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
 		it('routes standalone data-table work through direct tools and the skill', () => {
@@ -116,14 +127,14 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toMatch(/Standalone data-table work/);
 			expect(prompt).toContain('`data-table-manager` skill');
 			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
-			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
 		});
 
 		it('loads the data-table skill before planning workflows that use tables', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain(
-				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+				'If workflow work needs shared data tables, load the `data-table-manager` skill before `planning`',
 			);
 		});
 
@@ -134,6 +145,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('load the `workflow-builder` skill');
 			expect(prompt).toContain('call `build-workflow` directly');
 			expect(prompt).toContain('existing `workflowId`');
+			expect(prompt).toContain('approval before saving');
 		});
 
 		it('routes non-build ops through direct tools', () => {
@@ -148,6 +160,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toMatch(/Replan follow-up/);
 			expect(prompt).toMatch(/route, don't re-plan/);
+			expect(prompt).toContain('planningContext.source: "replan"');
 		});
 	});
 
@@ -157,6 +170,8 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('Post-build flow');
 			expect(prompt).toContain('verify-built-workflow');
+			expect(prompt).toContain('inspect the persisted workflow');
+			expect(prompt).toContain('Build/save success only means a workflow was saved');
 			expect(prompt).toContain('`verificationReadiness`');
 			expect(prompt).toContain('`setupRequirement`');
 			expect(prompt).toContain('verificationReadiness.status === "ready"');
@@ -210,6 +225,19 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('planned synthesis verification handling', () => {
+		it('keeps setup handoff and warning states visible during final synthesis', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('<planned-task-follow-up type="synthesize">');
+			expect(prompt).toContain('verificationReadiness.status === "needs_setup"');
+			expect(prompt).toContain('workflows(action="setup")');
+			expect(prompt).toContain('verificationReadiness.status === "not_verifiable"');
+			expect(prompt).toContain('clear warning/manual-test note');
+			expect(prompt).toContain('do not call it verified');
+		});
+	});
+
 	describe('checkpoint branch — in-turn patch rule + retry carve-out', () => {
 		it('allows checkpoints to reuse successful structured verification evidence', () => {
 			const prompt = getSystemPrompt({});
@@ -232,10 +260,20 @@ describe('getSystemPrompt', () => {
 			);
 		});
 
+		it('does not treat checkpoint verification as a user-requested run', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('explicitly asked to run or execute the workflow');
+			expect(prompt).toContain('checkpoint verification does not satisfy a user-requested run');
+			expect(prompt).toContain('executions(action="run")');
+		});
+
 		it('tells the orchestrator it may patch during a checkpoint and re-verify in place', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('patch in place');
+			expect(prompt).toContain('inspect each dependent persisted workflow');
+			expect(prompt).toContain('lacks the requested outcome');
 			expect(prompt).toContain('call `build-workflow` directly during this checkpoint turn');
 			expect(prompt).toContain('re-verify');
 			expect(prompt).toContain('complete-checkpoint');
@@ -268,18 +306,37 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('sandbox workspace', () => {
-		it('includes sandbox workspace guidance when sandboxWorkspaceAvailable is true', () => {
-			const prompt = getSystemPrompt({ sandboxWorkspaceAvailable: true });
-
-			expect(prompt).toContain('## Sandbox workspace');
-			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('workspace_execute_command');
-		});
-
-		it('omits sandbox workspace guidance when sandboxWorkspaceAvailable is false', () => {
-			const prompt = getSystemPrompt({ sandboxWorkspaceAvailable: false });
+		it('omits sandbox workspace guidance when no runtime workspace is attached', () => {
+			const prompt = getSystemPrompt({});
 
 			expect(prompt).not.toContain('## Sandbox workspace');
+			expect(prompt).not.toContain('workspace_read_file');
+			expect(prompt).not.toContain('Consult the knowledge base before planning or building');
+		});
+
+		it('includes sandbox workspace and knowledge-base guidance when workspaceRoot is provided', () => {
+			const prompt = getSystemPrompt({
+				workspaceRoot: '/home/daytona/workspace',
+			});
+
+			expect(prompt).toContain('## Sandbox workspace');
+			expect(prompt).toContain('knowledge-base/index.json');
+			expect(prompt).toContain('knowledge-base/best-practices/index.json');
+			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
+			expect(prompt).toContain('workspace_execute_command');
+			expect(prompt).toContain('Consult the knowledge base before planning or building');
+			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
+		});
+
+		it('includes the resolved workspace root when workspaceRoot is provided', () => {
+			const prompt = getSystemPrompt({
+				workspaceRoot: '/home/daytona/workspace',
+			});
+
+			expect(prompt).toContain('Workspace root: `/home/daytona/workspace`');
+			expect(prompt).toContain('/home/daytona/workspace/knowledge-base/index.json');
+			expect(prompt).not.toContain('<workspace_root>');
 		});
 	});
 

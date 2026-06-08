@@ -1,6 +1,3 @@
-import type { Violation, RuleResult, FixResult } from '@n8n/rules-engine';
-import type { Project, SourceFile } from 'ts-morph';
-
 export type {
 	Project,
 	SourceFile,
@@ -17,8 +14,6 @@ export type {
 	Violation,
 	RuleResult,
 	ReportSummary,
-	FixAction,
-	FixResult,
 	FixData,
 } from '@n8n/rules-engine';
 export type { Report as JanitorReport } from '@n8n/rules-engine';
@@ -57,8 +52,6 @@ export type RuleSettingsMap = {
 export interface RunOptions {
 	files?: string[];
 	ruleConfig?: Record<string, RuleConfig>;
-	fix?: boolean;
-	write?: boolean;
 }
 
 // Janitor-specific fix data narrowing
@@ -105,22 +98,6 @@ export function isClassFix(data: { type: string }): data is ClassFixData {
 
 export function isEditFix(data: { type: string }): data is EditFixData {
 	return data.type === 'edit';
-}
-
-export interface Rule {
-	readonly id: string;
-	readonly name: string;
-	readonly description: string;
-	readonly severity: 'error' | 'warning' | 'info';
-	readonly fixable: boolean;
-
-	getTargetGlobs(): string[];
-	analyze(project: Project, files: SourceFile[]): Violation[];
-	fix?(project: Project, violations: Violation[], write: boolean): FixResult[];
-	isEnabled(): boolean;
-	getEffectiveSeverity(): 'error' | 'warning' | 'info';
-	configure(config: RuleConfig): void;
-	execute(project: Project, files: SourceFile[]): RuleResult;
 }
 
 export interface FilePatterns {

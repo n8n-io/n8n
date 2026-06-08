@@ -100,7 +100,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.externalHooks?.run('n8n.stop');
 
-			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
 				await Container.get(MultiMainSetup).shutdown();

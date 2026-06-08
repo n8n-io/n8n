@@ -145,21 +145,21 @@ describe('init()', () => {
 describe('add()', () => {
 	describe('in single-main mode', () => {
 		test.each<WorkflowActivateMode>(['activate', 'update'])(
-			"should add webhooks, triggers and pollers for workflow in '%s' activation mode",
+			"should add webhooks and non-webhook triggers for workflow in '%s' activation mode",
 			async (mode) => {
 				await activeWorkflowManager.init();
 
 				const dbWorkflow = await createActiveWorkflow();
 				const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowManager, 'addTriggersAndPollers');
+				const addNonWebhookTriggersSpy = jest.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
 
 				await activeWorkflowManager.add(dbWorkflow.id, mode);
 
 				const [argWorkflow] = addWebhooksSpy.mock.calls[0];
-				const [_, _argWorkflow] = addTriggersAndPollersSpy.mock.calls[0];
+				const [_, _argWorkflow] = addNonWebhookTriggersSpy.mock.calls[0];
 
 				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
-				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+				expect(addNonWebhookTriggersSpy).toHaveBeenCalledTimes(1);
 
 				if (!(argWorkflow instanceof Workflow)) fail();
 				if (!(_argWorkflow instanceof Workflow)) fail();
@@ -262,17 +262,17 @@ describe('remove()', () => {
 			expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(1);
 		});
 
-		it('should stop running triggers and pollers', async () => {
+		it('should stop running non-webhook triggers', async () => {
 			const dbWorkflow = await createActiveWorkflow();
-			const removeTriggersAndPollersSpy = jest.spyOn(
+			const removeNonWebhookTriggersSpy = jest.spyOn(
 				activeWorkflowManager,
-				'removeWorkflowTriggersAndPollers',
+				'removeNonWebhookTriggers',
 			);
 
 			await activeWorkflowManager.init();
 			await activeWorkflowManager.remove(dbWorkflow.id);
 
-			expect(removeTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+			expect(removeNonWebhookTriggersSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });

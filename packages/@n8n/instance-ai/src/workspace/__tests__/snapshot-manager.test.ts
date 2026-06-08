@@ -48,6 +48,16 @@ vi.mock('../lazy-daytona', () => ({
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 
+vi.mock('../builder-templates-service', () => {
+	class MockBuilderTemplatesService {
+		getBundle = vi.fn().mockResolvedValue({ archive: null, version: null });
+	}
+	return {
+		BuilderTemplatesService: MockBuilderTemplatesService,
+		builderTemplatesOptionsFromEnv: vi.fn().mockReturnValue({}),
+	};
+});
+
 import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	type RuntimeSkillLinkedFiles,

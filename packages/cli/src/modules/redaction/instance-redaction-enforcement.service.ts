@@ -1,9 +1,4 @@
-import {
-	REDACTION_ENFORCEMENT_DEFAULTS,
-	redactionEnforcementSettingsSchema,
-	type RedactionEnforcementSettings,
-	type RedactionFloor,
-} from '@n8n/api-types';
+import { REDACTION_FLOOR_DEFAULT, redactionFloorSchema, type RedactionFloor } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,7 +6,6 @@ import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import { settingsToFloor } from './redaction-enforcement-mapper';
 import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag';
 
 const KEY = 'redaction.enforcement';
@@ -24,36 +18,31 @@ export class InstanceRedactionEnforcementService {
 		private readonly logger: Logger,
 	) {}
 
-	async get(): Promise<RedactionEnforcementSettings> {
-		if (!isRedactionEnforcementEnabled()) return REDACTION_ENFORCEMENT_DEFAULTS;
+	/**
+	 * Resolves the instance redaction floor. Returns `'off'` when enforcement is
+	 * disabled or no value is stored. The floor is stored as the enum directly,
+	 * so no translation is needed.
+	 */
+	async get(): Promise<RedactionFloor> {
+		if (!isRedactionEnforcementEnabled()) return REDACTION_FLOOR_DEFAULT;
 		return await this.load();
 	}
 
-	/**
-	 * Resolves the instance redaction floor as a `RedactionFloor` enum.
-	 * Returns `'off'` when enforcement is disabled. Normalizes any stored
-	 * setting upward via `settingsToFloor`, so the floor never reports a
-	 * weaker level than what is stored.
-	 */
-	async getFloor(): Promise<RedactionFloor> {
-		return settingsToFloor(await this.get());
-	}
-
-	private async load(): Promise<RedactionEnforcementSettings> {
+	private async load(): Promise<RedactionFloor> {
 		const raw = await this.cacheService.get<string>(KEY, {
 			refreshFn: async () => await this.loadFromDatabase(),
 		});
 
-		if (raw === undefined) return REDACTION_ENFORCEMENT_DEFAULTS;
-		return this.parseStoredValue(raw, 'cache') ?? REDACTION_ENFORCEMENT_DEFAULTS;
+		if (raw === undefined) return REDACTION_FLOOR_DEFAULT;
+		return this.parseStoredValue(raw, 'cache') ?? REDACTION_FLOOR_DEFAULT;
 	}
 
-	async set(next: RedactionEnforcementSettings): Promise<void> {
+	async set(next: RedactionFloor): Promise<void> {
 		if (!isRedactionEnforcementEnabled()) {
 			throw new OperationalError('Redaction enforcement is not enabled on this instance');
 		}
 
-		const result = redactionEnforcementSettingsSchema.safeParse(next);
+		const result = redactionFloorSchema.safeParse(next);
 		if (!result.success) {
 			this.logger.warn('Invalid redaction enforcement settings payload', {
 				issues: result.error.issues,
@@ -74,15 +63,12 @@ export class InstanceRedactionEnforcementService {
 		const row = await this.settingsRepository.findByKey(KEY);
 		const value =
 			row?.value !== undefined
-				? (this.parseStoredValue(row.value, 'database') ?? REDACTION_ENFORCEMENT_DEFAULTS)
-				: REDACTION_ENFORCEMENT_DEFAULTS;
+				? (this.parseStoredValue(row.value, 'database') ?? REDACTION_FLOOR_DEFAULT)
+				: REDACTION_FLOOR_DEFAULT;
 		return JSON.stringify(value);
 	}
 
-	private parseStoredValue(
-		raw: string,
-		source: 'cache' | 'database',
-	): RedactionEnforcementSettings | undefined {
+	private parseStoredValue(raw: string, source: 'cache' | 'database'): RedactionFloor | undefined {
 		let parsedJson: unknown;
 		try {
 			parsedJson = JSON.parse(raw);
@@ -94,7 +80,7 @@ export class InstanceRedactionEnforcementService {
 			return undefined;
 		}
 
-		const result = redactionEnforcementSettingsSchema.safeParse(parsedJson);
+		const result = redactionFloorSchema.safeParse(parsedJson);
 		if (!result.success) {
 			this.logger.warn('Redaction enforcement setting has an invalid shape', {
 				source,
