@@ -18,6 +18,30 @@ describe('createSandbox', () => {
 		expect(result).toBeUndefined();
 	});
 
+	it('passes Daytona volumes through to DaytonaSandbox', async () => {
+		const volumes = [
+			{
+				volumeId: 'vol-1',
+				mountPath: '/home/daytona/workspace/agent-knowledge',
+				subpath: 'fixture/projects/project-1/agents/agent-1/corpora/sig-current',
+			},
+		];
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiKey: 'test-key',
+			image: 'node:20',
+			volumes,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(result).toBeInstanceOf(DaytonaSandbox);
+		expect((result as unknown as { options: { volumes?: unknown[] } }).options.volumes).toBe(
+			volumes,
+		);
+	});
+
 	it('returns a DaytonaSandbox for daytona provider', async () => {
 		const config: SandboxConfig = {
 			enabled: true,

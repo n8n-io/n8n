@@ -3,7 +3,7 @@ import {
 	createFilesystem,
 	createSandbox,
 	DAYTONA_WORKSPACE_ROOT,
-	N8N_SANDBOX_WORKSPACE_ROOT,
+	type DaytonaSandboxConfig,
 	type SandboxConfig,
 	type SandboxFilesystem,
 	type SandboxInstance,
@@ -13,9 +13,14 @@ import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path/posix';
+import { OperationalError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { AgentKnowledgeSandboxConfigService } from './agent-knowledge-sandbox-config.service';
+import {
+	AGENT_KNOWLEDGE_DAYTONA_PROXY_VOLUMES_UNSUPPORTED_MESSAGE,
+	AGENT_KNOWLEDGE_N8N_SANDBOX_UNSUPPORTED_MESSAGE,
+	AgentKnowledgeSandboxConfigService,
+} from './agent-knowledge-sandbox-config.service';
 import type {
 	KnowledgeSandboxExpectedManifest,
 	KnowledgeSandboxManifest,
@@ -40,10 +45,13 @@ export interface KnowledgeSandboxWorkspace {
 	sandbox: SandboxInstance;
 	filesystem: SandboxFilesystem;
 	provider: SandboxProvider;
+	storageMode: 'sandbox-local' | 'daytona-volume';
 	workspaceRoot: string;
 	knowledgeRoot: string;
 	internalRoot: string;
 	manifestPath: string;
+	corpusSignature?: string;
+	volumeSubpath?: string;
 }
 
 interface CachedKnowledgeSandboxWorkspace {
@@ -53,6 +61,16 @@ interface CachedKnowledgeSandboxWorkspace {
 
 export interface WithCachedWorkspaceOptions {
 	userId: string;
+	expectedManifest: KnowledgeSandboxExpectedManifest;
+}
+
+interface DaytonaKnowledgeWorkspaceMount {
+	knowledgeRoot: string;
+	internalRoot: string;
+	manifestPath: string;
+	corpusSignature: string;
+	volumeSubpath: string;
+	volumeMount: NonNullable<DaytonaSandboxConfig['volumes']>[number];
 }
 
 @Service()
@@ -109,29 +127,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	async withCachedWorkspace<T>(
 		cacheKey: string,
-		operation: (workspace: KnowledgeSandboxWorkspace) => Promise<T>,
-	): Promise<T>;
-	async withCachedWorkspace<T>(
-		cacheKey: string,
 		options: WithCachedWorkspaceOptions,
 		operation: (workspace: KnowledgeSandboxWorkspace) => Promise<T>,
-	): Promise<T>;
-	async withCachedWorkspace<T>(
-		cacheKey: string,
-		optionsOrOperation:
-			| WithCachedWorkspaceOptions
-			| ((workspace: KnowledgeSandboxWorkspace) => Promise<T>),
-		maybeOperation?: (workspace: KnowledgeSandboxWorkspace) => Promise<T>,
 	): Promise<T> {
-		const options = typeof optionsOrOperation === 'function' ? undefined : optionsOrOperation;
-		const operation =
-			typeof optionsOrOperation === 'function' ? optionsOrOperation : maybeOperation;
-		if (!operation) {
-			throw new Error('Agent knowledge sandbox workspace operation is required');
-		}
-
-		const userId = options?.userId;
-		const resolvedCacheKey = this.resolveWorkspaceCacheKey(cacheKey, userId);
+		const resolvedCacheKey = this.resolveWorkspaceCacheKey(cacheKey, options.expectedManifest);
 
 		return await this.serializeByKey(
 			resolvedCacheKey,
@@ -139,7 +138,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 				await workspaceLimit(async () => {
 					this.markWorkspaceActive(resolvedCacheKey);
 					try {
-						const entry = await this.ensureCachedWorkspace(resolvedCacheKey, cacheKey, userId);
+						const entry = await this.ensureCachedWorkspace(resolvedCacheKey, cacheKey, options);
 						entry.lastUsedAt = Date.now();
 						return await operation(entry.workspace);
 					} finally {
@@ -223,7 +222,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	private async ensureCachedWorkspace(
 		cacheKey: string,
 		identityCacheKey: string,
-		userId: string | undefined,
+		options: WithCachedWorkspaceOptions,
 	): Promise<CachedKnowledgeSandboxWorkspace> {
 		const existing = this.cachedWorkspaces.get(cacheKey);
 		const status = existing?.workspace.sandbox.status;
@@ -236,8 +235,12 @@ export class AgentKnowledgeSandboxWorkspaceService {
 			await this.destroySandbox(existing.workspace.sandbox);
 		}
 
-		const baseConfig = await this.resolveSandboxConfig(userId);
-		const workspace = await this.createKnowledgeSandboxWorkspace(identityCacheKey, baseConfig);
+		const baseConfig = await this.resolveSandboxConfig(options.userId);
+		const workspace = await this.createKnowledgeSandboxWorkspace(
+			identityCacheKey,
+			baseConfig,
+			options.expectedManifest,
+		);
 		const entry: CachedKnowledgeSandboxWorkspace = {
 			workspace,
 			lastUsedAt: Date.now(),
@@ -250,8 +253,27 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	private async createKnowledgeSandboxWorkspace(
 		identityCacheKey: string,
 		baseConfig: SandboxConfig,
+		expectedManifest: KnowledgeSandboxExpectedManifest,
 	): Promise<KnowledgeSandboxWorkspace> {
-		const config = this.buildSandboxConfig(baseConfig, identityCacheKey);
+		if (!baseConfig.enabled) {
+			const sandbox = await createSandbox(baseConfig, { logger: this.logger });
+			if (!sandbox) {
+				throw new Error('Agent knowledge sandbox is disabled');
+			}
+			throw new Error('Agent knowledge sandbox is disabled');
+		}
+
+		if (baseConfig.provider !== 'daytona') {
+			throw new OperationalError(AGENT_KNOWLEDGE_N8N_SANDBOX_UNSUPPORTED_MESSAGE);
+		}
+
+		const identity = parseAgentWorkspaceCacheKey(identityCacheKey);
+		if (!identity) {
+			throw new Error('Failed to parse agent knowledge sandbox workspace cache key');
+		}
+
+		const mount = this.buildDaytonaKnowledgeWorkspaceMount(identity, expectedManifest);
+		const config = this.buildSandboxConfig(baseConfig, identity, mount);
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox) {
 			throw new Error('Agent knowledge sandbox is disabled');
@@ -259,24 +281,20 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 		try {
 			const filesystem = createFilesystem(sandbox);
-			const provider = config.provider;
-			const workspaceRoot =
-				provider === 'daytona' ? DAYTONA_WORKSPACE_ROOT : N8N_SANDBOX_WORKSPACE_ROOT;
-			const knowledgeRoot = path.join(workspaceRoot, KNOWLEDGE_SANDBOX_SUBDIR);
-			const internalRoot = path.join(workspaceRoot, KNOWLEDGE_SANDBOX_INTERNAL_SUBDIR);
-			const manifestPath = path.join(internalRoot, 'manifest.json');
 
-			await filesystem.mkdir(knowledgeRoot, { recursive: true });
-			await filesystem.mkdir(internalRoot, { recursive: true });
+			await filesystem.mkdir(mount.internalRoot, { recursive: true });
 
 			return {
 				sandbox,
 				filesystem,
-				provider,
-				workspaceRoot,
-				knowledgeRoot,
-				internalRoot,
-				manifestPath,
+				provider: 'daytona',
+				storageMode: 'daytona-volume',
+				workspaceRoot: DAYTONA_WORKSPACE_ROOT,
+				knowledgeRoot: mount.knowledgeRoot,
+				internalRoot: mount.internalRoot,
+				manifestPath: mount.manifestPath,
+				corpusSignature: mount.corpusSignature,
+				volumeSubpath: mount.volumeSubpath,
 			};
 		} catch (error) {
 			await this.destroySandbox(sandbox);
@@ -284,40 +302,97 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 	}
 
-	private buildSandboxConfig(baseConfig: SandboxConfig, cacheKey: string): SandboxConfig {
-		if (!baseConfig.enabled) {
-			return baseConfig;
-		}
-
-		if (baseConfig.provider === 'daytona') {
-			const identity = parseAgentWorkspaceCacheKey(cacheKey);
-			const namePrefix = this.sandboxConfigService.resolveNamePrefix();
-			const name = baseConfig.name ?? buildAgentsKnowledgeSandboxName(namePrefix);
-			return {
-				...baseConfig,
-				id: name,
-				name,
-				labels: {
-					...buildAgentsKnowledgeSandboxLabels(identity, namePrefix),
-					...baseConfig.labels,
-				},
-			};
-		}
-
-		return baseConfig;
+	private buildSandboxConfig(
+		baseConfig: DaytonaSandboxConfig,
+		identity: { projectId: string; agentId: string },
+		mount: DaytonaKnowledgeWorkspaceMount,
+	): DaytonaSandboxConfig {
+		const namePrefix = this.sandboxConfigService.resolveNamePrefix();
+		const name = baseConfig.name ?? buildAgentsKnowledgeSandboxName(namePrefix);
+		return {
+			...baseConfig,
+			id: name,
+			name,
+			labels: {
+				...buildAgentsKnowledgeSandboxLabels(identity, namePrefix),
+				...baseConfig.labels,
+			},
+			volumes: [mount.volumeMount],
+		};
 	}
 
-	private resolveWorkspaceCacheKey(cacheKey: string, userId: string | undefined): string {
-		if (userId && this.sandboxConfigService.isDaytonaProxyEnabled()) {
-			return `${cacheKey}:user:${userId}`;
+	private buildDaytonaKnowledgeWorkspaceMount(
+		identity: { projectId: string; agentId: string },
+		expectedManifest: KnowledgeSandboxExpectedManifest,
+	): DaytonaKnowledgeWorkspaceMount {
+		const { volumeId, subpathPrefix } = this.sandboxConfigService.resolveDaytonaVolumeConfig();
+		this.assertSafeVolumePathSegment('projectId', identity.projectId);
+		this.assertSafeVolumePathSegment('agentId', identity.agentId);
+		this.assertSafeVolumePathSegment('corpusSignature', expectedManifest.corpusSignature);
+
+		const knowledgeRoot = path.join(DAYTONA_WORKSPACE_ROOT, KNOWLEDGE_SANDBOX_SUBDIR);
+		const internalRoot = path.join(knowledgeRoot, KNOWLEDGE_SANDBOX_INTERNAL_SUBDIR);
+		const manifestPath = path.join(internalRoot, 'manifest.json');
+		const volumeSubpath = [
+			subpathPrefix,
+			'projects',
+			identity.projectId,
+			'agents',
+			identity.agentId,
+			'corpora',
+			expectedManifest.corpusSignature,
+		].join('/');
+
+		return {
+			knowledgeRoot,
+			internalRoot,
+			manifestPath,
+			corpusSignature: expectedManifest.corpusSignature,
+			volumeSubpath,
+			volumeMount: {
+				volumeId,
+				mountPath: knowledgeRoot,
+				subpath: volumeSubpath,
+			},
+		};
+	}
+
+	private assertSafeVolumePathSegment(name: string, value: string): void {
+		if (
+			value.length === 0 ||
+			value === '.' ||
+			value === '..' ||
+			value.includes('/') ||
+			value.includes('\\') ||
+			this.hasControlCharacters(value)
+		) {
+			throw new OperationalError(
+				`Invalid Daytona volume subpath segment for agent knowledge base: ${name}`,
+			);
 		}
-		return cacheKey;
+	}
+
+	private hasControlCharacters(value: string): boolean {
+		for (const character of value) {
+			const code = character.charCodeAt(0);
+			if (code <= 0x1f || code === 0x7f) return true;
+		}
+		return false;
+	}
+
+	private resolveWorkspaceCacheKey(
+		cacheKey: string,
+		expectedManifest: KnowledgeSandboxExpectedManifest,
+	): string {
+		return `${cacheKey}:corpus:${expectedManifest.corpusSignature}`;
 	}
 
 	private async resolveSandboxConfig(userId: string | undefined): Promise<SandboxConfig> {
-		return userId
-			? await this.sandboxConfigService.resolveConfigForUser(userId)
-			: this.sandboxConfigService.resolveConfig();
+		if (userId && this.sandboxConfigService.isDaytonaProxyEnabled()) {
+			throw new OperationalError(AGENT_KNOWLEDGE_DAYTONA_PROXY_VOLUMES_UNSUPPORTED_MESSAGE);
+		}
+
+		return this.sandboxConfigService.resolveConfig();
 	}
 
 	private async evictStaleWorkspaces(): Promise<void> {
@@ -377,6 +452,12 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	}
 
 	private async clearStaleWorkspaceState(workspace: KnowledgeSandboxWorkspace): Promise<void> {
+		if (workspace.storageMode === 'daytona-volume') {
+			await this.deleteIfPresent(workspace, workspace.manifestPath, { force: true });
+			await workspace.filesystem.mkdir(workspace.internalRoot, { recursive: true });
+			return;
+		}
+
 		await this.deleteIfPresent(workspace, workspace.knowledgeRoot, {
 			recursive: true,
 			force: true,

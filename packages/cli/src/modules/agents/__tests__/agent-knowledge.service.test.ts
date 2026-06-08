@@ -812,6 +812,50 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
+	it('does not create the mounted knowledge root for Daytona volume materialization', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const filesToMaterialize = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'data.csv',
+				mimeType: 'text/csv',
+				fileSizeBytes: 17,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+		binaryDataService.getAsStream.mockResolvedValue(
+			Readable.from(Buffer.from('name,age\nAlice,30\n')) as never,
+		);
+		const target = {
+			...makeSandboxTarget(),
+			storageMode: 'daytona-volume' as const,
+			knowledgeRoot: '/home/daytona/workspace/agent-knowledge',
+			internalRoot: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
+			manifestPath:
+				'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal/manifest.json',
+		};
+		const expectedManifest = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			filesToMaterialize,
+		);
+
+		await service.materializeWorkspaceFilesIntoSandbox(
+			agentId,
+			projectId,
+			target,
+			expectedManifest,
+			filesToMaterialize,
+		);
+
+		expect(target.filesystem.mkdir).not.toHaveBeenCalledWith(target.knowledgeRoot, {
+			recursive: true,
+		});
+		expect(target.filesystem.mkdir).toHaveBeenCalledWith(target.internalRoot, { recursive: true });
+	});
+
 	it('writes manifest after all sandbox files are streamed', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		binaryDataService.getAsStream

@@ -22,6 +22,9 @@ export const AGENT_KNOWLEDGE_DAYTONA_API_KEY_REQUIRED_MESSAGE =
 export const AGENT_KNOWLEDGE_DAYTONA_VOLUME_SUBPATH_PREFIX_INVALID_MESSAGE =
 	'Invalid Daytona volume subpath prefix for agent knowledge base.';
 
+export const AGENT_KNOWLEDGE_DAYTONA_PROXY_VOLUMES_UNSUPPORTED_MESSAGE =
+	'Daytona proxy mode is currently not supported for agent knowledge base volume mounts.';
+
 export interface AgentKnowledgeDaytonaVolumeConfig {
 	volumeId: string;
 	subpathPrefix: string;
@@ -39,7 +42,7 @@ export class AgentKnowledgeSandboxConfigService {
 
 		try {
 			this.assertKnowledgeSandboxSupported();
-			return true;
+			return !this.isDaytonaProxyEnabled();
 		} catch {
 			return false;
 		}

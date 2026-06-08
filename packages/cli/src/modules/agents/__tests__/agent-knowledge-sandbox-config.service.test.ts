@@ -1,6 +1,8 @@
 import { AgentsConfig } from '@n8n/config';
 import { OperationalError } from 'n8n-workflow';
 
+import type { AiService } from '@/services/ai.service';
+
 import {
 	AGENT_KNOWLEDGE_DAYTONA_API_KEY_REQUIRED_MESSAGE,
 	AGENT_KNOWLEDGE_DAYTONA_VOLUME_ID_REQUIRED_MESSAGE,
@@ -23,8 +25,8 @@ function makeConfig(overrides: Partial<AgentsConfig> = {}): AgentsConfig {
 	});
 }
 
-function makeService(overrides: Partial<AgentsConfig> = {}) {
-	return new AgentKnowledgeSandboxConfigService(makeConfig(overrides));
+function makeService(overrides: Partial<AgentsConfig> = {}, aiService?: AiService) {
+	return new AgentKnowledgeSandboxConfigService(makeConfig(overrides), aiService);
 }
 
 describe('AgentKnowledgeSandboxConfigService', () => {
@@ -102,6 +104,23 @@ describe('AgentKnowledgeSandboxConfigService', () => {
 			timeout: 12345,
 			name: undefined,
 		});
+	});
+
+	it('does not report Daytona proxy mode as available for knowledge workspaces', () => {
+		const aiService = {
+			isProxyEnabled: jest.fn(() => true),
+		} as unknown as AiService;
+		const service = makeService(
+			{
+				aiSandboxProvider: 'daytona',
+				daytonaApiKey: 'dtn_test',
+				aiSandboxDaytonaVolumeId: 'vol-1',
+			},
+			aiService,
+		);
+
+		expect(service.isAvailable()).toBe(false);
+		expect(service.isDaytonaProxyEnabled()).toBe(true);
 	});
 
 	it('resolves shared Daytona volume config with normalized prefix', () => {

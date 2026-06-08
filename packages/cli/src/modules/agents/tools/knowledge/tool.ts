@@ -116,7 +116,7 @@ export function createSearchKnowledgeTool({
 
 				return await sandboxWorkspaceService.withCachedWorkspace(
 					cacheKey,
-					{ userId },
+					{ userId, expectedManifest },
 					async (workspace) => {
 						await sandboxWorkspaceService.ensureWorkspaceContainsFiles(
 							workspace,

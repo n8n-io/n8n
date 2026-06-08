@@ -5,7 +5,11 @@ import { AgentsConfig } from '@n8n/config';
 
 import type { AiService } from '@/services/ai.service';
 
-import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
+import {
+	AGENT_KNOWLEDGE_DAYTONA_PROXY_VOLUMES_UNSUPPORTED_MESSAGE,
+	AGENT_KNOWLEDGE_N8N_SANDBOX_UNSUPPORTED_MESSAGE,
+	AgentKnowledgeSandboxConfigService,
+} from '../agent-knowledge-sandbox-config.service';
 import { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -66,6 +70,7 @@ function makeWorkspace(filesystem: ReturnType<typeof makeFilesystem>) {
 		sandbox: makeSandbox(),
 		filesystem,
 		provider: 'n8n-sandbox' as const,
+		storageMode: 'sandbox-local' as const,
 		workspaceRoot: '/home/user/workspace',
 		knowledgeRoot: '/home/user/workspace/agent-knowledge',
 		internalRoot: '/home/user/workspace/.agent-knowledge-internal',
@@ -73,12 +78,12 @@ function makeWorkspace(filesystem: ReturnType<typeof makeFilesystem>) {
 	};
 }
 
-function buildExpectedManifest() {
+function buildExpectedManifest(corpusSignature = 'sig-current') {
 	return {
 		version: 1,
 		agentId: 'agent-1',
 		projectId: 'project-1',
-		corpusSignature: 'sig-current',
+		corpusSignature,
 		files: [
 			{
 				id: 'file-1',
@@ -88,6 +93,26 @@ function buildExpectedManifest() {
 			},
 		],
 	};
+}
+
+const workspaceOptions = (expectedManifest = buildExpectedManifest()) => ({
+	userId: 'user-1',
+	expectedManifest,
+});
+
+function configureDirectDaytona(configService: AgentKnowledgeSandboxConfigService) {
+	jest.spyOn(configService, 'resolveConfig').mockReturnValue({
+		enabled: true,
+		provider: 'daytona',
+		timeout: 300_000,
+		name: undefined,
+		image: 'daytonaio/sandbox:0.5.0',
+	});
+	jest.spyOn(configService, 'resolveDaytonaVolumeConfig').mockReturnValue({
+		volumeId: 'vol-1',
+		subpathPrefix: 'agent-knowledge/staging',
+	});
+	jest.spyOn(configService, 'resolveNamePrefix').mockReturnValue('Acme Eval');
 }
 
 function createDeferred() {
@@ -135,37 +160,97 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		);
 	});
 
-	it('creates and reuses an n8n workspace with the manifest outside the knowledge root', async () => {
-		const sandbox = makeSandbox();
-		const filesystem = makeFilesystem();
+	it('rejects n8n-sandbox workspace creation before sandbox creation', async () => {
+		await expect(
+			service.withCachedWorkspace(
+				'project-1:agent-1:workspace',
+				workspaceOptions(),
+				async (entry) => entry,
+			),
+		).rejects.toThrow(AGENT_KNOWLEDGE_N8N_SANDBOX_UNSUPPORTED_MESSAGE);
+
+		expect(createSandboxMock).not.toHaveBeenCalled();
+	});
+
+	it('rejects proxied Daytona before sandbox creation', async () => {
+		jest.spyOn(configService, 'isDaytonaProxyEnabled').mockReturnValue(true);
+
+		await expect(
+			service.withCachedWorkspace(
+				'project-1:agent-1:workspace',
+				workspaceOptions(),
+				async (entry) => entry,
+			),
+		).rejects.toThrow(AGENT_KNOWLEDGE_DAYTONA_PROXY_VOLUMES_UNSUPPORTED_MESSAGE);
+
+		expect(createSandboxMock).not.toHaveBeenCalled();
+	});
+
+	it('creates a Daytona volume workspace with signature-addressed mount', async () => {
+		configureDirectDaytona(configService);
+		const sandbox = makeSandbox('daytona');
+		const filesystem = makeFilesystem('daytona');
 		createSandboxMock.mockResolvedValue(sandbox);
 		createFilesystemMock.mockReturnValue(filesystem);
+		const expectedManifest = buildExpectedManifest('sig-current');
 
-		const first = await service.withCachedWorkspace('same-key', async (entry) => entry);
-		const second = await service.withCachedWorkspace('same-key', async (entry) => entry);
+		const workspace = await service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(expectedManifest),
+			async (entry) => entry,
+		);
 
-		expect(first).toBe(second);
-		expect(createSandboxMock).toHaveBeenCalledTimes(1);
-		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox);
-		expect(first.knowledgeRoot).toBe('/home/user/workspace/agent-knowledge');
-		expect(first.manifestPath).toBe('/home/user/workspace/.agent-knowledge-internal/manifest.json');
-		expect(first.manifestPath.startsWith(`${first.knowledgeRoot}/`)).toBe(false);
-		expect(filesystem.mkdir).toHaveBeenCalledWith(first.knowledgeRoot, { recursive: true });
+		expect(createSandboxMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				provider: 'daytona',
+				volumes: [
+					{
+						volumeId: 'vol-1',
+						mountPath: '/home/daytona/workspace/agent-knowledge',
+						subpath:
+							'agent-knowledge/staging/projects/project-1/agents/agent-1/corpora/sig-current',
+					},
+				],
+				labels: expect.objectContaining({
+					component: 'agent-knowledge',
+					agent_id: 'agent-1',
+					project_id: 'project-1',
+				}),
+			}),
+			{ logger },
+		);
+		expect(workspace).toMatchObject({
+			provider: 'daytona',
+			storageMode: 'daytona-volume',
+			workspaceRoot: '/home/daytona/workspace',
+			knowledgeRoot: '/home/daytona/workspace/agent-knowledge',
+			internalRoot: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
+			manifestPath:
+				'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal/manifest.json',
+			corpusSignature: 'sig-current',
+			volumeSubpath:
+				'agent-knowledge/staging/projects/project-1/agents/agent-1/corpora/sig-current',
+		});
+		expect(filesystem.mkdir).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
+			{ recursive: true },
+		);
+		expect(filesystem.mkdir).not.toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge',
+			expect.anything(),
+		);
 	});
 
 	it('labels Daytona workspaces with stable agent identity', async () => {
-		jest.spyOn(configService, 'resolveConfig').mockReturnValue({
-			enabled: true,
-			provider: 'daytona',
-			timeout: 300_000,
-			name: undefined,
-			image: 'daytonaio/sandbox:0.5.0',
-		});
-		jest.spyOn(configService, 'resolveNamePrefix').mockReturnValue('Acme Eval');
+		configureDirectDaytona(configService);
 		createSandboxMock.mockResolvedValue(makeSandbox('daytona'));
 		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 
-		await service.withCachedWorkspace('project-1:agent-1:workspace', async (entry) => entry);
+		await service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(),
+			async (entry) => entry,
+		);
 
 		expect(createSandboxMock).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -181,30 +266,21 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		);
 	});
 
-	it('creates separate cached workspaces for proxied Daytona per user', async () => {
-		const cacheKey = 'project-1:agent-1:workspace';
-		jest.spyOn(configService, 'isDaytonaProxyEnabled').mockReturnValue(true);
-		jest.spyOn(configService, 'resolveConfigForUser').mockImplementation(async (userId) => ({
-			enabled: true,
-			provider: 'daytona',
-			timeout: 300_000,
-			daytonaApiUrl: 'https://proxy.example/sandbox',
-			image: 'daytonaio/sandbox:proxy',
-			getAuthToken: async () => `token-for-${userId}`,
-		}));
+	it('creates separate cached workspaces for different corpus signatures', async () => {
+		configureDirectDaytona(configService);
 		createSandboxMock
 			.mockResolvedValueOnce(makeSandbox('daytona'))
 			.mockResolvedValueOnce(makeSandbox('daytona'));
 		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 
 		const first = await service.withCachedWorkspace(
-			cacheKey,
-			{ userId: 'user-1' },
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-one')),
 			async (entry) => entry,
 		);
 		const second = await service.withCachedWorkspace(
-			cacheKey,
-			{ userId: 'user-2' },
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-two')),
 			async (entry) => entry,
 		);
 
@@ -213,58 +289,41 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(service.getCachedWorkspaceCount()).toBe(2);
 	});
 
-	it('does not resolve proxied Daytona config again for cached user workspace', async () => {
-		const cacheKey = 'project-1:agent-1:workspace';
-		jest.spyOn(configService, 'isDaytonaProxyEnabled').mockReturnValue(true);
-		const resolveConfigForUser = jest
-			.spyOn(configService, 'resolveConfigForUser')
-			.mockResolvedValue({
-				enabled: true,
-				provider: 'daytona',
-				timeout: 300_000,
-				daytonaApiUrl: 'https://proxy.example/sandbox',
-				image: 'daytonaio/sandbox:proxy',
-				getAuthToken: async () => 'token-for-user-1',
-			});
+	it('reuses cached workspace for the same corpus signature across users', async () => {
+		configureDirectDaytona(configService);
 		createSandboxMock.mockResolvedValue(makeSandbox('daytona'));
 		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+		const expectedManifest = buildExpectedManifest('sig-current');
 
 		const first = await service.withCachedWorkspace(
-			cacheKey,
-			{ userId: 'user-1' },
+			'project-1:agent-1:workspace',
+			{ userId: 'user-1', expectedManifest },
 			async (entry) => entry,
 		);
 		const second = await service.withCachedWorkspace(
-			cacheKey,
-			{ userId: 'user-1' },
+			'project-1:agent-1:workspace',
+			{ userId: 'user-2', expectedManifest },
 			async (entry) => entry,
 		);
 
 		expect(first).toBe(second);
-		expect(resolveConfigForUser).toHaveBeenCalledTimes(1);
 		expect(createSandboxMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('reuses direct Daytona workspaces across users when auth is static', async () => {
-		const cacheKey = 'project-1:agent-1:workspace';
-		jest.spyOn(configService, 'resolveConfigForUser').mockImplementation(async () => ({
-			enabled: true,
-			provider: 'daytona',
-			timeout: 300_000,
-			daytonaApiKey: 'dtn_static',
-			image: 'daytonaio/sandbox:0.5.0',
-		}));
+		configureDirectDaytona(configService);
 		createSandboxMock.mockResolvedValue(makeSandbox('daytona'));
 		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+		const expectedManifest = buildExpectedManifest('sig-current');
 
 		const first = await service.withCachedWorkspace(
-			cacheKey,
-			{ userId: 'user-1' },
+			'project-1:agent-1:workspace',
+			{ userId: 'user-1', expectedManifest },
 			async (entry) => entry,
 		);
 		const second = await service.withCachedWorkspace(
-			cacheKey,
-			{ userId: 'user-2' },
+			'project-1:agent-1:workspace',
+			{ userId: 'user-2', expectedManifest },
 			async (entry) => entry,
 		);
 
@@ -273,41 +332,98 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	});
 
 	it('destroys cached workspaces for the requested agent only', async () => {
+		configureDirectDaytona(configService);
 		createSandboxMock
-			.mockResolvedValueOnce(makeSandbox())
-			.mockResolvedValueOnce(makeSandbox())
-			.mockResolvedValueOnce(makeSandbox());
-		createFilesystemMock.mockReturnValue(makeFilesystem());
+			.mockResolvedValueOnce(makeSandbox('daytona'))
+			.mockResolvedValueOnce(makeSandbox('daytona'))
+			.mockResolvedValueOnce(makeSandbox('daytona'));
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 
-		await service.withCachedWorkspace('project-1:agent-1:workspace', async (entry) => entry);
-		await service.withCachedWorkspace('project-1:agent-2:workspace', async (entry) => entry);
+		await service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-one')),
+			async (entry) => entry,
+		);
+		await service.withCachedWorkspace(
+			'project-1:agent-2:workspace',
+			workspaceOptions(buildExpectedManifest('sig-other')),
+			async (entry) => entry,
+		);
 
 		await service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
 
 		expect(service.getCachedWorkspaceCount()).toBe(1);
-		await service.withCachedWorkspace('project-1:agent-1:workspace', async (entry) => entry);
+		await service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-one')),
+			async (entry) => entry,
+		);
 		expect(createSandboxMock).toHaveBeenCalledTimes(3);
 	});
 
+	it('destroyCachedWorkspacesForAgent destroys all corpus workspaces for the agent', async () => {
+		configureDirectDaytona(configService);
+		const firstSandbox = makeSandbox('daytona');
+		const secondSandbox = makeSandbox('daytona');
+		const otherSandbox = makeSandbox('daytona');
+		createSandboxMock
+			.mockResolvedValueOnce(firstSandbox)
+			.mockResolvedValueOnce(secondSandbox)
+			.mockResolvedValueOnce(otherSandbox);
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+
+		await service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-one')),
+			async (entry) => entry,
+		);
+		await service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-two')),
+			async (entry) => entry,
+		);
+		await service.withCachedWorkspace(
+			'project-1:agent-2:workspace',
+			workspaceOptions(buildExpectedManifest('sig-other')),
+			async (entry) => entry,
+		);
+
+		await service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
+
+		expect(firstSandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(secondSandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(otherSandbox.destroy).not.toHaveBeenCalled();
+		expect(service.getCachedWorkspaceCount()).toBe(1);
+	});
+
 	it('serializes operations sharing a workspace key', async () => {
+		configureDirectDaytona(configService);
 		const createGate = createDeferred();
 		createSandboxMock.mockImplementation(async () => {
 			await createGate.promise;
-			return makeSandbox();
+			return makeSandbox('daytona');
 		});
-		createFilesystemMock.mockReturnValue(makeFilesystem());
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 		const gate = createDeferred();
 		const started: number[] = [];
 
-		const first = service.withCachedWorkspace('same-key', async () => {
-			started.push(1);
-			await gate.promise;
-			return 'first';
-		});
-		const second = service.withCachedWorkspace('same-key', async () => {
-			started.push(2);
-			return 'second';
-		});
+		const first = service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(),
+			async () => {
+				started.push(1);
+				await gate.promise;
+				return 'first';
+			},
+		);
+		const second = service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(),
+			async () => {
+				started.push(2);
+				return 'second';
+			},
+		);
 
 		await flushMicrotasks();
 		expect(started).toEqual([]);
@@ -319,23 +435,32 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	});
 
 	it('does not evict a stale workspace while an operation is active', async () => {
+		configureDirectDaytona(configService);
 		const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(0);
-		const firstSandbox = makeSandbox();
-		const secondSandbox = makeSandbox();
+		const firstSandbox = makeSandbox('daytona');
+		const secondSandbox = makeSandbox('daytona');
 		createSandboxMock.mockResolvedValueOnce(firstSandbox).mockResolvedValueOnce(secondSandbox);
-		createFilesystemMock.mockReturnValue(makeFilesystem());
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 		const started = createDeferred();
 		const release = createDeferred();
 
-		const activeOperation = service.withCachedWorkspace('active-key', async () => {
-			started.resolve();
-			await release.promise;
-			return 'active';
-		});
+		const activeOperation = service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(buildExpectedManifest('sig-active')),
+			async () => {
+				started.resolve();
+				await release.promise;
+				return 'active';
+			},
+		);
 		await started.promise;
 
 		nowSpy.mockReturnValue(10 * 60_000 + 1);
-		await service.withCachedWorkspace('other-key', async () => 'other');
+		await service.withCachedWorkspace(
+			'project-1:agent-2:workspace',
+			workspaceOptions(buildExpectedManifest('sig-other')),
+			async () => 'other',
+		);
 
 		expect(firstSandbox.destroy).not.toHaveBeenCalled();
 		release.resolve();
@@ -344,17 +469,22 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	});
 
 	it('waits for active operations before destroying an agent workspace', async () => {
-		const sandbox = makeSandbox();
+		configureDirectDaytona(configService);
+		const sandbox = makeSandbox('daytona');
 		createSandboxMock.mockResolvedValue(sandbox);
-		createFilesystemMock.mockReturnValue(makeFilesystem());
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 		const started = createDeferred();
 		const release = createDeferred();
 
-		const activeOperation = service.withCachedWorkspace('project-1:agent-1:workspace', async () => {
-			started.resolve();
-			await release.promise;
-			return 'active';
-		});
+		const activeOperation = service.withCachedWorkspace(
+			'project-1:agent-1:workspace',
+			workspaceOptions(),
+			async () => {
+				started.resolve();
+				await release.promise;
+				return 'active';
+			},
+		);
 		await started.promise;
 
 		const destroyPromise = service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
@@ -443,6 +573,38 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(materialize).toHaveBeenCalledWith([
 			expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
 		]);
+	});
+
+	it('does not delete Daytona volume mount root when clearing stale volume state', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const workspace = {
+			...makeWorkspace(filesystem),
+			provider: 'daytona' as const,
+			storageMode: 'daytona-volume' as const,
+			workspaceRoot: '/home/daytona/workspace',
+			knowledgeRoot: '/home/daytona/workspace/agent-knowledge',
+			internalRoot: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
+			manifestPath:
+				'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal/manifest.json',
+		};
+		const expected = buildExpectedManifest('sig-current');
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				corpusSignature: 'sig-stale',
+				materializedAt: '2026-06-06',
+			}),
+		);
+		const materialize = jest.fn(async () => {});
+
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+
+		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(
+			workspace.knowledgeRoot,
+			expect.anything(),
+		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.manifestPath, { force: true });
+		expect(filesystem.mkdir).toHaveBeenCalledWith(workspace.internalRoot, { recursive: true });
 	});
 
 	it('legacy manifest without corpusSignature materializes required files', async () => {

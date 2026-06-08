@@ -13,6 +13,7 @@ function makeWorkspace(executeCommand = jest.fn()): KnowledgeSandboxWorkspace {
 		},
 		filesystem: {} as KnowledgeSandboxWorkspace['filesystem'],
 		provider: 'n8n-sandbox',
+		storageMode: 'sandbox-local',
 		workspaceRoot: '/home/user/workspace',
 		knowledgeRoot: '/home/user/workspace/agent-knowledge',
 		internalRoot: '/home/user/workspace/.agent-knowledge-internal',

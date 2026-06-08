@@ -297,6 +297,31 @@ describe('DaytonaSandbox (creation strategies)', () => {
 			}),
 		);
 	});
+
+	it('passes volumes to Daytona create params', async () => {
+		const volumes = [
+			{
+				volumeId: 'vol-1',
+				mountPath: '/home/daytona/workspace/agent-knowledge',
+				subpath: 'fixture/projects/project-1/agents/agent-1/corpora/sig-current',
+			},
+		];
+		queueNotFound('not found');
+		queuedCreateResults.push(makeMockSandbox('remote-sandbox'));
+
+		const sandbox = new DaytonaSandbox({
+			name: 'sandbox-name',
+			apiKey: 'api-key',
+			apiUrl: 'https://api.example.com',
+			image: 'node:20',
+			volumes,
+			createStrategyMode: 'direct',
+		});
+
+		await sandbox.start();
+
+		expect(clientLog[0].create.mock.calls[0][0]).toEqual(expect.objectContaining({ volumes }));
+	});
 });
 
 describe('DaytonaSandbox (direct mode)', () => {

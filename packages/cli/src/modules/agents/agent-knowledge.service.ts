@@ -87,6 +87,7 @@ export interface KnowledgeSandboxExpectedManifest {
 export interface KnowledgeSandboxMaterializationTarget {
 	sandbox: SandboxInstance;
 	filesystem: SandboxFilesystem;
+	storageMode?: 'sandbox-local' | 'daytona-volume';
 	knowledgeRoot: string;
 	internalRoot: string;
 	manifestPath: string;
@@ -362,7 +363,9 @@ export class AgentKnowledgeService {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 		if (filesToMaterialize.length === 0) return;
 
-		await target.filesystem.mkdir(target.knowledgeRoot, { recursive: true });
+		if (target.storageMode !== 'daytona-volume') {
+			await target.filesystem.mkdir(target.knowledgeRoot, { recursive: true });
+		}
 		await target.filesystem.mkdir(target.internalRoot, { recursive: true });
 
 		const existingManifest = await this.readSandboxManifest(target);

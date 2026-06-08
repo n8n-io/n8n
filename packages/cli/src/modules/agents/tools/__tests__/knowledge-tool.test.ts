@@ -35,6 +35,7 @@ function makeWorkspace(): KnowledgeSandboxWorkspace {
 		},
 		filesystem: {} as KnowledgeSandboxWorkspace['filesystem'],
 		provider: 'n8n-sandbox',
+		storageMode: 'sandbox-local',
 		workspaceRoot: '/home/user/workspace',
 		knowledgeRoot: '/home/user/workspace/agent-knowledge',
 		internalRoot: '/home/user/workspace/.agent-knowledge-internal',
@@ -173,7 +174,10 @@ describe('search_knowledge tool', () => {
 
 		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalledWith(
 			`${projectId}:${agentId}:workspace`,
-			{ userId },
+			{
+				userId,
+				expectedManifest: expect.objectContaining({ corpusSignature: 'sig-test' }),
+			},
 			expect.any(Function),
 		);
 		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(
