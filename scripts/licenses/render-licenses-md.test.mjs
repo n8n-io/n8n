@@ -374,6 +374,7 @@ describe('renderSbom — edge cases', () => {
 			'pkg:npm/nub@0.0.0',
 			'pkg:npm/xml-escape@1.1.0',
 			'pkg:npm/duck@0.1.12',
+			'pkg:npm/wa-sqlite@1.0.9',
 		];
 		const sbom = {
 			components: purls.map((purl) => {
