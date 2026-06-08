@@ -235,14 +235,14 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
-	describe('Custom telemetry tags', () => {
+	describe('Custom span attributes', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
 			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
 			settingsStore.moduleSettings = { otel: { enabled: true } };
 		});
 
-		it('should show custom telemetry tag settings when OTel custom span attributes are enabled', async () => {
+		it('should show custom span attribute settings when OTel custom span attributes are enabled', async () => {
 			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();
@@ -250,7 +250,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
 		});
 
-		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+		it('should hide custom span attribute settings when OTel is disabled', async () => {
 			settingsStore.moduleSettings = { otel: { enabled: false } };
 			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
@@ -259,7 +259,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
 		});
 
-		it('should hide custom telemetry tag settings when OTel custom span attributes are not licensed', async () => {
+		it('should hide custom span attribute settings when OTel custom span attributes are not licensed', async () => {
 			settingsStore.settings.enterprise.otelCustomSpanAttributes = false;
 			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
@@ -268,7 +268,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
 		});
 
-		it('should save workflow settings with custom telemetry tags emitted by the child', async () => {
+		it('should save workflow settings with custom span attributes emitted by the child', async () => {
 			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
 
@@ -285,7 +285,7 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should persist custom telemetry tags immediately with a partial settings payload', async () => {
+		it('should persist custom span attributes immediately with a partial settings payload', async () => {
 			workflowDocumentStore.setChecksum('test-checksum');
 			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
@@ -303,7 +303,7 @@ describe('WorkflowSettingsVue', () => {
 			]);
 		});
 
-		it('should show an error when immediate custom telemetry tag persistence fails', async () => {
+		it('should show an error when immediate custom span attribute persistence fails', async () => {
 			const error = new Error('Save failed');
 			workflowsStore.updateWorkflow.mockRejectedValue(error);
 			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
@@ -317,7 +317,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(workflowDocumentStore.settings.customTelemetryTags).toBeUndefined();
 		});
 
-		it('should disable workflow settings save when custom telemetry tags are invalid', async () => {
+		it('should disable workflow settings save when custom span attributes are invalid', async () => {
 			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
 

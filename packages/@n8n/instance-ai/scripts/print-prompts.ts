@@ -2,9 +2,9 @@
 // ---------------------------------------------------------------------------
 // Print Prompts CLI
 //
-// Renders the final system prompt for the main Instance Agent and every
-// orchestration sub-agent, then writes one markdown file per agent variant
-// into `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
+// Renders the final system prompt for the main Instance Agent and sub-agent
+// prompt templates, then writes one markdown file per agent variant into
+// `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
 // auditing the full prompt verbatim, diffing prompts across branches, or
 // sharing them outside the codebase.
 // ---------------------------------------------------------------------------
@@ -14,7 +14,6 @@ import { join, resolve } from 'path';
 
 import { buildSubAgentPrompt } from '../src/agent/sub-agent-factory';
 import { getSystemPrompt } from '../src/agent/system-prompt';
-import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 
 interface Variant {
 	/** File name (without extension) inside the agent's folder. */
@@ -109,12 +108,6 @@ function collectAgents(): AgentEntry[] {
 					}),
 				},
 			],
-		},
-		{
-			folder: 'planner',
-			displayName: 'Sub-Agent — Workflow Planner',
-			source: 'src/tools/orchestration/plan-agent-prompt.ts → PLANNER_AGENT_PROMPT',
-			variants: [{ file: 'prompt', body: PLANNER_AGENT_PROMPT }],
 		},
 		{
 			folder: 'delegate',
