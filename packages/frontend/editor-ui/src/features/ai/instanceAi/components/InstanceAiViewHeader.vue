@@ -45,6 +45,7 @@ const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.bran
 				:credits-remaining="store.creditsRemaining"
 				:credits-quota="store.creditsQuota"
 				:is-low-credits="store.isLowCredits"
+				button-size="small"
 				@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 			/>
 			<slot name="actions" />

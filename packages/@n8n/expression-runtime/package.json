@@ -31,7 +31,7 @@
     "web-worker",
     "security"
   ],
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
