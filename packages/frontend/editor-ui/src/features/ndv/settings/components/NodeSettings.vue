@@ -672,7 +672,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="isEmbeddedInCanvas && node"
 			:node="node"
 			:selected-tab="openPanel"
-			:read-only="readOnly"
+			:read-only="isReadOnly"
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
