@@ -22,7 +22,7 @@ import type {
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
-import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { TarPackageReader, type TarReaderLimits} from '../io/tar/tar-package-reader';
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
@@ -32,8 +32,6 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 
-const MEGABYTE_IN_BYTES = 1024 * 1024;
-
 interface ImportTarget {
 	projectId: string;
 	folderId: string | null;
@@ -41,7 +39,7 @@ interface ImportTarget {
 
 @Service()
 export class ImportPipeline {
-	private readonly maxUncompressedPackageBytes: number;
+	private readonly readerLimits: TarReaderLimits;
 
 	constructor(
 		private readonly packageParser: N8nPackageParser,
@@ -53,7 +51,7 @@ export class ImportPipeline {
 		private readonly eventService: EventService,
 		private readonly workflowImporter: WorkflowImporter,
 	) {
-		this.maxUncompressedPackageBytes = globalConfig.endpoints.payloadSizeMax * MEGABYTE_IN_BYTES;
+		this.readerLimits = globalConfig.packageImport;
 	}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
@@ -63,7 +61,7 @@ export class ImportPipeline {
 			request.folderId,
 		);
 
-		const reader = new TarPackageReader(request.packageBuffer, this.maxUncompressedPackageBytes);
+		const reader = new TarPackageReader(request.packageBuffer, this.readerLimits);
 		const manifest = await this.packageParser.getManifest(reader);
 		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 

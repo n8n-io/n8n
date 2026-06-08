@@ -80,6 +80,12 @@ describe('GlobalConfig', () => {
 			fileMaxAgeMs: 2 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
 		},
+		packageImport: {
+			maxUncompressedBytes: 300 * 1024 * 1024,
+			maxEntryBytes: 5 * 1024 * 1024,
+			maxEntries: 5_000,
+			maxPathLength: 1024,
+		},
 		database: {
 			logging: {
 				enabled: false,
