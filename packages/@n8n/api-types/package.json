@@ -38,5 +38,6 @@
   },
   "peerDependencies": {
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

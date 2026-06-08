@@ -65,7 +65,7 @@ function getAnswers(): DisplayAnswer[] {
 .wrapper {
 	display: flex;
 	justify-content: flex-end;
-	margin-bottom: var(--spacing--xs);
+	margin-block: var(--spacing--lg);
 }
 
 .userBubble {

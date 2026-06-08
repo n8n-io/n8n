@@ -7,10 +7,10 @@ import {
 	type LcovInput,
 	decodeImpactMap,
 	encodeImpactMap,
-	mergeCoverage,
+	buildImpactMap,
 	parseLcov,
 	resolveImpact,
-} from './coverage-map.js';
+} from './impact-map.js';
 
 // ---------------------------------------------------------------------------
 // Model + generators
@@ -93,9 +93,9 @@ describe('parseLcov', () => {
 	});
 });
 
-describe('mergeCoverage', () => {
+describe('buildImpactMap', () => {
 	it('attributes a function to every spec that executed it (hits > 0)', () => {
-		const { impactMap } = mergeCoverage([
+		const { impactMap } = buildImpactMap([
 			{ spec: 'A', text: 'TN:A\nSF:f.ts\nFN:10,fn\nFNDA:2,fn\nend_of_record\n' },
 			{ spec: 'B', text: 'TN:B\nSF:f.ts\nFN:10,fn\nFNDA:1,fn\nend_of_record\n' },
 		]);
@@ -103,7 +103,7 @@ describe('mergeCoverage', () => {
 	});
 
 	it('excludes load-only functions (hits === 0) from the map', () => {
-		const { impactMap } = mergeCoverage([
+		const { impactMap } = buildImpactMap([
 			{
 				spec: 'A',
 				text: 'TN:A\nSF:f.ts\nFN:10,hit\nFN:20,loaded\nFNDA:4,hit\nFNDA:0,loaded\nend_of_record\n',
@@ -114,7 +114,7 @@ describe('mergeCoverage', () => {
 	});
 
 	it('sums hit counts across specs in the unified lcov', () => {
-		const { lcov } = mergeCoverage([
+		const { lcov } = buildImpactMap([
 			{ spec: 'A', text: 'TN:A\nSF:f.ts\nFN:10,fn\nFNDA:2,fn\nDA:10,2\nend_of_record\n' },
 			{ spec: 'B', text: 'TN:B\nSF:f.ts\nFN:10,fn\nFNDA:3,fn\nDA:10,3\nend_of_record\n' },
 		]);
@@ -229,11 +229,11 @@ describe('resolveImpact — sibling fallback', () => {
 // Property + metamorphic tests — the soundness guarantee
 // ===========================================================================
 
-describe('mergeCoverage — properties', () => {
+describe('buildImpactMap — properties', () => {
 	it('SOUNDNESS: every executed (spec, function) appears in the map', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
-				const { impactMap } = mergeCoverage(buildInputs(execs));
+				const { impactMap } = buildImpactMap(buildInputs(execs));
 				for (const e of execs) {
 					if (e.hits > 0) {
 						expect(impactMap[e.file]?.[String(e.fnLine)] ?? []).toContain(e.spec);
@@ -246,7 +246,7 @@ describe('mergeCoverage — properties', () => {
 	it('NO PHANTOMS: a spec is not attributed to a function it only loaded (hits 0)', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
-				const { impactMap } = mergeCoverage(buildInputs(execs));
+				const { impactMap } = buildImpactMap(buildInputs(execs));
 				for (const e of execs) {
 					if (e.hits === 0) {
 						// (spec,file,fnLine) is unique per execs, so no hits>0 record revives it.
@@ -261,8 +261,8 @@ describe('mergeCoverage — properties', () => {
 		fc.assert(
 			fc.property(arbExecs, fc.array(fc.nat(), { maxLength: 40 }), (execs, keys) => {
 				const inputs = buildInputs(execs);
-				const a = mergeCoverage(inputs);
-				const b = mergeCoverage(shuffle(inputs, keys));
+				const a = buildImpactMap(inputs);
+				const b = buildImpactMap(shuffle(inputs, keys));
 				expect(b.impactMap).toEqual(a.impactMap);
 				expect(b.lcov).toEqual(a.lcov);
 			}),
@@ -272,8 +272,8 @@ describe('mergeCoverage — properties', () => {
 	it('MONOTONIC: adding coverage never removes a map entry', () => {
 		fc.assert(
 			fc.property(arbExecs, arbExecs, (a, b) => {
-				const mapA = mergeCoverage(buildInputs(a)).impactMap;
-				const mapAB = mergeCoverage([...buildInputs(a), ...buildInputs(b)]).impactMap;
+				const mapA = buildImpactMap(buildInputs(a)).impactMap;
+				const mapAB = buildImpactMap([...buildInputs(a), ...buildInputs(b)]).impactMap;
 				for (const file of Object.keys(mapA)) {
 					for (const line of Object.keys(mapA[file])) {
 						for (const spec of mapA[file][line]) {
@@ -289,8 +289,8 @@ describe('mergeCoverage — properties', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
 				const inputs = buildInputs(execs);
-				expect(mergeCoverage([...inputs, ...inputs]).impactMap).toEqual(
-					mergeCoverage(inputs).impactMap,
+				expect(buildImpactMap([...inputs, ...inputs]).impactMap).toEqual(
+					buildImpactMap(inputs).impactMap,
 				);
 			}),
 		);
@@ -301,7 +301,7 @@ describe('resolveImpact — properties', () => {
 	it('SOUNDNESS: a change to an executed function selects every spec that ran it', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
-				const { impactMap } = mergeCoverage(buildInputs(execs));
+				const { impactMap } = buildImpactMap(buildInputs(execs));
 				for (const e of execs) {
 					if (e.hits > 0) {
 						const r = resolveImpact([{ file: e.file, lines: [e.fnLine] }], impactMap);
@@ -315,7 +315,7 @@ describe('resolveImpact — properties', () => {
 	it('LINE-PRECISE ⊆ FILE-LEVEL: pinning a line never selects more than the whole file', () => {
 		fc.assert(
 			fc.property(arbExecs, fc.integer({ min: 1, max: 60 }), (execs, line) => {
-				const { impactMap } = mergeCoverage(buildInputs(execs));
+				const { impactMap } = buildImpactMap(buildInputs(execs));
 				const files = Object.keys(impactMap);
 				if (files.length === 0) return;
 				const file = files[0];
@@ -329,7 +329,7 @@ describe('resolveImpact — properties', () => {
 	it('MONOTONIC: resolving more changed files never selects fewer specs', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
-				const { impactMap } = mergeCoverage(buildInputs(execs));
+				const { impactMap } = buildImpactMap(buildInputs(execs));
 				const files = Object.keys(impactMap);
 				if (files.length < 2) return;
 				const a: ChangedFile[] = [{ file: files[0] }];
@@ -347,7 +347,7 @@ describe('resolveImpact — properties', () => {
 				arbExecs,
 				fc.array(fc.string(), { minLength: 1, maxLength: 5 }),
 				(execs, allSpecs) => {
-					const { impactMap } = mergeCoverage(buildInputs(execs));
+					const { impactMap } = buildImpactMap(buildInputs(execs));
 					const r = resolveImpact([{ file: 'packages/never/covered.ts' }], impactMap, { allSpecs });
 					expect(r.mode).toBe('broad');
 					for (const s of allSpecs) expect(r.specs).toContain(s);
@@ -365,11 +365,11 @@ describe('resolveImpact — properties', () => {
 
 // ===========================================================================
 // Serializer + parser hardening — the serializer is exercised by every merge
-// but the algebra properties use mergeCoverage as their own oracle, so a
+// but the algebra properties use buildImpactMap as their own oracle, so a
 // wrong-but-deterministic serialization slips through. These pin it externally.
 // ===========================================================================
 
-describe('serializeLcov (via mergeCoverage.lcov)', () => {
+describe('serializeLcov (via buildImpactMap.lcov)', () => {
 	it('SERIALIZE-CORRECT: parse∘serialize round-trips FN/FNDA/DA hits', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
@@ -380,7 +380,7 @@ describe('serializeLcov (via mergeCoverage.lcov)', () => {
 					expected.set(e.file, f);
 					f.set(e.fnLine, (f.get(e.fnLine) ?? 0) + e.hits);
 				}
-				const { lcov } = mergeCoverage(buildInputs(execs));
+				const { lcov } = buildImpactMap(buildInputs(execs));
 				for (const rec of parseLcov(lcov)) {
 					const exp = expected.get(rec.file);
 					if (!exp) continue;
@@ -392,7 +392,7 @@ describe('serializeLcov (via mergeCoverage.lcov)', () => {
 	});
 
 	it('emits FN/DA sorted by line and correct FNF/FNH/LF/LH', () => {
-		const { lcov } = mergeCoverage([
+		const { lcov } = buildImpactMap([
 			{
 				spec: 'A',
 				text: 'TN:A\nSF:f.ts\nFN:30,c\nFN:10,a\nFN:20,b\nFNDA:0,c\nFNDA:5,a\nFNDA:2,b\nDA:30,0\nDA:10,5\nDA:20,2\nend_of_record\n',
@@ -414,14 +414,14 @@ describe('encode/decode impact map (interned on-disk form)', () => {
 	it('LOSSLESS: decode∘encode round-trips any impact map', () => {
 		fc.assert(
 			fc.property(arbExecs, (execs) => {
-				const { impactMap } = mergeCoverage(buildInputs(execs));
+				const { impactMap } = buildImpactMap(buildInputs(execs));
 				expect(decodeImpactMap(encodeImpactMap(impactMap))).toEqual(impactMap);
 			}),
 		);
 	});
 
 	it('interns each spec path exactly once', () => {
-		const { impactMap } = mergeCoverage([
+		const { impactMap } = buildImpactMap([
 			{ spec: 'A', text: 'TN:A\nSF:f.ts\nFN:10,a\nFN:20,b\nFNDA:1,a\nFNDA:1,b\nend_of_record\n' },
 		]);
 		const enc = encodeImpactMap(impactMap);

@@ -101,5 +101,6 @@
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }
