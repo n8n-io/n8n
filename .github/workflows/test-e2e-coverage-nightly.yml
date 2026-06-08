@@ -69,7 +69,7 @@ jobs:
       # ~4GB for Node.js — but V8 won't touch it without this flag).
       # Without it the coverage instrumentation OOMs mid-shard as V8 profiler
       # data accumulates across tests in the same worker process.
-      test-command: NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter=n8n-playwright coverage:shard
+      test-command: NODE_OPTIONS=--max-old-space-size=6144 pnpm --filter=n8n-playwright coverage:shard
       workers: '1'
       runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 55
