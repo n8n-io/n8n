@@ -2878,7 +2878,10 @@ describe('AgentsService', () => {
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
 			expect(
-				agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
+				agentKnowledgeSandboxWorkspaceService.cleanupCachedWorkspacesForAgent,
+			).toHaveBeenCalledWith(projectId, agentId);
+			expect(
+				agentKnowledgeSandboxWorkspaceService.cleanupDaytonaVolumeForAgent,
 			).toHaveBeenCalledWith(projectId, agentId);
 		});
 

@@ -237,6 +237,22 @@ export class AgentKnowledgeService {
 		};
 	}
 
+	async resolveCurrentSandboxManifest(
+		agentId: string,
+		projectId: string,
+	): Promise<{
+		files: KnowledgeWorkspaceFile[];
+		storedFiles: StoredAgentFile[];
+		expectedManifest: KnowledgeSandboxExpectedManifest;
+	}> {
+		const storedFiles = await this.loadScopedStoredFiles(agentId, projectId);
+		return {
+			files: storedFiles.map((file) => this.toWorkspaceFile(file)),
+			storedFiles,
+			expectedManifest: this.buildExpectedSandboxManifest(agentId, projectId, storedFiles),
+		};
+	}
+
 	buildCorpusSignature(files: KnowledgeSandboxManifestFile[]): string {
 		const payload = files
 			.map(({ id, relativePath, fileSizeBytes, binaryDataIdSha1 }) => ({
@@ -361,12 +377,29 @@ export class AgentKnowledgeService {
 		filesToMaterialize: StoredAgentFile[],
 	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
-		if (filesToMaterialize.length === 0) return;
 
 		if (target.storageMode !== 'daytona-volume') {
 			await target.filesystem.mkdir(target.knowledgeRoot, { recursive: true });
 		}
 		await target.filesystem.mkdir(target.internalRoot, { recursive: true });
+
+		if (filesToMaterialize.length === 0) {
+			const manifest: KnowledgeSandboxManifest = {
+				version: expectedManifest.version,
+				agentId: expectedManifest.agentId,
+				projectId: expectedManifest.projectId,
+				corpusSignature: expectedManifest.corpusSignature,
+				files: [...expectedManifest.files].sort((left, right) =>
+					left.relativePath.localeCompare(right.relativePath),
+				),
+				materializedAt: new Date().toISOString(),
+			};
+			await target.filesystem.writeFile(target.manifestPath, JSON.stringify(manifest, null, 2), {
+				recursive: true,
+				overwrite: true,
+			});
+			return;
+		}
 
 		const existingManifest = await this.readSandboxManifest(target);
 		const materializedEntries: KnowledgeSandboxManifestFile[] = [];

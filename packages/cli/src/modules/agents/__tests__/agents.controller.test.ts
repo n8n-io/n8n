@@ -340,13 +340,15 @@ describe('AgentsController file endpoints', () => {
 			'project-1',
 			uploadedFiles,
 		);
-		expect(
-			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
-		).not.toHaveBeenCalled();
+		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			undefined,
+		);
 		expect(result).toBe(storedFiles);
 	});
 
-	it('does not invalidate cached workspaces when upload fails', async () => {
+	it('does not sync the Daytona volume when upload fails', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
 		agentKnowledgeService.uploadFiles.mockRejectedValue(new Error('storage unavailable'));
@@ -360,9 +362,7 @@ describe('AgentsController file endpoints', () => {
 			),
 		).rejects.toThrow('storage unavailable');
 
-		expect(
-			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
-		).not.toHaveBeenCalled();
+		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).not.toHaveBeenCalled();
 	});
 
 	it('deletes a file via AgentKnowledgeService and returns success', async () => {
@@ -378,13 +378,15 @@ describe('AgentsController file endpoints', () => {
 		);
 
 		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
-		expect(
-			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
-		).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			undefined,
+		);
 		expect(result).toEqual({ success: true });
 	});
 
-	it('does not invalidate cached workspaces when delete fails', async () => {
+	it('does not sync the Daytona volume when delete fails', async () => {
 		const { controller, agentKnowledgeService, agentKnowledgeSandboxWorkspaceService } =
 			makeController();
 		agentKnowledgeService.deleteFile.mockRejectedValue(new Error('file missing'));
@@ -399,9 +401,7 @@ describe('AgentsController file endpoints', () => {
 			),
 		).rejects.toThrow('file missing');
 
-		expect(
-			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
-		).not.toHaveBeenCalled();
+		expect(agentKnowledgeSandboxWorkspaceService.syncAgentKnowledgeVolume).not.toHaveBeenCalled();
 	});
 });
 

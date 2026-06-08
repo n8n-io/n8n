@@ -757,13 +757,35 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
-		await this.agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent(
-			projectId,
-			agentId,
-		);
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
+
+		try {
+			await this.agentKnowledgeSandboxWorkspaceService.cleanupCachedWorkspacesForAgent(
+				projectId,
+				agentId,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to clean up cached agent knowledge workspaces on agent delete', {
+				agentId,
+				projectId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+
+		try {
+			await this.agentKnowledgeSandboxWorkspaceService.cleanupDaytonaVolumeForAgent(
+				projectId,
+				agentId,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to clean up Daytona agent knowledge volume on agent delete', {
+				agentId,
+				projectId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		try {
 			// eslint-disable-next-line import-x/no-cycle

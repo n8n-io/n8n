@@ -609,6 +609,36 @@ describe('AgentKnowledgeService', () => {
 		expect(JSON.stringify(manifest)).not.toContain('binary-2');
 	});
 
+	it('resolveCurrentSandboxManifest returns workspace files, stored files, and expected manifest', async () => {
+		const storedFiles = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		agentFileRepository.findByAgentId.mockResolvedValue(storedFiles);
+
+		const resolution = await service.resolveCurrentSandboxManifest(agentId, projectId);
+
+		expect(resolution.storedFiles).toEqual(storedFiles);
+		expect(resolution.files).toEqual([
+			expect.objectContaining({
+				id: 'file-1',
+				fileName: 'notes.txt',
+				relativePath: 'file-1.txt',
+			}),
+		]);
+		expect(resolution.expectedManifest).toEqual(
+			service.buildExpectedSandboxManifest(agentId, projectId, storedFiles),
+		);
+	});
+
 	it('buildExpectedSandboxManifest signature is stable when repository file order changes', () => {
 		const storedFiles = [
 			{
@@ -1013,6 +1043,39 @@ describe('AgentKnowledgeService', () => {
 				expect.objectContaining({ id: 'file-2', relativePath: 'file-2.csv' }),
 			]),
 		);
+	});
+
+	it('writes a fresh manifest when materializing an empty Daytona volume', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const target = { ...makeSandboxTarget(), storageMode: 'daytona-volume' as const };
+		const expectedManifest = service.buildExpectedSandboxManifest(agentId, projectId, []);
+
+		await service.materializeWorkspaceFilesIntoSandbox(
+			agentId,
+			projectId,
+			target,
+			expectedManifest,
+			[],
+		);
+
+		expect(binaryDataService.getAsStream).not.toHaveBeenCalled();
+		expect(target.filesystem.mkdir).toHaveBeenCalledWith(target.internalRoot, { recursive: true });
+		expect(target.filesystem.mkdir).not.toHaveBeenCalledWith(target.knowledgeRoot, {
+			recursive: true,
+		});
+
+		const manifestCall = jest
+			.mocked(target.filesystem.writeFile)
+			.mock.calls.find((call) => call[0] === target.manifestPath);
+		const manifest = JSON.parse(String(manifestCall?.[1] ?? ''));
+		expect(manifest).toMatchObject({
+			version: expectedManifest.version,
+			agentId,
+			projectId,
+			corpusSignature: expectedManifest.corpusSignature,
+			files: [],
+		});
+		expect(typeof manifest.materializedAt).toBe('string');
 	});
 
 	it('cleans only the failed sandbox file when streaming fails', async () => {

@@ -114,6 +114,7 @@ const workspaceOptions = (expectedManifest = buildExpectedManifest()) => ({
 });
 
 function configureDirectDaytona(configService: AgentKnowledgeSandboxConfigService) {
+	jest.spyOn(configService, 'isAvailable').mockReturnValue(true);
 	jest.spyOn(configService, 'resolveConfig').mockReturnValue({
 		enabled: true,
 		provider: 'daytona',
@@ -199,7 +200,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(createSandboxMock).not.toHaveBeenCalled();
 	});
 
-	it('creates a Daytona volume workspace with signature-addressed mount', async () => {
+	it('creates a Daytona volume workspace with a stable per-agent knowledge mount', async () => {
 		configureDirectDaytona(configService);
 		const sandbox = makeSandbox('daytona');
 		const filesystem = makeFilesystem('daytona');
@@ -220,8 +221,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 					{
 						volumeId: 'vol-1',
 						mountPath: '/home/daytona/workspace/agent-knowledge',
-						subpath:
-							'agent-knowledge/staging/projects/project-1/agents/agent-1/corpora/sig-current',
+						subpath: 'agent-knowledge/staging/projects/project-1/agents/agent-1/knowledge',
 					},
 				],
 				labels: expect.objectContaining({
@@ -240,9 +240,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			internalRoot: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
 			manifestPath:
 				'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal/manifest.json',
-			corpusSignature: 'sig-current',
-			volumeSubpath:
-				'agent-knowledge/staging/projects/project-1/agents/agent-1/corpora/sig-current',
+			volumeSubpath: 'agent-knowledge/staging/projects/project-1/agents/agent-1/knowledge',
 		});
 		expect(filesystem.mkdir).toHaveBeenCalledWith(
 			'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
@@ -279,11 +277,9 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		);
 	});
 
-	it('creates separate cached workspaces for different corpus signatures', async () => {
+	it('reuses cached workspace for the same agent regardless of manifest signature', async () => {
 		configureDirectDaytona(configService);
-		createSandboxMock
-			.mockResolvedValueOnce(makeSandbox('daytona'))
-			.mockResolvedValueOnce(makeSandbox('daytona'));
+		createSandboxMock.mockResolvedValue(makeSandbox('daytona'));
 		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 
 		const first = await service.withCachedWorkspace(
@@ -297,9 +293,9 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			async (entry) => entry,
 		);
 
-		expect(first).not.toBe(second);
-		expect(createSandboxMock).toHaveBeenCalledTimes(2);
-		expect(service.getCachedWorkspaceCount()).toBe(2);
+		expect(first).toBe(second);
+		expect(createSandboxMock).toHaveBeenCalledTimes(1);
+		expect(service.getCachedWorkspaceCount()).toBe(1);
 	});
 
 	it('reuses cached workspace for the same corpus signature across users', async () => {
@@ -374,25 +370,16 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(createSandboxMock).toHaveBeenCalledTimes(3);
 	});
 
-	it('destroyCachedWorkspacesForAgent destroys all corpus workspaces for the agent', async () => {
+	it('destroyCachedWorkspacesForAgent destroys the cached workspace for the agent', async () => {
 		configureDirectDaytona(configService);
-		const firstSandbox = makeSandbox('daytona');
-		const secondSandbox = makeSandbox('daytona');
+		const agentSandbox = makeSandbox('daytona');
 		const otherSandbox = makeSandbox('daytona');
-		createSandboxMock
-			.mockResolvedValueOnce(firstSandbox)
-			.mockResolvedValueOnce(secondSandbox)
-			.mockResolvedValueOnce(otherSandbox);
+		createSandboxMock.mockResolvedValueOnce(agentSandbox).mockResolvedValueOnce(otherSandbox);
 		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
 
 		await service.withCachedWorkspace(
 			'project-1:agent-1:workspace',
 			workspaceOptions(buildExpectedManifest('sig-one')),
-			async (entry) => entry,
-		);
-		await service.withCachedWorkspace(
-			'project-1:agent-1:workspace',
-			workspaceOptions(buildExpectedManifest('sig-two')),
 			async (entry) => entry,
 		);
 		await service.withCachedWorkspace(
@@ -403,8 +390,7 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 
 		await service.destroyCachedWorkspacesForAgent('project-1', 'agent-1');
 
-		expect(firstSandbox.destroy).toHaveBeenCalledTimes(1);
-		expect(secondSandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(agentSandbox.destroy).toHaveBeenCalledTimes(1);
 		expect(otherSandbox.destroy).not.toHaveBeenCalled();
 		expect(service.getCachedWorkspaceCount()).toBe(1);
 	});
@@ -729,5 +715,114 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		expect(materialize).toHaveBeenCalledWith([
 			expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
 		]);
+	});
+
+	it('withSyncedWorkspace destroys the sandbox after the operation completes', async () => {
+		configureDirectDaytona(configService);
+		const sandbox = makeSandbox('daytona');
+		createSandboxMock.mockResolvedValue(sandbox);
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+		const expectedManifest = buildExpectedManifest();
+
+		await service.withSyncedWorkspace(
+			'project-1:agent-1:workspace',
+			{ userId: 'user-1', expectedManifest },
+			async () => {},
+			async (workspace) => workspace,
+		);
+
+		expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+		expect(service.getCachedWorkspaceCount()).toBe(0);
+	});
+
+	it('withSyncedWorkspace repairs drifted volume contents before running the operation', async () => {
+		configureDirectDaytona(configService);
+		const sandbox = makeSandbox('daytona');
+		const filesystem = makeFilesystem('daytona');
+		createSandboxMock.mockResolvedValue(sandbox);
+		createFilesystemMock.mockReturnValue(filesystem);
+		const expectedManifest = buildExpectedManifest('sig-current');
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expectedManifest,
+				corpusSignature: 'sig-stale',
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		filesystem.readdir.mockResolvedValue([
+			{ name: 'file-1.txt', type: 'file' as const, size: 10 },
+			{ name: '.agent-knowledge-internal', type: 'directory' as const, size: 0 },
+		]);
+		const repair = jest.fn(async () => {});
+
+		await service.withSyncedWorkspace(
+			'project-1:agent-1:workspace',
+			{ userId: 'user-1', expectedManifest },
+			repair,
+			async () => 'ok',
+		);
+
+		expect(repair).toHaveBeenCalledTimes(1);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/file-1.txt',
+			{ recursive: true, force: true },
+		);
+	});
+
+	it('syncDaytonaVolumeForAgent replaces volume contents and destroys the sync sandbox', async () => {
+		configureDirectDaytona(configService);
+		const sandbox = makeSandbox('daytona');
+		const filesystem = makeFilesystem('daytona');
+		createSandboxMock.mockResolvedValue(sandbox);
+		createFilesystemMock.mockReturnValue(filesystem);
+		const expectedManifest = buildExpectedManifest();
+		const materializeAll = jest.fn(async () => {});
+
+		await service.syncDaytonaVolumeForAgent(
+			'project-1',
+			'agent-1',
+			'user-1',
+			expectedManifest,
+			materializeAll,
+		);
+
+		expect(materializeAll).toHaveBeenCalledTimes(1);
+		expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+	});
+
+	it('cleanupDaytonaVolumeForAgent deletes direct children under the agent volume subpath', async () => {
+		configureDirectDaytona(configService);
+		const sandbox = makeSandbox('daytona');
+		const filesystem = makeFilesystem('daytona');
+		createSandboxMock.mockResolvedValue(sandbox);
+		createFilesystemMock.mockReturnValue(filesystem);
+		filesystem.readdir.mockResolvedValue([
+			{ name: 'knowledge', type: 'directory' as const, size: 0 },
+			{ name: 'stale.txt', type: 'file' as const, size: 1 },
+		]);
+
+		await service.cleanupDaytonaVolumeForAgent('project-1', 'agent-1');
+
+		expect(createSandboxMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				volumes: [
+					expect.objectContaining({
+						mountPath: '/home/daytona/workspace/agent-knowledge-cleanup',
+						subpath: 'agent-knowledge/staging/projects/project-1/agents/agent-1',
+					}),
+				],
+				labels: expect.objectContaining({ cleanup: 'agent-volume' }),
+			}),
+			{ logger },
+		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge-cleanup/knowledge',
+			{ recursive: true, force: true },
+		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge-cleanup/stale.txt',
+			{ recursive: true, force: true },
+		);
+		expect(sandbox.destroy).toHaveBeenCalledTimes(1);
 	});
 });

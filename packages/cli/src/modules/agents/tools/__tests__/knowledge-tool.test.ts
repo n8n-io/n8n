@@ -6,10 +6,7 @@ import type {
 	AgentKnowledgeSandboxWorkspaceService,
 	KnowledgeSandboxWorkspace,
 } from '../../agent-knowledge-sandbox-workspace.service';
-import type {
-	AgentKnowledgeService,
-	KnowledgeSandboxExpectedManifest,
-} from '../../agent-knowledge.service';
+import type { AgentKnowledgeService } from '../../agent-knowledge.service';
 import { createSearchKnowledgeTool } from '../knowledge/tool';
 import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../knowledge/schemas';
 
@@ -47,14 +44,13 @@ describe('search_knowledge tool', () => {
 	let commandService: { run: jest.Mock };
 	let csvService: { queryCsv: jest.Mock };
 	let sandboxWorkspaceService: {
-		ensureWorkspaceContainsFiles: jest.Mock;
-		withCachedWorkspace: jest.Mock;
+		withSyncedWorkspace: jest.Mock;
 	};
 	let knowledgeService: {
-		buildExpectedSandboxManifest: jest.Mock;
 		listWorkspaceFiles: jest.Mock;
 		materializeWorkspaceFilesIntoSandbox: jest.Mock;
 		openWorkspaceFileStream: jest.Mock;
+		resolveCurrentSandboxManifest: jest.Mock;
 		resolveWorkspaceFilesForRuntime: jest.Mock;
 		resolveWorkspaceForSandboxOperation: jest.Mock;
 	};
@@ -93,41 +89,37 @@ describe('search_knowledge tool', () => {
 				truncated: false,
 			})),
 		};
+		const storedFiles = [{ ...file, agentId, binaryDataId: 'binary-file-1' }];
+		const expectedManifest = {
+			version: 1,
+			agentId,
+			projectId,
+			corpusSignature: 'sig-test',
+			files: [
+				{
+					id: 'file-1',
+					relativePath: 'file-1.txt',
+					fileSizeBytes: file.fileSizeBytes,
+					binaryDataIdSha1: 'sha1-file-1',
+				},
+			],
+		};
 		sandboxWorkspaceService = {
-			ensureWorkspaceContainsFiles: jest.fn(async (_workspace, expected, materialize) => {
-				const missingFiles = expected.files.map(
-					(manifestFile: KnowledgeSandboxExpectedManifest['files'][number]) => ({
-						id: manifestFile.id,
-						fileSizeBytes: manifestFile.fileSizeBytes,
-						relativePath: manifestFile.relativePath,
-					}),
-				);
-				await materialize(missingFiles);
-			}),
-			withCachedWorkspace: jest.fn(
-				async (_cacheKey, _options, operation) => await operation(makeWorkspace()),
+			withSyncedWorkspace: jest.fn(
+				async (_cacheKey, _options, _repair, operation) => await operation(makeWorkspace()),
 			),
 		};
 		knowledgeService = {
-			buildExpectedSandboxManifest: jest.fn(
-				(_manifestAgentId, _manifestProjectId, storedFiles) => ({
-					version: 1,
-					agentId,
-					projectId,
-					corpusSignature: 'sig-test',
-					files: storedFiles.map((storedFile: { id: string; fileSizeBytes: number }) => ({
-						id: storedFile.id,
-						relativePath: storedFile.id === 'file-2' ? 'file-2.txt' : 'file-1.txt',
-						fileSizeBytes: storedFile.fileSizeBytes,
-						binaryDataIdSha1: `sha1-${storedFile.id}`,
-					})),
-				}),
-			),
 			listWorkspaceFiles: jest.fn(),
 			materializeWorkspaceFilesIntoSandbox: jest.fn(async () => {}),
 			openWorkspaceFileStream: jest.fn(async () => ({
 				file: { ...file, fileName: 'data.csv', mimeType: 'text/csv', relativePath: 'file-1.csv' },
 				contentStream: Readable.from(['country,year\nGermany,2022\n']),
+			})),
+			resolveCurrentSandboxManifest: jest.fn(async () => ({
+				files: [file],
+				storedFiles,
+				expectedManifest,
 			})),
 			resolveWorkspaceFilesForRuntime: jest.fn(async () => ({ files: [file] })),
 			resolveWorkspaceForSandboxOperation: jest.fn(async (_agentId, _projectId, fileReferences) => {
@@ -163,21 +155,22 @@ describe('search_knowledge tool', () => {
 				files: [expect.objectContaining({ id: 'file-1' })],
 			},
 		);
-		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withSyncedWorkspace).not.toHaveBeenCalled();
 	});
 
-	it('uses a stable per-agent cache key and materializes only scoped files', async () => {
+	it('uses a stable per-agent cache key and resolves scoped read files', async () => {
 		await createTool().handler?.(
 			{ operation: 'read', file: 'other.txt', lineRange: { start: 1, end: 1 } },
 			{} as never,
 		);
 
-		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalledWith(
+		expect(sandboxWorkspaceService.withSyncedWorkspace).toHaveBeenCalledWith(
 			`${projectId}:${agentId}:workspace`,
 			{
 				userId,
 				expectedManifest: expect.objectContaining({ corpusSignature: 'sig-test' }),
 			},
+			expect.any(Function),
 			expect.any(Function),
 		);
 		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(
@@ -185,16 +178,8 @@ describe('search_knowledge tool', () => {
 			projectId,
 			['other.txt'],
 		);
-		expect(knowledgeService.buildExpectedSandboxManifest).toHaveBeenCalledWith(agentId, projectId, [
-			expect.objectContaining({ id: 'file-2' }),
-		]);
-		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).toHaveBeenCalledWith(
-			agentId,
-			projectId,
-			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
-			expect.objectContaining({ corpusSignature: 'sig-test' }),
-			[expect.objectContaining({ id: 'file-2' })],
-		);
+		expect(knowledgeService.resolveCurrentSandboxManifest).toHaveBeenCalledWith(agentId, projectId);
+		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).not.toHaveBeenCalled();
 		expect(commandService.run).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({ command: 'read', file: 'file-2.txt' }),
@@ -221,17 +206,15 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
-	it('searches only current workspace files for unscoped search', async () => {
+	it('searches the synced volume root for unscoped search', async () => {
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
-		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(
-			agentId,
-			projectId,
-			undefined,
-		);
+		expect(knowledgeService.resolveWorkspaceForSandboxOperation).not.toHaveBeenCalled();
+		expect(knowledgeService.resolveCurrentSandboxManifest).toHaveBeenCalledWith(agentId, projectId);
+		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).not.toHaveBeenCalled();
 		expect(commandService.run).toHaveBeenCalledWith(
 			expect.any(Object),
-			expect.objectContaining({ command: 'search', files: ['file-1.txt'] }),
+			expect.objectContaining({ command: 'search', files: undefined }),
 		);
 	});
 
@@ -267,39 +250,41 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
-	it('skips binary materialization when workspace already contains the expected corpus', async () => {
-		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockImplementationOnce(
-			async (_workspace, _expected, _materialize) => {},
+	it('repairs the synced workspace before running unscoped search', async () => {
+		sandboxWorkspaceService.withSyncedWorkspace.mockImplementationOnce(
+			async (_cacheKey, _options, repair, operation) => {
+				await repair(makeWorkspace());
+				return await operation(makeWorkspace());
+			},
 		);
 
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
-		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalledWith(
+		expect(sandboxWorkspaceService.withSyncedWorkspace).toHaveBeenCalledWith(
 			`${projectId}:${agentId}:workspace`,
 			expect.objectContaining({
 				userId,
 				expectedManifest: expect.objectContaining({ corpusSignature: 'sig-test' }),
 			}),
 			expect.any(Function),
+			expect.any(Function),
 		);
-		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).not.toHaveBeenCalled();
+		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).toHaveBeenCalled();
 		expect(commandService.run).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({ command: 'search' }),
 		);
 	});
 
-	it('fails before command execution when materialization cannot resolve a file', async () => {
-		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockImplementationOnce(
-			async (_workspace, _expected, materialize) => {
-				await materialize([
-					{
-						id: 'missing',
-						fileSizeBytes: 1,
-						relativePath: 'missing.txt',
-					},
-				]);
+	it('fails before command execution when repair materialization cannot resolve a file', async () => {
+		sandboxWorkspaceService.withSyncedWorkspace.mockImplementationOnce(
+			async (_cacheKey, _options, repair, operation) => {
+				await repair(makeWorkspace());
+				return await operation(makeWorkspace());
 			},
+		);
+		knowledgeService.materializeWorkspaceFilesIntoSandbox.mockRejectedValueOnce(
+			new Error('Failed to resolve stored knowledge files for sandbox materialization'),
 		);
 
 		await expect(
@@ -312,6 +297,12 @@ describe('search_knowledge tool', () => {
 	});
 
 	it('sanitizes internal sandbox paths from tool errors', async () => {
+		sandboxWorkspaceService.withSyncedWorkspace.mockImplementationOnce(
+			async (_cacheKey, _options, repair, operation) => {
+				await repair(makeWorkspace());
+				return await operation(makeWorkspace());
+			},
+		);
 		knowledgeService.materializeWorkspaceFilesIntoSandbox.mockRejectedValueOnce(
 			new Error('Failed to write /home/daytona/workspace/.agent-knowledge-internal/secret/part-1'),
 		);
@@ -333,6 +324,6 @@ describe('search_knowledge tool', () => {
 			['file-1'],
 		);
 		expect(csvService.queryCsv).toHaveBeenCalled();
-		expect(sandboxWorkspaceService.withCachedWorkspace).not.toHaveBeenCalled();
+		expect(sandboxWorkspaceService.withSyncedWorkspace).not.toHaveBeenCalled();
 	});
 });

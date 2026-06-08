@@ -1,5 +1,4 @@
 import { Tool } from '@n8n/agents/tool';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type { AgentKnowledgeCsvService } from '../../agent-knowledge-csv.service';
 import type { AgentKnowledgeSandboxCommandService } from '../../agent-knowledge-sandbox-command.service';
@@ -99,54 +98,47 @@ export function createSearchKnowledgeTool({
 						csvService,
 					);
 				}
-				const workspaceResolution = await knowledgeService.resolveWorkspaceForSandboxOperation(
-					agentId,
-					projectId,
-					fileReferences,
-				);
-				files = workspaceResolution.files;
-				const { storedFiles } = workspaceResolution;
-				const cacheKey = buildWorkspaceCacheKey(projectId, agentId);
-				const expectedManifest = knowledgeService.buildExpectedSandboxManifest(
-					agentId,
-					projectId,
-					storedFiles,
-				);
-				const storedFilesById = new Map(storedFiles.map((file) => [file.id, file] as const));
 
-				return await sandboxWorkspaceService.withCachedWorkspace(
+				const shouldResolveCommandFiles =
+					parsedInput.operation === 'read' ||
+					(parsedInput.operation === 'search' && fileReferences !== undefined);
+
+				const commandFileResolution = shouldResolveCommandFiles
+					? await knowledgeService.resolveWorkspaceForSandboxOperation(
+							agentId,
+							projectId,
+							fileReferences,
+						)
+					: undefined;
+
+				const {
+					files: currentFiles,
+					storedFiles,
+					expectedManifest,
+				} = await knowledgeService.resolveCurrentSandboxManifest(agentId, projectId);
+				files = currentFiles;
+
+				const cacheKey = buildWorkspaceCacheKey(projectId, agentId);
+
+				return await sandboxWorkspaceService.withSyncedWorkspace(
 					cacheKey,
 					{ userId, expectedManifest },
 					async (workspace) => {
-						await sandboxWorkspaceService.ensureWorkspaceContainsFiles(
+						await knowledgeService.materializeWorkspaceFilesIntoSandbox(
+							agentId,
+							projectId,
 							workspace,
 							expectedManifest,
-							async (missingFiles) => {
-								const filesToMaterialize = missingFiles
-									.map((file) => storedFilesById.get(file.id))
-									.filter((file): file is NonNullable<typeof file> => file !== undefined);
-								if (filesToMaterialize.length !== missingFiles.length) {
-									throw new UnexpectedError(
-										'Failed to resolve stored knowledge files for sandbox materialization',
-									);
-								}
-								await knowledgeService.materializeWorkspaceFilesIntoSandbox(
-									agentId,
-									projectId,
-									workspace,
-									expectedManifest,
-									filesToMaterialize,
-								);
-							},
-						);
-
-						return await handleSandboxKnowledgeOperation(
-							parsedInput,
-							workspace,
-							files,
-							sandboxCommandService,
+							storedFiles,
 						);
 					},
+					async (workspace) =>
+						await handleSandboxKnowledgeOperation(
+							parsedInput,
+							workspace,
+							commandFileResolution?.files ?? files,
+							sandboxCommandService,
+						),
 				);
 			} catch (error) {
 				return {

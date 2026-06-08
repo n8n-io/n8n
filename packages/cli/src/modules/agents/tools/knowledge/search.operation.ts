@@ -54,9 +54,9 @@ export async function runSearchOperation<TWorkspace>(
 			error: requestedFiles.error,
 		};
 	}
-	const commandFiles = requestedFiles.files ?? files.map((file) => file.relativePath);
+	const commandFiles = requestedFiles.files;
 	const primaryPattern = getPrimarySearchPattern(input);
-	if (commandFiles.length === 0) {
+	if (commandFiles !== undefined && commandFiles.length === 0) {
 		return buildEmptySearchOutput(input, files, primaryPattern);
 	}
 	const commandPattern = getSearchCommandPattern(input);
