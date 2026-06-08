@@ -64,9 +64,12 @@ jobs:
       test-mode: docker-artifact
       # Runs the coverage project + resolves this shard's V8 to lcov/per-spec
       # (keeps test-e2e-reusable coverage-agnostic). See run-coverage-shard.mjs.
-      test-command: pnpm --filter=n8n-playwright coverage:shard
+      # NODE_OPTIONS is forwarded to the Playwright runner process so the
+      # coverage instrumentation doesn't OOM on memory-heavy tests (2FA etc.).
+      # 8vcpu runner provides the headroom; emit steps already set 12GB.
+      test-command: NODE_OPTIONS=--max-old-space-size=8192 pnpm --filter=n8n-playwright coverage:shard
       workers: '1'
-      runner: blacksmith-4vcpu-ubuntu-2204
+      runner: blacksmith-8vcpu-ubuntu-2204
       timeout-minutes: 55
       pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
       artifact-prefix: coverage
