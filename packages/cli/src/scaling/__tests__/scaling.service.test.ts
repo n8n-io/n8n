@@ -244,12 +244,27 @@ describe('ScalingService', () => {
 				// post-execution persistence runs after the connection pool is closed.
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 				activeExecutions.getActiveExecutions
-					.mockReturnValueOnce([mock<IExecutionsCurrentSummary>()])
+					.mockReturnValueOnce([mock<IExecutionsCurrentSummary>({ status: 'running' })])
 					.mockReturnValue([]);
 
 				await scalingService.stop();
 
 				expect(activeExecutions.getActiveExecutions.mock.calls.length).toBeGreaterThan(1);
+			});
+
+			it('should not wait for active `waiting` executions', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getActiveExecutions.mockReturnValue([
+					mock<IExecutionsCurrentSummary>({ status: 'waiting' }),
+				]);
+
+				await scalingService.stop();
+
+				expect(queue.pause).toHaveBeenCalled();
 			});
 		});
 	});

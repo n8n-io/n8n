@@ -189,7 +189,10 @@ export class ScalingService {
 				the same worker process and are never enqueued.
 		*/
 		const countInFlight = () => {
-			return this.getRunningJobsCount() + this.activeExecutions.getActiveExecutions().length;
+			const activeNotWaiting = this.activeExecutions
+				.getActiveExecutions()
+				.filter((execution) => execution.status !== 'waiting').length;
+			return this.getRunningJobsCount() + activeNotWaiting;
 		};
 
 		while (countInFlight() !== 0) {
