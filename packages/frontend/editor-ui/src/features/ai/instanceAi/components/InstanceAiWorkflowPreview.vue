@@ -3,8 +3,8 @@ import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
-	EditorDisabledFeaturesKey,
-	type EditorDisabledFeatures,
+	EditorEnabledFeaturesKey,
+	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
@@ -166,16 +166,16 @@ const isAgentEditingThisWorkflow = computed(() => {
 });
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
-// standalone AI helpers, and the canvas is read-only (`editing` disabled) while
-// a workflow-builder agent is mutating this workflow. NodeView derives its
-// read-only state from these via useEditorContext().
-const disabledFeatures = computed<EditorDisabledFeatures>(() => ({
-	aiAssistant: true,
-	aiBuilder: true,
-	askAi: true,
-	editing: isAgentEditingThisWorkflow.value,
+// standalone AI helpers (`false`), and the canvas is read-only (`editing`
+// disabled) while a workflow-builder agent is mutating this workflow. NodeView
+// derives its read-only state from these via useEditorContext().
+const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
+	aiAssistant: false,
+	aiBuilder: false,
+	askAi: false,
+	editing: !isAgentEditingThisWorkflow.value,
 }));
-provide(EditorDisabledFeaturesKey, disabledFeatures);
+provide(EditorEnabledFeaturesKey, enabledFeatures);
 </script>
 
 <template>

@@ -33,16 +33,18 @@ export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
- * Editor capabilities a host can disable per editor. Grows over time and is not
+ * Editor capabilities a host can toggle per editor. Grows over time and is not
  * limited to AI features; `editing` toggles canvas read-only.
  */
 export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'editing';
 /**
- * Per-feature disable flags for the current editor (`true` = disabled). A
- * `true` feature is hidden (or, for `editing`, the canvas is read-only) on top
- * of the editor's own gating; omitted features are unaffected. Provided by
+ * Per-feature enable flags for the current editor (`false` = superseded/off). An
+ * explicit `false` hides the feature (or, for `editing`, makes the canvas
+ * read-only) on top of the editor's own gating; omitted (or `true`) features
+ * fall back to the editor's own gating. A host can only restrict, never grant —
+ * a `true` flag cannot enable a feature the instance has turned off. Provided by
  * editor hosts that supersede capabilities — e.g. the Instance AI preview.
  */
-export type EditorDisabledFeatures = Partial<Record<EditorFeature, boolean>>;
-export const EditorDisabledFeaturesKey: InjectionKey<Readonly<Ref<EditorDisabledFeatures>>> =
-	Symbol('EditorDisabledFeatures');
+export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>>;
+export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
+	Symbol('EditorEnabledFeatures');
