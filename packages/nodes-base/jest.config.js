@@ -5,7 +5,16 @@ process.env.TZ = 'UTC';
 module.exports = {
 	...require('../../jest.config'),
 	testPathIgnorePatterns: ['/dist/', '/node_modules/', '\\.integration\\.test\\.ts$'],
-	collectCoverageFrom: ['credentials/**/*.ts', 'nodes/**/*.ts', 'utils/**/*.ts'],
+	collectCoverageFrom: [
+		'credentials/**/*.ts',
+		'nodes/**/*.ts',
+		'utils/**/*.ts',
+		'!**/*.spec.ts',
+		'!**/*.test.ts',
+		'!**/__tests__/**',
+		'!**/__mocks__/**',
+		'!**/*.d.ts',
+	],
 	globalSetup: '<rootDir>/test/globalSetup.ts',
 	setupFilesAfterEnv: ['jest-expect-message', '<rootDir>/test/setup.ts'],
 };

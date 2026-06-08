@@ -29,7 +29,13 @@ export const coverageOptions: CoverageReportOptions = {
 	// and any unmapped dist files. NB nodes-base sources live under `nodes/`,
 	// `credentials/` etc — not `src/` — so don't require `/src/`.
 	sourceFilter: (sourcePath) =>
-		!sourcePath.includes('node_modules') && !sourcePath.includes('/dist/'),
+		!sourcePath.includes('node_modules') &&
+		!sourcePath.includes('/dist/') &&
+		!sourcePath.endsWith('.d.ts') &&
+		!sourcePath.endsWith('.spec.ts') &&
+		!sourcePath.endsWith('.test.ts') &&
+		!sourcePath.includes('/__tests__/') &&
+		!sourcePath.includes('/__mocks__/'),
 	// Key Codecov + the impact map on repo-relative `packages/.../src/...`.
 	// Backend map-sources resolve to absolute repo paths (package-qualified);
 	// the frontend bundle resolves relative, so its `src/...` sources have no

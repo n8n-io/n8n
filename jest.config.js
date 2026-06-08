@@ -100,9 +100,16 @@ const config = {
 };
 
 if (process.env.CI === 'true') {
-	config.collectCoverageFrom = ['src/**/*.ts'];
+	config.collectCoverageFrom = [
+		'src/**/*.ts',
+		'!src/**/*.spec.ts',
+		'!src/**/*.test.ts',
+		'!src/**/__tests__/**',
+		'!src/**/__mocks__/**',
+		'!src/**/*.d.ts',
+	];
 	config.reporters = ['default', 'jest-junit'];
-	config.coverageReporters = ['lcov'];
+	config.coverageReporters = ['cobertura'];
 }
 
 module.exports = config;
