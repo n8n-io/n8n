@@ -123,7 +123,7 @@ export function classifyManifestChange(before: string, after: string): ManifestC
 
 /**
  * Names of the *runtime* dependencies (dependencies / optional / peer) that
- * changed between two manifests — the input to the dep-graph selector (389),
+ * changed between two manifests — the input to the dep-graph selector,
  * which walks each name to the workspace packages that declare it. devDeps are
  * excluded (they can't reach the runtime bundle).
  */

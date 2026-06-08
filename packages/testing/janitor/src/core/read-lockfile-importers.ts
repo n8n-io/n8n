@@ -1,7 +1,7 @@
 /**
  * Parse pnpm-lock.yaml's `importers` section into the
  * `@n8n/test-impact` dep-graph selector's input: each workspace package dir
- * mapped to the *runtime* dependency names it declares (DEVP-389).
+ * mapped to the *runtime* dependency names it declares.
  *
  * devDependencies are excluded — a devDep can't reach the runtime bundle, so it
  * has no business widening a runtime-dep walk. Any failure (missing/unparseable

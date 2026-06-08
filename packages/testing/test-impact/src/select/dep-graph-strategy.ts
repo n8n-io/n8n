@@ -4,7 +4,7 @@ import { resolveImpact } from '../impact-map.js';
 import type { SelectionStrategy } from './strategy.js';
 
 /**
- * Runtime-dependency selection (DEVP-389): walk each changed dep to the packages
+ * Runtime-dependency selection: walk each changed dep to the packages
  * that declare it, then resolve those package dirs through the map. A dep no
  * workspace package declares (purely transitive) → broad (can't attribute).
  * Resolves the precomputed `changedDeps`; the `changed` arg is unused.

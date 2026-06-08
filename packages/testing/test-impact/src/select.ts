@@ -46,7 +46,7 @@ export interface SelectTestsInput {
 	manifests?: Record<string, { before: string; after: string }>;
 	/** Workspace package dir → runtime dependency names it declares (parsed from
 	 *  pnpm-lock.yaml's `importers`). With `manifests`, a changed runtime dep is
-	 *  walked to its declaring packages and scoped via the map (DEVP-389) instead
+	 *  walked to its declaring packages and scoped via the map instead
 	 *  of forcing broad. */
 	lockfileImporters?: WorkspaceImporters;
 }
@@ -113,7 +113,7 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	// devDependency-only change can't reach the runtime bundle → dropped.
 	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
 
-	// Runtime-dep change: walk it to the packages that declare it (389) and drop
+	// Runtime-dep change: walk it to the packages that declare it and drop
 	// the dep files from the coverage path.
 	const strategies: SelectionStrategy[] = [];
 	if (input.lockfileImporters && input.manifests) {
