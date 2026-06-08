@@ -1,19 +1,27 @@
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { SsrfBridge, SsrfCheckResult } from 'n8n-core';
-import { createResultError, ensureError, Result, createResultOk } from 'n8n-workflow';
+import { createResultError, createResultOk, ensureError, Result } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { LookupAddress, LookupOptions } from 'node:dns';
-import { isIP } from 'node:net';
 import type { BlockList, LookupFunction } from 'node:net';
+import { isIP } from 'node:net';
 
 import { DnsResolver } from './dns-resolver';
 import { HostnameMatcher } from './hostname-matcher';
 import { buildIpRangeList } from './ip-range-builder';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
 
-export type LookAndValidateResult = Result<LookupAddress[], Error>;
+export type SsrfCheckResult = Result<void, Error>;
+
+export interface SsrfBridge {
+	validateIp(ip: string): SsrfCheckResult;
+	validateUrl(url: string | URL): Promise<SsrfCheckResult>;
+	validateRedirectSync(url: string): void;
+	createSecureLookup(): LookupFunction;
+}
+
+type LookAndValidateResult = Result<LookupAddress[], Error>;
 
 /**
  * Validates outbound HTTP requests against configurable blocklists and allowlists
@@ -68,7 +76,7 @@ export class SsrfProtectionService implements SsrfBridge {
 	async validateUrl(url: string | URL): Promise<SsrfCheckResult> {
 		const parsed = this.tryParseUrl(url);
 		if (!parsed) {
-			return createResultError(new Error(`Invalid URL: ${url}`));
+			return createResultError(new Error(`Invalid URL: ${String(url)}`));
 		}
 
 		const { hostname } = parsed;
