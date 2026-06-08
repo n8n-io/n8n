@@ -141,7 +141,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 <template>
 	<div
-		:class="[$style.wrapper, isCollapsed ? $style.collapsed : '', selected ? $style.selected : '']"
+		:class="[$style.wrapper, { [$style.collapsed]: isCollapsed, [$style.selected]: selected }]"
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,

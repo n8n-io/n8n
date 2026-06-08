@@ -68,14 +68,14 @@ export function useCanvasMapping({
 	connections,
 	workflowObject,
 	renderData,
-	groupView,
+	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
-	groupView?: ReturnType<typeof useCanvasNodeGroupView>;
+	nodeGroupView?: ReturnType<typeof useCanvasNodeGroupView>;
 	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
@@ -576,9 +576,9 @@ export function useCanvasMapping({
 
 	const collapsedNodeIds = computed(() => {
 		const ids = new Set<string>();
-		if (!groupView) return ids;
+		if (!nodeGroupView) return ids;
 		for (const group of workflowDocumentStore.value.allGroups) {
-			if (!groupView.isGroupCollapsed(group.id)) continue;
+			if (!nodeGroupView.isGroupCollapsed(group.id)) continue;
 			for (const id of group.nodeIds) ids.add(id);
 		}
 		return ids;
@@ -658,9 +658,9 @@ export function useCanvasMapping({
 	});
 
 	const collapsedGroupByNodeIdIndex = computed(() => {
-		if (!groupView) return new Map();
+		if (!nodeGroupView) return new Map();
 		return buildCollapsedGroupByNodeId(workflowDocumentStore.value.allGroups, (id) =>
-			groupView.isGroupCollapsed(id),
+			nodeGroupView.isGroupCollapsed(id),
 		);
 	});
 

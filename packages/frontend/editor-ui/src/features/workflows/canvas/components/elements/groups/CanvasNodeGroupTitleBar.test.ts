@@ -231,7 +231,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('preserves selection when this title bar is part of it (multi-select group drag)', () => {
-			// baseGroup.id === 'g1' → VueFlow id is 'group:g1'.
+			// VueFlow node id for this group is `group:${baseGroup.id}`
 			selectedNodesRef.value = [{ id: 'group:g1' }, { id: 'group:g2' }];
 			removeSelectedNodesMock.mockClear();
 			const wrapper = render();

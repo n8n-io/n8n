@@ -83,7 +83,7 @@ const {
 	connections,
 	workflowObject,
 	renderData,
-	groupView: nodeGroupView,
+	nodeGroupView,
 	isExperimentalNdvActive,
 });
 
@@ -102,7 +102,7 @@ const mappedNodes = computed(() => [
 	...mappedGroupVueFlowNodes.value,
 ]);
 
-provide('canvasNodeGroupView', nodeGroupView);
+provide('nodeGroupView', nodeGroupView);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

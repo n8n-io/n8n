@@ -257,7 +257,7 @@ const workflowGraphNodes = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject<ReturnType<typeof useCanvasNodeGroupView> | null>(
-	'canvasNodeGroupView',
+	'nodeGroupView',
 	null,
 );
 
