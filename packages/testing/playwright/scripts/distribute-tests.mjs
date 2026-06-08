@@ -112,6 +112,15 @@ function selectV8Specs(externalFiles, base) {
 				reason: parsed.failOpen ?? `unmapped: ${(parsed.unmapped ?? []).join(', ')}`,
 			};
 		}
+		// Coverage-gap alarm: changes with no E2E that verifies them aren't run
+		// (unit + the sanity spec are the net) — but surface the gap, don't hide it.
+		if (parsed.uncovered?.length) {
+			const sample = parsed.uncovered.slice(0, 5).join(', ');
+			const more = parsed.uncovered.length > 5 ? `, +${parsed.uncovered.length - 5} more` : '';
+			console.error(
+				`  ⚠ ${parsed.uncovered.length} changed file(s) have no E2E coverage — not run, relying on unit + sanity: ${sample}${more}`,
+			);
+		}
 		return { broad: false, specs: new Set(parsed.specs ?? []) };
 	} catch (error) {
 		return { broad: true, reason: `select-e2e failed: ${String(error)}` };

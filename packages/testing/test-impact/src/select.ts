@@ -70,6 +70,10 @@ function loadMap(mapFile: string | undefined): { map: ImpactMap; failOpen?: stri
 		const isInterned =
 			typeof parsed === 'object' && parsed !== null && 'specs' in parsed && 'files' in parsed;
 		const map = isInterned ? decodeImpactMap(parsed as InternedImpactMap) : (parsed as ImpactMap);
+		// An empty map carries no coverage data — a build/data failure, not a set
+		// of genuinely-uncovered changes. Flag it as fail-open so selection runs
+		// broad rather than declaring every change uncovered and skipping E2E.
+		if (Object.keys(map).length === 0) return { map, failOpen: 'empty map (no coverage data)' };
 		return { map };
 	} catch (error) {
 		return { map: {}, failOpen: `unreadable map: ${String(error)}` };
@@ -86,16 +90,22 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 		? parseSpecList(fs.readFileSync(input.allSpecsFile, 'utf8'))
 		: undefined;
 	const { map, failOpen } = loadMap(input.mapFile);
-	// Drop non-impactful paths (repo tooling / docs / named config) up front so
-	// they never trip the unmapped→broad fallback. A change that's *only* such
-	// files yields an empty set → scoped/0 → the caller skips E2E.
+	// Drop non-impactful paths (repo tooling / docs / named config) up front.
 	let impactful = filterImpactfulChanges(input.changedFiles);
+
+	// Genuine fail-open: an UNUSABLE map is an infrastructure failure, not a
+	// coverage gap → run everything. This is distinct from a healthy map that
+	// simply has no entry for a change (declared uncovered below, not run).
+	if (failOpen) {
+		return { specs: allSpecs ?? [], unmapped: impactful, mode: 'broad', failOpen };
+	}
+
 	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
 
 	// Runtime dependency changes (389): hand the changed deps to the dep-graph
 	// selector — it walks them to their declaring packages and scopes via the
-	// map — and drop the dep files from the coverage path so they don't force
-	// broad. The coverage map still handles any co-changed source files.
+	// map — and drop the dep files from the coverage path. The dep-graph keeps
+	// its sibling climb: a dep IS exercised by the specs covering its package.
 	const strategies: SelectionStrategy[] = [];
 	if (input.lockfileImporters && input.manifests) {
 		const runtimeDeps = changedRuntimeDepsFromManifests(input.manifests);
@@ -106,13 +116,22 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 			);
 		}
 	}
-	// Sibling fallback scopes a new/unmapped source file to its nearest covered
-	// directory. The AST selector joins this array in a later phase.
-	strategies.unshift(new CoverageMapStrategy(map, { allSpecs, siblingFallback: true }));
+	// A dependency file still present here is one neither the devDep drop (388)
+	// nor the dep-graph walk (389) could attribute — e.g. a transitive lockfile
+	// bump with no manifest. We can't scope it, and must NEVER declare a dep
+	// change merely "uncovered" (it could affect anything) → conservatively broad.
+	if (stripDependencyFiles(impactful).length !== impactful.length) {
+		return { specs: allSpecs ?? [], unmapped: impactful, mode: 'broad' };
+	}
 
-	const result = selectImpactedTests(
+	// Coverage map for source files: a file with no covering spec is DECLARED
+	// uncovered (surfaced as a gap, not run) rather than climbing to its package
+	// and running unrelated specs — that verifies nothing and slows the loop.
+	// Unit tests + the always-on sanity spec are the net for uncovered changes.
+	strategies.unshift(new CoverageMapStrategy(map, { allSpecs, onUncovered: 'declare' }));
+
+	return selectImpactedTests(
 		impactful.map((file) => ({ file })),
 		strategies,
 	);
-	return { ...result, failOpen };
 }

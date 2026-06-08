@@ -65,10 +65,10 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
-	// THE COLLAPSE: empty map → every changed file is unmapped → resolveImpact
-	// returns broad. If a refactor ever makes resolveImpact({}, …) return scoped/
-	// empty, every other test still passes — this one fails. That is the point.
-	it('empty map {} → broad (the fail-open collapse)', () => {
+	// THE COLLAPSE: an empty map carries no coverage data — a build/data failure.
+	// It must fail open to broad, NOT declare every change uncovered and skip E2E.
+	// If a refactor ever makes an empty map resolve scoped/empty, this fails. The point.
+	it('empty map {} → broad via fail-open (no coverage data)', () => {
 		const mapPath = path.join(tempDir, 'empty.json');
 		fs.writeFileSync(mapPath, '{}');
 		const result = selectTests({
@@ -77,10 +77,9 @@ describe('selectTests — fail-open contract', () => {
 			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
 		});
 		expect(result.mode).toBe('broad');
-		// File was loaded successfully — no failOpen reason. The broad comes from
-		// resolveImpact's DEFAULT-BROAD rule (changed file absent from the map).
-		expect(result.failOpen).toBeUndefined();
-		expect(result.unmapped).toEqual(['packages/cli/src/x.ts']);
+		// An empty map is now an explicit fail-open (infra/data failure), not a
+		// silent broad from per-file unmapped — so it carries a reason.
+		expect(result.failOpen).toBe('empty map (no coverage data)');
 		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
@@ -99,6 +98,40 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.mode).toBe('scoped');
 		expect(result.failOpen).toBeUndefined();
 		expect(result.specs).toEqual(['tests/e2e/a.spec.ts']);
+	});
+
+	// verify-or-declare: a HEALTHY map with no entry for the change is a coverage
+	// gap, not an infra failure → declare it uncovered (surfaced, not run), never
+	// broad. Distinct from the empty-map / no-map fail-open cases above.
+	it('healthy map + unmapped source file → scoped + uncovered, not broad', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/nodes-base/nodes/Markdown/Markdown.node.ts'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('scoped');
+		expect(result.specs).toEqual([]);
+		expect(result.uncovered).toEqual(['packages/nodes-base/nodes/Markdown/Markdown.node.ts']);
+		expect(result.failOpen).toBeUndefined();
+	});
+
+	// A dependency change we cannot attribute (lockfile bump, no manifest diff to
+	// classify, no importers walk) must stay broad — NOT be declared uncovered and
+	// skipped. A dep can reach anything; only source files are declared uncovered.
+	it('unattributable dependency change (lockfile only) → broad, not uncovered', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-dep.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['pnpm-lock.yaml'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
 	});
 
 	describe('--all-specs parsing', () => {
