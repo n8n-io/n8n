@@ -1,27 +1,27 @@
 /**
- * Read the before/after content of each changed package.json, for the
- * `@n8n/test-impact` devDependency-only classifier. Pure git I/O, no AST.
- *
- *  - before: the manifest at `baseRef` ('' if it didn't exist there → the
- *            classifier treats it as an empty manifest);
- *  - after:  the working-tree manifest ('' if deleted).
- *
- * Every failure degrades to '' so the classifier stays conservative — a manifest
- * it can't read is treated as a non-devDep change and kept in selection.
+ * before/after content of each changed package.json, for the `@n8n/test-impact`
+ * devDependency classifier. Any read failure → '' so the classifier stays
+ * conservative (an unreadable manifest is treated as a non-devDep change, kept).
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { getGitRoot } from '../utils/git-operations.js';
+
 const isManifest = (file: string): boolean => /(^|\/)package\.json$/.test(file);
 
-function gitToplevel(): string {
+const showAtRef = (root: string, ref: string, file: string): string => {
 	try {
-		return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+		return execFileSync('git', ['show', `${ref}:${file}`], {
+			cwd: root,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		});
 	} catch {
-		return process.cwd();
+		return '';
 	}
-}
+};
 
 export function readManifestDiffs(
 	changedFiles: string[],
@@ -29,27 +29,14 @@ export function readManifestDiffs(
 ): Record<string, { before: string; after: string }> {
 	const manifests = changedFiles.filter(isManifest);
 	if (manifests.length === 0) return {};
-	const root = gitToplevel();
+	const root = getGitRoot(process.cwd());
 	const out: Record<string, { before: string; after: string }> = {};
 	for (const file of manifests) {
-		let before = '';
-		try {
-			before = execFileSync('git', ['show', `${baseRef}:${file}`], {
-				cwd: root,
-				encoding: 'utf8',
-				stdio: ['ignore', 'pipe', 'ignore'],
-			});
-		} catch {
-			before = '';
-		}
-		let after = '';
-		try {
-			const abs = join(root, file);
-			if (existsSync(abs)) after = readFileSync(abs, 'utf8');
-		} catch {
-			after = '';
-		}
-		out[file] = { before, after };
+		const abs = join(root, file);
+		out[file] = {
+			before: showAtRef(root, baseRef, file),
+			after: existsSync(abs) ? readFileSync(abs, 'utf8') : '',
+		};
 	}
 	return out;
 }

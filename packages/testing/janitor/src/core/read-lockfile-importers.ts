@@ -8,25 +8,18 @@
  * lockfile) returns `{}`, which makes the dep-graph selector contribute nothing
  * (the change then resolves through the coverage map alone — fail-open).
  */
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
+
+import { getGitRoot } from '../utils/git-operations.js';
 
 const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies', 'peerDependencies'] as const;
 
 type ImporterSections = Record<string, Record<string, unknown> | undefined>;
 
-function gitToplevel(): string {
-	try {
-		return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
-	} catch {
-		return process.cwd();
-	}
-}
-
 export function readLockfileImporters(): Record<string, string[]> {
-	const lockPath = join(gitToplevel(), 'pnpm-lock.yaml');
+	const lockPath = join(getGitRoot(process.cwd()), 'pnpm-lock.yaml');
 	if (!existsSync(lockPath)) return {};
 	let doc: { importers?: Record<string, ImporterSections> };
 	try {

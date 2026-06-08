@@ -83,39 +83,38 @@ function loadMap(mapFile: string | undefined): { map: ImpactMap; failOpen?: stri
 }
 
 /**
- * Resolve changed files against the impact map, biased to OVER-select. With an
- * empty/missing map every changed file is "unmapped" → {@link resolveImpact}
- * returns `mode: 'broad'`, so fail-open falls out of the same code path.
+ * Resolve changed files → the specs that must run. Routes each change to one of
+ * three outcomes: BROAD (infra failure, runtime-defining change, or an
+ * unattributable dependency), SCOPED (mapped source / attributable dep), or
+ * declared UNCOVERED (no covering spec → not run; unit + sanity are the net).
  */
 export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	const allSpecs = input.allSpecsFile
 		? parseSpecList(fs.readFileSync(input.allSpecsFile, 'utf8'))
 		: undefined;
 	const { map, failOpen } = loadMap(input.mapFile);
-	// Drop non-impactful paths (repo tooling / docs / named config) up front.
+	const broad = (files: string[]): SelectTestsResult => ({
+		specs: allSpecs ?? [],
+		unmapped: files,
+		mode: 'broad',
+		...(failOpen ? { failOpen } : {}),
+	});
+
 	let impactful = filterImpactfulChanges(input.changedFiles);
 
-	// Genuine fail-open: an UNUSABLE map is an infrastructure failure, not a
-	// coverage gap → run everything. This is distinct from a healthy map that
-	// simply has no entry for a change (declared uncovered below, not run).
-	if (failOpen) {
-		return { specs: allSpecs ?? [], unmapped: impactful, mode: 'broad', failOpen };
-	}
+	// Fail-open: an unusable/empty map is an infra failure, not a coverage gap.
+	if (failOpen) return broad(impactful);
 
-	// Runtime-defining changes (the container image / harness) affect every spec
-	// and aren't in the coverage map → run the whole suite rather than declaring
-	// them uncovered. Small, low-churn set, so broad is cheap here.
+	// Container image / harness changes define the runtime for EVERY spec and
+	// aren't in the map → run the suite (low-churn, so broad is cheap).
 	const forcing = impactful.filter(forcesBroad);
-	if (forcing.length > 0) {
-		return { specs: allSpecs ?? [], unmapped: forcing, mode: 'broad' };
-	}
+	if (forcing.length > 0) return broad(forcing);
 
+	// devDependency-only change can't reach the runtime bundle → dropped.
 	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
 
-	// Runtime dependency changes (389): hand the changed deps to the dep-graph
-	// selector — it walks them to their declaring packages and scopes via the
-	// map — and drop the dep files from the coverage path. The dep-graph keeps
-	// its sibling climb: a dep IS exercised by the specs covering its package.
+	// Runtime-dep change: walk it to the packages that declare it (389) and drop
+	// the dep files from the coverage path.
 	const strategies: SelectionStrategy[] = [];
 	if (input.lockfileImporters && input.manifests) {
 		const runtimeDeps = changedRuntimeDepsFromManifests(input.manifests);
@@ -126,13 +125,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 			);
 		}
 	}
-	// An unattributable dependency CHANGE stays conservatively broad — we can't
-	// scope it and must never declare a dep change merely "uncovered" (it could
-	// affect anything). That means: a lockfile bump (a definitive dep-version
-	// signal we couldn't scope), or a runtime-manifest change the dep-graph didn't
-	// strip (e.g. a transitive dep declared by no importer). A package.json change
-	// that is NOT a dependency change (version / scripts / exports / devDep) is not
-	// a dep signal — it falls through and is declared uncovered like any source.
+
+	// A dep change the walk couldn't scope stays broad (never declared uncovered):
+	// a lockfile bump, or a runtime manifest still present. A non-dep manifest
+	// change (version / scripts) falls through and is declared like source.
 	const lockfileRemains = impactful.includes('pnpm-lock.yaml');
 	const unscopedRuntimeManifest = impactful.some(
 		(f) =>
@@ -140,14 +136,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 			input.manifests?.[f] &&
 			classifyManifestChange(input.manifests[f].before, input.manifests[f].after) === 'runtime',
 	);
-	if (lockfileRemains || unscopedRuntimeManifest) {
-		return { specs: allSpecs ?? [], unmapped: impactful, mode: 'broad' };
-	}
+	if (lockfileRemains || unscopedRuntimeManifest) return broad(impactful);
 
-	// Coverage map for source files: a file with no covering spec is DECLARED
-	// uncovered (surfaced as a gap, not run) rather than climbing to its package
-	// and running unrelated specs — that verifies nothing and slows the loop.
-	// Unit tests + the always-on sanity spec are the net for uncovered changes.
+	// Source files: no covering spec → declared uncovered (surfaced, not run);
+	// running its package's specs verifies nothing.
 	strategies.unshift(new CoverageMapStrategy(map, { allSpecs, onUncovered: 'declare' }));
 
 	return selectImpactedTests(

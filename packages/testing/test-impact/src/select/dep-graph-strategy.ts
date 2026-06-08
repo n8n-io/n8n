@@ -4,16 +4,10 @@ import { resolveImpact } from '../impact-map.js';
 import type { SelectionStrategy } from './strategy.js';
 
 /**
- * Selection for runtime dependency changes (DEVP-389): each changed runtime dep
- * is walked to the workspace packages that declare it, then those package dirs
- * are resolved through the coverage map (via sibling fallback) to the specs that
- * exercise them.
- *
- * Fail-open: if a changed dep is declared by no workspace package (a purely
- * transitive bump we can't attribute), it returns `mode: 'broad'` so the
- * pipeline runs everything. Resolves the precomputed `changedDeps` — the
- * `changed` files argument is unused (the deps already came from the manifest
- * diffs the caller classified).
+ * Runtime-dependency selection (DEVP-389): walk each changed dep to the packages
+ * that declare it, then resolve those package dirs through the map. A dep no
+ * workspace package declares (purely transitive) → broad (can't attribute).
+ * Resolves the precomputed `changedDeps`; the `changed` arg is unused.
  */
 export class DependencyGraphStrategy implements SelectionStrategy {
 	readonly name = 'dep-graph';
