@@ -9,6 +9,7 @@ import { isRecord } from '@mcp-apps/utils/guards';
 
 import {
 	WORKFLOW_PREVIEW_APP_SLUG,
+	WORKFLOW_PREVIEW_CRASH_SOURCES,
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
 	type WorkflowPreviewRenderFailureReason,
@@ -175,6 +176,18 @@ export function useWorkflowPreview({
 		setPreviewError(message, WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED);
 	}
 
+	function handlePreviewCrash(message?: string) {
+		telemetry.track(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED, {
+			...getPreviewTelemetryPayload(),
+			...(message ? { error_message: message } : {}),
+			source: WORKFLOW_PREVIEW_CRASH_SOURCES.PREVIEW_IFRAME_ERROR,
+		});
+		setPreviewError(
+			t('workflowPreview.error.previewUnavailable'),
+			WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_CRASHED,
+		);
+	}
+
 	function setPreviewError(message: string, reason: WorkflowPreviewRenderFailureReason) {
 		previewError.value = message;
 		previewFailureReason.value = reason;
@@ -304,6 +317,7 @@ export function useWorkflowPreview({
 		ariaLabel,
 		isPreviewVisible,
 		nodeCountLabel,
+		handlePreviewCrash,
 		handlePreviewError,
 		handleOpenWorkflow,
 	};

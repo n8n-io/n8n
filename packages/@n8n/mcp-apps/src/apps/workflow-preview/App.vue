@@ -5,6 +5,7 @@ import McpAppContainer from '@mcp-apps/components/mcp-app-container.vue';
 import McpFallbackCard from '@mcp-apps/components/mcp-fallback-card.vue';
 import OpenInN8nButton from '@mcp-apps/components/open-in-n8n-button.vue';
 import WorkflowPreviewCard from '@mcp-apps/components/workflow-preview/workflow-preview-card.vue';
+import { useMcpAppCrashTelemetry } from '@mcp-apps/composables/use-mcp-app-crash-telemetry';
 import { useMcpAppTelemetry } from '@mcp-apps/composables/use-mcp-app-telemetry';
 import { useMcpHostApp } from '@mcp-apps/composables/use-mcp-host-app';
 import { useMcpHostContextStyles } from '@mcp-apps/composables/use-mcp-host-context-styles';
@@ -13,6 +14,7 @@ import { useI18n } from '@mcp-apps/i18n';
 import { useWorkflowPreview } from './composables/use-workflow-preview';
 import {
 	WORKFLOW_PREVIEW_APP_SLUG,
+	WORKFLOW_PREVIEW_CRASH_SOURCES,
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
 } from './constants';
@@ -36,6 +38,16 @@ useMcpAppTelemetry({
 	renderFailedReason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.HOST_CONNECTION_FAILED,
 });
 
+useMcpAppCrashTelemetry({
+	app: WORKFLOW_PREVIEW_APP_SLUG,
+	event: WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED,
+	hostVersion,
+	sources: {
+		appError: WORKFLOW_PREVIEW_CRASH_SOURCES.APP_ERROR,
+		appUnhandledRejection: WORKFLOW_PREVIEW_CRASH_SOURCES.APP_UNHANDLED_REJECTION,
+	},
+});
+
 useMcpHostContextStyles(hostContext);
 
 const {
@@ -50,6 +62,7 @@ const {
 	ariaLabel,
 	isPreviewVisible,
 	nodeCountLabel,
+	handlePreviewCrash,
 	handlePreviewError,
 	handleOpenWorkflow,
 } = useWorkflowPreview({
@@ -76,6 +89,7 @@ const {
 			:preview-sent="previewSent"
 			:preview-theme="previewTheme"
 			@open="handleOpenWorkflow"
+			@preview-crash="handlePreviewCrash"
 			@preview-error="handlePreviewError"
 			@preview-sent-change="previewSent = $event"
 		/>

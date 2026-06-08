@@ -310,6 +310,51 @@ describe('useWorkflowPreview', () => {
 		);
 	});
 
+	it('tracks preview crashes reported by the preview iframe', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		preview.handlePreviewCrash('iframe crashed');
+		await nextTick();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED, {
+			app: 'workflow-preview',
+			error_message: 'iframe crashed',
+			mcp_client_name: 'Claude Desktop',
+			mcp_client_version: '1.2.3',
+			preview_status: 'visible',
+			source: 'preview_iframe_error',
+			workflow_id: 'abc123',
+		});
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'error',
+				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_CRASHED,
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
 	it('tracks Open in n8n clicks for valid workflow URLs', async () => {
 		const callServerTool = vi.fn(async () => await new Promise(() => {}));
 		const openLink = vi.fn().mockResolvedValue({ isError: false });
