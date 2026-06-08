@@ -82,7 +82,7 @@ export async function writeWorkspaceFile(
 		} catch (error) {
 			try {
 				await writeFileViaSandbox(workspace, filePath, content);
-				options?.logger?.warn(`${label} filesystem write failed; used command fallback`, {
+				options?.logger?.debug(`${label} filesystem write failed; used command fallback`, {
 					path: filePath,
 					error: formatErrorForLog(error),
 				});

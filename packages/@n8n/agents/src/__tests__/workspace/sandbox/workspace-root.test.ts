@@ -104,6 +104,21 @@ describe('getWorkspaceRoot', () => {
 		await expect(getWorkspaceRoot(workspace)).resolves.toBe(`${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`);
 	});
 
+	it('uses DAYTONA_HOME when echo $HOME returns empty stdout without provider metadata', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: '   \n',
+			stderr: '',
+		});
+		const workspace = {
+			sandbox: {
+				executeCommand,
+			},
+		} as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(`${DAYTONA_HOME}/${WORKSPACE_DIR}`);
+	});
+
 	it('throws when echo $HOME is empty for an unsupported provider', async () => {
 		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,

@@ -19,6 +19,7 @@ export interface SandboxWorkspace extends SharedSandboxWorkspace {
 		provider?: string;
 		basePath?: string;
 		init?: () => Promise<void>;
+		readFile?: (path: string, options?: { encoding?: BufferEncoding }) => Promise<string | Buffer>;
 		writeFile: (
 			path: string,
 			content: string | Buffer,

@@ -11,6 +11,7 @@ import {
 	type SandboxProvider,
 	loadDaytona,
 } from '@n8n/agents/sandbox';
+import { randomUUID } from 'node:crypto';
 
 import type { Logger } from '../logger';
 import { SnapshotManager } from './snapshot-manager';
@@ -40,11 +41,24 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
+const INSTANCE_AI_SANDBOX_ID_LABEL = 'n8n-instance-ai-sandbox-id';
+
+function createSandboxId(): string {
+	return `daytona-sandbox-${randomUUID()}`;
+}
 
 function toSharedDaytonaSandboxConfig(
 	config: InstanceAiDaytonaSandboxConfig,
 ): DaytonaSandboxConfig {
-	const sharedConfig = { ...config };
+	const id = config.id ?? createSandboxId();
+	const sharedConfig = {
+		...config,
+		id,
+		labels: {
+			...config.labels,
+			[INSTANCE_AI_SANDBOX_ID_LABEL]: id,
+		},
+	};
 	delete sharedConfig.n8nVersion;
 	delete sharedConfig.namePrefix;
 	return sharedConfig;

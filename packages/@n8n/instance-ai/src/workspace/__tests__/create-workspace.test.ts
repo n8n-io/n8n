@@ -137,7 +137,15 @@ describe('createSandbox', () => {
 		await expect(createSandbox(config)).resolves.toBe(sandbox);
 
 		expect(mockSnapshotManagerConstructor).not.toHaveBeenCalled();
-		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(config, {
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig).toEqual({
+			...config,
+			id: expect.stringMatching(/^daytona-sandbox-/),
+			labels: {
+				'n8n-instance-ai-sandbox-id': sharedConfig.id,
+			},
+		});
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(sharedConfig, {
 			logger: undefined,
 			errorReporter: undefined,
 		});
@@ -172,13 +180,18 @@ describe('createSandbox', () => {
 		});
 		expect(mockEnsureSnapshot).toHaveBeenCalledWith(expect.any(Object), 'direct');
 		expect(mockEnsureImage).toHaveBeenCalledWith();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
 			{
 				enabled: true,
 				provider: 'daytona',
+				id: sharedConfig.id,
 				daytonaApiUrl: 'https://api.daytona.io',
 				daytonaApiKey: 'test-key',
 				image: { dockerfile: 'FROM node:20' },
+				labels: {
+					'n8n-instance-ai-sandbox-id': sharedConfig.id,
+				},
 				snapshot: 'snapshot-name',
 			},
 			{ logger, errorReporter },
@@ -245,16 +258,49 @@ describe('createSandbox', () => {
 		expect(mockDaytonaConstructor).not.toHaveBeenCalled();
 		expect(mockEnsureSnapshot).toHaveBeenCalledWith(undefined, 'proxy');
 		expect(mockEnsureImage).toHaveBeenCalledWith();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
 			{
 				enabled: true,
 				provider: 'daytona',
+				id: sharedConfig.id,
 				daytonaApiUrl: 'https://proxy.example.com',
 				getAuthToken,
 				image: { dockerfile: 'FROM node:20' },
+				labels: {
+					'n8n-instance-ai-sandbox-id': sharedConfig.id,
+				},
 				snapshot: 'snapshot-name',
 			},
 			{ logger, errorReporter },
+		);
+	});
+
+	it('preserves explicit Daytona id and labels when delegating', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			id: 'sandbox-id',
+			daytonaApiKey: 'test-key',
+			labels: {
+				team: 'instance-ai',
+			},
+		};
+
+		await createSandbox(config);
+
+		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
+			{
+				...config,
+				labels: {
+					team: 'instance-ai',
+					'n8n-instance-ai-sandbox-id': 'sandbox-id',
+				},
+			},
+			{
+				logger: undefined,
+				errorReporter: undefined,
+			},
 		);
 	});
 });

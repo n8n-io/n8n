@@ -51,7 +51,7 @@ function getFallbackHome(workspace: SandboxWorkspace): string {
 		case 'daytona':
 			return DAYTONA_HOME;
 		case undefined:
-			throw new Error('Cannot infer workspace root because sandbox provider is unavailable');
+			return DAYTONA_HOME;
 		default:
 			throw new Error(`Unsupported sandbox provider: ${workspace?.sandbox?.provider}`);
 	}
