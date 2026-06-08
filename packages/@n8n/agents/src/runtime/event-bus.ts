@@ -1,6 +1,57 @@
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData, AgentEventHandler } from '../types/runtime/event';
 
+export interface AgentAbortScope {
+	readonly signal: AbortSignal;
+	readonly isAborted: boolean;
+	abort(): void;
+	dispose(): void;
+}
+
+class EventBusAbortScope implements AgentAbortScope {
+	private readonly controller = new AbortController();
+
+	private externalCleanup?: () => void;
+
+	private disposed = false;
+
+	constructor(
+		externalSignal: AbortSignal | undefined,
+		private readonly onDispose: (scope: EventBusAbortScope) => void,
+	) {
+		if (!externalSignal) return;
+
+		if (externalSignal.aborted) {
+			this.controller.abort(externalSignal.reason);
+			return;
+		}
+
+		const onAbort = () => this.controller.abort(externalSignal.reason);
+		externalSignal.addEventListener('abort', onAbort, { once: true });
+		this.externalCleanup = () => externalSignal.removeEventListener('abort', onAbort);
+	}
+
+	get signal(): AbortSignal {
+		return this.controller.signal;
+	}
+
+	get isAborted(): boolean {
+		return this.controller.signal.aborted;
+	}
+
+	abort(): void {
+		this.controller.abort();
+	}
+
+	dispose(): void {
+		if (this.disposed) return;
+		this.disposed = true;
+		this.externalCleanup?.();
+		this.externalCleanup = undefined;
+		this.onDispose(this);
+	}
+}
+
 /**
  * Internal event bus for agent lifecycle events.
  *
@@ -13,8 +64,8 @@ import type { AgentEventData, AgentEventHandler } from '../types/runtime/event';
  * in-flight HTTP requests are cancelled immediately when `abort()` is called,
  * rather than waiting for the current LLM call to finish.
  *
- * A new controller is created for each run via `resetAbort()` so the same
- * agent instance can be reused after cancellation.
+ * A new run-scoped controller is created for each run via `createAbortScope()`
+ * so overlapping runs do not replace each other's cancellation signal.
  */
 export class AgentEventBus {
 	private handlers = new Map<AgentEvent, Set<AgentEventHandler>>();
@@ -22,6 +73,8 @@ export class AgentEventBus {
 	private controller = new AbortController();
 
 	private externalCleanup?: () => void;
+
+	private abortScopes = new Set<EventBusAbortScope>();
 
 	on(event: AgentEvent, handler: AgentEventHandler): void {
 		let set = this.handlers.get(event);
@@ -46,6 +99,17 @@ export class AgentEventBus {
 
 	abort(): void {
 		this.controller.abort();
+		for (const scope of this.abortScopes) {
+			scope.abort();
+		}
+	}
+
+	createAbortScope(externalSignal?: AbortSignal): AgentAbortScope {
+		const scope = new EventBusAbortScope(externalSignal, (disposed) => {
+			this.abortScopes.delete(disposed);
+		});
+		this.abortScopes.add(scope);
+		return scope;
 	}
 
 	/**
@@ -83,13 +147,16 @@ export class AgentEventBus {
 	}
 
 	/**
-	 * Remove the external AbortSignal listener registered by resetAbort().
-	 * Must be called when a per-run bus is retired so the listener does not
-	 * accumulate on long-lived signals when runs complete without aborting.
+	 * Remove external AbortSignal listeners registered by resetAbort() or active
+	 * run scopes so listeners do not accumulate when runs complete without aborting.
 	 */
 	dispose(): void {
 		this.externalCleanup?.();
 		this.externalCleanup = undefined;
+		for (const scope of [...this.abortScopes]) {
+			scope.dispose();
+		}
+		this.abortScopes.clear();
 	}
 }
 
