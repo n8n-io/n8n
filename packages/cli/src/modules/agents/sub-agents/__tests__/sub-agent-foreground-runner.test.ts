@@ -272,7 +272,7 @@ describe('SubAgentForegroundRunner', () => {
 					type: 'tool-call-suspended',
 					runId: 'child-run-1',
 					toolCallId: 'tool-call-1',
-					toolName: 'rich_interaction',
+					toolName: 'approval_action',
 				},
 				{ type: 'finish', finishReason: 'tool-calls' },
 			]),
