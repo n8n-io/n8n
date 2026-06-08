@@ -5310,6 +5310,9 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      left-pad:
+        specifier: 1.3.0
+        version: 1.3.0
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -16163,6 +16166,10 @@ packages:
 
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
+
+  left-pad@1.3.0:
+    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bFlCBy/aVx2HrNcqQGsdot8ghrjyrvMCoEA==}
+    deprecated: use String.prototype.padStart()
 
   lefthook-darwin-arm64@1.7.15:
     resolution: {integrity: sha512-o8JgCnLM7UgF9g0MwarHJFoj6aVSSkUInHpsQZegV1c7CVQY/LIXgSeAWRb9XBvuUjByJ/HiHFMp9/hAALTwxQ==}
@@ -35200,6 +35207,8 @@ snapshots:
       strict-event-emitter-types: 2.0.0
 
   leac@0.6.0: {}
+
+  left-pad@1.3.0: {}
 
   lefthook-darwin-arm64@1.7.15:
     optional: true

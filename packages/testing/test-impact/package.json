@@ -44,6 +44,7 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "fast-check": "catalog:",
+    "left-pad": "1.3.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
