@@ -12,15 +12,22 @@ export type RedactionCategory = 'secret' | PiiDetectionType;
 
 export interface RedactionPattern {
 	readonly category: RedactionCategory;
-	/** Source of a global regex matching the sensitive value. */
-	readonly source: string;
-	/** Flags for the regex — always includes `g`. */
-	readonly flags: string;
+	/**
+	 * Precompiled regex matching the sensitive value. Always global — the
+	 * redactor relies on `g` both for replace-all and for the `exec` scan loop.
+	 * Compiled once at module load; callers reset `lastIndex` before reuse.
+	 */
+	readonly regex: RegExp;
 	/**
 	 * Optional gate: a candidate match is only redacted when this returns
 	 * `true`. Used to suppress false positives (e.g. Luhn check for cards).
 	 */
 	readonly validate?: (match: string) => boolean;
+}
+
+/** Compile a global regex once, adding the `g` flag if the source omits it. */
+function globalRegex(source: string, flags = ''): RegExp {
+	return new RegExp(source, flags.includes('g') ? flags : `${flags}g`);
 }
 
 /**
@@ -29,9 +36,7 @@ export interface RedactionPattern {
  */
 const SECRET_PATTERNS: readonly RedactionPattern[] = SECRET_VALUE_PATTERNS.map((re) => ({
 	category: 'secret',
-	source: re.source,
-	// Ensure a global flag so the redactor can replace every occurrence.
-	flags: re.flags.includes('g') ? re.flags : `${re.flags}g`,
+	regex: globalRegex(re.source, re.flags),
 }));
 
 /** Luhn checksum — used to keep credit-card redaction from firing on any long digit run. */
@@ -61,14 +66,12 @@ export function passesLuhn(candidate: string): boolean {
 const PII_PATTERNS: Readonly<Record<PiiDetectionType, RedactionPattern | undefined>> = {
 	email: {
 		category: 'email',
-		source: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}',
-		flags: 'g',
+		regex: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
 	},
 	'credit-card': {
 		category: 'credit-card',
 		// 13-19 digits, optionally grouped by single spaces or dashes.
-		source: '\\b\\d(?:[ -]?\\d){12,18}\\b',
-		flags: 'g',
+		regex: /\b\d(?:[ -]?\d){12,18}\b/g,
 		validate: passesLuhn,
 	},
 	'ssn-us': {
@@ -76,8 +79,7 @@ const PII_PATTERNS: Readonly<Record<PiiDetectionType, RedactionPattern | undefin
 		// US Social Security Number, dashed form only (123-45-6789). Bare 9-digit
 		// runs are intentionally not matched (too false-positive-prone). Per-country
 		// national IDs each get their own `ssn-<cc>` category (e.g. a future `ssn-uk`).
-		source: '\\b\\d{3}-\\d{2}-\\d{4}\\b',
-		flags: 'g',
+		regex: /\b\d{3}-\d{2}-\d{4}\b/g,
 	},
 	// Deferred — too noisy for prose; declared so the type stays exhaustive.
 	phone: undefined,

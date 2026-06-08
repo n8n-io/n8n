@@ -47,9 +47,9 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 	let text = input;
 
 	for (const pattern of patterns) {
-		// Fresh regex per pass so `lastIndex` never leaks across calls.
-		const regex = new RegExp(pattern.source, pattern.flags);
-		text = text.replace(regex, (match) => {
+		// `replace` with a global regex scans from 0 and resets lastIndex, so the
+		// shared precompiled regex is safe to reuse across calls.
+		text = text.replace(pattern.regex, (match) => {
 			if (pattern.validate && !pattern.validate(match)) return match;
 			matches.push({ category: pattern.category });
 			return placeholder;
@@ -75,7 +75,10 @@ export function findMatchRanges(
 
 	const ranges: Array<[number, number]> = [];
 	for (const pattern of patterns) {
-		const regex = new RegExp(pattern.source, pattern.flags);
+		const { regex } = pattern;
+		// Reset before the scan loop; reusing the shared global regex is safe
+		// because usage is synchronous and the loop always runs to completion.
+		regex.lastIndex = 0;
 		let match: RegExpExecArray | null;
 		while ((match = regex.exec(input)) !== null) {
 			if (match[0].length === 0) {
