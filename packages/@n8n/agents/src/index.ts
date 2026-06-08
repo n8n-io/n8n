@@ -199,8 +199,8 @@ export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export {
+	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
-	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
 	isSubAgentTaskPath,
@@ -211,6 +211,7 @@ export {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	INLINE_SUB_AGENT_ID,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	createDelegateSubAgentTool,
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
@@ -225,6 +226,8 @@ export type {
 	DelegateSubAgentRunner,
 	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,
+	InlineSubAgentProviderToolsResolver,
+	SubAgentTaskDifficulty,
 } from './runtime/delegate-sub-agent-tool';
 export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model-factory';
