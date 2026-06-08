@@ -20,6 +20,7 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
 		await import('./mcp/instance-ai-mcp-connection.controller');
+		await import('./desktop-assistant/desktop-assistant.controller');
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');

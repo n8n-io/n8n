@@ -84,6 +84,7 @@ import {
 	type TerminalResponseDecision,
 	type TerminalResponseStatus,
 	type WorkflowBuildOutcome,
+	type DesktopAssistantPromptMode,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
 	type WorkflowTaskService,
@@ -1585,6 +1586,7 @@ export class InstanceAiService {
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
+		options?: { promptMode?: DesktopAssistantPromptMode },
 	): string {
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
@@ -1626,6 +1628,8 @@ export class InstanceAiService {
 			false,
 			undefined,
 			undefined,
+			undefined,
+			options?.promptMode,
 		);
 
 		return runId;
@@ -4012,6 +4016,7 @@ export class InstanceAiService {
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 		resumeReason?: OrchestratorResumeReason,
 		plannedBuild?: PlannedBuildFollowUp,
+		promptMode?: DesktopAssistantPromptMode,
 	): Promise<void> {
 		// Read once at the top so the streamInput builder + (if any later
 		// retry) see the same view of restart-recovery metadata.
@@ -4327,6 +4332,7 @@ export class InstanceAiService {
 				memory,
 				checkpointStore: this.checkpointStore,
 				timeZone: timeZone ?? this.defaultTimeZone,
+				promptMode,
 			});
 
 			const result = tracing

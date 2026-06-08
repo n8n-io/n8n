@@ -237,6 +237,9 @@ catalogs:
     cron:
       specifier: 4.4.0
       version: 4.4.0
+    cron-parser:
+      specifier: 4.9.0
+      version: 4.9.0
     csv-parse:
       specifier: 6.2.1
       version: 6.2.1
@@ -3184,6 +3187,9 @@ importers:
       cron:
         specifier: 'catalog:'
         version: 4.4.0
+      cron-parser:
+        specifier: 'catalog:'
+        version: 4.9.0
       csrf:
         specifier: 3.1.0
         version: 3.1.0
