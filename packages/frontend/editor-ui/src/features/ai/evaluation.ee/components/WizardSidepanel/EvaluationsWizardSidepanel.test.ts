@@ -586,11 +586,30 @@ describe('EvaluationsWizardSidepanel', () => {
 				completedAt: '',
 			},
 		};
+		// A completed case feeds the case-centric results layout.
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				inputs: { expectedAnswer: 'hi' },
+				outputs: { output: 'hello' },
+			},
+		};
 
 		const { getByTestId, queryByTestId } = renderComponent();
 		expect(queryByTestId('evaluations-wizard-sidepanel-loading-skeletons')).not.toBeInTheDocument();
 		expect(queryByTestId('evaluations-wizard-sidepanel-running')).not.toBeInTheDocument();
 		expect(getByTestId('evaluations-wizard-sidepanel-results')).toBeInTheDocument();
+		// Aggregate header + one case row render from the run/case data.
+		expect(getByTestId('evaluations-wizard-sidepanel-results-summary')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-case-1')).toBeInTheDocument();
 	});
 
 	it('shows "View Results" button on step 3 and closes the wizard on click', async () => {
@@ -680,6 +699,18 @@ describe('EvaluationsWizardSidepanel', () => {
 			mocks.sliceInputs = { fieldNames: ['query'], values: { query: 'hi' }, hasExecution: true };
 			const store = useEvaluationsWizardSidepanelStore();
 			store.open(0);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('evaluations-wizard-sidepanel-progress')).toBeInTheDocument();
+			expect(queryByTestId('evaluations-wizard-sidepanel-gate')).toBeNull();
+		});
+
+		it('does not gate an existing eval (run pinned) even without a detectable execution', () => {
+			// e.g. after "Edit evals": step 0 with the run still pinned, no fresh execution.
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.setStep(0);
+			store.setActiveRunId('run-1');
 
 			const { getByTestId, queryByTestId } = renderComponent();
 			expect(getByTestId('evaluations-wizard-sidepanel-progress')).toBeInTheDocument();

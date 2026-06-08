@@ -13,12 +13,13 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import {
-	formatMetricPercent,
-	formatMetricAverage,
-	formatDuration,
-	formatTokens,
 	extractAnswerText,
+	formatMetricLabel,
+	getMetricCategory,
+	getUserDefinedMetricNames,
+	type ResultCheck,
 } from '../../evaluation.utils';
+import type { TestCaseExecutionRecord } from '../../evaluation.api';
 import {
 	CANNED_METRICS,
 	LLM_JUDGE_METRIC_KEYS,
@@ -35,6 +36,8 @@ import { useWizardPersistence } from './useWizardPersistence';
 import { useWizardHydration } from './useWizardHydration';
 import CheckCard from './CheckCard.vue';
 import CheckResultCard from './CheckResultCard.vue';
+import ResultsSummaryHeader from './ResultsSummaryHeader.vue';
+import ResultsCaseRow from './ResultsCaseRow.vue';
 import TestCaseForm from './TestCaseForm.vue';
 import SystemSelector from './SystemSelector.vue';
 import CustomCheckModal from './CustomCheckModal.vue';
@@ -136,7 +139,18 @@ watch(
 
 // True once the workflow has a usable successful execution to seed inputs from.
 const hasRun = computed(() => sliceInputs.value.hasExecution);
-const showGate = computed(() => probeComplete.value && !hasRun.value);
+// An eval that already has a run (pinned this session, restored on reload, or
+// reached via "Edit evals") is past the first-run gate — editing it must never
+// be re-blocked, regardless of what executions are currently detectable.
+const isExistingEval = computed(() => wizardStore.activeRunId !== null);
+// The gate only guards first-time authoring. The results step (3) and any
+// existing eval bypass it (each has its own loading/empty handling).
+const showGate = computed(
+	() => probeComplete.value && !hasRun.value && activeStep.value !== 3 && !isExistingEval.value,
+);
+const showProbeLoading = computed(
+	() => !hasRun.value && !probeComplete.value && activeStep.value !== 3 && !isExistingEval.value,
+);
 
 // Skip evaluation runs — after a few wizard sessions, lastSuccessfulExecution
 // would always be the compiled eval workflow, not the user's graph.
@@ -222,12 +236,33 @@ const latestRun = computed(() => {
 	return runs.value[runs.value.length - 1];
 });
 
-const latestRunCase = computed(() => {
+// All cases for the active run, ordered by their position in the dataset.
+const latestRunCases = computed<TestCaseExecutionRecord[]>(() => {
 	const runId = latestRun.value?.id;
-	if (!runId) return undefined;
-	return Object.values(evaluationStore.testCaseExecutionsById ?? {}).find(
-		(c) => c.testRunId === runId,
-	);
+	if (!runId) return [];
+	return Object.values(evaluationStore.testCaseExecutionsById ?? {})
+		.filter((c) => c.testRunId === runId)
+		.sort((a, b) => (a.runIndex ?? 0) - (b.runIndex ?? 0));
+});
+
+// The checks rendered on the results page, derived from the run's metric keys so
+// canned and custom checks are handled uniformly. AI-judged checks show an
+// average %; the rest are pass/fail.
+const resultChecks = computed<ResultCheck[]>(() => {
+	const metrics = latestRun.value?.metrics;
+	if (!metrics) return [];
+	return getUserDefinedMetricNames(metrics).map((key) => {
+		const canned = CANNED_METRICS.find((m) => m.key === key);
+		return {
+			key,
+			label: canned ? locale.baseText(canned.labelKey) : formatMetricLabel(key),
+			isAiJudged: getMetricCategory(key) === 'aiBased',
+			// Mirror the Step-2 check tile; custom checks fall back to the code icon.
+			icon: canned?.icon ?? 'code',
+			iconBg: canned?.tileBg,
+			iconFg: canned?.tileFg,
+		};
+	});
 });
 
 const sliceEndNodeName = computed(
@@ -236,18 +271,19 @@ const sliceEndNodeName = computed(
 
 const executionsByCaseId = ref<Record<string, IExecutionResponse | null>>({});
 
-const latestRunOutputText = computed(() => {
-	const caseRecord = latestRunCase.value;
-	if (!caseRecord?.executionId) return undefined;
-	const execution = executionsByCaseId.value[caseRecord.id];
-	if (!execution) return undefined;
+// The AI's answer for a case: the end node's output during the test run,
+// stripped of its JSON envelope (output > text > response > …). Falls back to
+// the case's persisted `outputs` only when the execution isn't loaded.
+function caseAnswer(testCase: TestCaseExecutionRecord): string {
+	const execution = executionsByCaseId.value[testCase.id];
 	const endName = sliceEndNodeName.value;
-	if (!endName) return undefined;
-	const runData = execution.data?.resultData?.runData;
-	const firstItem = runData?.[endName]?.[0]?.data?.main?.[0]?.[0]?.json;
-	if (firstItem === undefined) return undefined;
-	return formatOutputValue(extractAnswerText(firstItem));
-});
+	if (execution && endName) {
+		const firstItem =
+			execution.data?.resultData?.runData?.[endName]?.[0]?.data?.main?.[0]?.[0]?.json;
+		if (firstItem !== undefined) return extractAnswerText(firstItem);
+	}
+	return extractAnswerText(testCase.outputs);
+}
 
 async function loadExecutionForCase(caseId: string, executionId: string) {
 	if (caseId in executionsByCaseId.value) return;
@@ -263,22 +299,14 @@ async function loadExecutionForCase(caseId: string, executionId: string) {
 	}
 }
 
-function formatOutputValue(value: unknown): string {
-	if (value === null || value === undefined) return '';
-	if (typeof value === 'string') return value;
-	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-	try {
-		return JSON.stringify(value, null, 2);
-	} catch {
-		return String(value);
-	}
-}
-
+// Prefetch each case's full execution so caseAnswer can fall back to the
+// end-node output when a case has no persisted `outputs`.
 watch(
-	latestRunCase,
-	(caseRecord) => {
-		if (!caseRecord?.executionId) return;
-		void loadExecutionForCase(caseRecord.id, caseRecord.executionId);
+	latestRunCases,
+	(cases) => {
+		for (const c of cases) {
+			if (c.executionId) void loadExecutionForCase(c.id, c.executionId);
+		}
 	},
 	{ immediate: true },
 );
@@ -362,14 +390,6 @@ const STEP_I18N = [
 const titleKey = computed(() => STEP_I18N[activeStep.value].title);
 const descriptionKey = computed(() => STEP_I18N[activeStep.value].description);
 
-function metricScorePercent(key: string): number {
-	const metric = cannedMetrics.value.find((m) => m.key === key);
-	const raw = latestRun.value?.metrics?.[key];
-	const text = formatMetricPercent(raw, { category: metric?.category });
-	const parsed = Number.parseFloat(text);
-	return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 0;
-}
-
 async function handleNext() {
 	const current = activeStep.value;
 	if (current === 0) {
@@ -415,7 +435,7 @@ function handleViewResults() {
 <template>
 	<div :class="$style.sidepanel" data-test-id="evaluations-wizard-sidepanel">
 		<div
-			v-if="!hasRun && !probeComplete"
+			v-if="showProbeLoading"
 			:class="$style.gate"
 			data-test-id="evaluations-wizard-sidepanel-probe-loading"
 		>
@@ -583,58 +603,28 @@ function handleViewResults() {
 						</li>
 					</ul>
 
-					<ul
+					<div
 						v-if="latestRun && !showLoadingState"
-						:class="$style.checkList"
+						:class="$style.results"
 						data-test-id="evaluations-wizard-sidepanel-results"
 					>
-						<li
-							v-for="metric in cannedMetrics.filter((m) => selectedMetricKeys.includes(m.key))"
-							:key="metric.key"
-						>
-							<CheckResultCard
-								:icon="metric.icon"
-								:icon-bg="metric.tileBg"
-								:icon-fg="metric.tileFg"
-								:title="locale.baseText(metric.labelKey)"
-								:badge="
-									isLlmJudgeMetric(metric.key)
-										? locale.baseText('evaluations.wizardSidepanel.metric.judgeTag')
-										: undefined
-								"
-								:badge-icon="isLlmJudgeMetric(metric.key) ? 'wand-sparkles' : undefined"
-								:category="metric.category"
-								:score-label="
-									metric.category === 'aiBased'
-										? locale.baseText('evaluations.wizardSidepanel.step3.testLabel')
-										: locale.baseText('evaluations.wizardSidepanel.step3.passedLabel')
-								"
-								:score-text="
-									metric.category === 'aiBased'
-										? formatMetricAverage(latestRun.metrics?.[metric.key], {
-												category: metric.category,
-											})
-										: formatMetricPercent(latestRun.metrics?.[metric.key], {
-												category: metric.category,
-											})
-								"
-								:score-percent="metricScorePercent(metric.key)"
-								:output-label="locale.baseText('evaluations.wizardSidepanel.step3.output')"
-								:output-text="
-									latestRunOutputText ||
-									locale.baseText('evaluations.wizardSidepanel.step3.outputPlaceholder')
-								"
-								:output-meta="
-									locale.baseText('evaluations.wizardSidepanel.step3.outputMeta', {
-										interpolate: {
-											tokens: formatTokens(latestRun.metrics?.totalTokens),
-											time: formatDuration(latestRun.metrics?.executionTime),
-										},
-									})
-								"
-							/>
-						</li>
-					</ul>
+						<ResultsSummaryHeader
+							:checks="resultChecks"
+							:run-metrics="latestRun.metrics"
+							:cases="latestRunCases"
+						/>
+						<ResultsCaseRow
+							v-for="(testCase, index) in latestRunCases"
+							:key="testCase.id"
+							:case-index="index + 1"
+							:test-case="testCase"
+							:checks="resultChecks"
+							:expected-fields="expectedFields"
+							:expected-values="expectedValues"
+							:ai-answer="caseAnswer(testCase)"
+							:run-metrics="latestRun.metrics"
+						/>
+					</div>
 
 					<div
 						v-if="!latestRun && !showLoadingState"
@@ -814,6 +804,12 @@ function handleViewResults() {
 	list-style: none;
 	margin: 0;
 	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.results {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
