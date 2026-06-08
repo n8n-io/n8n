@@ -233,8 +233,8 @@ describe('getLatestBuilderTarget', () => {
 	test('ignores non-workflow targetResource types', () => {
 		const credSetup = makeAgentNode({
 			agentId: 'agent-cred-1',
-			role: 'browser-credential-setup',
-			kind: 'browser-setup',
+			role: 'credential-setup',
+			kind: 'delegate',
 			status: 'active',
 			targetResource: { type: 'credential', id: 'cred-1' },
 		});
@@ -271,7 +271,7 @@ describe('getLatestBuilderTarget', () => {
 		});
 		const intermediate = makeAgentNode({
 			agentId: 'agent-intermediate',
-			role: 'planner',
+			role: 'coordinator',
 			children: [nestedBuilder],
 		});
 		const parent = makeAgentNode({ children: [intermediate] });

@@ -45,6 +45,7 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
+import { encodeImpactMap, mergeCoverage } from './core/coverage-map.js';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -72,9 +73,10 @@ import {
 } from './core/method-usage-analyzer.js';
 import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
-import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
+import { selectE2e } from './core/select-e2e.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { runTestScoped } from './core/test-scoped-runner.js';
@@ -282,20 +284,13 @@ function runTcr(options: CliOptions): void {
 function runAnalyze(options: CliOptions): void {
 	const config = getConfig();
 	const runner = createDefaultRunner();
-
-	// Create project
-	const { project, root } = createProject(config.rootDir);
+	const root = config.rootDir;
 
 	// Build run options
 	const runOptions: RunOptions = {};
 
 	if (options.files && options.files.length > 0) {
 		runOptions.files = options.files;
-	}
-
-	if (options.fix) {
-		runOptions.fix = true;
-		runOptions.write = options.write;
 	}
 
 	// Pass rule-specific config
@@ -307,21 +302,20 @@ function runAnalyze(options: CliOptions): void {
 
 	// Run analysis
 	let report = options.rule
-		? runner.runRule(project, root, options.rule, runOptions)
-		: runner.run(project, root, runOptions);
+		? runner.runRule(options.rule, { rootDir: root }, runOptions)
+		: runner.run({ rootDir: root }, runOptions);
 
 	if (!report) {
 		console.error('Failed to generate report');
 		process.exit(1);
 	}
 
-	// Auto-filter by baseline if present (unless --ignore-baseline or --fix)
+	// Auto-filter by baseline if present (unless --ignore-baseline)
 	const baseline = loadBaseline(config.rootDir);
 	let baselineFiltered = false;
 	const originalViolations = report.summary.totalViolations;
 
-	if (baseline && !options.fix && !options.ignoreBaseline) {
-		// Don't filter during fix mode or when baseline is ignored
+	if (baseline && !options.ignoreBaseline) {
 		report = filterReportByBaseline(report, baseline, config.rootDir);
 		baselineFiltered = true;
 	}
@@ -342,14 +336,10 @@ function runAnalyze(options: CliOptions): void {
 		}
 
 		toConsole(report, options.verbose);
-
-		if (options.fix) {
-			printFixResults(report, options.write);
-		}
 	}
 
 	// Exit with error code if violations found
-	if (report.summary.totalViolations > 0 && !(options.fix && options.write)) {
+	if (report.summary.totalViolations > 0) {
 		process.exit(1);
 	}
 }
@@ -357,12 +347,10 @@ function runAnalyze(options: CliOptions): void {
 function runBaseline(options: CliOptions): void {
 	const config = getConfig();
 
-	// Create runner and project
 	const runner = createDefaultRunner();
-	const { project, root } = createProject(config.rootDir);
 
 	// Run full analysis (no file filter, no baseline filter)
-	const report = runner.run(project, root, {});
+	const report = runner.run({ rootDir: config.rootDir }, {});
 
 	if (!report) {
 		console.error('Failed to generate report');
@@ -545,6 +533,24 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
+	// Composable allowlist filter. distribute-tests.mjs pre-computes the union
+	// of AST + V8 selection and writes it here; orchestrate then balances shards
+	// against that subset instead of the full discovered set.
+	if (options.includeSpecsFile) {
+		const includeRaw = fs.readFileSync(options.includeSpecsFile, 'utf-8');
+		const include = new Set(
+			includeRaw
+				.split(/[\n,]+/)
+				.map((s) => s.trim())
+				.filter(Boolean),
+		);
+		const totalBefore = specs.length;
+		specs = specs.filter((s) => include.has(s.path));
+		console.error(
+			`Include: ${specs.length}/${totalBefore} specs after applying allowlist (${include.size} entries)`,
+		);
+	}
+
 	const metrics: Record<string, number> = {};
 	if (config.orchestration.metricsPath) {
 		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
@@ -625,6 +631,7 @@ function runTestScopedCmd(options: CliOptions): void {
 		rootDir: findWorkspaceRoot(process.cwd()),
 		changedFiles,
 		passthroughArgs: options.passthroughArgs,
+		jestVariant: options.jestVariant,
 	});
 	process.exit(exitCode);
 }
@@ -640,8 +647,49 @@ function runScope(options: CliOptions): void {
 		packageDir: options.packageDir ?? process.cwd(),
 		changedFiles: readChangedFiles(options),
 		rootDir: findWorkspaceRoot(process.cwd()),
+		jestVariant: options.jestVariant,
 	});
 	console.log(formatScope(result));
+}
+
+function findLcovFiles(dir: string): string[] {
+	const out: string[] = [];
+	for (const entry of fs.readdirSync(dir)) {
+		const p = path.join(dir, entry);
+		if (fs.statSync(p).isDirectory()) out.push(...findLcovFiles(p));
+		else if (entry.endsWith('.lcov') || entry === 'lcov.info') out.push(p);
+	}
+	return out;
+}
+
+/** merge-coverage: per-spec lcovs (under --inputs-dir) → unified lcov + impact map. */
+function runMergeCoverage(options: CliOptions): void {
+	if (!options.inputsDir || !options.outLcov || !options.outMap) {
+		console.error('Error: --inputs-dir, --out-lcov, and --out-map are required');
+		process.exit(1);
+	}
+	const files = fs.existsSync(options.inputsDir) ? findLcovFiles(options.inputsDir) : [];
+	// spec attribution comes from each lcov's TN:; the path is only a fallback.
+	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
+	const result = mergeCoverage(inputs);
+	fs.writeFileSync(options.outLcov, result.lcov);
+	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
+	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));
+	console.error(
+		`merge-coverage: ${files.length} lcov(s) → ${result.stats.files} files, ` +
+			`${result.stats.mapEntries} map entries, ${result.stats.specs} specs`,
+	);
+}
+
+/** select-e2e: changed files + impact map → spec list (JSON). I/O wrapper
+ *  around {@link selectE2e}, where the fail-open safety contract lives. */
+function runSelectE2e(options: CliOptions): void {
+	const result = selectE2e({
+		changedFiles: readChangedFiles(options) ?? [],
+		mapFile: options.mapFile,
+		allSpecsFile: options.allSpecsFile,
+	});
+	console.log(JSON.stringify(result));
 }
 
 async function main(): Promise<void> {
@@ -700,6 +748,14 @@ async function main(): Promise<void> {
 	}
 	if (options.command === 'test-scoped') {
 		runTestScopedCmd(options);
+		return;
+	}
+	if (options.command === 'merge-coverage') {
+		runMergeCoverage(options);
+		return;
+	}
+	if (options.command === 'select-e2e') {
+		runSelectE2e(options);
 		return;
 	}
 

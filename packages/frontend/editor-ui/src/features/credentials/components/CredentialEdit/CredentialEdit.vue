@@ -51,7 +51,7 @@ import {
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/app/utils/typeGuards';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
@@ -98,6 +98,28 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const i18n = useI18n();
+
+const I18N_PREFIX = 'credentialEdit.credentialEdit.confirmMessage';
+
+async function confirmModal(
+	key: string,
+	interpolate?: Record<string, string>,
+	extra?: { cancelButtonText?: string },
+): Promise<string | boolean> {
+	const t = (suffix: string) =>
+		i18n.baseText(
+			`${I18N_PREFIX}.${key}.${suffix}` as BaseTextKey,
+			interpolate ? { interpolate } : {},
+		);
+
+	const cancelButton =
+		extra?.cancelButtonText !== undefined ? { cancelButtonText: extra.cancelButtonText } : {};
+
+	return await message.confirm(t('message'), t('headline'), {
+		confirmButtonText: i18n.baseText(`${I18N_PREFIX}.${key}.confirmButtonText` as BaseTextKey),
+		...cancelButton,
+	});
+}
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
@@ -412,6 +434,16 @@ const showHeaderSaveButton = computed(
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+// Whether the credential is already shared (with other projects or globally) as
+// persisted. A shared credential can't be turned into a dynamic credential.
+const isCurrentlyShared = computed(() => {
+	const cred = currentCredential.value;
+	if (!cred) return false;
+	const sharedWithProjects = 'sharedWithProjects' in cred ? (cred.sharedWithProjects ?? []) : [];
+	const isGlobal = 'isGlobal' in cred ? Boolean(cred.isGlobal) : false;
+	return isGlobal || sharedWithProjects.length > 0;
+});
+
 const homeProject = computed(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
@@ -544,34 +576,23 @@ async function beforeClose() {
 
 	if (hasUnsavedChanges.value && !isNewCredential.value) {
 		const displayName = credentialType.value ? credentialType.value.displayName : '';
-		const confirmAction = await message.confirm(
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', {
-				interpolate: { credentialDisplayName: displayName },
-			}),
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
-			{
-				cancelButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText',
-				),
-				confirmButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText',
-				),
-			},
+		const confirmAction = await confirmModal(
+			'beforeClose1',
+			{ credentialDisplayName: displayName },
+			{ cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose1.cancelButtonText`) },
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
-		const confirmAction = await message.confirm(
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
-			{
-				cancelButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText',
-				),
-				confirmButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText',
-				),
-			},
-		);
+	} else if (
+		credentialPermissions.value.update &&
+		isOAuthType.value &&
+		!isOAuthConnected.value &&
+		// Private credentials are only the reusable "blueprint" — connecting is a
+		// per-user step done later, so we don't prompt to connect before closing.
+		!isResolvable.value
+	) {
+		const confirmAction = await confirmModal('beforeClose2', undefined, {
+			cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose2.cancelButtonText`),
+		});
 		keepEditing = confirmAction === MODAL_CONFIRM;
 	}
 
@@ -708,17 +729,6 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 	}
 }
 
-async function refreshConnectedByMe(id: string) {
-	try {
-		const refreshed = await credentialsStore.getCredentialData({ id });
-		if (refreshed && 'connectedByMe' in refreshed && typeof refreshed.connectedByMe === 'boolean') {
-			connectedByMe.value = refreshed.connectedByMe;
-		}
-	} catch {
-		// Refresh is best-effort; the optimistic update remains in place.
-	}
-}
-
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
@@ -772,8 +782,43 @@ function restoreOrReset(): void {
 	}
 }
 
-function onResolvableChange(value: boolean) {
+async function onResolvableChange(value: boolean) {
+	const credName = credentialName.value;
+	const isTogglingToPrivate = value && !isResolvable.value;
+	const isTogglingToStatic = !value && isResolvable.value;
+
+	if (isTogglingToPrivate && credentialData.value.oauthTokenData) {
+		// Static → Private: warn only when there is a shared token to lose
+		const confirmAction = await confirmModal('switchToPrivate', { credentialName: credName });
+
+		if (confirmAction !== MODAL_CONFIRM) {
+			return;
+		}
+	} else if (isTogglingToStatic) {
+		// Private → Static: warn only when there are connected users to disconnect.
+		// `connectedUserCount` reflects the server state at modal-open and isn't
+		// refreshed when the current user connects within the same session, so fold
+		// in `connectedByMe` to make sure the warning still appears in that case.
+		const serverConnectedCount = currentCredential.value?.connectedUserCount ?? 0;
+		const connectedUserCount = Math.max(serverConnectedCount, connectedByMe.value ? 1 : 0);
+		if (connectedUserCount > 0) {
+			const confirmAction = await confirmModal('switchToStatic', {
+				count: String(connectedUserCount),
+				credentialName: credName,
+			});
+
+			if (confirmAction !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+	}
+
 	isResolvable.value = value;
+	// Switching sharing mode invalidates any carried-over connection state: a
+	// freshly-private credential has no per-user connection for the current
+	// user yet, so reset it to avoid rendering a stale "connected" state with a
+	// Disconnect button that has nothing to disconnect.
+	connectedByMe.value = false;
 	hasUnsavedChanges.value = true;
 }
 
@@ -1182,17 +1227,7 @@ async function deleteCredential() {
 
 	const savedCredentialName = currentCredential.value.name;
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
-			interpolate: { savedCredentialName },
-		}),
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-			),
-		},
-	);
+	const deleteConfirmed = await confirmModal('deleteCredential', { savedCredentialName });
 
 	if (deleteConfirmed !== MODAL_CONFIRM) {
 		return;
@@ -1330,9 +1365,16 @@ async function oAuthCredentialAuthorize() {
 				...credentialData.value,
 				oauthTokenData: {} as CredentialInformation,
 			};
+
 			connectedByMe.value = true;
 
-			void refreshConnectedByMe(credential.id);
+			void credentialsStore.fetchAllCredentials().then(() => {
+				nodeHelpers.updateNodesCredentialsIssues();
+			});
+
+			void credentialsStore.fetchAllCredentials().then(() => {
+				nodeHelpers.updateNodesCredentialsIssues();
+			});
 
 			// Close the window
 			if (oauthPopup) {
@@ -1579,6 +1621,7 @@ const { width } = useElementSize(credNameRef);
 						:selected-credential="selectedCredential"
 						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
 						:is-resolvable="isResolvable"
+						:is-shared="isCurrentlyShared"
 						:connected-by-me="connectedByMe"
 						:is-new-credential="isNewCredential"
 						:managed-oauth-available="managedOAuthAvailable"
@@ -1604,6 +1647,7 @@ const { width } = useElementSize(credNameRef);
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:is-shared-globally="isSharedGlobally"
+						:is-resolvable="isResolvable"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"

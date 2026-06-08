@@ -1,18 +1,6 @@
 import { z, type ZodError } from 'zod';
 
-import { AgentIntegrationSchema } from './agent-integration.schema';
-
-const SemanticRecallSchema = z.object({
-	topK: z.number().int().min(1).max(100),
-	scope: z.enum(['thread', 'resource']).optional(),
-	messageRange: z
-		.object({
-			before: z.number().int().min(0),
-			after: z.number().int().min(0),
-		})
-		.optional(),
-	embedder: z.string().optional(),
-});
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
 export const AgentModelSchema = z
 	.string()
@@ -29,7 +17,7 @@ export const AgentModelSchema = z
 
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim().min(1),
+	credential: z.string().trim(),
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -49,7 +37,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim().min(1),
+		credential: z.string().trim(),
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
@@ -60,8 +48,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
-	lastMessages: z.number().int().min(1).max(200).optional(),
-	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
@@ -77,6 +63,16 @@ const WebSearchConfigSchema = z.object({
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
 	credential: z.string().optional(),
 });
+
+const SubAgentConfigSchema = z.object({
+	agentId: z.string().trim().min(1),
+});
+
+const SubAgentsConfigSchema = z
+	.object({
+		agents: z.array(SubAgentConfigSchema).optional(),
+	})
+	.strict();
 
 const NodeToolCredentialSchema = z.object({
 	id: z.string(),
@@ -100,59 +96,68 @@ const AgentJsonSkillConfigSchema = z.object({
 		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
+const AgentJsonTaskConfigSchema = z.object({
+	type: z.literal('task'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[A-Za-z0-9_-]+$/),
+	enabled: z.boolean(),
+});
+
+export const McpAuthenticationSchemaTypes = z.enum([
+	'none',
+	'bearerAuth',
+	'headerAuth',
+	'multipleHeadersAuth',
+	'mcpOAuth2Api',
+]);
+
 /**
  * Configuration for a single MCP (Model Context Protocol) server attached to
  * an agent. Tool entries from MCP servers are sourced separately from the
  * `tools[]` array — the SDK's `McpClient` prefixes each tool name with the
  * server name to avoid collisions.
  */
-const McpServerConfigSchema = z
+export const McpServerConfigSchema = z
 	.object({
-		/**
-		 * Unique-per-agent server name. Also used as the SDK tool-name prefix
-		 * (e.g. a server named `github` exposes its `create_issue` tool as
-		 * `github_create_issue` to the LLM).
-		 */
 		name: z
 			.string()
 			.min(1)
 			.max(64)
-			.regex(/^[a-zA-Z0-9_-]+$/),
-		description: z.string().max(512).optional(),
-		url: z.string().min(1),
-		transport: z.enum(['sse', 'streamableHttp']).default('streamableHttp'),
-		/**
-		 * Authentication method. In addition to the five named variants, any string
-		 * ending in `McpOAuth2Api` is accepted to accommodate registry-specific
-		 * credential types (e.g. `notionMcpOAuth2Api`, `githubMcpOAuth2Api`).
-		 */
+			.regex(/^[a-zA-Z0-9_-]+$/)
+			.describe(
+				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
+			),
+		description: z.string().max(512).optional().describe('Human-readable server description'),
+		url: z.string().min(1).describe('MCP server endpoint URL'),
+		transport: z
+			.enum(['sse', 'streamableHttp'])
+			.default('streamableHttp')
+			.describe('Transport protocol'),
 		authentication: z
-			.union([
-				z.enum(['none', 'bearerAuth', 'headerAuth', 'multipleHeadersAuth', 'mcpOAuth2Api']),
-				z.string().endsWith('McpOAuth2Api'),
-			])
-			.default('none'),
-		/** Credential id required when `authentication` is anything other than `none`. */
-		credential: z.string().optional(),
+			.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+			.default('none')
+			.describe(
+				'Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types',
+			),
+		credential: z
+			.string()
+			.optional()
+			.describe('Credential id from ask_credential. Required when authentication is not "none"'),
 		metadata: z
 			.object({
-				/**
-				 * The node-type name this server was created from (e.g. `@n8n/mcp-registry.github`).
-				 * When present the config modal renders with the registry node type's form
-				 * (correct credential selector, preset field visibility) instead of the generic
-				 * MCP Client Tool form.
-				 */
-				nodeTypeName: z.string().optional(),
+				nodeTypeName: z
+					.string()
+					.optional()
+					.describe(
+						'Source node type for registry servers (e.g. @n8n/mcp-registry.github). Enables correct UI form',
+					),
 			})
-			.optional(),
-		/**
-		 * Restricts which tools from this server are surfaced to the agent.
-		 * Tools are matched by their original (un-prefixed) name.
-		 *
-		 * - `{ mode: 'allow', tools: [...] }` — only the listed tools are surfaced.
-		 * - `{ mode: 'exclude', tools: [...] }` — every tool except the listed ones is surfaced.
-		 * - absent — every tool the server advertises is surfaced.
-		 */
+			.optional()
+			.describe(
+				'Server-generated metadata. Do not set this manually, only copy from search_mcp_servers result if present',
+			),
 		toolFilter: z
 			.discriminatedUnion('mode', [
 				z
@@ -168,18 +173,8 @@ const McpServerConfigSchema = z
 					})
 					.strict(),
 			])
-			.optional(),
-		/**
-		 * Human-in-the-loop approval requirements.
-		 *
-		 * - absent — no approval required (default).
-		 * - `{ mode: 'global' }` — every tool from this server requires approval.
-		 * - `{ mode: 'selected', tools: [...] }` — only listed tool names
-		 *   (un-prefixed) require approval; non-empty.
-		 *
-		 * Maps onto the SDK's `McpServerConfig.requireApproval`
-		 * (`true` / `string[]`) at reconstruction time.
-		 */
+			.optional()
+			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
 		approval: z
 			.discriminatedUnion('mode', [
 				z.object({ mode: z.literal('global') }).strict(),
@@ -190,8 +185,15 @@ const McpServerConfigSchema = z
 					})
 					.strict(),
 			])
-			.optional(),
-		connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
+			.optional()
+			.describe('Human-in-the-loop approval. Absent = no approval required'),
+		connectionTimeoutMs: z
+			.number()
+			.int()
+			.min(1)
+			.max(120_000)
+			.optional()
+			.describe('Connection timeout in milliseconds'),
 	})
 	.strict();
 
@@ -235,10 +237,12 @@ export const AgentJsonConfigSchema = z.object({
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
+	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationSchema).optional(),
+	integrations: z.array(AgentIntegrationConfigSchema).optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -279,14 +283,17 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigSchema.extend({
 export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
+export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
 
 export interface ConfigValidationError {
 	path: string;

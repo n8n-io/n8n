@@ -32,6 +32,7 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
+import { getLatestBuildResult } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
@@ -79,6 +80,11 @@ function collectPendingConfirmations(
 			tc.confirmationStatus !== 'approved' &&
 			tc.confirmationStatus !== 'denied' &&
 			!resolved.has(tc.confirmation.requestId) &&
+			// Expired cards render as a terminal "this action has expired" state
+			// in their inline slot; surfacing them in the floating/inline panel
+			// would block the chat input on a confirmation the user can no
+			// longer act on.
+			!tc.confirmation.expired &&
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
@@ -286,6 +292,44 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	);
+
+	// --- Telemetry: 'User viewed new builder workflow' ---
+	// FE counterpart of the backend 'Builder created workflow' event, which carries
+	// no session id and so can't filter PostHog session recordings — this FE-sent
+	// event does. It fires the moment the builder produces a workflow, i.e. when the
+	// canvas preview opens: `latestBuildResult.toolCallId` changes only on a live
+	// build, so re-hydrating past messages or rebuilding the same workflow won't
+	// re-fire. Emitted once per workflow id for this runtime.
+	const latestBuildResult = computed(() => {
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const tree = messages.value[i].agentTree;
+			if (tree) {
+				const result = getLatestBuildResult(tree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+	const reportedBuiltWorkflowIds = new Set<string>();
+
+	watch(
+		() => latestBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			// `flush: 'sync'` mirrors useCanvasPreview: hydration assigns messages and
+			// flips hydrationStatus to 'ready' within the same tick, so only a
+			// synchronous callback still sees the hydrating flag and skips past builds.
+			if (!toolCallId || isHydratingThread.value) return;
+			const workflowId = latestBuildResult.value?.workflowId;
+			if (!workflowId || reportedBuiltWorkflowIds.has(workflowId)) return;
+			reportedBuiltWorkflowIds.add(workflowId);
+			telemetry.track('User viewed new builder workflow', {
+				thread_id: threadId,
+				instance_id: rootStore.instanceId,
+				workflow_id: workflowId,
+			});
+		},
+		{ flush: 'sync' },
 	);
 
 	/**
@@ -890,8 +934,25 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 		try {
 			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
-		} catch {
-			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+		} catch (error: unknown) {
+			// Surface the server's UserError text when present (e.g. "This
+			// confirmation was lost when the assistant restarted") so the user
+			// sees the actual reason instead of a generic "Try again". UserError
+			// from `n8n-workflow` is mapped to a 400 with the message in the
+			// response body — `ResponseError.message` exposes that here.
+			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;
+			if (status === 400) {
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'The confirmation could not be processed.'),
+					'Confirmation failed',
+				);
+			} else {
+				toast.showError(
+					new Error('Failed to send confirmation. Try again.'),
+					'Confirmation failed',
+				);
+			}
 			return false;
 		}
 	}

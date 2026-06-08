@@ -69,6 +69,11 @@ function isVendorLlmSubNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
 }
 
+/** MCP registry nodes talk via the MCP SDK's own transport, not n8n's HTTP helper — the mock can't reach them, so their root must stay pinned. */
+function isMcpRegistryNode(nodeType: string): boolean {
+	return nodeType.startsWith('@n8n/mcp-registry.');
+}
+
 /** Non-empty `options.baseURL` on the LangChain OpenAI node beats credentials.url — credential rewrite isn't enough. */
 function hasUnsafeBaseUrlOverride(node: INode): boolean {
 	if (node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
@@ -106,6 +111,158 @@ export function identifyNodesForPinData(
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
 		return false;
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Binary dependency detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Trigger-side binary requirement: a downstream node consumes a binary
+ * attachment from the trigger, either by expression (`$binary.data`) or
+ * because its node type is known to read binary input.
+ */
+export interface TriggerBinaryRequirement {
+	/** Binary map key on the pinned item (defaults to `data`). */
+	propertyName: string;
+	/** MIME type for the synthesized fixture. */
+	contentType: string;
+	/** Filename for the synthesized fixture. */
+	filename: string;
+}
+
+/**
+ * Node types that ALWAYS read a binary attachment from their upstream item,
+ * regardless of resource/operation. Service-style nodes (Telegram, Slack, S3,
+ * Drive, Dropbox) only consume binary on specific operations — those flows
+ * always reference `$binary.<key>` in their parameters, so the expression
+ * detector below handles them without needing entries here.
+ */
+const BINARY_CONSUMER_NODE_TYPES: Record<string, Omit<TriggerBinaryRequirement, 'propertyName'>> = {
+	'n8n-nodes-base.extractFromFile': { contentType: 'application/pdf', filename: 'input.pdf' },
+	'n8n-nodes-base.readBinaryFile': {
+		contentType: 'application/octet-stream',
+		filename: 'input.bin',
+	},
+	'n8n-nodes-base.writeBinaryFile': {
+		contentType: 'application/octet-stream',
+		filename: 'input.bin',
+	},
+	'@n8n/n8n-nodes-langchain.documentBinaryInputLoader': {
+		contentType: 'application/pdf',
+		filename: 'input.pdf',
+	},
+};
+
+/**
+ * Preferred content-type defaults when an upload-flavored node references
+ * `$binary.<key>` but the expression alone doesn't say what MIME to use.
+ * Looked up ONLY after a positive expression match — never on node type alone.
+ */
+const PREFERRED_BINARY_DEFAULTS: Record<string, Omit<TriggerBinaryRequirement, 'propertyName'>> = {
+	'n8n-nodes-base.telegram': { contentType: 'audio/ogg', filename: 'voice.ogg' },
+};
+
+const BINARY_EXPRESSION_RE = /\$binary\.([A-Za-z_][\w-]*)/;
+
+/**
+ * Parameter names n8n uses on upload-flavored operations to declare which
+ * binary key on the input item to read from. The literal value is the key
+ * name — there's no `$binary.X` reference because the node looks it up via
+ * `assertBinaryData(itemIndex, binaryPropertyName)` internally.
+ */
+const BINARY_PROPERTY_PARAM_NAMES = new Set([
+	'binaryPropertyName',
+	'binaryProperty',
+	'dataPropertyName',
+	'dataPropertyNameUpload',
+	'binaryDataKey',
+]);
+
+/**
+ * Try to pull a literal string from an n8n expression like `={{ "image" }}` or
+ * `={{ 'image' }}`. Returns undefined when the expression has interpolations or
+ * references — those can't be resolved without an execution context.
+ */
+function extractLiteralFromExpression(value: string): string | undefined {
+	const trimmed = value.slice(1).trim();
+	if (!trimmed.startsWith('{{') || !trimmed.endsWith('}}')) return undefined;
+	const inner = trimmed.slice(2, -2).trim();
+	const m = /^(["'])(.+)\1$/.exec(inner);
+	return m ? m[2] : undefined;
+}
+
+function findBinaryPropertyNameParam(params: unknown): { propertyName: string } | undefined {
+	if (!params || typeof params !== 'object') return undefined;
+	for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+		if (BINARY_PROPERTY_PARAM_NAMES.has(key) && typeof value === 'string' && value.length > 0) {
+			if (!value.startsWith('=')) return { propertyName: value };
+			// `={{ "image" }}` style — extract the literal if we can; otherwise
+			// fall back to `data` (the n8n default) so we still attach SOMETHING
+			// for the upload node to read.
+			const literal = extractLiteralFromExpression(value);
+			return { propertyName: literal ?? 'data' };
+		}
+		if (typeof value === 'object' && value !== null) {
+			const nested = findBinaryPropertyNameParam(value);
+			if (nested) return nested;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Find the binary-attachment requirement for the workflow's trigger, if any
+ * downstream node consumes a binary attachment from it. Walks every node
+ * parameter looking for (a) `$binary.<key>` expressions, (b) literal
+ * `binaryPropertyName: '<key>'` parameters used by upload-flavored operations,
+ * or (c) a node type allowlist (Extract from File, Read Binary File, etc.).
+ *
+ * Returns `undefined` when no downstream consumer reads binary, in which case
+ * the trigger emits only its `json` payload.
+ */
+export function detectBinaryDependencies(
+	workflow: IWorkflowBase,
+): TriggerBinaryRequirement | undefined {
+	let match: { propertyName: string; nodeType: string } | undefined;
+
+	for (const node of workflow.nodes) {
+		if (node.disabled) continue;
+
+		const serialized = JSON.stringify(node.parameters ?? {});
+		const exprMatch = BINARY_EXPRESSION_RE.exec(serialized);
+		if (exprMatch && !match) {
+			match = { propertyName: exprMatch[1], nodeType: node.type };
+			continue;
+		}
+
+		// Literal `binaryPropertyName: 'image'` style — common on upload operations
+		// (Slack files.upload, S3 PutObject, Telegram sendVoice, etc.) where the
+		// node reads `binary[<value>]` from the input item directly.
+		const paramMatch = findBinaryPropertyNameParam(node.parameters);
+		if (paramMatch && !match) {
+			match = { propertyName: paramMatch.propertyName, nodeType: node.type };
+		}
+	}
+
+	if (match) {
+		const defaults = BINARY_CONSUMER_NODE_TYPES[match.nodeType] ??
+			PREFERRED_BINARY_DEFAULTS[match.nodeType] ?? {
+				contentType: 'application/octet-stream',
+				filename: 'input.bin',
+			};
+		return { propertyName: match.propertyName, ...defaults };
+	}
+
+	for (const node of workflow.nodes) {
+		if (node.disabled) continue;
+		const defaults = BINARY_CONSUMER_NODE_TYPES[node.type];
+		if (defaults) {
+			return { propertyName: 'data', ...defaults };
+		}
+	}
+
+	return undefined;
 }
 
 export type AutoPinReason =
@@ -343,6 +500,7 @@ function categorizeSubNodeIncompatibility(
 	sharedSupportedSubNodes: Set<string>,
 ): AutoPinReason | null {
 	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
+	if (isMcpRegistryNode(sourceNode.type)) return 'protocol_binary';
 	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
 		if (sharedSupportedSubNodes.has(sourceNode.name)) return 'shared_vendor_llm_subnode';
 		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;

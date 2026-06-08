@@ -773,7 +773,7 @@ export class SourceControlImportService {
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
 
-		this.redactionEnforcementService.assertPolicyChangeAllowed(
+		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			existingWorkflow?.settings?.redactionPolicy,
 			importedWorkflow.settings?.redactionPolicy,
 		);

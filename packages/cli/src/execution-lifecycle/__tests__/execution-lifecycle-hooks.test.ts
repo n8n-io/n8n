@@ -494,6 +494,35 @@ describe('Execution Lifecycle Hooks', () => {
 		externalHooksTests();
 		statisticsTests();
 
+		it('should include execution source and telemetry metadata in workflow-post-execute events', async () => {
+			const telemetryMetadata = {
+				mockDataSources: ['trigger_input' as const],
+			};
+			const lifecycleHooks = getLifecycleHooksForRegularMain(
+				{
+					executionMode: 'manual',
+					workflowData,
+					pushRef,
+					retryOf,
+					userId,
+					source: 'instance_ai',
+					telemetryMetadata,
+				},
+				executionId,
+			);
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+				executionId,
+				runData: successfulRun,
+				workflow: workflowData,
+				userId,
+				source: 'instance_ai',
+				telemetryMetadata,
+			});
+		});
+
 		it('should setup the correct set of hooks', () => {
 			expect(lifecycleHooks).toBeInstanceOf(ExecutionLifecycleHooks);
 			expect(lifecycleHooks.mode).toBe('manual');
@@ -598,7 +627,7 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
 				expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
-				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					executionId,
 					{ data: runExecutionData, status: 'running' },
 					{ requireNotFinished: true, requireNotCanceled: true },
@@ -944,7 +973,7 @@ describe('Execution Lifecycle Hooks', () => {
 				it('should update execution with proper data', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-					expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 						executionId,
 						expect.objectContaining({
 							finished: true,
@@ -1430,7 +1459,7 @@ describe('Execution Lifecycle Hooks', () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
 				// Worker should save execution data but not metadata
-				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						finished: true,

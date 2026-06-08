@@ -334,12 +334,17 @@ describe('agent-run-reducer', () => {
 
 		it('applies rich render hints to background agent tools', () => {
 			const state = stateWithRun('run-1', 'root');
-			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'build-workflow-with-agent'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-builder', 'build-workflow'));
+			reduceEvent(
+				state,
+				makeToolCall('run-1', 'root', 'tc-legacy-builder', 'build-workflow-with-agent'),
+			);
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-research', 'research-with-agent'));
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-eval-setup', 'eval-setup-with-agent'));
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-skill', 'load_skill'));
 
 			expect(state.toolCallsById['tc-builder'].renderHint).toBe('builder');
+			expect(state.toolCallsById['tc-legacy-builder'].renderHint).toBe('builder');
 			expect(state.toolCallsById['tc-research'].renderHint).toBe('researcher');
 			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 			expect(state.toolCallsById['tc-skill'].renderHint).toBe('skill');

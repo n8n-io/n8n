@@ -191,6 +191,17 @@ import { CreateInstanceAiObservationTables1784000000012 } from '../common/178400
 import { SplitRedactionScopeInCustomRoles1784000000013 } from '../common/1784000000013-SplitRedactionScopeInCustomRoles';
 import { PersistInstanceAiPendingConfirmations1784000000014 } from '../common/1784000000014-PersistInstanceAiPendingConfirmations';
 import { AddSourceWorkflowIdToWorkflow1784000000015 } from '../common/1784000000015-AddSourceWorkflowIdToWorkflow';
+import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1784000000016-UseSlugAsPrimaryKeyInMcpRegistryServer';
+import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
+import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
+import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
+import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
+import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
+import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
+import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
+import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -387,4 +398,15 @@ export const postgresMigrations: Migration[] = [
 	SplitRedactionScopeInCustomRoles1784000000013,
 	PersistInstanceAiPendingConfirmations1784000000014,
 	AddSourceWorkflowIdToWorkflow1784000000015,
+	UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016,
+	AddLastUsedAtToApiKey1784000000017,
+	CreateAgentFilesTable1784000000018,
+	AddCustomTelemetryTagsToProject1784000000019,
+	CreateAgentTaskDefinitionTable1784000000021,
+	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
+	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	AddResourceToOAuthAuthorizationCodes1784000000024,
+	MigrateRedactionEnforcementToFloor1784000000025,
+	AddScopeColumnToOAuthTables1784000000026,
+	CreateWorkflowPublicationOutboxTable1784000000027,
 ];

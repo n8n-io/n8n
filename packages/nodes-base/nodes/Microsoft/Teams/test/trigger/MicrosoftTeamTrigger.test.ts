@@ -217,6 +217,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			};
 			const mockResponse = {
 				status: jest.fn().mockReturnThis(),
+				type: jest.fn().mockReturnThis(),
 				send: jest.fn(),
 			};
 
@@ -225,6 +226,7 @@ describe('Microsoft Teams Trigger Node', () => {
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
 			expect(mockResponse.status).toHaveBeenCalledWith(200);
+			expect(mockResponse.type).toHaveBeenCalledWith('text/plain');
 			expect(mockResponse.send).toHaveBeenCalledWith('validation-token');
 			expect(result.noWebhookResponse).toBe(true);
 		});

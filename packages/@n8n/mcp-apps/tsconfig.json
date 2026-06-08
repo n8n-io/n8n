@@ -1,0 +1,25 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"target": "ES2022",
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"rootDirs": [".", "../../frontend/@n8n/design-system/src"],
+		"types": [
+			"node",
+			"vitest/globals",
+			"vite/client",
+			"unplugin-icons/types/vue",
+			"../../frontend/@n8n/design-system/src/shims-modules.d.ts"
+		],
+		"skipLibCheck": true,
+		"baseUrl": ".",
+		"paths": {
+			"@mcp-apps/*": ["src/*"],
+			"@n8n/design-system*": ["../../frontend/@n8n/design-system/src*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue"]
+}
