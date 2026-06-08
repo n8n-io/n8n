@@ -2145,7 +2145,11 @@ describe('OauthService', () => {
 
 			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-			vi.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+			vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+				'csrf-secret',
+				'base64-state',
+				'state-token',
+			]);
 
 			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
@@ -2172,7 +2176,11 @@ describe('OauthService', () => {
 
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				vi.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+				vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+					'csrf-secret',
+					'base64-state',
+					'state-token',
+				]);
 				browserBindingService.isEnabled.mockReturnValue(true);
 
 				const csrfData: CreateCsrfStateData = {
@@ -2195,7 +2203,11 @@ describe('OauthService', () => {
 
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				vi.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+				vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+					'csrf-secret',
+					'base64-state',
+					'state-token',
+				]);
 				browserBindingService.isEnabled.mockReturnValue(false);
 
 				const csrfData: CreateCsrfStateData = {
@@ -2220,7 +2232,11 @@ describe('OauthService', () => {
 
 				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				vi.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
+				vi.spyOn(service, 'createCsrfState').mockResolvedValue([
+					'csrf-secret',
+					'base64-state',
+					'state-token',
+				]);
 				browserBindingService.isEnabled.mockReturnValue(true);
 				browserBindingService.ensureBindingCookie.mockReturnValue('nonce-value');
 				browserBindingService.computeHash.mockReturnValue('hash-value');

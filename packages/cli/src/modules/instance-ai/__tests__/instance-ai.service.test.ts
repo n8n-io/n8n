@@ -340,9 +340,7 @@ function createBackgroundTaskFollowUpService({
 	service.maybeStartWorkflowVerificationFollowUp = vi.fn(
 		async (_user: User, _task: ManagedBackgroundTask) => false,
 	);
-	service.maybeStartWorkflowSetupFollowUp = vi.fn(
-		async (_user: User, _threadId: string) => false,
-	);
+	service.maybeStartWorkflowSetupFollowUp = vi.fn(async (_user: User, _threadId: string) => false);
 	service.queuePendingCheckpointReentry = vi.fn();
 	service.maybeReenterParentCheckpoint = vi.fn(
 		async (_user: User, _threadId: string, _task: ManagedBackgroundTask) => false,
