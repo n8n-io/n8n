@@ -3,6 +3,30 @@ import type { JsonValue } from 'n8n-workflow';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
 
+/**
+ * Extract a human-readable answer string from an end-node output value.
+ *
+ * Priority: `output` > `text` > `response` > single-key object value > JSON.stringify.
+ * Primitives pass through as String(value); null/undefined → ''.
+ *
+ * Keep in sync with the `endAnswer` n8n expression in buildEvaluationConfigDto.ts.
+ */
+export function extractAnswerText(json: unknown): string {
+	if (json === null || json === undefined) return '';
+	if (typeof json !== 'object') return String(json);
+	const preferred =
+		Reflect.get(json, 'output') ?? Reflect.get(json, 'text') ?? Reflect.get(json, 'response');
+	if (preferred !== undefined && preferred !== null) {
+		return typeof preferred === 'object' ? JSON.stringify(preferred) : String(preferred);
+	}
+	const keys = Object.keys(json);
+	if (keys.length === 1) {
+		const only = Reflect.get(json, keys[0]);
+		return typeof only === 'object' && only !== null ? JSON.stringify(only) : String(only);
+	}
+	return JSON.stringify(json);
+}
+
 export type Column =
 	| {
 			key: string;
