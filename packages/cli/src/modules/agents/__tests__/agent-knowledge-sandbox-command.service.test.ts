@@ -110,6 +110,49 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
 
+	it('rejects reads of the internal manifest directory', async () => {
+		const executeCommand = jest.fn();
+		const workspace = makeWorkspace(executeCommand);
+
+		await expect(
+			service.run(workspace, {
+				command: 'read',
+				file: '.agent-knowledge-internal/manifest.json',
+			}),
+		).rejects.toThrow('Internal knowledge workspace paths are not allowed');
+		expect(executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('rejects searches scoped to the internal directory', async () => {
+		const executeCommand = jest.fn();
+		const workspace = makeWorkspace(executeCommand);
+
+		await expect(
+			service.run(workspace, {
+				command: 'search',
+				pattern: 'corpusSignature',
+				files: ['.agent-knowledge-internal'],
+			}),
+		).rejects.toThrow('Internal knowledge workspace paths are not allowed');
+		expect(executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('allows filenames that merely contain the internal directory name', async () => {
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('internal note\n'));
+		const workspace = makeWorkspace(executeCommand);
+
+		await service.run(workspace, {
+			command: 'read',
+			file: 'notes/.agent-knowledge-internal.txt',
+		});
+
+		expect(executeCommand).toHaveBeenCalledWith(
+			'sed',
+			expect.arrayContaining(['notes/.agent-knowledge-internal.txt']),
+			expect.objectContaining({ cwd: workspace.knowledgeRoot }),
+		);
+	});
+
 	it('truncates stdout without breaking UTF-8', async () => {
 		const workspace = makeWorkspace(
 			jest.fn().mockResolvedValueOnce(commandResult('é'.repeat(40_000))),

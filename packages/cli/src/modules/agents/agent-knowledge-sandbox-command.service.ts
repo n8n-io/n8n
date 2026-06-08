@@ -10,6 +10,7 @@ import type { KnowledgeSandboxWorkspace } from './agent-knowledge-sandbox-worksp
 
 const MAX_OUTPUT_BYTES = 64 * 1024;
 const MAX_READ_RANGE_LINES = 500;
+const KNOWLEDGE_SANDBOX_INTERNAL_SUBDIR = '.agent-knowledge-internal';
 
 @Service()
 export class AgentKnowledgeSandboxCommandService {
@@ -97,6 +98,9 @@ export class AgentKnowledgeSandboxCommandService {
 		}
 		if (normalized === '..' || normalized.startsWith('../')) {
 			throw new Error('Path escapes the knowledge workspace');
+		}
+		if (normalized.split('/').includes(KNOWLEDGE_SANDBOX_INTERNAL_SUBDIR)) {
+			throw new Error('Internal knowledge workspace paths are not allowed');
 		}
 		return normalized;
 	}

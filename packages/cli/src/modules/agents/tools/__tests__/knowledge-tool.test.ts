@@ -267,13 +267,26 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
-	it('skips materialization when the cached manifest is fresh', async () => {
-		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockResolvedValueOnce(undefined);
+	it('skips binary materialization when workspace already contains the expected corpus', async () => {
+		sandboxWorkspaceService.ensureWorkspaceContainsFiles.mockImplementationOnce(
+			async (_workspace, _expected, _materialize) => {},
+		);
 
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 
+		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalledWith(
+			`${projectId}:${agentId}:workspace`,
+			expect.objectContaining({
+				userId,
+				expectedManifest: expect.objectContaining({ corpusSignature: 'sig-test' }),
+			}),
+			expect.any(Function),
+		);
 		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).not.toHaveBeenCalled();
-		expect(commandService.run).toHaveBeenCalled();
+		expect(commandService.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ command: 'search' }),
+		);
 	});
 
 	it('fails before command execution when materialization cannot resolve a file', async () => {

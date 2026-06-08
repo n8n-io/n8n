@@ -110,6 +110,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 			{
 				sandbox: workspace.sandbox,
 				filesystem: workspace.filesystem,
+				storageMode: workspace.storageMode,
 				knowledgeRoot: workspace.knowledgeRoot,
 				internalRoot: workspace.internalRoot,
 				manifestPath: workspace.manifestPath,
@@ -453,8 +454,7 @@ export class AgentKnowledgeSandboxWorkspaceService {
 
 	private async clearStaleWorkspaceState(workspace: KnowledgeSandboxWorkspace): Promise<void> {
 		if (workspace.storageMode === 'daytona-volume') {
-			await this.deleteIfPresent(workspace, workspace.manifestPath, { force: true });
-			await workspace.filesystem.mkdir(workspace.internalRoot, { recursive: true });
+			await this.clearDaytonaVolumeWorkspaceContents(workspace);
 			return;
 		}
 
@@ -464,6 +464,21 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		});
 		await this.deleteIfPresent(workspace, workspace.manifestPath, { force: true });
 		await workspace.filesystem.mkdir(workspace.knowledgeRoot, { recursive: true });
+		await workspace.filesystem.mkdir(workspace.internalRoot, { recursive: true });
+	}
+
+	private async clearDaytonaVolumeWorkspaceContents(
+		workspace: KnowledgeSandboxWorkspace,
+	): Promise<void> {
+		const entries = await workspace.filesystem.readdir(workspace.knowledgeRoot);
+
+		await Promise.all(
+			entries.map(async (entry) => {
+				const childPath = path.join(workspace.knowledgeRoot, entry.name);
+				await this.deleteIfPresent(workspace, childPath, { recursive: true, force: true });
+			}),
+		);
+
 		await workspace.filesystem.mkdir(workspace.internalRoot, { recursive: true });
 	}
 

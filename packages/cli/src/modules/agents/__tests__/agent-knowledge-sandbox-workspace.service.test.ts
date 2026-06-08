@@ -1,3 +1,4 @@
+import type { FileEntry } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
@@ -53,7 +54,7 @@ function makeFilesystem(provider: 'n8n-sandbox' | 'daytona' = 'n8n-sandbox') {
 		moveFile: jest.fn(async () => {}),
 		exists: jest.fn<Promise<boolean>, [string]>(async () => true),
 		rmdir: jest.fn(async () => {}),
-		readdir: jest.fn(async () => []),
+		readdir: jest.fn<Promise<FileEntry[]>, [string]>(async () => []),
 		stat: jest.fn(async () => ({
 			name: 'agent-knowledge',
 			path: '/home/user/workspace/agent-knowledge',
@@ -75,6 +76,18 @@ function makeWorkspace(filesystem: ReturnType<typeof makeFilesystem>) {
 		knowledgeRoot: '/home/user/workspace/agent-knowledge',
 		internalRoot: '/home/user/workspace/.agent-knowledge-internal',
 		manifestPath: '/home/user/workspace/.agent-knowledge-internal/manifest.json',
+	};
+}
+
+function makeDaytonaVolumeWorkspace(filesystem: ReturnType<typeof makeFilesystem>) {
+	return {
+		...makeWorkspace(filesystem),
+		provider: 'daytona' as const,
+		storageMode: 'daytona-volume' as const,
+		workspaceRoot: '/home/daytona/workspace',
+		knowledgeRoot: '/home/daytona/workspace/agent-knowledge',
+		internalRoot: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
+		manifestPath: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal/manifest.json',
 	};
 }
 
@@ -575,26 +588,81 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		]);
 	});
 
-	it('does not delete Daytona volume mount root when clearing stale volume state', async () => {
+	it('skips materialization for fresh Daytona volume manifest and existing files', async () => {
 		const filesystem = makeFilesystem('daytona');
-		const workspace = {
-			...makeWorkspace(filesystem),
-			provider: 'daytona' as const,
-			storageMode: 'daytona-volume' as const,
-			workspaceRoot: '/home/daytona/workspace',
-			knowledgeRoot: '/home/daytona/workspace/agent-knowledge',
-			internalRoot: '/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
-			manifestPath:
-				'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal/manifest.json',
+		const workspace = makeDaytonaVolumeWorkspace(filesystem);
+		const expected = buildExpectedManifest('sig-current');
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({ ...expected, materializedAt: '2026-06-06T12:00:00.000Z' }),
+		);
+		filesystem.exists.mockResolvedValue(true);
+		const materialize = jest.fn(async () => {});
+
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+
+		expect(materialize).not.toHaveBeenCalled();
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
+	});
+
+	it('materializes only missing Daytona volume files when manifest identity is fresh', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const workspace = makeDaytonaVolumeWorkspace(filesystem);
+		const expected = {
+			...buildExpectedManifest('sig-current'),
+			files: [
+				{
+					id: 'file-1',
+					relativePath: 'file-1.txt',
+					fileSizeBytes: 10,
+					binaryDataIdSha1: 'sha1-file-1',
+				},
+				{
+					id: 'file-2',
+					relativePath: 'file-2.txt',
+					fileSizeBytes: 20,
+					binaryDataIdSha1: 'sha1-file-2',
+				},
+			],
 		};
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({ ...expected, materializedAt: '2026-06-06T12:00:00.000Z' }),
+		);
+		filesystem.exists.mockImplementation(async (targetPath) => {
+			return targetPath !== '/home/daytona/workspace/agent-knowledge/file-2.txt';
+		});
+		const materialize = jest.fn(async () => {});
+
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+
+		expect(materialize).toHaveBeenCalledWith([
+			expect.objectContaining({ id: 'file-2', relativePath: 'file-2.txt' }),
+		]);
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
+	});
+
+	it('clears Daytona volume children before rematerializing wrong signature', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const workspace = makeDaytonaVolumeWorkspace(filesystem);
 		const expected = buildExpectedManifest('sig-current');
 		filesystem.readFile.mockResolvedValue(
 			JSON.stringify({
 				...expected,
 				corpusSignature: 'sig-stale',
-				materializedAt: '2026-06-06',
+				materializedAt: '2026-06-06T12:00:00.000Z',
 			}),
 		);
+		filesystem.readdir.mockResolvedValue([
+			{
+				name: 'file-1.txt',
+				type: 'file' as const,
+				size: 10,
+			},
+			{
+				name: '.agent-knowledge-internal',
+				type: 'directory' as const,
+				size: 0,
+			},
+		]);
 		const materialize = jest.fn(async () => {});
 
 		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
@@ -603,8 +671,43 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			workspace.knowledgeRoot,
 			expect.anything(),
 		);
-		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.manifestPath, { force: true });
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/file-1.txt',
+			{ recursive: true, force: true },
+		);
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/agent-knowledge/.agent-knowledge-internal',
+			{ recursive: true, force: true },
+		);
 		expect(filesystem.mkdir).toHaveBeenCalledWith(workspace.internalRoot, { recursive: true });
+		expect(materialize).toHaveBeenCalledWith([
+			expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
+		]);
+	});
+
+	it('does not materialize when Daytona volume root cannot be safely listed for stale cleanup', async () => {
+		const filesystem = makeFilesystem('daytona');
+		const workspace = makeDaytonaVolumeWorkspace(filesystem);
+		const expected = buildExpectedManifest('sig-current');
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				corpusSignature: 'sig-stale',
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		filesystem.readdir.mockRejectedValue(new Error('list failed'));
+		const materialize = jest.fn(async () => {});
+
+		await expect(
+			service.ensureWorkspaceContainsFiles(workspace, expected, materialize),
+		).rejects.toThrow('list failed');
+
+		expect(materialize).not.toHaveBeenCalled();
+		expect(filesystem.deleteFile).not.toHaveBeenCalledWith(
+			workspace.knowledgeRoot,
+			expect.anything(),
+		);
 	});
 
 	it('legacy manifest without corpusSignature materializes required files', async () => {

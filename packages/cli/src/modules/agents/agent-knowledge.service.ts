@@ -87,7 +87,7 @@ export interface KnowledgeSandboxExpectedManifest {
 export interface KnowledgeSandboxMaterializationTarget {
 	sandbox: SandboxInstance;
 	filesystem: SandboxFilesystem;
-	storageMode?: 'sandbox-local' | 'daytona-volume';
+	storageMode: 'sandbox-local' | 'daytona-volume';
 	knowledgeRoot: string;
 	internalRoot: string;
 	manifestPath: string;

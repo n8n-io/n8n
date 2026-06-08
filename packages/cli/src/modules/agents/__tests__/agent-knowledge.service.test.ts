@@ -107,6 +107,7 @@ describe('AgentKnowledgeService', () => {
 		return {
 			sandbox,
 			filesystem,
+			storageMode: 'sandbox-local' as const,
 			knowledgeRoot: '/home/user/workspace/agent-knowledge',
 			internalRoot: '/home/user/workspace/.agent-knowledge-internal',
 			manifestPath: '/home/user/workspace/.agent-knowledge-internal/manifest.json',
@@ -1055,5 +1056,10 @@ describe('AgentKnowledgeService', () => {
 		expect(target.filesystem.deleteFile).not.toHaveBeenCalledWith(target.manifestPath, {
 			force: true,
 		});
+		expect(target.filesystem.writeFile).not.toHaveBeenCalledWith(
+			target.manifestPath,
+			expect.anything(),
+			expect.anything(),
+		);
 	});
 });
