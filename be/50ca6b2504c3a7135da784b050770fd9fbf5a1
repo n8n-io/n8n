@@ -1,0 +1,20 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_090f6766a3b2f4::t_ab83b0bb8fc5cf 4723
+  s_090f6766a3b2f4::t_12988579d91001 4720
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "be50ca6b2504c3a7135da784b050770fd9fbf5a1",
+  "prompts": {},
+  "sessions": {
+    "s_090f6766a3b2f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8911281d-5a8a-49de-8fc2-5a521ee8fad2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
