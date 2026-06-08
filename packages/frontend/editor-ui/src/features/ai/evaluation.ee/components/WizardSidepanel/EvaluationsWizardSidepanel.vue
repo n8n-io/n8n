@@ -24,7 +24,12 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { formatMetricPercent, formatDuration, formatTokens } from '../../evaluation.utils';
+import {
+	formatMetricPercent,
+	formatDuration,
+	formatTokens,
+	extractAnswerText,
+} from '../../evaluation.utils';
 import {
 	CANNED_METRICS,
 	LLM_JUDGE_METRIC_KEYS,
@@ -212,7 +217,7 @@ const latestRunOutputText = computed(() => {
 	const runData = execution.data?.resultData?.runData;
 	const firstItem = runData?.[endName]?.[0]?.data?.main?.[0]?.[0]?.json;
 	if (firstItem === undefined) return undefined;
-	return formatOutputValue(firstItem);
+	return formatOutputValue(extractAnswerText(firstItem));
 });
 
 async function loadExecutionForCase(caseId: string, executionId: string) {
