@@ -4754,9 +4754,6 @@ importers:
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
-      currency-codes:
-        specifier: 2.1.0
-        version: 2.1.0
       eventsource:
         specifier: 2.0.2
         version: 2.0.2
@@ -4769,6 +4766,9 @@ importers:
       fflate:
         specifier: 0.7.4
         version: 0.7.4
+      fresh-currency-codes:
+        specifier: 1.0.0
+        version: 1.0.0
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
@@ -13461,9 +13461,6 @@ packages:
     resolution: {integrity: sha512-NcwPKJgu9DkCH4gQsnjnXuUtPrhLhoNwvIYTTS5rRrsCC/X2flUswtgmeCyV9ePGszXzFReXk5y/CdBxrsAQ8Q==}
     hasBin: true
 
-  currency-codes@2.1.0:
-    resolution: {integrity: sha512-aASwFNP8VjZ0y0PWlSW7c9N/isYTLxK6OCbm7aVuQMk7dWO2zgup9KGiFQgeL9OGL5P/ulvCHcjQizmuEeZXtw==}
-
   d3-color@3.1.0:
     resolution: {integrity: sha512-zg/chbXyeBtMQ1LbD/WSoW2DpC3I0mpmPdW+ynRTj/x2DAWYrIY7qeZIHidozwV24m4iavr15lNwIwLxRmOxhA==}
     engines: {node: '>=12'}
@@ -14707,9 +14704,6 @@ packages:
     resolution: {integrity: sha512-v2ZsoEuVHYy8ZIlYqwPe/39Cy+cFDzp4dXPaxNvkEuouymu+2Jbz0PxpKarJHYJTmv2HWT3O382qY8l4jMWthw==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  first-match@0.0.1:
-    resolution: {integrity: sha512-VvKbnaxrC0polTFDC+teKPTdl2mn6B/KUW+WB3C9RzKDeNwbzfLdnUz3FxC+tnjvus6bI0jWrWicQyVIPdS37A==}
-
   flat-cache@4.0.1:
     resolution: {integrity: sha512-f7ccFPK3SXFHpx15UIGyRJ/FJQctuKZ0zVuN3frBo4HnK3cay9VEW0R6yPYFHC0AgqhukPzKjq22t5DmAyqGyw==}
     engines: {node: '>=16'}
@@ -14787,6 +14781,10 @@ packages:
 
   fraction.js@4.3.7:
     resolution: {integrity: sha512-ZsDfxO51wGAXREY55a7la9LScWpwv9RxIrYABrlvOFBlH/ShPnrtsXeuUIfXKKOVicNxQ+o8JTbJvjS4M89yew==}
+
+  fresh-currency-codes@1.0.0:
+    resolution: {integrity: sha512-1MDqqihiJzvLpqeppt2j4yYgZsM3biOuxGAS6UD/qsYnv/mZGmXCUEj3Yzdji5+i29c/kdNdnh6+gW+8b+YxXg==}
+    engines: {node: '>=22'}
 
   fresh@0.5.2:
     resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
@@ -17716,9 +17714,6 @@ packages:
 
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
-
-  nub@0.0.0:
-    resolution: {integrity: sha512-dK0Ss9C34R/vV0FfYJXuqDAqHlaW9fvWVufq9MmGF2umCuDbd5GRfRD9fpi/LiM0l4ZXf8IBB+RYmZExqCrf0w==}
 
   number-allocator@1.0.14:
     resolution: {integrity: sha512-OrL44UTVAvkKdOdRQZIJpLkAdjXGTRda052sN4sO77bKEzYYqWKMBjQvrJFzqygI99gL6Z4u2xctPW1tB8ErvA==}
@@ -32118,11 +32113,6 @@ snapshots:
       web-tree-sitter: 0.24.3
       yamljs: 0.3.0
 
-  currency-codes@2.1.0:
-    dependencies:
-      first-match: 0.0.1
-      nub: 0.0.0
-
   d3-color@3.1.0: {}
 
   d3-dispatch@3.0.1: {}
@@ -33725,8 +33715,6 @@ snapshots:
       locate-path: 7.2.0
       path-exists: 5.0.0
 
-  first-match@0.0.1: {}
-
   flat-cache@4.0.1:
     dependencies:
       flatted: 3.4.2
@@ -33798,6 +33786,8 @@ snapshots:
 
   fraction.js@4.3.7: {}
 
+  fresh-currency-codes@1.0.0: {}
+
   fresh@0.5.2: {}
 
   fresh@2.0.0: {}
@@ -33815,7 +33805,7 @@ snapshots:
   fs-extra@11.3.0:
     dependencies:
       graceful-fs: 4.2.11
-      jsonfile: 6.1.0
+      jsonfile: 6.2.1
       universalify: 2.0.0
 
   fs-extra@11.3.5:
@@ -33846,7 +33836,7 @@ snapshots:
     dependencies:
       at-least-node: 1.0.0
       graceful-fs: 4.2.11
-      jsonfile: 6.1.0
+      jsonfile: 6.2.1
       universalify: 2.0.0
 
   fs-minipass@2.1.0:
@@ -37581,8 +37571,6 @@ snapshots:
   nth-check@2.1.1:
     dependencies:
       boolbase: 1.0.0
-
-  nub@0.0.0: {}
 
   number-allocator@1.0.14:
     dependencies:

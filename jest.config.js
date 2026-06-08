@@ -36,6 +36,7 @@ const esmDependencies = [
 	'p-retry',
 	'is-network-error',
 	'uuid',
+	'fresh-currency-codes',
 	// Add other ESM dependencies that need to be transformed here
 ];
 
