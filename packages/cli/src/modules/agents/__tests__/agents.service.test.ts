@@ -2710,6 +2710,99 @@ describe('AgentsService', () => {
 			expect(result.missing).toContain('memory.observationalMemory.observerModel.credential');
 		});
 
+		it('flags missing sub-agent difficulty model credentials', async () => {
+			credentialProvider.list.mockResolvedValue([{ id: 'main-cred', type: 'openAiApi' }]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-4o-mini',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					subAgents: {
+						modelsByDifficulty: {
+							high: {
+								model: 'anthropic/claude-sonnet-4-5',
+								credential: 'missing-high-cred',
+							},
+						},
+					},
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('subAgents.modelsByDifficulty.high.credential');
+		});
+
+		it('flags sub-agent difficulty credentials that do not match the model provider', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'anthropic-cred', type: 'anthropicApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-4o-mini',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					subAgents: {
+						modelsByDifficulty: {
+							high: {
+								model: 'openai/gpt-4o-mini',
+								credential: 'anthropic-cred',
+							},
+						},
+					},
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('subAgents.modelsByDifficulty.high.credential');
+		});
+
+		it('accepts valid sub-agent difficulty model credentials', async () => {
+			credentialProvider.list.mockResolvedValue([
+				{ id: 'main-cred', type: 'openAiApi' },
+				{ id: 'low-cred', type: 'openAiApi' },
+				{ id: 'high-cred', type: 'anthropicApi' },
+			]);
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'openai/gpt-4o-mini',
+					credential: 'main-cred',
+					instructions: 'Do stuff',
+					subAgents: {
+						modelsByDifficulty: {
+							low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+							high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+						},
+					},
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).not.toContain('subAgents.modelsByDifficulty.low.credential');
+			expect(result.missing).not.toContain('subAgents.modelsByDifficulty.high.credential');
+		});
+
 		it('flags memory worker credentials that do not match the worker model provider', async () => {
 			credentialProvider.list.mockResolvedValue([
 				{ id: 'main-cred', type: 'openAiApi' },
