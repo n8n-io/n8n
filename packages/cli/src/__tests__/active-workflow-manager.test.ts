@@ -4,7 +4,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
+import type { ActiveWorkflowTriggers, InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionError,
 	INodeExecutionData,
@@ -323,7 +323,7 @@ describe('ActiveWorkflowManager', () => {
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const workflowExecutionService = mock<WorkflowExecutionService>();
 		const eventService = mock<EventService>();
-		const activeWorkflows = mock<ActiveWorkflows>();
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const activationErrorsService = mock<ActivationErrorsService>();
 		const executionService = mock<ExecutionService>();
 		let scopedLogger: Logger;
@@ -332,7 +332,7 @@ describe('ActiveWorkflowManager', () => {
 			jest.clearAllMocks();
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
-			activeWorkflows.remove.mockResolvedValue(true);
+			activeWorkflowTriggers.remove.mockResolvedValue(true);
 			activationErrorsService.register.mockResolvedValue(undefined);
 			executionService.createErrorExecution.mockResolvedValue(undefined);
 
@@ -342,7 +342,7 @@ describe('ActiveWorkflowManager', () => {
 			activeWorkflowManager = new ActiveWorkflowManager(
 				rootLogger,
 				mock(),
-				activeWorkflows,
+				activeWorkflowTriggers,
 				mock(),
 				mock(),
 				nodeTypes,
@@ -501,7 +501,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		describe('emitError', () => {
-			test('removes workflow from activeWorkflows, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
+			test('removes workflow from activeWorkflowTriggers, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
 				const workflowData = mock<WorkflowEntity>({
 					id: 'wf-1',
 					name: 'Test Workflow',
@@ -535,7 +535,7 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emitError(triggerError);
 
-				expect(activeWorkflows.remove).toHaveBeenCalledWith(workflowData.id);
+				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith(workflowData.id);
 				expect(activationErrorsService.register).toHaveBeenCalledWith(
 					workflowData.id,
 					triggerError.message,

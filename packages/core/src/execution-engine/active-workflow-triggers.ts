@@ -20,15 +20,20 @@ import {
 } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors/error-reporter';
-import type { IWorkflowData } from '@/interfaces';
 import { SpanStatus, Tracing } from '@/observability';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
 import { ScheduledTaskManager } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
+import { WorkflowActiveTriggersState } from './workflow-active-triggers-state';
 
+/**
+ * Holds the in-memory state of which "active" triggers (trigger and poll
+ * triggers) have been activated on this specific main instance. Webhook
+ * triggers are not tracked here — they live in the `webhook_entity` table.
+ */
 @Service()
-export class ActiveWorkflows {
+export class ActiveWorkflowTriggers {
 	constructor(
 		private readonly logger: Logger,
 		private readonly scheduledTaskManager: ScheduledTaskManager,
@@ -37,27 +42,27 @@ export class ActiveWorkflows {
 		private readonly tracing: Tracing,
 	) {}
 
-	private activeWorkflows: { [workflowId: string]: IWorkflowData } = {};
+	private activeTriggersByWorkflowId = new Map<string, WorkflowActiveTriggersState>();
 
 	/**
 	 * Returns if the workflow is active in memory.
 	 */
 	isActive(workflowId: string) {
-		return this.activeWorkflows.hasOwnProperty(workflowId);
+		return this.activeTriggersByWorkflowId.has(workflowId);
 	}
 
 	/**
 	 * Returns the IDs of the currently active workflows in memory.
 	 */
 	allActiveWorkflows() {
-		return Object.keys(this.activeWorkflows);
+		return Array.from(this.activeTriggersByWorkflowId.keys());
 	}
 
 	/**
 	 * Returns the workflow data for the given ID if currently active in memory.
 	 */
 	get(workflowId: string) {
-		return this.activeWorkflows[workflowId];
+		return this.activeTriggersByWorkflowId.get(workflowId);
 	}
 
 	/**
@@ -78,7 +83,7 @@ export class ActiveWorkflows {
 	) {
 		const triggerFunctionNodes = workflow.getTriggerNodes();
 
-		const triggerResponses: ITriggerResponse[] = [];
+		const triggers = new WorkflowActiveTriggersState();
 
 		for (const triggerNode of triggerFunctionNodes) {
 			try {
@@ -91,7 +96,7 @@ export class ActiveWorkflows {
 					activation,
 				);
 				if (triggerResponse !== undefined) {
-					triggerResponses.push(triggerResponse);
+					triggers.add(triggerNode.id, triggerResponse);
 				}
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -103,7 +108,7 @@ export class ActiveWorkflows {
 			}
 		}
 
-		this.activeWorkflows[workflowId] = { triggerResponses };
+		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
 		const pollTriggerNodes = workflow.getPollNodes();
 
@@ -122,8 +127,8 @@ export class ActiveWorkflows {
 			} catch (e) {
 				// Do not mark this workflow as active if there are no active or schedule
 				// trigger responses, and any poll trigger activation failed.
-				if (triggerResponses.length === 0) {
-					delete this.activeWorkflows[workflowId];
+				if (triggers.isEmpty) {
+					this.activeTriggersByWorkflowId.delete(workflowId);
 				}
 
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -193,18 +198,18 @@ export class ActiveWorkflows {
 
 		this.scheduledTaskManager.deregisterCrons(workflowId);
 
-		const w = this.activeWorkflows[workflowId];
-		for (const r of w.triggerResponses ?? []) {
+		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
+		for (const r of triggers?.triggerResponses ?? []) {
 			await this.closeTrigger(r, workflowId);
 		}
 
-		delete this.activeWorkflows[workflowId];
+		this.activeTriggersByWorkflowId.delete(workflowId);
 
 		return true;
 	}
 
 	async removeAllNonWebhookTriggerWorkflows() {
-		const activeWorkflowIds = Object.keys(this.activeWorkflows);
+		const activeWorkflowIds = Array.from(this.activeTriggersByWorkflowId.keys());
 
 		if (activeWorkflowIds.length === 0) return;
 
