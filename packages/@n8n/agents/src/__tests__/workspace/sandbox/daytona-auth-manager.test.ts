@@ -2,7 +2,7 @@ const { daytonaInstances } = vi.hoisted(() => ({
 	daytonaInstances: [] as Array<{ config: unknown }>,
 }));
 
-vi.mock('../lazy-daytona', () => {
+vi.mock('../../../workspace/sandbox/lazy-daytona', () => {
 	class Daytona {
 		constructor(public config: unknown) {
 			daytonaInstances.push({ config });
@@ -11,7 +11,7 @@ vi.mock('../lazy-daytona', () => {
 	return { loadDaytona: () => ({ Daytona }) };
 });
 
-import { DaytonaAuthManager } from '../daytona-auth-manager';
+import { DaytonaAuthManager } from '../../../workspace/sandbox/daytona-auth-manager';
 
 function base64url(input: string): string {
 	return Buffer.from(input, 'utf8').toString('base64url');
