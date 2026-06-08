@@ -166,14 +166,14 @@ const isAgentEditingThisWorkflow = computed(() => {
 });
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
-// standalone AI helpers (`false`), and the canvas is read-only (`editing`
-// disabled) while a workflow-builder agent is mutating this workflow. NodeView
-// derives its read-only state from these via useEditorContext().
+// standalone AI helpers (`false`), and forces the canvas read-only while a
+// workflow-builder agent is mutating this workflow. NodeView derives its
+// read-only state from these via useEditorContext().
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
 	askAi: false,
-	editing: !isAgentEditingThisWorkflow.value,
+	readOnly: isAgentEditingThisWorkflow.value,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 </script>

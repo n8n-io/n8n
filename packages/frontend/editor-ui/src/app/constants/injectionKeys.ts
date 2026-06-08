@@ -33,18 +33,21 @@ export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
- * Editor capabilities a host can toggle per editor. Grows over time and is not
- * limited to AI features; `editing` toggles canvas read-only.
+ * AI editor capabilities a host can toggle per editor, using enablement
+ * semantics (an explicit `false` supersedes; omitted or `true` falls back to
+ * the editor's own gating). Grows over time.
  */
-export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi' | 'editing';
+export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
 /**
- * Per-feature enable flags for the current editor (`false` = superseded/off). An
- * explicit `false` hides the feature (or, for `editing`, makes the canvas
- * read-only) on top of the editor's own gating; omitted (or `true`) features
- * fall back to the editor's own gating. A host can only restrict, never grant —
- * a `true` flag cannot enable a feature the instance has turned off. Provided by
- * editor hosts that supersede capabilities — e.g. the Instance AI preview.
+ * Per-editor host overrides. The AI features use enablement semantics
+ * (`false` = superseded/off; omitted or `true` falls back to the editor's own
+ * gating, and a `true` can never grant a feature the instance disabled).
+ * `readOnly` is a direct state flag — `true` forces the canvas read-only on top
+ * of the editor's own gating. Provided by editor hosts that supersede
+ * capabilities — e.g. the Instance AI preview.
  */
-export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>>;
+export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
+	readOnly?: boolean;
+};
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');

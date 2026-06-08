@@ -8,18 +8,18 @@ import { useSettingsStore } from '@/app/stores/settings.store';
  *
  * Editor hosts (e.g. the Instance AI artifact preview) scope their embedded
  * editor by providing `EditorEnabledFeaturesKey` — the capabilities the host
- * supersedes. This composable surfaces them as a uniform set of flags. Hosts can
- * only restrict: an explicit `false` turns a feature off, while omitted (or
- * `true`) features fall back to their store values. When no host provides the
- * key, AI features fall back to their store values and the canvas is editable
- * (`readOnly` is `false`).
+ * supersedes. AI features can only be restricted: an explicit `false` turns one
+ * off, while omitted (or `true`) features fall back to their store values.
+ * `readOnly` is a direct flag — `true` forces the canvas read-only. When no host
+ * provides the key, AI features fall back to their store values and the canvas
+ * is editable (`readOnly` is `false`).
  */
 export function useEditorContext() {
 	const settings = useSettingsStore();
 	const enabledFeatures = inject(EditorEnabledFeaturesKey, null);
 
 	// A host can only restrict: an explicit `false` supersedes the feature;
-	// omitted (or `true`) falls back to the editor's own gating below.
+	// omitted (or `true`) falls back to the store gating below.
 	const isEnabledByHost = (feature: EditorFeature): boolean =>
 		enabledFeatures?.value?.[feature] !== false;
 
@@ -31,8 +31,6 @@ export function useEditorContext() {
 				return settings.isAiBuilderEnabled === true;
 			case 'askAi':
 				return settings.isAskAiEnabled === true;
-			case 'editing':
-				return true;
 		}
 	};
 
@@ -43,6 +41,6 @@ export function useEditorContext() {
 		aiAssistant: featureEnabled('aiAssistant'),
 		aiBuilder: featureEnabled('aiBuilder'),
 		askAi: featureEnabled('askAi'),
-		readOnly: computed(() => !isEnabledByHost('editing')),
+		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
 	};
 }
