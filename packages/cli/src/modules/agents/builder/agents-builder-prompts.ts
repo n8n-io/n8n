@@ -67,6 +67,7 @@ export function getBuilderSkillRoutingSection(): string {
 			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
 		'- `agent-builder-resource-locators`: node-tool dynamic selectors and RLC values. Load it after `get_node_types` when a node parameter is a resource locator, dynamic options field, "Name or ID" selector, stable resource ID such as Linear `teamId`, Slack channel, project/calendar/database/table id, or after a `write_config`/`patch_config` dynamic selector error.',
+		'- `agent-builder-sub-agents`: inline or saved sub-agent delegation, selecting published sub-agents, changing `subAgents.maxChildren`, or configuring inline models by difficulty.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
 	];
@@ -115,9 +116,6 @@ Converse".
   choices from a known small set, or an empty \`options\` array for an open-ended
   question (renders a freeform card). Never add your own "Other" option — the card
   always includes a freeform field.
-- For subagent selection, call \`list_sub_agents\` first, then use
-  \`ask_question\` with \`allowMultiple: true\` when there are published agents
-  the user can choose from.
 - Never call two interactive tools in parallel. The run suspends on the first.
 - Never re-ask a question the user already answered in this thread.
 - After resume, continue with the next concrete tool action. Do not narrate the
@@ -143,39 +141,6 @@ with the \`agent-builder-resource-locators\` skill, \`ask_credential\`, and
 
 Always wrap expressions in \`={{ }}\`. Never pipe AI-chosen node-tool fields
 through \`$json\`; use \`$fromAI\` for those fields instead.`;
-
-export const SUB_AGENTS_SECTION = `\
-## Sub Agents
-
-The target agent can always delegate bounded subtasks through \`delegate_subagent\`.
-
-The target agent can call \`delegate_subagent\` with
-\`subAgentId: "inline"\` without any saved-agent refs. Inline subagents are
-ad-hoc child agents for one-off focused tasks.
-
-\`subAgents.agents\` is only for optional saved/published n8n Agent specialists
-that the target agent may select by id when they are a better fit than an inline
-subagent.
-
-- Do not write a flag to enable or disable delegation; delegation is always
-  available.
-- Add saved subagent refs only when the user asks to use specific published
-  agents, reusable specialists, named helper agents, or saved-agent delegation.
-- Use \`list_sub_agents\` to discover published same-project agents that can be
-  added. Do not write agent ids from memory, prose, or user-entered free text.
-- If published agents are available and the user has not named exact agents,
-  call \`ask_question\` with \`allowMultiple: true\`. Use each option's
-  \`value\` as the returned \`agentId\`, and include descriptions when present.
-- If no published agents are available, do not configure saved subagents. Inline
-  delegation still works without saved-agent refs.
-- Patch selected saved agents into \`subAgents.agents\` as
-  \`{ "agentId": "<returned-agent-id>" }\`. Avoid duplicates.
-- If the resumed values include text that is not one of the listed agent ids,
-  do not persist it as an agent id; ask a follow-up.
-- Do not add custom tools, custom instructions, or custom schema fields to
-  simulate subagents.
-- Preserve existing \`subAgents.agents\` refs unless the user explicitly asks to
-  change saved subagents.`;
 
 export const READ_CONFIG_FRESHNESS_SECTION = `\
 ## Config Freshness
@@ -302,14 +267,6 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
 
-### Enable subagents with saved agents
-1. \`list_sub_agents()\`.
-2. If it returns one or more agents and the user has not named exact ones, call
-   \`ask_question({ allowMultiple: true, ... })\` with those agents as options.
-3. \`read_config()\`.
-4. \`patch_config(...)\` adding selected \`{ "agentId": "<returned-agent-id>" }\`
-   refs to \`/subAgents/agents\`.
-
 ### Add MCP integration: "Connect Notion MCP"
 1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
 2. \`search_mcp_servers({ queries: ["notion"] })\`.
@@ -356,7 +313,6 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		getBuilderSkillRoutingSection(),
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
-		SUB_AGENTS_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
 		WORKFLOW_SECTION,
 		FEW_SHOT_FLOWS_SECTION,

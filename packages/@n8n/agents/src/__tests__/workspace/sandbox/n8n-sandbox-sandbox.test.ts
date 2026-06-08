@@ -1,6 +1,6 @@
 import { SandboxServiceError } from '@n8n/sandbox-client';
 
-import { N8nSandboxServiceSandbox } from '../n8n-sandbox-sandbox';
+import { N8nSandboxServiceSandbox } from '../../../workspace/sandbox/n8n-sandbox-sandbox';
 
 // ---------------------------------------------------------------------------
 // Mocks

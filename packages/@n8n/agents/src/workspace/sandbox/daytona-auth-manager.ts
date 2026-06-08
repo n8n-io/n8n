@@ -1,9 +1,8 @@
 import type { Daytona, DaytonaConfig } from '@daytonaio/sdk';
 import { getJwtExpiry } from '@n8n/utils';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { loadDaytona } from './lazy-daytona';
-import type { Logger } from '../logger';
+import type { Logger } from './logger';
 
 const DEFAULT_REFRESH_SKEW_MS = 5 * 60 * 1000;
 const DECODE_FALLBACK_TTL_MS = 30 * 60 * 1000;
@@ -56,9 +55,7 @@ export class DaytonaAuthManager {
 		const hasStatic = options.staticApiKey !== undefined;
 		const hasCallback = options.getAuthToken !== undefined;
 		if (hasStatic === hasCallback) {
-			throw new UnexpectedError(
-				'DaytonaAuthManager requires exactly one of staticApiKey or getAuthToken',
-			);
+			throw new Error('DaytonaAuthManager requires exactly one of staticApiKey or getAuthToken');
 		}
 		this.options = options;
 		this.now = options.now ?? Date.now;
@@ -77,7 +74,7 @@ export class DaytonaAuthManager {
 		}
 		await this.refresh();
 		if (!this.client) {
-			throw new UnexpectedError('DaytonaAuthManager.refresh did not set a client');
+			throw new Error('DaytonaAuthManager.refresh did not set a client');
 		}
 		return this.client;
 	}

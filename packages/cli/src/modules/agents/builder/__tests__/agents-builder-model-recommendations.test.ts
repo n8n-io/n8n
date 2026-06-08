@@ -118,9 +118,9 @@ describe('builder model recommendations', () => {
 		expect(prompt).toContain('## LLM Selection Guidance');
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
-		expect(prompt).toContain('## Sub Agents');
 		expect(prompt).toContain('Additional specialized builder guidance is available');
 		expect(prompt).toContain('chat integration/trigger or a node/workflow tool');
+		expect(prompt).toContain('agent-builder-sub-agents');
 		expect(prompt).toContain('use Linear node tools for ordinary issue search/create/update');
 		expect(prompt).toContain('agent-builder-resource-locators');
 		expect(prompt).toContain('dynamic selector error');
@@ -142,12 +142,13 @@ describe('builder model recommendations', () => {
 		);
 	});
 
-	it('teaches the builder how to configure subagent delegation', () => {
+	it('routes subagent delegation to the sub-agent builder skill', () => {
 		const prompt = buildPrompt(null);
 
-		expect(prompt).toContain('`delegate_subagent`');
-		expect(prompt).toContain('Use `list_sub_agents` to discover published same-project agents');
-		expect(prompt).toContain('call `ask_question` with `allowMultiple: true`');
+		expect(prompt).toContain('`agent-builder-sub-agents`');
+		expect(prompt).not.toContain('`delegate_subagent`');
+		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
+		expect(prompt).not.toContain('call `ask_question` with `allowMultiple: true`');
 	});
 
 	it('tells the builder to preserve fallback web search on model switches', () => {
@@ -208,6 +209,7 @@ describe('builder model recommendations', () => {
 			'agent-builder-integrations',
 			'agent-builder-mcp',
 			'agent-builder-resource-locators',
+			'agent-builder-sub-agents',
 			'agent-builder-target-skills',
 			'agent-builder-target-tasks',
 		]);

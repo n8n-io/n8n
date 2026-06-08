@@ -562,6 +562,9 @@ describe('SecuritySettings', () => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
 
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
 			await userEvent.click(getByRole('button', { name: 'Enable' }));
 
 			await waitFor(() => {
@@ -615,6 +618,9 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
 
 			await userEvent.click(getByRole('button', { name: 'Disable' }));
 
