@@ -141,6 +141,58 @@ describe('ParameterInputFull.vue', () => {
 		expect(queryByTestId('override-button')).not.toBeInTheDocument();
 	});
 
+	it('should render an existing fromAI override for static options parameters', async () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const { queryByTestId, getByTestId } = renderComponent({
+			props: {
+				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('priorityId', 'Priority value', 'number') }}`,
+				parameter: createTestNodeProperties({
+					displayName: 'Priority',
+					name: 'priorityId',
+					type: 'options',
+					options: [
+						{ name: 'Urgent', value: 1 },
+						{ name: 'No Priority', value: 0 },
+					],
+				}),
+			},
+		});
+
+		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
+		expect(queryByTestId('parameter-input')).not.toBeInTheDocument();
+		expect(queryByTestId('from-ai-override-button')).not.toBeInTheDocument();
+	});
+
+	it('should not render an existing fromAI override for dynamic options parameters', async () => {
+		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: ['Tools'] },
+			},
+		});
+		const { queryByTestId, getByTestId } = renderComponent({
+			props: {
+				value: `={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('teamId', 'Team ID', 'string') }}`,
+				parameter: createTestNodeProperties({
+					displayName: 'Team',
+					name: 'teamId',
+					type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getTeams',
+					},
+				}),
+			},
+		});
+
+		expect(queryByTestId('fromAI-override-field')).not.toBeInTheDocument();
+		expect(getByTestId('parameter-input')).toBeInTheDocument();
+	});
+
 	it('should emit on wrapper hover', async () => {
 		const { getByTestId, emitted } = renderComponent();
 		const wrapper = getByTestId('input-label');
