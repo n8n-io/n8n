@@ -162,4 +162,46 @@ describe('wizardSidepanel.store', () => {
 		expect(store.customChecks).toEqual([]);
 		expect(store.isCustomCheckModalOpen).toBe(false);
 	});
+
+	it('reset() clears all wizard state back to defaults', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+
+		// Set some state
+		store.setStep(2);
+		store.toggleMetric('correctness');
+		store.setAiNodeName('AI Agent');
+		store.setInputValue('input1', 'hello');
+		store.addCustomCheck({ name: 'Check A', expression: '1 === 1' });
+		store.openCustomCheckModal();
+		store.setActiveRunId('run-99');
+		store.setLastWorkflowId('wf-1');
+
+		// Confirm state was applied
+		expect(store.activeStep).toBe(2);
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
+		expect(store.aiNodeName).toBe('AI Agent');
+		expect(store.inputs).toEqual({ input1: 'hello' });
+		expect(store.customChecks).toHaveLength(1);
+		expect(store.isCustomCheckModalOpen).toBe(true);
+		expect(store.activeRunId).toBe('run-99');
+
+		// Reset and assert all back to defaults
+		store.reset();
+
+		expect(store.activeStep).toBe(0);
+		expect(store.selectedMetricKeys).toEqual([]);
+		expect(store.judgeSelectionByMetric).toEqual({});
+		expect(store.aiNodeName).toBe('');
+		expect(store.isSliceMode).toBe(false);
+		expect(store.startNodeName).toBe('');
+		expect(store.endNodeName).toBe('');
+		expect(store.inputs).toEqual({});
+		expect(store.expectedValues).toEqual({});
+		expect(store.customChecks).toEqual([]);
+		expect(store.isCustomCheckModalOpen).toBe(false);
+		expect(store.activeRunId).toBeNull();
+		// lastWorkflowId is bookkeeping that must survive reset so a remount on a
+		// different workflow can still detect the switch.
+		expect(store.lastWorkflowId).toBe('wf-1');
+	});
 });

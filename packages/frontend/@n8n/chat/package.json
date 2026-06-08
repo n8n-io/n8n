@@ -66,5 +66,6 @@
   "files": [
     "README.md",
     "dist"
-  ]
+  ],
+  "license": "LicenseRef-n8n-sustainable-use"
 }
