@@ -62,9 +62,11 @@ properties:
       - `all`: Redact all executions (manual and production).
 
       When the instance has a redaction floor configured, the policy must be equal to
-      or stricter than the floor. Requests that supply a policy weaker than the
-      instance floor are rejected with 422, on both create and update. Omitting this
-      field when creating a workflow seeds it to the instance floor instead.
+      or stricter than the floor. A policy weaker than the floor is rejected with 422
+      on create, and on update when it changes the stored policy; an unchanged
+      pre-existing below-floor policy is preserved (the floor is not applied
+      retroactively). Omitting this field when creating a workflow seeds it to the
+      instance floor instead.
     example: non-manual
   availableInMCP:
     type: boolean
