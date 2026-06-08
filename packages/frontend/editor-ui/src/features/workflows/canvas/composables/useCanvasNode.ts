@@ -56,6 +56,18 @@ export function useCanvasNode() {
 
 	const render = computed(() => data.value.render);
 
+	const isDeprecated = computed(() =>
+		data.value.render.type === CanvasNodeRenderType.Default
+			? Boolean(data.value.render.options.deprecated)
+			: false,
+	);
+
+	const deprecatedReplacementName = computed(() =>
+		data.value.render.type === CanvasNodeRenderType.Default
+			? data.value.render.options.deprecatedReplacementName
+			: undefined,
+	);
+
 	const eventBus = computed(() => node?.eventBus.value);
 
 	// verified community nodes are checked by communityNodeType()
@@ -87,6 +99,8 @@ export function useCanvasNode() {
 		executionWaitingForNext,
 		executionRunning,
 		render,
+		isDeprecated,
+		deprecatedReplacementName,
 		eventBus,
 		isNotInstalledCommunityNode,
 	};

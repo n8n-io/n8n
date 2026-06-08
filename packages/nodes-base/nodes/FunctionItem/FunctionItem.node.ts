@@ -18,6 +18,7 @@ export class FunctionItem implements INodeType {
 		name: 'functionItem',
 		hidden: true,
 		deprecated: true,
+		replacedByNodeType: 'n8n-nodes-base.code',
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,

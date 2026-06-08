@@ -62,7 +62,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -166,13 +166,33 @@ const hasForeignCredential = computed(() => props.foreignCredentials.length > 0)
 const isHomeProjectTeam = computed(
 	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
-const isReadOnly = computed(
-	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
-);
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
+);
+
+const isDeprecated = computed(() => Boolean(nodeType.value?.deprecated));
+
+const replacementNodeType = computed(() =>
+	nodeType.value?.replacedByNodeType
+		? nodeTypesStore.getNodeType(nodeType.value.replacedByNodeType)
+		: null,
+);
+
+const deprecatedNotice = computed(() =>
+	replacementNodeType.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: replacementNodeType.value.displayName },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
+const isReadOnly = computed(
+	() =>
+		props.readOnly ||
+		isDeprecated.value ||
+		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
@@ -216,7 +236,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!nodeType.value || nodeType.value.hidden) {
+	if (!nodeType.value || nodeType.value.hidden || nodeType.value.deprecated) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -652,7 +672,7 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="isEmbeddedInCanvas && node"
 			:node="node"
 			:selected-tab="openPanel"
-			:read-only="readOnly"
+			:read-only="isReadOnly"
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
@@ -706,7 +726,9 @@ function handleSelectAction(params: INodeParameters) {
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="
+				props.hideExecute || !isExecutable || blockUI || !node || !nodeValid || isDeprecated
+			"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
@@ -735,6 +757,14 @@ function handleSelectAction(params: INodeParameters) {
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
+			<N8nCallout
+				v-if="isDeprecated"
+				theme="danger"
+				class="mt-xs"
+				data-test-id="node-deprecated-notice"
+			>
+				{{ deprecatedNotice }}
+			</N8nCallout>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="

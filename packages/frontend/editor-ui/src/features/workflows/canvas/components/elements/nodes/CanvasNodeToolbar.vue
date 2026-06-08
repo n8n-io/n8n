@@ -39,7 +39,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
-const { isDisabled, render, name } = useCanvasNode();
+const { isDisabled, render, name, isDeprecated } = useCanvasNode();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -68,6 +68,7 @@ const classes = computed(() => ({
 const isExecuteNodeVisible = computed(() => {
 	return (
 		(!props.readOnly || props.canExecute) &&
+		!isDeprecated.value &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		(!render.value.options.configuration || isToolNode.value)
@@ -75,7 +76,9 @@ const isExecuteNodeVisible = computed(() => {
 });
 
 const isDisableNodeVisible = computed(() => {
-	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
+	return (
+		!props.readOnly && !isDeprecated.value && render.value.type === CanvasNodeRenderType.Default
+	);
 });
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);

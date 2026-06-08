@@ -1437,6 +1437,41 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('deprecated nodes', () => {
+		const deprecatedType = 'n8n-nodes-base.function';
+		const replacementType = 'n8n-nodes-base.code';
+
+		it('should add a deprecated node unchanged instead of replacing it', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+
+			nodeTypesStore.nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({
+						name: deprecatedType,
+						deprecated: true,
+						replacedByNodeType: replacementType,
+					}),
+				},
+				[replacementType]: { 1: mockNodeTypeDescription({ name: replacementType }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			const added = await addNodes([{ type: deprecatedType }], {});
+
+			// The deprecated node lands on the canvas as-is; it is not swapped for
+			// its replacement (or the No-Op fallback).
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(deprecatedType);
+			expect(added[0].type).toBe(deprecatedType);
+
+			// No "deprecated nodes replaced" warning toast is shown.
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('revertAddNode', () => {
 		it('deletes node if it exists', async () => {
 			const node = createTestNode();

@@ -1138,6 +1138,55 @@ describe('useWorkflowSaving', () => {
 			}
 		});
 
+		it('should not retry autosave when the backend rejects deprecated nodes', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-deprecated-nodes',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+
+			const errorMessage =
+				'Cannot add a new "n8n-nodes-base.function" node ("Code in JavaScript1"): this node type is deprecated. Replace it with the Code node or remove it from the workflow.';
+			// Mirrors the backend DeprecatedNodesError: message + `meta.violations`.
+			const deprecatedNodesError = Object.assign(new Error(errorMessage), {
+				meta: {
+					violations: [
+						{ kind: 'added', nodeName: 'Code in JavaScript1', nodeType: 'n8n-nodes-base.function' },
+					],
+				},
+			});
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(deprecatedNodesError);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.setWorkflowId(workflow.id);
+
+			const uiStore = useUIStore();
+			const saveStore = useWorkflowSaveStore();
+
+			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			// Save failed, but the exponential-backoff retry loop was NOT entered
+			expect(result).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+
+			// Autosave is blocked: scheduling it again without new changes is a no-op
+			autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			// A new change lifts the block and autosave can be scheduled again
+			uiStore.markStateDirty();
+			autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+		});
+
 		it('should not schedule autosave when network is offline', () => {
 			const saveStore = useWorkflowSaveStore();
 

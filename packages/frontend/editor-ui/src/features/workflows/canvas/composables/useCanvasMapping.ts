@@ -128,6 +128,10 @@ export function useCanvasMapping({
 				dirtiness: dirtinessByName.value[node.name],
 				icon,
 				placeholder: node.placeholder,
+				deprecated: Boolean(nodeType?.deprecated),
+				deprecatedReplacementName: nodeType?.replacedByNodeType
+					? nodeTypesStore.getNodeType(nodeType.replacedByNodeType)?.displayName
+					: undefined,
 			},
 		};
 	}
@@ -610,7 +614,9 @@ export function useCanvasMapping({
 					position: { x: node.position[0], y: node.position[1] },
 					data,
 					...additionalNodePropertiesById.value[node.id],
-					draggable: node.draggable,
+					draggable: nodeTypeDescriptionByNodeId.value[node.id]?.deprecated
+						? false
+						: node.draggable,
 				};
 			}),
 		];

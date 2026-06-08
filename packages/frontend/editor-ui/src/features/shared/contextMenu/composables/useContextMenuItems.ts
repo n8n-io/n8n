@@ -92,10 +92,14 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const canDuplicateNode = (node: INode): boolean => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeType) return false;
+		if (nodeType.deprecated) return false;
 		if (NOT_DUPLICATABLE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);
 	};
+
+	const isDeprecatedNode = (node: INode): boolean =>
+		nodeTypesStore.getNodeType(node.type, node.typeVersion)?.deprecated === true;
 
 	const hasPinData = (node: INode): boolean => {
 		return !!workflowDocumentStore?.value?.pinnedDataByNodeName?.[node.name];
@@ -159,7 +163,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				divided: true,
 				label: i18n.baseText('contextMenu.extract', { adjustToNumber: nodes.length }),
 				shortcut: { altKey: true, keys: ['X'] },
-				disabled: isReadOnly.value,
+				disabled: isReadOnly.value || nodes.some(isDeprecatedNode),
 			},
 		];
 
@@ -215,7 +219,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						? i18n.baseText('contextMenu.activate', i18nOptions)
 						: i18n.baseText('contextMenu.deactivate', i18nOptions),
 					shortcut: { keys: ['D'] },
-					disabled: isReadOnly.value,
+					disabled: isReadOnly.value || nodes.some(isDeprecatedNode),
 				},
 				!onlyStickies && {
 					id: 'toggle_pin',
@@ -299,7 +303,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 							{
 								id: 'execute',
 								label: i18n.baseText('contextMenu.test'),
-								disabled: isReadOnly.value || !isExecutable(nodes[0]),
+								disabled: isReadOnly.value || !isExecutable(nodes[0]) || isDeprecatedNode(nodes[0]),
 							},
 							...copyWebhookActions,
 							{
@@ -307,7 +311,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
-								disabled: isReadOnly.value,
+								disabled: isReadOnly.value || isDeprecatedNode(nodes[0]),
 							},
 							{
 								id: 'replace',

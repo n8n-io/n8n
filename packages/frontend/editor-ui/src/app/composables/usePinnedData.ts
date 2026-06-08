@@ -99,7 +99,8 @@ export function usePinnedData(
 		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
 		const dataToPin = getInputDataWithPinned(targetNode);
 
-		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
+		if (!nodeType || nodeType.deprecated || (checkDataEmpty && dataToPin.length === 0))
+			return false;
 
 		const expression = workflowDocumentStore.value?.getExpressionHandler();
 		const outputs = expression

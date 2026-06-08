@@ -265,6 +265,7 @@ describe('useCanvasMapping', () => {
 							options: {
 								configurable: false,
 								configuration: false,
+								deprecated: false,
 								dirtiness: undefined,
 								icon: {
 									badge: undefined,
@@ -420,6 +421,7 @@ describe('useCanvasMapping', () => {
 				options: {
 					configurable: false,
 					configuration: false,
+					deprecated: false,
 					trigger: true,
 					icon: {
 						src: 'http://test.local/nodes/test-node/icon.svg',

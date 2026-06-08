@@ -113,6 +113,8 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
+const isDeprecatedNode = computed(() => activeNodeType.value?.deprecated === true);
+
 const { docsUrl } = useNodeDocsUrl({ nodeType: activeNodeType });
 
 const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
@@ -740,6 +742,7 @@ onBeforeUnmount(() => {
 			>
 				<NDVHeader
 					:class="$style.header"
+					:read-only="isDeprecatedNode"
 					:node-name="activeNode.name"
 					:node-type-name="
 						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
