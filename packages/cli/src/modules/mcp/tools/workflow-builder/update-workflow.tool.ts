@@ -2,6 +2,21 @@ import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/d
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
+import { validateCredentialReferences } from './credential-validation';
+import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
+import {
+	applyOperations,
+	partialUpdateOperationSchema,
+	toWorkflowSlice,
+	type PartialUpdateOperation,
+} from './workflow-operations';
+
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
@@ -12,19 +27,6 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
-import { validateCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
-import { validateDataTableReferencesForUpdate } from './data-table-validation';
-import {
-	applyOperations,
-	partialUpdateOperationSchema,
-	toWorkflowSlice,
-	type PartialUpdateOperation,
-} from './workflow-operations';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -59,6 +61,12 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow update call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
+		),
 	operations: z
 		.array(partialUpdateOperationSchema)
 		.min(1)
@@ -122,7 +130,7 @@ export const createUpdateWorkflowTool = (
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged.',
+			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged. If you used n8n skills while preparing this update, pass their identifiers in skillsUsed.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -135,16 +143,20 @@ export const createUpdateWorkflowTool = (
 	},
 	handler: async ({
 		workflowId,
+		skillsUsed,
 		operations,
 	}: {
 		workflowId: string;
+		skillsUsed?: string[];
 		operations: PartialUpdateOperation[];
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 			parameters: {
 				workflowId,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
 			},

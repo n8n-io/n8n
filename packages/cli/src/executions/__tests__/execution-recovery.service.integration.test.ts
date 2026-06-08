@@ -21,6 +21,7 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
@@ -37,12 +38,14 @@ describe('ExecutionRecoveryService', () => {
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
+	let executionPersistence: ExecutionPersistence;
 	let workflowRepository: WorkflowRepository;
 	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		executionPersistence = Container.get(ExecutionPersistence);
 		workflowRepository = Container.get(WorkflowRepository);
 		globalConfig = Container.get(GlobalConfig);
 
@@ -51,6 +54,7 @@ describe('ExecutionRecoveryService', () => {
 			instanceSettings,
 			push,
 			executionRepository,
+			executionPersistence,
 			globalConfig.executions,
 			workflowRepository,
 			mock(),

@@ -144,6 +144,7 @@ function hookFunctionsWorkflowEvents(
 	userId?: string,
 	projectId?: string,
 	projectName?: string,
+	source?: IWorkflowExecutionDataProcess['source'],
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 ) {
 	const eventService = Container.get(EventService);
@@ -193,6 +194,7 @@ function hookFunctionsWorkflowEvents(
 			userId,
 			projectId,
 			projectName,
+			...(source ? { source } : {}),
 			...(telemetryMetadata ? { telemetryMetadata } : {}),
 		});
 	});
@@ -257,6 +259,7 @@ function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
 	{ pushRef, retryOf }: HooksSetupParameters,
 	userId?: string,
+	source?: IWorkflowExecutionDataProcess['source'],
 ) {
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
@@ -410,6 +413,7 @@ function hookFunctionsPush(
 				data: {
 					executionId,
 					mode: this.mode,
+					source,
 					startedAt: new Date(),
 					retryOf,
 					workflowId,
@@ -431,10 +435,10 @@ function hookFunctionsPush(
 
 		const { status } = fullRunData;
 		if (status === 'waiting') {
-			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
+			pushInstance.send({ type: 'executionWaiting', data: { executionId, source } }, pushRef);
 		} else {
 			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status } },
+				{ type: 'executionFinished', data: { executionId, workflowId, status, source } },
 				pushRef,
 			);
 		}
@@ -742,7 +746,7 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsExternalHooks(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
-		hookFunctionsPush(hooks, optionalParameters, data.userId);
+		hookFunctionsPush(hooks, optionalParameters, data.userId, data.source);
 	}
 
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
@@ -765,6 +769,7 @@ export function getLifecycleHooksForScalingMain(
 		userId,
 		projectId,
 		projectName,
+		source,
 		telemetryMetadata,
 	} = data;
 	const hooks = new ExecutionLifecycleHooks(
@@ -778,7 +783,7 @@ export function getLifecycleHooksForScalingMain(
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
 
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, telemetryMetadata);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsExternalHooks(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
@@ -852,6 +857,7 @@ export function getLifecycleHooksForRegularMain(
 		userId,
 		projectId,
 		projectName,
+		source,
 		telemetryMetadata,
 	} = data;
 	const hooks = new ExecutionLifecycleHooks(
@@ -862,11 +868,11 @@ export function getLifecycleHooksForRegularMain(
 	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, telemetryMetadata);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);
-	hookFunctionsPush(hooks, optionalParameters, userId);
+	hookFunctionsPush(hooks, optionalParameters, userId, source);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);

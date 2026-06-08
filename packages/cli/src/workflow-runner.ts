@@ -40,6 +40,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
@@ -77,6 +78,7 @@ export class WorkflowRunner {
 		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
@@ -602,7 +604,7 @@ export class WorkflowRunner {
 					!jobResult ||
 					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
 				) {
-					const fullExecutionData = await this.executionRepository.findSingleExecution(
+					const fullExecutionData = await this.executionPersistence.findSingleExecution(
 						executionId,
 						{
 							includeData: true,

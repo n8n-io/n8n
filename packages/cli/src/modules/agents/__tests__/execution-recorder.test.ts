@@ -164,7 +164,7 @@ describe('ExecutionRecorder', () => {
 			recorder.record({ type: 'text-delta', id: 't1', delta: 'Choose an option' });
 			recorder.record({
 				type: 'tool-call-suspended',
-				toolName: 'rich_interaction',
+				toolName: 'slack_action',
 				toolCallId: 'tc1',
 			} as StreamChunk);
 
@@ -172,41 +172,6 @@ describe('ExecutionRecorder', () => {
 
 			expect(recorder.suspended).toBe(true);
 			expect(record.timeline.some((e) => e.type === 'suspension')).toBe(true);
-		});
-	});
-
-	describe('display-only rich_interaction', () => {
-		it('records the standard tool-call/tool-result pair with displayOnly marker', () => {
-			const recorder = new ExecutionRecorder();
-
-			const cardPayload = {
-				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
-			};
-
-			// Display-only rich_interaction emits no special framework chunk:
-			// the LLM calls the tool, the handler returns `{ displayOnly: true }`
-			// (which is what gets recorded), and the bridge handles rendering.
-			recorder.record(makeToolCallChunk('rich_interaction', cardPayload, 'tc1'));
-			recorder.record(makeToolResultChunk('rich_interaction', { displayOnly: true }, 'tc1'));
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			const toolEvents = record.timeline.filter((e) => e.type === 'tool-call');
-			expect(toolEvents).toHaveLength(1);
-			if (toolEvents[0].type === 'tool-call') {
-				expect(toolEvents[0].toolCallId).toBe('tc1');
-				expect(toolEvents[0].input).toEqual(cardPayload);
-				expect(toolEvents[0].output).toEqual({ displayOnly: true });
-				expect(toolEvents[0].success).toBe(true);
-			}
-
-			expect(record.toolCalls).toHaveLength(1);
-			expect(record.toolCalls[0]).toEqual({
-				name: 'rich_interaction',
-				input: cardPayload,
-				output: { displayOnly: true },
-			});
 		});
 	});
 
@@ -264,6 +229,70 @@ describe('ExecutionRecorder', () => {
 
 			const record = recorder.getMessageRecord();
 			expect(record.assistantResponse).toBe('Hello world');
+		});
+	});
+
+	describe('secret scrubbing', () => {
+		it('sanitizes tool inputs and outputs in flat records and timeline entries', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(
+				makeToolCallChunk('lookup', {
+					query: 'project status',
+					password: 'plain-secret-password',
+					nested: { apiKey: 'secret-api-key' },
+				}),
+			);
+			recorder.record(
+				makeToolResultChunk('lookup', {
+					result: 'password=hunter2',
+					authorization: 'Bearer secret-token-value',
+				}),
+			);
+
+			const record = recorder.getMessageRecord();
+			const timelineEntry = record.timeline.find((e) => e.type === 'tool-call');
+
+			expect(record.toolCalls[0]).toEqual({
+				name: 'lookup',
+				input: {
+					query: 'project status',
+					password: '[REDACTED]',
+					nested: { apiKey: '[REDACTED]' },
+				},
+				output: {
+					result: '[REDACTED]',
+					authorization: '[REDACTED]',
+				},
+			});
+			expect(timelineEntry).toMatchObject({
+				input: {
+					query: 'project status',
+					password: '[REDACTED]',
+					nested: { apiKey: '[REDACTED]' },
+				},
+				output: {
+					result: '[REDACTED]',
+					authorization: '[REDACTED]',
+				},
+			});
+		});
+
+		it('sanitizes error outputs before recording them', () => {
+			const recorder = new ExecutionRecorder();
+
+			recorder.record(makeToolCallChunk('lookup', { query: 'project status' }));
+			recorder.record({
+				type: 'tool-result',
+				toolCallId: 'tc1',
+				toolName: 'lookup',
+				output: new Error('password=hunter2'),
+				isError: true,
+			});
+
+			const record = recorder.getMessageRecord();
+
+			expect(record.toolCalls[0].output).toEqual({ error: '[REDACTED]' });
 		});
 	});
 });
@@ -422,6 +451,45 @@ describe('ExecutionRecorder — node-tool $fromAI resolution', () => {
 
 		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
 		expect((tc.nodeParameters as Record<string, unknown>).field).toBe('={{ $fromAI(unbalanced ');
+	});
+
+	it('sanitizes resolved node parameters before recording them', () => {
+		const registry = buildToolRegistry([
+			nodeTool('send_secret', 'n8n-nodes-base.http', {
+				password: "={{ $fromAI('password', 'Password', 'string') }}",
+				body: {
+					apiKey: "={{ $fromAI('apiKey', 'API key', 'string') }}",
+					message: "={{ $fromAI('message', 'Message', 'string') }}",
+				},
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'send_secret',
+			input: {
+				password: 'plain-secret-password',
+				apiKey: 'secret-api-key',
+				message: 'visible',
+			},
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'send_secret',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.nodeParameters).toEqual({
+			password: '[REDACTED]',
+			body: {
+				apiKey: '[REDACTED]',
+				message: 'visible',
+			},
+		});
 	});
 });
 

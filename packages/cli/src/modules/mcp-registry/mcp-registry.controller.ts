@@ -27,7 +27,6 @@ function toResponse(server: McpRegistryServer): McpRegistryServerResponse {
 		updatedAt: server.updatedAt,
 		icons: server.icons,
 		websiteUrl: server.websiteUrl,
-		authType: server.authType,
 		credentialType: getMcpRegistryCredentialTypeName(server),
 		tools: server.tools,
 		isOfficial: server.isOfficial,

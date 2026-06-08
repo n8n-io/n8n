@@ -43,6 +43,9 @@ const generateResult: GenerateResult = {
 			],
 		},
 	],
+	getState: () => {
+		throw new Error('not implemented');
+	},
 };
 
 const foregroundResult: SubAgentForegroundResult = {

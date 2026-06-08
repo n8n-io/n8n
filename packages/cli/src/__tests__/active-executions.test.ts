@@ -90,7 +90,7 @@ describe('ActiveExecutions', () => {
 		);
 
 		executionPersistence.create.mockResolvedValue(FAKE_EXECUTION_ID);
-		executionRepository.updateExistingExecution.mockResolvedValue(true);
+		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 		executionRepository.setRunning.mockResolvedValue(new Date());
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
@@ -112,7 +112,7 @@ describe('ActiveExecutions', () => {
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(executionPersistence.create).toHaveBeenCalledTimes(1);
-		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(0);
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
@@ -121,7 +121,7 @@ describe('ActiveExecutions', () => {
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(executionPersistence.create).toHaveBeenCalledTimes(0);
-		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
 	test('Should forward deduplicationKey to executionPersistence.create', async () => {
@@ -141,7 +141,7 @@ describe('ActiveExecutions', () => {
 
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
 		// Mock updateExistingExecution to return false (status check failed)
-		executionRepository.updateExistingExecution.mockResolvedValue(false);
+		executionPersistence.updateExistingExecution.mockResolvedValue(false);
 
 		await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
 			'Execution is already being resumed by another process',
@@ -154,7 +154,7 @@ describe('ActiveExecutions', () => {
 	describe('add capacity release on error', () => {
 		test('Should release capacity when updateExistingExecution returns false', async () => {
 			// Mock updateExistingExecution to return false (another process is resuming)
-			executionRepository.updateExistingExecution.mockResolvedValue(false);
+			executionPersistence.updateExistingExecution.mockResolvedValue(false);
 
 			await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
 				'Execution is already being resumed by another process',

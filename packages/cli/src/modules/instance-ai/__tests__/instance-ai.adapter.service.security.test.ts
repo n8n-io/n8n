@@ -157,6 +157,7 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------
@@ -438,6 +439,23 @@ describe('credentialService.list — scoping', () => {
 			includeGlobal: true,
 		});
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
+
+		// A bound thread can only ever see its own project's usable credentials —
+		// the LLM cannot broaden the list by passing another workflow or project.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
 	});
 });
 

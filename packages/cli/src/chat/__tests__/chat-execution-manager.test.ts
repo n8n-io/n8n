@@ -2,6 +2,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
@@ -20,11 +23,13 @@ import type { ChatMessage } from '../chat-service.types';
 
 describe('ChatExecutionManager', () => {
 	const executionRepository = mockInstance(ExecutionRepository);
+	const executionPersistence = mock<ExecutionPersistence>();
 	const workflowRunner = mockInstance(WorkflowRunner);
 	const ownershipService = mockInstance(OwnershipService);
 	const nodeTypes = mockInstance(NodeTypes);
 	const chatExecutionManager = new ChatExecutionManager(
 		executionRepository,
+		executionPersistence,
 		workflowRunner,
 		ownershipService,
 		nodeTypes,
@@ -69,7 +74,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '1';
 			const execution = { id: executionId, status: 'running' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -83,7 +88,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '2';
 			const execution = { id: executionId, status: 'waiting' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -97,7 +102,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '3';
 			const execution = { id: executionId, status: 'unknown' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -111,7 +116,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '1';
 			const execution = { id: executionId, status: 'completed' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -123,7 +128,7 @@ describe('ChatExecutionManager', () => {
 		it('should return undefined if execution does not exist', async () => {
 			const executionId = 'non-existent';
 
-			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 			const result = await chatExecutionManager.findExecution(executionId);
 
@@ -134,7 +139,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '1';
 			const execution = { id: executionId } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const result = await chatExecutionManager.findExecution(executionId);
 

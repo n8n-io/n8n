@@ -6,11 +6,11 @@ import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
-	ExecutionRepository,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { JSONSchema7 } from 'json-schema';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,8 +18,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -100,7 +98,6 @@ function makeRuntimeReconstructionService(
 		mock<AgentRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
-		mock<ExecutionRepository>(),
 		mock<WorkflowRepository>(),
 		mock<UserRepository>(),
 		mock<WorkflowFinderService>(),
@@ -1551,6 +1548,56 @@ describe('AgentsService', () => {
 		});
 	});
 	describe('executeForWorkflow', () => {
+		const outputSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { answer: { type: 'string' } },
+			required: ['answer'],
+		};
+
+		const makeErrorChunkStream = (errorMessage: string) => {
+			const chunks = [{ type: 'error', error: new Error(errorMessage) }];
+			let idx = 0;
+			return vi.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: vi
+							.fn()
+							.mockImplementation(async () =>
+								idx < chunks.length
+									? { done: false, value: chunks[idx++] }
+									: { done: true, value: undefined },
+							),
+						releaseLock: vi.fn(),
+					}),
+				},
+			});
+		};
+
+		const setupErroringAgent = (errorMessage: string) => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: userId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: {
+					name: 'Test Agent',
+					structuredOutput: vi.fn(),
+					stream: makeErrorChunkStream(errorMessage),
+					close: vi.fn(),
+				},
+				toolRegistry: {},
+			} as never);
+		};
+
 		it('passes execution-scoped persistence for workflow executions', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Test Agent',
@@ -1653,6 +1700,129 @@ describe('AgentsService', () => {
 				user_id: userId,
 				message_count: 1,
 			});
+		});
+
+		it('applies a per-call output schema to the compiled agent', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: userId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			const structuredOutput = vi.fn();
+			const stream = vi.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock: vi.fn(),
+					}),
+				},
+			});
+			// Spy reconstructFromConfig so the real compileIsolated runs and applies
+			// the per-call schema to the builder before it is returned.
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: { name: 'Test Agent', structuredOutput, stream, close: vi.fn() },
+				toolRegistry: {},
+			} as never);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				userId,
+				true,
+				outputSchema,
+			);
+
+			expect(structuredOutput).toHaveBeenCalledWith(outputSchema);
+		});
+
+		it('does not set an output schema when none is provided', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				activeVersionId: versionId,
+				activeVersion: makeAgentHistory({ schema, publishedById: userId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			Container.set(CredentialsService, mock<CredentialsService>());
+
+			const structuredOutput = vi.fn();
+			const stream = vi.fn().mockResolvedValue({
+				stream: {
+					getReader: () => ({
+						read: vi.fn().mockResolvedValue({ done: true, value: undefined }),
+						releaseLock: vi.fn(),
+					}),
+				},
+			});
+			vi.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+				agent: { name: 'Test Agent', structuredOutput, stream, close: vi.fn() },
+				toolRegistry: {},
+			} as never);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				userId,
+				true,
+			);
+
+			expect(structuredOutput).not.toHaveBeenCalled();
+		});
+
+		it('surfaces an actionable error when structured output fails', async () => {
+			setupErroringAgent('No output generated. Check the stream for errors.');
+
+			await expect(
+				service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					userId,
+					true,
+					outputSchema,
+				),
+			).rejects.toThrow('structured output');
+		});
+
+		it('falls back to the generic error when the failure is unrelated to structured output', async () => {
+			setupErroringAgent('Model credential is invalid');
+
+			await expect(
+				service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					userId,
+					true,
+					outputSchema,
+				),
+			).rejects.toThrow('Agent execution failed: Model credential is invalid');
 		});
 	});
 

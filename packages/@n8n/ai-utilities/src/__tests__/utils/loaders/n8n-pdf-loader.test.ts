@@ -225,4 +225,35 @@ describe('N8nPdfLoader', () => {
 			blobType: 'application/pdf',
 		});
 	});
+
+	// `pdf-parse` v2 is backed by pdfjs-dist, which references the `DOMMatrix`
+	// global. Node.js does not provide it, so the loader must polyfill it before
+	// parsing — otherwise pdfjs throws "DOMMatrix is not defined" on PDFs that
+	// exercise that code path.
+	describe('DOMMatrix polyfill', () => {
+		const hadDomMatrix = 'DOMMatrix' in globalThis;
+		const originalDomMatrix: unknown = Reflect.get(globalThis, 'DOMMatrix');
+
+		afterAll(() => {
+			if (hadDomMatrix) {
+				Reflect.set(globalThis, 'DOMMatrix', originalDomMatrix);
+			} else {
+				Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			}
+		});
+
+		it('defines a usable DOMMatrix global before parsing when one is absent', async () => {
+			Reflect.deleteProperty(globalThis, 'DOMMatrix');
+			mockGetText.mockResolvedValue({
+				pages: [{ num: 1, text: 'page' }],
+				text: 'page',
+				total: 1,
+			});
+
+			const loader = new N8nPdfLoader(makeBlob());
+			await loader.load();
+
+			expect(typeof Reflect.get(globalThis, 'DOMMatrix')).toBe('function');
+		});
+	});
 });

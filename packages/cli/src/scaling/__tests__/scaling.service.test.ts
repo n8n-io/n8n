@@ -9,6 +9,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
@@ -65,6 +66,7 @@ describe('ScalingService', () => {
 	const instanceSettings = Container.get(InstanceSettings);
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 
 	let scalingService: ScalingService;
 
@@ -97,6 +99,7 @@ describe('ScalingService', () => {
 			jobProcessor,
 			globalConfig,
 			executionRepository,
+			executionPersistence,
 			instanceSettings,
 			mock(),
 		);
@@ -364,6 +367,7 @@ describe('ScalingService', () => {
 				jobProcessor,
 				globalConfig,
 				mock(),
+				mock(),
 				instanceSettings,
 				mock(),
 			);
@@ -400,6 +404,7 @@ describe('ScalingService', () => {
 				jobProcessor,
 				globalConfig,
 				mock(),
+				mock(),
 				instanceSettings,
 				mock(),
 			);
@@ -430,6 +435,7 @@ describe('ScalingService', () => {
 				activeExecutions,
 				jobProcessor,
 				globalConfig,
+				mock(),
 				mock(),
 				instanceSettings,
 				mock(),

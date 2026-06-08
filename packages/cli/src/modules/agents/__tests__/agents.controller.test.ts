@@ -133,6 +133,7 @@ describe('AgentsController route access scopes', () => {
 		['deleteTask', 'agent:update'],
 		['runTaskNow', 'agent:execute'],
 		['listVersions', 'agent:read'],
+		['chatResume', 'agent:execute'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});

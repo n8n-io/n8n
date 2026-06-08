@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
@@ -13,16 +12,6 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
-import { NodeTypes } from '@/node-types';
-import { applyCors } from '@/utils/cors.util';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { preserveInputOverride } from '@/workflow-helpers';
-
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
@@ -30,6 +19,18 @@ import type {
 	IWebhookResponseCallbackData,
 	WaitingWebhookRequest,
 } from './webhook.types';
+
+import { EventService } from '@/events/event.service';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { NodeTypes } from '@/node-types';
+import { applyCors } from '@/utils/cors.util';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { preserveInputOverride } from '@/workflow-helpers';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -43,7 +44,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	constructor(
 		protected readonly logger: Logger,
 		protected readonly nodeTypes: NodeTypes,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
@@ -92,7 +93,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	protected async getExecution(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId, {
+		return await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});

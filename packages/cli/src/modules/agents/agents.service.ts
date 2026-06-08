@@ -6,7 +6,6 @@ import {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
@@ -23,6 +22,7 @@ import {
 	type ChatIntegrationDescriptor,
 	AgentPersistedMessageDto,
 } from '@n8n/api-types';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -30,6 +30,7 @@ import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import type { JSONSchema7 } from 'json-schema';
 import {
 	deepCopy,
 	OperationalError,
@@ -43,37 +44,39 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+import { generateAgentResourceId } from './utils/agent-resource-id';
+import { streamAgentChunks } from './utils/agent-stream';
+import { describeStructuredOutputError } from './utils/structured-output-error';
 import { AgentExecutionService } from './agent-execution.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
-import { AgentTask } from './entities/agent-task.entity';
 import { Agent } from './entities/agent.entity';
+import { AgentTask } from './entities/agent-task.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { generateAgentResourceId } from './utils/agent-resource-id';
-import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -114,9 +117,13 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/** n8n user ID for in-app preview chat resumes. */
+	userId?: string;
+	/** Defaults to true for external integrations; preview chat passes false. */
+	usePublishedVersion?: boolean;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
-	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
+	 * (e.g. an integration action). Without it, `getRuntime` rebuilds the agent
 	 * with only its configured tools, and `runtime.resume` throws because the
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
@@ -555,6 +562,7 @@ export class AgentsService {
 		// previous=[] makes every persisted integration an addition.
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
+			// eslint-disable-next-line import-x/no-cycle
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 			await Container.get(ChatIntegrationService)
 				.syncToConfig(agent, [], credentialIntegrations)
@@ -604,10 +612,11 @@ export class AgentsService {
 		// Drop any live chat-integration connections so webhook endpoints stop
 		// accepting events immediately — before the 30-minute TTL would have expired.
 		// Lazy import avoids the circular DI dependency (ChatIntegrationService → AgentsService).
-
+		// eslint-disable-next-line import-x/no-cycle
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
 
+		// eslint-disable-next-line import-x/no-cycle
 		const { AgentTaskService } = await import('./agent-task.service');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)
@@ -756,6 +765,7 @@ export class AgentsService {
 		this.clearRuntimes(agentId);
 
 		try {
+			// eslint-disable-next-line import-x/no-cycle
 			const { AgentTaskService } = await import('./agent-task.service');
 			await Container.get(AgentTaskService).requestReconcile(agentId);
 		} catch (error) {
@@ -859,7 +869,16 @@ export class AgentsService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
+		const {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			integrationType,
+			userId,
+			usePublishedVersion = true,
+		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -880,7 +899,8 @@ export class AgentsService {
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			usePublishedVersion: true,
+			...(userId ? { n8nUserId: userId } : {}),
+			usePublishedVersion,
 			integrationType,
 		});
 
@@ -890,19 +910,12 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter({ agentId }),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
+			yield value;
 		}
 
 		// Always record resumed executions — even if they suspend again (chained HITL).
@@ -1255,28 +1268,21 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
-				if (value.type === 'tool-call-suspended') {
-					this.logger.info('Chat: tool-call-suspended chunk received', {
-						agentId,
-						toolCallId: value.toolCallId,
-						toolName: value.toolName,
-					});
-				}
-				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-					for (const chunk of getMaxIterationsChunks()) {
-						yield chunk;
-					}
-				}
-				yield value;
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
+			if (value.type === 'tool-call-suspended') {
+				this.logger.info('Chat: tool-call-suspended chunk received', {
+					agentId,
+					toolCallId: value.toolCallId,
+					toolName: value.toolName,
+				});
 			}
-		} finally {
-			reader.releaseLock();
+			if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+				for (const chunk of getMaxIterationsChunks()) {
+					yield chunk;
+				}
+			}
+			yield value;
 		}
 
 		// Always record — even if suspended, the pre-suspension response text
@@ -1313,6 +1319,7 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId: string,
+		outputSchema?: JSONSchema7,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1324,6 +1331,13 @@ export class AgentsService {
 				credentialProvider,
 				userId,
 			);
+			// Apply a per-call structured-output schema (e.g. supplied by a
+			// workflow node) before the builder is cast to its runtime view. The
+			// isolated agent is freshly built and uncached, so this never leaks
+			// into concurrent chat / integration executions.
+			if (outputSchema) {
+				reconstructed.structuredOutput(outputSchema);
+			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {
 			return {
@@ -1358,6 +1372,7 @@ export class AgentsService {
 		projectId: string,
 		telemetryUserId?: string,
 		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1375,7 +1390,12 @@ export class AgentsService {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
 
-		const compiled = await this.compileIsolated(agentData, credentialProvider, userId);
+		const compiled = await this.compileIsolated(
+			agentData,
+			credentialProvider,
+			userId,
+			outputSchema,
+		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
@@ -1395,29 +1415,22 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
 		});
 
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				recorder.record(value);
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			recorder.record(value);
 
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
+			if (value.type === 'tool-call') {
+				toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+			} else if (value.type === 'tool-result') {
+				const pending = toolInputs.get(value.toolCallId);
+				toolCalls.push({
+					toolName: value.toolName,
+					input: pending?.input ?? null,
+					result: value.output,
+				});
+				toolInputs.delete(value.toolCallId);
+			} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+				structuredOutput = value.structuredOutput;
 			}
-		} finally {
-			reader.releaseLock();
 		}
 
 		const messageRecord = recorder.getMessageRecord();
@@ -1452,11 +1465,22 @@ export class AgentsService {
 		}
 
 		if (messageRecord.error) {
+			if (outputSchema) {
+				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
+				if (structuredOutputError) {
+					throw new OperationalError(structuredOutputError);
+				}
+			}
 			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
 		}
 
 		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError('Agent execution finished with an error.');
+			throw new OperationalError(
+				outputSchema
+					? 'Agent execution finished with an error while producing structured output. ' +
+							"The agent's model or provider may not support JSON Schema structured output."
+					: 'Agent execution finished with an error.',
+			);
 		}
 
 		return {

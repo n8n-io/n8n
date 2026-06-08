@@ -117,29 +117,24 @@ function makeTaskData(
 
 describe('extractExecutionResult', () => {
 	it('returns unknown status when execution is not found', async () => {
-		const repo = createMockExecutionRepository(undefined);
+		createMockExecutionRepository(undefined);
 
-		const result = await extractExecutionResult(
-			repo as unknown as ExecutionRepository,
-			'missing-id',
-		);
+		const result = await extractExecutionResult('missing-id');
 
 		expect(result).toEqual({ executionId: 'missing-id', status: 'unknown' });
 	});
 
 	it('maps "error" status to "error"', async () => {
-		const repo = createMockExecutionRepository(
-			makeExecution({ status: 'error', error: { message: 'boom' } }),
-		);
+		createMockExecutionRepository(makeExecution({ status: 'error', error: { message: 'boom' } }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('error');
 		expect(result.error).toBe('boom');
 	});
 
 	it('combines message, description, and upstream messages when the error is a deserialized NodeOperationError', async () => {
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'error',
 				error: {
@@ -151,11 +146,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			true,
-		);
+		const result = await extractExecutionResult('exec-1', true);
 
 		expect(result.error).toContain('Bad request - please check your parameters');
 		expect(result.error).toContain('Your credit balance is too low');
@@ -164,7 +155,7 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('suppresses upstream description and messages when allowSendingParameterValues is false', async () => {
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'error',
 				error: {
@@ -176,11 +167,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			false,
-		);
+		const result = await extractExecutionResult('exec-1', false);
 
 		expect(result.error).toContain('Bad request - please check your parameters');
 		expect(result.error).not.toContain('Your credit balance is too low');
@@ -189,33 +176,33 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('maps "crashed" status to "error"', async () => {
-		const repo = createMockExecutionRepository(makeExecution({ status: 'crashed' }));
+		createMockExecutionRepository(makeExecution({ status: 'crashed' }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('error');
 	});
 
 	it('maps "running" status to "running"', async () => {
-		const repo = createMockExecutionRepository(makeExecution({ status: 'running' }));
+		createMockExecutionRepository(makeExecution({ status: 'running' }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('running');
 	});
 
 	it('maps "new" status to "running"', async () => {
-		const repo = createMockExecutionRepository(makeExecution({ status: 'new' }));
+		createMockExecutionRepository(makeExecution({ status: 'new' }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('running');
 	});
 
 	it('maps "waiting" status to "waiting"', async () => {
-		const repo = createMockExecutionRepository(makeExecution({ status: 'waiting' }));
+		createMockExecutionRepository(makeExecution({ status: 'waiting' }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('waiting');
 	});
@@ -223,11 +210,9 @@ describe('extractExecutionResult', () => {
 	it('maps "success" status to "success"', async () => {
 		const startedAt = new Date('2026-02-01T10:00:00Z');
 		const stoppedAt = new Date('2026-02-01T10:01:30Z');
-		const repo = createMockExecutionRepository(
-			makeExecution({ status: 'success', startedAt, stoppedAt }),
-		);
+		createMockExecutionRepository(makeExecution({ status: 'success', startedAt, stoppedAt }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('success');
 		expect(result.startedAt).toBe(startedAt.toISOString());
@@ -235,15 +220,15 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('maps any other status (e.g. "canceled") to "success"', async () => {
-		const repo = createMockExecutionRepository(makeExecution({ status: 'canceled' }));
+		createMockExecutionRepository(makeExecution({ status: 'canceled' }));
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult('exec-1');
 
 		expect(result.status).toBe('success');
 	});
 
 	it('includes node output data when includeOutputData is true', async () => {
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -252,11 +237,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			true,
-		);
+		const result = await extractExecutionResult('exec-1', true);
 
 		expect(result.data).toBeDefined();
 		// After prompt-injection hardening, node output is wrapped in boundary tags
@@ -266,7 +247,7 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('excludes node output data when includeOutputData is false', async () => {
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: {
@@ -275,11 +256,7 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			false,
-		);
+		const result = await extractExecutionResult('exec-1', false);
 
 		expect(result.data).toBeUndefined();
 	});
@@ -293,18 +270,14 @@ describe('extractExecutionResult', () => {
 			data: { main: [[]] },
 		} as unknown as ITaskData;
 
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { 'Empty Node': [emptyTaskData] },
 			}),
 		);
 
-		const result = await extractExecutionResult(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			true,
-		);
+		const result = await extractExecutionResult('exec-1', true);
 
 		expect(result.data).toBeUndefined();
 	});
@@ -584,12 +557,9 @@ describe('truncateResultData', () => {
 
 describe('extractExecutionDebugInfo', () => {
 	it('returns unknown status with empty nodeTrace when execution is not found', async () => {
-		const repo = createMockExecutionRepository(undefined);
+		createMockExecutionRepository(undefined);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'missing-id',
-		);
+		const result = await extractExecutionDebugInfo('missing-id');
 
 		expect(result).toEqual({
 			executionId: 'missing-id',
@@ -610,12 +580,9 @@ describe('extractExecutionDebugInfo', () => {
 				HTTP: [makeTaskData([{ response: 'ok' }], { startTime: 1100, executionTime: 200 })],
 			},
 		});
-		const repo = createMockExecutionRepository(execution);
+		createMockExecutionRepository(execution);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-		);
+		const result = await extractExecutionDebugInfo('exec-1');
 
 		expect(result.status).toBe('success');
 		expect(result.nodeTrace).toHaveLength(2);
@@ -651,12 +618,9 @@ describe('extractExecutionDebugInfo', () => {
 				],
 			},
 		});
-		const repo = createMockExecutionRepository(execution);
+		createMockExecutionRepository(execution);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-		);
+		const result = await extractExecutionDebugInfo('exec-1');
 
 		expect(result.status).toBe('error');
 		expect(result.failedNode).toBeDefined();
@@ -688,13 +652,9 @@ describe('extractExecutionDebugInfo', () => {
 				],
 			},
 		});
-		const repo = createMockExecutionRepository(execution);
+		createMockExecutionRepository(execution);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			true,
-		);
+		const result = await extractExecutionDebugInfo('exec-1', true);
 
 		expect(result.failedNode).toBeDefined();
 		expect(result.failedNode!.error).not.toBe('[object Object]');
@@ -718,13 +678,9 @@ describe('extractExecutionDebugInfo', () => {
 				'AI Agent': [makeTaskData([{ chatInput: 'Hello' }], { error: deserialized })],
 			},
 		});
-		const repo = createMockExecutionRepository(execution);
+		createMockExecutionRepository(execution);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			false,
-		);
+		const result = await extractExecutionDebugInfo('exec-1', false);
 
 		expect(result.failedNode!.error).toContain('Bad request');
 		expect(result.failedNode!.error).not.toContain('Your credit balance is too low');
@@ -740,12 +696,9 @@ describe('extractExecutionDebugInfo', () => {
 				'Mystery Node': [makeTaskData([{ foo: 'bar' }])],
 			},
 		});
-		const repo = createMockExecutionRepository(execution);
+		createMockExecutionRepository(execution);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-		);
+		const result = await extractExecutionDebugInfo('exec-1');
 
 		expect(result.nodeTrace).toHaveLength(1);
 		expect(result.nodeTrace[0].type).toBe('unknown');
@@ -759,12 +712,9 @@ describe('extractExecutionDebugInfo', () => {
 				'Node A': [makeTaskData([{ ok: true }], { startTime: 1704067200000, executionTime: 5000 })],
 			},
 		});
-		const repo = createMockExecutionRepository(execution);
+		createMockExecutionRepository(execution);
 
-		const result = await extractExecutionDebugInfo(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-		);
+		const result = await extractExecutionDebugInfo('exec-1');
 
 		const trace = result.nodeTrace[0];
 		expect(trace.startedAt).toBe(new Date(1704067200000).toISOString());
@@ -830,14 +780,9 @@ describe('extractExecutionDebugInfo', () => {
 				failedNodeName: 'Edit Fields',
 				parentRunData: { Trigger: [makeTaskData([{}])] },
 			});
-			const repo = createMockExecutionRepository(execution);
+			createMockExecutionRepository(execution);
 
-			const result = await extractExecutionDebugInfo(
-				repo as unknown as ExecutionRepository,
-				'exec-1',
-				true,
-				debugNodeTypes,
-			);
+			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
 
 			expect(result.failedNode?.name).toBe('Edit Fields');
 			const bundle = result.failedNode?.resolvedParameters;
@@ -866,14 +811,9 @@ describe('extractExecutionDebugInfo', () => {
 				failedNodeName: 'HTTP',
 				parentRunData: { Trigger: [makeTaskData([{}])] },
 			});
-			const repo = createMockExecutionRepository(execution);
+			createMockExecutionRepository(execution);
 
-			const result = await extractExecutionDebugInfo(
-				repo as unknown as ExecutionRepository,
-				'exec-1',
-				true,
-				debugNodeTypes,
-			);
+			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
 
 			const bundle = result.failedNode?.resolvedParameters;
 			expect(bundle?.emptyResolutions).toEqual([
@@ -892,14 +832,9 @@ describe('extractExecutionDebugInfo', () => {
 				failedNodeName: 'Edit Fields',
 				parentRunData: { Trigger: [makeTaskData([{ x: 'hidden' }])] },
 			});
-			const repo = createMockExecutionRepository(execution);
+			createMockExecutionRepository(execution);
 
-			const result = await extractExecutionDebugInfo(
-				repo as unknown as ExecutionRepository,
-				'exec-1',
-				false,
-				debugNodeTypes,
-			);
+			const result = await extractExecutionDebugInfo('exec-1', false, debugNodeTypes);
 
 			expect(result.failedNode?.resolvedParameters).toBeUndefined();
 		});
@@ -913,10 +848,9 @@ describe('extractExecutionDebugInfo', () => {
 				failedNodeName: 'Edit Fields',
 				parentRunData: { Trigger: [makeTaskData([{ x: 'ok' }])] },
 			});
-			const repo = createMockExecutionRepository(execution);
+			createMockExecutionRepository(execution);
 
 			const result = await extractExecutionDebugInfo(
-				repo as unknown as ExecutionRepository,
 				'exec-1',
 				true,
 				// nodeTypes intentionally omitted
@@ -936,14 +870,9 @@ describe('extractExecutionDebugInfo', () => {
 				failedNodeName: 'Missing Node',
 				parentRunData: { Trigger: [makeTaskData([{}])] },
 			});
-			const repo = createMockExecutionRepository(execution);
+			createMockExecutionRepository(execution);
 
-			const result = await extractExecutionDebugInfo(
-				repo as unknown as ExecutionRepository,
-				'exec-1',
-				true,
-				debugNodeTypes,
-			);
+			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
 
 			expect(result.failedNode?.name).toBe('Missing Node');
 			expect(result.failedNode?.resolvedParameters).toBeUndefined();
@@ -977,14 +906,9 @@ describe('extractExecutionDebugInfo', () => {
 					context: { itemIndex: 3 },
 				},
 			});
-			const repo = createMockExecutionRepository(execution);
+			createMockExecutionRepository(execution);
 
-			const result = await extractExecutionDebugInfo(
-				repo as unknown as ExecutionRepository,
-				'exec-1',
-				true,
-				debugNodeTypes,
-			);
+			const result = await extractExecutionDebugInfo('exec-1', true, debugNodeTypes);
 
 			const bundle = result.failedNode?.resolvedParameters;
 			expect(bundle?.itemIndex).toBe(3);
@@ -1046,18 +970,14 @@ describe('search cache key via JSON.stringify', () => {
 describe('extractNodeOutput', () => {
 	it('returns paginated items from a node', async () => {
 		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
 			}),
 		);
 
-		const result = await extractNodeOutput(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			'Set Node',
-		);
+		const result = await extractNodeOutput('exec-1', 'Set Node');
 
 		expect(result.nodeName).toBe('Set Node');
 		expect(result.totalItems).toBe(25);
@@ -1067,19 +987,14 @@ describe('extractNodeOutput', () => {
 
 	it('supports startIndex pagination', async () => {
 		const items = Array.from({ length: 25 }, (_, i) => ({ json: { id: i } }));
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
 			}),
 		);
 
-		const result = await extractNodeOutput(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			'Set Node',
-			{ startIndex: 10, maxItems: 5 },
-		);
+		const result = await extractNodeOutput('exec-1', 'Set Node', { startIndex: 10, maxItems: 5 });
 
 		expect(result.totalItems).toBe(25);
 		expect(result.items).toHaveLength(5);
@@ -1091,19 +1006,14 @@ describe('extractNodeOutput', () => {
 
 	it('caps maxItems at 50', async () => {
 		const items = Array.from({ length: 100 }, (_, i) => ({ json: { id: i } }));
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { 'Set Node': [makeTaskData(items.map((item) => item.json))] },
 			}),
 		);
 
-		const result = await extractNodeOutput(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			'Set Node',
-			{ maxItems: 100 },
-		);
+		const result = await extractNodeOutput('exec-1', 'Set Node', { maxItems: 100 });
 
 		expect(result.items).toHaveLength(50);
 		expect(result.returned).toEqual({ from: 0, to: 50 });
@@ -1111,18 +1021,14 @@ describe('extractNodeOutput', () => {
 
 	it('truncates individual items exceeding 50K chars', async () => {
 		const bigItem = { data: 'x'.repeat(60_000) };
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { 'Big Node': [makeTaskData([bigItem])] },
 			}),
 		);
 
-		const result = await extractNodeOutput(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			'Big Node',
-		);
+		const result = await extractNodeOutput('exec-1', 'Big Node');
 
 		expect(result.totalItems).toBe(1);
 		expect(result.items).toHaveLength(1);
@@ -1134,40 +1040,35 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('throws when execution is not found', async () => {
-		const repo = createMockExecutionRepository(undefined);
+		createMockExecutionRepository(undefined);
 
-		await expect(
-			extractNodeOutput(repo as unknown as ExecutionRepository, 'missing', 'Node'),
-		).rejects.toThrow('Execution missing not found');
+		await expect(extractNodeOutput('missing', 'Node')).rejects.toThrow(
+			'Execution missing not found',
+		);
 	});
 
 	it('throws when node is not in execution data', async () => {
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { 'Other Node': [makeTaskData([{ ok: true }])] },
 			}),
 		);
 
-		await expect(
-			extractNodeOutput(repo as unknown as ExecutionRepository, 'exec-1', 'Missing Node'),
-		).rejects.toThrow('Node "Missing Node" not found in execution exec-1');
+		await expect(extractNodeOutput('exec-1', 'Missing Node')).rejects.toThrow(
+			'Node "Missing Node" not found in execution exec-1',
+		);
 	});
 
 	it('returns empty slice when startIndex is beyond total items', async () => {
-		const repo = createMockExecutionRepository(
+		createMockExecutionRepository(
 			makeExecution({
 				status: 'success',
 				runData: { Node: [makeTaskData([{ id: 1 }])] },
 			}),
 		);
 
-		const result = await extractNodeOutput(
-			repo as unknown as ExecutionRepository,
-			'exec-1',
-			'Node',
-			{ startIndex: 100 },
-		);
+		const result = await extractNodeOutput('exec-1', 'Node', { startIndex: 100 });
 
 		expect(result.totalItems).toBe(1);
 		expect(result.items).toHaveLength(0);
@@ -1318,6 +1219,7 @@ describe('createNodeAdapter', () => {
 
 function createDataTableAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
+	projectId?: string;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1392,7 +1294,9 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
-	const adapter = service.createContext(mockUser).dataTableService;
+	const adapter = service.createContext(mockUser, {
+		projectId: overrides?.projectId,
+	}).dataTableService;
 
 	return {
 		adapter,
@@ -1561,6 +1465,7 @@ describe('createDataTableAdapter', () => {
 		it('allows write operations when instance is not in read-only mode', async () => {
 			const { adapter, mockDataTableService } = createDataTableAdapterForTests({
 				branchReadOnly: false,
+				projectId: 'team-project-id',
 			});
 
 			const result = await adapter.create('Test', []);
@@ -1580,6 +1485,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
+	// Defaults to a bound project (every production run has one). Pass `null` to
+	// simulate a run with no bound project.
+	projectId?: string | null;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -1703,7 +1611,12 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 	);
 
-	const context = service.createContext(mockUser, { threadId: 'thread-1' });
+	const boundProjectId =
+		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
+	const context = service.createContext(mockUser, {
+		threadId: 'thread-1',
+		projectId: boundProjectId,
+	});
 	const adapter = context.workflowService;
 
 	return {
@@ -1789,6 +1702,7 @@ describe('createWorkflowAdapter', () => {
 			filter: {
 				isArchived: false,
 				query: 'Test',
+				projectId: 'team-project-id',
 			},
 		});
 		expect(result).toEqual([
@@ -1808,6 +1722,7 @@ describe('createWorkflowAdapter', () => {
 			take: 50,
 			filter: {
 				isArchived: true,
+				projectId: 'team-project-id',
 			},
 		});
 	});
@@ -1819,30 +1734,30 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
 			take: 50,
-			filter: {},
+			filter: { projectId: 'team-project-id' },
 		});
 	});
 
-	it('defaults to personal project when no projectId provided', async () => {
+	it('creates the workflow in the bound project', async () => {
 		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
 			createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-		expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-1');
+		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
 			['wf-new'],
-			'personal-project-id',
+			'team-project-id',
 			expect.any(Object),
 		);
 	});
 
-	it('creates workflow in specified project when projectId provided', async () => {
+	it('ignores an LLM-supplied projectId and uses the bound project', async () => {
 		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
 			createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-			projectId: 'team-project-id',
+			projectId: 'other-project-id',
 		});
 
 		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
@@ -1853,15 +1768,21 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
-	it('rejects when user lacks workflow:create scope in project', async () => {
+	it('throws when the run has no bound project', async () => {
+		const { adapter } = createWorkflowAdapterForTests({ projectId: null });
+
+		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(
+			'this Instance AI run has no bound project',
+		);
+	});
+
+	it('rejects when the user lacks workflow:create scope in the bound project', async () => {
 		mockedUserHasScopes.mockResolvedValue(false);
 		const { adapter } = createWorkflowAdapterForTests();
 
-		await expect(
-			adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-				projectId: 'restricted-project-id',
-			}),
-		).rejects.toThrow('User does not have the required permissions in this project');
+		await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(
+			'User does not have the required permissions in this project',
+		);
 	});
 
 	it('tracks workflow id when publishing a builder workflow', async () => {
@@ -1894,7 +1815,7 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowRepository.manager.transaction).toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
 			['wf-new'],
-			'personal-project-id',
+			'team-project-id',
 			expect.any(Object),
 		);
 		expect(mockAiBuilderTemporaryWorkflowRepository.mark).toHaveBeenCalledWith(
@@ -2654,8 +2575,8 @@ describe('createExecutionAdapter run()', () => {
 
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
 
+		expect(runData.source).toBe('instance_ai');
 		expect(runData.telemetryMetadata).toEqual({
-			source: 'instance_ai',
 			mockDataSources: ['trigger_input', 'verification_pin_data', 'workflow_pin_data'],
 		});
 	});

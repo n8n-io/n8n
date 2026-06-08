@@ -5,7 +5,6 @@ import type {
 	StreamResult,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -16,18 +15,20 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
 import { AgentsService } from '../agents.service';
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
-import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
-import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { getBuilderRuntimeSkills } from './skills';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { streamAgentChunks } from '../utils/agent-stream';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder-tool-names';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { getBuilderRuntimeSkills } from './skills';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -233,15 +234,8 @@ export class AgentsBuilderService {
 	 * plain reader→generator adapter.
 	 */
 	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			yield value;
 		}
 	}
 

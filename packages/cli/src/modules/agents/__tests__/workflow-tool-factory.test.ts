@@ -94,7 +94,6 @@ function makeContext(workflowForUser: WorkflowEntity | null): WorkflowToolContex
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
-	const executionRepository = mock<ExecutionRepository>();
 
 	// findOne returns a candidate workflow
 	workflowRepository.findOne.mockResolvedValue(workflowForUser ?? makeWorkflow());
@@ -109,7 +108,6 @@ function makeContext(workflowForUser: WorkflowEntity | null): WorkflowToolContex
 		workflowRepository,
 		workflowRunner,
 		activeExecutions,
-		executionRepository,
 		workflowFinderService,
 		userRepository,
 		userId: 'user-1',

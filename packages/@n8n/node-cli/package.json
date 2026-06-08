@@ -75,5 +75,6 @@
   },
   "peerDependencies": {
     "eslint": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

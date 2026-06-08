@@ -1,6 +1,15 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
+
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
@@ -11,19 +20,17 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import { getSdkReferenceHint } from '../workflow-validation.utils';
-import { validateDataTableReferencesForWorkflow } from './data-table-validation';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-
 const inputSchema = {
 	code: z
 		.string()
 		.describe(
 			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+		),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
 		),
 	name: z
 		.string()
@@ -105,7 +112,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -118,22 +125,26 @@ export const createCreateWorkflowFromCodeTool = (
 	},
 	handler: async ({
 		code,
+		skillsUsed,
 		name,
 		description,
 		projectId,
 		folderId,
 	}: {
 		code: string;
+		skillsUsed?: string[];
 		name?: string;
 		description?: string;
 		projectId?: string;
 		folderId?: string;
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 			parameters: {
 				codeLength: code.length,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
