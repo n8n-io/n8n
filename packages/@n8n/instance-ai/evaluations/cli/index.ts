@@ -27,7 +27,7 @@ import {
 	type TargetOutput,
 } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
-import { verifyBuildExpectations } from '../build-expectations/verifier';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
 import {
 	compareBuckets,
@@ -412,7 +412,12 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				transcript: build.transcript,
 				workflowJson: build.workflowJsons[0],
 				metrics: build.conversationMetrics,
-			}).catch(() => []),
+			}).catch((error: unknown) =>
+				allFailVerdicts(
+					expectations,
+					`judge error: ${error instanceof Error ? error.message : String(error)}`,
+				),
+			),
 		);
 	}
 

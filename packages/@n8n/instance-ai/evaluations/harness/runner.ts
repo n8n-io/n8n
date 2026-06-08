@@ -23,7 +23,7 @@ import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
-import { verifyBuildExpectations } from '../build-expectations/verifier';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
@@ -146,7 +146,7 @@ export async function runWorkflowTestCase(
 				logger.warn(
 					`  Build expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
 				);
-				return [];
+				return allFailVerdicts(testCase.buildExpectations!, 'judge error');
 			})
 		: Promise.resolve<BuildExpectationResult[]>([]);
 

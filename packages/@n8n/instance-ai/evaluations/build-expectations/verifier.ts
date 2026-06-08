@@ -120,11 +120,16 @@ export async function verifyBuildExpectations(
 	}
 
 	console.warn(`[expectations] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
-	return expectations.map((expectation) => ({
-		expectation,
-		pass: false,
-		reason: 'judge produced no result',
-	}));
+	return allFailVerdicts(expectations, 'judge produced no result');
+}
+
+/**
+ * All-fail verdicts for every expectation, sharing one reason. Used as the
+ * verifier's own fallback and by callers' `.catch()`, so a judge error still
+ * renders the report section (with the reason) instead of silently dropping it.
+ */
+export function allFailVerdicts(expectations: string[], reason: string): BuildExpectationResult[] {
+	return expectations.map((expectation) => ({ expectation, pass: false, reason }));
 }
 
 // ---------------------------------------------------------------------------
