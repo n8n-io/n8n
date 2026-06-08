@@ -325,7 +325,7 @@ suspension / persistence, repeat until finish or max iterations.
 
 ## HITL and suspend/resume
 
-**HITL (approval):** tools can require approval (`requiresApproval` /
+**HITL (approval):** tools can require approval (`requireApproval` /
 `needsApprovalFn`). The runtime treats approval outcomes like resume data:
 `approve()` / `deny()` delegate to `resume()` with `{ approved: true | false }`.
 
