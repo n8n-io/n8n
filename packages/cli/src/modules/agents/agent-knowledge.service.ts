@@ -71,6 +71,7 @@ export interface KnowledgeSandboxManifest {
 	version: number;
 	agentId: string;
 	projectId: string;
+	corpusSignature: string;
 	files: KnowledgeSandboxManifestFile[];
 	materializedAt: string;
 }
@@ -275,20 +276,20 @@ export class AgentKnowledgeService {
 
 		const manifest = raw as Partial<KnowledgeSandboxManifest>;
 		if (manifest.version !== KNOWLEDGE_SANDBOX_MANIFEST_VERSION) return null;
-		if (typeof manifest.agentId !== 'string') return null;
-		if (typeof manifest.projectId !== 'string') return null;
+		if (!this.isNonEmptyString(manifest.agentId)) return null;
+		if (!this.isNonEmptyString(manifest.projectId)) return null;
+		if (!this.isNonEmptyString(manifest.corpusSignature)) return null;
 		if (!Array.isArray(manifest.files)) return null;
 		if (!manifest.files.every((file) => this.isSandboxManifestFile(file))) return null;
+		if (!this.isNonEmptyString(manifest.materializedAt)) return null;
 
 		return {
 			version: manifest.version,
 			agentId: manifest.agentId,
 			projectId: manifest.projectId,
+			corpusSignature: manifest.corpusSignature,
 			files: manifest.files,
-			materializedAt:
-				typeof manifest.materializedAt === 'string'
-					? manifest.materializedAt
-					: new Date(0).toISOString(),
+			materializedAt: manifest.materializedAt,
 		};
 	}
 
@@ -299,7 +300,8 @@ export class AgentKnowledgeService {
 		return (
 			actual.version === expected.version &&
 			actual.agentId === expected.agentId &&
-			actual.projectId === expected.projectId
+			actual.projectId === expected.projectId &&
+			actual.corpusSignature === expected.corpusSignature
 		);
 	}
 
@@ -346,10 +348,15 @@ export class AgentKnowledgeService {
 		);
 	}
 
+	private isNonEmptyString(value: unknown): value is string {
+		return typeof value === 'string' && value.trim().length > 0;
+	}
+
 	async materializeWorkspaceFilesIntoSandbox(
 		agentId: string,
 		projectId: string,
 		target: KnowledgeSandboxMaterializationTarget,
+		expectedManifest: KnowledgeSandboxExpectedManifest,
 		filesToMaterialize: StoredAgentFile[],
 	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
@@ -383,8 +390,7 @@ export class AgentKnowledgeService {
 		}
 
 		const manifest = this.mergeSandboxManifest(
-			agentId,
-			projectId,
+			expectedManifest,
 			existingManifest,
 			materializedEntries,
 		);
@@ -516,8 +522,7 @@ export class AgentKnowledgeService {
 	}
 
 	private mergeSandboxManifest(
-		agentId: string,
-		projectId: string,
+		expectedManifest: KnowledgeSandboxExpectedManifest,
 		existingManifest: KnowledgeSandboxManifest | null,
 		materializedEntries: KnowledgeSandboxManifestFile[],
 	): KnowledgeSandboxManifest {
@@ -529,9 +534,10 @@ export class AgentKnowledgeService {
 		}
 
 		return {
-			version: KNOWLEDGE_SANDBOX_MANIFEST_VERSION,
-			agentId,
-			projectId,
+			version: expectedManifest.version,
+			agentId: expectedManifest.agentId,
+			projectId: expectedManifest.projectId,
+			corpusSignature: expectedManifest.corpusSignature,
 			files: [...mergedById.values()].sort((left, right) =>
 				left.relativePath.localeCompare(right.relativePath),
 			),

@@ -181,10 +181,14 @@ describe('search_knowledge tool', () => {
 			projectId,
 			['other.txt'],
 		);
+		expect(knowledgeService.buildExpectedSandboxManifest).toHaveBeenCalledWith(agentId, projectId, [
+			expect.objectContaining({ id: 'file-2' }),
+		]);
 		expect(knowledgeService.materializeWorkspaceFilesIntoSandbox).toHaveBeenCalledWith(
 			agentId,
 			projectId,
 			expect.objectContaining({ knowledgeRoot: expect.any(String) }),
+			expect.objectContaining({ corpusSignature: 'sig-test' }),
 			[expect.objectContaining({ id: 'file-2' })],
 		);
 		expect(commandService.run).toHaveBeenCalledWith(

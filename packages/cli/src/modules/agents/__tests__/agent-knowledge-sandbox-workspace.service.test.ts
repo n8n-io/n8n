@@ -420,4 +420,49 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		});
 		expect(materialize).toHaveBeenCalledTimes(1);
 	});
+
+	it('clears unrecoverable workspace state when corpus signature differs', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...expected,
+				corpusSignature: 'sig-stale',
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		const materialize = jest.fn(async () => {});
+
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+
+		expect(filesystem.deleteFile).toHaveBeenCalledWith(workspace.knowledgeRoot, {
+			recursive: true,
+			force: true,
+		});
+		expect(materialize).toHaveBeenCalledWith([
+			expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
+		]);
+	});
+
+	it('legacy manifest without corpusSignature materializes required files', async () => {
+		const filesystem = makeFilesystem();
+		const workspace = makeWorkspace(filesystem);
+		const expected = buildExpectedManifest();
+		const { corpusSignature: _corpusSignature, ...legacyManifest } = expected;
+		filesystem.readFile.mockResolvedValue(
+			JSON.stringify({
+				...legacyManifest,
+				materializedAt: '2026-06-06T12:00:00.000Z',
+			}),
+		);
+		const materialize = jest.fn(async () => {});
+
+		await service.ensureWorkspaceContainsFiles(workspace, expected, materialize);
+
+		expect(filesystem.deleteFile).not.toHaveBeenCalled();
+		expect(materialize).toHaveBeenCalledWith([
+			expect.objectContaining({ id: 'file-1', relativePath: 'file-1.txt' }),
+		]);
+	});
 });

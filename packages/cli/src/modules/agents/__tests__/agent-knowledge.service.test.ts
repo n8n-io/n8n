@@ -640,6 +640,72 @@ describe('AgentKnowledgeService', () => {
 		expect(first.corpusSignature).toBe(second.corpusSignature);
 	});
 
+	const strictManifest = {
+		version: 1,
+		agentId,
+		projectId,
+		corpusSignature: 'sig-current',
+		files: [
+			{
+				id: 'file-1',
+				relativePath: 'file-1.txt',
+				fileSizeBytes: 10,
+				binaryDataIdSha1: 'sha1-file-1',
+			},
+		],
+		materializedAt: '2026-06-06T12:00:00.000Z',
+	};
+
+	it('parseSandboxManifest accepts a strict current manifest', () => {
+		expect(service.parseSandboxManifest(strictManifest)).toEqual(strictManifest);
+	});
+
+	it('parseSandboxManifest rejects legacy manifests without corpusSignature', () => {
+		const { corpusSignature: _corpusSignature, ...legacyManifest } = strictManifest;
+		expect(service.parseSandboxManifest(legacyManifest)).toBeNull();
+	});
+
+	it('parseSandboxManifest rejects manifests without materializedAt', () => {
+		const { materializedAt: _materializedAt, ...manifest } = strictManifest;
+		expect(service.parseSandboxManifest(manifest)).toBeNull();
+	});
+
+	it.each([
+		['agentId', { agentId: '' }],
+		['projectId', { projectId: '' }],
+		['corpusSignature', { corpusSignature: '' }],
+		['materializedAt', { materializedAt: '' }],
+	])('parseSandboxManifest rejects empty %s', (_field, override) => {
+		expect(service.parseSandboxManifest({ ...strictManifest, ...override })).toBeNull();
+	});
+
+	it('isSandboxManifestIdentityValid compares corpusSignature', () => {
+		const storedFiles = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+		const expected = service.buildExpectedSandboxManifest(agentId, projectId, storedFiles);
+		const actual = {
+			...expected,
+			materializedAt: '2026-06-06T12:00:00.000Z',
+		};
+
+		expect(service.isSandboxManifestIdentityValid(actual, expected)).toBe(true);
+		expect(
+			service.isSandboxManifestIdentityValid(
+				{ ...actual, corpusSignature: 'different-signature' },
+				expected,
+			),
+		).toBe(false);
+	});
+
 	it('buildExpectedSandboxManifest changes signature when binary data id changes', () => {
 		const baseStoredFile = {
 			id: 'file-1',
@@ -666,8 +732,7 @@ describe('AgentKnowledgeService', () => {
 		const stream = Readable.from(Buffer.from('stored PDF text'));
 		binaryDataService.getAsStream.mockResolvedValue(stream as never);
 		const target = makeSandboxTarget();
-
-		await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
+		const filesToMaterialize = [
 			{
 				id: 'file-1',
 				agentId,
@@ -677,7 +742,20 @@ describe('AgentKnowledgeService', () => {
 				fileSizeBytes: 19,
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
-		] as never);
+		] as never;
+		const expectedManifest = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			filesToMaterialize,
+		);
+
+		await service.materializeWorkspaceFilesIntoSandbox(
+			agentId,
+			projectId,
+			target,
+			expectedManifest,
+			filesToMaterialize,
+		);
 
 		expect(writeStreamToSandboxFileMock).toHaveBeenCalledWith(
 			target.filesystem,
@@ -706,11 +784,17 @@ describe('AgentKnowledgeService', () => {
 		const stream = Readable.from(Buffer.from('name,age\nAlice,30\n'));
 		binaryDataService.getAsStream.mockResolvedValue(stream as never);
 		const target = makeSandboxTarget();
+		const expectedManifest = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			filesToMaterialize,
+		);
 
 		await service.materializeWorkspaceFilesIntoSandbox(
 			agentId,
 			projectId,
 			target,
+			expectedManifest,
 			filesToMaterialize,
 		);
 
@@ -744,7 +828,7 @@ describe('AgentKnowledgeService', () => {
 			}
 		});
 
-		await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
+		const filesToMaterialize = [
 			{
 				id: 'file-1',
 				agentId,
@@ -763,7 +847,20 @@ describe('AgentKnowledgeService', () => {
 				fileSizeBytes: 17,
 				createdAt: new Date('2026-05-24T12:00:00.000Z'),
 			},
-		] as never);
+		] as never;
+		const expectedManifest = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			filesToMaterialize,
+		);
+
+		await service.materializeWorkspaceFilesIntoSandbox(
+			agentId,
+			projectId,
+			target,
+			expectedManifest,
+			filesToMaterialize,
+		);
 
 		expect(writeStreamToSandboxFileMock).toHaveBeenCalledTimes(2);
 		expect(writeOrder).toEqual(['stream', 'stream', 'manifest']);
@@ -775,6 +872,7 @@ describe('AgentKnowledgeService', () => {
 			version: 1,
 			agentId,
 			projectId,
+			corpusSignature: expectedManifest.corpusSignature,
 			files: [
 				expect.objectContaining({
 					id: 'file-1',
@@ -818,6 +916,7 @@ describe('AgentKnowledgeService', () => {
 		] as never;
 		agentFileRepository.findByAgentId.mockResolvedValue(storedFiles);
 		const target = makeSandboxTarget();
+		const expectedManifest = service.buildExpectedSandboxManifest(agentId, projectId, storedFiles);
 		const existingManifest = service.buildExpectedSandboxManifest(agentId, projectId, [
 			{
 				id: 'file-1',
@@ -839,22 +938,29 @@ describe('AgentKnowledgeService', () => {
 			Readable.from(Buffer.from('country,year\n')) as never,
 		);
 
-		await service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
-			{
-				id: 'file-2',
-				agentId,
-				binaryDataId: 'binary-2',
-				fileName: 'data.csv',
-				mimeType: 'text/csv',
-				fileSizeBytes: 17,
-				createdAt: new Date('2026-05-24T12:00:00.000Z'),
-			},
-		] as never);
+		await service.materializeWorkspaceFilesIntoSandbox(
+			agentId,
+			projectId,
+			target,
+			expectedManifest,
+			[
+				{
+					id: 'file-2',
+					agentId,
+					binaryDataId: 'binary-2',
+					fileName: 'data.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 17,
+					createdAt: new Date('2026-05-24T12:00:00.000Z'),
+				},
+			] as never,
+		);
 
 		const manifestCall = jest
 			.mocked(target.filesystem.writeFile)
 			.mock.calls.find((call) => call[0] === target.manifestPath);
 		const manifest = JSON.parse(String(manifestCall?.[1] ?? ''));
+		expect(manifest.corpusSignature).toBe(expectedManifest.corpusSignature);
 		expect(manifest.files).toHaveLength(2);
 		expect(manifest.files).toEqual(
 			expect.arrayContaining([
@@ -871,18 +977,31 @@ describe('AgentKnowledgeService', () => {
 		writeStreamToSandboxFileMock.mockRejectedValueOnce(error);
 		const target = makeSandboxTarget();
 
+		const filesToMaterialize = [
+			{
+				id: 'file-1',
+				agentId,
+				binaryDataId: 'binary-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 10,
+				createdAt: new Date('2026-05-24T12:00:00.000Z'),
+			},
+		] as never;
+		const expectedManifest = service.buildExpectedSandboxManifest(
+			agentId,
+			projectId,
+			filesToMaterialize,
+		);
+
 		await expect(
-			service.materializeWorkspaceFilesIntoSandbox(agentId, projectId, target, [
-				{
-					id: 'file-1',
-					agentId,
-					binaryDataId: 'binary-1',
-					fileName: 'notes.txt',
-					mimeType: 'text/plain',
-					fileSizeBytes: 10,
-					createdAt: new Date('2026-05-24T12:00:00.000Z'),
-				},
-			] as never),
+			service.materializeWorkspaceFilesIntoSandbox(
+				agentId,
+				projectId,
+				target,
+				expectedManifest,
+				filesToMaterialize,
+			),
 		).rejects.toThrow(error);
 
 		expect(target.filesystem.deleteFile).toHaveBeenCalledWith(

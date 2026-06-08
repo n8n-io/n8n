@@ -134,6 +134,7 @@ export function createSearchKnowledgeTool({
 									agentId,
 									projectId,
 									workspace,
+									expectedManifest,
 									filesToMaterialize,
 								);
 							},
