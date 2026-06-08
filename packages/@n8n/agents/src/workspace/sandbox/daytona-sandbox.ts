@@ -8,10 +8,10 @@ import type {
 	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
-import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
-import { BaseSandbox } from './base-sandbox';
 import { randomUUID } from 'node:crypto';
 
+import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import { BaseSandbox } from './base-sandbox';
 import { DaytonaAuthManager } from './daytona-auth-manager';
 import { loadDaytona } from './lazy-daytona';
 import type { ErrorReporter, Logger } from './logger';

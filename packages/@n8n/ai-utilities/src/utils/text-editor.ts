@@ -32,6 +32,13 @@ export interface TextEditorResult {
 	content: string;
 }
 
+export class EmptyOldStrError extends Error {
+	constructor() {
+		super('old_str cannot be empty. Provide the exact text to replace.');
+		this.name = 'EmptyOldStrError';
+	}
+}
+
 export class NoMatchFoundError extends Error {
 	constructor(_searchStr: string, nearMatchContext?: string) {
 		const base =
@@ -196,6 +203,9 @@ export function parseStrReplacements(raw: unknown): StrReplacement[] {
 				`replacements[${i}] is missing a valid "old_str" string. Each replacement must have {old_str: string, new_str: string}.`,
 			);
 		}
+		if (item.old_str.length === 0) {
+			throw new EmptyOldStrError();
+		}
 		if (typeof item.new_str !== 'string') {
 			throw new Error(
 				`replacements[${i}] is missing a valid "new_str" string. Each replacement must have {old_str: string, new_str: string}.`,
@@ -249,6 +259,7 @@ export class TextEditorDocument {
 
 		for (let i = 0; i < replacements.length; i++) {
 			const { old_str, new_str } = replacements[i];
+			this.assertNonEmptyOldStr(old_str);
 			const preview = truncatePreview(old_str);
 			const count = this.countOccurrences(this.text, old_str);
 
@@ -363,6 +374,7 @@ export class TextEditorDocument {
 		}
 
 		const { old_str, new_str } = command;
+		this.assertNonEmptyOldStr(old_str);
 		const count = this.countOccurrences(this.text, old_str);
 
 		if (count === 0) {
@@ -401,6 +413,12 @@ export class TextEditorDocument {
 		this.text = lines.join('\n');
 
 		return 'Text inserted successfully.';
+	}
+
+	private assertNonEmptyOldStr(oldStr: string): void {
+		if (oldStr.length === 0) {
+			throw new EmptyOldStrError();
+		}
 	}
 
 	private countOccurrences(text: string, search: string): number {

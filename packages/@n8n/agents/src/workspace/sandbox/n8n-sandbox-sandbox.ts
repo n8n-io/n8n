@@ -1,8 +1,9 @@
-import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
-import { BaseSandbox } from './base-sandbox';
 import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+
+import { BaseSandbox } from './base-sandbox';
+import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
 
 export interface N8nSandboxServiceSandboxOptions {
 	id?: string;
