@@ -38,6 +38,26 @@
 								"address": "newone@example.com"
 							}
 						]
+					},
+					"orgUnitPath": "/Sales",
+					"recoveryEmail": "recovery@example.com",
+					"organizationUi": {
+						"organizationValues": [
+							{
+								"name": "Acme",
+								"title": "Engineer",
+								"type": "work",
+								"primary": true
+							}
+						]
+					},
+					"relationsUi": {
+						"relationsValues": [
+							{
+								"type": "manager",
+								"value": "boss@example.com"
+							}
+						]
 					}
 				}
 			},

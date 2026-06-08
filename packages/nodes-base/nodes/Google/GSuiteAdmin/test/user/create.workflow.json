@@ -32,6 +32,17 @@
 						]
 					},
 					"roles": ["groupsAdmin"],
+					"orgUnitPath": "/Sales",
+					"recoveryEmail": "recovery@example.com",
+					"organizationUi": {
+						"organizationValues": [
+							{
+								"name": "Acme",
+								"title": "Engineer",
+								"type": "work"
+							}
+						]
+					},
 					"customFields": {
 						"fieldValues": [
 							{

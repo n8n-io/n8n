@@ -15,6 +15,7 @@ jest.mock('../GenericFunctions', () => ({
 	})),
 	googleApiRequest: jest.fn(),
 	googleApiRequestAllItems: jest.fn(),
+	mapUserExtraFields: jest.fn(),
 }));
 
 const node = new GSuiteAdmin();
