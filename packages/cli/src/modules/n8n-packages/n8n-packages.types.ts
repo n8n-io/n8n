@@ -7,11 +7,11 @@ export type CredentialMissingMode = 'must-preexist';
 
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
-	/** Creates a new version of the same workflow if a conflict occurs. */
+	/** Updates existing workflows with matching sourceWorkflowId; otherwise creates a new workflow. */
 	NewVersion: 'new-version',
-	/** Fails the import immediately. */
+	/** Fails the import if any matched workflow already exists in the target project. */
 	Fail: 'fail',
-	/** Skips the current workflow and moves to the next one to import. */
+	/** Leaves matched workflows unchanged; creates the rest of the workflows in the package. */
 	Skip: 'skip',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */

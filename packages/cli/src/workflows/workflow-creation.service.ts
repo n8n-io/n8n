@@ -89,6 +89,8 @@ export class WorkflowCreationService {
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 
+		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
+
 		await validateEntity(newWorkflow);
 
 		if (tagIds?.length && !this.globalConfig.tags.disabled) {
