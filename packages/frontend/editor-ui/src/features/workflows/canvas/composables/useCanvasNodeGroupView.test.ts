@@ -46,7 +46,6 @@ describe('useCanvasNodeGroupView', () => {
 			// mounts, so the SET event is what brings collapse state into
 			// agreement with the loaded workflow.
 			const { nodeGroups, view } = setup();
-			expect(view.isGroupCollapsed('g1')).toBe(false);
 
 			nodeGroups.setNodeGroups([
 				{ id: 'g1', name: 'A', nodeIds: ['a'] },
@@ -57,13 +56,14 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g2')).toBe(true);
 		});
 
-		it('drops previously-known groups from collapsedIds when SET replaces them', () => {
+		it('clears prior expand state when SET replaces the groups', () => {
 			const { nodeGroups, view } = setup([{ id: 'gOld', name: 'Old', nodeIds: ['a'] }]);
-			expect(view.isGroupCollapsed('gOld')).toBe(true);
+			view.toggleCollapsed('gOld');
+			expect(view.isGroupCollapsed('gOld')).toBe(false);
 
 			nodeGroups.setNodeGroups([{ id: 'gNew', name: 'New', nodeIds: ['b'] }]);
 
-			expect(view.isGroupCollapsed('gOld')).toBe(false);
+			expect(view.isGroupCollapsed('gOld')).toBe(true);
 			expect(view.isGroupCollapsed('gNew')).toBe(true);
 		});
 	});
@@ -87,13 +87,14 @@ describe('useCanvasNodeGroupView', () => {
 	});
 
 	describe('deleteGroup', () => {
-		it('removes the deleted id from collapsedIds', () => {
+		it('removes the deleted id from expandedIds', () => {
 			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
-			expect(view.isGroupCollapsed('g1')).toBe(true);
+			view.toggleCollapsed('g1');
+			expect(view.expandedIds.value.has('g1')).toBe(true);
 
 			nodeGroups.deleteGroup('g1');
 
-			expect(view.isGroupCollapsed('g1')).toBe(false);
+			expect(view.expandedIds.value.has('g1')).toBe(false);
 		});
 	});
 
@@ -163,7 +164,7 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g2')).toBe(true);
 		});
 
-		it('expandAll clears collapsedIds', () => {
+		it('expandAll adds every known group to expandedIds', () => {
 			const { view } = setup([
 				{ id: 'g1', name: 'A', nodeIds: ['a'] },
 				{ id: 'g2', name: 'B', nodeIds: ['b'] },

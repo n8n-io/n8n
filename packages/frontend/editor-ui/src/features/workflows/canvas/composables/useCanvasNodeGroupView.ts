@@ -18,44 +18,46 @@ export interface UseCanvasNodeGroupViewDeps {
  * not dirty the document, does not enter undo, and is not serialized.
  */
 export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
-	const collapsedIds = ref<Set<string>>(new Set(deps.allGroups.value.map((g) => g.id)));
+	const expandedIds = ref<Set<string>>(new Set());
 
-	function applySetCollapsed(id: string, value: boolean) {
-		if (collapsedIds.value.has(id) === value) return;
-		const next = new Set(collapsedIds.value);
-		if (value) next.add(id);
-		else next.delete(id);
-		collapsedIds.value = next;
+	function applySetExpanded(id: string, value: boolean) {
+		if (value) {
+			expandedIds.value.add(id);
+		} else {
+			expandedIds.value.delete(id);
+		}
 	}
 
 	function setCollapsed(id: string, value: boolean) {
-		applySetCollapsed(id, value);
+		applySetExpanded(id, !value);
 	}
 
 	function toggleCollapsed(id: string) {
-		applySetCollapsed(id, !collapsedIds.value.has(id));
+		applySetExpanded(id, !expandedIds.value.has(id));
 	}
 
 	function collapseAll() {
-		collapsedIds.value = new Set(deps.allGroups.value.map((g) => g.id));
+		expandedIds.value.clear();
 	}
 
 	function expandAll() {
-		collapsedIds.value = new Set();
+		for (const group of deps.allGroups.value) {
+			expandedIds.value.add(group.id);
+		}
 	}
 
-	const isGroupCollapsed = (id: string) => collapsedIds.value.has(id);
+	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	// Default collapse state per change action: SET (workflow load /
 	// replacement) collapses every group; ADD (new group) starts expanded;
 	// DELETE removes the id; UPDATE leaves collapse state alone.
 	const unsubscribe = deps.onNodeGroupsChange((event) => {
 		if (event.action === CHANGE_ACTION.SET) {
-			collapsedIds.value = new Set(event.payload.groups.map((g) => g.id));
+			expandedIds.value.clear();
 		} else if (event.action === CHANGE_ACTION.ADD) {
-			applySetCollapsed(event.payload.group.id, false);
+			applySetExpanded(event.payload.group.id, true);
 		} else if (event.action === CHANGE_ACTION.DELETE) {
-			applySetCollapsed(event.payload.id, false);
+			applySetExpanded(event.payload.id, false);
 		}
 	});
 
@@ -66,7 +68,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	}
 
 	return {
-		collapsedIds: computed(() => collapsedIds.value),
+		expandedIds: computed(() => expandedIds.value),
 		isGroupCollapsed,
 		toggleCollapsed,
 		setCollapsed,
