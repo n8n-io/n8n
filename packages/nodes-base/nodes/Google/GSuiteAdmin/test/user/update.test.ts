@@ -25,6 +25,28 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						type: 'home',
 					},
 				],
+				orgUnitPath: '/Sales',
+				recoveryEmail: 'recovery@example.com',
+				organizations: [
+					{
+						name: 'Acme',
+						title: 'Engineer',
+						type: 'work',
+						department: '',
+						costCenter: '',
+						description: '',
+						domain: '',
+						location: '',
+						symbol: '',
+						primary: true,
+					},
+				],
+				relations: [
+					{
+						type: 'manager',
+						value: 'boss@example.com',
+					},
+				],
 			})
 			.reply(200, {
 				kind: 'admin#directory#user',
