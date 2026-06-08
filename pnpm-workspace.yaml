@@ -12,9 +12,13 @@ catalog:
   '@ai-sdk/cohere': ^3.0.36
   '@ai-sdk/deepseek': ^2.0.35
   '@ai-sdk/gateway': ^3.0.125
+  '@ai-sdk/google': ^3.0.80
   '@ai-sdk/groq': ^3.0.39
   '@ai-sdk/mistral': ^3.0.37
+  '@ai-sdk/openai': ^3.0.68
   '@ai-sdk/openai-compatible': ^2.0.48
+  '@ai-sdk/provider-utils': ^4.0.27
+  '@ai-sdk/xai': ^3.0.93
   '@azure/identity': 4.13.0
   '@chat-adapter/linear': ^4.28.1
   '@chat-adapter/slack': ^4.28.1

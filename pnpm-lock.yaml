@@ -24,15 +24,27 @@ catalogs:
     '@ai-sdk/gateway':
       specifier: ^3.0.125
       version: 3.0.125
+    '@ai-sdk/google':
+      specifier: ^3.0.80
+      version: 3.0.80
     '@ai-sdk/groq':
       specifier: ^3.0.39
       version: 3.0.39
     '@ai-sdk/mistral':
       specifier: ^3.0.37
       version: 3.0.37
+    '@ai-sdk/openai':
+      specifier: ^3.0.68
+      version: 3.0.68
     '@ai-sdk/openai-compatible':
       specifier: ^2.0.48
       version: 2.0.48
+    '@ai-sdk/provider-utils':
+      specifier: ^4.0.27
+      version: 4.0.27
+    '@ai-sdk/xai':
+      specifier: ^3.0.93
+      version: 3.0.93
     '@chat-adapter/linear':
       specifier: ^4.28.1
       version: 4.28.1
@@ -734,7 +746,7 @@ importers:
         specifier: 'catalog:'
         version: 3.0.125(zod@3.25.67)
       '@ai-sdk/google':
-        specifier: ^3.0.80
+        specifier: 'catalog:'
         version: 3.0.80(zod@3.25.67)
       '@ai-sdk/groq':
         specifier: 'catalog:'
@@ -743,16 +755,16 @@ importers:
         specifier: 'catalog:'
         version: 3.0.37(zod@3.25.67)
       '@ai-sdk/openai':
-        specifier: ^3.0.68
+        specifier: 'catalog:'
         version: 3.0.68(zod@3.25.67)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
         version: 2.0.48(zod@3.25.67)
       '@ai-sdk/provider-utils':
-        specifier: ^4.0.27
+        specifier: 'catalog:'
         version: 4.0.27(zod@3.25.67)
       '@ai-sdk/xai':
-        specifier: ^3.0.93
+        specifier: 'catalog:'
         version: 3.0.93(zod@3.25.67)
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
