@@ -4,12 +4,18 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, computed, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
-import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nLogo,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
-
-const ANTHROPIC_CLIENTS = ['claude', 'mcp inspector'];
-const LOVABLE_CLIENTS = ['lovable'];
 
 const consentStore = useConsentStore();
 
@@ -19,22 +25,15 @@ const toast = useToast();
 
 // Success state:
 const waitingForRedirect = ref(false);
+const redirectUriTrusted = ref(false);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
-
-const clientIcon = computed(() => {
-	const clientName = clentDetails.value?.clientName?.toLowerCase() ?? '';
-	if (ANTHROPIC_CLIENTS.some((name) => clientName.includes(name))) {
-		return 'anthropic';
-	} else if (LOVABLE_CLIENTS.some((name) => clientName.includes(name))) {
-		return 'lovable';
-	} else {
-		return 'mcp';
-	}
-});
+const allowDisabled = computed(
+	() => loading.value || error.value !== null || !redirectUriTrusted.value,
+);
 
 const handleAllow = async () => {
 	try {
@@ -48,8 +47,8 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		const response = await consentStore.approveConsent(false);
-		window.location.href = response.redirectUrl;
+		await consentStore.approveConsent(false);
+		window.location.href = window.BASE_PATH ?? '/';
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
@@ -76,7 +75,7 @@ onMounted(async () => {
 					<N8nIcon icon="arrow-right" size="large" color="text-light" />
 				</div>
 				<div :class="$style.logo">
-					<N8nIcon :icon="clientIcon" size="xlarge" color="text-dark" />
+					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
 				</div>
 			</header>
 			<!-- Success screen, show while waiting to be redirected back to client -->
@@ -109,6 +108,10 @@ onMounted(async () => {
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.executionDetails') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createUpdateWorkflows') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
+						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span
@@ -121,6 +124,32 @@ onMounted(async () => {
 							"
 						></span>
 					</p>
+					<N8nCallout
+						v-if="clentDetails?.redirectUri"
+						theme="warning"
+						:class="$style['redirect-warning']"
+						data-test-id="consent-redirect-warning"
+					>
+						<div :class="$style['redirect-warning-content']">
+							<N8nText size="small" :bold="true">
+								{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
+							</N8nText>
+							<N8nText
+								size="small"
+								:bold="true"
+								:class="$style['redirect-warning-url']"
+								data-test-id="consent-redirect-uri"
+							>
+								{{ clentDetails.redirectUri }}
+							</N8nText>
+							<div data-test-id="consent-redirect-trust-checkbox">
+								<N8nCheckbox
+									v-model="redirectUriTrusted"
+									:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+								/>
+							</div>
+						</div>
+					</N8nCallout>
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
@@ -146,7 +175,7 @@ onMounted(async () => {
 						:data-test-id="'consent-allow-button'"
 						:size="'large'"
 						:loading="loading"
-						:disabled="loading || error !== null"
+						:disabled="allowDisabled"
 						@click="handleAllow"
 					>
 						{{ i18n.baseText('generic.allow') }}
@@ -243,6 +272,20 @@ onMounted(async () => {
 .docs-link {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
+}
+
+.redirect-warning {
+	margin-top: var(--spacing--2xs);
+}
+
+.redirect-warning-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.redirect-warning-url {
+	word-break: break-all;
 }
 
 .footer {

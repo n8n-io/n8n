@@ -63,6 +63,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -123,6 +124,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
 			});
 		});
 	});
@@ -151,7 +153,7 @@ describe('McpOAuthConsentService', () => {
 				clientId: 'client-123',
 				userId: 'user-123',
 			});
-			expect(userConsentRepository.insert).not.toHaveBeenCalled();
+			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
 		});
 
 		it('should handle user approval and generate authorization code', async () => {
@@ -162,28 +164,33 @@ describe('McpOAuthConsentService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-abc',
 				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			};
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.insert.mockResolvedValue(mock());
+			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
-			expect(userConsentRepository.insert).toHaveBeenCalledWith({
-				userId: 'user-123',
-				clientId: 'client-123',
-				grantedAt: expect.any(Number),
-			});
+			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
+				{
+					userId: 'user-123',
+					clientId: 'client-123',
+					grantedAt: expect.any(Number),
+				},
+				['userId', 'clientId'],
+			);
 			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
 				'client-123',
 				'user-123',
 				'https://example.com/callback',
 				'challenge-abc',
 				'state-xyz',
+				'https://n8n.example.com/mcp-server/http',
 			);
 			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
 				clientId: 'client-123',
@@ -203,13 +210,52 @@ describe('McpOAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.insert.mockResolvedValue(mock());
+			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(sessionToken, userId, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).not.toContain('state=');
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				'client-123',
+				'user-123',
+				'https://example.com/callback',
+				'challenge-abc',
+				null,
+				undefined,
+			);
+		});
+
+		it('should handle re-authorization for existing consent by upserting', async () => {
+			const sessionToken = 'valid-session-token';
+			const userId = 'user-123';
+			const sessionPayload = {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: 'state-xyz',
+			};
+			const authCode = 'generated-auth-code';
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
+
+			// First authorization
+			await service.handleConsentDecision(sessionToken, userId, true);
+			// Re-authorization with same userId + clientId should not throw
+			await service.handleConsentDecision(sessionToken, userId, true);
+
+			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(2);
+			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
+				{
+					userId: 'user-123',
+					clientId: 'client-123',
+					grantedAt: expect.any(Number),
+				},
+				['userId', 'clientId'],
+			);
 		});
 
 		it('should throw error when session verification fails', async () => {

@@ -32,6 +32,7 @@ export class McpConsentController {
 				data: {
 					clientName: consentDetails.clientName,
 					clientId: consentDetails.clientId,
+					redirectUri: consentDetails.redirectUri,
 				},
 			});
 		} catch (error) {
