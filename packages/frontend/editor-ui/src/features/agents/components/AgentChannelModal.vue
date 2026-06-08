@@ -7,6 +7,7 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
+	N8nText,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
