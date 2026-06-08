@@ -1,5 +1,5 @@
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, shallowRef } from 'vue';
 
 import type { McpAppTelemetry } from '@mcp-apps/telemetry';
@@ -15,29 +15,18 @@ function createTelemetryMock() {
 }
 
 const events = {
-	rendered: 'Test app rendered',
 	renderFailed: 'Test app render failed',
 };
 
 const hostVersion = shallowRef<Implementation>({ name: 'Claude Desktop', version: '1.2.3' });
 
 describe('useMcpAppTelemetry', () => {
-	beforeEach(() => {
-		vi.spyOn(performance, 'now').mockReturnValue(123.4);
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	it('tracks rendered after the MCP host connection succeeds', async () => {
+	it('initializes telemetry after the MCP host connection succeeds without tracking success', async () => {
 		const telemetry = createTelemetryMock();
 		const connectionStatus = ref<McpHostConnectionStatus>('pending');
-		const bootMs = ref(42);
 
 		useMcpAppTelemetry({
 			app: 'workflow-preview',
-			bootMs,
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
 			events,
@@ -49,12 +38,7 @@ describe('useMcpAppTelemetry', () => {
 		await nextTick();
 
 		expect(telemetry.init).toHaveBeenCalledTimes(1);
-		expect(telemetry.track).toHaveBeenCalledWith('Test app rendered', {
-			app: 'workflow-preview',
-			boot_ms: 42,
-			mcp_client_name: 'Claude Desktop',
-			mcp_client_version: '1.2.3',
-		});
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('tracks render failure after the MCP host connection fails', async () => {
@@ -64,7 +48,6 @@ describe('useMcpAppTelemetry', () => {
 
 		useMcpAppTelemetry({
 			app: 'workflow-preview',
-			bootMs: ref(),
 			connectionError,
 			connectionStatus,
 			events,
@@ -84,35 +67,12 @@ describe('useMcpAppTelemetry', () => {
 		});
 	});
 
-	it('uses current performance time if bootMs is not available', async () => {
-		const telemetry = createTelemetryMock();
-		const connectionStatus = ref<McpHostConnectionStatus>('connected');
-
-		useMcpAppTelemetry({
-			app: 'workflow-preview',
-			bootMs: ref(),
-			connectionError: shallowRef<unknown>(),
-			connectionStatus,
-			events,
-			hostVersion: shallowRef(),
-			telemetry,
-		});
-
-		await nextTick();
-
-		expect(telemetry.track).toHaveBeenCalledWith('Test app rendered', {
-			app: 'workflow-preview',
-			boot_ms: 123,
-		});
-	});
-
 	it('tracks the connection result only once', async () => {
 		const telemetry = createTelemetryMock();
 		const connectionStatus = ref<McpHostConnectionStatus>('pending');
 
 		useMcpAppTelemetry({
 			app: 'workflow-preview',
-			bootMs: ref(42),
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
 			events,
@@ -126,6 +86,6 @@ describe('useMcpAppTelemetry', () => {
 		await nextTick();
 
 		expect(telemetry.init).toHaveBeenCalledTimes(1);
-		expect(telemetry.track).toHaveBeenCalledTimes(1);
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 });

@@ -203,6 +203,43 @@ describe('useWorkflowPreview', () => {
 		expect(preview.previewWorkflow.value?.id).toBe('rerun');
 	});
 
+	it('tracks preview rendered successfully only after the workflow is sent to the iframe', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		expect(telemetryTrack).not.toHaveBeenCalled();
+
+		preview.previewSent.value = true;
+		await nextTick();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED_SUCCESSFULLY,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'visible',
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
 	it('tracks Open in n8n clicks for valid workflow URLs', async () => {
 		const callServerTool = vi.fn(async () => await new Promise(() => {}));
 		const openLink = vi.fn().mockResolvedValue({ isError: false });

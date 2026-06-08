@@ -7,13 +7,11 @@ import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info
 import type { McpHostConnectionStatus } from './use-mcp-host-app';
 
 type McpAppLifecycleTelemetryEvents = {
-	rendered: string;
 	renderFailed: string;
 };
 
 type UseMcpAppTelemetryOptions = {
 	app: string;
-	bootMs: Readonly<Ref<number | undefined>>;
 	connectionError: Readonly<Ref<unknown>>;
 	connectionStatus: Readonly<Ref<McpHostConnectionStatus>>;
 	events: McpAppLifecycleTelemetryEvents;
@@ -27,7 +25,6 @@ function getConnectionErrorReason(error: unknown): string {
 
 export function useMcpAppTelemetry({
 	app,
-	bootMs,
 	connectionError,
 	connectionStatus,
 	events,
@@ -44,14 +41,7 @@ export function useMcpAppTelemetry({
 			trackedConnection = true;
 			telemetry.init();
 
-			if (status === 'connected') {
-				telemetry.track(events.rendered, {
-					app,
-					boot_ms: bootMs.value ?? Math.round(performance.now()),
-					...getMcpClientTelemetryProperties(hostVersion.value),
-				});
-				return;
-			}
+			if (status === 'connected') return;
 
 			telemetry.track(events.renderFailed, {
 				app,

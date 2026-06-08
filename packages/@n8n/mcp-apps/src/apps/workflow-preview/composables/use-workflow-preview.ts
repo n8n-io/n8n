@@ -83,6 +83,15 @@ export function useWorkflowPreview({
 		previewUrl.value = buildPreviewUrl();
 	});
 
+	watch(previewSent, (sent) => {
+		if (!sent) return;
+
+		telemetry.track(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED_SUCCESSFULLY,
+			getPreviewTelemetryPayload(),
+		);
+	});
+
 	async function handleOpenWorkflow() {
 		const mcpApp = app.value;
 		const url = workflowUrl.value;
@@ -95,7 +104,7 @@ export function useWorkflowPreview({
 
 		telemetry.track(
 			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
-			getOpenWorkflowTelemetryPayload(),
+			getPreviewTelemetryPayload(),
 		);
 
 		try {
@@ -108,7 +117,7 @@ export function useWorkflowPreview({
 		}
 	}
 
-	function getOpenWorkflowTelemetryPayload() {
+	function getPreviewTelemetryPayload() {
 		const payload: Record<string, unknown> = {
 			app: appSlug,
 			...getMcpClientTelemetryProperties(hostVersion?.value),
