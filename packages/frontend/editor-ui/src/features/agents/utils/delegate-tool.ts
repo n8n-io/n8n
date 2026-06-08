@@ -38,10 +38,10 @@ export type DelegateInput = z.infer<typeof delegateInputSchema>;
 export type DelegateOutput = z.infer<typeof delegateOutputSchema>;
 export type DelegateDifficulty = NonNullable<DelegateInput['difficulty']>;
 
-const DELEGATE_DIFFICULTY_I18N_KEY: Record<DelegateDifficulty, BaseTextKey> = {
-	low: 'agents.chat.delegate.difficulty.low',
-	medium: 'agents.chat.delegate.difficulty.medium',
-	high: 'agents.chat.delegate.difficulty.high',
+export const SUB_AGENT_DIFFICULTY_I18N_KEY: Record<DelegateDifficulty, BaseTextKey> = {
+	low: 'agents.chat.difficulty.low',
+	medium: 'agents.chat.difficulty.medium',
+	high: 'agents.chat.difficulty.high',
 };
 
 export function isDelegateSubAgentTool(toolName: string | undefined): boolean {
@@ -73,7 +73,7 @@ export function getDelegateDifficultySummary(
 	i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>,
 ): string | undefined {
 	const difficulty = getDelegateDifficulty(input);
-	return difficulty ? i18n.baseText(DELEGATE_DIFFICULTY_I18N_KEY[difficulty]) : undefined;
+	return difficulty ? i18n.baseText(SUB_AGENT_DIFFICULTY_I18N_KEY[difficulty]) : undefined;
 }
 
 /** Localize a delegate tool error when it is a known i18n key. */

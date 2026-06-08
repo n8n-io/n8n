@@ -160,7 +160,7 @@ describe('delegate-tool', () => {
 					},
 					i18n,
 				),
-			).toBe('agents.chat.delegate.difficulty.high');
+			).toBe('agents.chat.difficulty.high');
 		});
 
 		it('returns undefined when difficulty is missing or input is malformed', () => {

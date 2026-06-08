@@ -34,17 +34,14 @@ vi.mock('@n8n/i18n', () => ({
 			}
 			if (key === 'agents.chat.writeTodos.summary.done') return 'done';
 			const statusLabels: Record<string, string> = {
-				'agents.chat.delegate.difficulty.low': 'Low',
-				'agents.chat.delegate.difficulty.medium': 'Medium',
-				'agents.chat.delegate.difficulty.high': 'High',
+				'agents.chat.difficulty.low': 'Low',
+				'agents.chat.difficulty.medium': 'Medium',
+				'agents.chat.difficulty.high': 'High',
 				'agents.chat.writeTodos.status.inProgress': 'In progress',
 				'agents.chat.writeTodos.status.pending': 'Pending',
 				'agents.chat.writeTodos.status.completed': 'Completed',
 				'agents.chat.writeTodos.status.blocked': 'Blocked',
 				'agents.chat.writeTodos.status.cancelled': 'Cancelled',
-				'agents.chat.writeTodos.difficulty.low': 'Low',
-				'agents.chat.writeTodos.difficulty.medium': 'Medium',
-				'agents.chat.writeTodos.difficulty.high': 'High',
 				'agents.chat.writeTodos.hint.difficulty': 'Difficulty',
 				'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 				'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
