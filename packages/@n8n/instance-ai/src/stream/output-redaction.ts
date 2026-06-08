@@ -8,6 +8,7 @@ import {
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { Logger } from '../logger';
+import { isRecord } from '../utils/stream-helpers';
 
 /**
  * Default output-filtering policy for Instance AI: redact known credential/
@@ -135,6 +136,16 @@ export class OutputRedactor {
 	}
 
 	private redactStructural(event: InstanceAiEvent): InstanceAiEvent {
+		if (event.type === 'tool-call') {
+			// Redact the model-generated args shown in the UI. This only touches the
+			// event payload, not the actual tool invocation (handled by the runtime).
+			const { value, matches } = redactDeep(event.payload.args, this.options);
+			this.recordMatches(matches);
+			return {
+				...event,
+				payload: { ...event.payload, args: isRecord(value) ? value : event.payload.args },
+			};
+		}
 		if (event.type === 'tool-result') {
 			const { value, matches } = redactDeep(event.payload.result, this.options);
 			this.recordMatches(matches);

@@ -81,6 +81,25 @@ describe('OutputRedactor', () => {
 		expect(emitted[0]).toMatchObject({ type: 'text-delta', responseId: 'run-1:step:1' });
 	});
 
+	it('redacts secrets nested inside tool-call args', () => {
+		const redactor = createRedactor();
+		const event: InstanceAiEvent = {
+			type: 'tool-call',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				toolCallId: 'tc-1',
+				toolName: 'http_request',
+				args: { headers: { authorization: 'Bearer abcdef1234567890' } },
+			},
+		};
+		const [out] = redactor.processEvent(event);
+		expect(JSON.stringify(out)).toContain('[REDACTED]');
+		expect(JSON.stringify(out)).not.toContain('abcdef1234567890');
+		// Identifier fields are preserved.
+		expect(out).toMatchObject({ payload: { toolCallId: 'tc-1', toolName: 'http_request' } });
+	});
+
 	it('redacts secrets nested inside a tool-result', () => {
 		const redactor = createRedactor();
 		const event: InstanceAiEvent = {
