@@ -1,5 +1,6 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
+import { parseAndValidate } from '../../../workflow-builder';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createBuildWorkflowTool } from '../build-workflow.tool';
 import { resolveCredentials } from '../resolve-credentials';
@@ -75,6 +76,41 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining({ name: 'Daily Mlada Boleslav Weather to Slack' }),
 			{ markAsAiTemporary: true },
 		);
+	});
+
+	it('escalates when the same build failure repeats for one work item', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+
+		const first = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+			workItemId: 'wi-1',
+		});
+		expect(first.success).toBe(false);
+		expect((first.errors ?? []).join('\n')).not.toContain('You already tried this');
+
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+			workItemId: 'wi-1',
+		});
+		expect(second.success).toBe(false);
+		expect((second.errors ?? []).join('\n')).toContain('You already tried this');
+		expect((second.errors ?? []).join('\n')).toContain('workflow-sdk-language.md');
 	});
 
 	it('allows direct new workflow builds without a name parameter when code provides one', async () => {

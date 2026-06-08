@@ -68,38 +68,47 @@ export function isAutoRenameableSDKFunction(name: string): boolean {
 	return AUTO_RENAMEABLE_SDK_FUNCTIONS.has(name);
 }
 
-/**
- * Allowlist of method names that can be called on SDK objects.
- */
-export const ALLOWED_METHODS = new Set([
+export type SdkMethodGroup = 'workflow' | 'node' | 'control-flow' | 'connection' | 'internal';
+
+export interface SdkMethodSpec {
+	name: string;
+	group: SdkMethodGroup;
+	/** False for internal methods, excluded from builder-facing guidance. */
+	public: boolean;
+}
+
+/** Source of truth: ALLOWED_METHODS and the SDK language reference both derive from this. */
+export const SDK_METHODS: readonly SdkMethodSpec[] = [
 	// Workflow builder methods
-	'add',
-	'to',
+	{ name: 'add', group: 'workflow', public: true },
+	{ name: 'to', group: 'workflow', public: true },
 
 	// Node builder methods
-	'input',
-	'output',
-	'onError',
+	{ name: 'input', group: 'node', public: true },
+	{ name: 'output', group: 'node', public: true },
+	{ name: 'onError', group: 'node', public: true },
 
 	// Control flow methods
-	'onTrue',
-	'onFalse',
-	'onCase',
-	'onEachBatch',
-	'onDone',
+	{ name: 'onTrue', group: 'control-flow', public: true },
+	{ name: 'onFalse', group: 'control-flow', public: true },
+	{ name: 'onCase', group: 'control-flow', public: true },
+	{ name: 'onEachBatch', group: 'control-flow', public: true },
+	{ name: 'onDone', group: 'control-flow', public: true },
 
 	// Connection methods
-	'connect',
+	{ name: 'connect', group: 'connection', public: true },
 
 	// Internal methods
-	'toJSON',
-	'validate',
-]);
+	{ name: 'toJSON', group: 'internal', public: false },
+	{ name: 'validate', group: 'internal', public: false },
+];
+
+export const ALLOWED_METHODS = new Set(SDK_METHODS.map((m) => m.name));
 
 /**
  * Dangerous global identifiers that should be rejected.
  */
-const DANGEROUS_GLOBALS = new Set([
+export const DANGEROUS_GLOBALS = new Set([
 	'eval',
 	'Function',
 	'require',
@@ -207,10 +216,8 @@ const ALLOWED_NODE_TYPES = new Set([
 	'ConditionalExpression',
 ]);
 
-/**
- * Node types that are explicitly forbidden (for better error messages).
- */
-const FORBIDDEN_NODE_TYPES: Record<string, string> = {
+/** Forbidden node types; remediation strings are reused in the SDK language reference. */
+export const FORBIDDEN_NODE_TYPES: Record<string, string> = {
 	ArrowFunctionExpression:
 		'Arrow functions are not allowed. Use fromAi() directly instead of ($) => $.fromAi()',
 	FunctionExpression: 'Function expressions are not allowed in SDK code',
@@ -307,9 +314,10 @@ export function validateMemberExpression(node: MemberExpression, sourceCode: str
 		// Allow simple literal keys like obj["key"] or obj[0]
 		if (node.property.type !== 'Literal') {
 			throw new SecurityError(
-				'Dynamic property access is not allowed. Use static property names.',
+				'computed-member-access',
 				node.loc ?? undefined,
 				sourceCode,
+				'Dynamic property access is not allowed. Use static property names.',
 			);
 		}
 	}
@@ -342,6 +350,10 @@ export function isAllowedSDKFunction(name: string): boolean {
  */
 export function isAllowedMethod(name: string): boolean {
 	return ALLOWED_METHODS.has(name);
+}
+
+export function allowedMethodNames(): string[] {
+	return SDK_METHODS.filter((m) => m.public).map((m) => m.name);
 }
 
 /**
@@ -386,3 +398,32 @@ export function getSafeStringMethod(
 	if (!factory) return undefined;
 	return (...args: unknown[]) => factory(value, ...args);
 }
+
+export const SAFE_JSON_METHOD_NAMES = Object.keys(SAFE_JSON_METHODS);
+
+export const SAFE_STRING_METHOD_NAMES = Object.keys(SAFE_STRING_METHODS);
+
+/** Common globals the interpreter blocks, with the alternative to use instead. */
+export const BUILDER_BLOCKED_GLOBALS: ReadonlyArray<{ name: string; alternative: string }> = [
+	{ name: 'Math', alternative: 'compute at runtime in a Code node or an n8n expression' },
+	{ name: 'Date', alternative: 'use the $now / $today helpers inside expr()' },
+	{ name: 'Object', alternative: 'build object literals directly, or transform in a Code node' },
+	{ name: 'Array', alternative: 'build array literals directly, or transform in a Code node' },
+	{
+		name: 'JSON',
+		alternative: 'only JSON.stringify is available; parse at runtime in a Code node',
+	},
+	{ name: 'Number', alternative: 'use numeric literals, or convert in a Code node / expression' },
+	{ name: 'RegExp', alternative: 'match at runtime in a Code node or an n8n expression' },
+	{ name: 'Promise', alternative: 'builder code is synchronous; no async/await or promises' },
+	{ name: 'Map', alternative: 'use object literals, or build collections in a Code node' },
+	{ name: 'Set', alternative: 'use array literals, or build collections in a Code node' },
+];
+
+/** Constraints enforced inline by the interpreter, not via a table. */
+export const SDK_INLINE_CONSTRAINTS: readonly string[] = [
+	'Use `const` only — `let` and `var` are not allowed.',
+	'No destructuring in declarations — declare each value with its own `const`.',
+	'No variable reassignment — only property assignment (`obj.prop = value`) is allowed.',
+	"No computed/dynamic member access (`obj[expr]`); use static names. Literal keys like `obj['a']` or `arr[0]` are fine.",
+];

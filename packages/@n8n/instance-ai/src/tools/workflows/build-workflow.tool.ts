@@ -15,6 +15,7 @@ import {
 } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
+import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
 import { applyPatches } from '../../workflow-builder/patch-code';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -323,6 +324,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
 	let lastCodeVersionId: string | null = null;
+	const failureTracker = new BuildFailureTracker();
 
 	return new Tool('build-workflow')
 		.description(
@@ -391,6 +393,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
+			const workItemKey = workItemId ?? workflowId ?? '_';
+			const withEscalation = (errors: string[]): string[] => {
+				const escalation = failureTracker.record(workItemKey, errors);
+				return escalation ? [...errors, escalation] : errors;
+			};
 			let finalCode: string;
 
 			if (patches) {
@@ -466,7 +473,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			} catch (error) {
 				return {
 					success: false,
-					errors: [error instanceof Error ? error.message : 'Failed to parse workflow code'],
+					errors: withEscalation([
+						error instanceof Error ? error.message : 'Failed to parse workflow code',
+					]),
 				};
 			}
 
@@ -476,8 +485,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (errors.length > 0) {
 				return {
 					success: false,
-					errors: errors.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+					errors: withEscalation(
+						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 					),
 					warnings:
 						informational.length > 0
@@ -592,6 +601,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						storeOnRunContext: !isAuxiliarySupportingWorkflow,
 						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
+
+					failureTracker.clear(workItemKey);
 
 					return {
 						success: true,
