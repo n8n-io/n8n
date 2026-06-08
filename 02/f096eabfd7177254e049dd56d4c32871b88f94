@@ -1,0 +1,14 @@
+.github/workflows/ci-codeowners-validation.yml
+  h_d333f1a9f56237 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "02f096eabfd7177254e049dd56d4c32871b88f94",
+  "prompts": {},
+  "humans": {
+    "h_d333f1a9f56237": {
+      "author": "Marc Littlemore <marc@n8n.io>"
+    }
+  }
+}
