@@ -762,19 +762,6 @@ export class AgentsService {
 		this.clearRuntimes(agentId);
 
 		try {
-			await this.agentKnowledgeSandboxWorkspaceService.cleanupCachedWorkspacesForAgent(
-				projectId,
-				agentId,
-			);
-		} catch (error) {
-			this.logger.warn('Failed to clean up cached agent knowledge workspaces on agent delete', {
-				agentId,
-				projectId,
-				error: error instanceof Error ? error.message : error,
-			});
-		}
-
-		try {
 			await this.agentKnowledgeSandboxWorkspaceService.cleanupDaytonaVolumeForAgent(
 				projectId,
 				agentId,

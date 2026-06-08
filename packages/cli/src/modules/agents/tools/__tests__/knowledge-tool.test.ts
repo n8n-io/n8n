@@ -206,6 +206,40 @@ describe('search_knowledge tool', () => {
 		});
 	});
 
+	it('resolves explicit search files before running rg', async () => {
+		await createTool().handler?.(
+			{ operation: 'search', query: 'needle', files: ['other.txt'] },
+			{} as never,
+		);
+
+		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			['other.txt'],
+		);
+		expect(commandService.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ command: 'search', files: ['file-2.txt'] }),
+		);
+	});
+
+	it('supports legacy singular file search input by mapping it to files', async () => {
+		await createTool().handler?.(
+			{ operation: 'search', query: 'needle', file: 'other.txt' },
+			{} as never,
+		);
+
+		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			['other.txt'],
+		);
+		expect(commandService.run).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ command: 'search', files: ['file-2.txt'] }),
+		);
+	});
+
 	it('searches the synced volume root for unscoped search', async () => {
 		await createTool().handler?.({ operation: 'search', query: 'needle' }, {} as never);
 

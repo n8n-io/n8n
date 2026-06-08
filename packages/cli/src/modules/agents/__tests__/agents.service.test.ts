@@ -2878,11 +2878,20 @@ describe('AgentsService', () => {
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
 			expect(
-				agentKnowledgeSandboxWorkspaceService.cleanupCachedWorkspacesForAgent,
-			).toHaveBeenCalledWith(projectId, agentId);
-			expect(
 				agentKnowledgeSandboxWorkspaceService.cleanupDaytonaVolumeForAgent,
 			).toHaveBeenCalledWith(projectId, agentId);
+		});
+
+		it('still removes the agent when Daytona volume cleanup fails', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentKnowledgeSandboxWorkspaceService.cleanupDaytonaVolumeForAgent.mockRejectedValueOnce(
+				new Error('cleanup failed'),
+			);
+
+			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+
+			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		});
 
 		it('still removes the agent when knowledge file cleanup fails', async () => {
