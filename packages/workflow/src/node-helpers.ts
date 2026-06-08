@@ -2,12 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -518,7 +518,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new ApplicationError('`executionData` is not initialized');
+		throw new UnexpectedError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -527,13 +527,13 @@ export function getContext(
 	} else if (type === 'node') {
 		if (node === undefined) {
 			// @TODO: What does this mean?
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'The request data of context type "node" the node parameter has to be set!',
 			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+		throw new UnexpectedError('Unknown context type. Only `flow` and `node` are supported.', {
 			extra: { contextType: type },
 		});
 	}
@@ -635,7 +635,7 @@ function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new ApplicationError(
+			throw new UserError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -1269,6 +1269,33 @@ export function getNodeParametersIssues(
 	}
 
 	return foundIssues;
+}
+
+/**
+ * Returns the node's issues as a flat list of human-readable strings,
+ * covering execution errors, parameter/credential/input issues, and unknown node types.
+ */
+export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
+	const messages: string[] = [];
+
+	if (issues.execution !== undefined) {
+		messages.push('Execution Error.');
+	}
+
+	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
+		if (propertyIssues === undefined) continue;
+		for (const parameterName of Object.keys(propertyIssues)) {
+			messages.push(...propertyIssues[parameterName]);
+		}
+	}
+
+	if (issues.typeUnknown !== undefined) {
+		messages.push(
+			node !== undefined ? `Node Type "${node.type}" is not known.` : 'Node Type is not known.',
+		);
+	}
+
+	return messages;
 }
 
 /*

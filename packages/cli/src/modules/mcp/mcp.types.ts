@@ -71,14 +71,18 @@ export type JSONRPCRequest = {
 	jsonrpc?: string;
 	method?: string;
 	params?: {
-		clientInfo?: {
-			name?: string;
-			version?: string;
-		};
+		clientInfo?: McpClientInfo;
 		[key: string]: unknown;
 	};
 	id?: string | number | null;
 };
+
+export type McpClientInfo = {
+	name?: string;
+	version?: string;
+};
+
+export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
 
 // Telemetry payloads
 export type UserConnectedToMCPEventPayload = {
@@ -87,6 +91,8 @@ export type UserConnectedToMCPEventPayload = {
 	client_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
+	mcp_apps_enabled?: boolean;
+	mcp_apps_variant?: McpAppsTelemetryVariant;
 	error?: string;
 };
 

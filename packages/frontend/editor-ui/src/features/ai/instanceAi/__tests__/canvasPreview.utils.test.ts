@@ -271,7 +271,7 @@ describe('getLatestBuilderTarget', () => {
 		});
 		const intermediate = makeAgentNode({
 			agentId: 'agent-intermediate',
-			role: 'planner',
+			role: 'coordinator',
 			children: [nestedBuilder],
 		});
 		const parent = makeAgentNode({ children: [intermediate] });

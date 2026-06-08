@@ -1278,11 +1278,20 @@ function recordWrapTool(
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
 			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			let recordedSuspend = false;
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
 						suspend: async (suspendPayload: unknown) => {
 							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							traceWriter.recordToolSuspend(
+								agentRole,
+								tool.name,
+								inputRecord,
+								{},
+								capturedSuspendPayload,
+							);
+							recordedSuspend = true;
 							return await context.suspend(suspendPayload);
 						},
 					}
@@ -1300,13 +1309,15 @@ function recordWrapTool(
 					resumeData as Record<string, unknown>,
 				);
 			} else if (capturedSuspendPayload) {
-				traceWriter.recordToolSuspend(
-					agentRole,
-					tool.name,
-					inputRecord,
-					{},
-					capturedSuspendPayload,
-				);
+				if (!recordedSuspend) {
+					traceWriter.recordToolSuspend(
+						agentRole,
+						tool.name,
+						inputRecord,
+						{},
+						capturedSuspendPayload,
+					);
+				}
 			} else {
 				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}

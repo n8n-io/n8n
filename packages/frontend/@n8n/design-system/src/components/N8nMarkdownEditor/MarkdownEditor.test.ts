@@ -204,6 +204,23 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(getEditorElement(wrapper.container)).toHaveAttribute('contenteditable', 'false');
 	});
 
+	it('does not emit update:modelValue when readonly/disabled is toggled', async () => {
+		const wrapper = render(N8nMarkdownEditor, {
+			props: { modelValue: 'Content', showToolbar: 'never' },
+		});
+
+		await waitFor(() => expect(getEditorElement(wrapper.container)).toBeInTheDocument());
+
+		// Toggling editability (e.g. a parent disabling the editor mid-stream) must
+		// not look like a content edit.
+		await wrapper.rerender({ modelValue: 'Content', showToolbar: 'never', readonly: true });
+		await wrapper.rerender({ modelValue: 'Content', showToolbar: 'never', readonly: false });
+		await wrapper.rerender({ modelValue: 'Content', showToolbar: 'never', disabled: true });
+		await wrapper.rerender({ modelValue: 'Content', showToolbar: 'never', disabled: false });
+
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+	});
+
 	it('copies selected editor content as markdown', async () => {
 		const { wrapper, editor } = await renderEditor(
 			['# Heading', '', '**Bold text**', '', '- List item 1', '- List item 2'].join('\n'),
@@ -227,6 +244,46 @@ describe('components/N8nMarkdownEditor', () => {
 			'text/plain',
 			'# Heading\n\n**Bold text**\n\n- List item 1\n- List item 2\n\n',
 		);
+	});
+
+	it('copies only the selected editor content as markdown', async () => {
+		const { wrapper, editor } = await renderEditor(
+			['# Heading', '', '**Bold text**', '', '- List item 1', '- List item 2'].join('\n'),
+		);
+		const textbox = getEditorElement(wrapper.container) as HTMLElement;
+		const clipboardData = {
+			setData: vi.fn(),
+			getData: vi.fn(),
+			clearData: vi.fn(),
+		};
+		const copyEvent = new Event('copy', { bubbles: true, cancelable: true });
+		let selectionRange: { from: number; to: number } | undefined;
+
+		editor.state.doc.descendants((node, position) => {
+			if (!node.isText || !node.text) return true;
+
+			const textIndex = node.text.indexOf('Bold text');
+
+			if (textIndex === -1) return true;
+
+			selectionRange = {
+				from: position + textIndex,
+				to: position + textIndex + 'Bold text'.length,
+			};
+
+			return false;
+		});
+
+		if (!selectionRange) throw new Error('Expected to find text selection range');
+
+		editor.commands.setTextSelection(selectionRange);
+		Object.defineProperty(copyEvent, 'clipboardData', {
+			value: clipboardData,
+		});
+
+		await fireEvent(textbox, copyEvent);
+
+		expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', '**Bold text**');
 	});
 
 	it('pastes markdown content into the editor', async () => {

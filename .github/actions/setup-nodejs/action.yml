@@ -17,7 +17,7 @@ inputs:
   build-command:
     description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
     required: false
-    default: 'pnpm build'
+    default: 'pnpm build:unchecked'
   install-command:
     description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
     required: false
@@ -101,12 +101,13 @@ runs:
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: ~/.safe-chain/bin
-        key: safe-chain-1.5.3-${{ runner.os }}-${{ runner.arch }}
+        key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
 
     - name: Install Aikido SafeChain
+      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
-        VERSION="1.5.3"
-        EXPECTED_SHA256="0107cbbbf90159379756157e902acae512d62ffbd174307e42c5fe9f266792d3"
+        VERSION="1.5.7"
+        EXPECTED_SHA256="07ab512fd8795ce41b2275be369aced4c9a93cc7bca9b397951507891a955239"
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           curl -fsSL -o install-safe-chain.sh "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -

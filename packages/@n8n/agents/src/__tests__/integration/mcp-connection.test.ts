@@ -2,9 +2,8 @@
  * Unit-style tests for McpConnection.listTools() approval wrapping.
  *
  * These tests use a real in-process MCP SSE server but do NOT require an LLM.
- * They verify that the `requireApproval` field on McpServerConfig (and the
- * global `shouldRequireToolApproval` constructor flag) correctly wrap the
- * appropriate tools with a suspend/resume approval gate.
+ * They verify that the `requireApproval` field on McpServerConfig correctly
+ * wraps the appropriate tools with a suspend/resume approval gate.
  *
  * Tool names from the test server: echo, add, image (prefixed: tools_echo, tools_add, tools_image).
  */
@@ -149,38 +148,31 @@ describe('McpConnection.listTools() — requireApproval config', () => {
 		expect(isApprovalWrapped(image!)).toBe(true);
 	});
 
-	// -----------------------------------------------------------------------
-	// global shouldRequireToolApproval flag
-	// -----------------------------------------------------------------------
+	it('ignores the removed legacy global flag and only uses server approval config', async () => {
+		type LegacyMcpConnectionConstructor = new (
+			config: ConstructorParameters<typeof McpConnection>[0],
+			legacyGlobalApproval: boolean,
+		) => McpConnection;
+		const LegacyMcpConnection = McpConnection as unknown as LegacyMcpConnectionConstructor;
 
-	it('wraps all tools when global shouldRequireToolApproval flag is true', async () => {
-		connection = new McpConnection({ name: 'tools', url: server.url }, true);
-		await connection.connect();
-		const tools = await connection.listTools();
-
-		expect(tools.every((t) => isApprovalWrapped(t))).toBe(true);
-	});
-
-	// -----------------------------------------------------------------------
-	// global flag + config.requireApproval interaction
-	// -----------------------------------------------------------------------
-
-	it('wraps all tools when global flag is true even if config.requireApproval names only some tools', async () => {
-		connection = new McpConnection(
+		connection = new LegacyMcpConnection(
 			{ name: 'tools', url: server.url, requireApproval: ['echo'] },
 			true,
 		);
 		await connection.connect();
 		const tools = await connection.listTools();
 
-		expect(tools.every((t) => isApprovalWrapped(t))).toBe(true);
+		const echo = tools.find((t) => t.name === 'tools_echo');
+		const add = tools.find((t) => t.name === 'tools_add');
+		const image = tools.find((t) => t.name === 'tools_image');
+
+		expect(isApprovalWrapped(echo!)).toBe(true);
+		expect(isApprovalWrapped(add!)).toBe(false);
+		expect(isApprovalWrapped(image!)).toBe(false);
 	});
 
-	it('wraps all tools when config.requireApproval: true even if global flag is false', async () => {
-		connection = new McpConnection(
-			{ name: 'tools', url: server.url, requireApproval: true },
-			false,
-		);
+	it('wraps all tools when config.requireApproval: true', async () => {
+		connection = new McpConnection({ name: 'tools', url: server.url, requireApproval: true });
 		await connection.connect();
 		const tools = await connection.listTools();
 
