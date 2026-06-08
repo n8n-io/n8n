@@ -1,6 +1,8 @@
+import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { watch, type Ref } from 'vue';
 
 import { useTelemetry, type McpAppTelemetry } from '@mcp-apps/telemetry';
+import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info';
 
 import type { McpHostConnectionStatus } from './use-mcp-host-app';
 
@@ -15,6 +17,7 @@ type UseMcpAppTelemetryOptions = {
 	connectionError: Readonly<Ref<unknown>>;
 	connectionStatus: Readonly<Ref<McpHostConnectionStatus>>;
 	events: McpAppLifecycleTelemetryEvents;
+	hostVersion: Readonly<Ref<Implementation | undefined>>;
 	telemetry?: McpAppTelemetry;
 };
 
@@ -28,6 +31,7 @@ export function useMcpAppTelemetry({
 	connectionError,
 	connectionStatus,
 	events,
+	hostVersion,
 	telemetry = useTelemetry(),
 }: UseMcpAppTelemetryOptions) {
 	let trackedConnection = false;
@@ -44,12 +48,14 @@ export function useMcpAppTelemetry({
 				telemetry.track(events.rendered, {
 					app,
 					boot_ms: bootMs.value ?? Math.round(performance.now()),
+					...getMcpClientTelemetryProperties(hostVersion.value),
 				});
 				return;
 			}
 
 			telemetry.track(events.renderFailed, {
 				app,
+				...getMcpClientTelemetryProperties(hostVersion.value),
 				reason: getConnectionErrorReason(connectionError.value),
 			});
 		},

@@ -1,4 +1,5 @@
 import { App, type McpUiHostContext } from '@modelcontextprotocol/ext-apps';
+import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { onMounted, ref, shallowRef } from 'vue';
 
 type UseMcpHostAppOptions = {
@@ -14,6 +15,7 @@ export function useMcpHostApp({ name, version }: UseMcpHostAppOptions) {
 	const toolResult = shallowRef<unknown>();
 	const connectionStatus = ref<McpHostConnectionStatus>('pending');
 	const connectionError = shallowRef<unknown>();
+	const hostVersion = shallowRef<Implementation>();
 	const bootMs = ref<number>();
 
 	onMounted(async () => {
@@ -33,6 +35,7 @@ export function useMcpHostApp({ name, version }: UseMcpHostAppOptions) {
 		try {
 			await mcpApp.connect();
 			hostContext.value = mcpApp.getHostContext();
+			hostVersion.value = mcpApp.getHostVersion();
 			bootMs.value = Math.round(performance.now());
 			connectionStatus.value = 'connected';
 		} catch (error) {
@@ -48,6 +51,7 @@ export function useMcpHostApp({ name, version }: UseMcpHostAppOptions) {
 		bootMs,
 		connectionError,
 		connectionStatus,
+		hostVersion,
 		hostContext,
 		toolResult,
 	};

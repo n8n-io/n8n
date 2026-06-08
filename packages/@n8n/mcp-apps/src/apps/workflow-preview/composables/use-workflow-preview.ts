@@ -1,8 +1,10 @@
 import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
+import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
 import { useI18n } from '@mcp-apps/i18n';
 import { useTelemetry } from '@mcp-apps/telemetry';
+import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info';
 import { isRecord } from '@mcp-apps/utils/guards';
 
 import { WORKFLOW_PREVIEW_APP_SLUG, WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from '../constants';
@@ -14,6 +16,7 @@ type UseWorkflowPreviewOptions = {
 	app: Readonly<ShallowRef<App | undefined>>;
 	appSlug?: string;
 	hostContext: Readonly<Ref<McpUiHostContext | undefined>>;
+	hostVersion?: Readonly<Ref<Implementation | undefined>>;
 	toolResult: Readonly<ShallowRef<unknown>>;
 };
 
@@ -21,6 +24,7 @@ export function useWorkflowPreview({
 	app,
 	appSlug = WORKFLOW_PREVIEW_APP_SLUG,
 	hostContext,
+	hostVersion,
 	toolResult,
 }: UseWorkflowPreviewOptions) {
 	const { t } = useI18n();
@@ -107,6 +111,7 @@ export function useWorkflowPreview({
 	function getOpenWorkflowTelemetryPayload() {
 		const payload: Record<string, unknown> = {
 			app: appSlug,
+			...getMcpClientTelemetryProperties(hostVersion?.value),
 			preview_status: getPreviewStatus(),
 		};
 

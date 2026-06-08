@@ -1,3 +1,4 @@
+import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, shallowRef } from 'vue';
 
@@ -17,6 +18,8 @@ const events = {
 	rendered: 'Test app rendered',
 	renderFailed: 'Test app render failed',
 };
+
+const hostVersion = shallowRef<Implementation>({ name: 'Claude Desktop', version: '1.2.3' });
 
 describe('useMcpAppTelemetry', () => {
 	beforeEach(() => {
@@ -38,6 +41,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
 			events,
+			hostVersion,
 			telemetry,
 		});
 
@@ -48,6 +52,8 @@ describe('useMcpAppTelemetry', () => {
 		expect(telemetry.track).toHaveBeenCalledWith('Test app rendered', {
 			app: 'workflow-preview',
 			boot_ms: 42,
+			mcp_client_name: 'Claude Desktop',
+			mcp_client_version: '1.2.3',
 		});
 	});
 
@@ -62,6 +68,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionError,
 			connectionStatus,
 			events,
+			hostVersion,
 			telemetry,
 		});
 
@@ -71,6 +78,8 @@ describe('useMcpAppTelemetry', () => {
 		expect(telemetry.init).toHaveBeenCalledTimes(1);
 		expect(telemetry.track).toHaveBeenCalledWith('Test app render failed', {
 			app: 'workflow-preview',
+			mcp_client_name: 'Claude Desktop',
+			mcp_client_version: '1.2.3',
 			reason: 'host unavailable',
 		});
 	});
@@ -85,6 +94,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
 			events,
+			hostVersion: shallowRef(),
 			telemetry,
 		});
 
@@ -106,6 +116,7 @@ describe('useMcpAppTelemetry', () => {
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
 			events,
+			hostVersion,
 			telemetry,
 		});
 

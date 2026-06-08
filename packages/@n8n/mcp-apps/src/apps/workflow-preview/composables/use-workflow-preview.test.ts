@@ -211,6 +211,7 @@ describe('useWorkflowPreview', () => {
 			app: shallowRef({ callServerTool, openLink } as unknown as App),
 			appSlug: 'workflow-preview',
 			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
 			toolResult,
 		});
 
@@ -226,6 +227,8 @@ describe('useWorkflowPreview', () => {
 			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
 			{
 				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
 				preview_status: 'loading',
 				workflow_id: 'abc123',
 			},

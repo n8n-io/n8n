@@ -15,10 +15,11 @@ import { WORKFLOW_PREVIEW_APP_SLUG, WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from './
 
 const { t } = useI18n();
 
-const { app, bootMs, connectionError, connectionStatus, hostContext, toolResult } = useMcpHostApp({
-	name: 'n8n Workflow Preview',
-	version: '0.1.0',
-});
+const { app, bootMs, connectionError, connectionStatus, hostContext, hostVersion, toolResult } =
+	useMcpHostApp({
+		name: 'n8n Workflow Preview',
+		version: '0.1.0',
+	});
 
 useMcpAppTelemetry({
 	app: WORKFLOW_PREVIEW_APP_SLUG,
@@ -29,6 +30,7 @@ useMcpAppTelemetry({
 		rendered: WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED,
 		renderFailed: WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
 	},
+	hostVersion,
 });
 
 useMcpHostContextStyles(hostContext);
@@ -46,7 +48,13 @@ const {
 	isPreviewVisible,
 	nodeCountLabel,
 	handleOpenWorkflow,
-} = useWorkflowPreview({ app, appSlug: WORKFLOW_PREVIEW_APP_SLUG, hostContext, toolResult });
+} = useWorkflowPreview({
+	app,
+	appSlug: WORKFLOW_PREVIEW_APP_SLUG,
+	hostContext,
+	hostVersion,
+	toolResult,
+});
 </script>
 
 <template>
