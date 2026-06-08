@@ -256,6 +256,18 @@ watch(
 	{ immediate: true },
 );
 
+function getCredentialFetchScope(): { workflowId: string } | { projectId: string } | undefined {
+	const workflowId = workflowDocumentStore?.value.workflowId;
+	if (workflowId) {
+		return { workflowId };
+	}
+
+	const projectId =
+		props.projectId ?? projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
+
+	return projectId ? { projectId } : undefined;
+}
+
 onMounted(() => {
 	credentialsStore.$onAction(({ name, after, args }) => {
 		const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
@@ -325,9 +337,10 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	void credentialsStore.fetchAllCredentials({
-		projectId: projectsStore.currentProject?.id,
-	});
+	const scope = getCredentialFetchScope();
+	if (scope) {
+		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
+	}
 
 	void aiGateway.fetchConfig();
 
