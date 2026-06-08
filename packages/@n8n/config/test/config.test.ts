@@ -212,6 +212,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			publicationOutboxPollIntervalMs: 15_000,
 			autosaveDisabled: false,
 			minScheduleIntervalSeconds: 0,
 		},
@@ -567,8 +568,6 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
-			subAgentMaxChildren: 5,
-			subAgentTimeoutMs: 300000,
 			modules: [],
 		},
 	} satisfies GlobalConfigShape;

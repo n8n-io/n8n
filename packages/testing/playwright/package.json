@@ -59,6 +59,7 @@
     "@n8n/instance-ai": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
+    "@n8n/test-impact": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@playwright/cli": "catalog:e2e",
     "@playwright/test": "catalog:e2e",
@@ -83,5 +84,6 @@
     "tsx": "catalog:",
     "zod": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

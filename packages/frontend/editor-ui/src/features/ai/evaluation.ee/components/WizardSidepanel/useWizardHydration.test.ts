@@ -9,6 +9,7 @@ import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store'
 const { mocks } = vi.hoisted(() => ({
 	mocks: {
 		allNodes: [] as Array<{ name: string; type: string }>,
+		isNewWorkflow: false,
 		showError: vi.fn(),
 		listEvaluationConfigs: vi.fn(),
 		getDataTableRowsApi: vi.fn(),
@@ -38,6 +39,14 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		get isNewWorkflow() {
+			return mocks.isNewWorkflow;
+		},
+	}),
 }));
 
 // Avoid activating the real focus-panel store: its watchers outlive the test
@@ -94,9 +103,22 @@ describe('useWizardHydration', () => {
 			{ name: 'Pre-process', type: 'n8n-nodes-base.set' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
+		mocks.isNewWorkflow = false;
 		mocks.listEvaluationConfigs.mockReset();
 		mocks.getDataTableRowsApi.mockReset();
 		mocks.showError.mockReset();
+	});
+
+	it('skips hydration for a new/unsaved workflow without calling the API or toasting', async () => {
+		mocks.isNewWorkflow = true;
+
+		const store = useEvaluationsWizardSidepanelStore();
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		expect(mocks.listEvaluationConfigs).not.toHaveBeenCalled();
+		expect(mocks.showError).not.toHaveBeenCalled();
+		expect(store.selectedMetricKeys).toEqual([]);
 	});
 
 	it('decodes a canned correctness metric back into selectedMetricKeys + judgeSelection', async () => {

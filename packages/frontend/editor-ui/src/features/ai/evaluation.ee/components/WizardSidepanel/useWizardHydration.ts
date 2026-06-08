@@ -7,6 +7,7 @@ import type { CustomCheck, JudgeSelection } from '../../wizardSidepanel.store';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useToast } from '@/app/composables/useToast';
 import { getDataTableRowsApi } from '@/features/core/dataTable/dataTable.api';
 import { listEvaluationConfigs } from '../../evaluation.api';
@@ -29,6 +30,7 @@ const CANNED_METRIC_KEYS = new Set<CannedMetricKey>([
 export function useWizardHydration() {
 	const wizardStore = useEvaluationsWizardSidepanelStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
 	const aiRootNodes = useAiRootNodes();
 	const toast = useToast();
@@ -42,6 +44,10 @@ export function useWizardHydration() {
 		const workflowId = wf?.workflowId;
 		const projectId = wf?.homeProject?.id;
 		if (!workflowId || !projectId) return;
+		// A new/unsaved workflow has no persisted config to load; calling the API
+		// with its placeholder id 404s ("Workflow not found") and surfaces a
+		// spurious error toast. Start blank instead.
+		if (workflowsStore.isNewWorkflow) return;
 
 		isHydrating.value = true;
 		try {

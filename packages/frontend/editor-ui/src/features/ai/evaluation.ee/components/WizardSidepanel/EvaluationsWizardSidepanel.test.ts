@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { ref } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationsWizardSidepanel from './EvaluationsWizardSidepanel.vue';
@@ -20,6 +20,7 @@ type MockNode = {
 };
 const { mocks } = vi.hoisted(() => ({
 	mocks: {
+		workflowId: 'workflow-id' as string,
 		allNodes: [] as MockNode[],
 		sliceInputs: {
 			fieldNames: [] as string[],
@@ -33,19 +34,26 @@ const { mocks } = vi.hoisted(() => ({
 	},
 }));
 
+// Reactive workflow document ref — allows tests to swap workflowId and have
+// Vue's watch() in the component detect the change.
+const workflowDocumentRef = shallowRef({
+	get workflowId() {
+		return mocks.workflowId;
+	},
+	get allNodes() {
+		return mocks.allNodes;
+	},
+});
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	injectWorkflowDocumentStore: () => ({
-		value: {
-			get workflowId() {
-				return 'workflow-id';
-			},
-			get allNodes() {
-				return mocks.allNodes;
-			},
-		},
-	}),
+	injectWorkflowDocumentStore: () => workflowDocumentRef,
 	createWorkflowDocumentId: (id: string) => id,
 	useWorkflowDocumentStore: () => ({}),
+}));
+
+const mockHydrate = vi.fn();
+vi.mock('./useWizardHydration', () => ({
+	useWizardHydration: () => ({ hydrate: mockHydrate, isHydrating: ref(false) }),
 }));
 
 vi.mock('../../composables/useSliceInputs', () => ({
@@ -99,9 +107,20 @@ const renderComponent = createComponentRenderer(EvaluationsWizardSidepanel);
 describe('EvaluationsWizardSidepanel', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		mocks.workflowId = 'workflow-id';
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
 		mockRouterPush.mockReset();
+		mockHydrate.mockReset();
+		// Trigger Vue to re-read the shallowRef so watchers see the reset workflowId.
+		workflowDocumentRef.value = {
+			get workflowId() {
+				return mocks.workflowId;
+			},
+			get allNodes() {
+				return mocks.allNodes;
+			},
+		};
 	});
 
 	// The wizard now lives as a tab inside FocusSidebar — visibility is
@@ -607,5 +626,120 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(
 			queryByTestId(`evaluations-wizard-sidepanel-custom-check-${id}`),
 		).not.toBeInTheDocument();
+	});
+
+	describe('workflow-switch watch', () => {
+		it('calls reset() and hydrate() when workflowId changes between two real ids', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			// Seed some state to verify it is cleared
+			store.setStep(2);
+			store.toggleMetric('correctness');
+
+			mocks.workflowId = 'wf-1';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+
+			renderComponent();
+			await nextTick();
+
+			// Simulate switching to wf-2
+			mocks.workflowId = 'wf-2';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			await nextTick();
+
+			expect(store.activeStep).toBe(0);
+			expect(store.selectedMetricKeys).toEqual([]);
+		});
+
+		it('does NOT call reset() when prevId is the placeholder (new→saved transition)', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.setStep(1);
+			store.toggleMetric('correctness');
+
+			const NEW_WORKFLOW_ID = '__EMPTY__';
+			mocks.workflowId = NEW_WORKFLOW_ID;
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+
+			renderComponent();
+			await nextTick();
+
+			// Simulate save completing — id transitions from placeholder to a real id
+			mocks.workflowId = 'wf-saved';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			await nextTick();
+
+			// State must NOT be reset when transitioning from the placeholder id
+			expect(store.activeStep).toBe(1);
+			expect(store.selectedMetricKeys).toEqual(['correctness']);
+		});
+
+		it('resets across an unmount/remount on a different workflow (pane closed between workflows)', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+
+			// Pane first opens on wf-1 and reaches the results step with a run.
+			mocks.workflowId = 'wf-1';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			const first = renderComponent();
+			await nextTick();
+			store.setStep(3);
+			store.toggleMetric('correctness');
+			store.setActiveRunId('run-from-wf-1');
+
+			// The focus panel closes between workflows, so the pane unmounts. The
+			// store (and its lastWorkflowId bookkeeping) survives.
+			first.unmount();
+			await nextTick();
+
+			// User switches to wf-2 and re-opens the evaluations pane → fresh mount.
+			mocks.workflowId = 'wf-2';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			renderComponent();
+			await nextTick();
+
+			expect(store.activeStep).toBe(0);
+			expect(store.selectedMetricKeys).toEqual([]);
+			expect(store.activeRunId).toBeNull();
+		});
 	});
 });
