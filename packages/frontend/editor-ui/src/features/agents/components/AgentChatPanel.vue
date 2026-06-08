@@ -316,19 +316,8 @@ onBeforeUnmount(() => {
 					:placeholder="chatPlaceholder"
 					:is-streaming="messagingState === 'receiving'"
 					:is-interruptable="inputText.trim().length > 0"
-					:can-submit="
-						!hasOpenApproval &&
-						!isStreaming &&
-						!isPreparingToSend &&
-						!isBuilderReadOnly &&
-						inputText.trim().length > 0
-					"
-					:disabled="
-						isBuilderReadOnly ||
-						hasOpenApproval ||
-						isPreparingToSend ||
-						(isStreaming && messagingState !== 'receiving')
-					"
+					:can-submit="!isPreparingToSend && !isBuilderReadOnly && inputText.trim().length > 0"
+					:disabled="isBuilderReadOnly || isPreparingToSend"
 					data-testid="chat-input"
 					@submit="onSubmit"
 					@stop="stopGenerating"
