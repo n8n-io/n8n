@@ -82,7 +82,7 @@ const onSelect = (type: string): void => {
 
 .wrapper > :global(span) {
 	width: 100%;
-	height: var(--height--sm);
+	height: var(--height--md);
 }
 
 .trigger {
