@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, shallowRef } from 'vue';
 
-import { MCP_APP_EVENTS, type McpAppTelemetry } from '@mcp-apps/telemetry';
+import type { McpAppTelemetry } from '@mcp-apps/telemetry';
 
 import { useMcpAppTelemetry } from './use-mcp-app-telemetry';
 import type { McpHostConnectionStatus } from './use-mcp-host-app';
@@ -12,6 +12,11 @@ function createTelemetryMock() {
 		track: vi.fn(),
 	} as unknown as McpAppTelemetry;
 }
+
+const events = {
+	rendered: 'Test app rendered',
+	renderFailed: 'Test app render failed',
+};
 
 describe('useMcpAppTelemetry', () => {
 	beforeEach(() => {
@@ -32,6 +37,7 @@ describe('useMcpAppTelemetry', () => {
 			bootMs,
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
+			events,
 			telemetry,
 		});
 
@@ -39,7 +45,7 @@ describe('useMcpAppTelemetry', () => {
 		await nextTick();
 
 		expect(telemetry.init).toHaveBeenCalledTimes(1);
-		expect(telemetry.track).toHaveBeenCalledWith(MCP_APP_EVENTS.PREVIEW_RENDERED, {
+		expect(telemetry.track).toHaveBeenCalledWith('Test app rendered', {
 			app: 'workflow-preview',
 			boot_ms: 42,
 		});
@@ -55,6 +61,7 @@ describe('useMcpAppTelemetry', () => {
 			bootMs: ref(),
 			connectionError,
 			connectionStatus,
+			events,
 			telemetry,
 		});
 
@@ -62,7 +69,7 @@ describe('useMcpAppTelemetry', () => {
 		await nextTick();
 
 		expect(telemetry.init).toHaveBeenCalledTimes(1);
-		expect(telemetry.track).toHaveBeenCalledWith(MCP_APP_EVENTS.PREVIEW_RENDER_FAILED, {
+		expect(telemetry.track).toHaveBeenCalledWith('Test app render failed', {
 			app: 'workflow-preview',
 			reason: 'host unavailable',
 		});
@@ -77,12 +84,13 @@ describe('useMcpAppTelemetry', () => {
 			bootMs: ref(),
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
+			events,
 			telemetry,
 		});
 
 		await nextTick();
 
-		expect(telemetry.track).toHaveBeenCalledWith(MCP_APP_EVENTS.PREVIEW_RENDERED, {
+		expect(telemetry.track).toHaveBeenCalledWith('Test app rendered', {
 			app: 'workflow-preview',
 			boot_ms: 123,
 		});
@@ -97,6 +105,7 @@ describe('useMcpAppTelemetry', () => {
 			bootMs: ref(42),
 			connectionError: shallowRef<unknown>(),
 			connectionStatus,
+			events,
 			telemetry,
 		});
 

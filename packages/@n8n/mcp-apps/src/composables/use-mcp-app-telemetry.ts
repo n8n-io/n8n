@@ -1,14 +1,20 @@
 import { watch, type Ref } from 'vue';
 
-import { MCP_APP_EVENTS, useTelemetry, type McpAppTelemetry } from '@mcp-apps/telemetry';
+import { useTelemetry, type McpAppTelemetry } from '@mcp-apps/telemetry';
 
 import type { McpHostConnectionStatus } from './use-mcp-host-app';
+
+type McpAppLifecycleTelemetryEvents = {
+	rendered: string;
+	renderFailed: string;
+};
 
 type UseMcpAppTelemetryOptions = {
 	app: string;
 	bootMs: Readonly<Ref<number | undefined>>;
 	connectionError: Readonly<Ref<unknown>>;
 	connectionStatus: Readonly<Ref<McpHostConnectionStatus>>;
+	events: McpAppLifecycleTelemetryEvents;
 	telemetry?: McpAppTelemetry;
 };
 
@@ -21,6 +27,7 @@ export function useMcpAppTelemetry({
 	bootMs,
 	connectionError,
 	connectionStatus,
+	events,
 	telemetry = useTelemetry(),
 }: UseMcpAppTelemetryOptions) {
 	let trackedConnection = false;
@@ -34,14 +41,14 @@ export function useMcpAppTelemetry({
 			telemetry.init();
 
 			if (status === 'connected') {
-				telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDERED, {
+				telemetry.track(events.rendered, {
 					app,
 					boot_ms: bootMs.value ?? Math.round(performance.now()),
 				});
 				return;
 			}
 
-			telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDER_FAILED, {
+			telemetry.track(events.renderFailed, {
 				app,
 				reason: getConnectionErrorReason(connectionError.value),
 			});

@@ -2,9 +2,10 @@ import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
 import { useI18n } from '@mcp-apps/i18n';
-import { MCP_APP_EVENTS, useTelemetry } from '@mcp-apps/telemetry';
+import { useTelemetry } from '@mcp-apps/telemetry';
 import { isRecord } from '@mcp-apps/utils/guards';
 
+import { WORKFLOW_PREVIEW_APP_SLUG, WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from '../constants';
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
 import { applyWorkflowDemoTheme, isAllowedWorkflowUrl, resolveWorkflowDemoUrl } from '../utils/url';
@@ -18,7 +19,7 @@ type UseWorkflowPreviewOptions = {
 
 export function useWorkflowPreview({
 	app,
-	appSlug = 'workflow-preview',
+	appSlug = WORKFLOW_PREVIEW_APP_SLUG,
 	hostContext,
 	toolResult,
 }: UseWorkflowPreviewOptions) {
@@ -88,7 +89,10 @@ export function useWorkflowPreview({
 			return;
 		}
 
-		telemetry.track(MCP_APP_EVENTS.OPEN_IN_N8N_CLICKED, getOpenWorkflowTelemetryPayload());
+		telemetry.track(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
+			getOpenWorkflowTelemetryPayload(),
+		);
 
 		try {
 			const result = await mcpApp.openLink({ url });

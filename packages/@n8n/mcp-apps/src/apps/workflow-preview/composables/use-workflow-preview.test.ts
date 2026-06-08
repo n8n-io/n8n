@@ -4,6 +4,7 @@ import { nextTick, ref, shallowRef } from 'vue';
 
 import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 
+import { WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from '../constants';
 import { useWorkflowPreview } from './use-workflow-preview';
 
 const { telemetryTrack } = vi.hoisted(() => ({
@@ -11,9 +12,6 @@ const { telemetryTrack } = vi.hoisted(() => ({
 }));
 
 vi.mock('@mcp-apps/telemetry', () => ({
-	MCP_APP_EVENTS: {
-		OPEN_IN_N8N_CLICKED: 'MCP App Open in n8n clicked',
-	},
 	useTelemetry: () => ({
 		track: telemetryTrack,
 	}),
@@ -224,11 +222,14 @@ describe('useWorkflowPreview', () => {
 
 		await preview.handleOpenWorkflow();
 
-		expect(telemetryTrack).toHaveBeenCalledWith('MCP App Open in n8n clicked', {
-			app: 'workflow-preview',
-			preview_status: 'loading',
-			workflow_id: 'abc123',
-		});
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
+			{
+				app: 'workflow-preview',
+				preview_status: 'loading',
+				workflow_id: 'abc123',
+			},
+		);
 		expect(openLink).toHaveBeenCalledWith({ url: 'https://n8n.example.com/workflow/abc123' });
 	});
 

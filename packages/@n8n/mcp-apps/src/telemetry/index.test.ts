@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { McpAppTelemetry, MCP_APP_EVENTS } from './index';
+import { McpAppTelemetry } from './index';
 import type { McpAppTelemetryConfig } from '../telemetry-contract';
 
 const enabledConfig: McpAppTelemetryConfig = {
@@ -51,12 +51,12 @@ describe('McpAppTelemetry', () => {
 			],
 		]);
 
-		telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDERED, { boot_ms: 42 });
+		telemetry.track('Test event', { boot_ms: 42 });
 
 		expect(getCalls('track')).toEqual([
 			[
 				'track',
-				'MCP App preview rendered',
+				'Test event',
 				{ boot_ms: 42, instance_id: 'instance-123', version_cli: '1.2.3' },
 				{ context: { ip: '0.0.0.0' } },
 			],
@@ -66,7 +66,7 @@ describe('McpAppTelemetry', () => {
 	it('no-ops when diagnostics are disabled', () => {
 		const telemetry = new McpAppTelemetry();
 		telemetry.init({ ...enabledConfig, enabled: false });
-		telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDERED);
+		telemetry.track('Test event');
 
 		expect(window.rudderanalytics).toBeUndefined();
 	});
@@ -76,7 +76,7 @@ describe('McpAppTelemetry', () => {
 		telemetry.init({ ...enabledConfig, writeKey: '' });
 		telemetry.init({ ...enabledConfig, dataPlaneUrl: '' });
 		telemetry.init({ ...enabledConfig, configUrl: '' });
-		telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDERED);
+		telemetry.track('Test event');
 
 		expect(window.rudderanalytics).toBeUndefined();
 	});
@@ -84,14 +84,14 @@ describe('McpAppTelemetry', () => {
 	it('no-ops when no config is provided', () => {
 		const telemetry = new McpAppTelemetry();
 		telemetry.init(undefined);
-		telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDERED);
+		telemetry.track('Test event');
 
 		expect(window.rudderanalytics).toBeUndefined();
 	});
 
 	it('does not dispatch events before init', () => {
 		const telemetry = new McpAppTelemetry();
-		telemetry.track(MCP_APP_EVENTS.PREVIEW_RENDER_FAILED, { reason: 'x' });
+		telemetry.track('Test event', { reason: 'x' });
 
 		expect(window.rudderanalytics).toBeUndefined();
 	});

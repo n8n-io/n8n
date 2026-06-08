@@ -11,8 +11,7 @@ import { useMcpHostContextStyles } from '@mcp-apps/composables/use-mcp-host-cont
 import { useI18n } from '@mcp-apps/i18n';
 
 import { useWorkflowPreview } from './composables/use-workflow-preview';
-
-const APP_SLUG = 'workflow-preview';
+import { WORKFLOW_PREVIEW_APP_SLUG, WORKFLOW_PREVIEW_TELEMETRY_EVENTS } from './constants';
 
 const { t } = useI18n();
 
@@ -22,10 +21,14 @@ const { app, bootMs, connectionError, connectionStatus, hostContext, toolResult 
 });
 
 useMcpAppTelemetry({
-	app: APP_SLUG,
+	app: WORKFLOW_PREVIEW_APP_SLUG,
 	bootMs,
 	connectionError,
 	connectionStatus,
+	events: {
+		rendered: WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED,
+		renderFailed: WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+	},
 });
 
 useMcpHostContextStyles(hostContext);
@@ -43,7 +46,7 @@ const {
 	isPreviewVisible,
 	nodeCountLabel,
 	handleOpenWorkflow,
-} = useWorkflowPreview({ app, appSlug: APP_SLUG, hostContext, toolResult });
+} = useWorkflowPreview({ app, appSlug: WORKFLOW_PREVIEW_APP_SLUG, hostContext, toolResult });
 </script>
 
 <template>
