@@ -54,81 +54,75 @@ docker push
 
 ---
 
-## Consuming the release SBOM
+## Verifying the SBOM
+
+The enriched, attested SBOM is attached to every published Docker image via
+cosign. Pull it once and run all checks against the file — this gives the
+enriched picture with 0 unlicensed and 0 license failures.
 
 ```bash
-# Download
-gh release download n8n@<version> \
-  --repo n8n-io/n8n \
-  --pattern sbom-source.cdx.json
+# Pull the attested SBOM from any published image
+cosign download attestation ghcr.io/n8n-io/n8n:<version> \
+  --predicate-type https://cyclonedx.org/bom \
+  | jq -r '.payload' | base64 -d | jq '.predicate' > sbom.cdx.json
 
-# Verify the attestation
-gh attestation verify sbom-source.cdx.json \
-  --repo n8n-io/n8n \
-  --owner n8n-io
+# Verify it was produced by n8n's CI (not tampered with)
+cosign verify-attestation ghcr.io/n8n-io/n8n:<version> \
+  --type cyclonedx \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "https://github.com/n8n-io/n8n/.github/workflows/"
 
-# Inspect
-jq '.components | length' sbom-source.cdx.json
+# Check for unlicensed packages — expect 0
+grant check --unlicensed sbom.cdx.json
+
+# Full license list
+grant list sbom.cdx.json
+
+# n8n's SPDX gate — expect 0 failures
+node scripts/licenses/check-sbom-licenses.mjs sbom.cdx.json \
+  --allow-ref=LicenseRef-n8n-sustainable-use \
+  --allow-ref=LicenseRef-n8n-enterprise \
+  --enforce-prefix=pkg:npm/
+
+# Vulnerability scan
+grype sbom:sbom.cdx.json
+
+# Full audit — vulnerabilities + licenses
+trivy sbom sbom.cdx.json
 ```
+
+Replace `<version>` with `nightly`, `latest`, or a specific version tag
+(e.g. `n8n@2.25.0`). The same image is available on both
+`ghcr.io/n8n-io/n8n` and `docker.io/n8nio/n8n`.
 
 ---
 
-## License verification with Grant
+## Copyleft explainer
 
-[Anchore Grant](https://github.com/anchore/grant) can be run directly against
-the Docker image or a downloaded SBOM for independent license verification.
-
-### Check for unlicensed packages
-
-Run against the enriched release SBOM for a clean result — all licenses are
-resolved before the SBOM is published:
-
-```bash
-gh release download n8n@<version> --repo n8n-io/n8n --pattern sbom-source.cdx.json
-grant check --unlicensed sbom-source.cdx.json
-```
-
-Running directly against the Docker image will show some unlicensed entries
-because grant uses syft internally, which picks up npm subpath export stubs and
-packages where the registry has no license metadata. These are resolved in the
-published SBOM by the enrichment pipeline.
-
-### Check for copyleft licenses
-
-Grant's default policy denies everything not in an explicit allow list, so
-passing only permissive licenses will surface any copyleft automatically:
-
-```bash
-# .grant.yaml
-# allow:
-#   - MIT
-#   - Apache-2.0
-#   - ISC
-#   - BSD-2-Clause
-#   - BSD-3-Clause
-#   - LicenseRef-n8n-sustainable-use
-#   - LicenseRef-n8n-enterprise
-#   # ... other permissive licenses
-
-grant check --config .grant.yaml ghcr.io/n8n-io/n8n:latest
-```
-
-**What to expect in the output:**
-
-The Docker image will show GPL/LGPL entries — these come entirely from Alpine
-OS system packages (`busybox`, `git`, `libgcc`, `libstdc++`, etc.). GPL in an
-OS binary has no effect on n8n's licensing obligations or your use of n8n. They
-are inventoried in the SBOM for completeness but are not gated by the license
-pipeline.
+The Docker image SBOM will show GPL/LGPL entries in `grant list`. These come
+entirely from Alpine OS system packages (`busybox`, `git`, `libgcc`,
+`libstdc++`, etc.). GPL in an OS binary has no effect on n8n's licensing
+obligations or your use of n8n; they are inventoried in the SBOM for
+completeness but are not gated by the license pipeline.
 
 The npm layer contains no copyleft in force. The two dual-licensed packages
 (`jszip`: MIT OR GPL-3.0-or-later, `mailsplit`: MIT OR EUPL-1.1+) elect MIT;
 this election is recorded as `cdx:license:elected` in the SBOM.
 
-A quick risk-grouped summary with no config needed:
+---
+
+## Release SBOM
+
+For source-level compliance review, download from the GitHub release page:
 
 ```bash
-grant list --group-by risk ghcr.io/n8n-io/n8n:latest
+gh release download n8n@<version> \
+  --repo n8n-io/n8n \
+  --pattern sbom-source.cdx.json
+
+gh attestation verify sbom-source.cdx.json \
+  --repo n8n-io/n8n \
+  --owner n8n-io
 ```
 
 ---
@@ -137,9 +131,12 @@ grant list --group-by risk ghcr.io/n8n-io/n8n:latest
 
 | Tool | Role |
 |---|---|
-| cdxgen | SBOM generation |
+| cdxgen | SBOM generation (CycloneDX 1.6) |
 | enrich-sbom.mjs | License enrichment (`scripts/licenses/`) |
 | check-sbom-licenses.mjs | SPDX compliance gate (`scripts/licenses/`) |
+| grant | License listing and unlicensed check |
+| grype | Vulnerability scanning against SBOM |
+| trivy | Full audit — vulnerabilities + licenses |
 | cosign / actions/attest | SBOM attestation |
 
 See `security/vex.openvex.json` for the VEX document attested alongside the image.
