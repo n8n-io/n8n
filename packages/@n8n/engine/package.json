@@ -36,5 +36,6 @@
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.1",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }
