@@ -65,6 +65,14 @@ export function getConnectedNodes(
 					return;
 				}
 
+				// A node can be both a direct connection and a transitive descendant
+				// via another branch (a shortcut diamond). If it was already collected
+				// through a sibling branch, move it to the front instead of adding a
+				// duplicate — mirroring the dedup done for `addNodes` below.
+				const existingIndex = returnNodes.indexOf(connection.node);
+				if (existingIndex !== -1) {
+					returnNodes.splice(existingIndex, 1);
+				}
 				returnNodes.unshift(connection.node);
 
 				addNodes = getConnectedNodes(

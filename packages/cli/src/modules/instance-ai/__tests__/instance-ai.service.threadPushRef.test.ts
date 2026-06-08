@@ -66,6 +66,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		// dependencies clearThreadState reaches.
 		type Internals = {
 			threadPushRef: Map<string, string>;
+			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: jest.Mock };
 			backgroundTasks: { cancelThread: jest.Mock };
 			creditedThreads: Map<string, unknown>;
@@ -83,6 +84,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
+		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
 		service.runState = {
 			clearThread: jest.fn(() => ({ active: undefined, suspended: undefined })),
 		};
@@ -101,6 +103,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		await service.clearThreadState('thread-a');
 
 		expect(service.threadPushRef.has('thread-a')).toBe(false);
+		expect(service.planRequestsByThread.has('thread-a')).toBe(false);
 	});
 
 	it('startRun overwrites the threadPushRef entry on each new run', () => {
