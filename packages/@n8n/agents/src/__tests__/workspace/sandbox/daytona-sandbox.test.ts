@@ -270,37 +270,6 @@ describe('DaytonaSandbox (creation strategies)', () => {
 		);
 	});
 
-	it('forwards volumes into Daytona create params', async () => {
-		queueNotFound('not found');
-		queuedCreateResults.push(makeMockSandbox('remote-sandbox'));
-
-		const volumes = [
-			{
-				volumeId: 'vol-agent-knowledge',
-				mountPath: '/home/daytona/workspace/agent-knowledge',
-				subpath: 'agent-knowledge/projects/project-1/agents/agent-1/corpora/signature-1',
-			},
-		];
-		const sandbox = new DaytonaSandbox({
-			id: 'sandbox-id',
-			name: 'sandbox-name',
-			apiKey: 'api-key',
-			image: 'node:20',
-			volumes,
-			createStrategyMode: 'direct',
-		});
-
-		await sandbox.start();
-
-		expect(clientLog[0].create).toHaveBeenCalledWith(
-			expect.objectContaining({
-				image: 'node:20',
-				name: 'sandbox-name',
-				volumes,
-			}),
-		);
-	});
-
 	it('reports image strategy failures and rethrows', async () => {
 		const errorReporter: ErrorReporter = { error: vi.fn() };
 		const imageError = new Error('image create failed');

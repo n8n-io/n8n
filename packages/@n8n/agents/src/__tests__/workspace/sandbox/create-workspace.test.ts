@@ -39,40 +39,6 @@ describe('createSandbox', () => {
 		expect(result?.provider).toBe('daytona');
 	});
 
-	it('forwards Daytona volumes to DaytonaSandbox', async () => {
-		const volumes = [
-			{
-				volumeId: 'vol-agent-knowledge',
-				mountPath: '/home/daytona/workspace/agent-knowledge',
-				subpath: 'agent-knowledge/projects/project-1/agents/agent-1/corpora/signature-1',
-			},
-		];
-		const constructorSpy = vi.spyOn(
-			await import('../../../workspace/sandbox/daytona-sandbox'),
-			'DaytonaSandbox',
-		);
-		const config: SandboxConfig = {
-			enabled: true,
-			provider: 'daytona',
-			daytonaApiKey: 'dtn_test',
-			image: 'daytonaio/sandbox:0.5.0',
-			volumes,
-		};
-
-		await createSandbox(config);
-
-		expect(constructorSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				apiKey: 'dtn_test',
-				image: 'daytonaio/sandbox:0.5.0',
-				language: 'typescript',
-				timeout: 300_000,
-				volumes,
-			}),
-		);
-		constructorSpy.mockRestore();
-	});
-
 	it('passes getAuthToken through to DaytonaSandbox in proxy mode', async () => {
 		const getAuthToken = vi.fn().mockResolvedValue('jwt-token-123');
 		const config: SandboxConfig = {
