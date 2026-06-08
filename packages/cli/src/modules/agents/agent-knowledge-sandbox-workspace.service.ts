@@ -51,6 +51,10 @@ interface CachedKnowledgeSandboxWorkspace {
 	lastUsedAt: number;
 }
 
+export interface WithCachedWorkspaceOptions {
+	userId: string;
+}
+
 @Service()
 export class AgentKnowledgeSandboxWorkspaceService {
 	private readonly cachedWorkspaces = new Map<string, CachedKnowledgeSandboxWorkspace>();
@@ -106,18 +110,40 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	async withCachedWorkspace<T>(
 		cacheKey: string,
 		operation: (workspace: KnowledgeSandboxWorkspace) => Promise<T>,
+	): Promise<T>;
+	async withCachedWorkspace<T>(
+		cacheKey: string,
+		options: WithCachedWorkspaceOptions,
+		operation: (workspace: KnowledgeSandboxWorkspace) => Promise<T>,
+	): Promise<T>;
+	async withCachedWorkspace<T>(
+		cacheKey: string,
+		optionsOrOperation:
+			| WithCachedWorkspaceOptions
+			| ((workspace: KnowledgeSandboxWorkspace) => Promise<T>),
+		maybeOperation?: (workspace: KnowledgeSandboxWorkspace) => Promise<T>,
 	): Promise<T> {
+		const options = typeof optionsOrOperation === 'function' ? undefined : optionsOrOperation;
+		const operation =
+			typeof optionsOrOperation === 'function' ? optionsOrOperation : maybeOperation;
+		if (!operation) {
+			throw new Error('Agent knowledge sandbox workspace operation is required');
+		}
+
+		const userId = options?.userId;
+		const resolvedCacheKey = this.resolveWorkspaceCacheKey(cacheKey, userId);
+
 		return await this.serializeByKey(
-			cacheKey,
+			resolvedCacheKey,
 			async () =>
 				await workspaceLimit(async () => {
-					this.markWorkspaceActive(cacheKey);
+					this.markWorkspaceActive(resolvedCacheKey);
 					try {
-						const entry = await this.ensureCachedWorkspace(cacheKey);
+						const entry = await this.ensureCachedWorkspace(resolvedCacheKey, cacheKey, userId);
 						entry.lastUsedAt = Date.now();
 						return await operation(entry.workspace);
 					} finally {
-						this.markWorkspaceInactive(cacheKey);
+						this.markWorkspaceInactive(resolvedCacheKey);
 					}
 				}),
 		);
@@ -194,7 +220,11 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		});
 	}
 
-	private async ensureCachedWorkspace(cacheKey: string): Promise<CachedKnowledgeSandboxWorkspace> {
+	private async ensureCachedWorkspace(
+		cacheKey: string,
+		identityCacheKey: string,
+		userId: string | undefined,
+	): Promise<CachedKnowledgeSandboxWorkspace> {
 		const existing = this.cachedWorkspaces.get(cacheKey);
 		const status = existing?.workspace.sandbox.status;
 		if (existing && status !== 'destroyed' && status !== 'destroying') {
@@ -206,7 +236,8 @@ export class AgentKnowledgeSandboxWorkspaceService {
 			await this.destroySandbox(existing.workspace.sandbox);
 		}
 
-		const workspace = await this.createKnowledgeSandboxWorkspace(cacheKey);
+		const baseConfig = await this.resolveSandboxConfig(userId);
+		const workspace = await this.createKnowledgeSandboxWorkspace(identityCacheKey, baseConfig);
 		const entry: CachedKnowledgeSandboxWorkspace = {
 			workspace,
 			lastUsedAt: Date.now(),
@@ -217,9 +248,10 @@ export class AgentKnowledgeSandboxWorkspaceService {
 	}
 
 	private async createKnowledgeSandboxWorkspace(
-		cacheKey: string,
+		identityCacheKey: string,
+		baseConfig: SandboxConfig,
 	): Promise<KnowledgeSandboxWorkspace> {
-		const config = this.buildSandboxConfig(this.sandboxConfigService.resolveConfig(), cacheKey);
+		const config = this.buildSandboxConfig(baseConfig, identityCacheKey);
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox) {
 			throw new Error('Agent knowledge sandbox is disabled');
@@ -273,6 +305,19 @@ export class AgentKnowledgeSandboxWorkspaceService {
 		}
 
 		return baseConfig;
+	}
+
+	private resolveWorkspaceCacheKey(cacheKey: string, userId: string | undefined): string {
+		if (userId && this.sandboxConfigService.isDaytonaProxyEnabled()) {
+			return `${cacheKey}:user:${userId}`;
+		}
+		return cacheKey;
+	}
+
+	private async resolveSandboxConfig(userId: string | undefined): Promise<SandboxConfig> {
+		return userId
+			? await this.sandboxConfigService.resolveConfigForUser(userId)
+			: this.sandboxConfigService.resolveConfig();
 	}
 
 	private async evictStaleWorkspaces(): Promise<void> {

@@ -1,6 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
+import type { AiService } from '@/services/ai.service';
+
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
 import { AgentKnowledgeSandboxWorkspaceService } from '../agent-knowledge-sandbox-workspace.service';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -102,17 +104,21 @@ const flushMicrotasks = async () => {
 describe('AgentKnowledgeSandboxWorkspaceService', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let configService: AgentKnowledgeSandboxConfigService;
+	let aiService: ReturnType<typeof mock<AiService>>;
 	let service: AgentKnowledgeSandboxWorkspaceService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		logger = mock<Logger>();
+		aiService = mock<AiService>();
+		aiService.isProxyEnabled.mockReturnValue(false);
 		configService = new AgentKnowledgeSandboxConfigService(
 			Object.assign(new (jest.requireActual('@n8n/config').AgentsConfig)(), {
 				aiSandboxEnabled: true,
 				aiSandboxNamePrefix: '',
 				aiSandboxServiceUrl: 'https://sandbox.example.test',
 			}),
+			aiService,
 		);
 		service = new AgentKnowledgeSandboxWorkspaceService(
 			logger,
@@ -165,6 +171,97 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 			}),
 			{ logger },
 		);
+	});
+
+	it('creates separate cached workspaces for proxied Daytona per user', async () => {
+		const cacheKey = 'project-1:agent-1:workspace';
+		jest.spyOn(configService, 'isDaytonaProxyEnabled').mockReturnValue(true);
+		jest.spyOn(configService, 'resolveConfigForUser').mockImplementation(async (userId) => ({
+			enabled: true,
+			provider: 'daytona',
+			timeout: 300_000,
+			daytonaApiUrl: 'https://proxy.example/sandbox',
+			image: 'daytonaio/sandbox:proxy',
+			getAuthToken: async () => `token-for-${userId}`,
+		}));
+		createSandboxMock
+			.mockResolvedValueOnce(makeSandbox('daytona'))
+			.mockResolvedValueOnce(makeSandbox('daytona'));
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+
+		const first = await service.withCachedWorkspace(
+			cacheKey,
+			{ userId: 'user-1' },
+			async (entry) => entry,
+		);
+		const second = await service.withCachedWorkspace(
+			cacheKey,
+			{ userId: 'user-2' },
+			async (entry) => entry,
+		);
+
+		expect(first).not.toBe(second);
+		expect(createSandboxMock).toHaveBeenCalledTimes(2);
+		expect(service.getCachedWorkspaceCount()).toBe(2);
+	});
+
+	it('does not resolve proxied Daytona config again for cached user workspace', async () => {
+		const cacheKey = 'project-1:agent-1:workspace';
+		jest.spyOn(configService, 'isDaytonaProxyEnabled').mockReturnValue(true);
+		const resolveConfigForUser = jest
+			.spyOn(configService, 'resolveConfigForUser')
+			.mockResolvedValue({
+				enabled: true,
+				provider: 'daytona',
+				timeout: 300_000,
+				daytonaApiUrl: 'https://proxy.example/sandbox',
+				image: 'daytonaio/sandbox:proxy',
+				getAuthToken: async () => 'token-for-user-1',
+			});
+		createSandboxMock.mockResolvedValue(makeSandbox('daytona'));
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+
+		const first = await service.withCachedWorkspace(
+			cacheKey,
+			{ userId: 'user-1' },
+			async (entry) => entry,
+		);
+		const second = await service.withCachedWorkspace(
+			cacheKey,
+			{ userId: 'user-1' },
+			async (entry) => entry,
+		);
+
+		expect(first).toBe(second);
+		expect(resolveConfigForUser).toHaveBeenCalledTimes(1);
+		expect(createSandboxMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('reuses direct Daytona workspaces across users when auth is static', async () => {
+		const cacheKey = 'project-1:agent-1:workspace';
+		jest.spyOn(configService, 'resolveConfigForUser').mockImplementation(async () => ({
+			enabled: true,
+			provider: 'daytona',
+			timeout: 300_000,
+			daytonaApiKey: 'dtn_static',
+			image: 'daytonaio/sandbox:0.5.0',
+		}));
+		createSandboxMock.mockResolvedValue(makeSandbox('daytona'));
+		createFilesystemMock.mockReturnValue(makeFilesystem('daytona'));
+
+		const first = await service.withCachedWorkspace(
+			cacheKey,
+			{ userId: 'user-1' },
+			async (entry) => entry,
+		);
+		const second = await service.withCachedWorkspace(
+			cacheKey,
+			{ userId: 'user-2' },
+			async (entry) => entry,
+		);
+
+		expect(first).toBe(second);
+		expect(createSandboxMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('destroys cached workspaces for the requested agent only', async () => {

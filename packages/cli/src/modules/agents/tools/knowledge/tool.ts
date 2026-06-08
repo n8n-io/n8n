@@ -24,6 +24,7 @@ import {
 export function createSearchKnowledgeTool({
 	agentId,
 	projectId,
+	userId,
 	knowledgeService,
 	sandboxCommandService,
 	csvService,
@@ -31,6 +32,7 @@ export function createSearchKnowledgeTool({
 }: {
 	agentId: string;
 	projectId: string;
+	userId: string;
 	knowledgeService: AgentKnowledgeService;
 	sandboxCommandService: AgentKnowledgeSandboxCommandService;
 	csvService: AgentKnowledgeCsvService;
@@ -112,35 +114,39 @@ export function createSearchKnowledgeTool({
 				);
 				const storedFilesById = new Map(storedFiles.map((file) => [file.id, file] as const));
 
-				return await sandboxWorkspaceService.withCachedWorkspace(cacheKey, async (workspace) => {
-					await sandboxWorkspaceService.ensureWorkspaceContainsFiles(
-						workspace,
-						expectedManifest,
-						async (missingFiles) => {
-							const filesToMaterialize = missingFiles
-								.map((file) => storedFilesById.get(file.id))
-								.filter((file): file is NonNullable<typeof file> => file !== undefined);
-							if (filesToMaterialize.length !== missingFiles.length) {
-								throw new UnexpectedError(
-									'Failed to resolve stored knowledge files for sandbox materialization',
+				return await sandboxWorkspaceService.withCachedWorkspace(
+					cacheKey,
+					{ userId },
+					async (workspace) => {
+						await sandboxWorkspaceService.ensureWorkspaceContainsFiles(
+							workspace,
+							expectedManifest,
+							async (missingFiles) => {
+								const filesToMaterialize = missingFiles
+									.map((file) => storedFilesById.get(file.id))
+									.filter((file): file is NonNullable<typeof file> => file !== undefined);
+								if (filesToMaterialize.length !== missingFiles.length) {
+									throw new UnexpectedError(
+										'Failed to resolve stored knowledge files for sandbox materialization',
+									);
+								}
+								await knowledgeService.materializeWorkspaceFilesIntoSandbox(
+									agentId,
+									projectId,
+									workspace,
+									filesToMaterialize,
 								);
-							}
-							await knowledgeService.materializeWorkspaceFilesIntoSandbox(
-								agentId,
-								projectId,
-								workspace,
-								filesToMaterialize,
-							);
-						},
-					);
+							},
+						);
 
-					return await handleSandboxKnowledgeOperation(
-						parsedInput,
-						workspace,
-						files,
-						sandboxCommandService,
-					);
-				});
+						return await handleSandboxKnowledgeOperation(
+							parsedInput,
+							workspace,
+							files,
+							sandboxCommandService,
+						);
+					},
+				);
 			} catch (error) {
 				return {
 					operation: parsedInput.operation,

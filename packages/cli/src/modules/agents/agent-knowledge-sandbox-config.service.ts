@@ -2,6 +2,9 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { normalizeSandboxProvider, type SandboxConfig } from '@n8n/ai-utilities/sandbox';
 import { OperationalError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+
+import { AiService } from '@/services/ai.service';
 
 const AGENTS_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE =
 	'N8N_AGENTS_AI_SANDBOX_SERVICE_URL is required to use the agent knowledge base sandbox.';
@@ -10,7 +13,10 @@ const DAYTONA_API_KEY_REQUIRED_MESSAGE =
 
 @Service()
 export class AgentKnowledgeSandboxConfigService {
-	constructor(private readonly agentsConfig: AgentsConfig) {}
+	constructor(
+		private readonly agentsConfig: AgentsConfig,
+		private readonly aiService: AiService,
+	) {}
 
 	resolveNamePrefix(): string | undefined {
 		const prefix = (this.agentsConfig.aiSandboxNamePrefix ?? '').trim();
@@ -20,11 +26,58 @@ export class AgentKnowledgeSandboxConfigService {
 	isAvailable(): boolean {
 		if (!this.agentsConfig.aiSandboxEnabled) return false;
 
+		if (this.isDaytonaProxyEnabled()) {
+			return true;
+		}
+
 		try {
 			return this.resolveConfig().enabled;
 		} catch {
 			return false;
 		}
+	}
+
+	isDaytonaProxyEnabled(): boolean {
+		return (
+			this.agentsConfig.aiSandboxEnabled &&
+			normalizeSandboxProvider(this.agentsConfig.aiSandboxProvider) === 'daytona' &&
+			this.aiService.isProxyEnabled()
+		);
+	}
+
+	resolveTimeout(): number {
+		return this.agentsConfig.aiSandboxTimeout;
+	}
+
+	async resolveConfigForUser(userId: string): Promise<SandboxConfig> {
+		const provider = normalizeSandboxProvider(this.agentsConfig.aiSandboxProvider);
+		if (provider !== 'daytona' || !this.agentsConfig.aiSandboxEnabled) {
+			return this.resolveConfig();
+		}
+
+		if (!this.isDaytonaProxyEnabled()) {
+			return this.resolveConfig();
+		}
+
+		const client = await this.aiService.getClient();
+		const proxyConfig = await client.getSandboxProxyConfig();
+
+		return {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: client.getSandboxProxyBaseUrl(),
+			image: proxyConfig.image,
+			timeout: this.agentsConfig.aiSandboxTimeout,
+			name: undefined,
+			getAuthToken: async () => {
+				const token = await client.getBuilderApiProxyToken(
+					{ id: userId },
+					{ userMessageId: nanoid() },
+				);
+
+				return token.accessToken;
+			},
+		};
 	}
 
 	resolveConfig(): SandboxConfig {

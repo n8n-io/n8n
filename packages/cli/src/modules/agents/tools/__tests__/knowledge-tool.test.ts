@@ -15,6 +15,7 @@ import { searchKnowledgeInputSchema, searchKnowledgeParsingSchema } from '../kno
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+const userId = 'user-1';
 
 const file = {
 	id: 'file-1',
@@ -61,6 +62,7 @@ describe('search_knowledge tool', () => {
 		return createSearchKnowledgeTool({
 			agentId,
 			projectId,
+			userId,
 			knowledgeService: knowledgeService as unknown as AgentKnowledgeService,
 			sandboxCommandService: commandService as unknown as AgentKnowledgeSandboxCommandService,
 			csvService: csvService as unknown as AgentKnowledgeCsvService,
@@ -102,7 +104,7 @@ describe('search_knowledge tool', () => {
 				await materialize(missingFiles);
 			}),
 			withCachedWorkspace: jest.fn(
-				async (_cacheKey, operation) => await operation(makeWorkspace()),
+				async (_cacheKey, _options, operation) => await operation(makeWorkspace()),
 			),
 		};
 		knowledgeService = {
@@ -170,6 +172,7 @@ describe('search_knowledge tool', () => {
 
 		expect(sandboxWorkspaceService.withCachedWorkspace).toHaveBeenCalledWith(
 			`${projectId}:${agentId}:workspace`,
+			{ userId },
 			expect.any(Function),
 		);
 		expect(knowledgeService.resolveWorkspaceForSandboxOperation).toHaveBeenCalledWith(

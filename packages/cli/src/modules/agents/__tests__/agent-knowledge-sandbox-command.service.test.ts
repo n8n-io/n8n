@@ -41,8 +41,19 @@ describe('AgentKnowledgeSandboxCommandService', () => {
 				serviceUrl: 'https://sandbox.example.test',
 				timeout: 12_345,
 			})),
+			resolveTimeout: jest.fn(() => 12_345),
 		} as unknown as jest.Mocked<AgentKnowledgeSandboxConfigService>;
 		service = new AgentKnowledgeSandboxCommandService(sandboxConfigService);
+	});
+
+	it('uses resolveTimeout for command execution timeout', async () => {
+		const executeCommand = jest.fn().mockResolvedValueOnce(commandResult('a.txt:1\n'));
+		const workspace = makeWorkspace(executeCommand);
+
+		await service.run(workspace, { command: 'search', pattern: 'needle', files: ['a.txt'] });
+
+		expect(sandboxConfigService.resolveTimeout).toHaveBeenCalled();
+		expect(sandboxConfigService.resolveConfig).not.toHaveBeenCalled();
 	});
 
 	it('runs rg from the knowledge root and supports scoped search options', async () => {

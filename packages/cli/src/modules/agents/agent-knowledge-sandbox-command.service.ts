@@ -54,7 +54,7 @@ export class AgentKnowledgeSandboxCommandService {
 
 		const result = await workspace.sandbox.executeCommand(command, args, {
 			cwd: workspace.knowledgeRoot,
-			timeout: this.sandboxConfigService.resolveConfig().timeout,
+			timeout: this.sandboxConfigService.resolveTimeout(),
 			onStdout: (chunk: string) => {
 				stdoutFromCallback = true;
 				stdout = append(stdout, chunk);
