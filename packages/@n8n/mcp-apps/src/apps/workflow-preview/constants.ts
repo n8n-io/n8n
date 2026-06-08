@@ -9,6 +9,14 @@ export const WORKFLOW_PREVIEW_TELEMETRY_EVENTS = {
 	OPEN_IN_N8N_CLICKED: 'User clicked Open in n8n button',
 } as const;
 
+export const WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES = {
+	FALLBACK_CARD: 'fallback_card',
+	PREVIEW_HEADER: 'preview_header',
+} as const;
+
+export type WorkflowPreviewOpenInN8nSource =
+	(typeof WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES)[keyof typeof WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES];
+
 export const WORKFLOW_PREVIEW_TOOL_NAMES = {
 	GET_WORKFLOW_DETAILS: 'get_workflow_details',
 } as const;

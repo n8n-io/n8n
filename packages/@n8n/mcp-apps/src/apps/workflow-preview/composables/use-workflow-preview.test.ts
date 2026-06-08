@@ -7,6 +7,7 @@ import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 import {
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+	WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES,
 	WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES,
 	WORKFLOW_PREVIEW_TOOL_NAMES,
 } from '../constants';
@@ -412,7 +413,7 @@ describe('useWorkflowPreview', () => {
 		};
 		await nextTick();
 
-		await preview.handleOpenWorkflow();
+		await preview.handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.PREVIEW_HEADER);
 
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
@@ -421,6 +422,7 @@ describe('useWorkflowPreview', () => {
 				mcp_client_name: 'Claude Desktop',
 				mcp_client_version: '1.2.3',
 				preview_status: 'loading',
+				source: WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.PREVIEW_HEADER,
 				workflow_id: 'abc123',
 			},
 		);

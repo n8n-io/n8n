@@ -15,6 +15,7 @@ import { useWorkflowPreview } from './composables/use-workflow-preview';
 import {
 	WORKFLOW_PREVIEW_APP_SLUG,
 	WORKFLOW_PREVIEW_CRASH_SOURCES,
+	WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES,
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
 } from './constants';
@@ -88,7 +89,7 @@ const {
 			:preview-url="previewUrl"
 			:preview-sent="previewSent"
 			:preview-theme="previewTheme"
-			@open="handleOpenWorkflow"
+			@open="handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.PREVIEW_HEADER)"
 			@preview-crash="handlePreviewCrash"
 			@preview-error="handlePreviewError"
 			@preview-sent-change="previewSent = $event"
@@ -100,7 +101,9 @@ const {
 			:description="t('workflowPreview.loadingPreview')"
 			loading
 		>
-			<OpenInN8nButton @click="handleOpenWorkflow" />
+			<OpenInN8nButton
+				@click="handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.FALLBACK_CARD)"
+			/>
 		</McpFallbackCard>
 
 		<McpFallbackCard
@@ -113,7 +116,7 @@ const {
 				class="open-button"
 				variant="solid"
 				size="medium"
-				@click="handleOpenWorkflow"
+				@click="handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.FALLBACK_CARD)"
 			/>
 		</McpFallbackCard>
 

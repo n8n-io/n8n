@@ -10,10 +10,12 @@ import { isRecord } from '@mcp-apps/utils/guards';
 import {
 	WORKFLOW_PREVIEW_APP_SLUG,
 	WORKFLOW_PREVIEW_CRASH_SOURCES,
+	WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES,
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
 	WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES,
 	WORKFLOW_PREVIEW_TOOL_NAMES,
+	type WorkflowPreviewOpenInN8nSource,
 	type WorkflowPreviewRenderFailureReason,
 	type WorkflowPreviewToolCallOutcome,
 } from '../constants';
@@ -129,7 +131,9 @@ export function useWorkflowPreview({
 		);
 	});
 
-	async function handleOpenWorkflow() {
+	async function handleOpenWorkflow(
+		source: WorkflowPreviewOpenInN8nSource = WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.FALLBACK_CARD,
+	) {
 		const mcpApp = app.value;
 		const url = workflowUrl.value;
 		if (!mcpApp || !url) return;
@@ -139,10 +143,10 @@ export function useWorkflowPreview({
 			return;
 		}
 
-		telemetry.track(
-			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
-			getPreviewTelemetryPayload(),
-		);
+		telemetry.track(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED, {
+			...getPreviewTelemetryPayload(),
+			source,
+		});
 
 		try {
 			const result = await mcpApp.openLink({ url });
