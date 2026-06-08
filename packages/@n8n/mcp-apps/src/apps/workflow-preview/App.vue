@@ -97,23 +97,23 @@ const {
 
 		<McpFallbackCard
 			v-else-if="workflowUrl && !previewError && (previewLoading || previewUrl)"
-			:title="t('workflowPreview.fallbackTitle')"
 			:description="t('workflowPreview.loadingPreview')"
 			loading
 		>
 			<OpenInN8nButton
+				:label="t('workflowPreview.openButtonShort')"
 				@click="handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.FALLBACK_CARD)"
 			/>
 		</McpFallbackCard>
 
 		<McpFallbackCard
 			v-else-if="workflowUrl"
-			:title="t('workflowPreview.fallbackTitle')"
-			:description="previewError ?? t('workflowPreview.fallbackDescription')"
+			:description="t('workflowPreview.fallbackDescription')"
 			icon="workflow"
 		>
 			<OpenInN8nButton
 				class="open-button"
+				:label="t('workflowPreview.openButtonShort')"
 				variant="solid"
 				size="medium"
 				@click="handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.FALLBACK_CARD)"
