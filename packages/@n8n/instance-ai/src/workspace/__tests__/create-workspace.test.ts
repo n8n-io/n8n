@@ -207,6 +207,99 @@ describe('createSandbox', () => {
 		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(undefined, logger, '1.2.3');
 	});
 
+	it('skips snapshot when runtime materialization is forced in proxy mode', async () => {
+		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://proxy.example.com',
+			getAuthToken,
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+		};
+
+		await createSandbox(config, {
+			logger,
+			errorReporter,
+			useSnapshotFallback: true,
+			runtimeMaterialize: true,
+		});
+
+		expect(mockSnapshotName).not.toHaveBeenCalled();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBeUndefined();
+	});
+
+	it('prefers runtime materialization over a custom snapshot name and warns', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'test-key',
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+		};
+
+		await createSandbox(config, {
+			logger,
+			errorReporter,
+			useSnapshotFallback: true,
+			runtimeMaterialize: true,
+			snapshotName: 'n8n/instance-ai:dev-local',
+		});
+
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('runtime materialization'),
+			expect.objectContaining({ snapshotName: 'n8n/instance-ai:dev-local' }),
+		);
+	});
+
+	it('uses an explicit snapshot name override in proxy mode', async () => {
+		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://proxy.example.com',
+			getAuthToken,
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+		};
+
+		await createSandbox(config, {
+			logger,
+			errorReporter,
+			useSnapshotFallback: true,
+			snapshotName: 'n8n/instance-ai:dev-local',
+		});
+
+		expect(mockSnapshotName).not.toHaveBeenCalled();
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBe('n8n/instance-ai:dev-local');
+	});
+
+	it('uses an explicit snapshot name override in direct mode', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'test-key',
+			image: 'node:20',
+			n8nVersion: '1.2.3',
+		};
+
+		await createSandbox(config, {
+			logger,
+			errorReporter,
+			useSnapshotFallback: true,
+			snapshotName: 'n8n/instance-ai:dev-local',
+		});
+
+		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
+		expect(sharedConfig.snapshot).toBe('n8n/instance-ai:dev-local');
+	});
+
 	it('prepares snapshot and image in Daytona proxy snapshot fallback mode', async () => {
 		const getAuthToken = vi.fn().mockResolvedValue('jwt-token');
 		const config: SandboxConfig = {

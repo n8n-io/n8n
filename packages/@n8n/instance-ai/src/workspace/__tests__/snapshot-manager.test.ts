@@ -299,8 +299,33 @@ describe('SnapshotManager.createSnapshot', () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined);
 		const daytona = makeFakeDaytona();
 
-		await expect(manager.createSnapshot(daytona as never)).rejects.toThrow();
+		await expect(manager.createSnapshot(daytona as never)).rejects.toThrow(
+			'SnapshotManager: n8nVersion is required to derive a snapshot name',
+		);
 		expect(daytona.snapshot.create).not.toHaveBeenCalled();
+	});
+
+	it('throws when an explicit snapshot name override is empty', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+
+		await expect(manager.createSnapshot(daytona as never, { name: '' })).rejects.toThrow(
+			'SnapshotManager: explicit snapshot name must not be empty',
+		);
+		expect(daytona.snapshot.create).not.toHaveBeenCalled();
+	});
+
+	it('creates a snapshot with an explicit name override', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		daytona.snapshot.create.mockResolvedValue({ name: 'n8n/instance-ai:dev-local' });
+
+		const result = await manager.createSnapshot(daytona as never, {
+			name: 'n8n/instance-ai:dev-local',
+		});
+
+		expect(result).toBe('n8n/instance-ai:dev-local');
+		expect(daytona.snapshot.create.mock.calls[0][0].name).toBe('n8n/instance-ai:dev-local');
 	});
 
 	it('forwards options to daytona.snapshot.create', async () => {

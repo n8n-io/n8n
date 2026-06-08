@@ -24,18 +24,28 @@
  *
  * Usage:
  *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0
+ *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0 --snapshot-name n8n/instance-ai:dev-local
  */
 
 const { Daytona } = require('@daytonaio/sdk');
 const { SnapshotManager } = require('@n8n/instance-ai');
 
-function parseVersion(argv) {
-	const flagIdx = argv.indexOf('--version');
+function parseFlagValue(argv, flag) {
+	const flagIdx = argv.indexOf(flag);
 	if (flagIdx !== -1 && argv[flagIdx + 1]) return argv[flagIdx + 1];
+	const prefix = `${flag}=`;
 	for (const arg of argv) {
-		if (arg.startsWith('--version=')) return arg.slice('--version='.length);
+		if (arg.startsWith(prefix)) return arg.slice(prefix.length);
 	}
-	return process.env.N8N_VERSION;
+	return undefined;
+}
+
+function parseVersion(argv) {
+	return parseFlagValue(argv, '--version') ?? process.env.N8N_VERSION;
+}
+
+function parseSnapshotName(argv) {
+	return parseFlagValue(argv, '--snapshot-name') ?? process.env.N8N_INSTANCE_AI_DAYTONA_SNAPSHOT_NAME;
 }
 
 const consoleLogger = {
@@ -59,6 +69,7 @@ async function main() {
 	}
 	const apiUrl = process.env.DAYTONA_API_URL || undefined;
 
+	const snapshotName = parseSnapshotName(process.argv.slice(2));
 	const daytona = new Daytona({ apiKey, apiUrl });
 	const baseImage = process.env.SANDBOX_IMAGE || undefined;
 	const manager = new SnapshotManager(baseImage, consoleLogger, version);
@@ -66,6 +77,7 @@ async function main() {
 	const name = await manager.createSnapshot(daytona, {
 		timeout: 1800,
 		onLogs: (chunk) => process.stdout.write(`${chunk}\n`),
+		...(snapshotName ? { name: snapshotName } : {}),
 	});
 
 	consoleLogger.info('Snapshot ready', { name });

@@ -73,6 +73,22 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
+	 * Dev only. Skip pre-built Daytona snapshots and always materialize the declarative
+	 * image at runtime. Useful when iterating on skills, knowledge base, or image contents.
+	 * Ignored unless the sandbox provider is `daytona`.
+	 */
+	@Env('N8N_INSTANCE_AI_DAYTONA_RUNTIME_MATERIALIZE')
+	daytonaRuntimeMaterialize: boolean = false;
+
+	/**
+	 * Dev only. Override the Daytona snapshot name used at sandbox creation
+	 * (e.g. `n8n/instance-ai:dev-local`). Pair with `build-snapshot.cjs --snapshot-name`
+	 * to regenerate the snapshot manually. Ignored unless the sandbox provider is `daytona`.
+	 */
+	@Env('N8N_INSTANCE_AI_DAYTONA_SNAPSHOT_NAME')
+	daytonaSnapshotName: string = '';
+
+	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
 	 * Refresh fires when the cached token's remaining lifetime falls below this threshold.
 	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.

@@ -32,6 +32,10 @@ export { type SandboxInstance, type SandboxProvider };
 
 export interface InstanceAiCreateSandboxOptions extends CreateSandboxOptions {
 	useSnapshotFallback?: boolean;
+	/** Dev mode: Skip pre-built snapshots and materialize the declarative image at runtime. */
+	runtimeMaterialize?: boolean;
+	/** Dev mode: Override the version-derived Daytona snapshot name. */
+	snapshotName?: string;
 }
 
 const NOOP_LOGGER: Logger = {
@@ -61,6 +65,28 @@ function toSharedDaytonaSandboxConfig(
 	delete sharedConfig.n8nVersion;
 	delete sharedConfig.namePrefix;
 	return sharedConfig;
+}
+
+function resolveSnapshotName(
+	options: InstanceAiCreateSandboxOptions,
+	snapshotManager: SnapshotManager,
+	isProxyMode: boolean,
+	logger: Logger,
+): string | undefined {
+	if (options.runtimeMaterialize) {
+		if (options.snapshotName) {
+			logger.warn(
+				'Both runtime materialization and a custom snapshot name are set; ignoring the snapshot name and materializing the image at runtime.',
+				{ snapshotName: options.snapshotName },
+			);
+		}
+		return undefined;
+	}
+
+	if (options.snapshotName) return options.snapshotName;
+	if (isProxyMode) return snapshotManager.snapshotName() ?? undefined;
+
+	return undefined;
 }
 
 function toSharedSandboxConfig(config: InstanceAiSandboxConfig): SharedSandboxConfig {
@@ -95,8 +121,12 @@ export async function createSandbox(
 		config.n8nVersion,
 	);
 
-	const isProxyMode = config.getAuthToken !== undefined;
-	const snapshot = isProxyMode ? (snapshotManager.snapshotName() ?? undefined) : undefined;
+	const snapshot = resolveSnapshotName(
+		options,
+		snapshotManager,
+		config.getAuthToken !== undefined,
+		logger,
+	);
 	const image = await snapshotManager.ensureImage();
 
 	return await createSharedSandbox(
