@@ -53,11 +53,6 @@ jest.mock('../json-config/mcp-client-factory', () => ({
 	buildMcpClientForServer: (...args: unknown[]) => buildMcpClientForServerMock(...args),
 }));
 
-// Avoid loading the rich-interaction tool (its import path resolves to runtime code).
-jest.mock('../integrations/rich-interaction-tool', () => ({
-	createRichInteractionTool: () => ({ name: 'rich_interaction' }) as never,
-}));
-
 beforeEach(() => {
 	Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
 });
@@ -464,7 +459,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		return names;
 	}
 
-	it('does not inject rich_interaction or integration context/action tools', async () => {
+	it('does not inject top-level integration context/action tools', async () => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
@@ -490,7 +485,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		});
 
 		const toolNames = getInjectedToolNames();
-		expect(toolNames).not.toContain('rich_interaction');
 		expect(toolNames.filter((name) => name.endsWith('_context'))).toHaveLength(0);
 		expect(toolNames.filter((name) => name.endsWith('_action'))).toHaveLength(0);
 		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
