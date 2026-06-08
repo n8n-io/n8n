@@ -3,7 +3,7 @@ import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
-import { usePostMessageHandler } from './usePostMessageHandler';
+import { usePostMessageControls, usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -180,6 +180,20 @@ describe('usePostMessageHandler', () => {
 			expect(call).toBeDefined();
 			const parsed = jsonParse(call![0] as string);
 			expect(parsed).toHaveProperty('pushRef');
+
+			cleanup();
+		});
+
+		it('should initialize whether node details can open from the route query', () => {
+			mockRoute.query = { canOpenNDV: 'false' };
+			const { canOpenNDV } = usePostMessageControls();
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+
+			setup();
+
+			expect(canOpenNDV.value).toBe(false);
 
 			cleanup();
 		});
@@ -360,6 +374,51 @@ describe('usePostMessageHandler', () => {
 					source: 'import-workflow-data',
 				});
 			});
+
+			cleanup();
+		});
+
+		it('should set and reset whether node details can open', async () => {
+			const { canOpenNDV } = usePostMessageControls();
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			dispatchPostMessage({
+				command: 'openWorkflow',
+				workflow: { nodes: [], connections: {} },
+				canOpenNDV: false,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalled();
+			});
+			expect(canOpenNDV.value).toBe(false);
+
+			cleanup();
+
+			expect(canOpenNDV.value).toBe(true);
+		});
+
+		it('should keep node details disabled when the route query disables them', async () => {
+			mockRoute.query = { canOpenNDV: 'false' };
+			const { canOpenNDV } = usePostMessageControls();
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			dispatchPostMessage({
+				command: 'openWorkflow',
+				workflow: { nodes: [], connections: {} },
+				canOpenNDV: true,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalled();
+			});
+			expect(canOpenNDV.value).toBe(false);
 
 			cleanup();
 		});
