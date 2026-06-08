@@ -10,13 +10,24 @@ import {
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/delegate-sub-agent-tool';
-import type { BuiltTool } from '../../types';
+import type {
+	BuiltTool,
+	GenerateResult,
+	InterruptibleToolContext,
+	SerializableAgentState,
+} from '../../types';
 import { Agent } from '../agent';
+import { wrapToolForApproval } from '../tool';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
-let inlineChildGenerateResult:
-	| Awaited<ReturnType<InstanceType<typeof AgentRuntimeModule.AgentRuntime>['generate']>>
-	| undefined;
+const runtimeGenerateOptions: Array<Record<string, unknown> | undefined> = [];
+let inlineChildGenerateResult: GenerateResult | undefined;
+
+const mockState = (): SerializableAgentState => ({
+	status: 'success',
+	messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+	pendingToolCalls: {},
+});
 
 vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 	const actual = await importOriginal<typeof AgentRuntimeModule>();
@@ -27,7 +38,8 @@ vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate() {
+			async generate(_input: unknown, options?: Record<string, unknown>) {
+				runtimeGenerateOptions.push(options);
 				if (inlineChildGenerateResult !== undefined) {
 					return await Promise.resolve(inlineChildGenerateResult);
 				}
@@ -41,7 +53,8 @@ vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 							content: [{ type: 'text', text: 'inline answer' }],
 						},
 					],
-					usage: {},
+					usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+					getState: mockState,
 				});
 			}
 
@@ -67,9 +80,16 @@ const delegateInput = {
 	goal: 'Find the API behavior.',
 };
 
+async function buildAgentConfig(agent: Agent): Promise<AgentRuntimeModule.AgentRuntimeConfig> {
+	return await (
+		agent as unknown as { build(): Promise<AgentRuntimeModule.AgentRuntimeConfig> }
+	).build();
+}
+
 describe('delegate sub-agent routing', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
+		runtimeGenerateOptions.length = 0;
 		inlineChildGenerateResult = undefined;
 	});
 
@@ -89,10 +109,10 @@ describe('delegate sub-agent routing', () => {
 			)
 			.tool(makeTool('lookup'));
 
-		await (agent as unknown as { build(): Promise<unknown> }).build();
+		const runtimeConfig = await buildAgentConfig(agent);
 
-		expect(runtimeConfigs).toHaveLength(1);
-		const builtTools = runtimeConfigs[0]?.tools as BuiltTool[] | undefined;
+		expect(runtimeConfigs).toHaveLength(0);
+		const builtTools = runtimeConfig.tools;
 		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(delegateTool).toBeDefined();
 
@@ -104,12 +124,10 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(hostRunSubAgent).toHaveBeenCalledOnce();
-		expect(hostRunSubAgent.mock.calls[0]?.[1]).toEqual(
-			expect.objectContaining({
-				runInlineSubAgent: expect.any(Function),
-			}),
-		);
-		expect(runtimeConfigs).toHaveLength(2);
+		const helpers = hostRunSubAgent.mock.calls[0]?.[1];
+		expect(helpers).toBeDefined();
+		expect(typeof helpers?.runInlineSubAgent).toBe('function');
+		expect(runtimeConfigs).toHaveLength(1);
 	});
 
 	it('runs inline delegations without a host runner when the tool is built on an Agent', async () => {
@@ -119,9 +137,10 @@ describe('delegate sub-agent routing', () => {
 			.tool(createDelegateSubAgentTool())
 			.tool(makeTool('lookup'));
 
-		await (agent as unknown as { build(): Promise<unknown> }).build();
+		const runtimeConfig = await buildAgentConfig(agent);
 
-		const builtTools = runtimeConfigs[0]?.tools as BuiltTool[] | undefined;
+		expect(runtimeConfigs).toHaveLength(0);
+		const builtTools = runtimeConfig.tools;
 		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(delegateTool).toBeDefined();
 
@@ -132,7 +151,65 @@ describe('delegate sub-agent routing', () => {
 			answer: 'inline answer',
 		});
 
-		expect(runtimeConfigs).toHaveLength(2);
+		expect(runtimeConfigs).toHaveLength(1);
+	});
+
+	it('passes the parent execution counter to inline child generate options', async () => {
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			executionCounter,
+		});
+
+		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
+	});
+
+	it('preserves required approval when completing inline delegate tools', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.checkpoint('memory')
+			.tool(wrapToolForApproval(createDelegateSubAgentTool(), { requireApproval: true }))
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+
+		expect(runtimeConfigs).toHaveLength(0);
+		const builtTools = runtimeConfig.tools;
+		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(delegateTool?.approval?.required).toBe(true);
+
+		const suspend = vi.fn(async (payload: unknown) => {
+			return await Promise.resolve({ suspended: payload });
+		});
+		await delegateTool?.handler?.(delegateInput, {
+			suspend: suspend as unknown as InterruptibleToolContext['suspend'],
+			resumeData: undefined,
+			runId: 'parent-run-1',
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			type: 'approval',
+			toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+			args: delegateInput,
+		});
+		expect(runtimeConfigs).toHaveLength(0);
 	});
 
 	it('lets a host-style runner delegate inline through helpers from tool metadata', async () => {
@@ -196,6 +273,7 @@ describe('delegate sub-agent routing', () => {
 					suspendPayload: { message: 'Delete file?' },
 				},
 			],
+			getState: mockState,
 		};
 
 		const agent = new Agent('parent')
@@ -204,9 +282,9 @@ describe('delegate sub-agent routing', () => {
 			.tool(createDelegateSubAgentTool())
 			.tool(makeTool('lookup'));
 
-		await (agent as unknown as { build(): Promise<unknown> }).build();
+		const runtimeConfig = await buildAgentConfig(agent);
 
-		const builtTools = runtimeConfigs[0]?.tools as BuiltTool[] | undefined;
+		const builtTools = runtimeConfig.tools;
 		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(delegateTool).toBeDefined();
 

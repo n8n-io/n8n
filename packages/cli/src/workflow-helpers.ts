@@ -1,6 +1,6 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
-import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
@@ -20,6 +20,7 @@ import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
 
@@ -434,19 +435,18 @@ export function shouldRestartParentExecution(
  * the parent resumes), not which specific child. Only one child will successfully resume the parent
  * due to the atomic status check in ActiveExecutions.add().
  *
- * @param executionRepository - The execution repository for database operations
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
  * @returns Promise that resolves when the parent execution has been updated
  */
 export async function updateParentExecutionWithChildResults(
-	executionRepository: ExecutionRepository,
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 ): Promise<void> {
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
 	if (!lastExecutedNodeData?.data) return;
-	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
+	const executionPersistence = Container.get(ExecutionPersistence);
+	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -467,7 +467,7 @@ export async function updateParentExecutionWithChildResults(
 	// and the Execute Workflow node is executed again in disabled mode.
 	nodeExecutionStack[0].data = lastExecutedNodeData.data;
 
-	await executionRepository.updateExistingExecution(
+	await executionPersistence.updateExistingExecution(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);

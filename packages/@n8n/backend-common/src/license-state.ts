@@ -194,6 +194,10 @@ export class LicenseState {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
+	isOtelCustomSpanAttributesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES);
+	}
+
 	// --------------------
 	//      integers
 	// --------------------

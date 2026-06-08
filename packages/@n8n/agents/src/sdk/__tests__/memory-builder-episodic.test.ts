@@ -1,4 +1,4 @@
-import type { AgentRuntime } from '../../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
@@ -68,14 +68,9 @@ describe('Memory builder — episodic memory', () => {
 			.instructions('You are a test assistant.')
 			.memory(memory);
 
-		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
-		const runtimeConfig = (
-			runtime as unknown as {
-				config: {
-					episodicMemory?: EpisodicMemoryConfig;
-				};
-			}
-		).config;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
 		const embedder = runtimeConfig.episodicMemory?.embedder as unknown as Record<string, unknown>;
 
 		expect(runtimeConfig.episodicMemory).toMatchObject({

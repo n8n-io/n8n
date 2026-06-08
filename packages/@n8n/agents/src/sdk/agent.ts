@@ -1,12 +1,14 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
+import { getModelCost } from './catalog';
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
-import { AgentRuntime } from '../runtime/agent-runtime';
+import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/agent-runtime';
 import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
@@ -21,6 +23,7 @@ import {
 } from '../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
+import { RunStateManager } from '../runtime/run-state';
 import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
 import {
@@ -47,13 +50,13 @@ import type {
 	ModelConfig,
 	Provider,
 	RunOptions,
-	SerializableAgentState,
 	StreamResult,
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
 import type { AgentEvent } from '../types/runtime/event';
+import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
@@ -76,6 +79,11 @@ interface DeferredToolOptions {
 		topK?: number;
 	};
 }
+
+type ActiveRuntime = {
+	runtime: AgentRuntime;
+	bus: AgentEventBus;
+};
 
 /**
  * Lightweight read-only view of an agent's configured state.
@@ -100,8 +108,6 @@ export interface AgentSnapshot {
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
-	/** Whether `.requireToolApproval()` was called. */
-	requireToolApproval: boolean;
 }
 
 /**
@@ -149,13 +155,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private agentEvals: BuiltEval[] = [];
 
-	private outputSchema?: z.ZodType;
+	private outputSchema?: z.ZodType | JSONSchema7;
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
-
-	private runtime?: AgentRuntime;
 
 	private concurrencyValue?: number;
 
@@ -165,15 +169,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private middlewares: AgentMiddleware[] = [];
 
-	private requireToolApprovalValue = false;
-
 	private mcpClients: McpClient[] = [];
 
 	private defaultExecutionOptions?: ExecutionOptions;
 
-	private buildPromise: Promise<AgentRuntime> | undefined;
+	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
 
-	private eventBus = new AgentEventBus();
+	private agentHandlers = new Map<AgentEvent, Set<AgentEventHandler>>();
+
+	private activeRuntimes = new Set<ActiveRuntime>();
 
 	private workspaceInstance?: Workspace;
 
@@ -354,6 +358,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Set a structured output schema. When set, the agent's response will be
 	 * parsed into a typed object matching the schema, available as `result.output`.
 	 *
+	 * Accepts either a Zod schema or a raw JSON Schema. JSON Schema is useful
+	 * when the schema is supplied dynamically (e.g. entered in a workflow node)
+	 * and there is no Zod type to compile against.
+	 *
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('extractor')
@@ -368,7 +376,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * console.log(result.structuredOutput); // { code: '...', explanation: '...' }
 	 * ```
 	 */
-	structuredOutput(schema: z.ZodType): this {
+	structuredOutput(schema: z.ZodType | JSONSchema7): this {
 		this.outputSchema = schema;
 		return this;
 	}
@@ -403,7 +411,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.telemetryBuilder = undefined;
 			this.telemetryConfig = t;
-			this.runtime?.setTelemetry(t);
+			this.buildPromise = undefined;
 		}
 		return this;
 	}
@@ -425,16 +433,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			throw new Error('toolCallConcurrency must be a positive integer or Infinity');
 		}
 		this.concurrencyValue = n;
-		return this;
-	}
-
-	/**
-	 * Require human approval before any tool executes.
-	 * Tools that already have .suspend()/.resume() (suspendSchema) are skipped.
-	 * Requires .checkpoint() to be set.
-	 */
-	requireToolApproval(): this {
-		this.requireToolApprovalValue = true;
 		return this;
 	}
 
@@ -503,7 +501,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Handlers are called synchronously during the agentic loop.
 	 */
 	on(event: AgentEvent, handler: AgentEventHandler): void {
-		this.eventBus.on(event, handler);
+		let handlers = this.agentHandlers.get(event);
+		if (!handlers) {
+			handlers = new Set();
+			this.agentHandlers.set(event, handlers);
+		}
+		handlers.add(handler);
+		for (const { bus } of this.activeRuntimes) {
+			bus.on(event, handler);
+		}
 	}
 
 	/**
@@ -512,7 +518,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * cleanly between turns instead of accumulating on a long-lived agent.
 	 */
 	off(event: AgentEvent, handler: AgentEventHandler): void {
-		this.eventBus.off(event, handler);
+		const handlers = this.agentHandlers.get(event);
+		if (!handlers) return;
+		handlers.delete(handler);
+		if (handlers.size === 0) {
+			this.agentHandlers.delete(event);
+		}
+		for (const { bus } of this.activeRuntimes) {
+			bus.off(event, handler);
+		}
 	}
 
 	/**
@@ -552,21 +566,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
-			requireToolApproval: this.requireToolApprovalValue,
 		};
-	}
-
-	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
-	getState(): SerializableAgentState {
-		if (!this.runtime) {
-			return {
-				persistence: undefined,
-				status: 'idle',
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-			};
-		}
-		return this.runtime.getState();
 	}
 
 	/**
@@ -574,7 +574,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Synchronous — sets an abort flag; the agentic loop checks it asynchronously.
 	 */
 	abort(): void {
-		this.eventBus.abort();
+		for (const { bus } of this.activeRuntimes) {
+			bus.abort();
+		}
 	}
 
 	/**
@@ -590,7 +592,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	async close(): Promise<void> {
 		const tasks: Array<Promise<unknown>> = [];
-		if (this.runtime) tasks.push(this.runtime.dispose());
+		for (const active of this.activeRuntimes) {
+			active.bus.abort();
+			tasks.push(this.cleanupRuntime(active));
+		}
 		tasks.push(...this.mcpClients.map(async (c) => await c.close()));
 		await Promise.allSettled(tasks);
 	}
@@ -600,9 +605,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const runtime = await this.ensureBuilt();
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config);
 		const mergedOptions = this.mergeWithDefaults(options);
-		return await runtime.generate(this.toMessages(input), mergedOptions);
+		try {
+			return await active.runtime.generate(this.toMessages(input), mergedOptions);
+		} finally {
+			await this.cleanupRuntime(active);
+		}
 	}
 
 	/** Stream a response. Lazy-builds on first call. */
@@ -610,9 +620,16 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const runtime = await this.ensureBuilt();
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config);
 		const mergedOptions = this.mergeWithDefaults(options);
-		return await runtime.stream(this.toMessages(input), mergedOptions);
+		try {
+			const result = await active.runtime.stream(this.toMessages(input), mergedOptions);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
 	}
 
 	/** Resume a suspended tool call with data. Lazy-builds on first call. */
@@ -631,11 +648,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		const runtime = await this.ensureBuilt();
+		const config = await this.ensureBuilt();
 		if (method === 'generate') {
-			return await runtime.resume('generate', data, options);
+			const active = this.createRuntime(config, options.runId);
+			try {
+				return await active.runtime.resume('generate', data, options);
+			} finally {
+				await this.cleanupRuntime(active);
+			}
 		}
-		return await runtime.resume('stream', data, options);
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.resume('stream', data, options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
 	}
 
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
@@ -674,7 +703,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * concurrent callers share one build operation. On error the promise is
 	 * cleared so the caller can retry.
 	 */
-	private async ensureBuilt(): Promise<AgentRuntime> {
+	private async ensureBuilt(): Promise<AgentRuntimeConfig> {
 		if (!this.buildPromise) {
 			const p = this.build();
 			this.buildPromise = p;
@@ -685,13 +714,76 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return await this.buildPromise;
 	}
 
+	private createRuntime(config: AgentRuntimeConfig, runId?: string): ActiveRuntime {
+		const bus = new AgentEventBus();
+		for (const [event, handlers] of this.agentHandlers) {
+			for (const handler of handlers) {
+				bus.on(event, handler);
+			}
+		}
+		const runtime = new AgentRuntime({ ...config, eventBus: bus, runId });
+		const active = { runtime, bus };
+		this.activeRuntimes.add(active);
+		return active;
+	}
+
+	private trackStreamRuntime(
+		stream: ReadableStream<StreamChunk>,
+		active: ActiveRuntime,
+	): ReadableStream<StreamChunk> {
+		const reader = stream.getReader();
+		let cleanupPromise: Promise<void> | undefined;
+		const cleanup = async () => {
+			const doCleanup = async () => {
+				try {
+					reader.releaseLock();
+				} catch {
+					// The lock may already be released after cancellation/error cleanup.
+				}
+				await this.cleanupRuntime(active);
+			};
+			cleanupPromise ??= doCleanup();
+			return await cleanupPromise;
+		};
+
+		return new ReadableStream<StreamChunk>({
+			async pull(controller) {
+				try {
+					const { done, value } = await reader.read();
+					if (done) {
+						controller.close();
+						await cleanup();
+						return;
+					}
+					controller.enqueue(value);
+				} catch (error) {
+					controller.error(error);
+					await cleanup();
+				}
+			},
+			async cancel(reason) {
+				try {
+					await reader.cancel(reason);
+				} finally {
+					await cleanup();
+				}
+			},
+		});
+	}
+
+	private async cleanupRuntime(active: ActiveRuntime): Promise<void> {
+		if (!this.activeRuntimes.delete(active)) return;
+		active.bus.dispose();
+		await active.runtime.dispose();
+	}
+
 	private toMessages(input: string | AgentMessage[]): AgentMessage[] {
 		if (Array.isArray(input)) return input;
 		return [{ role: 'user', content: [{ type: 'text', text: input }] }];
 	}
 
 	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
-	protected async build(): Promise<AgentRuntime> {
+	protected async build(): Promise<AgentRuntimeConfig> {
 		if (!this.modelConfig) {
 			throw new Error(`Agent "${this.name}" requires a model`);
 		}
@@ -707,27 +799,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalTools.push(...wsTools);
 		}
 
-		let finalStaticTools = finalTools;
-		let finalDeferredTools = configuredDeferredTools;
-		if (this.requireToolApprovalValue) {
-			finalStaticTools = finalTools.map((t) =>
-				RUNTIME_SKILL_TOOL_NAMES.has(t.name) || t.suspendSchema
-					? t
-					: wrapToolForApproval(t, { requireApproval: true }),
-			);
-			finalDeferredTools = configuredDeferredTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
-			);
-		}
+		const finalStaticTools = finalTools;
+		const finalDeferredTools = configuredDeferredTools;
 
 		// Validate checkpoint requirement from static tools and known MCP approval config
 		// before attempting any network connections (allows fast failure).
 		const staticNeedsCheckpoint =
 			finalStaticTools.some((t) => t.suspendSchema) ||
 			finalDeferredTools.some((t) => t.suspendSchema);
-		const mcpNeedsCheckpoint =
-			(this.requireToolApprovalValue && this.mcpClients.length > 0) ||
-			this.mcpClients.some((c) => c.declaresApproval());
+		const mcpNeedsCheckpoint = this.mcpClients.some((c) => c.declaresApproval());
 		if ((staticNeedsCheckpoint || mcpNeedsCheckpoint) && !this.checkpointStore) {
 			throw new Error(
 				`Agent "${this.name}" has tools requiring approval or suspend/resume but no checkpoint storage. ` +
@@ -738,15 +818,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
-		let mcpTools = mcpToolLists.flat();
-
-		// Apply global requireToolApproval to MCP tools (per-server approval is already
-		// handled inside McpClient/McpConnection.listTools()).
-		if (this.requireToolApprovalValue) {
-			mcpTools = mcpTools.map((t) =>
-				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
-			);
-		}
+		const mcpTools = mcpToolLists.flat();
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticCollisions = findDuplicateToolNames(finalStaticTools);
@@ -836,7 +908,22 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(toolSearch !== undefined ? { toolSearch } : {}),
 		});
 
-		this.runtime = new AgentRuntime({
+		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
+		try {
+			const modelId =
+				typeof modelConfig === 'string'
+					? modelConfig
+					: 'id' in modelConfig && typeof modelConfig.id === 'string'
+						? modelConfig.id
+						: undefined;
+			modelCost = modelId ? await getModelCost(modelId) : undefined;
+		} catch {
+			modelCost = undefined;
+		}
+
+		const runState = new RunStateManager(this.checkpointStore);
+
+		return {
 			name: this.name,
 			model: modelConfig,
 			instructions,
@@ -852,13 +939,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
-			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
-			telemetry,
-		});
-
-		return this.runtime;
+			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
+			modelCost,
+			runState,
+		};
 	}
 
 	private completeInlineDelegateTools(
@@ -901,7 +987,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				},
 			});
 
-			if (tool.withDefaultApproval) {
+			if (tool.approval?.required === true) {
 				return wrapToolForApproval(completedTool, { requireApproval: true });
 			}
 			return completedTool;
@@ -952,6 +1038,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
 					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(request.parentExecutionCounter !== undefined
+						? { executionCounter: request.parentExecutionCounter }
+						: {}),
 				});
 				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
 					return failedDelegatedChildSuspendOutput(request.taskPath);

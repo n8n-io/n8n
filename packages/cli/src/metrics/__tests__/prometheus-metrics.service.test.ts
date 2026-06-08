@@ -6,7 +6,7 @@ import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
@@ -35,6 +35,7 @@ describe('PrometheusMetricsService', () => {
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let storageConfig: StorageConfig;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -56,6 +57,7 @@ describe('PrometheusMetricsService', () => {
 					includeWorkflowExecutionDuration: false,
 					includeWorkflowNameLabel: false,
 					includeWorkflowStatistics: false,
+					includeExecutionDataMetrics: false,
 					activeWorkflowCountInterval: 30,
 					workflowStatisticsInterval: 30,
 				},
@@ -78,6 +80,7 @@ describe('PrometheusMetricsService', () => {
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
 		licenseMetricsRepository = mock<LicenseMetricsRepository>();
+		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -87,6 +90,7 @@ describe('PrometheusMetricsService', () => {
 			instanceSettings,
 			workflowRepository,
 			licenseMetricsRepository,
+			storageConfig,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -103,6 +107,12 @@ describe('PrometheusMetricsService', () => {
 		prometheusMetricsService.disableAllLabels();
 	});
 
+	/** Capture the handler registered via `eventService.on(eventName, handler)`. */
+	const getEventServiceHandler = (eventName: string) => {
+		const call = (eventService.on as jest.Mock).mock.calls.find((c) => c[0] === eventName);
+		return call ? call[1] : undefined;
+	};
+
 	describe('constructor', () => {
 		it('should enable metrics based on global config', async () => {
 			const customGlobalConfig = { ...globalConfig };
@@ -113,6 +123,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -826,12 +837,6 @@ describe('PrometheusMetricsService', () => {
 	});
 
 	describe('token exchange metrics', () => {
-		// Helper to capture an eventService.on handler by event name
-		const getEventServiceHandler = (eventName: string) => {
-			const call = (eventService.on as jest.Mock).mock.calls.find((c) => c[0] === eventName);
-			return call ? call[1] : undefined;
-		};
-
 		it('should register all 6 token exchange counters on init', async () => {
 			await prometheusMetricsService.init(app);
 
@@ -970,6 +975,103 @@ describe('PrometheusMetricsService', () => {
 			// @ts-expect-error private field
 			const linkedCounter = prometheusMetricsService.counters.tokenExchangeIdentityLinkedTotal;
 			expect(linkedCounter?.inc).toHaveBeenCalledWith(1);
+		});
+	});
+
+	describe('execution data metrics', () => {
+		it('should register execution data metrics and set a storage-mode gauge when enabled', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_reads_total',
+				help: 'Total number of execution data reads.',
+				labelNames: ['mode', 'result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_writes_total',
+				help: 'Total number of execution data writes.',
+				labelNames: ['mode', 'result'],
+			});
+			expect(promClient.Counter).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_unreadable_bundles_total' }),
+			);
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_read_duration_seconds' }),
+			);
+			expect(promClient.Histogram).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_write_duration_seconds' }),
+			);
+			expect(promClient.Gauge).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_storage_mode', labelNames: ['mode'] }),
+			);
+
+			// @ts-expect-error private field
+			const gauge = prometheusMetricsService.gauges.executionDataStorageMode;
+			expect(gauge.set).toHaveBeenCalledWith({ mode: 'db' }, 0);
+			expect(gauge.set).toHaveBeenCalledWith({ mode: 'fs' }, 0);
+			expect(gauge.set).toHaveBeenCalledWith({ mode: 'db' }, 1); // configured mode (storageConfig.modeTag)
+		});
+
+		it('should not register execution data metrics when disabled', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Counter).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'n8n_execution_data_reads_total' }),
+			);
+		});
+
+		it('should count a read and observe its duration (seconds) on a successful read event', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			getEventServiceHandler('execution-data-read')({
+				mode: 'db',
+				durationMs: 200,
+				success: true,
+				unreadableBundles: 0,
+			});
+
+			// @ts-expect-error private field
+			const reads = prometheusMetricsService.counters.executionDataReadsTotal;
+			expect(reads?.inc).toHaveBeenCalledWith({ mode: 'db', result: 'success' }, 1);
+			// @ts-expect-error private field
+			const histogram = prometheusMetricsService.histograms.executionDataReadDuration;
+			expect(histogram.observe).toHaveBeenCalledWith({ mode: 'db' }, 0.2);
+		});
+
+		it('should count unreadable bundles reported by a read event', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			getEventServiceHandler('execution-data-read')({
+				mode: 'fs',
+				durationMs: 5,
+				success: true,
+				unreadableBundles: 3,
+			});
+
+			// @ts-expect-error private field
+			const unreadable = prometheusMetricsService.counters.executionDataUnreadableBundlesTotal;
+			expect(unreadable?.inc).toHaveBeenCalledWith({ mode: 'fs' }, 3);
+		});
+
+		it('should count a failed write without observing its duration', async () => {
+			prometheusMetricsService.enableMetric('executionData');
+			await prometheusMetricsService.init(app);
+
+			getEventServiceHandler('execution-data-write')({
+				mode: 'db',
+				durationMs: 10,
+				success: false,
+			});
+
+			// @ts-expect-error private field
+			const writes = prometheusMetricsService.counters.executionDataWritesTotal;
+			expect(writes?.inc).toHaveBeenCalledWith({ mode: 'db', result: 'failure' }, 1);
+			// @ts-expect-error private field
+			const histogram = prometheusMetricsService.histograms.executionDataWriteDuration;
+			expect(histogram.observe).not.toHaveBeenCalled();
 		});
 	});
 });

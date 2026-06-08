@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import { scrubSecretsInText } from '@n8n/utils';
 import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
 
 import type { ToolRegistry } from './tool-registry';
@@ -138,6 +139,44 @@ function normaliseToolErrorOutput(output: unknown): unknown {
 	return output;
 }
 
+const REDACTED_VALUE = '[REDACTED]';
+const CIRCULAR_VALUE = '[Circular]';
+
+function isSecretKey(key: string): boolean {
+	const probe = `${key}=value`;
+	return scrubSecretsInText(probe) !== probe;
+}
+
+function sanitizeExecutionLogValue(value: unknown, seen = new WeakSet<object>()): unknown {
+	if (typeof value === 'string') return scrubSecretsInText(value);
+
+	if (Array.isArray(value)) {
+		if (seen.has(value)) return CIRCULAR_VALUE;
+		seen.add(value);
+		const sanitized = value.map((item) => sanitizeExecutionLogValue(item, seen));
+		seen.delete(value);
+		return sanitized;
+	}
+
+	if (!isRecord(value)) return value;
+
+	if (seen.has(value)) return CIRCULAR_VALUE;
+	seen.add(value);
+
+	const sanitized: Record<string, unknown> = {};
+	for (const [key, item] of Object.entries(value)) {
+		sanitized[key] = isSecretKey(key) ? REDACTED_VALUE : sanitizeExecutionLogValue(item, seen);
+	}
+
+	seen.delete(value);
+	return sanitized;
+}
+
+function sanitizeExecutionLogRecord(value: unknown): Record<string, unknown> | undefined {
+	const sanitized = sanitizeExecutionLogValue(value);
+	return isRecord(sanitized) ? sanitized : undefined;
+}
+
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
@@ -182,7 +221,7 @@ export type TimelineEvent =
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null;
+	return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 /**
@@ -340,7 +379,8 @@ export class ExecutionRecorder {
 	private recordToolCall(toolCallId: string, name: string, input: unknown): void {
 		this.flushTextBuffer();
 
-		this.toolCalls.push({ name, input, output: undefined, toolCallId });
+		const recordedInput = sanitizeExecutionLogValue(input);
+		this.toolCalls.push({ name, input: recordedInput, output: undefined, toolCallId });
 
 		const entry = this.registry.get(name);
 		// Resolve both `$fromAI(...)` placeholders and simple `={{ $json.x }}`
@@ -351,14 +391,14 @@ export class ExecutionRecorder {
 			input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {};
 		const resolvedNodeParameters =
 			entry?.nodeParameters !== undefined
-				? (resolveTemplatesInValue(entry.nodeParameters, llmArgs) as Record<string, unknown>)
+				? sanitizeExecutionLogRecord(resolveTemplatesInValue(entry.nodeParameters, llmArgs))
 				: undefined;
 		this.timeline.push({
 			type: 'tool-call',
 			kind: entry?.kind ?? 'tool',
 			name,
 			toolCallId,
-			input,
+			input: recordedInput,
 			output: undefined as unknown,
 			startTime: Date.now(),
 			endTime: 0,
@@ -442,7 +482,9 @@ export class ExecutionRecorder {
 		output: unknown,
 		isError: boolean,
 	): void {
-		const recordedOutput = isError ? normaliseToolErrorOutput(output) : output;
+		const recordedOutput = sanitizeExecutionLogValue(
+			isError ? normaliseToolErrorOutput(output) : output,
+		);
 
 		const pendingFlat = this.findOpenToolCall(toolCallId, name);
 		if (pendingFlat) {
@@ -495,7 +537,10 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
-			nodeParameters: entry?.nodeParameters,
+			nodeParameters:
+				entry?.nodeParameters !== undefined
+					? sanitizeExecutionLogRecord(entry.nodeParameters)
+					: undefined,
 		};
 		if (synthesized.kind === 'workflow' && isRecord(recordedOutput)) {
 			const execId = recordedOutput.executionId;

@@ -27,6 +27,7 @@ import ProjectCustomRolesUpgradeModal from './ProjectCustomRolesUpgradeModal.vue
 
 interface RoleSelectItem extends SelectItemProps {
 	role?: Role;
+	requiresUpgrade?: boolean;
 }
 
 const props = defineProps<{
@@ -36,6 +37,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:role': [payload: { role: Role['slug']; userId: string }];
+	'show-role-upgrade-dialog': [];
 }>();
 
 const i18n = useI18n();
@@ -104,6 +106,7 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 				value: role.slug,
 				label: role.displayName,
 				role,
+				requiresUpgrade: !role.licensed,
 			});
 		});
 	}
@@ -124,6 +127,7 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 				label: role.displayName,
 				disabled: !role.licensed,
 				role,
+				requiresUpgrade: !role.licensed,
 			});
 		});
 	}
@@ -135,9 +139,12 @@ const onRoleSelect = (value: SelectValue | undefined) => {
 	if (!value || typeof value !== 'string') return;
 	const role = props.roles.find((r) => r.slug === value);
 	if (role && !role.licensed) {
-		// Show upgrade modal for unlicensed roles
 		closeDropdown();
-		upgradeModalVisible.value = true;
+		if (role.systemRole) {
+			emit('show-role-upgrade-dialog');
+		} else {
+			upgradeModalVisible.value = true;
+		}
 		return;
 	}
 
@@ -160,6 +167,10 @@ const onAddCustomRoleClick = () => {
 		// Admin with license - navigate to create role page
 		void router.push({ name: VIEWS.PROJECT_NEW_ROLE });
 	}
+};
+
+const isUnavailableRoleItem = (item: SelectItemProps) => {
+	return item.requiresUpgrade === true;
 };
 </script>
 
@@ -213,7 +224,7 @@ const onAddCustomRoleClick = () => {
 								<N8nText
 									tag="span"
 									size="medium"
-									:color="item.disabled ? 'text-light' : 'text-dark'"
+									:color="isUnavailableRoleItem(item) ? 'text-light' : 'text-dark'"
 									:class="$style.itemLabel"
 								>
 									{{ item.label }}
@@ -221,7 +232,7 @@ const onAddCustomRoleClick = () => {
 							</template>
 							<template #item-trailing>
 								<N8nBadge
-									v-if="item.disabled && hasCustomRolesLicense"
+									v-if="isUnavailableRoleItem(item)"
 									theme="warning"
 									:class="$style.upgradeBadge"
 								>

@@ -67,6 +67,7 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
@@ -198,8 +199,8 @@ export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export {
+	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
-	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
 	isSubAgentTaskPath,

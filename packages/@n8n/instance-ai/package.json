@@ -61,6 +61,7 @@
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
+    "@thednp/dommatrix": "^2.0.12",
     "csv-parse": "catalog:",
     "fast-glob": "catalog:",
     "flatted": "catalog:",
@@ -92,5 +93,6 @@
     "tsx": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

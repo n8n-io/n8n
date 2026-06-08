@@ -3,11 +3,14 @@ import { jsonParse } from 'n8n-workflow';
 import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 import {
 	buildKnowledgeBaseWorkspaceBundle,
+	KNOWLEDGE_BASE_INDEX_FILE,
 	KNOWLEDGE_BASE_MANIFEST_FILE,
+	KNOWLEDGE_BASE_TEMPLATES_DIR,
 	loadPrebakedKnowledgeBaseBundle,
 	materializeKnowledgeBaseIntoWorkspace,
 	SANDBOX_KNOWLEDGE_BASE_DIR,
 } from '../materialize-knowledge-base';
+import { makeBuilderTemplatesTarGz } from './builder-templates-archive.fixtures';
 
 const ROOT = '/home/daytona/workspace';
 
@@ -46,8 +49,8 @@ function createSandboxWorkspace(files: Map<string, string>): {
 }
 
 describe('buildKnowledgeBaseWorkspaceBundle', () => {
-	it('builds best-practice markdown files, index, and manifest', () => {
-		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+	it('builds best-practice markdown files, section indexes, root index, and manifest v4', async () => {
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 
 		expect(bundle.rootDir).toBe(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}`);
 		expect(
@@ -57,19 +60,153 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/best-practices/index.json`),
 		).toBeDefined();
 		expect(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_MANIFEST_FILE}`),
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`),
 		).toBeDefined();
+		const manifest = jsonParse<{
+			schemaVersion: number;
+			contentHash: string;
+		}>(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_MANIFEST_FILE}`) ??
+				'',
+		);
+		expect(manifest.schemaVersion).toBe(4);
+		expect(manifest.contentHash).toBe(bundle.contentHash);
 		expect(bundle.contentHash).toMatch(/^[a-f0-9]{12}$/);
 
-		const index = jsonParse<{ entries: Array<{ id: string; hasDocumentation: boolean }> }>(
-			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/best-practices/index.json`) ?? '',
-		);
-		expect(index.entries.some((entry) => entry.id === 'scheduling' && entry.hasDocumentation)).toBe(
-			true,
-		);
+		const bestPracticesIndex = jsonParse<{
+			entries: Array<{ id: string; hasDocumentation: boolean }>;
+		}>(bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/best-practices/index.json`) ?? '');
 		expect(
-			index.entries.some((entry) => entry.id === 'monitoring' && !entry.hasDocumentation),
+			bestPracticesIndex.entries.some(
+				(entry) => entry.id === 'scheduling' && entry.hasDocumentation,
+			),
 		).toBe(true);
+		expect(
+			bestPracticesIndex.entries.some(
+				(entry) => entry.id === 'monitoring' && !entry.hasDocumentation,
+			),
+		).toBe(true);
+
+		expect(
+			bundle.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/trigger-input-data-shapes.md`,
+			),
+		).toContain('# Per-trigger `inputData` shape');
+
+		const rootIndex = jsonParse<{
+			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
+			templates: { indexFile: string; entries: unknown[] };
+			reference: { indexFile: string; entries: Array<{ id: string; file: string }> };
+		}>(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`) ?? '',
+		);
+		expect(rootIndex.bestPractices.indexFile).toBe('best-practices/index.json');
+		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
+		expect(rootIndex.reference.indexFile).toBe('reference/index.json');
+		expect(rootIndex.templates.entries).toEqual([]);
+		expect(rootIndex.reference.entries).toEqual([
+			expect.objectContaining({
+				id: 'trigger-input-data-shapes',
+				file: 'reference/trigger-input-data-shapes.md',
+			}),
+		]);
+		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
+		expect(bundle.indexPath).toBe(
+			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
+		);
+	});
+
+	it('materializes CDN index.txt archives as templates/index.json', async () => {
+		const archive = makeBuilderTemplatesTarGz([
+			{ name: 'index.txt', content: 'example.ts | Example template' },
+			{ name: 'example.ts', content: 'export default {};' },
+		]);
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({
+			root: ROOT,
+			templatesArchive: archive,
+		});
+
+		const templatesIndex = jsonParse<{ entries: Array<{ id: string; description: string }> }>(
+			bundle.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.json`,
+			) ?? '',
+		);
+		expect(templatesIndex.entries).toEqual([
+			{
+				id: 'example',
+				description: 'Example template',
+				file: 'templates/example.ts',
+			},
+		]);
+		expect(
+			bundle.files.has(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.txt`,
+			),
+		).toBe(false);
+	});
+
+	it('materializes templates as index.json and includes them in the root index', async () => {
+		const withoutTemplates = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const archive = makeBuilderTemplatesTarGz([
+			{
+				name: 'index.json',
+				content: JSON.stringify({
+					entries: [
+						{
+							id: 'example',
+							description: 'Example template',
+							file: 'templates/example.ts',
+						},
+					],
+				}),
+			},
+			{ name: 'example.ts', content: 'export default {};' },
+		]);
+		const withTemplates = await buildKnowledgeBaseWorkspaceBundle({
+			root: ROOT,
+			templatesArchive: archive,
+		});
+
+		const templatesIndex = jsonParse<{
+			entries: Array<{ id: string; description: string; file: string }>;
+		}>(
+			withTemplates.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.json`,
+			) ?? '',
+		);
+		expect(templatesIndex.entries).toEqual([
+			{
+				id: 'example',
+				description: 'Example template',
+				file: 'templates/example.ts',
+			},
+		]);
+		expect(
+			withTemplates.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/example.ts`,
+			),
+		).toBe('export default {};\n');
+		expect(
+			withTemplates.files.has(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_TEMPLATES_DIR}/index.json`,
+			),
+		).toBe(true);
+
+		const rootIndex = jsonParse<{
+			templates: { entries: Array<{ id: string }> };
+		}>(
+			withTemplates.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
+			) ?? '',
+		);
+		expect(rootIndex.templates.entries).toEqual([
+			{
+				id: 'example',
+				description: 'Example template',
+				file: 'templates/example.ts',
+			},
+		]);
+		expect(withTemplates.contentHash).not.toBe(withoutTemplates.contentHash);
 	});
 });
 
@@ -88,7 +225,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 	});
 
 	it('reuses prebaked knowledge base when the manifest hash matches', async () => {
-		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 		const files = new Map<string, string>();
 		for (const [path, content] of bundle.files) {
 			files.set(path, content);
@@ -110,7 +247,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 	});
 
 	it('rematerializes when prebaked manifest exists but payload is incomplete', async () => {
-		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 		const files = new Map<string, string>([
 			[bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? ''],
 		]);
