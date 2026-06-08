@@ -1,10 +1,10 @@
 import type { Plugin } from 'vue';
 import type { ITelemetrySettings } from '@n8n/api-types';
+import { ANONYMOUS_IP_CONTEXT, loadRudderStack, type RudderStack } from '@n8n/telemetry-frontend';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 import type { IUpdateInformation } from '@/Interface';
-import type { RudderStack } from './telemetry.types';
 import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
 	MICROSOFT_TEAMS_NODE_TYPE,
@@ -57,10 +57,14 @@ export class Telemetry {
 
 		const rootStore = useRootStore();
 
-		this.initRudderStack(key, proxy, {
-			integrations: { All: false },
-			loadIntegration: false,
-			configUrl: sourceConfig,
+		loadRudderStack({
+			writeKey: key,
+			dataPlaneUrl: proxy,
+			options: {
+				integrations: { All: false },
+				loadIntegration: false,
+				configUrl: sourceConfig,
+			},
 		});
 
 		this.identify({ instanceId, userId, versionCli, projectId, userRole });
@@ -89,12 +93,7 @@ export class Telemetry {
 			this.rudderStack?.identify(
 				`${instanceId}#${userId}${projectId ? '#' + projectId : ''}`,
 				traits,
-				{
-					context: {
-						// provide a fake IP address to instruct RudderStack to not use the user's IP address
-						ip: '0.0.0.0',
-					},
-				},
+				ANONYMOUS_IP_CONTEXT,
 			);
 		} else {
 			this.rudderStack?.reset();
@@ -112,12 +111,7 @@ export class Telemetry {
 			posthog_session_id: posthogSessionId,
 		};
 
-		this.rudderStack.track(event, updatedProperties, {
-			context: {
-				// provide a fake IP address to instruct RudderStack to not use the user's IP address
-				ip: '0.0.0.0',
-			},
-		});
+		this.rudderStack.track(event, updatedProperties, ANONYMOUS_IP_CONTEXT);
 
 		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
 			usePostHog().capture(event, updatedProperties);
@@ -141,12 +135,7 @@ export class Telemetry {
 			properties.theme = useUIStore().appliedTheme;
 
 			const category = route.meta?.telemetry?.pageCategory || 'Editor';
-			this.rudderStack.page(category, pageName, properties, {
-				context: {
-					// provide a fake IP address to instruct RudderStack to not use the user's IP address
-					ip: '0.0.0.0',
-				},
-			});
+			this.rudderStack.page(category, pageName, properties, ANONYMOUS_IP_CONTEXT);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -211,60 +200,6 @@ export class Telemetry {
 				});
 			}
 		}
-	}
-
-	private initRudderStack(key: string, proxy: string, options: IDataObject) {
-		window.rudderanalytics = window.rudderanalytics || [];
-		if (!this.rudderStack) {
-			return;
-		}
-
-		this.rudderStack.methods = [
-			'load',
-			'page',
-			'track',
-			'identify',
-			'alias',
-			'group',
-			'ready',
-			'reset',
-			'getAnonymousId',
-			'setAnonymousId',
-		];
-
-		this.rudderStack.factory = (method: string) => {
-			return (...args: unknown[]) => {
-				if (!this.rudderStack) {
-					throw new Error('RudderStack not initialized');
-				}
-
-				const argsCopy = [method, ...args];
-				this.rudderStack.push(argsCopy);
-
-				return this.rudderStack;
-			};
-		};
-
-		for (const method of this.rudderStack.methods) {
-			this.rudderStack[method] = this.rudderStack.factory(method);
-		}
-
-		this.rudderStack.loadJS = () => {
-			const script = document.createElement('script');
-
-			script.type = 'text/javascript';
-			script.async = !0;
-			script.src = 'https://cdn-rs.n8n.io/v1/ra.min.js';
-
-			const element: Element = document.getElementsByTagName('script')[0];
-
-			if (element && element.parentNode) {
-				element.parentNode.insertBefore(script, element);
-			}
-		};
-
-		this.rudderStack.loadJS();
-		this.rudderStack.load(key, proxy, options);
 	}
 }
 

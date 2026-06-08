@@ -1,0 +1,10 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"moduleResolution": "bundler",
+		"types": ["vite/client", "vitest/globals"],
+		"isolatedModules": true
+	},
+	"include": ["src/**/*.ts", "tsdown.config.ts"]
+}

@@ -1,9 +1,9 @@
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
+import { sanitizeTelemetryErrorMessage } from '@n8n/telemetry-frontend';
 import { onBeforeUnmount, onMounted, type Ref } from 'vue';
 
 import { useTelemetry, type McpAppTelemetry } from '@mcp-apps/telemetry';
 import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info';
-import { sanitizeTelemetryErrorMessage } from '@mcp-apps/telemetry/sanitize';
 
 type UseMcpAppCrashTelemetryOptions = {
 	app: string;

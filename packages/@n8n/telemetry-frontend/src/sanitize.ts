@@ -1,4 +1,6 @@
-import { scrubSecretsInText } from '@n8n/utils';
+// Use the dist subpath so vite only loads scrub-secrets and not the @n8n/utils
+// index barrel, which transitively imports @n8n/constants and nanoid.
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 const MAX_TELEMETRY_ERROR_MESSAGE_LENGTH = 500;
 const REDACTED_VALUE = '[REDACTED]';

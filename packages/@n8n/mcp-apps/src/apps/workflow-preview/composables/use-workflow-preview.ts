@@ -1,11 +1,11 @@
 import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
+import { sanitizeTelemetryErrorMessage } from '@n8n/telemetry-frontend';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 
 import { useI18n } from '@mcp-apps/i18n';
 import { useTelemetry } from '@mcp-apps/telemetry';
 import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info';
-import { sanitizeTelemetryErrorMessage } from '@mcp-apps/telemetry/sanitize';
 import { isRecord } from '@mcp-apps/utils/guards';
 
 import {
