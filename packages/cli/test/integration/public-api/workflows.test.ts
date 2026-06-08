@@ -1667,11 +1667,17 @@ describe('POST /workflows redaction floor enforcement', () => {
 		});
 
 	beforeEach(() => {
-		// Floor = Production; spy survives the global restoreMocks reset by being set per-test.
+		// Floor = Production, with data redaction licensed so accepted policies are
+		// persisted/seeded rather than stripped on save. The spy survives the global
+		// restoreMocks reset by being set per-test.
+		license.enable('feat:dataRedaction');
 		jest
 			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
 			.mockResolvedValue('production');
 	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
 
 	test('rejects a workflow whose redaction policy is weaker than the floor with 422', async () => {
 		const response = await postWorkflow({ redactionPolicy: 'none' });
@@ -1682,16 +1688,18 @@ describe('POST /workflows redaction floor enforcement', () => {
 		);
 	});
 
-	test('accepts a workflow that omits the redaction policy', async () => {
+	test('seeds the floor policy when the redaction policy is omitted', async () => {
 		const response = await postWorkflow({ executionOrder: 'v1' });
 
 		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 
-	test('accepts a workflow whose redaction policy meets the floor', async () => {
+	test('persists a redaction policy that exceeds the floor', async () => {
 		const response = await postWorkflow({ redactionPolicy: 'all' });
 
 		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('all');
 	});
 
 	test('rejects manual-only, which does not redact production, with 422', async () => {
@@ -1700,10 +1708,11 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(response.statusCode).toBe(422);
 	});
 
-	test('accepts non-manual, which exactly meets the production floor', async () => {
+	test('persists non-manual, which exactly meets the production floor', async () => {
 		const response = await postWorkflow({ redactionPolicy: 'non-manual' });
 
 		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
 	});
 });
 
@@ -1727,10 +1736,14 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 		});
 
 	beforeEach(() => {
+		license.enable('feat:dataRedaction');
 		jest
 			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
 			.mockResolvedValue('production');
 	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
 
 	// Parity with POST: the update endpoint already enforced the floor; these prove the
 	// two endpoints reject and accept the same payloads (the ticket's consistency claim).
@@ -1743,6 +1756,7 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 		expect(response.body.message).toBe(
 			'Workflow redaction policy cannot be weaker than the instance floor.',
 		);
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
 	});
 
 	test('rejects manual-only, which does not redact production, with 422', async () => {
@@ -1753,20 +1767,23 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 		expect(response.statusCode).toBe(422);
 	});
 
-	test('accepts an update that omits the redaction policy', async () => {
+	test('does not seed a redaction policy when the update omits it', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const response = await putWorkflow(workflow.id, { executionOrder: 'v1' });
 
 		expect(response.statusCode).toBe(200);
+		// Unlike create, update never seeds — an absent field leaves the policy unset.
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
 	});
 
-	test('accepts a redaction policy that meets the floor', async () => {
+	test('persists a redaction policy that meets the floor', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const response = await putWorkflow(workflow.id, { redactionPolicy: 'all' });
 
 		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
 	});
 });
 
