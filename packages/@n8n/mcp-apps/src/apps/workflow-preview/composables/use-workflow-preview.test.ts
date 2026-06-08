@@ -370,12 +370,12 @@ describe('useWorkflowPreview', () => {
 		};
 		await flushPromises();
 
-		preview.handlePreviewCrash('iframe crashed');
+		preview.handlePreviewCrash('iframe crashed with Authorization: Bearer abc.def-ghi_jkl/mno=');
 		await nextTick();
 
 		expect(telemetryTrack).toHaveBeenCalledWith(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED, {
 			app: 'workflow-preview',
-			error_message: 'iframe crashed',
+			error_message: 'iframe crashed with [REDACTED]',
 			mcp_client_name: 'Claude Desktop',
 			mcp_client_version: '1.2.3',
 			preview_status: 'visible',

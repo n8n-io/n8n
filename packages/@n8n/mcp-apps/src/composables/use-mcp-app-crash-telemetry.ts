@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, type Ref } from 'vue';
 
 import { useTelemetry, type McpAppTelemetry } from '@mcp-apps/telemetry';
 import { getMcpClientTelemetryProperties } from '@mcp-apps/telemetry/client-info';
+import { sanitizeTelemetryErrorMessage } from '@mcp-apps/telemetry/sanitize';
 
 type UseMcpAppCrashTelemetryOptions = {
 	app: string;
@@ -32,7 +33,7 @@ export function useMcpAppCrashTelemetry({
 		telemetry.track(event, {
 			app,
 			...getMcpClientTelemetryProperties(hostVersion.value),
-			error_message: getErrorMessage(error),
+			error_message: sanitizeTelemetryErrorMessage(getErrorMessage(error)),
 			source,
 		});
 	};

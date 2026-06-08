@@ -54,11 +54,13 @@ describe('useMcpAppCrashTelemetry', () => {
 		const telemetry = createTelemetryMock();
 		mountedApps.push(mountCrashTelemetry(telemetry));
 
-		window.dispatchEvent(new ErrorEvent('error', { error: new Error('render boom') }));
+		window.dispatchEvent(
+			new ErrorEvent('error', { error: new Error('render boom api_key=secret-value') }),
+		);
 
 		expect(telemetry.track).toHaveBeenCalledWith('workflow-preview app crashed', {
 			app: 'workflow-preview',
-			error_message: 'render boom',
+			error_message: 'render boom [REDACTED]',
 			mcp_client_name: 'Claude Desktop',
 			mcp_client_version: '1.2.3',
 			source: 'app_error',
@@ -69,14 +71,14 @@ describe('useMcpAppCrashTelemetry', () => {
 		const telemetry = createTelemetryMock();
 		mountedApps.push(mountCrashTelemetry(telemetry));
 		const event = Object.assign(new Event('unhandledrejection'), {
-			reason: new Error('async boom'),
+			reason: new Error('async boom Authorization: Bearer abc.def-ghi_jkl/mno='),
 		}) as PromiseRejectionEvent;
 
 		window.dispatchEvent(event);
 
 		expect(telemetry.track).toHaveBeenCalledWith('workflow-preview app crashed', {
 			app: 'workflow-preview',
-			error_message: 'async boom',
+			error_message: 'async boom [REDACTED]',
 			mcp_client_name: 'Claude Desktop',
 			mcp_client_version: '1.2.3',
 			source: 'app_unhandled_rejection',
