@@ -18,7 +18,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { isNodeToolsEnabled } from '@n8n/api-types';
-import { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
+import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -42,7 +42,6 @@ import {
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import {
 	buildFromJson,
 	type MemoryFactory,
@@ -90,7 +89,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentRepository: AgentRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
@@ -299,7 +297,6 @@ export class AgentRuntimeReconstructionService {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: this.workflowRunner,
 					activeExecutions: this.activeExecutions,
-					executionRepository: this.executionRepository,
 					workflowFinderService: this.workflowFinderService,
 					userRepository: this.userRepository,
 					userId,
@@ -343,7 +340,6 @@ export class AgentRuntimeReconstructionService {
 			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
-			integrationType,
 			credentialIntegrations,
 		} = params;
 
@@ -370,10 +366,6 @@ export class AgentRuntimeReconstructionService {
 
 		if (runtimeProfile === 'top-level') {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);
-			const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
-			if (integration?.supportedComponents !== undefined) {
-				agent.tool(createRichInteractionTool(integrationType));
-			}
 
 			if (credentialIntegrations.length > 0) {
 				const messageContextStore = Container.get(IntegrationMessageContextService);

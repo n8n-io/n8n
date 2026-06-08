@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { StreamTextTransform, TelemetrySettings, ToolCallRepairFunction, ToolSet } from 'ai';
+import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -44,7 +45,7 @@ import {
 	RECALL_MEMORY_TOOL_NAME,
 	runEpisodicMemoryIndexer,
 } from './episodic-memory';
-import { AgentEventBus } from './event-bus';
+import { AgentEventBus, type AgentAbortScope } from './event-bus';
 import { incrementTokenCountFromUsage } from './execution-counter';
 import { fixToolCall } from './fix-tool-call';
 import { toJsonValue } from './json-value';
@@ -93,6 +94,7 @@ import type {
 import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../types/utils/json';
+import { lockAdditionalProperties } from '../utils/json-schema';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
 
@@ -141,9 +143,7 @@ function summarizeToolForTelemetry(tool: BuiltTool): Record<string, unknown> {
 		description: tool.description,
 		type: tool.mcpTool ? 'mcp' : 'local',
 		...(tool.mcpServerName ? { mcp_server: tool.mcpServerName } : {}),
-		...(tool.suspendSchema || tool.resumeSchema || tool.withDefaultApproval
-			? { approval: true }
-			: {}),
+		...(tool.suspendSchema || tool.resumeSchema || tool.approval ? { approval: true } : {}),
 		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
 	};
 }
@@ -157,6 +157,22 @@ function summarizeProviderToolForTelemetry(tool: BuiltProviderTool): Record<stri
 		args: tool.args,
 		...(tool.inputSchema ? { input_schema: getToolInputSchema(tool) } : {}),
 	};
+}
+
+function isDeniedApprovalResumeData(value: unknown): boolean {
+	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
+}
+
+function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
+	if (!tool.approval) return true;
+	if (!tool.approval.required && tool.approval.conditional !== true) return true;
+	if (resumeData === undefined) return false;
+	return !isDeniedApprovalResumeData(resumeData);
+}
+
+function getToolResumeJsonSchema(tool: BuiltTool): JsonSchema7Type | undefined {
+	if (!tool.resumeSchema) return undefined;
+	return isZodSchema(tool.resumeSchema) ? zodToJsonSchema(tool.resumeSchema) : tool.resumeSchema;
 }
 
 function buildAgentRootInputAttributes(config: AgentRuntimeConfig): Record<string, AttributeValue> {
@@ -194,7 +210,7 @@ export interface AgentRuntimeConfig {
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
-	structuredOutput?: z.ZodType;
+	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
 	eventBus?: AgentEventBus;
@@ -330,6 +346,7 @@ type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?
 interface LoopContext {
 	list: AgentMessageList;
 	options?: RuntimeExecutionOptions;
+	abortScope: AgentAbortScope;
 	pendingResume?: PendingResume;
 }
 
@@ -341,6 +358,8 @@ interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	abortSignal: AbortSignal;
+	isAborted: () => boolean;
 }
 
 interface RawTokenUsage {
@@ -430,6 +449,7 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
+		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList | undefined = undefined;
 		try {
 			const initializedList = await this.initRun(input, options);
@@ -438,12 +458,12 @@ export class AgentRuntime {
 				'generate',
 				options,
 				this.runId,
-				async () => await this.runGenerateLoop({ list: initializedList, options }),
+				async () => await this.runGenerateLoop({ list: initializedList, options, abortScope }),
 			);
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
 			await this.flushTelemetry(options);
-			const isAbort = this.eventBus.isAborted;
+			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
@@ -455,6 +475,8 @@ export class AgentRuntime {
 				error,
 				getState: () => this.getState(),
 			};
+		} finally {
+			abortScope.dispose();
 		}
 	}
 
@@ -463,21 +485,23 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
+		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList;
 		try {
 			list = await this.initRun(input, options);
 		} catch (error) {
-			const isAbort = this.eventBus.isAborted;
+			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			abortScope.dispose();
 			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
 
 		return {
 			runId: this.runId,
-			stream: this.startStreamLoop({ list, options }),
+			stream: this.startStreamLoop({ list, options, abortScope }),
 			getState: () => this.getState(),
 		};
 	}
@@ -521,6 +545,7 @@ export class AgentRuntime {
 		if (!toolForValidation) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
+		let abortScope: AgentAbortScope | undefined;
 
 		if (!isCancellation(resumeData) && toolForValidation.resumeSchema) {
 			const parseResult = await parseWithSchema(toolForValidation.resumeSchema, data);
@@ -563,8 +588,8 @@ export class AgentRuntime {
 				...mergedExecOptions,
 			};
 
-			// Pass abortSignal to event bus
-			this.eventBus.resetAbort(resumeOptions.abortSignal);
+			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+			const activeAbortScope = abortScope;
 
 			const pendingResume: PendingResume = {
 				pendingToolCalls: state.pendingToolCalls,
@@ -586,13 +611,18 @@ export class AgentRuntime {
 						await this.runGenerateLoop({
 							list,
 							options: resumeOptions,
+							abortScope: activeAbortScope,
 							pendingResume,
 						}),
 				);
 				if (!rawResult.pendingSuspend) {
 					await this.cleanupRun();
 				}
-				return this.finalizeGenerate(rawResult, list);
+				try {
+					return this.finalizeGenerate(rawResult, list);
+				} finally {
+					abortScope.dispose();
+				}
 			}
 
 			return {
@@ -600,12 +630,14 @@ export class AgentRuntime {
 				stream: this.startStreamLoop({
 					list,
 					options: resumeOptions,
+					abortScope: activeAbortScope,
 					pendingResume,
 				}),
 				getState: () => this.getState(),
 			};
 		} catch (error) {
-			const isAbort = this.eventBus.isAborted;
+			const isAbort = abortScope?.isAborted ?? false;
+			abortScope?.dispose();
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
@@ -690,7 +722,6 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<AgentMessageList> {
-		this.eventBus.resetAbort(options?.abortSignal);
 		this.updateState({
 			status: 'running',
 			persistence: options?.persistence,
@@ -921,7 +952,7 @@ export class AgentRuntime {
 
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
-		const { list, options, pendingResume } = ctx;
+		const { list, options, abortScope, pendingResume } = ctx;
 		this.hydrateDeferredToolsFromList(list);
 
 		let totalUsage: TokenUsage | undefined;
@@ -947,6 +978,8 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
+			abortSignal: abortScope.signal,
+			isAborted: () => abortScope.isAborted,
 		};
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
@@ -991,7 +1024,7 @@ export class AgentRuntime {
 
 		const { generateText } = loadAi();
 		for (; iterationCount < maxIterations; iterationCount++) {
-			if (this.eventBus.isAborted) {
+			if (abortScope.isAborted) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
@@ -1007,7 +1040,7 @@ export class AgentRuntime {
 			const result = await generateText({
 				model: staticLoopContext.model,
 				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
-				abortSignal: this.eventBus.signal,
+				abortSignal: abortScope.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(staticLoopContext.providerOptions
 					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
@@ -1042,6 +1075,8 @@ export class AgentRuntime {
 				persistence: options?.persistence,
 				telemetry: runTelemetry,
 				executionCounter: options?.executionCounter,
+				abortSignal: abortScope.signal,
+				isAborted: () => abortScope.isAborted,
 				toolCalls: result.toolCalls,
 			});
 
@@ -1188,6 +1223,7 @@ export class AgentRuntime {
 				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
 				this.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
+				ctx.abortScope.dispose();
 			});
 
 		return readable;
@@ -1197,7 +1233,7 @@ export class AgentRuntime {
 	private async runStreamLoop(
 		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
-		const { list, options, pendingResume, writer } = ctx;
+		const { list, options, abortScope, pendingResume, writer } = ctx;
 		this.hydrateDeferredToolsFromList(list);
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
@@ -1221,7 +1257,7 @@ export class AgentRuntime {
 		};
 
 		const handleAbort = async (): Promise<boolean> => {
-			if (!this.eventBus.isAborted) return false;
+			if (!abortScope.isAborted) return false;
 			await closeStreamWithError(new Error('Agent run was aborted'), 'cancelled');
 			return true;
 		};
@@ -1244,6 +1280,8 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
+			abortSignal: abortScope.signal,
+			isAborted: () => abortScope.isAborted,
 		};
 		if (pendingResume) {
 			try {
@@ -1319,7 +1357,7 @@ export class AgentRuntime {
 			const result = streamText({
 				model: staticLoopContext.model,
 				messages,
-				abortSignal: this.eventBus.signal,
+				abortSignal: abortScope.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(staticLoopContext.providerOptions
 					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
@@ -1416,6 +1454,8 @@ export class AgentRuntime {
 					persistence: options?.persistence,
 					telemetry: runTelemetry,
 					executionCounter: options?.executionCounter,
+					abortSignal: abortScope.signal,
+					isAborted: () => abortScope.isAborted,
 					toolCalls,
 				});
 
@@ -1819,7 +1859,15 @@ export class AgentRuntime {
 			}>;
 		},
 	): Promise<ToolCallBatchResult> {
-		const { toolCalls, toolMap, list, runId, telemetry: resolvedTelemetry, executionCounter } = ctx;
+		const {
+			toolCalls,
+			toolMap,
+			list,
+			runId,
+			telemetry: resolvedTelemetry,
+			executionCounter,
+			abortSignal,
+		} = ctx;
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
 		const providerExecutedCount = toolCalls.length - executableCalls.length;
 		for (let i = 0; i < providerExecutedCount; i++) {
@@ -1834,7 +1882,7 @@ export class AgentRuntime {
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; batchStart += batchSize) {
-			if (this.eventBus.isAborted) {
+			if (ctx.isAborted()) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
@@ -1855,6 +1903,7 @@ export class AgentRuntime {
 							undefined,
 							resolvedTelemetry,
 							executionCounter,
+							abortSignal,
 							true,
 						),
 				),
@@ -1956,6 +2005,7 @@ export class AgentRuntime {
 			persistence,
 			telemetry: resolvedTelemetry,
 			executionCounter,
+			abortSignal,
 		} = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
 		const resumedEntry = pendingResume.pendingToolCalls[resumedId];
@@ -1981,6 +2031,7 @@ export class AgentRuntime {
 			pendingResume.resumeData,
 			resolvedTelemetry,
 			executionCounter,
+			abortSignal,
 			false,
 		);
 
@@ -2093,6 +2144,8 @@ export class AgentRuntime {
 				persistence,
 				telemetry: resolvedTelemetry,
 				executionCounter,
+				abortSignal,
+				isAborted: ctx.isAborted,
 			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
@@ -2124,16 +2177,10 @@ export class AgentRuntime {
 		resumeData?: unknown,
 		resolvedTelemetry?: BuiltTelemetry,
 		executionCounter?: AgentExecutionCounter,
+		abortSignal?: AbortSignal,
 		countToolCall = true,
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
-
-		this.eventBus.emit({
-			type: AgentEvent.ToolExecutionStart,
-			toolCallId,
-			toolName,
-			args: toolInput,
-		});
 
 		const makeToolError = (error: unknown): ToolCallOutcome => {
 			this.eventBus.emit({
@@ -2217,6 +2264,15 @@ export class AgentRuntime {
 			toolInput = result.data as JSONValue;
 		}
 
+		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
+			this.eventBus.emit({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId,
+				toolName,
+				args: toolInput,
+			});
+		}
+
 		let toolResult: unknown;
 		try {
 			toolResult = await this.withTelemetryToolSpan(
@@ -2229,7 +2285,7 @@ export class AgentRuntime {
 						runId,
 						persistence,
 						emitEvent: (event) => this.eventBus.emit(event),
-						abortSignal: this.eventBus.signal,
+						abortSignal,
 					}),
 			);
 		} catch (error) {
@@ -2248,9 +2304,7 @@ export class AgentRuntime {
 				const error = new Error(`Tool ${toolName} has no resume schema`);
 				return makeToolError(error);
 			}
-			const resumeSchema = isZodSchema(builtTool.resumeSchema)
-				? zodToJsonSchema(builtTool.resumeSchema)
-				: builtTool.resumeSchema;
+			const resumeSchema = getToolResumeJsonSchema(builtTool);
 			if (!resumeSchema) {
 				return makeToolError(new Error('Invalid resume schema'));
 			}
@@ -2297,17 +2351,60 @@ export class AgentRuntime {
 	private buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
 	) {
-		const { Output } = getAiSdk();
+		const { Output, jsonSchema } = getAiSdk();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
+		const outputSchema = this.config.structuredOutput;
+		const isRawJsonSchemaOutput = outputSchema !== undefined && !isZodSchema(outputSchema);
+		const providerOptions = this.relaxStrictJsonSchemaIfNeeded(
+			this.buildCallProviderOptions(execOptions?.providerOptions),
+			isRawJsonSchemaOutput,
+		);
+
+		const outputSpec = outputSchema
+			? Output.object({
+					// Zod schemas pass through directly; a raw JSON Schema gets
+					// `additionalProperties: false` locked onto every object (required by Anthropic)
+					// and wrapped with the AI SDK's `jsonSchema()` helper.
+					schema: isZodSchema(outputSchema)
+						? outputSchema
+						: jsonSchema(lockAdditionalProperties(outputSchema)),
+				})
+			: undefined;
+
 		return {
 			model,
 			aiProviderTools,
-			providerOptions: this.buildCallProviderOptions(execOptions?.providerOptions),
-			outputSpec: this.config.structuredOutput
-				? Output.object({ schema: this.config.structuredOutput })
-				: undefined,
+			providerOptions,
+			outputSpec,
 		};
+	}
+
+	/**
+	 * When structured output is driven by a raw JSON Schema (e.g. one a user
+	 * typed into a workflow node), opt out of strict JSON Schema validation for
+	 * the providers that default to it (OpenAI, Groq). Their strict mode rejects
+	 * schemas whose objects don't list every property in `required` or that use
+	 * keywords it doesn't allow — common in hand-written schemas. With strict off
+	 * the provider still steers generation toward the schema, and the runtime
+	 * validates the model's output against it afterwards.
+	 *
+	 * Zod-defined output keeps strict mode (zod-to-json-schema already produces a
+	 * strict-compliant schema). Providers that hardcode strict (e.g. xAI) or use
+	 * a different namespace (e.g. Azure) are unaffected and remain strict.
+	 */
+	private relaxStrictJsonSchemaIfNeeded(
+		providerOptions: Record<string, Record<string, unknown>> | undefined,
+		isRawJsonSchemaOutput: boolean,
+	): Record<string, Record<string, unknown>> | undefined {
+		if (!isRawJsonSchemaOutput) return providerOptions;
+
+		const result: Record<string, Record<string, unknown>> = { ...providerOptions };
+		for (const provider of ['openai', 'groq']) {
+			// Keep any caller-provided value (spread last so it wins).
+			result[provider] = { strictJsonSchema: false, ...result[provider] };
+		}
+		return result;
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */

@@ -53,6 +53,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
@@ -95,6 +96,7 @@ describe('InstanceAiController', () => {
 
 	const userRepository = mock<UserRepository>();
 	const credentialsService = mock<CredentialsService>();
+	const projectService = mock<ProjectService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -108,6 +110,7 @@ describe('InstanceAiController', () => {
 		urlService,
 		userRepository,
 		credentialsService,
+		projectService,
 		globalConfig,
 	);
 
@@ -261,28 +264,17 @@ describe('InstanceAiController', () => {
 					textContent: '',
 					reasoning: '',
 					toolCalls: [],
-					children: [
+					children: [],
+					timeline: [],
+					planItems: [
 						{
-							agentId: 'agent-planner-1',
-							role: 'planner',
-							status: 'active',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							children: [],
-							timeline: [],
-							planItems: [
-								{
-									id: 'task-1',
-									title: 'Build workflow',
-									kind: 'build-workflow',
-									spec: 'Create the workflow',
-									deps: [],
-								},
-							],
+							id: 'task-1',
+							title: 'Build workflow',
+							kind: 'build-workflow',
+							spec: 'Create the workflow',
+							deps: [],
 						},
 					],
-					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
 				},
 			});
 
@@ -311,7 +303,7 @@ describe('InstanceAiController', () => {
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
 
-			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
 		});
 
@@ -703,25 +695,37 @@ describe('InstanceAiController', () => {
 
 		it('should create thread with provided threadId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: 'custom-id' });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: 'custom-id',
+				projectId: 'project-1',
+			});
 
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1');
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: undefined });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: undefined,
+				projectId: 'project-1',
+			});
 
 			await controller.ensureThread(req, res, payload);
 
 			// The controller generates a UUID — just verify ensureThread was called with some string
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, expect.any(String));
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				USER_ID,
+				expect.any(String),
+				'project-1',
+			);
 		});
 	});
 
