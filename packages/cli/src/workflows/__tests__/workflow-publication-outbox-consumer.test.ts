@@ -1,7 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
-import { WorkflowEntity, WorkflowPublishedVersion } from '@n8n/db';
+import { WorkflowPublishedVersion } from '@n8n/db';
 import type {
+	WorkflowEntity,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowRepository,
@@ -23,7 +24,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const activationErrorsService = mock<ActivationErrorsService>();
-	const transactionManager = mock<EntityManager>();
+	const entityManager = mock<EntityManager>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
@@ -81,12 +82,9 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
+		entityManager.upsert.mockResolvedValue({} as never);
 		Object.defineProperty(outboxRepository, 'manager', {
-			value: {
-				transaction: jest.fn(
-					async (fn: (trx: EntityManager) => Promise<void>) => await fn(transactionManager),
-				),
-			},
+			value: entityManager,
 			writable: true,
 		});
 		activationErrorsService.register.mockResolvedValue(undefined);
@@ -184,7 +182,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				callOrder.push('removeNonWebhookTriggers');
 				return await Promise.resolve();
 			});
-			transactionManager.update.mockImplementation(async () => {
+			entityManager.upsert.mockImplementation(async () => {
 				callOrder.push('advanceVersion');
 				return await Promise.resolve({} as never);
 			});
@@ -198,12 +196,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.clearWebhooks).toHaveBeenCalledWith('wf-1');
 			expect(activeWorkflowManager.removeActivationError).toHaveBeenCalledWith('wf-1');
 			expect(activeWorkflowManager.removeNonWebhookTriggers).toHaveBeenCalledWith('wf-1');
-			expect(transactionManager.update).toHaveBeenCalledWith(
-				WorkflowEntity,
-				{ id: 'wf-1' },
-				{ activeVersionId: 'v-2' },
-			);
-			expect(transactionManager.upsert).toHaveBeenCalledWith(
+			expect(workflowRepository.update).not.toHaveBeenCalledWith('wf-1', {
+				activeVersionId: 'v-2',
+			});
+			expect(entityManager.upsert).toHaveBeenCalledWith(
 				WorkflowPublishedVersion,
 				{ workflowId: 'wf-1', publishedVersionId: 'v-2' },
 				['workflowId'],
@@ -253,7 +249,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			await consumer.processRecord(record);
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-			expect(outboxRepository.manager.transaction).not.toHaveBeenCalled();
+			expect(entityManager.upsert).toHaveBeenCalledWith(
+				WorkflowPublishedVersion,
+				{ workflowId: 'wf-1', publishedVersionId: 'v-1' },
+				['workflowId'],
+			);
 			expect(activeWorkflowManager.clearWebhooks).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.removeNonWebhookTriggers).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
@@ -269,7 +269,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			await consumer.processRecord(record);
 
 			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'trigger cleanup failed');
-			expect(outboxRepository.manager.transaction).not.toHaveBeenCalled();
+			expect(entityManager.upsert).not.toHaveBeenCalled();
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 

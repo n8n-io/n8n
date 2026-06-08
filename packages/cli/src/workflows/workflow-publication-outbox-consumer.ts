@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import {
-	WorkflowEntity,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersion,
@@ -147,6 +146,7 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		if (workflow.activeVersionId === publishedVersionId) {
+			await this.advancePublishedVersion(record);
 			await this.finalizePublication(record);
 			return;
 		}
@@ -208,24 +208,16 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
-	 * Atomically advances the workflow's requested version
-	 * (`Workflow.activeVersionId`) and the canonical version read by triggers
-	 * (`WorkflowPublishedVersion`). Runs before registering the new triggers so
-	 * they execute the newly published version rather than the previous one.
+	 * Advances the canonical version read by triggers. Runs before registering
+	 * the new triggers so they execute the newly published version rather than
+	 * the previous one.
 	 */
 	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
-		await this.outboxRepository.manager.transaction(async (trx) => {
-			await trx.update(
-				WorkflowEntity,
-				{ id: record.workflowId },
-				{ activeVersionId: record.publishedVersionId },
-			);
-			await trx.upsert(
-				WorkflowPublishedVersion,
-				{ workflowId: record.workflowId, publishedVersionId: record.publishedVersionId },
-				['workflowId'],
-			);
-		});
+		await this.outboxRepository.manager.upsert(
+			WorkflowPublishedVersion,
+			{ workflowId: record.workflowId, publishedVersionId: record.publishedVersionId },
+			['workflowId'],
+		);
 	}
 
 	/**
