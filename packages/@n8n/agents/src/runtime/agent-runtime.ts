@@ -45,7 +45,7 @@ import {
 	RECALL_MEMORY_TOOL_NAME,
 	runEpisodicMemoryIndexer,
 } from './episodic-memory';
-import { AgentEventBus } from './event-bus';
+import { AgentEventBus, type AgentAbortScope } from './event-bus';
 import { incrementTokenCountFromUsage } from './execution-counter';
 import { fixToolCall } from './fix-tool-call';
 import { toJsonValue } from './json-value';
@@ -347,6 +347,7 @@ type RuntimeExecutionOptions = RunOptions & ExecutionOptions & { iterationCount?
 interface LoopContext {
 	list: AgentMessageList;
 	options?: RuntimeExecutionOptions;
+	abortScope: AgentAbortScope;
 	pendingResume?: PendingResume;
 }
 
@@ -358,6 +359,8 @@ interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	abortSignal: AbortSignal;
+	isAborted: () => boolean;
 }
 
 interface RawTokenUsage {
@@ -447,6 +450,7 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
+		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList | undefined = undefined;
 		try {
 			const initializedList = await this.initRun(input, options);
@@ -455,12 +459,12 @@ export class AgentRuntime {
 				'generate',
 				options,
 				this.runId,
-				async () => await this.runGenerateLoop({ list: initializedList, options }),
+				async () => await this.runGenerateLoop({ list: initializedList, options, abortScope }),
 			);
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
 			await this.flushTelemetry(options);
-			const isAbort = this.eventBus.isAborted;
+			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
@@ -472,6 +476,8 @@ export class AgentRuntime {
 				error,
 				getState: () => this.getState(),
 			};
+		} finally {
+			abortScope.dispose();
 		}
 	}
 
@@ -480,21 +486,23 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
+		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList;
 		try {
 			list = await this.initRun(input, options);
 		} catch (error) {
-			const isAbort = this.eventBus.isAborted;
+			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			abortScope.dispose();
 			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
 		}
 
 		return {
 			runId: this.runId,
-			stream: this.startStreamLoop({ list, options }),
+			stream: this.startStreamLoop({ list, options, abortScope }),
 			getState: () => this.getState(),
 		};
 	}
@@ -538,6 +546,7 @@ export class AgentRuntime {
 		if (!toolForValidation) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		let resumeData: unknown = data;
+		let abortScope: AgentAbortScope | undefined;
 
 		if (!isCancellation(resumeData) && toolForValidation.resumeSchema) {
 			const parseResult = await parseWithSchema(toolForValidation.resumeSchema, data);
@@ -580,9 +589,9 @@ export class AgentRuntime {
 				...mergedExecOptions,
 			};
 
-			// Pass abortSignal to event bus for the resumed run.
-			this.eventBus.resetAbort(resumeOptions.abortSignal);
 			this.updateState({ status: 'running' });
+			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
+			const activeAbortScope = abortScope;
 
 			const pendingResume: PendingResume = {
 				pendingToolCalls: state.pendingToolCalls,
@@ -604,13 +613,18 @@ export class AgentRuntime {
 						await this.runGenerateLoop({
 							list,
 							options: resumeOptions,
+							abortScope: activeAbortScope,
 							pendingResume,
 						}),
 				);
 				if (!rawResult.pendingSuspend) {
 					await this.cleanupRun();
 				}
-				return this.finalizeGenerate(rawResult, list);
+				try {
+					return this.finalizeGenerate(rawResult, list);
+				} finally {
+					abortScope.dispose();
+				}
 			}
 
 			return {
@@ -618,12 +632,14 @@ export class AgentRuntime {
 				stream: this.startStreamLoop({
 					list,
 					options: resumeOptions,
+					abortScope: activeAbortScope,
 					pendingResume,
 				}),
 				getState: () => this.getState(),
 			};
 		} catch (error) {
-			const isAbort = this.eventBus.isAborted;
+			const isAbort = abortScope?.isAborted ?? false;
+			abortScope?.dispose();
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
@@ -708,7 +724,6 @@ export class AgentRuntime {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<AgentMessageList> {
-		this.eventBus.resetAbort(options?.abortSignal);
 		this.updateState({
 			status: 'running',
 			persistence: options?.persistence,
@@ -939,7 +954,7 @@ export class AgentRuntime {
 
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
-		const { list, options, pendingResume } = ctx;
+		const { list, options, abortScope, pendingResume } = ctx;
 		this.hydrateDeferredToolsFromList(list);
 
 		let totalUsage: TokenUsage | undefined;
@@ -965,6 +980,8 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
+			abortSignal: abortScope.signal,
+			isAborted: () => abortScope.isAborted,
 		};
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
@@ -1009,7 +1026,7 @@ export class AgentRuntime {
 
 		const { generateText } = loadAi();
 		for (; iterationCount < maxIterations; iterationCount++) {
-			if (this.eventBus.isAborted) {
+			if (abortScope.isAborted) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
@@ -1025,7 +1042,7 @@ export class AgentRuntime {
 			const result = await generateText({
 				model: staticLoopContext.model,
 				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
-				abortSignal: this.eventBus.signal,
+				abortSignal: abortScope.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(staticLoopContext.providerOptions
 					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
@@ -1060,6 +1077,8 @@ export class AgentRuntime {
 				persistence: options?.persistence,
 				telemetry: runTelemetry,
 				executionCounter: options?.executionCounter,
+				abortSignal: abortScope.signal,
+				isAborted: () => abortScope.isAborted,
 				toolCalls: result.toolCalls,
 			});
 
@@ -1206,6 +1225,7 @@ export class AgentRuntime {
 				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
 				this.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
+				ctx.abortScope.dispose();
 			});
 
 		return readable;
@@ -1215,7 +1235,7 @@ export class AgentRuntime {
 	private async runStreamLoop(
 		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
-		const { list, options, pendingResume, writer } = ctx;
+		const { list, options, abortScope, pendingResume, writer } = ctx;
 		this.hydrateDeferredToolsFromList(list);
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
@@ -1251,8 +1271,8 @@ export class AgentRuntime {
 		};
 
 		const handleAbort = async (accumulator?: PartialResponseAccumulator): Promise<boolean> => {
-			if (!this.eventBus.isAborted) return false;
-			if (accumulator !== undefined && isSavePartialAbortError(this.eventBus.signal.reason)) {
+			if (!abortScope.isAborted) return false;
+			if (accumulator !== undefined && isSavePartialAbortError(abortScope.signal.reason)) {
 				try {
 					await persistPartialResponseOnAbort(accumulator);
 				} catch (error) {
@@ -1285,6 +1305,8 @@ export class AgentRuntime {
 			persistence: options?.persistence,
 			telemetry: runTelemetry,
 			executionCounter: options?.executionCounter,
+			abortSignal: abortScope.signal,
+			isAborted: () => abortScope.isAborted,
 		};
 		if (pendingResume) {
 			try {
@@ -1361,7 +1383,7 @@ export class AgentRuntime {
 			const result = streamText({
 				model: staticLoopContext.model,
 				messages,
-				abortSignal: this.eventBus.signal,
+				abortSignal: abortScope.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(staticLoopContext.providerOptions
 					? { providerOptions: staticLoopContext.providerOptions as Record<string, JSONObject> }
@@ -1459,6 +1481,8 @@ export class AgentRuntime {
 					persistence: options?.persistence,
 					telemetry: runTelemetry,
 					executionCounter: options?.executionCounter,
+					abortSignal: abortScope.signal,
+					isAborted: () => abortScope.isAborted,
 					toolCalls,
 				});
 
@@ -1862,7 +1886,15 @@ export class AgentRuntime {
 			}>;
 		},
 	): Promise<ToolCallBatchResult> {
-		const { toolCalls, toolMap, list, runId, telemetry: resolvedTelemetry, executionCounter } = ctx;
+		const {
+			toolCalls,
+			toolMap,
+			list,
+			runId,
+			telemetry: resolvedTelemetry,
+			executionCounter,
+			abortSignal,
+		} = ctx;
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
 		const providerExecutedCount = toolCalls.length - executableCalls.length;
 		for (let i = 0; i < providerExecutedCount; i++) {
@@ -1877,7 +1909,7 @@ export class AgentRuntime {
 		const pending: Record<string, PendingToolCall> = {};
 
 		for (let batchStart = 0; batchStart < executableCalls.length; batchStart += batchSize) {
-			if (this.eventBus.isAborted) {
+			if (ctx.isAborted()) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
@@ -1898,6 +1930,7 @@ export class AgentRuntime {
 							undefined,
 							resolvedTelemetry,
 							executionCounter,
+							abortSignal,
 							true,
 						),
 				),
@@ -1999,6 +2032,7 @@ export class AgentRuntime {
 			persistence,
 			telemetry: resolvedTelemetry,
 			executionCounter,
+			abortSignal,
 		} = ctx;
 		const resumedId = pendingResume.resumeToolCallId;
 		const resumedEntry = pendingResume.pendingToolCalls[resumedId];
@@ -2024,6 +2058,7 @@ export class AgentRuntime {
 			pendingResume.resumeData,
 			resolvedTelemetry,
 			executionCounter,
+			abortSignal,
 			false,
 		);
 
@@ -2136,6 +2171,8 @@ export class AgentRuntime {
 				persistence,
 				telemetry: resolvedTelemetry,
 				executionCounter,
+				abortSignal,
+				isAborted: ctx.isAborted,
 			});
 			results.push(...batch.results);
 			suspensions.push(...batch.suspensions);
@@ -2167,6 +2204,7 @@ export class AgentRuntime {
 		resumeData?: unknown,
 		resolvedTelemetry?: BuiltTelemetry,
 		executionCounter?: AgentExecutionCounter,
+		abortSignal?: AbortSignal,
 		countToolCall = true,
 	): Promise<ToolCallOutcome> {
 		const builtTool = toolMap.get(toolName);
@@ -2274,7 +2312,7 @@ export class AgentRuntime {
 						runId,
 						persistence,
 						emitEvent: (event) => this.eventBus.emit(event),
-						abortSignal: this.eventBus.signal,
+						abortSignal,
 					}),
 			);
 		} catch (error) {

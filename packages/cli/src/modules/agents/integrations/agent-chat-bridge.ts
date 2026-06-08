@@ -9,7 +9,7 @@ import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
-import { RICH_INTERACTION_RESUME_JSON_SCHEMA, type ComponentMapper } from './component-mapper';
+import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import {
 	buildIntegrationConnectionId,
@@ -215,20 +215,6 @@ export class AgentChatBridge {
 	/** Resolved integration for this platform (may be undefined for unknown types). */
 	private readonly integrationImpl: AgentChatIntegration | undefined;
 
-	/**
-	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
-	 * the `tool-call` chunk; consumed on the matching `tool-result` chunk when
-	 * the result carries `displayOnly: true` (display-only render path) or
-	 * cleared on `tool-call-suspended` (interactive HITL path, where the
-	 * suspendPayload itself carries the components).
-	 *
-	 * Storing the input here is the cleanest way to render a display-only
-	 * card from the bridge without leaking chat-SDK semantics into the agent
-	 * framework: the framework just emits tool-call/tool-result; the bridge
-	 * decides which results trigger a card post.
-	 */
-	private readonly richInteractionInputs = new Map<string, unknown>();
-
 	constructor(
 		private readonly chat: Chat,
 		private readonly agentId: string,
@@ -354,9 +340,7 @@ export class AgentChatBridge {
 	 * Returns a callback shortener function for platforms with short callback
 	 * data limits (Telegram). Returns undefined for other platforms.
 	 */
-	private getShortenCallback():
-		| ((actionId: string, value: string) => Promise<{ id: string; value: string }>)
-		| undefined {
+	getShortenCallback(): ShortenCallback | undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
 		return async (actionId: string, value: string) => {
@@ -547,22 +531,10 @@ export class AgentChatBridge {
 						textStream.yield?.(`_${delta}_`);
 						break;
 					}
-					case 'tool-call':
-						this.stashRichInteractionInput(chunk);
-						break;
 					case 'tool-call-suspended':
-						this.richInteractionInputs.delete(chunk.toolCallId);
 						await responseLifecycle.startDiscreteResponse();
 						await this.handleSuspension(chunk, thread);
 						// Don't start new streaming post — wait for next text delta
-						break;
-					case 'tool-result':
-						if (this.isRichInteractionDisplayOnly(chunk)) {
-							await responseLifecycle.startDiscreteResponse();
-							await this.handleDisplayOnly(chunk, thread);
-						} else {
-							this.richInteractionInputs.delete(chunk.toolCallId);
-						}
 						break;
 					case 'message':
 						await responseLifecycle.startDiscreteResponse();
@@ -578,11 +550,7 @@ export class AgentChatBridge {
 				}
 			}
 		} finally {
-			// Always end the streaming post and drop stashed tool-call inputs so
-			// a stream that errors mid-flight between `tool-call` and the
-			// matching `tool-result` does not leak entries.
 			await responseLifecycle.finish();
-			this.richInteractionInputs.clear();
 		}
 	}
 
@@ -659,23 +627,10 @@ export class AgentChatBridge {
 					case 'reasoning-delta':
 						buffer += `_${chunk.delta}_`;
 						break;
-					case 'tool-call':
-						this.stashRichInteractionInput(chunk);
-						break;
 					case 'tool-call-suspended':
-						this.richInteractionInputs.delete(chunk.toolCallId);
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
 						await this.handleSuspension(chunk, thread);
-						break;
-					case 'tool-result':
-						if (this.isRichInteractionDisplayOnly(chunk)) {
-							await flushBuffer();
-							await responseLifecycle.startDiscreteResponse();
-							await this.handleDisplayOnly(chunk, thread);
-						} else {
-							this.richInteractionInputs.delete(chunk.toolCallId);
-						}
 						break;
 					case 'message':
 						await flushBuffer();
@@ -694,7 +649,6 @@ export class AgentChatBridge {
 		} finally {
 			await flushBuffer();
 			await responseLifecycle.finish();
-			this.richInteractionInputs.clear();
 		}
 	}
 
@@ -710,13 +664,6 @@ export class AgentChatBridge {
 
 		if (!runId || !toolCallId) {
 			this.logger.warn('[AgentChatBridge] Suspended chunk missing runId or toolCallId');
-			return;
-		}
-
-		// Rich interaction tool — use the structured payload directly.
-		// The payload IS the tool input (title, message, components array).
-		if (chunk.toolName === 'rich_interaction') {
-			await this.handleRichInteraction(chunk, thread);
 			return;
 		}
 
@@ -770,124 +717,6 @@ export class AgentChatBridge {
 				agentId: this.agentId,
 				runId,
 				toolCallId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Rich interaction handling
-	// ---------------------------------------------------------------------------
-
-	private async handleRichInteraction(
-		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
-		thread: Thread,
-	): Promise<void> {
-		const { runId, toolCallId, suspendPayload } = chunk;
-
-		const payload = suspendPayload as {
-			title?: string;
-			message?: string;
-			components?: Array<{ type: string; [key: string]: unknown }>;
-		};
-
-		if (!payload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] rich_interaction has no components');
-			return;
-		}
-
-		try {
-			const card = await this.componentMapper.toCard(
-				payload as {
-					title?: string;
-					message?: string;
-					components: Array<{ type: string; [key: string]: unknown }>;
-				},
-				runId,
-				toolCallId,
-				RICH_INTERACTION_RESUME_JSON_SCHEMA,
-				this.getShortenCallback(),
-				this.integration.type,
-			);
-			await thread.post(card);
-		} catch (error) {
-			this.logger.error('[AgentChatBridge] Failed to post rich interaction card', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Display-only card handling (no suspension)
-	//
-	// `rich_interaction` returns `{ displayOnly: true }` from its handler when
-	// the card has no actionable components. The bridge stashes the tool-call
-	// input on the way down (carrying the components) and posts the card when
-	// the matching tool-result arrives carrying the marker. The framework
-	// itself stays free of any chat-rendering semantics.
-	// ---------------------------------------------------------------------------
-
-	private stashRichInteractionInput(chunk: Extract<StreamChunk, { type: 'tool-call' }>): void {
-		if (chunk.toolName !== 'rich_interaction') return;
-		this.richInteractionInputs.set(chunk.toolCallId, chunk.input);
-	}
-
-	private isRichInteractionDisplayOnly(
-		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-	): boolean {
-		if (chunk.toolName !== 'rich_interaction') return false;
-		const out = chunk.output;
-		return (
-			typeof out === 'object' &&
-			out !== null &&
-			'displayOnly' in out &&
-			(out as { displayOnly: unknown }).displayOnly === true
-		);
-	}
-
-	/**
-	 * Render the stashed `rich_interaction` input as a display-only card. No
-	 * resume callback can fire (no buttons/selects), so we pass a placeholder
-	 * runId — the unique IDs the component mapper builds for interactive
-	 * elements never get used.
-	 */
-	private async handleDisplayOnly(
-		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-		thread: Thread,
-	): Promise<void> {
-		const { toolCallId } = chunk;
-		const input = this.richInteractionInputs.get(toolCallId);
-		this.richInteractionInputs.delete(toolCallId);
-
-		const cardPayload = input as {
-			title?: string;
-			message?: string;
-			components?: Array<{ type: string; [key: string]: unknown }>;
-		};
-
-		if (!cardPayload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] display-only rich_interaction has no components', {
-				toolCallId,
-			});
-			return;
-		}
-
-		try {
-			const card = await this.componentMapper.toCard(
-				cardPayload as {
-					title?: string;
-					message?: string;
-					components: Array<{ type: string; [key: string]: unknown }>;
-				},
-				'',
-				toolCallId,
-				RICH_INTERACTION_RESUME_JSON_SCHEMA,
-				this.getShortenCallback(),
-				this.integration.type,
-			);
-			await thread.post({ card });
-		} catch (error) {
-			this.logger.error('[AgentChatBridge] Failed to post display card', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -1283,7 +1112,7 @@ export class AgentChatBridge {
 
 	/**
 	 * Handle a button/select action. Action IDs use one of two prefixes:
-	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — rich interaction select
+	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — interactive card select
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
 	private async handleAction(event: ActionEvent): Promise<void> {

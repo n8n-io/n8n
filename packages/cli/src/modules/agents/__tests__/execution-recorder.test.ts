@@ -163,7 +163,7 @@ describe('ExecutionRecorder', () => {
 			recorder.record({ type: 'text-delta', id: 't1', delta: 'Choose an option' });
 			recorder.record({
 				type: 'tool-call-suspended',
-				toolName: 'rich_interaction',
+				toolName: 'slack_action',
 				toolCallId: 'tc1',
 			} as StreamChunk);
 
@@ -171,41 +171,6 @@ describe('ExecutionRecorder', () => {
 
 			expect(recorder.suspended).toBe(true);
 			expect(record.timeline.some((e) => e.type === 'suspension')).toBe(true);
-		});
-	});
-
-	describe('display-only rich_interaction', () => {
-		it('records the standard tool-call/tool-result pair with displayOnly marker', () => {
-			const recorder = new ExecutionRecorder();
-
-			const cardPayload = {
-				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
-			};
-
-			// Display-only rich_interaction emits no special framework chunk:
-			// the LLM calls the tool, the handler returns `{ displayOnly: true }`
-			// (which is what gets recorded), and the bridge handles rendering.
-			recorder.record(makeToolCallChunk('rich_interaction', cardPayload, 'tc1'));
-			recorder.record(makeToolResultChunk('rich_interaction', { displayOnly: true }, 'tc1'));
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			const toolEvents = record.timeline.filter((e) => e.type === 'tool-call');
-			expect(toolEvents).toHaveLength(1);
-			if (toolEvents[0].type === 'tool-call') {
-				expect(toolEvents[0].toolCallId).toBe('tc1');
-				expect(toolEvents[0].input).toEqual(cardPayload);
-				expect(toolEvents[0].output).toEqual({ displayOnly: true });
-				expect(toolEvents[0].success).toBe(true);
-			}
-
-			expect(record.toolCalls).toHaveLength(1);
-			expect(record.toolCalls[0]).toEqual({
-				name: 'rich_interaction',
-				input: cardPayload,
-				output: { displayOnly: true },
-			});
 		});
 	});
 
