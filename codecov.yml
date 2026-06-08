@@ -18,7 +18,6 @@ coverage:
         threshold: 0.5
         flags:
           - nightly-full
-          - nightly-python
 
 github_checks:
   annotations: false
