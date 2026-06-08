@@ -104,6 +104,7 @@ runs:
         key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
 
     - name: Install Aikido SafeChain
+      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
         VERSION="1.5.7"
         EXPECTED_SHA256="07ab512fd8795ce41b2275be369aced4c9a93cc7bca9b397951507891a955239"
