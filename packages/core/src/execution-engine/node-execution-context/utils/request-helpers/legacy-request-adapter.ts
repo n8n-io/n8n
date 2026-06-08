@@ -28,7 +28,6 @@ import { Readable } from 'stream';
 import type { SsrfBridge } from '@/execution-engine';
 
 import { binaryToString } from '../binary-helper-functions';
-import { applyDefaultOutboundUserAgent } from '../outbound-user-agent';
 import { parseIncomingMessage } from '../parse-incoming-message';
 import {
 	createFormDataObject,
@@ -43,6 +42,7 @@ import {
 	validateUrlSsrf,
 } from './axios-utils';
 import { invokeAxios } from './http-request';
+import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
 
 /**
  * This function is a temporary implementation that translates all http requests

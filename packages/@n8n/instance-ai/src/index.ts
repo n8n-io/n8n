@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import type * as SharedSandboxMod from '@n8n/agents/sandbox';
+
 import './source-map-filter';
 
 import type * as InstanceAgentMod from './agent/instance-agent';
@@ -124,6 +126,9 @@ const loadBuilderTemplatesService = lazyModule(
 );
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
+);
+const loadSharedSandbox = lazyModule(
+	() => require('@n8n/agents/sandbox') as typeof SharedSandboxMod,
 );
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,
@@ -422,11 +427,11 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
-export const getWorkspaceRoot: typeof SandboxSetupMod.getWorkspaceRoot = lazyFunction(
-	() => loadSandboxSetup().getWorkspaceRoot,
+export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFunction(
+	() => loadSharedSandbox().getWorkspaceRoot,
 );
-export const getPromptWorkspaceRoot: typeof SandboxSetupMod.getPromptWorkspaceRoot = lazyFunction(
-	() => loadSandboxSetup().getPromptWorkspaceRoot,
+export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
+	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
