@@ -6,6 +6,7 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { formatTextWithLineNumbers } from '@n8n/ai-utilities/text-editor';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
@@ -18,7 +19,6 @@ import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 import type { PlanOutput } from '../../types/planning';
 import { formatPlanAsText } from '../../utils/plan-helpers';
 import type { ExpressionValue } from '../../workflow-builder-agent';
-import { formatCodeWithLineNumbers } from '../handlers/text-editor-handler';
 import { type ConversationEntry, entryToString } from '../utils/code-builder-session';
 import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
 
@@ -856,7 +856,7 @@ function buildUserMessageParts(
 		// Format as file with line numbers (matches view command output)
 		// Include SDK import so LLM sees the same code that's in the text editor
 		const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${workflowCode}`;
-		const formattedCode = formatCodeWithLineNumbers(codeWithImport);
+		const formattedCode = formatTextWithLineNumbers(codeWithImport);
 		const escapedCode = escapeCurlyBrackets(formattedCode);
 		parts.push(`<workflow_file path="/workflow.js">\n${escapedCode}\n</workflow_file>`);
 	} else {
