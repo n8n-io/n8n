@@ -96,9 +96,9 @@ export class ActiveWorkflows {
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
-				// Deregister any crons an earlier node already registered, so a failed
-				// activation doesn't leave them running
-				this.scheduledTaskManager.deregisterCrons(workflowId);
+				// Tear down anything an earlier node already registered, so a failed
+				// activation doesn't leave triggers or crons running.
+				await this.rollbackPartialActivation(workflowId, triggerResponses);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -124,15 +124,10 @@ export class ActiveWorkflows {
 					activation,
 				);
 			} catch (e) {
-				// Do not mark this workflow as active if there are no active or schedule
-				// trigger responses, and any poll trigger activation failed.
-				if (triggerResponses.length === 0) {
-					delete this.activeWorkflows[workflowId];
-				}
-
-				// Deregister any crons an earlier node already registered, so a failed
-				// activation doesn't leave them running
-				this.scheduledTaskManager.deregisterCrons(workflowId);
+				// A failed activation must not leave the workflow half-active. Drop it
+				// from memory and tear down every trigger and cron registered so far.
+				delete this.activeWorkflows[workflowId];
+				await this.rollbackPartialActivation(workflowId, triggerResponses);
 
 				const error = e instanceof Error ? e : new Error(`${e}`);
 
@@ -142,6 +137,29 @@ export class ActiveWorkflows {
 				);
 			}
 		}
+	}
+
+	/**
+	 * Tears down everything an in-progress activation registered before it
+	 * failed — the trigger responses' close functions and any crons — so a
+	 * failed activation leaves nothing running. Best-effort: a failing close
+	 * function is reported but does not stop the remaining cleanup, and the
+	 * original activation error is still surfaced to the caller.
+	 */
+	private async rollbackPartialActivation(
+		workflowId: string,
+		triggerResponses: ITriggerResponse[],
+	) {
+		for (const response of triggerResponses) {
+			try {
+				await this.closeTrigger(response, workflowId);
+			} catch (e) {
+				const error = e instanceof Error ? e : new Error(`${e}`);
+				this.errorReporter.error(error, { extra: { workflowId } });
+			}
+		}
+
+		this.scheduledTaskManager.deregisterCrons(workflowId);
 	}
 
 	/**

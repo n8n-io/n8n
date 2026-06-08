@@ -214,6 +214,94 @@ describe('ActiveWorkflows', () => {
 			});
 		});
 
+		describe('should roll back partial activation on failure', () => {
+			it('closes already-registered trigger responses when a later trigger node fails', async () => {
+				const firstResponse = mock<ITriggerResponse>();
+				workflow.getTriggerNodes.mockReturnValue([triggerNode, mock<INode>()]);
+				workflow.getPollNodes.mockReturnValue([]);
+				triggersAndPollers.runTriggerFunction
+					.mockResolvedValueOnce(firstResponse)
+					.mockRejectedValueOnce(new Error('Trigger activation failed'));
+
+				await expect(
+					activeWorkflows.add(
+						workflowId,
+						workflow,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					),
+				).rejects.toThrow(WorkflowActivationError);
+
+				expect(firstResponse.closeFunction).toHaveBeenCalled();
+				expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+				expect(activeWorkflows.isActive(workflowId)).toBe(false);
+			});
+
+			it('closes already-registered trigger responses when a poll node fails', async () => {
+				const responseWithClose = mock<ITriggerResponse>();
+				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
+				workflow.getPollNodes.mockReturnValue([pollNode]);
+				triggersAndPollers.runTriggerFunction.mockResolvedValue(responseWithClose);
+				getPollFunctions.mockReturnValue(pollFunctions);
+				pollFunctions.getNodeParameter
+					.calledWith('pollTimes')
+					.mockReturnValue({ item: [{ mode: 'everyMinute' }] });
+				triggersAndPollers.runPollFunction.mockRejectedValueOnce(
+					new Error('Failed to activate poll trigger'),
+				);
+
+				await expect(
+					activeWorkflows.add(
+						workflowId,
+						workflow,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					),
+				).rejects.toThrow(WorkflowActivationError);
+
+				expect(responseWithClose.closeFunction).toHaveBeenCalled();
+				expect(activeWorkflows.isActive(workflowId)).toBe(false);
+			});
+
+			it('continues cleanup and still surfaces the activation error when a close function throws', async () => {
+				const closeError = new Error('close failed');
+				const failingResponse = mock<ITriggerResponse>();
+				(failingResponse.closeFunction as Mock).mockRejectedValueOnce(closeError);
+				workflow.getTriggerNodes.mockReturnValue([triggerNode, mock<INode>()]);
+				workflow.getPollNodes.mockReturnValue([]);
+				triggersAndPollers.runTriggerFunction
+					.mockResolvedValueOnce(failingResponse)
+					.mockRejectedValueOnce(new Error('Trigger activation failed'));
+
+				await expect(
+					activeWorkflows.add(
+						workflowId,
+						workflow,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					),
+				).rejects.toThrow(WorkflowActivationError);
+
+				expect(failingResponse.closeFunction).toHaveBeenCalled();
+				// The close failure is reported with the workflow id, while cron
+				// deregistration still runs.
+				const [reportedError, meta] = (errorReporter.error as Mock).mock.calls[0];
+				expect(reportedError).toBeInstanceOf(Error);
+				expect((reportedError as Error).message).toContain(closeError.message);
+				expect(meta).toEqual({ extra: { workflowId } });
+				expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			});
+		});
+
 		describe('should acquire expression isolate around scheduled polls', () => {
 			// Regression test for CAT-3147: scheduled cron-driven polls run outside
 			// the activation acquire/release window, so the expression bridge fails
