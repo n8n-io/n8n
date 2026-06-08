@@ -5,7 +5,7 @@ import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
@@ -179,11 +179,9 @@ export class WorkflowFinderService {
 	}
 
 	/**
-	 * Finds owned workflows in a project whose `sourceWorkflowId` matches one
-	 * of the given package source workflow ids. New workflows default
-	 * `sourceWorkflowId` to their own id on insert, so a package exported from
-	 * this instance matches its originals on re-import without a separate id
-	 * fallback.
+	 * Finds owned workflows in a project that may match package workflows either
+	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
+	 * authored on this instance).
 	 */
 	async findOwnedWorkflowsBySourceWorkflowIds(
 		projectId: string,
@@ -192,18 +190,28 @@ export class WorkflowFinderService {
 	): Promise<WorkflowEntity[]> {
 		if (sourceWorkflowIds.length === 0) return [];
 
+		const workflowRelations = {
+			activeVersion: options.includeActiveVersion,
+			parentFolder: options.includeParentFolder,
+		};
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: {
-				projectId,
-				role: 'workflow:owner',
-				workflow: { sourceWorkflowId: In(sourceWorkflowIds), isArchived: false },
-			},
-			relations: {
-				workflow: {
-					activeVersion: options.includeActiveVersion,
-					parentFolder: options.includeParentFolder,
+			where: [
+				{
+					projectId,
+					role: 'workflow:owner',
+					workflow: { sourceWorkflowId: In(sourceWorkflowIds), isArchived: false },
 				},
-			},
+				{
+					projectId,
+					role: 'workflow:owner',
+					workflow: {
+						id: In(sourceWorkflowIds),
+						sourceWorkflowId: IsNull(),
+						isArchived: false,
+					},
+				},
+			],
+			relations: { workflow: workflowRelations },
 		});
 
 		return sharedWorkflows.map(({ workflow }) => workflow);

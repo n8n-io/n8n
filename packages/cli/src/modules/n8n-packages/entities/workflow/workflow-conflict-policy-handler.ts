@@ -30,7 +30,6 @@ export abstract class WorkflowConflictPolicyHandler {
 			parentFolderId: context.folderId ?? undefined,
 			publicApi: true,
 			source: 'import',
-			sourceWorkflowId,
 		});
 
 		return { status: 'created', workflow, sourceWorkflowId };

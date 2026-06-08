@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 
-import type { WorkflowConflictPolicy } from '../../n8n-packages.types';
-import type { WorkflowConflictPolicyHandler } from './workflow-conflict-policy-handler';
 import { WorkflowConflictPolicyFailHandler } from './workflow-conflict-policy-fail.handler';
+import type { WorkflowConflictPolicyHandler } from './workflow-conflict-policy-handler';
 import { WorkflowConflictPolicyNewVersionHandler } from './workflow-conflict-policy-new-version.handler';
 import { WorkflowConflictPolicySkipHandler } from './workflow-conflict-policy-skip.handler';
+import { WorkflowConflictPolicy } from '../../n8n-packages.types';
 
 @Service()
 export class WorkflowConflictPolicyFactory {
@@ -15,13 +15,11 @@ export class WorkflowConflictPolicyFactory {
 		fail: WorkflowConflictPolicyFailHandler,
 		skip: WorkflowConflictPolicySkipHandler,
 	) {
-		/* eslint-disable @typescript-eslint/naming-convention -- API workflow conflict policy keys */
 		this.handlers = {
-			'new-version': newVersion,
-			fail,
-			skip,
+			[WorkflowConflictPolicy.NewVersion]: newVersion,
+			[WorkflowConflictPolicy.Fail]: fail,
+			[WorkflowConflictPolicy.Skip]: skip,
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 	}
 
 	getHandler(policy: WorkflowConflictPolicy): WorkflowConflictPolicyHandler {

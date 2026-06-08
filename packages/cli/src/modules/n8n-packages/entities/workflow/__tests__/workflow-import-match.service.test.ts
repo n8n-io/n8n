@@ -17,9 +17,9 @@ function workflow(attrs: {
 	} as unknown as WorkflowEntity;
 }
 
-function makeService(returned: WorkflowEntity[]) {
+function makeService(workflows: WorkflowEntity[] = []) {
 	const finder = mock<WorkflowFinderService>();
-	finder.findOwnedWorkflowsBySourceWorkflowIds.mockResolvedValue(returned);
+	finder.findOwnedWorkflowsBySourceWorkflowIds.mockResolvedValue(workflows);
 	return { service: new WorkflowImportMatchService(finder), finder };
 }
 
@@ -56,12 +56,15 @@ describe('WorkflowImportMatchService', () => {
 	});
 
 	it('prefers sourceWorkflowId over id so a foreign id collision is not a match', async () => {
-		// id 'wf-source' collides with the requested id, but this workflow's real
+		// Local id 'wf-source' collides with a package id, but the workflow's real
 		// identity is its sourceWorkflowId 'other-source', so it keys there only.
 		const imported = workflow({ id: 'wf-source', sourceWorkflowId: 'other-source' });
 		const { service } = makeService([imported]);
 
-		const result = await service.findBySourceWorkflowIds('project-1', ['wf-source']);
+		const result = await service.findBySourceWorkflowIds('project-1', [
+			'wf-source',
+			'other-source',
+		]);
 
 		expect(result.has('wf-source')).toBe(false);
 		expect(result.get('other-source')).toBe(imported);
@@ -88,5 +91,29 @@ describe('WorkflowImportMatchService', () => {
 		expect(result.size).toBe(2);
 		expect(result.get('wf-a')).toBe(a);
 		expect(result.get('wf-b')).toBe(b);
+	});
+
+	it('falls back to local id when no sourceWorkflowId match exists', async () => {
+		const authored = workflow({ id: 'wf-authored', sourceWorkflowId: null });
+		const { service } = makeService([authored]);
+
+		const result = await service.findBySourceWorkflowIds('project-1', ['wf-authored']);
+
+		expect(result.get('wf-authored')).toBe(authored);
+	});
+
+	it('resolves mixed package ids from a single finder response', async () => {
+		const imported = workflow({ id: 'local-1', sourceWorkflowId: 'wf-imported' });
+		const authored = workflow({ id: 'wf-authored', sourceWorkflowId: null });
+		const { service } = makeService([imported, authored]);
+
+		const result = await service.findBySourceWorkflowIds('project-1', [
+			'wf-imported',
+			'wf-authored',
+		]);
+
+		expect(result.size).toBe(2);
+		expect(result.get('wf-imported')).toBe(imported);
+		expect(result.get('wf-authored')).toBe(authored);
 	});
 });

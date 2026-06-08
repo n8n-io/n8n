@@ -14,24 +14,21 @@ export class WorkflowImportMatchService {
 	): Promise<Map<string, WorkflowEntity>> {
 		if (sourceWorkflowIds.length === 0) return new Map();
 
+		const packageWorkflowIds = new Set(sourceWorkflowIds);
+		const finderOptions = { includeActiveVersion: true, includeParentFolder: true } as const;
+		const matchBySourceWorkflowId = new Map<string, WorkflowEntity>();
+
 		const workflows = await this.workflowFinderService.findOwnedWorkflowsBySourceWorkflowIds(
 			projectId,
 			sourceWorkflowIds,
-			{ includeActiveVersion: true, includeParentFolder: true },
+			finderOptions,
 		);
 
-		const matchBySourceWorkflowId = new Map<string, WorkflowEntity>();
-
 		for (const workflow of workflows) {
-			// The finder query filters by `sourceWorkflowId IN (...)`, so a null
-			// here should never happen.
-			if (!workflow.sourceWorkflowId) {
-				throw new UnexpectedError(
-					'Matched workflow is missing its sourceWorkflowId despite the finder query filtering on it',
-					{ extra: { workflowId: workflow.id } },
-				);
-			}
+			if (!workflow.sourceWorkflowId) continue;
+
 			const key = workflow.sourceWorkflowId;
+			if (!packageWorkflowIds.has(key)) continue;
 
 			if (matchBySourceWorkflowId.has(key)) {
 				throw new UnexpectedError(
@@ -39,6 +36,15 @@ export class WorkflowImportMatchService {
 					{ extra: { projectId, sourceWorkflowId: key } },
 				);
 			}
+
+			matchBySourceWorkflowId.set(key, workflow);
+		}
+
+		for (const workflow of workflows) {
+			if (workflow.sourceWorkflowId !== null) continue;
+
+			const key = workflow.id;
+			if (!packageWorkflowIds.has(key) || matchBySourceWorkflowId.has(key)) continue;
 
 			matchBySourceWorkflowId.set(key, workflow);
 		}

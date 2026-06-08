@@ -28,6 +28,7 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
+import { WorkflowConflictPolicy, type ImportPackageRequest } from '../n8n-packages.types';
 import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
@@ -36,7 +37,6 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { ImportPackageRequest, WorkflowConflictPolicy } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Omit<
@@ -54,7 +54,7 @@ async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage({
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: 'fail',
+		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 		...params,
 	});
 }
@@ -191,10 +191,7 @@ describe('ImportPipeline batch validation', () => {
 		expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(2);
 
 		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
-		expect(allWorkflows.map((w) => w.sourceWorkflowId).sort()).toEqual([
-			'wf-source-1',
-			'wf-source-2',
-		]);
+		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual([null, null]);
 	});
 });
 
@@ -222,7 +219,7 @@ describe('ImportPipeline routing matrix', () => {
 		expect(shared.role).toBe('workflow:owner');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
@@ -245,7 +242,7 @@ describe('ImportPipeline routing matrix', () => {
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
@@ -267,7 +264,7 @@ describe('ImportPipeline routing matrix', () => {
 		expect(shared.role).toBe('workflow:owner');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
@@ -286,7 +283,7 @@ describe('ImportPipeline routing matrix', () => {
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
@@ -294,7 +291,7 @@ describe('ImportPipeline routing matrix', () => {
 });
 
 describe('ImportPipeline workflow conflict policy', () => {
-	it.each<WorkflowConflictPolicy>(['new-version', 'skip'])(
+	it.each<WorkflowConflictPolicy>([WorkflowConflictPolicy.NewVersion, WorkflowConflictPolicy.Skip])(
 		'%s handles matched and fresh workflows in one package',
 		async (workflowConflictPolicy) => {
 			const owner = await createOwner();
@@ -346,7 +343,8 @@ describe('ImportPipeline workflow conflict policy', () => {
 
 			expect(matchedSummary).toMatchObject({
 				localId: existing.id,
-				status: workflowConflictPolicy === 'new-version' ? 'updated' : 'skipped',
+				status:
+					workflowConflictPolicy === WorkflowConflictPolicy.NewVersion ? 'updated' : 'skipped',
 			});
 			expect(freshSummary).toMatchObject({ status: 'created', name: 'Fresh workflow' });
 
@@ -358,7 +356,9 @@ describe('ImportPipeline workflow conflict policy', () => {
 				relations: ['parentFolder'],
 			});
 			expect(storedExisting.name).toBe(
-				workflowConflictPolicy === 'new-version' ? 'Imported replacement' : 'Existing workflow',
+				workflowConflictPolicy === WorkflowConflictPolicy.NewVersion
+					? 'Imported replacement'
+					: 'Existing workflow',
 			);
 			// The update path must leave the workflow in its original folder; the
 			// handler only patches the response object's `parentFolder`, so assert
@@ -401,7 +401,7 @@ describe('ImportPipeline workflow conflict policy', () => {
 					],
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 		});
 
 		const summary = result.workflows.find(
@@ -444,7 +444,7 @@ describe('ImportPipeline workflow conflict policy', () => {
 					serializedWorkflow({ id: 'wf-existing', name: 'Conflicting workflow' }),
 					serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
 				]),
-				workflowConflictPolicy: 'fail',
+				workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			}),
 		).rejects.toMatchObject({
 			message: expect.stringContaining('already exist in the target project'),
@@ -477,7 +477,7 @@ describe('ImportPipeline workflow conflict policy', () => {
 				packageBuffer: await buildImportPackageBuffer([
 					serializedWorkflow({ id: 'wf-ambiguous', name: 'Incoming' }),
 				]),
-				workflowConflictPolicy: 'skip',
+				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
 			}),
 		).rejects.toMatchObject({
 			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
@@ -492,14 +492,14 @@ describe('ImportPipeline workflow conflict policy', () => {
 		);
 
 		const original = await createWorkflow({ name: 'Authored here' }, personalProject);
-		expect(original.sourceWorkflowId).toBe(original.id);
+		expect(original.sourceWorkflowId).toBeNull();
 
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildImportPackageBuffer([
 				serializedWorkflow({ id: original.id, name: 'Updated via re-import' }),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 		});
 
 		expect(result.workflows).toEqual([

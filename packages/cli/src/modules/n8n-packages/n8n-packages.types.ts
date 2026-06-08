@@ -5,11 +5,19 @@ export type { CredentialResolution } from './entities/credential/credential.type
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';
 
+/* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
+export const WorkflowConflictPolicy = {
+	/** Creates a new version of the same workflow if a conflict occurs. */
+	NewVersion: 'new-version',
+	/** Fails the import immediately. */
+	Fail: 'fail',
+	/** Skips the current workflow and moves to the next one to import. */
+	Skip: 'skip',
+} as const;
+/* eslint-enable @typescript-eslint/naming-convention */
+
 export type WorkflowConflictPolicy =
-	// Matched = target-project workflow whose sourceWorkflowId equals a workflow id in the exported package.
-	| 'new-version' // Update matched workflows; create the rest
-	| 'fail' // Abort the import when any matched workflow already exists in the target project
-	| 'skip'; // Leave matched workflows unchanged; create the rest
+	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
 
 export interface ExportWorkflowsRequest {
 	user: User;
