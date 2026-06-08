@@ -1,3 +1,12 @@
+## [1.123.54](https://github.com/n8n-io/n8n/compare/n8n@1.123.53...n8n@1.123.54) (2026-06-08)
+
+
+### Bug Fixes
+
+* **core:** Insights page shows paywall for licensed users due to posthog init failing [1.x backport] ([#31889](https://github.com/n8n-io/n8n/issues/31889)) ([4412736](https://github.com/n8n-io/n8n/commit/44127368bbf05bae13a7c2e4a825bc76fa1ca1a3))
+* Fix 9 security issues in samlify, tmp, fengari and 7 more ([#31785](https://github.com/n8n-io/n8n/issues/31785)) ([68aade4](https://github.com/n8n-io/n8n/commit/68aade41acff4df996cf20a168429941fcaf6038))
+
+
 ## [1.123.53](https://github.com/n8n-io/n8n/compare/n8n@1.123.52...n8n@1.123.53) (2026-06-05)
 
 
