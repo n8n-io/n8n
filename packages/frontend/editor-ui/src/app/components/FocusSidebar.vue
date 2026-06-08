@@ -7,7 +7,7 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-import { computed, watch, useTemplateRef, onBeforeUnmount } from 'vue';
+import { computed, onMounted, watch, useTemplateRef, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
@@ -19,8 +19,10 @@ import FocusSidebarTabs from '@/features/setupPanel/components/FocusSidebarTabs.
 import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 import FocusPanel from '@/app/components/FocusPanel.vue';
 import EvaluationsWizardSidepanel from '@/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.vue';
+import EvaluationsPaywall from '@/features/ai/evaluation.ee/components/Paywall/EvaluationsPaywall.vue';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useAiRootNodes } from '@/features/ai/evaluation.ee/composables/useAiRootNodes';
+import { useEvaluationsLicense } from '@/features/ai/evaluation.ee/composables/useEvaluationsLicense';
 
 defineOptions({ name: 'FocusSidebar' });
 
@@ -56,6 +58,7 @@ const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const aiRootNodes = useAiRootNodes();
 const hasAiRootNode = computed(() => aiRootNodes.value.length > 0);
+const { isLicensed, isResolved, ensureLicenseLoaded } = useEvaluationsLicense();
 
 const showSetupPanel = computed(
 	() => setupPanelStore.isFeatureEnabled && selectedTab.value === 'setup',
@@ -64,7 +67,17 @@ const showEvaluationsPanel = computed(
 	() =>
 		isEvaluationsWizardSidepanelEnabled.value &&
 		hasAiRootNode.value &&
-		selectedTab.value === 'evaluations',
+		selectedTab.value === 'evaluations' &&
+		isResolved.value &&
+		isLicensed.value,
+);
+const showEvaluationsPaywall = computed(
+	() =>
+		isEvaluationsWizardSidepanelEnabled.value &&
+		hasAiRootNode.value &&
+		selectedTab.value === 'evaluations' &&
+		isResolved.value &&
+		!isLicensed.value,
 );
 
 // Tab bar visibility used to track only the setup panel; now it also needs to
@@ -147,6 +160,10 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	emit('contextMenuAction', action, nodeIds);
 }
 
+onMounted(() => {
+	void ensureLicenseLoaded();
+});
+
 onBeforeUnmount(() => {
 	unregisterKeyboardListener();
 });
@@ -182,6 +199,9 @@ onBeforeUnmount(() => {
 				</div>
 				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">
 					<EvaluationsWizardSidepanel />
+				</div>
+				<div v-else-if="showEvaluationsPaywall" :class="$style['setup-panel-wrapper']">
+					<EvaluationsPaywall />
 				</div>
 				<FocusPanel
 					v-else
