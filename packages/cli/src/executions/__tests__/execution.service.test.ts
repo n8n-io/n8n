@@ -221,6 +221,122 @@ describe('ExecutionService', () => {
 				expect.objectContaining({ user: mockUser, redactExecutionData: undefined }),
 			);
 		});
+
+		/**
+		 * Builds an ExecutionService wired up for the retry happy path, so a test
+		 * can focus on the runData guard without re-stubbing the whole run flow.
+		 */
+		const buildRetryService = () => {
+			const workflowRunner = mock<WorkflowRunner>();
+			const redactionProxy = mock<ExecutionRedactionServiceProxy>();
+			const service = new ExecutionService(
+				globalConfig,
+				mock(),
+				activeExecutions,
+				mock(),
+				mock(),
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				waitTracker,
+				workflowRunner,
+				concurrencyControl,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				redactionProxy,
+			);
+
+			workflowRunner.run.mockResolvedValue('retried-123');
+			activeExecutions.getPostExecutePromise.mockResolvedValue(
+				mock<IRun>({
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+					mode: 'trigger',
+					startedAt: new Date(),
+					finished: true,
+					status: 'success',
+					waitTill: null,
+				}),
+			);
+			redactionProxy.processExecution.mockImplementation(async (exec) => exec);
+
+			return { service, workflowRunner };
+		};
+
+		const buildRetryRequest = () =>
+			mock<ExecutionRequest.Retry>({
+				params: { id: 'original-123' },
+				user: mock<User>({ id: 'user-1' }),
+				body: { loadWorkflow: false },
+				query: {},
+			});
+
+		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
+			/**
+			 * Arrange
+			 */
+			const { service, workflowRunner } = buildRetryService();
+			executionRepository.findWithUnflattenedData.mockResolvedValue(
+				mock<IExecutionResponse>({
+					workflowId: 'workflow-1',
+					finished: false,
+					status: 'error',
+					data: {
+						executionData: {
+							nodeExecutionStack: [],
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+						// lastNodeExecuted is set but runData is missing entirely
+						resultData: { lastNodeExecuted: 'Some Node', runData: undefined },
+					},
+					workflowData: { id: 'workflow-1', settings: {} } as IExecutionDb['workflowData'],
+				}),
+			);
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not throw or pop when runData has no entry for lastNodeExecuted', async () => {
+			/**
+			 * Arrange
+			 */
+			const { service, workflowRunner } = buildRetryService();
+			const runData = {};
+			executionRepository.findWithUnflattenedData.mockResolvedValue(
+				mock<IExecutionResponse>({
+					workflowId: 'workflow-1',
+					finished: false,
+					status: 'error',
+					data: {
+						executionData: {
+							nodeExecutionStack: [],
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+						// lastNodeExecuted points at a node absent from runData
+						resultData: { lastNodeExecuted: 'Missing Node', runData },
+					},
+					workflowData: { id: 'workflow-1', settings: {} } as IExecutionDb['workflowData'],
+				}),
+			);
+
+			/**
+			 * Act & Assert
+			 */
+			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			// Nothing was popped or otherwise mutated when the entry is missing
+			expect(runData).toEqual({});
+		});
 	});
 
 	describe('getLastSuccessfulExecution', () => {
