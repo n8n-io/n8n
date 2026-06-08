@@ -36,6 +36,16 @@ export class SentryConfig {
 	profilesSampleRate: number = 0;
 
 	/**
+	 * Whether Sentry's native event-loop-block detection is enabled. When on, a
+	 * native watchdog (`@sentry/node-native`) captures the main thread's stack
+	 * whenever the event loop is blocked beyond the threshold below.
+	 *
+	 * @default false
+	 */
+	@Env('N8N_SENTRY_EVENT_LOOP_BLOCK_DETECTION_ENABLED')
+	eventLoopBlockDetectionEnabled: boolean = false;
+
+	/**
 	 * Threshold in milliseconds for event loop block detection.
 	 * When the event loop is blocked for longer than this threshold,
 	 * Sentry will report it.

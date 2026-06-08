@@ -28,6 +28,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
@@ -44,13 +45,14 @@ import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPane
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
-import { buildFixWithAiPrompt } from './fixWithAi';
+import { buildFixWithAiPrompt, IS_FIX_WITH_AI_OFFER_ENABLED } from './fixWithAi';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import { TabsRoot } from 'reka-ui';
 
@@ -59,6 +61,7 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
+const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
@@ -97,6 +100,7 @@ const isChatInProgress = computed(
 );
 
 const activeFixWithAiOffer = computed(() => {
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return null;
 	const run = failedRun.value;
 	if (!run) return null;
 	if (run.executionId === dismissedExecutionId.value) return null;
@@ -499,6 +503,10 @@ const workflowPreviewRef =
 
 // --- Message handlers ---
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return;
+	}
+
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
@@ -520,6 +528,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			skipped_inputs: [],
 			num_tasks: planEdit.taskCount,
 			feedback: scrubSecretsInText(message),
+			plan_feedback_type: 'changes_requested',
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
 		void thread
@@ -565,6 +574,7 @@ function dismissFixWithAiOffer() {
 }
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 	failedRun.value = report;
 }
 </script>
@@ -664,32 +674,33 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
-					<div :class="$style.scrollArea">
-						<N8nScrollArea as-child type="auto">
-							<div ref="scrollable" :class="$style.scrollContent">
-								<div :class="$style.messageList">
-									<TransitionGroup name="message-slide">
-										<InstanceAiMessage
-											v-for="message in displayedMessages"
-											:key="message.id"
-											:message="message"
-										/>
-									</TransitionGroup>
-									<!-- Builder sub-agents are extracted from their parent assistant
-     messages and rendered here so they always sit at the bottom
-     of the conversation. -->
-									<div v-if="builderAgents.length" :class="$style.builderAgents">
-										<AgentSection
-											v-for="builder in builderAgents"
-											:key="builder.agentId"
-											:agent-node="builder"
-										/>
-									</div>
-									<!-- Inline confirmations (questions, plan review, text, setup,
+					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
+						<div ref="scrollable" :class="$style.scrollContent">
+							<div :class="$style.messageList">
+								<TransitionGroup name="message-slide">
+									<InstanceAiMessage
+										v-for="message in displayedMessages"
+										:key="message.id"
+										:message="message"
+									/>
+								</TransitionGroup>
+								<!-- Builder sub-agents are extracted from their parent assistant
+	     messages and rendered here so they always sit at the bottom
+	     of the conversation. -->
+								<div v-if="builderAgents.length" :class="$style.builderAgents">
+									<AgentSection
+										v-for="builder in builderAgents"
+										:key="builder.agentId"
+										:agent-node="builder"
+									/>
+								</div>
+								<!-- Inline confirmations (questions, plan review, text, setup,
 									 credential, gateway resource-decision, continue) render in
 									 the chat flow. Floating-eligible items take over the chat
 									 input slot below instead - see `hasFloatingConfirmation`. -->
-									<InstanceAiConfirmationPanel kind="inline" />
+								<InstanceAiConfirmationPanel kind="inline" />
+
+								<template v-if="IS_FIX_WITH_AI_OFFER_ENABLED">
 									<Transition name="confirmation-slide">
 										<InstanceAiFixWithAiPanel
 											v-if="activeFixWithAiOffer"
@@ -700,73 +711,80 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 											@dismiss="dismissFixWithAiOffer"
 										/>
 									</Transition>
+								</template>
+								<!-- Live activity indicator. Sits at the very end of the
+									 conversation flow — below any pending questions/confirmations
+									 and not pinned above the input — so it trails the active
+									 content and scrolls away when reading back. -->
+								<InstanceAiStatusBar />
+							</div>
+
+							<!-- Floating input slot - replaced by the confirmation panel while a
+								 floating-eligible approval is pending. The credit banner stays
+								 anchored above the slot in both states. The leaving child is
+								 positioned absolutely during the cross-fade so the in-flow child
+								 can size the slot to its natural height. -->
+							<div :class="$style.inputDock">
+								<!-- Scroll to bottom button -->
+								<div :class="$style.scrollButtonContainer">
+									<Transition name="scroll-button-fade">
+										<N8nIconButton
+											v-if="userScrolledUp && thread.hasMessages"
+											variant="outline"
+											icon="arrow-down"
+											size="large"
+											icon-size="large"
+											:class="$style.scrollToBottomButton"
+											@click="
+												scrollToBottom(true);
+												userScrolledUp = false;
+											"
+										/>
+									</Transition>
 								</div>
 
-								<!-- Floating input slot - replaced by the confirmation panel while a
-										 floating-eligible approval is pending. StatusBar and credit
-										 banner stay anchored above the slot in both states. The
-										 leaving child is positioned absolutely during the cross-fade
-										 so the in-flow child can size the slot to its natural
-										 height. -->
-								<div :class="$style.inputDock">
-									<!-- Scroll to bottom button -->
-									<div :class="$style.scrollButtonContainer">
-										<Transition name="scroll-button-fade">
-											<N8nIconButton
-												v-if="userScrolledUp && thread.hasMessages"
-												variant="outline"
-												icon="arrow-down"
-												size="large"
-												icon-size="large"
-												:class="$style.scrollToBottomButton"
-												@click="
-													scrollToBottom(true);
-													userScrolledUp = false;
-												"
-											/>
-										</Transition>
-									</div>
-
-									<div :class="$style.inputContainer">
-										<div :class="$style.inputConstraint">
-											<InstanceAiStatusBar />
-											<CreditWarningBanner
-												v-if="creditBanner.visible.value"
-												:credits-remaining="store.creditsRemaining"
-												:credits-quota="store.creditsQuota"
-												@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-												@dismiss="creditBanner.dismiss()"
-											/>
-											<div :class="$style.inputSwap">
-												<Transition name="input-swap">
-													<InstanceAiConfirmationPanel
-														v-if="hasFloatingConfirmation"
-														key="floating-confirmation"
-														kind="floating"
-													/>
-													<InstanceAiInput
-														v-else
-														ref="chatInputRef"
-														key="chat-input"
-														:is-streaming="thread.isStreaming"
-														:is-submitting="thread.isSendingMessage"
-														:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-														:is-plan-edit-mode="thread.activePlanEdit !== null"
-														:current-thread-id="thread.id"
-														:amend-context="thread.amendContext"
-														:contextual-suggestion="thread.contextualSuggestion"
-														@submit="handleSubmit"
-														@stop="handleStop"
-														@cancel-plan-edit="thread.cancelPlanEdit"
-													/>
-												</Transition>
-											</div>
+								<div :class="$style.inputContainer">
+									<div :class="$style.inputConstraint">
+										<WorkflowBuilderUnavailableNotice
+											v-if="!settingsStore.isWorkflowBuilderAvailable"
+										/>
+										<CreditWarningBanner
+											v-if="creditBanner.visible.value"
+											:credits-remaining="store.creditsRemaining"
+											:credits-quota="store.creditsQuota"
+											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+											@dismiss="creditBanner.dismiss()"
+										/>
+										<div :class="$style.inputSwap">
+											<Transition name="input-swap">
+												<InstanceAiConfirmationPanel
+													v-if="hasFloatingConfirmation"
+													key="floating-confirmation"
+													kind="floating"
+												/>
+												<InstanceAiInput
+													v-else
+													ref="chatInputRef"
+													key="chat-input"
+													:is-streaming="thread.isStreaming"
+													:is-submitting="thread.isSendingMessage"
+													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+													:is-plan-edit-mode="thread.activePlanEdit !== null"
+													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+													:current-thread-id="thread.id"
+													:amend-context="thread.amendContext"
+													:contextual-suggestion="thread.contextualSuggestion"
+													@submit="handleSubmit"
+													@stop="handleStop"
+													@cancel-plan-edit="thread.cancelPlanEdit"
+												/>
+											</Transition>
 										</div>
 									</div>
 								</div>
 							</div>
-						</N8nScrollArea>
-					</div>
+						</div>
+					</N8nScrollArea>
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
@@ -1108,6 +1126,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	max-width: 750px;
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 @media (prefers-reduced-motion: reduce) {

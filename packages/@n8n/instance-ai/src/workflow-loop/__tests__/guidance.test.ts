@@ -157,6 +157,8 @@ describe('formatWorkflowLoopGuidance', () => {
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="get-json")');
+			expect(result).toContain('Build/save success only means a workflow was saved');
 			expect(result).toContain('verify-built-workflow');
 			expect(result).toContain('executions(action="run")');
 		});
@@ -168,7 +170,10 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('executions(action="debug")');
+			expect(result).toContain('needs_patch');
+			expect(result).toContain('needs_rebuild');
 			expect(result).toContain('report-verification-verdict');
+			expect(result).toContain('workflowInspection');
 		});
 	});
 

@@ -12,6 +12,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
+import type { WorkflowListItem } from '@/Interface';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -57,7 +58,8 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 			},
 			WorkflowsTable: {
 				inheritAttrs: true,
-				template: '<div>Workflows Table</div>',
+				template:
+					'<div><button data-test-id="workflows-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button><button data-test-id="workflows-table-page-size-50" @click="$emit(\'update:options\', { page: 3, itemsPerPage: 50, sortBy: [] })">Page size 50</button>Workflows Table</div>',
 			},
 			OAuthClientsTable: {
 				inheritAttrs: true,
@@ -77,6 +79,8 @@ const clickTab = async (container: Element, tabTestId: string) => {
 		await userEvent.click(clickableTab);
 	}
 };
+
+const workflowPage = (data: WorkflowListItem[] = []) => ({ data, count: data.length });
 
 describe('SettingsMCPView', () => {
 	beforeEach(() => {
@@ -98,6 +102,7 @@ describe('SettingsMCPView', () => {
 		};
 
 		mcpStore.getAllOAuthClients.mockResolvedValue([]);
+		mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 	});
 
 	afterEach(() => {
@@ -124,7 +129,7 @@ describe('SettingsMCPView', () => {
 					mcpManagedByEnv: false,
 				},
 			};
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 		});
 
 		it('should render enabled section when MCP access is enabled', async () => {
@@ -171,7 +176,7 @@ describe('SettingsMCPView', () => {
 					mcpManagedByEnv: false,
 				},
 			};
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 			mcpStore.setMcpAccessEnabled.mockResolvedValue(false);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -185,7 +190,7 @@ describe('SettingsMCPView', () => {
 
 		it('should fetch workflows and oauth clients after enabling MCP', async () => {
 			mcpStore.setMcpAccessEnabled.mockResolvedValue(true);
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -207,7 +212,7 @@ describe('SettingsMCPView', () => {
 					mcpManagedByEnv: false,
 				},
 			};
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 		});
 
@@ -341,7 +346,7 @@ describe('SettingsMCPView', () => {
 					mcpManagedByEnv: false,
 				},
 			};
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 		});
 
@@ -386,6 +391,58 @@ describe('SettingsMCPView', () => {
 		});
 	});
 
+	describe('Workflow pagination', () => {
+		beforeEach(() => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
+				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+			);
+		});
+
+		it('should fetch the first workflow page on mount', async () => {
+			createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+			});
+		});
+
+		it('should fetch the selected workflow page when table options change', async () => {
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+			});
+			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+
+			await userEvent.click(getByTestId('workflows-table-page-2'));
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(2, 10);
+			});
+		});
+
+		it('should reset to first page when workflow table page size changes', async () => {
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+			});
+			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+
+			await userEvent.click(getByTestId('workflows-table-page-size-50'));
+
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 50);
+			});
+		});
+	});
+
 	describe('Connect Workflows button', () => {
 		beforeEach(() => {
 			settingsStore.moduleSettings = {
@@ -397,7 +454,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should not show Connect Workflows button when there are no workflows', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 
 			const { queryByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -408,10 +465,12 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should show Connect Workflows button when there are workflows', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
-				createWorkflow({ id: '1', name: 'Workflow 1' }),
-				createWorkflow({ id: '2', name: 'Workflow 2' }),
-			]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
+				workflowPage([
+					createWorkflow({ id: '1', name: 'Workflow 1' }),
+					createWorkflow({ id: '2', name: 'Workflow 2' }),
+				]),
+			);
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -422,9 +481,9 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should not show Connect Workflows button when on OAuth tab', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
-				createWorkflow({ id: '1', name: 'Workflow 1' }),
-			]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
+				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+			);
 			mcpStore.getAllOAuthClients.mockResolvedValue([]);
 
 			const { queryByTestId, getByTestId, container } = createComponent({ pinia });
@@ -444,9 +503,9 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should open Connect Workflows modal when button is clicked', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([
-				createWorkflow({ id: '1', name: 'Workflow 1' }),
-			]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
+				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+			);
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -477,7 +536,7 @@ describe('SettingsMCPView', () => {
 					mcpManagedByEnv: false,
 				},
 			};
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue([]);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
 			mcpStore.getInstanceClientStats.mockResolvedValue(null);
 		});
 

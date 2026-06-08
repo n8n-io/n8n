@@ -6,7 +6,11 @@ import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow'
 import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
-import { getNodeAuthOptions, getAuthTypeForNodeCredential } from '@/app/utils/nodeTypesUtils';
+import {
+	getAuthTypeForNodeCredential,
+	getNodeAuthOptions,
+	getNodeCredentialForSelectedAuthType,
+} from '@/app/utils/nodeTypesUtils';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
 export interface CredentialModeOption {
@@ -36,7 +40,8 @@ const emit = defineEmits<{
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
-const { isOAuthCredentialType, hasManualCredentialInputFields } = useCredentialOAuth();
+const { canOAuthCredentialQuickConnect, isOAuthCredentialType, hasManualCredentialInputFields } =
+	useCredentialOAuth();
 
 const activeNode = computed<INode | null>(() => props.contextNode ?? ndvStore.value.activeNode);
 const activeNodeType = computed<INodeTypeDescription | null>(() => {
@@ -58,16 +63,18 @@ const hasManualCredentialFields = computed(() =>
 	hasManualCredentialInputFields(props.credentialType),
 );
 
-const managedOAuthOptions = computed<Option[]>(() => [
-	{
-		name: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
-		value: { type: 'oAuth2', customOauth: false },
-	},
-	{
-		name: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
-		value: { type: 'oAuth2', customOauth: true },
-	},
-]);
+function getManagedOAuthOptions(authType: string): Option[] {
+	return [
+		{
+			name: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
+			value: { type: authType, customOauth: false },
+		},
+		{
+			name: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
+			value: { type: authType, customOauth: true },
+		},
+	];
+}
 
 const quickConnectOption = computed<Option | null>(() => {
 	if (!props.quickConnectAvailable) return null;
@@ -89,17 +96,27 @@ const manualOptions = computed<Option[]>(() => {
 	const authOptions = getNodeAuthOptions(activeNodeType.value, activeNode.value?.typeVersion);
 
 	if (authOptions.length === 0 && hasManagedOAuth.value) {
-		return managedOAuthOptions.value;
+		return getManagedOAuthOptions(selectedAuthType.value?.value ?? 'oAuth2');
 	}
 
 	return authOptions.flatMap<Option>((option) => {
-		if (props.showManagedOauthOptions && option.value === 'oAuth2') {
-			return managedOAuthOptions.value;
+		const authType = option.value;
+		const credential = activeNodeType.value
+			? getNodeCredentialForSelectedAuthType(activeNodeType.value, authType)
+			: null;
+
+		if (
+			credential &&
+			props.showManagedOauthOptions &&
+			isOAuthCredentialType(credential.name) &&
+			canOAuthCredentialQuickConnect(credential.name)
+		) {
+			return getManagedOAuthOptions(authType);
 		}
 
 		return {
 			name: option.name,
-			value: { type: option.value },
+			value: { type: authType },
 		};
 	});
 });

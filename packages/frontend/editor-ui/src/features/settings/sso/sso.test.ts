@@ -194,6 +194,7 @@ describe('SSO store', () => {
 				loginEnabled: true,
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
+				additionalScopes: '',
 			};
 
 			vi.mocked(ssoApi.getOidcConfig).mockResolvedValue(oidcConfig);
@@ -225,6 +226,7 @@ describe('SSO store', () => {
 				loginEnabled: false,
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
+				additionalScopes: '',
 			});
 
 			await ssoStore.getOidcConfig();

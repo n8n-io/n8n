@@ -1,15 +1,36 @@
 <script lang="ts" setup>
-import { computed, inject, ref } from 'vue';
-import { N8nHeading, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { useThread } from '../instanceAi.store';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, inject, ref } from 'vue';
+import { useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
+const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 const thread = useThread();
+const project = computed(() => {
+	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
+	if (!match)
+		return {
+			name: i18n.baseText('instanceAi.artifactsPanel.unknownProject'),
+			icon: { type: 'icon' as const, value: 'circle-help' as const },
+		};
+	const isPersonal = match.type === 'personal';
+	const icon = isIconOrEmoji(match.icon)
+		? match.icon
+		: { type: 'icon' as const, value: 'layers' as const };
+	return {
+		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+	};
+});
 const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
@@ -81,6 +102,24 @@ function openArtifactLabel(name: string) {
 <template>
 	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
+			<!-- Project section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.artifactList">
+					<div :class="[$style.artifactRow]">
+						<span :class="$style.artifactIconWrap">
+							<ProjectIcon :icon="project.icon" size="small" border-less />
+						</span>
+						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
 			<!-- Artifacts section -->
 			<div :class="$style.section">
 				<div :class="$style.sectionHeader">
@@ -223,21 +262,23 @@ function openArtifactLabel(name: string) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
-	cursor: pointer;
 	border-radius: var(--radius);
 	color: var(--color--text);
 	text-decoration: none;
 	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
 
-	&:hover,
-	&:focus-visible {
-		background: var(--background--hover);
-		outline: none;
-		text-decoration: none;
-	}
+	&:is(a) {
+		cursor: pointer;
+		&:hover,
+		&:focus-visible {
+			background: var(--background--hover);
+			outline: none;
+			text-decoration: none;
+		}
 
-	&:visited {
-		color: var(--color--text);
+		&:visited {
+			color: var(--color--text);
+		}
 	}
 }
 

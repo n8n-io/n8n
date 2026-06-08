@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, h, nextTick, reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,6 +17,7 @@ vi.mock('../instanceAi.store', () => ({
 }));
 
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
+	pinia: createTestingPinia(),
 	global: {
 		stubs: {
 			ConnectionsCard: defineComponent({
