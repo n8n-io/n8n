@@ -206,21 +206,22 @@ export function buildCollapsedGroupByNodeId(
  * is promoted on merge (running > error > pinned > success > undefined) so
  * a merged line never looks idle when something behind it isn't.
  */
-const STATUS_PRIORITY: Record<NonNullable<CanvasConnectionData['status']> | 'undefined', number> = {
+const STATUS_PRIORITY: Record<NonNullable<CanvasConnectionData['status']>, number> = {
 	running: 4,
 	error: 3,
 	pinned: 2,
 	success: 1,
-	undefined: 0,
 };
+
+function priorityOf(status: CanvasConnectionData['status']): number {
+	return status === undefined ? 0 : STATUS_PRIORITY[status];
+}
 
 function pickHigherPriorityStatus(
 	a: CanvasConnectionData['status'],
 	b: CanvasConnectionData['status'],
 ): CanvasConnectionData['status'] {
-	const aKey = (a ?? 'undefined') as keyof typeof STATUS_PRIORITY;
-	const bKey = (b ?? 'undefined') as keyof typeof STATUS_PRIORITY;
-	return STATUS_PRIORITY[aKey] >= STATUS_PRIORITY[bKey] ? a : b;
+	return priorityOf(a) >= priorityOf(b) ? a : b;
 }
 
 export interface CanvasConnectionWithMergeFlag extends CanvasConnection {
