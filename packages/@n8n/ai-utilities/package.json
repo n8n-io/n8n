@@ -8,6 +8,9 @@
   "typesVersions": {
     "*": {
       "text-editor": [
+        "dist/esm/utils/workflow-text-editor.d.ts"
+      ],
+      "generic-text-editor": [
         "dist/esm/utils/text-editor.d.ts"
       ],
       "node-catalog": [
@@ -31,6 +34,11 @@
       "require": "./dist/cjs/index.js"
     },
     "./text-editor": {
+      "types": "./dist/esm/utils/workflow-text-editor.d.ts",
+      "import": "./dist/esm/utils/workflow-text-editor.js",
+      "require": "./dist/cjs/utils/workflow-text-editor.js"
+    },
+    "./generic-text-editor": {
       "types": "./dist/esm/utils/text-editor.d.ts",
       "import": "./dist/esm/utils/text-editor.js",
       "require": "./dist/cjs/utils/text-editor.js"
