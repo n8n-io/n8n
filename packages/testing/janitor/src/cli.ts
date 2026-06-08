@@ -72,6 +72,7 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
+import { readManifestDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
@@ -682,10 +683,16 @@ function runMergeCoverage(options: CliOptions): void {
 /** select: changed files + impact map → spec list (JSON). I/O wrapper
  *  around {@link selectTests}, where the fail-open safety contract lives. */
 function runSelect(options: CliOptions): void {
+	const changedFiles = readChangedFiles(options) ?? [];
+	// With a base ref, read each changed package.json before/after so the
+	// devDependency-only classifier can drop a devDep-only lockfile change.
+	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
+	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
 	const result = selectTests({
-		changedFiles: readChangedFiles(options) ?? [],
+		changedFiles,
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
+		manifests,
 	});
 	console.log(JSON.stringify(result));
 }
