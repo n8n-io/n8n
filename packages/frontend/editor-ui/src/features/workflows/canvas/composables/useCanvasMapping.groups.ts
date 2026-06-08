@@ -1,4 +1,4 @@
-import type { IWorkflowGroup } from 'n8n-workflow';
+import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasGroupNode, CanvasGroupNodeData } from '../canvas.types';
 import {
@@ -127,12 +127,121 @@ export function computeNodesRectFromStore(
 	};
 }
 
+export interface GroupAggregateInputs {
+	nodeExecutionRunningById: Record<string, boolean>;
+	nodeExecutionWaitingForNextById: Record<string, boolean>;
+	nodeExecutionWaitingById: Record<string, string | undefined>;
+	nodeHasIssuesById: Record<string, boolean>;
+	nodeExecutionStatusById: Record<string, ExecutionStatus>;
+	nodeIterationsById: Record<string, number>;
+}
+
+/**
+ * Aggregate per-node execution state into a single group-level status,
+ * narrowed from `ExecutionStatus`.
+ *
+ * Priority mirrors the single-node CSS rule order (later rules win), so the
+ * group surfaces the same dominant state a user would see on one of its nodes:
+ *   waiting > running > crashed > error > success > idle
+ *
+ * - `waiting`   any node is paused waiting for input (form, webhook, etc.).
+ * - `running`   any node is running or queued to start next.
+ * - `crashed`   any node has executionStatus 'crashed'. Surfaced
+ *               distinctly so the data layer doesn't lose info; the title
+ *               bar still maps it to the error visual, matching how the
+ *               single-node visual treats crashed via `hasExecutionErrors`.
+ * - `error`     any node has issues or executionStatus 'error'.
+ *               NB: a node that errored with `onError=continue` still
+ *               contributes here — that matches the single-node visual,
+ *               which also flags the offending node despite the workflow
+ *               succeeding overall.
+ * - `success`   at least one node is 'success' and every other node is
+ *               'success' or 'unknown' (didn't run — e.g. an untaken
+ *               conditional branch).
+ * - `undefined` (idle) otherwise. 'canceled' / 'new' / 'unknown' fall
+ *               through here because the single-node visual gives them no
+ *               dedicated class either.
+ */
+export function aggregateGroupStatus(
+	nodeIds: string[],
+	{
+		nodeExecutionRunningById,
+		nodeExecutionWaitingForNextById,
+		nodeExecutionWaitingById,
+		nodeHasIssuesById,
+		nodeExecutionStatusById,
+	}: GroupAggregateInputs,
+): ExecutionStatus | undefined {
+	let anyWaiting = false;
+	let anyRunning = false;
+	let anyCrashed = false;
+	let anyError = false;
+	let anySuccess = false;
+	let anyOther = false;
+
+	for (const id of nodeIds) {
+		const status = nodeExecutionStatusById[id];
+
+		if (nodeExecutionWaitingById[id] || status === 'waiting') {
+			anyWaiting = true;
+			continue;
+		}
+		if (nodeExecutionRunningById[id] || nodeExecutionWaitingForNextById[id]) {
+			anyRunning = true;
+			continue;
+		}
+		if (status === 'crashed') {
+			anyCrashed = true;
+			continue;
+		}
+		if (nodeHasIssuesById[id] || status === 'error') {
+			anyError = true;
+			continue;
+		}
+		if (status === 'success') {
+			anySuccess = true;
+		} else if (
+			status !== undefined &&
+			status !== 'unknown' &&
+			status !== 'new' &&
+			status !== 'canceled'
+		) {
+			anyOther = true;
+		}
+	}
+
+	if (anyWaiting) return 'waiting';
+	if (anyRunning) return 'running';
+	if (anyCrashed) return 'crashed';
+	if (anyError) return 'error';
+	if (anySuccess && !anyOther) return 'success';
+	return undefined;
+}
+
+/**
+ * Largest per-node iteration count across the group. Used for the small
+ * count badge next to the success ✓ — the badge shows the most-iterated
+ * node so loop/foreach groups surface their iteration depth.
+ */
+export function aggregateMaxNodeIterations(
+	nodeIds: string[],
+	nodeIterationsById: Record<string, number>,
+): number {
+	let max = 0;
+	for (const id of nodeIds) {
+		const iter = nodeIterationsById[id] ?? 0;
+		if (iter > max) max = iter;
+	}
+	return max;
+}
+
 export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
 	isGroupCollapsed: (id: string) => boolean;
 	readOnly: boolean;
+	aggregates: GroupAggregateInputs;
 }
 
 /**
@@ -145,6 +254,7 @@ export function mapGroupsToVueFlowNodes({
 	getNodeDisplaySize,
 	isGroupCollapsed,
 	readOnly,
+	aggregates,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
 	for (const group of allGroups) {
@@ -159,6 +269,8 @@ export function mapGroupsToVueFlowNodes({
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
+			executionStatus: aggregateGroupStatus(group.nodeIds, aggregates),
+			maxNodeIterations: aggregateMaxNodeIterations(group.nodeIds, aggregates.nodeIterationsById),
 		};
 
 		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);

@@ -15,6 +15,7 @@ import type {
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
+import type { GroupAggregateInputs } from './useCanvasMapping.groups';
 import {
 	buildCollapsedGroupByNodeId,
 	remapCollapsedGroupConnections,
@@ -24,7 +25,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
+import type { ExecutionStatus, IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
@@ -87,6 +88,37 @@ export function useCanvasMapping({
 			);
 		}
 		return dimensionsById;
+	});
+
+	const groupAggregates = computed<GroupAggregateInputs>(() => {
+		const rd = renderData.value;
+		const nodeExecutionRunningById: Record<string, boolean> = {};
+		const nodeExecutionWaitingForNextById: Record<string, boolean> = {};
+		const nodeExecutionWaitingById: Record<string, string | undefined> = {};
+		const nodeHasIssuesById: Record<string, boolean> = {};
+		const nodeExecutionStatusById: Record<string, ExecutionStatus> = {};
+		const nodeIterationsById: Record<string, number> = {};
+
+		for (const node of nodes.value) {
+			const id = node.id;
+			nodeExecutionRunningById[id] = rd.executionRunningByNodeId.get(id)?.value ?? false;
+			nodeExecutionWaitingForNextById[id] =
+				rd.executionWaitingForNextByNodeId.get(id)?.value ?? false;
+			nodeExecutionWaitingById[id] = rd.executionWaitingByNodeId.get(id)?.value;
+			nodeHasIssuesById[id] = rd.hasIssuesByNodeId.get(id)?.value ?? false;
+			nodeExecutionStatusById[id] = rd.executionStatusByNodeId.get(id)?.value ?? 'new';
+			nodeIterationsById[id] =
+				filterOutCanceled(rd.executionRunDataByNodeId.get(id)?.value ?? null)?.length ?? 0;
+		}
+
+		return {
+			nodeExecutionRunningById,
+			nodeExecutionWaitingForNextById,
+			nodeExecutionWaitingById,
+			nodeHasIssuesById,
+			nodeExecutionStatusById,
+			nodeIterationsById,
+		};
 	});
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
@@ -265,5 +297,6 @@ export function useCanvasMapping({
 		nodes: mappedNodes,
 		connections: mappedConnections,
 		nodeDisplaySizeById,
+		groupAggregates,
 	};
 }

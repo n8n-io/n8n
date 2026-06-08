@@ -145,6 +145,8 @@ export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
+	executionStatus?: ExecutionStatus;
+	maxNodeIterations: number;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;

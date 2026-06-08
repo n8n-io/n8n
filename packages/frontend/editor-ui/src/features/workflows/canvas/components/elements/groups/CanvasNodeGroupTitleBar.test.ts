@@ -43,6 +43,8 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
 		isCollapsed: true,
+		executionStatus: undefined,
+		maxNodeIterations: 0,
 		...overrides,
 	};
 }
@@ -133,6 +135,63 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('hides the frame when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeNull();
+		});
+	});
+
+	describe('execution-status classes', () => {
+		it('applies no status class when executionStatus is undefined (idle)', () => {
+			const wrapper = render({ data: makeData({ executionStatus: undefined }) });
+			const root = wrapper.getByTestId('canvas-node-group');
+			// No status icon and no .success / .error / .running class semantics.
+			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+			// status classes are CSS module hashed; we can only check via test ids.
+			expect(root).toBeTruthy();
+		});
+
+		it('shows success icon when executionStatus is success', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-success')).toBeTruthy();
+		});
+
+		it('shows error icon when executionStatus is error', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'error' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
+		});
+
+		it('maps crashed to the error visual (parity with single-node hasExecutionErrors)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'crashed' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
+		});
+
+		it('shows iteration count on success when maxNodeIterations > 1', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success', maxNodeIterations: 3 }),
+			});
+			const icon = wrapper.getByTestId('canvas-node-group-status-success');
+			expect(icon).toHaveTextContent('3');
+		});
+
+		it('applies a hashed `running` class when executionStatus is running', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'running' }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /running/i.test(c))).toBe(true);
+		});
+
+		it('applies a hashed `waiting` class when executionStatus is waiting', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'waiting' }),
+			});
+			const root = wrapper.getByTestId('canvas-node-group');
+			expect([...root.classList].some((c) => /waiting/i.test(c))).toBe(true);
 		});
 	});
 
