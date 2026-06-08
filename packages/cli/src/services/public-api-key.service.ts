@@ -179,7 +179,8 @@ export class PublicApiKeyService {
 		});
 		if (!apiKey) throw new NotFoundError('API key not found');
 
-		await this.apiKeyRepository.delete({ id: apiKey.id });
+		const result = await this.apiKeyRepository.delete({ id: apiKey.id });
+		if (!result.affected) throw new NotFoundError('API key not found');
 
 		return { isOwn: apiKey.userId === caller.id };
 	}
