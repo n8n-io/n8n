@@ -149,7 +149,7 @@ export class ScheduledTaskManager {
 
 	/** Ids of workflows that currently have crons registered. */
 	getWorkflowIdsWithCrons(): string[] {
-		return [...this.cronsByWorkflow.keys()];
+		return Array.from(this.cronsByWorkflow.keys());
 	}
 
 	deregisterAllCrons() {

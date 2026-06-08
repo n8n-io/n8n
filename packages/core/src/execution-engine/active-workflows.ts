@@ -236,7 +236,7 @@ export class ActiveWorkflows {
 		}
 
 		this.logger.debug('Deactivated non-webhook triggers and cleared any stranded crons', {
-			workflowIds: [...workflowIds],
+			workflowIds: Array.from(workflowIds),
 		});
 	}
 
