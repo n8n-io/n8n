@@ -291,6 +291,16 @@ describe('Canvas', () => {
 			expect(patternCanvas?.innerHTML).toContain('<path');
 			expect(patternCanvas?.innerHTML).not.toContain('<circle');
 		});
+
+		it('should render default background in read-only mode when striped background is disabled', () => {
+			const { container } = renderComponent({
+				props: { readOnly: true, stripedBackground: false },
+			});
+			const patternCanvas = container.querySelector('#pattern-canvas');
+			expect(patternCanvas).toBeInTheDocument();
+			expect(patternCanvas?.innerHTML).toContain('<circle');
+			expect(patternCanvas?.innerHTML).not.toContain('<path');
+		});
 	});
 
 	describe('simulate', () => {
