@@ -24,6 +24,7 @@ import {
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
+	resolveCanonicalConnection,
 } from '../canvas.utils';
 import type { ExecutionStatus, IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -192,22 +193,29 @@ export function useCanvasMapping({
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const rd = renderData.value;
-		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-		const outputMap = rd.executionRunDataOutputMapByNodeId.get(connection.source);
+		// Collapsed-group remapping rewrites `connection.source` / `.target` to
+		// `group:*` ids for display; the real workflow endpoints live on
+		// `data.canonicals` so execution-state lookups still resolve correctly.
+		const canonical = resolveCanonicalConnection(connection);
+		const sourceNodeId = canonical.source;
+		const targetNodeId = canonical.target;
+
+		const { type, index } = parseCanvasConnectionHandleString(canonical.sourceHandle);
+		const outputMap = rd.executionRunDataOutputMapByNodeId.get(sourceNodeId);
 		const runData = outputMap?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
 
-		const sourceTasks = rd.executionRunDataByNodeId.get(connection.source)?.value ?? [];
+		const sourceTasks = rd.executionRunDataByNodeId.get(sourceNodeId)?.value ?? [];
 		let lastSourceTask: ITaskData | undefined = sourceTasks[sourceTasks.length - 1];
 		if (lastSourceTask?.executionStatus === 'canceled' && sourceTasks.length > 1) {
 			lastSourceTask = sourceTasks[sourceTasks.length - 2];
 		}
 
-		const sourcePinned = rd.pinnedDataByNodeId.get(connection.source)?.value;
-		const sourceRunData = rd.executionRunDataByNodeId.get(connection.source)?.value;
-		const targetRunData = rd.executionRunDataByNodeId.get(connection.target)?.value;
-		const sourceRunning = rd.executionRunningByNodeId.get(connection.source)?.value ?? false;
-		const sourceHasIssues = rd.hasIssuesByNodeId.get(connection.source)?.value ?? false;
+		const sourcePinned = rd.pinnedDataByNodeId.get(sourceNodeId)?.value;
+		const sourceRunData = rd.executionRunDataByNodeId.get(sourceNodeId)?.value;
+		const targetRunData = rd.executionRunDataByNodeId.get(targetNodeId)?.value;
+		const sourceRunning = rd.executionRunningByNodeId.get(sourceNodeId)?.value ?? false;
+		const sourceHasIssues = rd.hasIssuesByNodeId.get(sourceNodeId)?.value ?? false;
 
 		let status: CanvasConnectionData['status'];
 		if (sourceRunning && runDataTotal === 0) {
@@ -225,8 +233,8 @@ export function useCanvasMapping({
 			}
 		}
 
-		const sourceInputs = rd.nodeInputsByNodeId.get(connection.source)?.value ?? [];
-		const targetInputs = rd.nodeInputsByNodeId.get(connection.target)?.value ?? [];
+		const sourceInputs = rd.nodeInputsByNodeId.get(sourceNodeId)?.value ?? [];
+		const targetInputs = rd.nodeInputsByNodeId.get(targetNodeId)?.value ?? [];
 		const maxConnections = [...sourceInputs, ...targetInputs]
 			.filter((port) => port.type === type)
 			.reduce<number | undefined>((acc, port) => {
