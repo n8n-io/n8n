@@ -6,7 +6,11 @@ import {
 	ToolDescriptor,
 } from '@n8n/agents';
 import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
-import { isNodeToolsEnabled, SUB_AGENT_MAX_CHILDREN_DEFAULT } from '@n8n/api-types';
+import {
+	isNodeToolsEnabled,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	buildProxyHeaders,
+} from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
 	AgentJsonConfig,
@@ -19,7 +23,6 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
-import { buildProxyHeaders, isNodeToolsEnabled } from '@n8n/api-types';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
