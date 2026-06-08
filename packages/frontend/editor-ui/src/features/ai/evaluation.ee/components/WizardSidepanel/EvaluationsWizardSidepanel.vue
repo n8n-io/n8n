@@ -168,11 +168,29 @@ const { hydrate } = useWizardHydration();
 // Hydrate from the latest persisted EvaluationConfig whenever the wizard is
 // opened — the store's `open()` resets state first, so this safely overrides
 // the empty defaults without clobbering anything the user has already typed.
+// Also reset + re-hydrate on a genuine workflow switch so prior-workflow
+// selections do not leak into the new workflow's pane.
 // Errors inside `hydrate` are swallowed by the composable (it toasts) so we
 // don't need to handle them here.
+
+// Local mirror of n8n-core PLACEHOLDER_EMPTY_WORKFLOW_ID (frontend can't import n8n-core).
+const NEW_WORKFLOW_ID = '__EMPTY__';
 watch(
-	() => wizardStore.isOpen,
-	(isOpen) => {
+	() => [wizardStore.isOpen, workflowDocumentStore.value?.workflowId] as const,
+	([isOpen]) => {
+		const id = workflowDocumentStore.value?.workflowId;
+		// Compare against the store-persisted last workflow id rather than the
+		// watcher's previous value: the pane unmounts when the focus panel closes
+		// between workflows, so on remount the watcher has no previous value and
+		// would otherwise miss the switch (leaving a prior run's results visible).
+		const prevId = wizardStore.lastWorkflowId;
+		// Reset only on a genuine switch between saved workflows. Skip the
+		// new→saved id transition (prevId placeholder/empty) so a user's
+		// in-progress selections on a brand-new workflow aren't wiped on save.
+		if (prevId && prevId !== NEW_WORKFLOW_ID && id && id !== prevId) {
+			wizardStore.reset();
+		}
+		if (id) wizardStore.setLastWorkflowId(id);
 		if (isOpen) void hydrate();
 	},
 	{ immediate: true },
