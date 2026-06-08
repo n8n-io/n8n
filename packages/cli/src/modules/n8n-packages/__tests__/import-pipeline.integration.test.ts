@@ -191,7 +191,7 @@ describe('ImportPipeline batch validation', () => {
 		expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(2);
 
 		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
-		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual([null, null]);
+		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
 	});
 });
 
