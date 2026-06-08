@@ -77,11 +77,23 @@ export const v8CoverageFixtures = {
 			const specDir = join(BY_SPEC_DIR, slugify(spec));
 			mkdirSync(specDir, { recursive: true });
 			// Unique per test so multiple tests in one spec file accumulate (don't clobber).
-			writeFileSync(
-				join(specDir, `raw-${slugify(testInfo.testId)}.json`),
-				JSON.stringify(perSpecRaw),
-			);
-			writeFileSync(join(specDir, '.spec'), spec);
+			try {
+				writeFileSync(
+					join(specDir, `raw-${slugify(testInfo.testId)}.json`),
+					JSON.stringify(perSpecRaw),
+				);
+				writeFileSync(join(specDir, '.spec'), spec);
+			} catch (err) {
+				// V8 coverage entries include full script source text. Tests that navigate
+				// extensively (e.g. signout + signin in one test with resetOnNavigation:false)
+				// accumulate enough script entries that JSON.stringify hits V8's ~536MB string
+				// limit. The shard-level sharedReport already received the data above, so
+				// aggregate coverage is unaffected — only this test's per-spec impact map
+				// entry is dropped.
+				console.warn(
+					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${String(err)}`,
+				);
+			}
 		}
 	},
 };
