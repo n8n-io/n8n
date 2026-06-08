@@ -1,6 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
+import { AgentsConfig } from '@n8n/config';
+
 import type { AiService } from '@/services/ai.service';
 
 import { AgentKnowledgeSandboxConfigService } from '../agent-knowledge-sandbox-config.service';
@@ -113,13 +115,18 @@ describe('AgentKnowledgeSandboxWorkspaceService', () => {
 		aiService = mock<AiService>();
 		aiService.isProxyEnabled.mockReturnValue(false);
 		configService = new AgentKnowledgeSandboxConfigService(
-			Object.assign(new (jest.requireActual('@n8n/config').AgentsConfig)(), {
+			Object.assign(new AgentsConfig(), {
 				aiSandboxEnabled: true,
 				aiSandboxNamePrefix: '',
-				aiSandboxServiceUrl: 'https://sandbox.example.test',
 			}),
 			aiService,
 		);
+		jest.spyOn(configService, 'resolveConfig').mockReturnValue({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.test',
+			timeout: 300_000,
+		});
 		service = new AgentKnowledgeSandboxWorkspaceService(
 			logger,
 			configService,

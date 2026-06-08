@@ -140,10 +140,20 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		return names;
 	}
 
-	it.each([
-		{ name: 'no agents modules configured', modules: [] as string[] },
-		{ name: 'only node-tools-searcher configured', modules: ['node-tools-searcher'] },
-	])('injects search_knowledge when $name and sandbox is enabled', async ({ modules }) => {
+	it('does not inject search_knowledge when the knowledge-base module is disabled', async () => {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, ['node-tools-searcher']);
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'user-1');
+
+		expect(createSearchKnowledgeToolMock).not.toHaveBeenCalled();
+		expect(getInjectedToolNames()).not.toContain('search_knowledge');
+	});
+
+	it('injects search_knowledge when knowledge-base is enabled and sandbox is available', async () => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
@@ -151,7 +161,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		const agentKnowledgeSandboxCommandService = mock<AgentKnowledgeSandboxCommandService>();
 		const agentKnowledgeCsvService = mock<AgentKnowledgeCsvService>();
 		const agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>();
-		const service = makeReconstructionService(agentsToolsService, modules, {
+		const service = makeReconstructionService(agentsToolsService, ['knowledge-base'], {
 			agentKnowledgeService,
 			agentKnowledgeSandboxCommandService,
 			agentKnowledgeCsvService,
@@ -178,7 +188,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, [], {
+		const service = makeReconstructionService(agentsToolsService, ['knowledge-base'], {
 			agentKnowledgeSandboxConfigService: mock<AgentKnowledgeSandboxConfigService>({
 				isAvailable: jest.fn(() => false),
 			}),
@@ -196,7 +206,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowl
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		const logger = mock<Logger>();
-		const service = makeReconstructionService(agentsToolsService, [], { logger });
+		const service = makeReconstructionService(agentsToolsService, ['knowledge-base'], { logger });
 		const entity = makeAgentEntity();
 		const toolError = new Error('tool factory failed');
 		createSearchKnowledgeToolMock.mockImplementationOnce(() => {
@@ -420,7 +430,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService);
+		const service = makeReconstructionService(agentsToolsService, ['knowledge-base']);
 
 		const config: AgentJsonConfig = {
 			name: 'Child',

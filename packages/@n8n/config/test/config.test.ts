@@ -573,11 +573,11 @@ describe('GlobalConfig', () => {
 			aiSandboxProvider: 'n8n-sandbox',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
-			aiSandboxImage: '',
-			aiSandboxServiceUrl: '',
-			aiSandboxServiceApiKey: '',
-			aiSandboxTimeout: 300_000,
+			aiSandboxImage: 'daytonaio/sandbox:0.5.0',
+			aiSandboxTimeout: 300000,
 			aiSandboxNamePrefix: '',
+			aiSandboxDaytonaVolumeId: '',
+			aiSandboxDaytonaVolumeSubpathPrefix: 'agent-knowledge',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -813,8 +813,8 @@ describe('GlobalConfig', () => {
 				DAYTONA_API_URL: 'https://app.daytona.io/api',
 				DAYTONA_API_KEY: 'dtn_',
 				N8N_AGENTS_AI_SANDBOX_IMAGE: 'daytonaio/sandbox:0.5.0',
-				N8N_AGENTS_AI_SANDBOX_SERVICE_URL: 'https://sandbox.example.test',
-				N8N_AGENTS_AI_SANDBOX_SERVICE_API_KEY: 'sandbox-key',
+				N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID: 'vol-1',
+				N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_SUBPATH_PREFIX: 'agent-knowledge/staging',
 				N8N_AGENTS_AI_SANDBOX_TIMEOUT: '300000',
 			};
 			const config = Container.get(GlobalConfig);
@@ -824,8 +824,8 @@ describe('GlobalConfig', () => {
 			expect(config.agents.daytonaApiUrl).toBe('https://app.daytona.io/api');
 			expect(config.agents.daytonaApiKey).toBe('dtn_');
 			expect(config.agents.aiSandboxImage).toBe('daytonaio/sandbox:0.5.0');
-			expect(config.agents.aiSandboxServiceUrl).toBe('https://sandbox.example.test');
-			expect(config.agents.aiSandboxServiceApiKey).toBe('sandbox-key');
+			expect(config.agents.aiSandboxDaytonaVolumeId).toBe('vol-1');
+			expect(config.agents.aiSandboxDaytonaVolumeSubpathPrefix).toBe('agent-knowledge/staging');
 			expect(config.agents.aiSandboxTimeout).toBe(300_000);
 		});
 

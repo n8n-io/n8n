@@ -87,6 +87,7 @@ export class AgentsModule implements ModuleInterface {
 
 	private async isSandboxAvailable(config: AgentsConfig): Promise<boolean> {
 		if (!config.aiSandboxEnabled) return false;
+		if (!config.modules.includes('knowledge-base')) return false;
 
 		try {
 			const { AgentKnowledgeSandboxConfigService } = await import(

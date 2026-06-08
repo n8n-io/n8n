@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = ['node-tools-searcher'] as const;
+export const AGENTS_MODULE_NAMES = ['node-tools-searcher', 'knowledge-base'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -46,15 +46,16 @@ export class AgentsConfig {
 	 * agents module. Currently known:
 	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
 	 *   the agent editor.
+	 * - `knowledge-base` — enables agent knowledge file endpoints and search.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
-	/** Whether agent knowledge sandbox/file features are available. */
+	/** Whether agent knowledge sandbox/search runtime is enabled. File endpoints remain gated by `knowledge-base`. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	aiSandboxEnabled: boolean = true;
 
-	/** Sandbox provider for agent knowledge operations. */
+	/** Agent knowledge sandbox provider. Only `daytona` is supported for knowledge-base runtime operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
 	aiSandboxProvider: string = 'n8n-sandbox';
 
@@ -66,23 +67,23 @@ export class AgentsConfig {
 	@Env('DAYTONA_API_KEY')
 	daytonaApiKey: string = '';
 
-	/** Sandbox image used by Daytona for agent knowledge operations. */
+	/** Daytona image used for agent knowledge operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
-	aiSandboxImage: string = '';
-
-	/** n8n sandbox service base URL for agent knowledge operations. */
-	@Env('N8N_AGENTS_AI_SANDBOX_SERVICE_URL')
-	aiSandboxServiceUrl: string = '';
-
-	/** n8n sandbox service API key for agent knowledge operations. */
-	@Env('N8N_AGENTS_AI_SANDBOX_SERVICE_API_KEY')
-	aiSandboxServiceApiKey: string = '';
+	aiSandboxImage: string = 'daytonaio/sandbox:0.5.0';
 
 	/** Agent knowledge sandbox command timeout in milliseconds. */
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	aiSandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
-	/** Prefix prepended to every Daytona agent knowledge sandbox name; also surfaced as a `name_prefix` label. */
+	/** Prefix prepended to Daytona agent knowledge sandbox names and labels. */
 	@Env('N8N_AGENTS_AI_SANDBOX_NAME_PREFIX')
 	aiSandboxNamePrefix: string = '';
+
+	/** Shared Daytona volume ID used for agent knowledge corpus projections. */
+	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
+	aiSandboxDaytonaVolumeId: string = '';
+
+	/** Prefix inside the shared Daytona volume for agent knowledge corpus projections. */
+	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_SUBPATH_PREFIX')
+	aiSandboxDaytonaVolumeSubpathPrefix: string = 'agent-knowledge';
 }

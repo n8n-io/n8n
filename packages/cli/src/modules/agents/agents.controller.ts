@@ -133,9 +133,11 @@ export class AgentsController {
 	) {}
 
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentKnowledgeSandboxConfigService.isAvailable()) {
+		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
+
+		this.agentKnowledgeSandboxConfigService.assertKnowledgeSandboxSupported();
 	}
 
 	private async validateIntegration(dto: unknown) {

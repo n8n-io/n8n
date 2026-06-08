@@ -40,7 +40,9 @@ const routeCases = Array.from(metadata.routes.entries()).map(([handlerName, rout
 }));
 
 function makeController({
-	agentsService = mock<AgentsService>(),
+	agentsService = mock<AgentsService>({
+		isKnowledgeBaseModuleEnabled: jest.fn(() => true),
+	}),
 	credentialsService = mock<CredentialsService>(),
 	chatIntegrationService = mock<ChatIntegrationService>(),
 	agentRepository = mock<AgentRepository>(),
@@ -50,6 +52,7 @@ function makeController({
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
 	agentKnowledgeSandboxWorkspaceService = mock<AgentKnowledgeSandboxWorkspaceService>(),
 	agentKnowledgeSandboxConfigService = mock<AgentKnowledgeSandboxConfigService>({
+		assertKnowledgeSandboxSupported: jest.fn(),
 		isAvailable: jest.fn(() => true),
 	}),
 }: {
@@ -284,10 +287,10 @@ describe('AgentsController file uploads', () => {
 });
 
 describe('AgentsController file endpoints', () => {
-	it('returns not found when agent knowledge sandbox is disabled', async () => {
+	it('returns not found when the knowledge-base module is disabled', async () => {
 		const { controller, agentKnowledgeService } = makeController({
-			agentKnowledgeSandboxConfigService: mock<AgentKnowledgeSandboxConfigService>({
-				isAvailable: jest.fn(() => false),
+			agentsService: mock<AgentsService>({
+				isKnowledgeBaseModuleEnabled: jest.fn(() => false),
 			}),
 		});
 
@@ -399,6 +402,29 @@ describe('AgentsController file endpoints', () => {
 		expect(
 			agentKnowledgeSandboxWorkspaceService.invalidateCachedWorkspacesForAgent,
 		).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentsController knowledge base gating', () => {
+	it('surfaces sandbox configuration errors when the knowledge-base module is enabled', async () => {
+		const sandboxConfigError = new Error(
+			'n8n-sandbox is currently not supported for agent knowledge base operations.',
+		);
+		const agentKnowledgeSandboxConfigService = mock<AgentKnowledgeSandboxConfigService>({
+			assertKnowledgeSandboxSupported: jest.fn(() => {
+				throw sandboxConfigError;
+			}),
+		});
+		const { controller } = makeController({ agentKnowledgeSandboxConfigService });
+
+		await expect(
+			controller.listFiles(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).rejects.toThrow(sandboxConfigError);
 	});
 });
 

@@ -296,6 +296,10 @@ export class AgentsService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
+	isKnowledgeBaseModuleEnabled(): boolean {
+		return this.agentsConfig.modules.includes('knowledge-base');
+	}
+
 	/**
 	 * Best-effort close of an agent instance. Delegates to `agent.close()`
 	 * which disposes the runtime and disconnects any attached MCP clients.
