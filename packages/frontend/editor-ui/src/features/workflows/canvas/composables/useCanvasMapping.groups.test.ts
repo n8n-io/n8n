@@ -307,32 +307,6 @@ describe('reanchorCollapsedConnections (AC #10)', () => {
 		expect(result).toHaveLength(2);
 	});
 
-	it('promotes status on dedupe (running beats success)', () => {
-		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
-		const a = makeEdge('external', 'm1');
-		(a.data as { status?: string }).status = 'success';
-		const b = makeEdge('external', 'm2');
-		(b.data as { status?: string }).status = 'running';
-		const result = reanchorCollapsedConnections([a, b], collapsedMap);
-		expect((result[0].data as { status?: string }).status).toBe('running');
-	});
-
-	it('promotes status on dedupe (error beats success and pinned)', () => {
-		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
-		const a = makeEdge('external', 'm1');
-		(a.data as { status?: string }).status = 'success';
-		const b = makeEdge('external', 'm2');
-		(b.data as { status?: string }).status = 'error';
-		const c = makeEdge('external', 'm1', {
-			sourceHandle: 'outputs/main/0',
-			targetHandle: 'inputs/main/0',
-			id: 'pinnedRoute',
-		});
-		(c.data as { status?: string }).status = 'pinned';
-		const result = reanchorCollapsedConnections([a, b, c], collapsedMap);
-		expect((result[0].data as { status?: string }).status).toBe('error');
-	});
-
 	it('preserves data.source.type so non-main edges still render dashed (AC #10)', () => {
 		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
 		const aiEdge = makeEdge('external', 'm1');

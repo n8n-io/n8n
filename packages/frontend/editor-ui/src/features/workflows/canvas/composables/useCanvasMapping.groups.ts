@@ -202,28 +202,9 @@ export function buildCollapsedGroupByNodeId(
  * Re-anchor connections crossing a collapsed group's boundary onto the
  * group's title bar (left / right handles). Edges fully inside a collapsed
  * group are dropped. Edges that converge on the same external endpoint
- * (same node + same handle) collapse into a single rendered line; status
- * is promoted on merge (running > error > pinned > success > undefined) so
- * a merged line never looks idle when something behind it isn't.
+ * (same node + same handle) collapse into a single rendered line and are
+ * marked `merged` so the renderer drops their label.
  */
-const STATUS_PRIORITY: Record<NonNullable<CanvasConnectionData['status']>, number> = {
-	running: 4,
-	error: 3,
-	pinned: 2,
-	success: 1,
-};
-
-function priorityOf(status: CanvasConnectionData['status']): number {
-	return status === undefined ? 0 : STATUS_PRIORITY[status];
-}
-
-function pickHigherPriorityStatus(
-	a: CanvasConnectionData['status'],
-	b: CanvasConnectionData['status'],
-): CanvasConnectionData['status'] {
-	return priorityOf(a) >= priorityOf(b) ? a : b;
-}
-
 export interface CanvasConnectionWithMergeFlag extends CanvasConnection {
 	data?: CanvasConnectionData & { merged?: boolean };
 }
@@ -261,10 +242,9 @@ export function reanchorCollapsedConnections(
 		const existing = byKey.get(dedupeKey);
 
 		if (existing) {
-			// Promote status, mark merged so the label drops out.
+			// Mark the first-seen edge as merged so the renderer drops its label.
 			existing.data = {
 				...(existing.data as CanvasConnectionData),
-				status: pickHigherPriorityStatus(existing.data?.status, conn.data?.status),
 				merged: true,
 			};
 			continue;

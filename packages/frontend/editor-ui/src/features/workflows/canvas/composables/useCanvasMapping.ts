@@ -673,14 +673,7 @@ export function useCanvasMapping({
 			// item count would be ambiguous — drop the label.
 			const merged = (connection.data as { merged?: boolean } | undefined)?.merged === true;
 			const label = merged ? '' : getConnectionLabel(connection);
-			// Honour a status promoted by re-anchor dedupe; otherwise
-			// recompute from the underlying source node's runtime state.
-			const promotedStatus = (connection.data as CanvasConnectionData | undefined)?.status;
-			const baseData = getConnectionData(connection);
-			const data: CanvasConnectionData = {
-				...baseData,
-				status: promotedStatus ?? baseData.status,
-			};
+			const data = getConnectionData(connection);
 
 			return {
 				...connection,
