@@ -15,7 +15,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
+import { AccessToken } from './database/entities/oauth-access-token.entity';
+import { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
 import { OAuthClient } from './database/entities/oauth-client.entity';
+import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
+import { UserConsent } from './database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
@@ -346,33 +350,32 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Delete an OAuth client and all related data.
-	 * Verifies that the requesting user has a consent relationship with the client.
+	 * Revoke the caller's access to an OAuth client by deleting their consent,
+	 * tokens, and authorization codes for it. The global client row is only
+	 * deleted once no consents remain for it: MCP OAuth clients have no owner
+	 * field and are shared across every user that has consented to them.
 	 */
 	async deleteClient(clientId: string, userId: string): Promise<void> {
-		// First check if the client exists
-		const client = await this.oauthClientRepository.findOne({
-			where: { id: clientId },
-		});
-
-		if (!client) {
-			throw new Error(`OAuth client with ID ${clientId} not found`);
-		}
-
-		// Verify the requesting user has a consent relationship with this client
 		const consent = await this.userConsentRepository.findOneBy({ clientId, userId });
 		if (!consent) {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
 
-		this.logger.info('Deleting OAuth client and related data', { clientId });
+		this.logger.info('Revoking user access to OAuth client', { clientId, userId });
 
-		await this.oauthClientRepository.delete({ id: clientId });
+		await this.userConsentRepository.manager.transaction(async (em) => {
+			await em.delete(UserConsent, { userId, clientId });
+			await em.delete(AccessToken, { userId, clientId });
+			await em.delete(RefreshToken, { userId, clientId });
+			await em.delete(AuthorizationCode, { userId, clientId });
 
-		this.logger.info('OAuth client deleted successfully', {
-			clientId,
-			clientName: client.name,
+			const remainingConsents = await em.count(UserConsent, { where: { clientId } });
+			if (remainingConsents === 0) {
+				await em.delete(OAuthClient, { id: clientId });
+			}
 		});
+
+		this.logger.info('OAuth client access revoked', { clientId, userId });
 	}
 }
 

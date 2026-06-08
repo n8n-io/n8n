@@ -5,8 +5,11 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
-import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
+import { AccessToken } from '../database/entities/oauth-access-token.entity';
+import { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
+import { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
+import { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
@@ -676,48 +679,71 @@ describe('McpOAuthService', () => {
 	});
 
 	describe('deleteClient', () => {
-		it('should delete client when user has consent', async () => {
-			const client = {
-				id: 'client-123',
-				name: 'Test Client',
-			} as OAuthClient;
+		const setupTransactionMock = (remainingConsents: number) => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValue({}),
+				count: jest.fn().mockResolvedValue(remainingConsents),
+			};
+			(userConsentRepository as any).manager = {
+				transaction: jest.fn().mockImplementation(async (cb: any) => await cb(entityManager)),
+			};
+			return entityManager;
+		};
 
-			oauthClientRepository.findOne.mockResolvedValue(client);
+		it("should revoke only the caller's consent and tokens, and GC the client when no consents remain", async () => {
 			userConsentRepository.findOneBy.mockResolvedValue({
 				userId: 'user-456',
 				clientId: 'client-123',
 			} as any);
-			oauthClientRepository.delete.mockResolvedValue({} as any);
+			const em = setupTransactionMock(0);
 
 			await service.deleteClient('client-123', 'user-456');
 
-			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+			expect(em.delete).toHaveBeenCalledWith(UserConsent, {
+				userId: 'user-456',
+				clientId: 'client-123',
+			});
+			expect(em.delete).toHaveBeenCalledWith(AccessToken, {
+				userId: 'user-456',
+				clientId: 'client-123',
+			});
+			expect(em.delete).toHaveBeenCalledWith(RefreshToken, {
+				userId: 'user-456',
+				clientId: 'client-123',
+			});
+			expect(em.delete).toHaveBeenCalledWith(AuthorizationCode, {
+				userId: 'user-456',
+				clientId: 'client-123',
+			});
+			expect(em.count).toHaveBeenCalledWith(UserConsent, { where: { clientId: 'client-123' } });
+			expect(em.delete).toHaveBeenCalledWith(OAuthClient, { id: 'client-123' });
 		});
 
-		it('should throw when client does not exist', async () => {
-			oauthClientRepository.findOne.mockResolvedValue(null);
+		it('should not delete the shared OAuthClient row when another user still has consent', async () => {
+			userConsentRepository.findOneBy.mockResolvedValue({
+				userId: 'user-b',
+				clientId: 'shared-client',
+			} as any);
+			const em = setupTransactionMock(1);
 
-			await expect(service.deleteClient('nonexistent', 'user-456')).rejects.toThrow(
-				'OAuth client with ID nonexistent not found',
-			);
+			await service.deleteClient('shared-client', 'user-b');
 
-			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+			expect(em.delete).toHaveBeenCalledWith(UserConsent, {
+				userId: 'user-b',
+				clientId: 'shared-client',
+			});
+			expect(em.delete).not.toHaveBeenCalledWith(OAuthClient, expect.anything());
 		});
 
-		it('should throw when user has no consent for the client', async () => {
-			const client = {
-				id: 'client-123',
-				name: 'Test Client',
-			} as OAuthClient;
-
-			oauthClientRepository.findOne.mockResolvedValue(client);
+		it('should throw when the caller has no consent for the client', async () => {
 			userConsentRepository.findOneBy.mockResolvedValue(null);
+			const em = setupTransactionMock(0);
 
 			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
 				'OAuth client with ID client-123 not found',
 			);
 
-			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+			expect(em.delete).not.toHaveBeenCalled();
 		});
 	});
 
