@@ -9,6 +9,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { IExecutionsCurrentSummary } from '@/interfaces';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
@@ -62,6 +63,7 @@ describe('ScalingService', () => {
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const activeExecutions = mock<ActiveExecutions>();
 
 	let scalingService: ScalingService;
 
@@ -90,7 +92,7 @@ describe('ScalingService', () => {
 		scalingService = new ScalingService(
 			mockLogger(),
 			mock(),
-			mock(),
+			activeExecutions,
 			jobProcessor,
 			globalConfig,
 			executionRepository,
@@ -98,6 +100,8 @@ describe('ScalingService', () => {
 			instanceSettings,
 			mock(),
 		);
+
+		activeExecutions.getActiveExecutions.mockReturnValue([]);
 
 		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
 
@@ -228,6 +232,24 @@ describe('ScalingService', () => {
 				expect(getRunningJobsCountSpy).toHaveBeenCalled();
 				expect(queue.pause).toHaveBeenCalled();
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
+			});
+
+			it('should also wait for in-flight executions tracked outside Bull (e.g. detached sub-workflows)', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+
+				// No Bull jobs left, but an inline sub-workflow is still running and tracked in
+				// ActiveExecutions, so the drain must keep waiting until it finishes, otherwise
+				// post-execution persistence runs after the connection pool is closed.
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getActiveExecutions
+					.mockReturnValueOnce([mock<IExecutionsCurrentSummary>()])
+					.mockReturnValue([]);
+
+				await scalingService.stop();
+
+				expect(activeExecutions.getActiveExecutions.mock.calls.length).toBeGreaterThan(1);
 			});
 		});
 	});

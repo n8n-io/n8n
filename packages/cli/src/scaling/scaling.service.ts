@@ -180,11 +180,21 @@ export class ScalingService {
 
 		let count = 0;
 
-		while (this.getRunningJobsCount() !== 0) {
+		/*
+			Wait for two kinds of in-flight worker jobs before the process exits
+			and the DataSource is closed:
+			- Bull jobs this worker picked up (`runningJobs`).
+			- Executions tracked in `ActiveExecutions` that are not Bull jobs
+				e.g. sub-workflows started via the Execute Workflow node, which run within
+				the same worker process and are never enqueued.
+		*/
+		const countInFlight = () => {
+			return this.getRunningJobsCount() + this.activeExecutions.getActiveExecutions().length;
+		};
+
+		while (countInFlight() !== 0) {
 			if (count++ % 4 === 0) {
-				this.logger.info(
-					`Waiting for ${this.getRunningJobsCount()} active executions to finish...`,
-				);
+				this.logger.info(`Waiting for ${countInFlight()} active executions to finish...`);
 			}
 
 			await sleep(500);
