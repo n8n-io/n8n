@@ -30,5 +30,6 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

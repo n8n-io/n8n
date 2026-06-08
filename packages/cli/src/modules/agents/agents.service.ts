@@ -117,9 +117,13 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/** n8n user ID for in-app preview chat resumes. */
+	userId?: string;
+	/** Defaults to true for external integrations; preview chat passes false. */
+	usePublishedVersion?: boolean;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
-	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
+	 * (e.g. an integration action). Without it, `getRuntime` rebuilds the agent
 	 * with only its configured tools, and `runtime.resume` throws because the
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
@@ -865,7 +869,16 @@ export class AgentsService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
+		const {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			integrationType,
+			userId,
+			usePublishedVersion = true,
+		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -886,7 +899,8 @@ export class AgentsService {
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			usePublishedVersion: true,
+			...(userId ? { n8nUserId: userId } : {}),
+			usePublishedVersion,
 			integrationType,
 		});
 
@@ -896,7 +910,7 @@ export class AgentsService {
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
-			executionCounter: this.createAgentExecutionCounter({ agentId }),
+			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
 		for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -1512,6 +1526,10 @@ export class AgentsService {
 	async validateConfig(
 		raw: unknown,
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
+		if (hasNodeToolInputSchema(raw)) {
+			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
+		}
+
 		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
@@ -1578,24 +1596,20 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		await this.validateSubAgentRefs(result.config, entity);
-		this.validateConfigRefs(result.config, entity);
-
 		// Task refs resolve against task definition bodies (a separate table), so
-		// validate them here where the DB is reachable. Orphan bodies are pruned
+		// load them here where the DB is reachable. Orphan bodies are pruned
 		// after the save below. `tasksProvided` also gates the schema overlay.
 		const tasksProvided = result.config.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
-		if (tasksProvided) {
-			const existingTaskIdSet = new Set(existingTaskIds);
-			for (const ref of result.config.tasks ?? []) {
-				if (!existingTaskIdSet.has(ref.id)) {
-					throw new UserError(`Invalid agent config: Missing task body: ${ref.id}`);
-				}
-			}
-		}
+
+		const resolvedSubAgents = await this.removeMissingConfigRefs(
+			result.config,
+			entity,
+			new Set(existingTaskIds),
+		);
+		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
@@ -1647,7 +1661,6 @@ export class AgentsService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
-		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -1933,20 +1946,40 @@ export class AgentsService {
 		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
-	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
-		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
-		if (missingSkillIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
-			);
+	private async removeMissingConfigRefs(
+		config: AgentJsonConfig,
+		entity: Agent,
+		existingTaskIds: ReadonlySet<string>,
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+		if (config.skills !== undefined) {
+			const skills = entity.skills ?? {};
+			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
 		}
 
-		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
-		if (missingToolIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
-			);
+		if (config.tools !== undefined) {
+			const tools = entity.tools ?? {};
+			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
 		}
+
+		if (config.tasks !== undefined) {
+			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+		}
+
+		if (config.subAgents?.agents !== undefined) {
+			const resolvedSubAgents = await this.fetchUniqueSubAgents(
+				config.subAgents.agents,
+				entity.projectId,
+			);
+			const existingSubAgentIds = new Set(
+				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
+			);
+			config.subAgents.agents = config.subAgents.agents.filter(({ agentId }) =>
+				existingSubAgentIds.has(agentId),
+			);
+			return resolvedSubAgents;
+		}
+
+		return [];
 	}
 
 	/**
@@ -1972,16 +2005,14 @@ export class AgentsService {
 		return resolved;
 	}
 
-	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
-		const refs = config.subAgents?.agents ?? [];
-		if (refs.length === 0) return;
-
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
+	private validateSubAgentRefs(
+		resolvedSubAgents: Array<{ agentId: string; agent: Agent | null }>,
+		entity: Agent,
+	) {
+		for (const { agentId, agent } of resolvedSubAgents) {
+			if (!agent) continue;
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-			if (!agent) {
-				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
 			}
 			if (!agent.activeVersionId) {
 				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
@@ -2132,10 +2163,12 @@ function getProviderPrefix(modelId: string): string {
 	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
 }
 
-function normalizeSubAgentsConfig(
-	subAgents: AgentJsonConfig['subAgents'],
-): AgentJsonConfig['subAgents'] {
-	if (!subAgents) return undefined;
-	const agents = subAgents.agents ?? [];
-	return { agents };
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasNodeToolInputSchema(raw: unknown): boolean {
+	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
+
+	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
 }

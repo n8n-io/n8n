@@ -18,9 +18,11 @@ helpers used by `packages/cli` to register them as MCP resources and tools.
   the host context the MCP client provides at runtime.
 
 Today the package ships a single app, `workflow-preview`, which is rendered
-after the `create_workflow_from_code` MCP tool returns and gives the user a
-button to open the freshly created workflow in n8n. New apps can be added
-alongside it (see [Adding a new app](#adding-a-new-app)).
+after the `create_workflow_from_code` MCP tool returns. It loads the sanitized
+workflow graph through the existing `get_workflow_details` MCP tool, renders the
+existing n8n demo canvas in an iframe, and keeps a button to open the freshly
+created workflow in n8n. New apps can be added alongside it (see
+[Adding a new app](#adding-a-new-app)).
 
 ## Package layout
 
@@ -33,7 +35,15 @@ src/
       main.ts               # mounts App with i18n
       index.html            # entry HTML (built into dist/apps/<app>.html)
       tokens.scss           # design tokens / global styles
-      url.ts                # defense-in-depth URL validation
+      types.ts              # workflow preview data types
+      type-guards.ts        # workflow preview data guards
+      composables/
+        use-workflow-preview.ts # workflow preview state and host tool handling
+      utils/
+        url.ts              # defense-in-depth URL validation
+  components/               # reusable MCP app Vue components
+    workflow-preview/       # workflow-preview-specific reusable components
+  composables/              # reusable MCP host/runtime composables
   i18n/                     # vue-i18n setup + host locale resolution
   locales/                  # flat-key locale files (en.json, …)
   server/                   # consumed by packages/cli
@@ -42,6 +52,7 @@ src/
     register-mcp-app-tool.ts
     resource-loader.ts      # lazy reads built HTML from dist/apps
     index.ts                # public entry: @n8n/mcp-apps/server
+  utils/                    # framework-agnostic client helpers
 ```
 
 `apps-manifest.ts` is the canonical registry of MCP apps. Both the Vite
@@ -63,13 +74,24 @@ Each app:
   through `onhostcontextchanged` and reflects it on the document.
 - Reads the originating tool's `structuredContent` via `ontoolresult` to
   populate its own state.
+- Calls `app.callServerTool(...)` when it needs fresh n8n data from the MCP
+  server. The workflow preview uses this to call `get_workflow_details` with
+  the created workflow ID.
 - Calls `app.openLink({ url })` to ask the host to navigate — never opens
   links itself.
 
 URL handling is locked down by `isAllowedWorkflowUrl` in
-`src/apps/workflow-preview/url.ts`: only `http(s)://` URLs with a non-empty
+`src/apps/workflow-preview/utils/url.ts`: only `http(s)://` URLs with a non-empty
 host are accepted, both when reading the tool result and right before calling
 `openLink`. This is defense in depth on top of the host's own validation.
+
+The workflow preview iframe uses a server-provided `previewUrl` when available.
+Otherwise it uses the existing n8n preview service because instance routes are
+commonly blocked or unreachable from MCP hosts. The resource metadata declares
+broad `frameDomains` for `http` and `https` so hosts that enforce MCP Apps CSP
+can load instance-specific or configured preview URLs. The framed n8n server's
+own frame policy still applies, so the app falls back to the open-workflow
+button when the preview cannot load.
 
 ## Internationalization
 

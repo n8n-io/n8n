@@ -1,6 +1,11 @@
+import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import { RESOURCE_MIME_TYPE, WORKFLOW_PREVIEW_APP_URI } from '../constants';
+import {
+	RESOURCE_MIME_TYPE,
+	WORKFLOW_PREVIEW_APP_URI,
+	WORKFLOW_PREVIEW_FRAME_DOMAINS,
+} from '../constants';
 import { loadAppHtml } from '../resource-loader';
 import {
 	injectTelemetryConfig,
@@ -17,24 +22,33 @@ export interface RegisterWorkflowPreviewAppOptions {
 	onResourceRead?: () => void;
 }
 
+function getWorkflowPreviewUiMeta(instanceOrigin?: string): McpUiResourceMeta {
+	return {
+		csp: {
+			frameDomains: [...WORKFLOW_PREVIEW_FRAME_DOMAINS],
+			resourceDomains: instanceOrigin ? [RUDDERSTACK_CDN_ORIGIN] : [],
+			connectDomains: instanceOrigin ? [instanceOrigin] : [],
+		},
+		prefersBorder: false,
+	};
+}
+
 export function registerWorkflowPreviewApp(
 	server: Pick<McpServer, 'resource'>,
 	options: RegisterWorkflowPreviewAppOptions,
 ): void {
 	const { instanceOrigin, telemetry, onResourceRead } = options;
-	const telemetryCsp = instanceOrigin
-		? {
-				resourceDomains: [RUDDERSTACK_CDN_ORIGIN],
-				connectDomains: [instanceOrigin],
-			}
-		: { resourceDomains: [], connectDomains: [] };
+	const uiMeta = getWorkflowPreviewUiMeta(instanceOrigin);
 
 	server.resource(
 		'workflow-preview',
 		WORKFLOW_PREVIEW_APP_URI,
 		{
-			description: 'Loading UI shown after creating a workflow from code',
+			description: 'Workflow preview shown after creating a workflow from code',
 			mimeType: RESOURCE_MIME_TYPE,
+			_meta: {
+				ui: uiMeta,
+			},
 		},
 		async () => {
 			const html = await loadAppHtml('workflow-preview.html');
@@ -52,9 +66,7 @@ export function registerWorkflowPreviewApp(
 						mimeType: RESOURCE_MIME_TYPE,
 						text: injectTelemetryConfig(html, telemetry),
 						_meta: {
-							ui: {
-								csp: telemetryCsp,
-							},
+							ui: uiMeta,
 						},
 					},
 				],
