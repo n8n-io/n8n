@@ -32,6 +32,7 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -97,6 +98,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
@@ -258,7 +260,7 @@ watch(
 
 function getCredentialFetchScope(): { workflowId: string } | { projectId: string } | undefined {
 	const workflowId = workflowDocumentStore?.value.workflowId;
-	if (workflowId) {
+	if (workflowId && !workflowsStore.isNewWorkflow) {
 		return { workflowId };
 	}
 
