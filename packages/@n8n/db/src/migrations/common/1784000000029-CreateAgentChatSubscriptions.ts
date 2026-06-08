@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const AGENT_CHAT_INTEGRATION_TYPES = ['telegram', 'slack', 'linear'];
 
-export class CreateAgentChatSubscriptions1784000000028 implements ReversibleMigration {
+export class CreateAgentChatSubscriptions1784000000029 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable('agent_chat_subscriptions')
 			.withColumns(

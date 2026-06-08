@@ -1,12 +1,12 @@
 /**
- * `select-e2e` handler: changed files + impact map → spec list.
+ * `select` handler: changed files + impact map → spec list.
  *
  * The file-system-aware wrapper around the pure {@link resolveImpact} resolver.
  * This is where the FAIL-OPEN safety contract lives — every failure mode
  * (missing map, unreadable map, corrupt JSON, empty map) must degrade to
  * `mode: 'broad'` so the caller runs the full suite, never an empty one.
  *
- * Extracted from {@link runSelectE2e} in `cli.ts` so the contract can be
+ * Extracted from {@link runSelect} in `cli.ts` so the contract can be
  * exhaustively unit-tested without spawning a subprocess.
  */
 
@@ -17,10 +17,11 @@ import {
 	type InternedImpactMap,
 	type ResolveResult,
 	decodeImpactMap,
-	resolveImpact,
-} from './coverage-map.js';
+} from './impact-map.js';
+import { CoverageMapStrategy } from './select/coverage-map-strategy.js';
+import { selectImpactedTests } from './select/pipeline.js';
 
-export interface SelectE2eInput {
+export interface SelectTestsInput {
 	/** Changed files (file paths). */
 	changedFiles: string[];
 	/** Path to the impact map JSON. Missing/unreadable → fail-open broad. */
@@ -29,7 +30,7 @@ export interface SelectE2eInput {
 	allSpecsFile?: string;
 }
 
-export interface SelectE2eResult extends ResolveResult {
+export interface SelectTestsResult extends ResolveResult {
 	/** Set when the map could not be loaded; the result is broad as a safety. */
 	failOpen?: string;
 }
@@ -61,14 +62,17 @@ function loadMap(mapFile: string | undefined): { map: ImpactMap; failOpen?: stri
  * empty/missing map every changed file is "unmapped" → {@link resolveImpact}
  * returns `mode: 'broad'`, so fail-open falls out of the same code path.
  */
-export function selectE2e(input: SelectE2eInput): SelectE2eResult {
+export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	const allSpecs = input.allSpecsFile
 		? parseSpecList(fs.readFileSync(input.allSpecsFile, 'utf8'))
 		: undefined;
 	const { map, failOpen } = loadMap(input.mapFile);
 	const changed = input.changedFiles.map((file) => ({ file }));
-	// Sibling fallback on: a new/unmapped file scopes to its nearest covered
-	// directory's specs rather than forcing the whole suite (see resolveImpact).
-	const result = resolveImpact(changed, map, { allSpecs, siblingFallback: true });
+	// The live V8 selection runs through the pipeline as the single selection
+	// mechanism; the AST / dep-graph selectors join this array later. Sibling
+	// fallback scopes a new/unmapped file to its nearest covered directory.
+	const result = selectImpactedTests(changed, [
+		new CoverageMapStrategy(map, { allSpecs, siblingFallback: true }),
+	]);
 	return { ...result, failOpen };
 }

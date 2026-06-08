@@ -3,7 +3,7 @@
  *
  * Pure functions (no I/O) so they can be exhaustively unit/property tested:
  *   parseLcov     — lcov text → per-spec coverage records
- *   mergeCoverage — per-spec lcovs → unified lcov + bidirectional impact map
+ *   buildImpactMap — per-spec lcovs → unified lcov + bidirectional impact map
  *   resolveImpact — changed files (± lines) → the E2E specs that must run
  *
  * SOUNDNESS is the contract everything is tested against: the selected set must
@@ -134,7 +134,7 @@ export function parseLcov(text: string, fallbackSpec = ''): LcovRecord[] {
  * the map records, per function, the SET of specs that executed it (hits > 0).
  * Output is deterministic (sorted) so the merge is order-independent.
  */
-export function mergeCoverage(inputs: LcovInput[]): MergeResult {
+export function buildImpactMap(inputs: LcovInput[]): MergeResult {
 	const files = new Map<string, FileCoverage>();
 	const funcToSpecs = new Map<string, Set<string>>();
 	const allSpecs = new Set<string>();
@@ -168,7 +168,7 @@ export function mergeCoverage(inputs: LcovInput[]): MergeResult {
 
 	return {
 		lcov: serializeLcov(files),
-		impactMap: buildImpactMap(funcToSpecs),
+		impactMap: assembleImpactMap(funcToSpecs),
 		stats: {
 			files: files.size,
 			functions: [...files.values()].reduce((n, f) => n + f.fns.size, 0),
@@ -204,7 +204,7 @@ function serializeLcov(files: Map<string, FileCoverage>): string {
 	return out.join('\n') + (out.length ? '\n' : '');
 }
 
-function buildImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
+function assembleImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
 	const map: ImpactMap = {};
 	for (const [key, specs] of funcToSpecs) {
 		const hash = key.lastIndexOf('#');
@@ -249,7 +249,7 @@ export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
  * Expand an {@link InternedImpactMap} back to a full {@link ImpactMap}. Handles
  * both entry forms (index list or `"b:…"` bitmask) and older maps that predate
  * the bitmask form (all index lists). Spec lists come back sorted, matching
- * {@link mergeCoverage}'s output, so decode∘encode round-trips exactly.
+ * {@link buildImpactMap}'s output, so decode∘encode round-trips exactly.
  */
 export function decodeImpactMap(interned: InternedImpactMap): ImpactMap {
 	const { specs, files } = interned;
