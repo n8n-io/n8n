@@ -87,7 +87,7 @@ describe('WorkflowCanvas', () => {
 		).toBeInTheDocument();
 	});
 
-	it('should render workflow node groups from the workflow document store', async () => {
+	it('should render workflow node groups from the workflow document store collapsed by default', async () => {
 		const posthogStore = usePostHog();
 		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
@@ -102,12 +102,12 @@ describe('WorkflowCanvas', () => {
 
 		const { container } = renderComponent();
 
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
 
-		expect(container.querySelector('[data-id="1"]')).toBeInTheDocument();
 		expect(
 			container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
 		).toBeInTheDocument();
+		expect(container.querySelector('[data-id="1"]')).not.toBeInTheDocument();
 	});
 
 	it('should handle empty nodes and connections gracefully', async () => {
