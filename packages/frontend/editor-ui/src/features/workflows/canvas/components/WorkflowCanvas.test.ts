@@ -4,7 +4,7 @@ import WorkflowCanvas from './WorkflowCanvas.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STICKY_NODE_TYPE } from '@/app/constants';
-import { CanvasNodeRenderType } from '../canvas.types';
+import { CANVAS_NODE_GROUP_ID_PREFIX, CanvasNodeRenderType } from '../canvas.types';
 import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -14,6 +14,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
@@ -82,6 +84,29 @@ describe('WorkflowCanvas', () => {
 		expect(container.querySelector('[data-id="2"]')).toBeInTheDocument();
 		expect(
 			container.querySelector('[data-id="[1/outputs/main/0][2/inputs/main/0]"]'),
+		).toBeInTheDocument();
+	});
+
+	it('should render workflow node groups from the workflow document store', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const workflow = createTestWorkflow({
+			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+		});
+		setupWorkflow(workflow);
+
+		const { container } = renderComponent();
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		expect(container.querySelector('[data-id="1"]')).toBeInTheDocument();
+		expect(
+			container.querySelector(`[data-id="${CANVAS_NODE_GROUP_ID_PREFIX}g1"]`),
 		).toBeInTheDocument();
 	});
 

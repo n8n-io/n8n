@@ -48,6 +48,16 @@ vi.mock('../lazy-daytona', () => ({
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 
+vi.mock('../builder-templates-service', () => {
+	class MockBuilderTemplatesService {
+		getBundle = vi.fn().mockResolvedValue({ archive: null, version: null });
+	}
+	return {
+		BuilderTemplatesService: MockBuilderTemplatesService,
+		builderTemplatesOptionsFromEnv: vi.fn().mockReturnValue({}),
+	};
+});
+
 import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	type RuntimeSkillLinkedFiles,
@@ -133,7 +143,7 @@ async function knowledgeBaseHash(): Promise<string> {
 	const { buildKnowledgeBaseWorkspaceBundle } = await import(
 		'../../knowledge-base/materialize-knowledge-base'
 	);
-	return buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' }).contentHash;
+	return (await buildKnowledgeBaseWorkspaceBundle({ root: '/home/daytona/workspace' })).contentHash;
 }
 
 describe('SnapshotManager.ensureImage', () => {

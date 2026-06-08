@@ -104,6 +104,9 @@ describe('buildFromJson()', () => {
 						extract?: unknown;
 						reflect?: unknown;
 					};
+					titleGeneration?: {
+						sync?: boolean;
+					};
 				};
 			}
 		).memoryConfig;
@@ -357,6 +360,25 @@ describe('buildFromJson()', () => {
 		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
 	});
 
+	it('rejects custom tools that reuse SDK built-in tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'write_todos' });
+		const config = makeConfig({
+			tools: [{ type: 'custom', id: 'planner_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ planner_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Tool name "write_todos" is reserved for SDK built-in tools');
+	});
+
 	it('throws when custom tool id is not found in descriptors', async () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 
@@ -427,7 +449,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBe(true);
+		expect(tool!.approval?.required).toBe(true);
 	});
 
 	it('wraps node tool with approval when requireApproval is true', async () => {
@@ -463,7 +485,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'my_node_tool');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBe(true);
+		expect(tool!.approval?.required).toBe(true);
 	});
 
 	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {
@@ -491,7 +513,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBeUndefined();
+		expect(tool!.approval).toBeUndefined();
 	});
 
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
@@ -781,6 +803,24 @@ describe('buildFromJson()', () => {
 		});
 		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it('uses synchronous title generation so the first message can sync the title', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
 	it('configures observational memory worker models with their own credentials', async () => {

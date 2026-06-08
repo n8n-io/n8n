@@ -21,7 +21,7 @@ import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/co
 import { createToolRegistry } from '../../tool-registry';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
-const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
+const FORBIDDEN_TOOL_NAMES = new Set(['create-tasks', 'delegate']);
 
 function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;

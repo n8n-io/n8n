@@ -12,9 +12,9 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "migration:new": "node scripts/new-migration.mjs"
   },
   "main": "dist/index.js",
@@ -47,7 +47,12 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
-    "express": "5.1.0"
+    "@vitest/coverage-v8": "catalog:",
+    "express": "5.1.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   }
 }

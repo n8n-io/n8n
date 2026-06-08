@@ -10,9 +10,14 @@ export type * from './sub-agent.schema';
 export * from './types';
 export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';
 export {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+} from '../agent-builder-tool-node-types';
+export {
 	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
 	interactiveToolNameSchema,
 	askLlmInputSchema,
 	askLlmResumeSchema,

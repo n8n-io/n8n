@@ -45,14 +45,7 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import {
-	type ImpactMap,
-	type InternedImpactMap,
-	decodeImpactMap,
-	encodeImpactMap,
-	mergeCoverage,
-	resolveImpact,
-} from './core/coverage-map.js';
+import { encodeImpactMap, mergeCoverage } from './core/coverage-map.js';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -80,9 +73,10 @@ import {
 } from './core/method-usage-analyzer.js';
 import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
-import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
+import { selectE2e } from './core/select-e2e.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { runTestScoped } from './core/test-scoped-runner.js';
@@ -290,20 +284,13 @@ function runTcr(options: CliOptions): void {
 function runAnalyze(options: CliOptions): void {
 	const config = getConfig();
 	const runner = createDefaultRunner();
-
-	// Create project
-	const { project, root } = createProject(config.rootDir);
+	const root = config.rootDir;
 
 	// Build run options
 	const runOptions: RunOptions = {};
 
 	if (options.files && options.files.length > 0) {
 		runOptions.files = options.files;
-	}
-
-	if (options.fix) {
-		runOptions.fix = true;
-		runOptions.write = options.write;
 	}
 
 	// Pass rule-specific config
@@ -315,21 +302,20 @@ function runAnalyze(options: CliOptions): void {
 
 	// Run analysis
 	let report = options.rule
-		? runner.runRule(project, root, options.rule, runOptions)
-		: runner.run(project, root, runOptions);
+		? runner.runRule(options.rule, { rootDir: root }, runOptions)
+		: runner.run({ rootDir: root }, runOptions);
 
 	if (!report) {
 		console.error('Failed to generate report');
 		process.exit(1);
 	}
 
-	// Auto-filter by baseline if present (unless --ignore-baseline or --fix)
+	// Auto-filter by baseline if present (unless --ignore-baseline)
 	const baseline = loadBaseline(config.rootDir);
 	let baselineFiltered = false;
 	const originalViolations = report.summary.totalViolations;
 
-	if (baseline && !options.fix && !options.ignoreBaseline) {
-		// Don't filter during fix mode or when baseline is ignored
+	if (baseline && !options.ignoreBaseline) {
 		report = filterReportByBaseline(report, baseline, config.rootDir);
 		baselineFiltered = true;
 	}
@@ -350,14 +336,10 @@ function runAnalyze(options: CliOptions): void {
 		}
 
 		toConsole(report, options.verbose);
-
-		if (options.fix) {
-			printFixResults(report, options.write);
-		}
 	}
 
 	// Exit with error code if violations found
-	if (report.summary.totalViolations > 0 && !(options.fix && options.write)) {
+	if (report.summary.totalViolations > 0) {
 		process.exit(1);
 	}
 }
@@ -365,12 +347,10 @@ function runAnalyze(options: CliOptions): void {
 function runBaseline(options: CliOptions): void {
 	const config = getConfig();
 
-	// Create runner and project
 	const runner = createDefaultRunner();
-	const { project, root } = createProject(config.rootDir);
 
 	// Run full analysis (no file filter, no baseline filter)
-	const report = runner.run(project, root, {});
+	const report = runner.run({ rootDir: config.rootDir }, {});
 
 	if (!report) {
 		console.error('Failed to generate report');
@@ -553,6 +533,24 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
+	// Composable allowlist filter. distribute-tests.mjs pre-computes the union
+	// of AST + V8 selection and writes it here; orchestrate then balances shards
+	// against that subset instead of the full discovered set.
+	if (options.includeSpecsFile) {
+		const includeRaw = fs.readFileSync(options.includeSpecsFile, 'utf-8');
+		const include = new Set(
+			includeRaw
+				.split(/[\n,]+/)
+				.map((s) => s.trim())
+				.filter(Boolean),
+		);
+		const totalBefore = specs.length;
+		specs = specs.filter((s) => include.has(s.path));
+		console.error(
+			`Include: ${specs.length}/${totalBefore} specs after applying allowlist (${include.size} entries)`,
+		);
+	}
+
 	const metrics: Record<string, number> = {};
 	if (config.orchestration.metricsPath) {
 		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
@@ -683,45 +681,15 @@ function runMergeCoverage(options: CliOptions): void {
 	);
 }
 
-/** select-e2e: changed files + impact map → spec list (JSON).
- *
- *  Two layers of safety, both biased to OVER-select (never miss a regression):
- *   - FAIL-OPEN on the map source: a missing/unreadable/corrupt map → broad
- *     (run everything). This is what makes swapping the committed file for a
- *     remote webhook safe — a fetch failure degrades to running the full suite,
- *     never to skipping tests.
- *   - DEFAULT-BROAD on content: any changed file absent from a loaded map → broad.
- */
+/** select-e2e: changed files + impact map → spec list (JSON). I/O wrapper
+ *  around {@link selectE2e}, where the fail-open safety contract lives. */
 function runSelectE2e(options: CliOptions): void {
-	const changed = (readChangedFiles(options) ?? []).map((file) => ({ file }));
-	const allSpecs = options.allSpecsFile
-		? fs
-				.readFileSync(options.allSpecsFile, 'utf8')
-				.split(/[\n,]+/)
-				.map((s) => s.trim())
-				.filter(Boolean)
-		: undefined;
-
-	let map: ImpactMap = {};
-	let failOpen: string | undefined;
-	if (options.mapFile && fs.existsSync(options.mapFile)) {
-		try {
-			const parsed: unknown = JSON.parse(fs.readFileSync(options.mapFile, 'utf8'));
-			// Interned form ({specs, files}) is decoded; a plain ImpactMap is used as-is.
-			const isInterned =
-				typeof parsed === 'object' && parsed !== null && 'specs' in parsed && 'files' in parsed;
-			map = isInterned ? decodeImpactMap(parsed as InternedImpactMap) : (parsed as ImpactMap);
-		} catch (error) {
-			failOpen = `unreadable map: ${String(error)}`;
-		}
-	} else {
-		failOpen = options.mapFile ? `map not found: ${options.mapFile}` : 'no --map provided';
-	}
-
-	// With an empty map every changed file is "unmapped" → resolveImpact returns
-	// broad, so fail-open falls out of the same code path — no special-casing.
-	const result = resolveImpact(changed, map, { allSpecs });
-	console.log(JSON.stringify({ ...result, failOpen }));
+	const result = selectE2e({
+		changedFiles: readChangedFiles(options) ?? [],
+		mapFile: options.mapFile,
+		allSpecsFile: options.allSpecsFile,
+	});
+	console.log(JSON.stringify(result));
 }
 
 async function main(): Promise<void> {

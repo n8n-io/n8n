@@ -24,7 +24,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
@@ -99,7 +98,6 @@ export function useNodeExecution(
 	const nodeTypesStore = useNodeTypesStore();
 	const ndvStore = injectNDVStore();
 	const uiStore = useUIStore();
-	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const workflowExecutionStateStore = computed(() =>
@@ -148,7 +146,7 @@ export function useNodeExecution(
 			return false;
 		const triggeredNode = workflowsStore.executedNode;
 		return (
-			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
+			workflowExecutionStateStore.value.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
 		);
 	});

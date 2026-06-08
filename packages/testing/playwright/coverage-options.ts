@@ -1,4 +1,6 @@
+import type { TestInfo } from '@playwright/test';
 import type { CoverageReportOptions } from 'monocart-coverage-reports';
+import { relative } from 'node:path';
 
 /**
  * Frontend E2E coverage via browser-native V8 (Playwright `page.coverage`),
@@ -55,3 +57,27 @@ export function bySpecDir(outputDir: string = coverageOptions.outputDir ?? './co
 }
 
 export const BY_SPEC_DIR = bySpecDir();
+
+/**
+ * Per-spec BACKEND raw coverage (DEVP-370), written by the backend coverage
+ * fixture and read by emit-spec-backend-lcovs. Separate from BY_SPEC_DIR so the
+ * frontend (browser `page.coverage`) and backend (n8n server V8 via the e2e
+ * coverage hook) raws never collide. Like BY_SPEC_DIR it MUST be a sibling of
+ * `outputDir`, never inside it (the shard report's generate() cleans outputDir).
+ */
+export function backendBySpecDir(
+	outputDir: string = coverageOptions.outputDir ?? './coverage',
+): string {
+	return `${outputDir.replace(/\/+$/, '')}-by-spec-backend`;
+}
+
+export const BACKEND_BY_SPEC_DIR = backendBySpecDir();
+
+/** Spec id = project-relative path — the id the runner and impact map key on.
+ *  Shared by the frontend and backend per-spec coverage fixtures. */
+export function specId(testInfo: TestInfo): string {
+	return relative(process.cwd(), testInfo.file).split('\\').join('/');
+}
+
+/** Filesystem-safe slug for a spec id (per-spec coverage directory name). */
+export const slugify = (spec: string): string => spec.replace(/[^a-zA-Z0-9]+/g, '_');

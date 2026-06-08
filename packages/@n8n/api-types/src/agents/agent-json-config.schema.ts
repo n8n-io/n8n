@@ -2,18 +2,6 @@ import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 
-const SemanticRecallSchema = z.object({
-	topK: z.number().int().min(1).max(100),
-	scope: z.enum(['thread', 'resource']).optional(),
-	messageRange: z
-		.object({
-			before: z.number().int().min(0),
-			after: z.number().int().min(0),
-		})
-		.optional(),
-	embedder: z.string().optional(),
-});
-
 export const AgentModelSchema = z
 	.string()
 	.min(1)
@@ -60,7 +48,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n']),
-	semanticRecall: SemanticRecallSchema.optional(),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
 });
@@ -337,8 +324,4 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 
 export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
 	return config?.nodeTools?.enabled === true;
-}
-
-export function isSubAgentsEnabled(subAgents: AgentJsonConfig['subAgents']): boolean {
-	return (subAgents?.agents?.length ?? 0) > 0;
 }

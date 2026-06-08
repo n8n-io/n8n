@@ -259,7 +259,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(tool?.workflowId).toBeUndefined();
 	});
 
-	it('maps workflow and rich-interaction timeline calls from the same execution', () => {
+	it('maps workflow and tool timeline calls from the same execution', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
 				{
@@ -279,10 +279,12 @@ describe('flattenExecutionsToTimelineItems', () => {
 				{
 					type: 'tool-call',
 					kind: 'tool',
-					name: 'rich_interaction',
-					toolCallId: 'tc-card',
-					input: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
-					output: { displayOnly: true },
+					name: 'card_sender',
+					toolCallId: 'tc-tool',
+					input: {
+						card: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
+					},
+					output: { ok: true },
 					startTime: 1600,
 					endTime: 1700,
 					success: true,
@@ -291,7 +293,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		]);
 
 		expect(items.filter((i) => i.toolName === 'giphy-gif-search')).toHaveLength(1);
-		expect(items.filter((i) => i.toolName === 'rich_interaction')).toHaveLength(1);
+		expect(items.filter((i) => i.toolName === 'card_sender')).toHaveLength(1);
 		expect(items.find((i) => i.toolName === 'giphy-gif-search')).toMatchObject({
 			kind: 'workflow',
 			workflowName: 'Giphy GIF Search',

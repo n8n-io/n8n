@@ -9,6 +9,7 @@ import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -60,6 +61,12 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow update call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
+		),
 	operations: z
 		.array(partialUpdateOperationSchema)
 		.min(1)
@@ -123,7 +130,7 @@ export const createUpdateWorkflowTool = (
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged.',
+			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged. If you used n8n skills while preparing this update, pass their identifiers in skillsUsed.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -136,16 +143,20 @@ export const createUpdateWorkflowTool = (
 	},
 	handler: async ({
 		workflowId,
+		skillsUsed,
 		operations,
 	}: {
 		workflowId: string;
+		skillsUsed?: string[];
 		operations: PartialUpdateOperation[];
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 			parameters: {
 				workflowId,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
 			},
