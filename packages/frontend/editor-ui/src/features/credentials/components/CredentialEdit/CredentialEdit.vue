@@ -1022,9 +1022,17 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 			await testCredential(credentialDetails);
 			isTesting.value = false;
+
+			if (testedSuccessfully.value) {
+				closeDialog();
+			}
 		} else {
 			authError.value = '';
 			testedSuccessfully.value = false;
+
+			if (!isOAuthType.value) {
+				closeDialog();
+			}
 		}
 
 		const trackProperties: ITelemetryTrackProperties = {
@@ -1380,6 +1388,8 @@ async function oAuthCredentialAuthorize() {
 			if (oauthPopup) {
 				oauthPopup.close();
 			}
+
+			closeDialog();
 		}
 	};
 	oauthChannel.addEventListener('message', receiveMessage);
