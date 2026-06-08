@@ -7,7 +7,7 @@ export const PROJECT_ID_COMMENT = 'Project this thread is scoped to';
 const SUB_AGENT_PREFIX = 'instance-ai-subagent';
 
 /**
- * Shared backfill for the per-database `AddProjectIdToInstanceAiThread1784000000027`
+ * Shared backfill for the per-database `AddProjectIdToInstanceAiThread1784000000028`
  * migrations. The backfill SQL is identical on Postgres and SQLite, so it lives
  * here and each engine migration (postgresdb/ and sqlite/) extends this base and
  * implements only its own `up()` / `down()`.

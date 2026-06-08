@@ -18,10 +18,10 @@ const THREADS_TABLE_TMP = 'instance_ai_threads_tmp';
  * backfilled (see {@link AddProjectIdToInstanceAiThreadBase}), and the table is
  * then rebuilt once (create → copy → drop → rename) with foreign keys disabled
  * (`withFKsDisabled`) so the drop does not cascade into the referencing tables.
- * The Postgres variant (postgresdb/1784000000027) uses the DSL directly. The
+ * The Postgres variant (postgresdb/1784000000028) uses the DSL directly. The
  * schema change is reversible via `down()`.
  */
-export class AddProjectIdToInstanceAiThread1784000000027
+export class AddProjectIdToInstanceAiThread1784000000028
 	extends AddProjectIdToInstanceAiThreadBase
 	implements ReversibleMigration
 {

@@ -18,6 +18,7 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -154,6 +155,7 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
+	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------

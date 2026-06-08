@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * pattern. Each row represents a pending (or in-progress / completed)
  * publication request that the outbox consumer will process asynchronously.
  */
-export class CreateWorkflowPublicationOutboxTable1784000000020 implements ReversibleMigration {
+export class CreateWorkflowPublicationOutboxTable1784000000027 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, createIndex, column } }: MigrationContext) {
 		await createTable('workflow_publication_outbox').withColumns(
 			column('id').int.primary.autoGenerate2,
@@ -35,14 +35,17 @@ export class CreateWorkflowPublicationOutboxTable1784000000020 implements Revers
 			),
 		).withTimestamps;
 
-		// At most one pending record per workflow: enqueueing a newer version
-		// while one is still pending supersedes the older publishedVersionId.
+		// Uniqueness on (workflowId, status) for active statuses gives us two
+		// invariants in one index: at most one pending record per workflow (a
+		// newer version supersedes the older) and at most one in-progress record
+		// per workflow (never published concurrently). A pending and an in-progress
+		// record can still coexist, since their (workflowId, status) tuples differ.
 		await createIndex(
 			'workflow_publication_outbox',
-			['workflowId'],
+			['workflowId', 'status'],
 			true,
-			'IDX_workflow_publication_outbox_pending_workflow',
-			"status = 'pending'",
+			'IDX_workflow_publication_outbox_active_workflow_status',
+			"status IN ('pending', 'in_progress')",
 		);
 	}
 

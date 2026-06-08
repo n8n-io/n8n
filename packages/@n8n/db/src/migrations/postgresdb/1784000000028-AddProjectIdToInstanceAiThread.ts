@@ -11,12 +11,12 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * Adds a non-null project foreign key to Instance AI threads (Postgres).
  *
  * Postgres applies the column, NOT NULL, foreign key, and index in place via the
- * DSL (cheap ALTERs). The SQLite variant (sqlite/1784000000027) instead rebuilds
+ * DSL (cheap ALTERs). The SQLite variant (sqlite/1784000000028) instead rebuilds
  * the table once by hand, because there each operation would recreate the whole
  * table. The shared backfill lives in {@link AddProjectIdToInstanceAiThreadBase}.
  * The schema change is reversible via `down()`.
  */
-export class AddProjectIdToInstanceAiThread1784000000027
+export class AddProjectIdToInstanceAiThread1784000000028
 	extends AddProjectIdToInstanceAiThreadBase
 	implements ReversibleMigration
 {
