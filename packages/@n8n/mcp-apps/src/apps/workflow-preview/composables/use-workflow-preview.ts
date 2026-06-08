@@ -12,7 +12,10 @@ import {
 	WORKFLOW_PREVIEW_CRASH_SOURCES,
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+	WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES,
+	WORKFLOW_PREVIEW_TOOL_NAMES,
 	type WorkflowPreviewRenderFailureReason,
+	type WorkflowPreviewToolCallOutcome,
 } from '../constants';
 import { isWorkflowPreviewData, isWorkflowResult } from '../type-guards';
 import type { WorkflowPreviewData } from '../types';
@@ -165,6 +168,30 @@ export function useWorkflowPreview({
 		return payload;
 	}
 
+	function getPreviewToolCallTelemetryPayload(requestId: number) {
+		return {
+			...getPreviewTelemetryPayload(),
+			load_request_id: requestId,
+			tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+		};
+	}
+
+	function trackPreviewToolCallCompleted({
+		outcome,
+		requestId,
+		startedAt,
+	}: {
+		outcome: WorkflowPreviewToolCallOutcome;
+		requestId: number;
+		startedAt: number;
+	}) {
+		telemetry.track(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_COMPLETED, {
+			...getPreviewToolCallTelemetryPayload(requestId),
+			duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+			outcome,
+		});
+	}
+
 	function getPreviewStatus() {
 		if (previewError.value) return 'error';
 		if (previewLoading.value) return 'loading';
@@ -195,19 +222,36 @@ export function useWorkflowPreview({
 
 	async function loadPreviewWorkflow(mcpApp: App, id: string) {
 		const requestId = ++latestPreviewLoadRequestId;
+		const startedAt = performance.now();
 
 		previewLoading.value = true;
 		previewError.value = undefined;
+		telemetry.track(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_REQUESTED,
+			getPreviewToolCallTelemetryPayload(requestId),
+		);
 
 		try {
 			const result = await mcpApp.callServerTool({
-				name: 'get_workflow_details',
+				name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
 				arguments: { workflowId: id },
 			});
 
-			if (!isLatestPreviewLoadRequest(requestId)) return;
+			if (!isLatestPreviewLoadRequest(requestId)) {
+				trackPreviewToolCallCompleted({
+					outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.STALE,
+					requestId,
+					startedAt,
+				});
+				return;
+			}
 
 			if (result.isError) {
+				trackPreviewToolCallCompleted({
+					outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.TOOL_ERROR,
+					requestId,
+					startedAt,
+				});
 				setPreviewError(
 					t('workflowPreview.error.detailsUnavailable'),
 					WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE,
@@ -220,6 +264,11 @@ export function useWorkflowPreview({
 				: undefined;
 			const workflow = structuredContent?.workflow;
 			if (!isWorkflowPreviewData(workflow)) {
+				trackPreviewToolCallCompleted({
+					outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.INVALID_WORKFLOW,
+					requestId,
+					startedAt,
+				});
 				setPreviewError(
 					t('workflowPreview.error.invalidWorkflow'),
 					WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.INVALID_WORKFLOW,
@@ -228,10 +277,27 @@ export function useWorkflowPreview({
 			}
 
 			previewWorkflow.value = workflow;
+			trackPreviewToolCallCompleted({
+				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.SUCCESS,
+				requestId,
+				startedAt,
+			});
 		} catch (error) {
-			if (!isLatestPreviewLoadRequest(requestId)) return;
+			if (!isLatestPreviewLoadRequest(requestId)) {
+				trackPreviewToolCallCompleted({
+					outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.STALE,
+					requestId,
+					startedAt,
+				});
+				return;
+			}
 
 			console.warn('[n8n MCP App] Failed to load workflow preview data', error);
+			trackPreviewToolCallCompleted({
+				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.REQUEST_ERROR,
+				requestId,
+				startedAt,
+			});
 			setPreviewError(
 				t('workflowPreview.error.detailsUnavailable'),
 				WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE,

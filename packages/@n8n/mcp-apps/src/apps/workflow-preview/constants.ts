@@ -4,8 +4,25 @@ export const WORKFLOW_PREVIEW_TELEMETRY_EVENTS = {
 	PREVIEW_CRASHED: 'workflow-preview app crashed',
 	PREVIEW_RENDERED_SUCCESSFULLY: 'workflow-preview app rendered successfully',
 	PREVIEW_RENDER_FAILED: 'workflow-preview app render failed',
+	PREVIEW_TOOL_CALL_COMPLETED: 'workflow-preview app tool call completed',
+	PREVIEW_TOOL_CALL_REQUESTED: 'workflow-preview app tool call requested',
 	OPEN_IN_N8N_CLICKED: 'User clicked Open in n8n button',
 } as const;
+
+export const WORKFLOW_PREVIEW_TOOL_NAMES = {
+	GET_WORKFLOW_DETAILS: 'get_workflow_details',
+} as const;
+
+export const WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES = {
+	INVALID_WORKFLOW: 'invalid_workflow',
+	REQUEST_ERROR: 'request_error',
+	STALE: 'stale',
+	SUCCESS: 'success',
+	TOOL_ERROR: 'tool_error',
+} as const;
+
+export type WorkflowPreviewToolCallOutcome =
+	(typeof WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES)[keyof typeof WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES];
 
 export const WORKFLOW_PREVIEW_CRASH_SOURCES = {
 	APP_ERROR: 'app_error',

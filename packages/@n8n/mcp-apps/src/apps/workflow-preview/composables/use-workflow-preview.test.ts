@@ -7,6 +7,8 @@ import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 import {
 	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
 	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+	WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES,
+	WORKFLOW_PREVIEW_TOOL_NAMES,
 } from '../constants';
 import { useWorkflowPreview } from './use-workflow-preview';
 
@@ -226,7 +228,34 @@ describe('useWorkflowPreview', () => {
 		};
 		await flushPromises();
 
-		expect(telemetryTrack).not.toHaveBeenCalled();
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED_SUCCESSFULLY,
+			expect.anything(),
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_REQUESTED,
+			{
+				app: 'workflow-preview',
+				load_request_id: expect.any(Number),
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'loading',
+				tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+				workflow_id: 'abc123',
+			},
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_COMPLETED,
+			expect.objectContaining({
+				app: 'workflow-preview',
+				load_request_id: expect.any(Number),
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.SUCCESS,
+				tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+				workflow_id: 'abc123',
+			}),
+		);
 
 		preview.previewSent.value = true;
 		await nextTick();
@@ -297,6 +326,16 @@ describe('useWorkflowPreview', () => {
 		await flushPromises();
 
 		expect(preview.previewError.value).toBe('workflowPreview.error.detailsUnavailable');
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_COMPLETED,
+			expect.objectContaining({
+				app: 'workflow-preview',
+				load_request_id: expect.any(Number),
+				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.TOOL_ERROR,
+				tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+				workflow_id: 'abc123',
+			}),
+		);
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
 			{
@@ -402,7 +441,10 @@ describe('useWorkflowPreview', () => {
 
 		await preview.handleOpenWorkflow();
 
-		expect(telemetryTrack).not.toHaveBeenCalled();
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
+			expect.anything(),
+		);
 		expect(openLink).not.toHaveBeenCalled();
 	});
 });
