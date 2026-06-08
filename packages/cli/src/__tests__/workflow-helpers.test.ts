@@ -1,12 +1,6 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type {
-	CredentialsEntity,
-	ExecutionRepository,
-	IExecutionResponse,
-	Project,
-	Variables,
-} from '@n8n/db';
+import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type {
 	ExecutionError,
@@ -17,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -715,13 +710,13 @@ describe('updateParentExecutionWithChildResults', () => {
 
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
 	async function resumeWith(child: IRun) {
-		const executionRepository = mock<ExecutionRepository>();
-		executionRepository.findSingleExecution.mockResolvedValue(waitingParent());
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
 
-		await updateParentExecutionWithChildResults(executionRepository, PARENT_ID, child);
+		await updateParentExecutionWithChildResults(PARENT_ID, child);
 
-		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
-		const [, payload] = executionRepository.updateExistingExecution.mock.calls[0];
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
 		return (payload as IExecutionResponse).data.executionData!.nodeExecutionStack[0] as unknown as {
 			data?: unknown;
 			metadata?: { resumeError?: ExecutionError };
