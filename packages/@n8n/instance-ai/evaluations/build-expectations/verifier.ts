@@ -106,9 +106,7 @@ export async function verifyBuildExpectations(
 		}
 
 		if (byIndex.size > 0) {
-			// Re-attach the original expectation text by index. Any expectation the
-			// judge omitted is marked `incomplete` (not a genuine fail) so a partial
-			// response doesn't render as a builder regression.
+			// Omitted expectations are marked `incomplete` (not a genuine fail).
 			return expectations.map((expectation, i) => {
 				const verdict = byIndex.get(i);
 				return verdict
@@ -127,10 +125,9 @@ export async function verifyBuildExpectations(
 }
 
 /**
- * Verdicts for every expectation when the judge produced nothing — its own
- * exhausted-attempts fallback and callers' `.catch()`. Marked `incomplete` (not
- * a genuine fail): the report section still renders with the reason, but a dead
- * judge shows as neutral "no verdict" rather than every expectation failing.
+ * Verdicts when the judge produced nothing (exhausted attempts, or callers'
+ * `.catch()`). Marked `incomplete` so a dead judge renders as neutral "no
+ * verdict" rather than every expectation failing.
  */
 export function allFailVerdicts(expectations: string[], reason: string): BuildExpectationResult[] {
 	return expectations.map((expectation) => ({

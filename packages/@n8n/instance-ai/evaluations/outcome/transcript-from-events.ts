@@ -121,8 +121,7 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 		const callId = getString(payload, 'toolCallId');
 		if (!callId) continue;
 		if (event.type === 'tool-error') {
-			// Errors arrive as a flat string, so key-based redaction can't reach a
-			// token embedded in the message — scrub by content before the report/judge.
+			// Flat string, so content-scrub (key-based redaction can't reach an inline token).
 			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
 		} else {
 			// Redact secret-shaped keys before the result reaches the report/judge.

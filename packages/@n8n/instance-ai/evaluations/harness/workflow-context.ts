@@ -17,6 +17,8 @@ export function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): str
 				type: node.type,
 				typeVersion: node.typeVersion,
 				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
+				...(node.onError !== undefined ? { onError: node.onError } : {}),
+				...(node.credentials !== undefined ? { credentials: node.credentials } : {}),
 				parameters: node.parameters ?? {},
 			})),
 			null,

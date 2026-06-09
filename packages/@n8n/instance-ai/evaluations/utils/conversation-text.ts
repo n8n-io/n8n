@@ -34,8 +34,7 @@ export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
 }
 
-// Cap each serialized field so a long multi-turn build — or one large tool
-// result — doesn't blow up judge token cost. Matches the report's output cap.
+// Cap each serialized field to bound judge token cost (matches the report's cap).
 const MAX_STEP_CHARS = 2000;
 
 function cap(text: string): string {
@@ -65,8 +64,6 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
 		case 'plan': {
 			if (interaction.tasks.length === 0) return null;
-			// Include task descriptions, not just titles — an expectation about plan
-			// content can't be graded from titles alone (the report shows both).
 			const items = interaction.tasks
 				.map((t, i) => {
 					const title = t.title ?? `Task ${String(i + 1)}`;
@@ -120,18 +117,14 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 						? ' (approved)'
 						: ' (rejected)'
 					: '';
-			// The agent's confirmation prompt and especially the user's free-text
-			// feedback (e.g. why a plan was rejected) are core conversation evidence —
-			// the report surfaces both, so the judge must see them too.
+			// Include the prompt and the user's free-text feedback (e.g. plan-rejection reason).
 			const parts = [`Resume ${interaction.toolName}: ${interaction.resumeReason}${decision}`];
 			if (interaction.message) parts.push(`prompt: ${cap(interaction.message)}`);
 			if (interaction.feedback) parts.push(`user feedback: ${cap(interaction.feedback)}`);
 			return parts.join(' — ');
 		}
 		case 'tool-call': {
-			// Args/result are the evidence for expectations like "used an HTTP Request
-			// node, not the Airtable node" — the judge can't grade those from the tool
-			// name alone. All three fields are already secret-redacted upstream.
+			// Args/result are the evidence for node-choice expectations; redacted upstream.
 			const parts = [`Tool: ${interaction.toolName}`];
 			if (interaction.args && Object.keys(interaction.args).length > 0) {
 				parts.push(`args: ${capJson(interaction.args)}`);

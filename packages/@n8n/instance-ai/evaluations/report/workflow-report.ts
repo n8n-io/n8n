@@ -532,8 +532,7 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 
 function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
 	if (!results || results.length === 0) return '';
-	// `incomplete` = the judge returned no verdict (flaky/partial). Keep it out of
-	// the pass/fail count so it reads as neutral, not as a builder regression.
+	// `incomplete` (no verdict) stays out of the pass/fail count — rendered neutrally.
 	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
 	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
 	const incompleteCount = results.filter((r) => r.incomplete).length;
