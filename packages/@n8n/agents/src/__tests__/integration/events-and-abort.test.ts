@@ -28,6 +28,42 @@ function createAgentWithTool(provider: 'openai' | 'anthropic' = 'anthropic'): Ag
 		.tool(addTool);
 }
 
+function createAgentWithAbortAwareTool({
+	onToolStart,
+	onToolAbort,
+}: {
+	onToolStart: () => void;
+	onToolAbort: () => void;
+}): Agent {
+	const abortAwareTool = new Tool('wait_for_abort')
+		.description(
+			'Wait until the current run is aborted, then report whether the abort signal fired.',
+		)
+		.input(z.object({ reason: z.string().optional() }))
+		.handler(async (_input, ctx) => {
+			const signal = ctx.abortSignal;
+			onToolStart();
+			await new Promise<void>((resolve) => {
+				signal?.addEventListener(
+					'abort',
+					() => {
+						onToolAbort();
+						resolve();
+					},
+					{ once: true },
+				);
+			});
+			return { aborted: signal?.aborted === true };
+		});
+
+	return new Agent('events-abort-tool-agent')
+		.model(getModel('anthropic'))
+		.instructions(
+			'You must call wait_for_abort exactly once before answering. Do not answer directly.',
+		)
+		.tool(abortAwareTool);
+}
+
 // ---------------------------------------------------------------------------
 // Event system — generate path
 // ---------------------------------------------------------------------------
@@ -133,6 +169,63 @@ describe('event system — generate', () => {
 		await agent.generate('Say hello');
 
 		expect(capturedMessages.length).toBeGreaterThan(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Abort signal propagation — public Agent API
+// ---------------------------------------------------------------------------
+
+describe('abort signal propagation to tools', () => {
+	it('passes an aborting signal to tool context during generate()', async () => {
+		const external = new AbortController();
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolAborted!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolAborted = resolve;
+		});
+		const agent = createAgentWithAbortAwareTool({
+			onToolStart: toolStarted,
+			onToolAbort: toolAborted,
+		});
+
+		const run = agent.generate('Call wait_for_abort now.', { abortSignal: external.signal });
+		await waitForToolStart;
+
+		external.abort();
+
+		await waitForToolAbort;
+		await run;
+	});
+
+	it('passes an aborting signal to tool context during stream()', async () => {
+		const external = new AbortController();
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolAborted!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolAborted = resolve;
+		});
+		const agent = createAgentWithAbortAwareTool({
+			onToolStart: toolStarted,
+			onToolAbort: toolAborted,
+		});
+
+		const { stream } = await agent.stream('Call wait_for_abort now.', {
+			abortSignal: external.signal,
+		});
+		const drain = collectStreamChunks(stream);
+		await waitForToolStart;
+
+		external.abort();
+
+		await waitForToolAbort;
+		await drain;
 	});
 });
 
