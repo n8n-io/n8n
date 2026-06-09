@@ -411,7 +411,7 @@ function createNewCredential(
 		props.suggestedCredentialName,
 		props.node.name,
 		props.node,
-		{ hideAskAssistant: props.hideAskAssistant },
+		{ hideAskAssistant: props.hideAskAssistant, closeOnSave: true },
 	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
