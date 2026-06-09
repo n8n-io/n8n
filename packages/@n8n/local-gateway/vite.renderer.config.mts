@@ -2,6 +2,7 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'node:path';
 import icons from 'unplugin-icons/vite';
 import { defineConfig } from 'vite';
+import svgLoader from 'vite-svg-loader';
 
 // Renderer (browser) build config. Passed explicitly via `--config` so it never
 // collides with `vite.config.ts`, which configures Vitest for the main process.
@@ -17,6 +18,14 @@ export default defineConfig({
 	base: './',
 	plugins: [
 		vue(),
+		// Design-system components import `.svg` files as Vue components (e.g. N8nLogo).
+		svgLoader({
+			svgoConfig: {
+				plugins: [
+					{ name: 'preset-default', params: { overrides: { removeViewBox: false } } },
+				],
+			},
+		}),
 		// `@n8n/design-system` icons import `~icons/lucide/*`; resolved from `@iconify/json`.
 		icons({ compiler: 'vue3' }),
 	],

@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import type { AppSettings, AuthStatus, StatusSnapshot } from '../shared/types';
 
-contextBridge.exposeInMainWorld('electronAPI', {
+const electronApi = {
 	signIn: async (instanceUrl: string): Promise<{ ok: boolean; error?: string }> =>
 		await (ipcRenderer.invoke('oauth:signIn', instanceUrl) as Promise<{
 			ok: boolean;
@@ -36,4 +36,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 			onChangeCallback(snapshot),
 		);
 	},
-});
+};
+
+contextBridge.exposeInMainWorld('electronAPI', electronApi);
+
+declare global {
+	interface Window {
+		/** Bridge exposed by this preload — typed from `electronApi`, never hand-maintained. */
+		electronAPI: typeof electronApi;
+	}
+}

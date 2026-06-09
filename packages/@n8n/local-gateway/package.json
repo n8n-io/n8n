@@ -1,7 +1,7 @@
 {
   "name": "@n8n/local-gateway",
   "version": "0.1.0",
-  "description": "n8n Local Gateway",
+  "description": "n8n Assistant desktop app",
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
@@ -43,6 +43,7 @@
     "sass-embedded": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
