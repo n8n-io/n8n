@@ -3,23 +3,24 @@ import {
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
 import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	isNodeToolsEnabled,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	buildProxyHeaders,
-} from '@n8n/api-types';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentSkill,
-	SubAgentRunPolicy,
-	SubAgentSource,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentSkill,
+	type SubAgentRunPolicy,
+	type SubAgentSource,
+	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -53,11 +54,13 @@ import { N8nMemory } from './integrations/n8n-memory';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import {
 	buildFromJson,
+	buildProviderToolsForModel,
 	type MemoryFactory,
 	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -447,7 +450,7 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			this.attachSubAgentDelegationTool({
+			await this.attachSubAgentDelegationTool({
 				agent,
 				config,
 				parentAgentId: parentAgentIdForDelegation,
@@ -464,7 +467,7 @@ export class AgentRuntimeReconstructionService {
 		}
 	}
 
-	private attachSubAgentDelegationTool(params: {
+	private async attachSubAgentDelegationTool(params: {
 		agent: RuntimeAgent;
 		config: AgentJsonConfig;
 		parentAgentId: string;
@@ -472,9 +475,13 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		userId: string;
 		delegation: SubAgentDelegationConfig;
-	}): void {
+	}): Promise<void> {
 		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
 			params;
+		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
+			config,
+			credentialProvider,
+		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
@@ -484,9 +491,35 @@ export class AgentRuntimeReconstructionService {
 				userId,
 				credentialProvider,
 				policy: this.buildSubAgentPolicy(config),
+				...(inlineSubAgentModelsByDifficulty !== undefined
+					? { inlineSubAgentModelsByDifficulty }
+					: {}),
+				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
+					buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });
+	}
+
+	private async resolveInlineSubAgentModelsByDifficulty(
+		config: AgentJsonConfig,
+		credentialProvider: CredentialProvider,
+	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
+		const mappings = config.subAgents?.modelsByDifficulty;
+		if (!mappings) return undefined;
+
+		const resolved: Partial<Record<SubAgentTaskDifficulty, ModelConfig>> = {};
+		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+			const mapping = mappings[difficulty];
+			if (!mapping) continue;
+			resolved[difficulty] = await resolveCredentialAwareModelConfig(
+				mapping.model,
+				mapping.credential,
+				credentialProvider,
+			);
+		}
+
+		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}
 
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {

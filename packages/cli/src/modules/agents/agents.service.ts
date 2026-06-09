@@ -13,6 +13,7 @@ import {
 	AgentModelSchema,
 	AgentPersistedMessageDto,
 	MANAGED_CREDENTIAL_TOKEN,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	type AgentIntegrationConfig,
@@ -70,6 +71,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { getProviderPrefix } from './json-config/model-id';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -1063,6 +1065,23 @@ export class AgentsService {
 					// surfaces list/permission failures with the concrete error.
 				}
 			}
+		}
+
+		try {
+			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
+			if (modelsByDifficulty) {
+				for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+					await this.validateMemoryWorkerModel(
+						modelsByDifficulty[difficulty],
+						`subAgents.modelsByDifficulty.${difficulty}`,
+						findCredential,
+						missing,
+					);
+				}
+			}
+		} catch {
+			// Same behavior as other credential checks: runtime reconstruction surfaces
+			// permission/listing failures with the concrete error.
 		}
 
 		missing.push(
@@ -2162,11 +2181,6 @@ export class AgentsService {
 			integrationType,
 		);
 	}
-}
-
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

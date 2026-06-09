@@ -348,6 +348,15 @@ column names.
 
 ## SDK Code Rules
 
+- SDK builder code is a restricted subset of TypeScript that builds a static
+  graph; it is not a Code node and does not run. Only SDK builder methods chain
+  on SDK objects. Native array/string methods (`.join()`, `.map()`), loops, arrow
+  functions, `new`, and globals like `Math`, `Date`, and `Object` are
+  unavailable. Build strings with template literals or explicit lines; do runtime
+  joining, aggregation, or transforms in a Code node or an n8n expression
+  (`expr()`). Full allowed/forbidden list:
+  `knowledge-base/reference/workflow-sdk-language.md`.
+
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside

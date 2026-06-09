@@ -23,6 +23,7 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./utils/agent-tree',
 	'./workspace/builder-templates-service',
 	'./workspace/create-workspace',
+	'@n8n/agents/sandbox',
 	'./workspace/lazy-runtime-workspace',
 	'./workspace/sandbox-setup',
 	'./workspace/snapshot-manager',

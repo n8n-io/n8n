@@ -154,6 +154,64 @@ describe('delegate sub-agent routing', () => {
 		expect(runtimeConfigs).toHaveLength(1);
 	});
 
+	it('uses a mapped inline model when difficulty is configured', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(
+				createDelegateSubAgentTool({
+					inlineSubAgentModelsByDifficulty: {
+						high: 'anthropic/claude-sonnet-4-5',
+					},
+				}),
+			)
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(
+			{ ...delegateInput, difficulty: 'high' },
+			{ runId: 'parent-run-1' },
+		);
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+	});
+
+	it('falls back to the parent model when difficulty is omitted or unmapped', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(
+				createDelegateSubAgentTool({
+					inlineSubAgentModelsByDifficulty: {
+						high: 'anthropic/claude-sonnet-4-5',
+					},
+				}),
+			)
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' });
+		expect(runtimeConfigs[0]?.model).toBe('openai/gpt-4o-mini');
+
+		runtimeConfigs.length = 0;
+		await delegateTool?.handler?.(
+			{ ...delegateInput, difficulty: 'low' },
+			{ runId: 'parent-run-1' },
+		);
+		expect(runtimeConfigs[0]?.model).toBe('openai/gpt-4o-mini');
+	});
+
 	it('passes the parent execution counter to inline child generate options', async () => {
 		const executionCounter = {
 			incrementMessageCount: vi.fn(),

@@ -1,6 +1,7 @@
 import type {
 	AgentBuilder,
 	BuiltMemory,
+	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
 	McpClient,
@@ -23,6 +24,8 @@ import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
+import { resolveCredentialAwareModelConfig } from './model-config';
+import { getProviderPrefix } from './model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -171,6 +174,56 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
+		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+	}
+	if (
+		typeof modelConfig === 'object' &&
+		modelConfig !== null &&
+		'provider' in modelConfig &&
+		'modelId' in modelConfig
+	) {
+		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
+		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
+		return provider && modelId ? `${provider}/${modelId}` : undefined;
+	}
+	return undefined;
+}
+
+function getProviderToolPrefix(toolName: string): string | undefined {
+	const dotIndex = toolName.indexOf('.');
+	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
+}
+
+/**
+ * Build provider-defined tools for a specific model from persisted agent config.
+ * Used for inline sub-agents whose effective model may differ from the parent model.
+ */
+export function buildProviderToolsForModel(
+	config: AgentJsonConfig,
+	modelConfig: ModelConfig,
+): BuiltProviderTool[] {
+	const modelId = modelConfigToModelId(modelConfig);
+	if (!modelId) return [];
+
+	const providerPrefix = getProviderPrefix(modelId);
+	if (!providerPrefix) return [];
+
+	const providerTools = getNativeWebSearchProviderTools(
+		{ ...config, model: modelId },
+		{ includeDefaultArgs: false },
+	);
+
+	return Object.entries(providerTools)
+		.map(([name, args]) => ({
+			name: resolveProviderToolName(name) as `${string}.${string}`,
+			args,
+		}))
+		.filter((tool) => getProviderToolPrefix(tool.name) === providerPrefix);
 }
 
 function buildFallbackWebSearchTool(
@@ -459,19 +512,4 @@ async function resolveMemoryWorkerModelConfig(
 		config.credential,
 		credentialProvider,
 	);
-}
-
-async function resolveCredentialAwareModelConfig(
-	model: string,
-	credential: string,
-	credentialProvider: CredentialProvider,
-): Promise<ModelConfig> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(model), raw);
-	return { id: model, ...mapped } as ModelConfig;
-}
-
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }
