@@ -15,6 +15,7 @@ import type {
 	IRun,
 	IBinaryKeyData,
 	INodeExecutionData,
+	FunctionsBase,
 } from 'n8n-workflow';
 
 import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
@@ -53,6 +54,18 @@ interface KafkaCredentials {
 	username?: string;
 	password?: string;
 	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
+}
+
+export interface SchemaRegistryCredentials {
+	url: string;
+	authentication: 'none' | 'basicAuth';
+	username?: string;
+	password?: string;
+}
+
+interface SchemaRegistryOptions {
+	host: string;
+	auth?: { username: string; password: string };
 }
 
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
@@ -173,9 +186,10 @@ export function configureMessageParser(
 			try {
 				value = await registry.decode(message.value as Buffer);
 			} catch (error) {
-				logger.warn('Could not decode message with Schema Registry, returning original message', {
-					error,
-				});
+				logger.warn(
+					'Could not decode message with Schema Registry, returning original message',
+					sanitizeRegistryError(error),
+				);
 			}
 		}
 
@@ -275,19 +289,84 @@ export function disconnectEventListeners(
 }
 
 /**
+ * Builds a sanitized log payload from a schema registry error, so raw error
+ * payloads (which may embed URLs with credentials) are never logged
+ * @param error - The caught error
+ * @returns Log metadata with only the error message and status
+ */
+function sanitizeRegistryError(error: unknown) {
+	const ensured = ensureError(error);
+	return {
+		message: ensured.message,
+		status: 'status' in ensured ? ensured.status : undefined,
+	};
+}
+
+/**
+ * Resolves the Confluent Schema Registry connection options, preferring a
+ * selected `schemaRegistryApi` credential over the legacy URL node parameter
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ * @returns Options for the `SchemaRegistry` constructor
+ */
+export async function getSchemaRegistryOptions(
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
+	fallbackUrl: string,
+): Promise<SchemaRegistryOptions> {
+	const emptyConfigError = () =>
+		new NodeOperationError(
+			ctx.getNode(),
+			'Select a Schema Registry credential or enter a Schema Registry URL',
+		);
+
+	if (!ctx.getNode().credentials?.schemaRegistryApi) {
+		if (!fallbackUrl?.trim()) {
+			throw emptyConfigError();
+		}
+		return { host: fallbackUrl };
+	}
+
+	const credentials = await ctx.getCredentials<SchemaRegistryCredentials>('schemaRegistryApi');
+
+	if (!credentials.url?.trim()) {
+		throw emptyConfigError();
+	}
+
+	const options: SchemaRegistryOptions = { host: credentials.url };
+
+	if (credentials.authentication === 'basicAuth') {
+		if (!(credentials.username && credentials.password)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Username and password are required for Schema Registry Basic Auth',
+			);
+		}
+		options.auth = { username: credentials.username, password: credentials.password };
+	}
+
+	return options;
+}
+
+/**
  * Initializes Confluent Schema Registry if enabled in node parameters
  * @param ctx - The trigger function context
  * @returns Schema registry instance or undefined if not configured
  */
-export function setSchemaRegistry(ctx: ITriggerFunctions) {
+export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 	if (useSchemaRegistry) {
 		try {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
-			return new SchemaRegistry({ host: schemaRegistryUrl });
+			const options = await getSchemaRegistryOptions(ctx, schemaRegistryUrl);
+			return new SchemaRegistry(options);
 		} catch (error) {
-			ctx.logger.warn('Could not connect to Schema Registry', { error });
+			// Credential/config misconfiguration must fail loudly at activation
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+			// Connection-type failures keep the warn-and-continue behavior
+			ctx.logger.warn('Could not connect to Schema Registry', sanitizeRegistryError(error));
 		}
 	}
 

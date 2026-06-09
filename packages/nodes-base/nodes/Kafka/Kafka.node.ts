@@ -15,6 +15,7 @@ import type {
 import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../utils/utilities';
+import { getSchemaRegistryOptions } from './utils';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,6 +36,15 @@ export class Kafka implements INodeType {
 				name: 'kafka',
 				required: true,
 				testedBy: 'kafkaConnectionTest',
+			},
+			{
+				name: 'schemaRegistryApi',
+				required: false,
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
 			},
 		],
 		properties: [
@@ -82,7 +92,6 @@ export class Kafka implements INodeType {
 				displayName: 'Schema Registry URL',
 				name: 'schemaRegistryUrl',
 				type: 'string',
-				required: true,
 				displayOptions: {
 					show: {
 						useSchemaRegistry: [true],
@@ -90,7 +99,8 @@ export class Kafka implements INodeType {
 				},
 				placeholder: 'https://schema-registry-domain:8081',
 				default: '',
-				description: 'URL of the schema registry',
+				description:
+					'URL of the schema registry. Only used when no Schema Registry credential is selected.',
 			},
 			{
 				displayName: 'Use Key',
@@ -320,6 +330,15 @@ export class Kafka implements INodeType {
 
 			let message: string | Buffer;
 
+			// Resolve registry options once, before the item loop, so credential
+			// misconfiguration surfaces with its own error message
+			const registryOptions = useSchemaRegistry
+				? await getSchemaRegistryOptions(
+						this,
+						this.getNodeParameter('schemaRegistryUrl', 0) as string,
+					)
+				: undefined;
+
 			for (let i = 0; i < length; i++) {
 				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
@@ -327,12 +346,11 @@ export class Kafka implements INodeType {
 					message = this.getNodeParameter('message', i) as string;
 				}
 
-				if (useSchemaRegistry) {
+				if (useSchemaRegistry && registryOptions) {
 					try {
-						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
 						const eventName = this.getNodeParameter('eventName', 0) as string;
 
-						const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+						const registry = new SchemaRegistry(registryOptions);
 						const id = await registry.getLatestSchemaId(eventName);
 
 						message = await registry.encode(id, JSON.parse(message));
