@@ -45,11 +45,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
-	function getOrCreateRuntime(threadId: string): ThreadRuntime {
+	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
 		const existingRuntime = runtimes.get(threadId);
 		if (existingRuntime) return existingRuntime;
 
-		const runtime = createThreadRuntime(threadId, runtimeHooks);
+		const runtime = createThreadRuntime(threadId, runtimeHooks, projectId);
 		runtimes.set(threadId, runtime);
 		return runtime;
 	}
@@ -164,10 +164,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function syncThread(threadId: string): Promise<void> {
+	async function syncThread(threadId: string, projectId: string): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
-		const result = await ensureThread(rootStore.restApiContext, threadId);
+		const result = await ensureThread(rootStore.restApiContext, threadId, projectId);
 		persistedThreadIds.add(result.thread.id);
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);

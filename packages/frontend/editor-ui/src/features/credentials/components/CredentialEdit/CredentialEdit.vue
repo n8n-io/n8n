@@ -171,6 +171,11 @@ const hideAskAssistant = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
+const closeOnSave = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+});
+
 const activeNodeType = computed(() => {
 	const activeNode = contextNode.value;
 
@@ -434,6 +439,16 @@ const showHeaderSaveButton = computed(
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+// Whether the credential is already shared (with other projects or globally) as
+// persisted. A shared credential can't be turned into a dynamic credential.
+const isCurrentlyShared = computed(() => {
+	const cred = currentCredential.value;
+	if (!cred) return false;
+	const sharedWithProjects = 'sharedWithProjects' in cred ? (cred.sharedWithProjects ?? []) : [];
+	const isGlobal = 'isGlobal' in cred ? Boolean(cred.isGlobal) : false;
+	return isGlobal || sharedWithProjects.length > 0;
+});
+
 const homeProject = computed(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
@@ -572,7 +587,14 @@ async function beforeClose() {
 			{ cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose1.cancelButtonText`) },
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
+	} else if (
+		credentialPermissions.value.update &&
+		isOAuthType.value &&
+		!isOAuthConnected.value &&
+		// Private credentials are only the reusable "blueprint" — connecting is a
+		// per-user step done later, so we don't prompt to connect before closing.
+		!isResolvable.value
+	) {
 		const confirmAction = await confirmModal('beforeClose2', undefined, {
 			cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose2.cancelButtonText`),
 		});
@@ -778,8 +800,12 @@ async function onResolvableChange(value: boolean) {
 			return;
 		}
 	} else if (isTogglingToStatic) {
-		// Private → Static: warn only when there are connected users to disconnect
-		const connectedUserCount = currentCredential.value?.connectedUserCount ?? 0;
+		// Private → Static: warn only when there are connected users to disconnect.
+		// `connectedUserCount` reflects the server state at modal-open and isn't
+		// refreshed when the current user connects within the same session, so fold
+		// in `connectedByMe` to make sure the warning still appears in that case.
+		const serverConnectedCount = currentCredential.value?.connectedUserCount ?? 0;
+		const connectedUserCount = Math.max(serverConnectedCount, connectedByMe.value ? 1 : 0);
 		if (connectedUserCount > 0) {
 			const confirmAction = await confirmModal('switchToStatic', {
 				count: String(connectedUserCount),
@@ -793,6 +819,11 @@ async function onResolvableChange(value: boolean) {
 	}
 
 	isResolvable.value = value;
+	// Switching sharing mode invalidates any carried-over connection state: a
+	// freshly-private credential has no per-user connection for the current
+	// user yet, so reset it to avoid rendering a stale "connected" state with a
+	// Disconnect button that has nothing to disconnect.
+	connectedByMe.value = false;
 	hasUnsavedChanges.value = true;
 }
 
@@ -996,9 +1027,17 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 			await testCredential(credentialDetails);
 			isTesting.value = false;
+
+			if (testedSuccessfully.value && closeOnSave.value) {
+				closeDialog();
+			}
 		} else {
 			authError.value = '';
 			testedSuccessfully.value = false;
+
+			if (!isOAuthType.value && closeOnSave.value) {
+				closeDialog();
+			}
 		}
 
 		const trackProperties: ITelemetryTrackProperties = {
@@ -1246,9 +1285,10 @@ async function oAuthCredentialAuthorize() {
 	const types = parentTypes.value;
 
 	try {
-		// We exclude sharedWithProjects because it's not needed for the authorization and it causes the request to be too large
-		const { sharedWithProjects, ...sanitizedCredData } = credentialData.value;
-		const credData = { id: credential.id, ...sanitizedCredData };
+		// The authorization endpoints only need the credential id; the backend re-fetches the
+		// stored credential by id. Sending more (homeProject, scopes, etc.) bloats the GET query
+		// string and can exceed proxy header size limits.
+		const credData = { id: credential.id };
 
 		if (credentialTypeName.value === 'oAuth2Api' || types.includes('oAuth2Api')) {
 			if (isValidCredentialResponse(credData)) {
@@ -1353,6 +1393,10 @@ async function oAuthCredentialAuthorize() {
 			// Close the window
 			if (oauthPopup) {
 				oauthPopup.close();
+			}
+
+			if (closeOnSave.value) {
+				closeDialog();
 			}
 		}
 	};
@@ -1595,6 +1639,7 @@ const { width } = useElementSize(credNameRef);
 						:selected-credential="selectedCredential"
 						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
 						:is-resolvable="isResolvable"
+						:is-shared="isCurrentlyShared"
 						:connected-by-me="connectedByMe"
 						:is-new-credential="isNewCredential"
 						:managed-oauth-available="managedOAuthAvailable"
@@ -1620,6 +1665,7 @@ const { width } = useElementSize(credNameRef);
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:is-shared-globally="isSharedGlobally"
+						:is-resolvable="isResolvable"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"

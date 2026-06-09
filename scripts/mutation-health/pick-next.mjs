@@ -22,10 +22,15 @@
  * Inputs:
  *   --package-dir <path>     Required. Repo-relative path to the package, e.g. packages/workflow
  *   --ledger-file <path>     Required. Live ledger JSON: { "ledger": [ ... ] }
+ *   --mode <baseline|coverage>  Optional. Restrict the picker to one bucket:
+ *                              baseline → only `new` (establish first scores)
+ *                              coverage → only `red`/`stale` (revisit weakest, lowest-first)
+ *                              omitted  → combined new → red → stale (default)
  *   --stale-after-weeks <n>  Optional. Default 4.
  *
  * Output (stdout): { picked: { source_file_path, package, prior_status, effective_status } }
- *                  OR { picked: null, reason: "all-green" | "empty-source-tree" }.
+ *                  OR { picked: null, reason: "all-green" | "empty-source-tree"
+ *                       | "no-new-files" | "nothing-below-threshold" }.
  *
  * Exit codes:
  *   0 — picked a row OR nothing to do (with picked: null sentinel)
@@ -33,7 +38,7 @@
  */
 
 import { readdir, readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -60,12 +65,54 @@ function parseArgs(argv) {
 }
 
 // Files with no useful mutation surface: barrels, declarations, type-only modules.
-const LOW_VALUE_BASENAMES = new Set(['interfaces', 'index', 'constants', 'types']);
+// Matched against either the full basename (`types.ts`) or the trailing
+// dot-segment (`foo.types.ts` → `types`), so dotted-suffix declaration files
+// are caught the same as their plain-named counterparts. `methods` covers
+// NativeDoc `*.methods.ts` descriptor files; `schemas` covers pure Zod
+// declaration files; `message-event-bus` is an exact-basename entry for a
+// bulk enum + interfaces + Zod module with no function logic.
+const LOW_VALUE_BASENAMES = new Set([
+	'interfaces',
+	'index',
+	'constants',
+	'types',
+	'methods',
+	'schemas',
+	'message-event-bus',
+]);
+
+// Files with fewer than this many non-blank, non-import lines have so little
+// surface area they're not worth mutating — e.g. trivial error subclasses with
+// empty bodies or one hardcoded super() call. This catches what an exact-name
+// list can't (`error` can't be skipped wholesale because files like
+// `workflow-activation.error.ts` have real branching logic).
+const MIN_MEANINGFUL_LINES = 15;
+
+// Directories whose contents are tests/fixtures/mocks, not production code.
+// Pruned in `walkSources` so we don't descend; `isMutationWorthy` re-checks as a
+// safety net for packages that co-locate tests as siblings (e.g. `foo.test.ts`).
+const NON_SOURCE_DIRS = new Set(['__tests__', '__mocks__', 'fixtures']);
+
+function countMeaningfulLines(content) {
+	let count = 0;
+	for (const raw of content.split('\n')) {
+		const line = raw.trim();
+		if (!line) continue;
+		if (line.startsWith('import ')) continue;
+		count++;
+	}
+	return count;
+}
 
 function isMutationWorthy(absPath) {
 	if (absPath.endsWith('.d.ts')) return false;
+	if (/\.(test|spec)\.ts$/.test(absPath)) return false;
+	if (absPath.includes(`${path.sep}__tests__${path.sep}`)) return false;
+	if (absPath.includes(`${path.sep}__mocks__${path.sep}`)) return false;
 	const base = path.basename(absPath, '.ts');
-	if (LOW_VALUE_BASENAMES.has(base)) return false;
+	const lastSegment = base.split('.').at(-1);
+	if (LOW_VALUE_BASENAMES.has(base) || LOW_VALUE_BASENAMES.has(lastSegment)) return false;
+	if (countMeaningfulLines(readFileSync(absPath, 'utf8')) < MIN_MEANINGFUL_LINES) return false;
 	return true;
 }
 
@@ -75,6 +122,7 @@ async function walkSources(dir) {
 	for (const e of entries) {
 		const full = path.join(dir, e.name);
 		if (e.isDirectory()) {
+			if (NON_SOURCE_DIRS.has(e.name)) continue;
 			out.push(...(await walkSources(full)));
 		} else if (e.isFile() && e.name.endsWith('.ts')) {
 			out.push(full);
@@ -121,7 +169,11 @@ if (!existsSync(srcDir)) die(2, `No src/ in ${pkgDir}`);
 const ledgerPath = path.isAbsolute(ledgerFile) ? ledgerFile : path.join(process.cwd(), ledgerFile);
 if (!existsSync(ledgerPath)) die(2, `Ledger file not found: ${ledgerPath}`);
 
-const ledgerPayload = JSON.parse(await readFile(ledgerPath, 'utf8'));
+// The reader webhook returns an empty body (not `{"ledger":[]}`) for packages
+// it has never scored. Treat that as a zero-row ledger so the picker can still
+// synthesise `new` rows from the source tree.
+const ledgerRaw = (await readFile(ledgerPath, 'utf8')).trim();
+const ledgerPayload = ledgerRaw === '' ? { ledger: [] } : JSON.parse(ledgerRaw);
 const liveLedger = ledgerPayload.ledger;
 if (!Array.isArray(liveLedger)) die(2, 'Ledger payload missing `ledger` array.');
 
@@ -202,11 +254,31 @@ process.stderr.write(
 		`new=${counts.new ?? 0} red=${counts.red ?? 0} stale=${counts.stale ?? 0} green=${counts.green ?? 0}\n`,
 );
 
-const top = annotated[0];
+// --mode restricts the candidate set to one bucket; omitted = combined.
+const MODE_BUCKETS = {
+	baseline: new Set(['new']),
+	coverage: new Set(['red', 'stale']),
+};
+const mode = args.mode;
+if (mode !== undefined && !Object.hasOwn(MODE_BUCKETS, mode)) {
+	die(2, `Invalid --mode=${mode}. Use 'baseline' or 'coverage' (omit for combined new→red→stale).`);
+}
+const candidates = mode
+	? annotated.filter((r) => MODE_BUCKETS[mode].has(r.effective_status))
+	: annotated;
 
-if (top.effective_status === 'green') {
-	process.stderr.write(`All actionable rows green (stale threshold ${STALE_AFTER_WEEKS} weeks) — nothing to do.\n`);
-	process.stdout.write(JSON.stringify({ picked: null, reason: 'all-green' }) + '\n');
+const top = candidates[0];
+
+// Nothing to do: an empty mode-filtered set, or (combined mode) the best row is green.
+if (!top || (!mode && top.effective_status === 'green')) {
+	const reason =
+		mode === 'baseline'
+			? 'no-new-files'
+			: mode === 'coverage'
+				? 'nothing-below-threshold'
+				: 'all-green';
+	process.stderr.write(`Nothing to do for mode=${mode ?? 'combined'} (${reason}).\n`);
+	process.stdout.write(JSON.stringify({ picked: null, reason }) + '\n');
 	process.exit(0);
 }
 

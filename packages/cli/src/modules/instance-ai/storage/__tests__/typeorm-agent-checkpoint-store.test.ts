@@ -159,4 +159,55 @@ describe('TypeORMAgentCheckpointStore', () => {
 		await expect(store.deleteOlderThan(new Date(0))).resolves.toBe(7);
 		expect(spy).toHaveBeenCalledTimes(1);
 	});
+
+	describe('findSuspendedSubAgentResumeInfo', () => {
+		it('picks the suspended tool call when parallel non-suspended ones are present', async () => {
+			const state = makeState({
+				pendingToolCalls: {
+					'tc-finished': {
+						toolCallId: 'tc-finished',
+						toolName: 'list-tools',
+						input: {},
+						suspended: false,
+					},
+					'tc-suspended': {
+						toolCallId: 'tc-suspended',
+						toolName: 'ask-user',
+						input: {},
+						suspended: true,
+						suspendPayload: {},
+						resumeSchema: {},
+						runId: 'inner-run',
+					},
+				},
+			});
+			checkpointRepo.findActiveByResourceId.mockResolvedValueOnce(
+				makeCheckpoint({ key: 'run_outer', state }),
+			);
+
+			const info = await store.findSuspendedSubAgentResumeInfo('resource-x');
+
+			expect(info).toEqual({
+				runId: 'run_outer',
+				toolCallId: 'tc-suspended',
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+		});
+
+		it('returns undefined when no entry in pendingToolCalls is suspended', async () => {
+			const state = makeState({
+				pendingToolCalls: {
+					'tc-1': {
+						toolCallId: 'tc-1',
+						toolName: 'list-tools',
+						input: {},
+						suspended: false,
+					},
+				},
+			});
+			checkpointRepo.findActiveByResourceId.mockResolvedValueOnce(makeCheckpoint({ state }));
+
+			await expect(store.findSuspendedSubAgentResumeInfo('resource-x')).resolves.toBeUndefined();
+		});
+	});
 });

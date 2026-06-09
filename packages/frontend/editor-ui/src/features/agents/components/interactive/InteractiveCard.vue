@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import {
+	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
@@ -9,6 +10,7 @@ import type { InteractivePayload } from '../../composables/agentChatMessages';
 import AskCredentialCard from './AskCredentialCard.vue';
 import AskLlmCard from './AskLlmCard.vue';
 import AskQuestionCard from './AskQuestionCard.vue';
+import ApprovalCard from './ApprovalCard.vue';
 
 /**
  * Single dispatch point for the interactive cards. Switches by `toolName` so
@@ -42,8 +44,15 @@ function onSubmit(resumeData: unknown) {
 </script>
 
 <template>
+	<ApprovalCard
+		v-if="payload.toolName === APPROVAL_TOOL_NAME"
+		:input="payload.input"
+		:disabled="disabled"
+		:resolved-value="payload.resolvedValue"
+		@submit="onSubmit"
+	/>
 	<AskCredentialCard
-		v-if="payload.toolName === ASK_CREDENTIAL_TOOL_NAME && projectId && agentId"
+		v-else-if="payload.toolName === ASK_CREDENTIAL_TOOL_NAME && projectId && agentId"
 		:purpose="payload.input.purpose"
 		:credential-type="payload.input.credentialType"
 		:node-type="payload.input.nodeType"
@@ -59,6 +68,7 @@ function onSubmit(resumeData: unknown) {
 		:purpose="payload.input.purpose"
 		:disabled="disabled"
 		:resolved-value="payload.resolvedValue"
+		:project-id="projectId"
 		@submit="onSubmit"
 	/>
 	<AskQuestionCard

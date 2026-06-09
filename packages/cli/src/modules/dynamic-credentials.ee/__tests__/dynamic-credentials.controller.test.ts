@@ -228,13 +228,18 @@ describe('DynamicCredentialsController', () => {
 			expect(resolverRegistry.getResolverByTypename).toHaveBeenCalledWith(
 				'oauth2-introspection-identifier',
 			);
-			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockCredential, {
-				cid: '1',
-				origin: 'dynamic-credential',
-				authorizationHeader: 'Bearer token123',
-				authMetadata: {},
-				credentialResolverId: 'resolver-123',
-			});
+			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				{
+					cid: '1',
+					origin: 'dynamic-credential',
+					authorizationHeader: 'Bearer token123',
+					authMetadata: {},
+					credentialResolverId: 'resolver-123',
+				},
+				req,
+				res,
+			);
 		});
 
 		it('should return auth URI for OAuth1 credential', async () => {
@@ -264,13 +269,18 @@ describe('DynamicCredentialsController', () => {
 			expect(resolverRegistry.getResolverByTypename).toHaveBeenCalledWith(
 				'oauth2-introspection-identifier',
 			);
-			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockCredential, {
-				cid: '1',
-				origin: 'dynamic-credential',
-				authorizationHeader: 'Bearer token123',
-				authMetadata: {},
-				credentialResolverId: 'resolver-123',
-			});
+			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
+				mockCredential,
+				{
+					cid: '1',
+					origin: 'dynamic-credential',
+					authorizationHeader: 'Bearer token123',
+					authMetadata: {},
+					credentialResolverId: 'resolver-123',
+				},
+				req,
+				res,
+			);
 		});
 
 		it('should call validateIdentity when resolver has validateIdentity method', async () => {

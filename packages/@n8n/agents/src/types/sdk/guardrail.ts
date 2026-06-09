@@ -1,6 +1,6 @@
 export type GuardrailType = 'pii' | 'prompt-injection' | 'moderation' | 'custom';
 export type GuardrailStrategy = 'block' | 'redact' | 'warn';
-export type PiiDetectionType = 'email' | 'phone' | 'credit-card' | 'ssn' | 'address';
+export type PiiDetectionType = 'email' | 'phone' | 'credit-card' | 'ssn-us' | 'address';
 
 export interface BuiltGuardrail {
 	readonly name: string;

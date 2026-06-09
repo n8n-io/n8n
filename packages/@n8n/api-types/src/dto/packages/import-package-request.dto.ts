@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 
 /** Multipart text field names validated by {@link ImportPackageRequestDto}. */
-export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = ['projectId', 'folderId'] as const;
+export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
+	'projectId',
+	'folderId',
+	'credentialMatchingMode',
+	'credentialMissingMode',
+	'workflowConflictPolicy',
+] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
 const optionalFormId = z
@@ -18,4 +24,7 @@ const optionalFormId = z
 export class ImportPackageRequestDto extends Z.class({
 	projectId: optionalFormId,
 	folderId: optionalFormId,
+	credentialMatchingMode: z.enum(['id-only']).optional().default('id-only'),
+	credentialMissingMode: z.enum(['must-preexist']).optional().default('must-preexist'),
+	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
 }) {}

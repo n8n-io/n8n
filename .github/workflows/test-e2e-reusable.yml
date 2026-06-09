@@ -35,7 +35,7 @@ on:
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
-        default: 'LRxcNt'
+        default: 'nHHLA5'
         type: string
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
@@ -61,8 +61,10 @@ on:
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
-  # Browser cache location - must match install-browsers script
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
+  # Browser cache location - must match install-browsers script.
+  # Absolute so nested pnpm invocations (e.g. coverage shard runner) don't
+  # re-resolve a relative path against the package's INIT_CWD and double it.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/testing/playwright/.playwright-browsers
   # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
   TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
@@ -121,8 +123,15 @@ jobs:
 
       - name: Run Tests
         run: |
+          # --pass-with-no-tests makes Playwright exit 0 when the selected specs
+          # resolve to zero runnable tests. Covers the impact-map vs current-suite
+          # skew window: a spec the committed coverage map points at may have been
+          # quarantined (test.skip/fixme) since the map was built, or a capability
+          # --grep on the test-command may filter every test on a shard. The
+          # selector is doing the right thing; the run shouldn't treat "nothing
+          # to run" as failure.
           # shellcheck disable=SC2086
-          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS --pass-with-no-tests
         env:
           # Protect args from template injections
           TEST_COMMAND: ${{ inputs.test-command }}
@@ -147,13 +156,12 @@ jobs:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
             packages/testing/playwright/test-results/
+            packages/testing/playwright/test-results.json
             packages/testing/playwright/playwright-report/
-            packages/testing/playwright/.nyc_output/
+            packages/testing/playwright/coverage/lcov.info
+            packages/testing/playwright/coverage/by-spec/
           retention-days: 1
           if-no-files-found: ignore
-          # upload-artifact@v7 defaults this to false, which silently drops
-          # `.nyc_output/` (dotfile) — needed for the weekly coverage workflow.
-          include-hidden-files: true
 
       - name: Cancel Currents run if workflow is cancelled
         if: ${{ cancelled() }}

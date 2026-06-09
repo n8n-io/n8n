@@ -170,23 +170,20 @@ export class DynamicCredentialsController {
 			});
 		}
 
-		const callerData: [CredentialsEntity, CreateCsrfStateData] = [
-			credential,
-			{
-				cid: credential.id,
-				origin: 'dynamic-credential',
-				authorizationHeader: req.headers.authorization || `Bearer ${credentialContext.identity}`,
-				authMetadata: credentialContext.metadata,
-				credentialResolverId: req.query.resolverId,
-			},
-		];
+		const csrfData: CreateCsrfStateData = {
+			cid: credential.id,
+			origin: 'dynamic-credential',
+			authorizationHeader: req.headers.authorization || `Bearer ${credentialContext.identity}`,
+			authMetadata: credentialContext.metadata,
+			credentialResolverId: req.query.resolverId,
+		};
 
 		if (credential.type.toLowerCase().includes('oauth2')) {
-			return await this.oauthService.generateAOauth2AuthUri(...callerData);
+			return await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res);
 		}
 
 		if (credential.type.toLowerCase().includes('oauth1')) {
-			return await this.oauthService.generateAOauth1AuthUri(...callerData);
+			return await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 		}
 
 		throw new BadRequestError('Credential type not supported');

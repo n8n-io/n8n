@@ -3,16 +3,38 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import {
+	ensureError,
+	sleep,
+	UnexpectedError,
+	UserError,
+	type IRun,
+	type IWorkflowExecutionDataProcess,
+	type RelatedExecution,
+} from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
+
 import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
 } from './workflow-helpers';
+
+/** How many times each parent-resume step is attempted before giving up. */
+const MAX_PARENT_RESUME_ATTEMPTS = 3;
+
+/**
+ * Whether a resume parent failure is worth retrying. Only `UserError` and
+ * `UnexpectedError` are not. Everything else is retried, including `OperationalError` (which
+ * by convention signals a transient issue) and raw database or Redis failures
+ */
+function isRetryableResumeError(error: unknown): boolean {
+	return !(error instanceof UserError || error instanceof UnexpectedError);
+}
 
 @Service()
 export class WaitTracker {
@@ -28,6 +50,7 @@ export class WaitTracker {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly ownershipService: OwnershipService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
@@ -99,7 +122,7 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 
 		// Get the data to execute
-		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+		const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -147,23 +170,78 @@ export class WaitTracker {
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void this.activeExecutions
-				.getPostExecutePromise(executionId)
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+			void this.resumeParentExecution(
+				parentExecution,
+				this.activeExecutions.getPostExecutePromise(executionId),
+			);
+		}
+	}
+
+	/**
+	 * Resume a parent execution once its child execution has completed.
+	 *
+	 * The resume crosses several async boundaries (DB write to patch the parent,
+	 * then resuming the parent). Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS`
+	 * so a transient failure recovers and the parent resumes.
+	 * If every attempt fails, the error is caught and logged below; the parent stays in `waiting`, but the
+	 * failure is now visible and attributable instead of lost.
+	 * This never rejects, so callers can invoke it as fire and forget.
+	 */
+	async resumeParentExecution(
+		parentExecution: RelatedExecution,
+		executePromise: Promise<IRun | undefined>,
+	): Promise<void> {
+		try {
+			const subworkflowResults = await executePromise;
+			if (!subworkflowResults) return;
+			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+
+			await this.withRetry(
+				async () => {
 					await updateParentExecutionWithChildResults(
-						this.executionRepository,
 						parentExecution.executionId,
 						subworkflowResults,
 					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					void this.startExecution(parentExecution.executionId);
-				});
+				},
+				MAX_PARENT_RESUME_ATTEMPTS,
+				isRetryableResumeError,
+			);
+
+			await this.withRetry(
+				async () => {
+					await this.startExecution(parentExecution.executionId);
+				},
+				MAX_PARENT_RESUME_ATTEMPTS,
+				isRetryableResumeError,
+			);
+		} catch (error) {
+			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
+				parentExecutionId: parentExecution.executionId,
+				error: ensureError(error).message,
+			});
+		}
+	}
+
+	/**
+	 * Run an operation up to `maxAttempts` times with exponential backoff, returning
+	 * on the first success and rethrowing the last error if they all fail. Generic
+	 * (not specific to parent resume) — the caller passes the attempt count and an
+	 * optional `shouldRetry` predicate; an error it rejects is rethrown immediately
+	 * instead of being retried.
+	 */
+	private async withRetry(
+		operation: () => Promise<void>,
+		maxAttempts: number,
+		shouldRetry: (error: unknown) => boolean = () => true,
+	): Promise<void> {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await operation();
+				return;
+			} catch (error) {
+				if (attempt >= maxAttempts || !shouldRetry(error)) throw error;
+				await sleep(100 * 2 ** (attempt - 1));
+			}
 		}
 	}
 

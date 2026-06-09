@@ -1,4 +1,5 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
+import { CredentialTypes } from '@/credential-types';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
@@ -10,6 +11,10 @@ import { createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
+import {
+	buildImportPackageBuffer,
+	serializedWorkflowWithCredential,
+} from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
 
@@ -22,6 +27,9 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
+	const credentialTypesMock = mockInstance(CredentialTypes);
+	credentialTypesMock.recognizes.mockReturnValue(true);
+
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -119,6 +127,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -130,16 +139,88 @@ describe('POST /n8n-packages/import', () => {
 			},
 			workflows: [
 				{
-					sourceId: 'wf-http-source',
+					sourceWorkflowId: 'wf-http-source',
 					localId: expect.any(String),
 					name: 'HTTP Imported',
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					status: 'created',
 				},
 			],
+			bindings: {
+				workflows: { 'wf-http-source': expect.any(String) },
+				credentials: {},
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {
+		const firstBuffer = await buildImportPackage();
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+		const existingWorkflowId = first.body.workflows[0].localId;
+
+		const secondBuffer = await buildImportPackage();
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toMatchObject({
+			code: 409,
+			message: expect.stringContaining('already exist in the target project'),
+			meta: {
+				code: 'WORKFLOW_CONFLICT',
+				conflicts: [
+					{
+						sourceWorkflowId: 'wf-http-source',
+						existingWorkflowId,
+						name: 'HTTP Imported',
+					},
+				],
+			},
+		});
+	});
+
+	test('returns 422 when credential references cannot be resolved', async () => {
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-miss',
+					name: 'Missing Credential',
+					credentialId: 'non-existent-credential',
+					credentialName: 'Missing',
+				}),
+			],
+			{ sourceId: 'http-integration-credential-fail' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toMatchObject({
+			message: expect.stringContaining('credential reference'),
+			failures: [
+				expect.objectContaining({
+					kind: 'not_found',
+					sourceId: 'non-existent-credential',
+				}),
+			],
+		});
 	});
 });

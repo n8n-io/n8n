@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type {
 	INode,
 	ITriggerResponse,
@@ -13,12 +14,13 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ErrorReporter } from '@/errors/error-reporter';
+import type { InstanceSettings } from '@/instance-settings';
 import { Tracing } from '@/observability';
 
 import { ActiveWorkflows } from '../active-workflows';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
-import type { ScheduledTaskManager } from '../scheduled-task-manager';
+import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
 
 describe('ActiveWorkflows', () => {
@@ -36,6 +38,7 @@ describe('ActiveWorkflows', () => {
 	const getPollFunctions = vi.fn<(...args: unknown[]) => PollContext>();
 
 	LoggerProxy.init(mock());
+	const logger = mock<Logger>();
 	const scheduledTaskManager = mock<ScheduledTaskManager>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const errorReporter = mock<ErrorReporter>();
@@ -53,12 +56,13 @@ describe('ActiveWorkflows', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		scheduledTaskManager.getWorkflowIdsWithCrons.mockReturnValue([]);
 		acquireIsolate = vi.fn().mockResolvedValue(undefined);
 		releaseIsolate = vi.fn().mockResolvedValue(undefined);
 		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
 		workflow.expression = { acquireIsolate, releaseIsolate };
 		activeWorkflows = new ActiveWorkflows(
-			mock(),
+			logger,
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
@@ -87,13 +91,13 @@ describe('ActiveWorkflows', () => {
 		pollFunctions.getNodeParameter.calledWith('pollTimes').mockReturnValue(pollTimes);
 
 		if (triggerError) {
-			triggersAndPollers.runTrigger.mockRejectedValueOnce(triggerError);
+			triggersAndPollers.runTriggerFunction.mockRejectedValueOnce(triggerError);
 		} else {
-			triggersAndPollers.runTrigger.mockResolvedValue(triggerResponse);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(triggerResponse);
 		}
 
 		if (pollError) {
-			triggersAndPollers.runPoll.mockRejectedValueOnce(pollError);
+			triggersAndPollers.runPollFunction.mockRejectedValueOnce(pollError);
 		} else {
 			getPollFunctions.mockReturnValue(pollFunctions);
 		}
@@ -111,12 +115,12 @@ describe('ActiveWorkflows', () => {
 
 	describe('add()', () => {
 		describe('should activate workflow', () => {
-			it('with trigger nodes', async () => {
+			it('with trigger function nodes', async () => {
 				await addWorkflow({ triggerNodes: [triggerNode] });
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
 				expect(workflow.getTriggerNodes).toHaveBeenCalled();
-				expect(triggersAndPollers.runTrigger).toHaveBeenCalledWith(
+				expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledWith(
 					workflow,
 					triggerNode,
 					getTriggerFunctions,
@@ -126,7 +130,7 @@ describe('ActiveWorkflows', () => {
 				);
 			});
 
-			it('with polling nodes', async () => {
+			it('with poll trigger nodes', async () => {
 				await addWorkflow({ pollNodes: [pollNode] });
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
@@ -134,13 +138,13 @@ describe('ActiveWorkflows', () => {
 				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
 			});
 
-			it('with both trigger and polling nodes', async () => {
+			it('with both trigger function and poll trigger nodes', async () => {
 				await addWorkflow({ triggerNodes: [triggerNode], pollNodes: [pollNode] });
 
 				expect(activeWorkflows.isActive(workflowId)).toBe(true);
 				expect(workflow.getTriggerNodes).toHaveBeenCalled();
 				expect(workflow.getPollNodes).toHaveBeenCalled();
-				expect(triggersAndPollers.runTrigger).toHaveBeenCalledWith(
+				expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledWith(
 					workflow,
 					triggerNode,
 					getTriggerFunctions,
@@ -149,7 +153,11 @@ describe('ActiveWorkflows', () => {
 					activation,
 				);
 				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
-				expect(triggersAndPollers.runPoll).toHaveBeenCalledWith(workflow, pollNode, pollFunctions);
+				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
+					workflow,
+					pollNode,
+					pollFunctions,
+				);
 			});
 		});
 
@@ -162,8 +170,8 @@ describe('ActiveWorkflows', () => {
 				expect(activeWorkflows.isActive(workflowId)).toBe(false);
 			});
 
-			it('if polling activation fails', async () => {
-				const error = new Error('Failed to activate polling');
+			it('if poll trigger activation fails', async () => {
+				const error = new Error('Failed to activate poll trigger');
 				await expect(addWorkflow({ pollNodes: [pollNode], pollError: error })).rejects.toThrow(
 					WorkflowActivationError,
 				);
@@ -206,19 +214,107 @@ describe('ActiveWorkflows', () => {
 			});
 		});
 
+		describe('should roll back partial activation on failure', () => {
+			it('closes already-registered trigger responses when a later trigger node fails', async () => {
+				const firstResponse = mock<ITriggerResponse>();
+				workflow.getTriggerNodes.mockReturnValue([triggerNode, mock<INode>()]);
+				workflow.getPollNodes.mockReturnValue([]);
+				triggersAndPollers.runTriggerFunction
+					.mockResolvedValueOnce(firstResponse)
+					.mockRejectedValueOnce(new Error('Trigger activation failed'));
+
+				await expect(
+					activeWorkflows.add(
+						workflowId,
+						workflow,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					),
+				).rejects.toThrow(WorkflowActivationError);
+
+				expect(firstResponse.closeFunction).toHaveBeenCalled();
+				expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+				expect(activeWorkflows.isActive(workflowId)).toBe(false);
+			});
+
+			it('closes already-registered trigger responses when a poll node fails', async () => {
+				const responseWithClose = mock<ITriggerResponse>();
+				workflow.getTriggerNodes.mockReturnValue([triggerNode]);
+				workflow.getPollNodes.mockReturnValue([pollNode]);
+				triggersAndPollers.runTriggerFunction.mockResolvedValue(responseWithClose);
+				getPollFunctions.mockReturnValue(pollFunctions);
+				pollFunctions.getNodeParameter
+					.calledWith('pollTimes')
+					.mockReturnValue({ item: [{ mode: 'everyMinute' }] });
+				triggersAndPollers.runPollFunction.mockRejectedValueOnce(
+					new Error('Failed to activate poll trigger'),
+				);
+
+				await expect(
+					activeWorkflows.add(
+						workflowId,
+						workflow,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					),
+				).rejects.toThrow(WorkflowActivationError);
+
+				expect(responseWithClose.closeFunction).toHaveBeenCalled();
+				expect(activeWorkflows.isActive(workflowId)).toBe(false);
+			});
+
+			it('continues cleanup and still surfaces the activation error when a close function throws', async () => {
+				const closeError = new Error('close failed');
+				const failingResponse = mock<ITriggerResponse>();
+				(failingResponse.closeFunction as Mock).mockRejectedValueOnce(closeError);
+				workflow.getTriggerNodes.mockReturnValue([triggerNode, mock<INode>()]);
+				workflow.getPollNodes.mockReturnValue([]);
+				triggersAndPollers.runTriggerFunction
+					.mockResolvedValueOnce(failingResponse)
+					.mockRejectedValueOnce(new Error('Trigger activation failed'));
+
+				await expect(
+					activeWorkflows.add(
+						workflowId,
+						workflow,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					),
+				).rejects.toThrow(WorkflowActivationError);
+
+				expect(failingResponse.closeFunction).toHaveBeenCalled();
+				// The close failure is reported with the workflow id, while cron
+				// deregistration still runs.
+				const [reportedError, meta] = (errorReporter.error as Mock).mock.calls[0];
+				expect(reportedError).toBeInstanceOf(Error);
+				expect((reportedError as Error).message).toContain(closeError.message);
+				expect(meta).toEqual({ extra: { workflowId } });
+				expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			});
+		});
+
 		describe('should acquire expression isolate around scheduled polls', () => {
 			// Regression test for CAT-3147: scheduled cron-driven polls run outside
 			// the activation acquire/release window, so the expression bridge fails
 			// with "No bridge acquired for this context" on every tick.
 			it('should acquire and release the isolate when the scheduled poll fires', async () => {
-				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
-				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // scheduled poll
+				triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // initial activation test poll
+				triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // scheduled poll
 
 				await addWorkflow({ pollNodes: [pollNode] });
 
 				acquireIsolate.mockClear();
 				releaseIsolate.mockClear();
-				triggersAndPollers.runPoll.mockClear();
+				triggersAndPollers.runPollFunction.mockClear();
 
 				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
 				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
@@ -228,10 +324,10 @@ describe('ActiveWorkflows', () => {
 
 				expect(acquireIsolate).toHaveBeenCalledTimes(1);
 				expect(releaseIsolate).toHaveBeenCalledTimes(1);
-				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(1);
+				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledTimes(1);
 
 				const [acquireOrder] = acquireIsolate.mock.invocationCallOrder;
-				const [runPollOrder] = triggersAndPollers.runPoll.mock.invocationCallOrder;
+				const [runPollOrder] = triggersAndPollers.runPollFunction.mock.invocationCallOrder;
 				const [releaseOrder] = releaseIsolate.mock.invocationCallOrder;
 
 				expect(acquireOrder).toBeLessThan(runPollOrder);
@@ -242,19 +338,19 @@ describe('ActiveWorkflows', () => {
 				// The outer ActiveWorkflowManager.add() acquire covers the test poll
 				// and the subsequent countTriggers call. Nested acquire/release would
 				// release the outer's bridge early and break countTriggers.
-				triggersAndPollers.runPoll.mockResolvedValueOnce(null);
+				triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
 
 				await addWorkflow({ pollNodes: [pollNode] });
 
-				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(1);
+				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledTimes(1);
 				expect(acquireIsolate).not.toHaveBeenCalled();
 				expect(releaseIsolate).not.toHaveBeenCalled();
 			});
 
 			it('should release the isolate when __emit throws after a successful poll', async () => {
 				const pollData = [[{ json: { foo: 'bar' } }]];
-				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
-				triggersAndPollers.runPoll.mockResolvedValueOnce(pollData); // scheduled poll returns data
+				triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // initial activation test poll
+				triggersAndPollers.runPollFunction.mockResolvedValueOnce(pollData); // scheduled poll returns data
 
 				const emitError = new Error('emit failed');
 				pollFunctions.__emit.mockImplementationOnce(() => {
@@ -281,7 +377,7 @@ describe('ActiveWorkflows', () => {
 				// Without this routing, the rejection would escape the cron callback
 				// `() => void executeTrigger()` and become an unhandled rejection — the
 				// user would only see a process-level log line, not an error execution.
-				triggersAndPollers.runPoll.mockResolvedValueOnce(null); // initial activation test poll
+				triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // initial activation test poll
 
 				await addWorkflow({ pollNodes: [pollNode] });
 
@@ -289,7 +385,7 @@ describe('ActiveWorkflows', () => {
 				acquireIsolate.mockClear();
 				releaseIsolate.mockClear();
 				acquireIsolate.mockRejectedValueOnce(acquireError);
-				triggersAndPollers.runPoll.mockClear();
+				triggersAndPollers.runPollFunction.mockClear();
 
 				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
 				const executeScheduledPoll = registerCronCall[1] as () => Promise<void>;
@@ -298,13 +394,13 @@ describe('ActiveWorkflows', () => {
 				await flushPromises();
 
 				expect(acquireIsolate).toHaveBeenCalledTimes(1);
-				expect(triggersAndPollers.runPoll).not.toHaveBeenCalled();
+				expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(acquireError);
 			});
 
 			it('should release the isolate even when the scheduled poll throws', async () => {
 				const error = new Error('Poll function failed');
-				triggersAndPollers.runPoll
+				triggersAndPollers.runPollFunction
 					.mockResolvedValueOnce(null) // initial activation test poll
 					.mockRejectedValueOnce(error); // scheduled poll fails
 
@@ -333,14 +429,18 @@ describe('ActiveWorkflows', () => {
 					WorkflowActivationError,
 				);
 
-				expect(triggersAndPollers.runPoll).toHaveBeenCalledWith(workflow, pollNode, pollFunctions);
+				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
+					workflow,
+					pollNode,
+					pollFunctions,
+				);
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			});
 
 			it('should emit error when poll fails during regular polling', async () => {
 				const error = new Error('Poll function failed');
-				triggersAndPollers.runPoll
+				triggersAndPollers.runPollFunction
 					.mockResolvedValueOnce(null) // Succeed on first call (testing)
 					.mockRejectedValueOnce(error); // Fail on second call (regular polling)
 
@@ -354,7 +454,7 @@ describe('ActiveWorkflows', () => {
 				await executeTrigger();
 				await flushPromises();
 
-				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(2);
+				expect(triggersAndPollers.runPollFunction).toHaveBeenCalledTimes(2);
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
 			});
@@ -380,7 +480,17 @@ describe('ActiveWorkflows', () => {
 			const result = await activeWorkflows.remove('non-existent');
 
 			expect(result).toBe(false);
-			expect(scheduledTaskManager.deregisterCrons).not.toHaveBeenCalled();
+			// Crons are deregistered unconditionally, even for a workflow
+			// not tracked as active; such a cron can always be stopped.
+			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith('non-existent');
+		});
+
+		it('should not warn when removing a workflow not active in memory', async () => {
+			// `remove` is routinely called for workflows not tracked as active (e.g.
+			// webhook-only workflows), so that case must not emit a warning.
+			await activeWorkflows.remove('not-active-in-memory');
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should handle TriggerCloseError when closing trigger', async () => {
@@ -436,14 +546,180 @@ describe('ActiveWorkflows', () => {
 		});
 	});
 
-	describe('removeAllTriggerAndPollerBasedWorkflows()', () => {
+	describe('removeAllNonWebhookTriggerWorkflows()', () => {
 		it('should remove all active workflows', async () => {
 			await addWorkflow({ triggerNodes: [triggerNode] });
 
-			await activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
+			await activeWorkflows.removeAllNonWebhookTriggerWorkflows();
 
 			expect(activeWorkflows.allActiveWorkflows()).toEqual([]);
 			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+		});
+	});
+
+	describe('ScheduledTaskManager cron cleanup', () => {
+		const hourly = '0 * * * *' as CronExpression;
+		let realLogger: ReturnType<typeof mock<Logger>>;
+		let realScheduledTaskManager: ScheduledTaskManager;
+		let activeWorkflowsReal: ActiveWorkflows;
+
+		const registerStrandedCron = (id: string, nodeId = 'schedule-node') =>
+			realScheduledTaskManager.registerCron(
+				{ workflowId: id, nodeId, timezone: 'GMT', expression: hourly },
+				vi.fn(),
+			);
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			realLogger = mock<Logger>();
+			realScheduledTaskManager = new ScheduledTaskManager(
+				mock<InstanceSettings>({ isLeader: true }),
+				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
+				mock(),
+				mock(),
+			);
+			activeWorkflowsReal = new ActiveWorkflows(
+				realLogger,
+				realScheduledTaskManager,
+				triggersAndPollers,
+				errorReporter,
+				tracing,
+			);
+		});
+
+		afterEach(() => {
+			realScheduledTaskManager.deregisterAllCrons();
+			vi.useRealTimers();
+		});
+
+		it('should stop a stranded cron on remove even when the workflow is not active in memory', async () => {
+			// A cron registered in the ScheduledTaskManager while the workflow is not
+			// tracked as active in memory must still be stoppable via remove().
+			registerStrandedCron(workflowId);
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(true);
+			expect(activeWorkflowsReal.isActive(workflowId)).toBe(false);
+
+			const result = await activeWorkflowsReal.remove(workflowId);
+
+			expect(result).toBe(false);
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+		});
+
+		it('should warn when it deregisters a cron for a workflow not active in memory', async () => {
+			registerStrandedCron(workflowId);
+
+			await activeWorkflowsReal.remove(workflowId);
+
+			// Stopping a cron for a not-active workflow is unexpected, so it's surfaced.
+			expect(realLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Deregistered orphaned crons'),
+				{ workflowId },
+			);
+		});
+
+		it('should deregister crons not tracked as active on removeAll', async () => {
+			// removeAll must also stop crons whose workflow is no longer tracked as active.
+			registerStrandedCron('orphan-workflow');
+			expect(activeWorkflowsReal.isActive('orphan-workflow')).toBe(false);
+			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(true);
+
+			await activeWorkflowsReal.removeAllNonWebhookTriggerWorkflows();
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has('orphan-workflow')).toBe(false);
+		});
+
+		it('should leave no registered cron when a later trigger node fails activation', async () => {
+			// First trigger registers a cron, second throws → activation fails and the
+			// already-registered cron must not be left behind.
+			workflow.getTriggerNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction
+				.mockImplementationOnce(async () => {
+					realScheduledTaskManager.registerCron(
+						{ workflowId, nodeId: 'trigger-node', timezone: 'GMT', expression: hourly },
+						vi.fn(),
+					);
+					return triggerResponse;
+				})
+				.mockRejectedValueOnce(new Error('Trigger activation failed'));
+
+			await expect(
+				activeWorkflowsReal.add(
+					workflowId,
+					workflow,
+					additionalData,
+					mode,
+					activation,
+					getTriggerFunctions,
+					getPollFunctions,
+				),
+			).rejects.toThrow(WorkflowActivationError);
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+		});
+
+		it('should leave no registered cron when a later poll node fails activation', async () => {
+			// First poll node registers its cron, second fails its test poll → the
+			// registered cron must be torn down. The cron is keyed by workflow.id, so it
+			// must match the id passed to add().
+			workflow.id = workflowId;
+			workflow.getTriggerNodes.mockReturnValue([]);
+			workflow.getPollNodes.mockReturnValue([mock<INode>(), mock<INode>()]);
+			getPollFunctions.mockReturnValue(pollFunctions);
+			pollFunctions.getNodeParameter
+				.calledWith('pollTimes')
+				.mockReturnValue({ item: [{ mode: 'everyMinute' }] });
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null)
+				.mockRejectedValueOnce(new Error('Failed to activate poll trigger'));
+
+			await expect(
+				activeWorkflowsReal.add(
+					workflowId,
+					workflow,
+					additionalData,
+					mode,
+					activation,
+					getTriggerFunctions,
+					getPollFunctions,
+				),
+			).rejects.toThrow(WorkflowActivationError);
+
+			expect(realScheduledTaskManager.cronsByWorkflow.has(workflowId)).toBe(false);
+		});
+
+		it('should tear down a lingering cron before re-adding so reactivation does not leave a duplicate', async () => {
+			// A cron left over from a previously rolled-back activation
+			// must be torn down before the new one registers
+			// otherwise both would coexist and fire, duplicating executions.
+			registerStrandedCron(workflowId, 'stale-node');
+			expect(realScheduledTaskManager.cronsByWorkflow.get(workflowId)?.size).toBe(1);
+
+			workflow.id = workflowId;
+			workflow.getTriggerNodes.mockReturnValue([mock<INode>()]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementationOnce(async () => {
+				realScheduledTaskManager.registerCron(
+					{ workflowId, nodeId: 'fresh-node', timezone: 'GMT', expression: hourly },
+					vi.fn(),
+				);
+				return triggerResponse;
+			});
+
+			await activeWorkflowsReal.add(
+				workflowId,
+				workflow,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+			// Only the newly registered cron remains; the stale one was removed
+			const crons = realScheduledTaskManager.cronsByWorkflow.get(workflowId);
+			expect(crons?.size).toBe(1);
+			expect(Array.from(crons!.values())[0].ctx.nodeId).toBe('fresh-node');
 		});
 	});
 });

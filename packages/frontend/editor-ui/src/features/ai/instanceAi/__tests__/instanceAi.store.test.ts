@@ -136,7 +136,7 @@ describe('useInstanceAiStore - runtime registry', () => {
 			created: true,
 		});
 
-		await store.syncThread('thread-1');
+		await store.syncThread('thread-1', 'project-1');
 
 		expect(store.threads).toEqual([
 			{
@@ -150,7 +150,7 @@ describe('useInstanceAiStore - runtime registry', () => {
 
 	it('deleteThread deletes persisted threads and disposes their runtime', async () => {
 		const store = useInstanceAiStore();
-		await store.syncThread('thread-1');
+		await store.syncThread('thread-1', 'project-1');
 		const runtime = store.getOrCreateRuntime('thread-1');
 		const disposeSpy = vi.spyOn(runtime, 'dispose');
 
