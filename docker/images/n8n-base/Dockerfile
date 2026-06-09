@@ -2,7 +2,7 @@ ARG NODE_VERSION=24.15.0
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-FROM dhi.io/node:24.15.0-alpine3.22-dev@sha256:a7eead704e9bd2d7a4c1b52cf595848f180365eba7c15a185ce1c3a690c1a19d
+FROM node:24.15.0-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f
 
 ARG NODE_VERSION
 
@@ -31,7 +31,4 @@ RUN apk add --no-cache busybox-binsh && \
     apk del apk-tools
 
 WORKDIR /home/node
-# DHI images use a non-standard global npm path, so we need to set NODE_PATH
-# to allow externally installed npm packages to be found by require()
-ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
 EXPOSE 5678/tcp
