@@ -24,3 +24,13 @@ export interface ConnectPayload {
 	url: string;
 	apiKey?: string;
 }
+
+export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';
+
+export interface AuthStatus {
+	state: AuthState;
+	/** The instance the user is signing in to / signed in to, when known. */
+	instanceUrl: string | null;
+	/** Human-readable error, set when `state === 'error'`. */
+	error: string | null;
+}

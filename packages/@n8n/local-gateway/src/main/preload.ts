@@ -1,8 +1,24 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AppSettings, StatusSnapshot } from '../shared/types';
+import type { AppSettings, AuthStatus, StatusSnapshot } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
+	signIn: async (instanceUrl: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('oauth:signIn', instanceUrl) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
+	getAuthStatus: async (): Promise<AuthStatus> =>
+		await (ipcRenderer.invoke('oauth:getStatus') as Promise<AuthStatus>),
+
+	signOut: async (): Promise<{ ok: boolean }> =>
+		await (ipcRenderer.invoke('oauth:signOut') as Promise<{ ok: boolean }>),
+
+	onAuthStatusChanged: (onChangeCallback: (status: AuthStatus) => void): void => {
+		ipcRenderer.on('authStatusChanged', (_event, status: AuthStatus) => onChangeCallback(status));
+	},
+
 	getSettings: async (): Promise<AppSettings> =>
 		await (ipcRenderer.invoke('settings:get') as Promise<AppSettings>),
 
