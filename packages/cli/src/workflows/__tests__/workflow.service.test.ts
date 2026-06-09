@@ -1,7 +1,15 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { Project, User, WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
+import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import type {
+	Project,
+	User,
+	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
+	WorkflowPublicationOutboxRepository,
+} from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IConnections, INode } from 'n8n-workflow';
@@ -67,6 +75,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
 				}), // workflowValidationService
@@ -218,6 +227,7 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
 				}), // workflowValidationService
@@ -785,6 +795,8 @@ describe('WorkflowService', () => {
 		let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
 		let workflowPublishHistoryRepositoryMock: MockProxy<WorkflowPublishHistoryRepository>;
+		let outboxRepositoryMock: MockProxy<WorkflowPublicationOutboxRepository>;
+		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 
@@ -821,6 +833,10 @@ describe('WorkflowService', () => {
 			workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 			workflowRepositoryMock = mock();
 			workflowPublishHistoryRepositoryMock = mock();
+			outboxRepositoryMock = mock();
+			globalConfigMock = mock<GlobalConfig>({
+				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			});
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
 
@@ -843,11 +859,12 @@ describe('WorkflowService', () => {
 				mock(), // projectService
 				mock(), // executionRepository
 				mock(), // eventService
-				mock(), // globalConfig
+				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishedVersionRepository
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
+				outboxRepositoryMock, // outboxRepository
 				Object.assign(mock<WorkflowValidationService>(), {
 					validateCredentialNodeRestrictions: () => ({ isValid: true }),
 				}), // workflowValidationService
@@ -940,6 +957,66 @@ describe('WorkflowService', () => {
 			expect(candidate.activeVersion).toBe(versionToActivate);
 			expect(candidate.nodes).toBe(workflow.nodes);
 			expect(candidate.connections).toBe(workflow.connections);
+		});
+
+		test('with the publication outbox enabled, updates the version, writes history and enqueues atomically without touching the active workflow manager', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = true;
+
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+
+			const trx = mock<EntityManager>();
+			const managerMock = mock<EntityManager>();
+			(managerMock.transaction as unknown as jest.Mock).mockImplementation(
+				async (runInTransaction: (entityManager: EntityManager) => Promise<unknown>) =>
+					await runInTransaction(trx),
+			);
+			Object.defineProperty(workflowRepositoryMock, 'manager', {
+				value: managerMock,
+				configurable: true,
+			});
+
+			const addToActiveWorkflowManagerSpy = jest.spyOn(
+				workflowService as never,
+				'_addToActiveWorkflowManager',
+			);
+
+			const user = mock<User>();
+
+			await workflowService.activateWorkflow(user, WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+			});
+
+			// activeVersionId + active are updated inside the transaction
+			expect(trx.update).toHaveBeenCalledWith(
+				WorkflowEntity,
+				{ id: WORKFLOW_ID },
+				expect.objectContaining({ active: true, activeVersionId: TARGET_VERSION_ID }),
+			);
+			// the outbox record is enqueued in the same transaction
+			expect(outboxRepositoryMock.enqueue).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				TARGET_VERSION_ID,
+				trx,
+			);
+			// publish-history records (deactivated for the previous version, activated for the
+			// target) are written in the same transaction
+			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ event: 'deactivated', versionId: PREVIOUS_VERSION_ID }),
+				trx,
+			);
+			expect(workflowPublishHistoryRepositoryMock.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ event: 'activated', versionId: TARGET_VERSION_ID }),
+				trx,
+			);
+			// trigger reapplication is deferred to the consumer
+			expect(addToActiveWorkflowManagerSpy).not.toHaveBeenCalled();
+			expect(activeWorkflowManagerMock.add).not.toHaveBeenCalled();
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -13,6 +13,7 @@ import {
 	type WorkflowEntity,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowPublicationOutboxRepository,
 	WorkflowRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -43,6 +44,7 @@ let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
+let outboxRepository: WorkflowPublicationOutboxRepository;
 let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -58,6 +60,7 @@ beforeAll(async () => {
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
+	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
 		mock(),
@@ -79,6 +82,7 @@ beforeAll(async () => {
 		Container.get(WorkflowFinderService),
 		workflowPublishedVersionRepository,
 		workflowPublishHistoryRepository,
+		outboxRepository,
 		workflowValidationService,
 		nodeTypes,
 		webhookServiceMock,
@@ -102,6 +106,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
@@ -513,7 +518,7 @@ describe('deactivateWorkflow()', () => {
 	});
 });
 
-describe('workflow_published_version table population', () => {
+describe('workflow publication outbox', () => {
 	describe('when feature flag is enabled', () => {
 		beforeEach(() => {
 			globalConfig.workflows.useWorkflowPublicationService = true;
@@ -523,19 +528,31 @@ describe('workflow_published_version table population', () => {
 			globalConfig.workflows.useWorkflowPublicationService = false;
 		});
 
-		test('should write to workflow_published_version on activation', async () => {
+		test('should set the active version and enqueue a pending outbox record on activation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
 
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.active).toBe(true);
+			expect(updated?.activeVersionId).toBe(workflow.versionId);
+
+			const outboxRecord = await outboxRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
+			expect(outboxRecord?.status).toBe('pending');
+
+			// Publication is async: the published version is advanced by the
+			// outbox consumer, not synchronously by the service.
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
+			expect(publishedVersion).toBeNull();
 		});
 
-		test('should update workflow_published_version when activating a new version', async () => {
+		test('should supersede the pending outbox record when activating a new version', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -548,10 +565,13 @@ describe('workflow_published_version table population', () => {
 				versionId: newVersionId,
 			});
 
-			const publishedVersion = await workflowPublishedVersionRepository.findOne({
-				where: { workflowId: workflow.id },
-			});
-			expect(publishedVersion?.publishedVersionId).toBe(newVersionId);
+			const outboxRecords = await outboxRepository.find({ where: { workflowId: workflow.id } });
+			expect(outboxRecords).toHaveLength(1);
+			expect(outboxRecords[0].publishedVersionId).toBe(newVersionId);
+			expect(outboxRecords[0].status).toBe('pending');
+
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.activeVersionId).toBe(newVersionId);
 		});
 
 		test('should remove workflow_published_version on deactivation', async () => {
@@ -559,6 +579,8 @@ describe('workflow_published_version table population', () => {
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 
 			await workflowService.deactivateWorkflow(owner, workflow.id);
 
@@ -573,11 +595,8 @@ describe('workflow_published_version table population', () => {
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
-
-			const publishedVersionBefore = await workflowPublishedVersionRepository.findOne({
-				where: { workflowId: workflow.id },
-			});
-			expect(publishedVersionBefore).not.toBeNull();
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 
 			await workflowService.archive(owner, workflow.id);
 
@@ -589,11 +608,14 @@ describe('workflow_published_version table population', () => {
 	});
 
 	describe('when feature flag is disabled', () => {
-		test('should not write to workflow_published_version on activation', async () => {
+		test('should not enqueue an outbox record on activation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const outboxCount = await outboxRepository.count();
+			expect(outboxCount).toBe(0);
 
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },

@@ -1,15 +1,10 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type {
-	User,
-	ListQueryDb,
-	WorkflowFolderUnionFull,
-	WorkflowHistory,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
 	SharedWorkflow,
+	WorkflowEntity,
 	ExecutionRepository,
 	FolderRepository,
 	WorkflowTagMappingRepository,
@@ -17,6 +12,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowPublicationOutboxRepository,
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -94,6 +90,7 @@ export class WorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
@@ -611,16 +608,6 @@ export class WorkflowService {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);
 
-				// Temporary: In the future, the workflow publication service will
-				// manage this mapping. We set it here for now to support incremental
-				// development and testing.
-				if (this.globalConfig.workflows.useWorkflowPublicationService) {
-					await this.workflowPublishedVersionRepository.setPublishedVersion(
-						workflowId,
-						workflow.activeVersionId,
-					);
-				}
-
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
@@ -771,50 +758,60 @@ export class WorkflowService {
 			});
 		}
 
-		if (previousActiveVersionId) {
-			await this.activeWorkflowManager.remove(workflowId);
-
-			this.eventService.emit('workflow-deactivated', {
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this._publishViaOutbox(
 				user,
 				workflowId,
-				workflow,
-				publicApi,
-				deactivatedVersionId: previousActiveVersionId,
-				source,
+				versionIdToActivate,
+				previousActiveVersionId,
+				workflow.updatedAt,
+			);
+		} else {
+			if (previousActiveVersionId) {
+				await this.activeWorkflowManager.remove(workflowId);
+
+				this.eventService.emit('workflow-deactivated', {
+					user,
+					workflowId,
+					workflow,
+					publicApi,
+					deactivatedVersionId: previousActiveVersionId,
+					source,
+				});
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: previousActiveVersionId,
+					event: 'deactivated',
+					userId: user.id,
+				});
+			}
+
+			const activationMode = previousActiveVersionId ? 'update' : 'activate';
+
+			await this.workflowRepository.update(workflowId, {
+				activeVersionId: versionIdToActivate,
+				active: true,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt: workflow.updatedAt,
 			});
-			await this.workflowPublishHistoryRepository.addRecord({
+
+			const workflowForActivation = await this.workflowRepository.findOne({
+				where: { id: workflowId },
+				relations: ['activeVersion'],
+			});
+
+			if (!workflowForActivation) {
+				throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
+			}
+
+			await this._addToActiveWorkflowManager(
+				user,
 				workflowId,
-				versionId: previousActiveVersionId,
-				event: 'deactivated',
-				userId: user.id,
-			});
+				workflowForActivation,
+				activationMode,
+				{ source },
+			);
 		}
-
-		const activationMode = previousActiveVersionId ? 'update' : 'activate';
-
-		await this.workflowRepository.update(workflowId, {
-			activeVersionId: versionIdToActivate,
-			active: true,
-			// workflow content did not change, so we keep updatedAt as is
-			updatedAt: workflow.updatedAt,
-		});
-
-		const workflowForActivation = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations: ['activeVersion'],
-		});
-
-		if (!workflowForActivation) {
-			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
-		}
-
-		await this._addToActiveWorkflowManager(
-			user,
-			workflowId,
-			workflowForActivation,
-			activationMode,
-			{ source },
-		);
 
 		if (options?.name !== undefined || options?.description !== undefined) {
 			const updateFields: UpdateWorkflowHistoryVersionDto = {};
@@ -1282,5 +1279,56 @@ export class WorkflowService {
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed');
 		}
+	}
+
+	/**
+	 * Atomically records the requested version and enqueues an outbox record.
+	 * The publication outbox consumer reapplies the triggers and advances the
+	 * published version asynchronously, so we do not touch the active workflow
+	 * manager or emit activation events here.
+	 */
+	private async _publishViaOutbox(
+		user: User,
+		workflowId: string,
+		versionIdToActivate: string,
+		previousActiveVersionId: string | null,
+		updatedAt: Date,
+	): Promise<void> {
+		await this.workflowRepository.manager.transaction(async (trx) => {
+			await trx.update(
+				WorkflowEntity,
+				{ id: workflowId },
+				{
+					activeVersionId: versionIdToActivate,
+					active: true,
+					// workflow content did not change, so we keep updatedAt as is
+					updatedAt,
+				},
+			);
+
+			if (previousActiveVersionId) {
+				await this.workflowPublishHistoryRepository.addRecord(
+					{
+						workflowId,
+						versionId: previousActiveVersionId,
+						event: 'deactivated',
+						userId: user.id,
+					},
+					trx,
+				);
+			}
+
+			await this.workflowPublishHistoryRepository.addRecord(
+				{
+					workflowId,
+					versionId: versionIdToActivate,
+					event: 'activated',
+					userId: user.id,
+				},
+				trx,
+			);
+
+			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
+		});
 	}
 }
