@@ -45,7 +45,7 @@ async function disconnectRepository(n8n: n8nPage) {
 // Exercises global source-control preferences, so keep the cases serialized.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe(
-	'Source Control Settings @auth:owner @capability:source-control @licensed',
+	'Source Control Settings @capability:source-control @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
@@ -57,7 +57,6 @@ test.describe(
 
 		test.beforeEach(async ({ n8n, api, services }) => {
 			await api.enableFeature('sourceControl');
-			await n8n.page.context().addCookies((await api.request.storageState()).cookies);
 			const gitea = services.gitea;
 			await initSourceControl({ n8n, api, gitea });
 
@@ -157,7 +156,6 @@ test.describe(
 			// Reconnect
 			await n8n.navigate.toEnvironments();
 			await n8n.settingsEnvironment.waitForConnectForm();
-			await n8n.settingsEnvironment.fillRepoUrl('');
 			await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
 			await connectRepository(n8n);
 
