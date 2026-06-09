@@ -103,11 +103,7 @@ import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liv
 import { InstanceAiMcpRegistryService } from './mcp';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-import {
-	SuspendedThreadPersistenceService,
-	type RebuildSuspendedRunOutcome,
-	type ResumableOrphan,
-} from './suspended-thread-persistence.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
@@ -448,6 +444,30 @@ type OrchestratorResumeReason =
 	| 'replan'
 	| 'synthesize';
 
+/** A claimed pending-confirmation row, regardless of whether it can be resumed. */
+type ClaimedOrphan = NonNullable<
+	Awaited<ReturnType<InstanceAiPendingConfirmationRepository['claim']>>
+>;
+
+/** A pending-confirmation orphan that's already passed the `canResumeOrphan`
+ *  predicate — i.e. has the SDK-side pointers (`toolCallId`, `checkpointKey`)
+ *  needed to rebuild a suspended run from the checkpoint blob. */
+type ResumableOrphan = ClaimedOrphan & {
+	toolCallId: string;
+	checkpointKey: string;
+};
+
+/** Result of rebuilding a suspended run from a persisted checkpoint. Each
+ *  failure variant corresponds to one rebuild step the caller can log
+ *  distinctly; `ready` carries the fully-assembled state for
+ *  `runState.suspendRun`. */
+type RebuildSuspendedRunOutcome =
+	| { kind: 'ready'; state: SuspendedRunState<User> }
+	| { kind: 'no-user' }
+	| { kind: 'no-checkpoint'; error?: unknown }
+	| { kind: 'env-failure'; error: unknown }
+	| { kind: 'agent-failure'; error: unknown };
+
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
@@ -664,13 +684,6 @@ export class InstanceAiService {
 			config: this.instanceAiConfig,
 			pendingConfirmationRepo: this.pendingConfirmationRepo,
 			agentMemory: this.agentMemory,
-			dbSnapshotStorage: this.dbSnapshotStorage,
-			runState: this.runState,
-			host: {
-				rebuildSuspendedRun: this.rebuildSuspendedRunFromCheckpoint.bind(this),
-				resumeSuspendedRun: this.resumeSuspendedRun.bind(this),
-				publishRunFinish: this.publishRunFinish.bind(this),
-			},
 		});
 		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
@@ -4686,11 +4699,140 @@ export class InstanceAiService {
 		// that died with the previous process) or any rebuild failure we
 		// publish a terminal `run-finish` and surface a clear UserError so the
 		// client doesn't sit on a stale confirmation card.
-		return await this.suspendedThreads.resolveOrphanedConfirmation(
-			requestingUserId,
+		return await this.resolveOrphanedConfirmation(requestingUserId, requestId, data);
+	}
+
+	/**
+	 * Last-resort resolution path: the in-memory state is gone, but a persisted
+	 * index row may still exist from before a process restart. For
+	 * `suspended`-kind rows we rebuild the agent from the DB-backed checkpoint
+	 * and resume; for `inline`-kind (no checkpoint, just an in-process Promise
+	 * that died with the previous process) or any rebuild failure we publish a
+	 * terminal `run-finish` and surface a clear UserError so the client doesn't
+	 * sit on a stale confirmation card.
+	 */
+	private async resolveOrphanedConfirmation(
+		userId: string,
+		requestId: string,
+		data: ConfirmationData,
+	): Promise<boolean> {
+		let orphan: Awaited<ReturnType<InstanceAiPendingConfirmationRepository['claim']>>;
+		try {
+			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to claim orphaned pending confirmation', {
+				requestId,
+				error: getErrorMessage(error),
+			});
+			return false;
+		}
+		if (!orphan) return false;
+
+		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
 			requestId,
-			data,
+			threadId: orphan.threadId,
+			runId: orphan.runId,
+			kind: orphan.kind,
+			hasCheckpoint: Boolean(orphan.checkpointKey),
+		});
+
+		if (orphan.kind === 'suspended' && this.canResumeOrphan(orphan)) {
+			const resumed = await this.tryResumeFromOrphan(orphan, data);
+			if (resumed) return true;
+		}
+
+		this.finalizeUnresumableOrphan(orphan);
+		throw new UserError(
+			'This confirmation was lost when the assistant restarted. Send a new message to continue.',
 		);
+	}
+
+	private canResumeOrphan(orphan: ClaimedOrphan): orphan is ResumableOrphan {
+		return Boolean(orphan.toolCallId && orphan.checkpointKey);
+	}
+
+	private finalizeUnresumableOrphan(orphan: ClaimedOrphan): void {
+		try {
+			// Live SSE clients use this to drop their interactive card.
+			this.publishRunFinish(
+				orphan.threadId,
+				orphan.runId,
+				'cancelled',
+				'restart_lost_confirmation',
+			);
+			// Terminalise the existing snapshot in place instead of rebuilding
+			// the tree from the in-memory event bus. After a restart the bus
+			// only carries the run-finish we just emitted, so a rebuild would
+			// replace the saved plan/ask card with an empty cancelled tree;
+			// `markRunCancelled` keeps the plan content intact while flipping
+			// all in-flight nodes and confirmation buttons off.
+			void this.dbSnapshotStorage
+				.markRunCancelled(orphan.threadId, orphan.runId)
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to mark orphan snapshot as cancelled', {
+						requestId: orphan.requestId,
+						threadId: orphan.threadId,
+						runId: orphan.runId,
+						error: getErrorMessage(error),
+					});
+				});
+		} catch (error: unknown) {
+			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
+				requestId: orphan.requestId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Rebuild the orchestration environment + agent for a checkpoint-backed
+	 * suspended run that survived a process restart, register it as a
+	 * `SuspendedRunState` in the in-memory registry, and hand off to the
+	 * `resumeSuspendedRun` path. The original `runId` / `messageGroupId` are
+	 * reused so the frontend's SSE correlation (`groupIdByRunId`) keeps working.
+	 */
+	private async tryResumeFromOrphan(
+		orphan: ResumableOrphan,
+		data: ConfirmationData,
+	): Promise<boolean> {
+		const outcome = await this.rebuildSuspendedRunFromCheckpoint(orphan);
+		switch (outcome.kind) {
+			case 'ready':
+				// Re-seed the in-memory runState so `resumeSuspendedRun` can find
+				// this confirmation by requestId and the rest of the cancel /
+				// liveness / shutdown paths see the run as live. We deliberately
+				// do NOT call `persistPendingConfirmation` again — the DB row
+				// was already consumed by `claim()` above.
+				this.runState.suspendRun(orphan.threadId, outcome.state);
+				return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
+			case 'no-user':
+				this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
+					requestId: orphan.requestId,
+					userId: orphan.userId,
+				});
+				return false;
+			case 'no-checkpoint':
+				this.logger.warn('Cannot resume orphaned run: checkpoint missing or unavailable', {
+					requestId: orphan.requestId,
+					checkpointKey: orphan.checkpointKey,
+					...(outcome.error ? { error: getErrorMessage(outcome.error) } : {}),
+				});
+				return false;
+			case 'env-failure':
+				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
+					requestId: orphan.requestId,
+					threadId: orphan.threadId,
+					error: getErrorMessage(outcome.error),
+				});
+				return false;
+			case 'agent-failure':
+				this.logger.warn('Cannot resume orphaned run: failed to build agent', {
+					requestId: orphan.requestId,
+					threadId: orphan.threadId,
+					error: getErrorMessage(outcome.error),
+				});
+				return false;
+		}
 	}
 
 	/**

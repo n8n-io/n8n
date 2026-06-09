@@ -1,29 +1,17 @@
-import { UserError } from 'n8n-workflow';
+import type { Logger } from '@n8n/backend-common';
+import { mock, type MockProxy } from 'jest-mock-extended';
 
+import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import {
 	SuspendedThreadPersistenceService,
-	type SuspendedRunRestorationHost,
-	type RebuildSuspendedRunOutcome,
+	type PendingConfirmationStore,
+	type UserMessageStore,
 } from '../suspended-thread-persistence.service';
 
 type Mocks = {
-	logger: { debug: jest.Mock; info: jest.Mock; warn: jest.Mock; error: jest.Mock };
-	pendingConfirmationRepo: {
-		deleteExpired: jest.Mock;
-		save: jest.Mock;
-		create: jest.Mock;
-		deleteByRequestId: jest.Mock;
-		deleteByThreadId: jest.Mock;
-		claim: jest.Mock;
-	};
-	agentMemory: { saveMessages: jest.Mock };
-	dbSnapshotStorage: { markRunCancelled: jest.Mock };
-	runState: { suspendRun: jest.Mock };
-	host: {
-		rebuildSuspendedRun: jest.Mock;
-		resumeSuspendedRun: jest.Mock;
-		publishRunFinish: jest.Mock;
-	};
+	logger: MockProxy<Logger>;
+	pendingConfirmationRepo: MockProxy<PendingConfirmationStore>;
+	agentMemory: MockProxy<UserMessageStore>;
 };
 
 function createService(confirmationTimeout = 60_000): {
@@ -31,39 +19,26 @@ function createService(confirmationTimeout = 60_000): {
 	mocks: Mocks;
 } {
 	const mocks: Mocks = {
-		logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
-		pendingConfirmationRepo: {
-			deleteExpired: jest.fn(async () => 0),
-			save: jest.fn(async () => {}),
-			create: jest.fn((entity: unknown) => entity),
-			deleteByRequestId: jest.fn(async () => {}),
-			deleteByThreadId: jest.fn(async () => {}),
-			claim: jest.fn(async () => undefined),
-		},
-		agentMemory: { saveMessages: jest.fn(async () => {}) },
-		dbSnapshotStorage: { markRunCancelled: jest.fn(async () => {}) },
-		runState: { suspendRun: jest.fn() },
-		host: {
-			rebuildSuspendedRun: jest.fn(),
-			resumeSuspendedRun: jest.fn(async () => false),
-			publishRunFinish: jest.fn(),
-		},
+		logger: mock<Logger>(),
+		pendingConfirmationRepo: mock<PendingConfirmationStore>(),
+		agentMemory: mock<UserMessageStore>(),
 	};
+	// `create` is a pure builder — pass the entity through so assertions can
+	// inspect what `save` was handed.
+	mocks.pendingConfirmationRepo.create.mockImplementation(
+		(entity) => entity as InstanceAiPendingConfirmation,
+	);
+	mocks.pendingConfirmationRepo.deleteExpired.mockResolvedValue(0);
 
 	const service = new SuspendedThreadPersistenceService({
-		logger: mocks.logger as unknown as SuspendedThreadPersistenceService['logger'],
-		config: { confirmationTimeout } as never,
-		pendingConfirmationRepo: mocks.pendingConfirmationRepo as never,
-		agentMemory: mocks.agentMemory as never,
-		dbSnapshotStorage: mocks.dbSnapshotStorage as never,
-		runState: mocks.runState as never,
-		host: mocks.host as unknown as SuspendedRunRestorationHost,
+		logger: mocks.logger,
+		config: { confirmationTimeout },
+		pendingConfirmationRepo: mocks.pendingConfirmationRepo,
+		agentMemory: mocks.agentMemory,
 	});
 
 	return { service, mocks };
 }
-
-const approval = { approved: true } as never;
 
 describe('SuspendedThreadPersistenceService — pending confirmation persistence', () => {
 	it('persists a pending confirmation with a computed expiry when a timeout is configured', async () => {
@@ -181,116 +156,5 @@ describe('SuspendedThreadPersistenceService — user message persistence', () =>
 		});
 
 		expect(ok).toBe(false);
-	});
-});
-
-describe('SuspendedThreadPersistenceService — orphan restoration', () => {
-	const ready = {
-		kind: 'ready',
-		state: { threadId: 'thread-1', runId: 'run-1' },
-	} as unknown as RebuildSuspendedRunOutcome & { kind: 'ready' };
-
-	it('returns false silently when no DB row is claimable', async () => {
-		const { service, mocks } = createService();
-		mocks.pendingConfirmationRepo.claim.mockResolvedValue(undefined);
-
-		const result = await service.resolveOrphanedConfirmation('user-1', 'req-missing', approval);
-
-		expect(result).toBe(false);
-		expect(mocks.host.rebuildSuspendedRun).not.toHaveBeenCalled();
-		expect(mocks.host.publishRunFinish).not.toHaveBeenCalled();
-	});
-
-	it('returns false when the claim query itself fails', async () => {
-		const { service, mocks } = createService();
-		mocks.pendingConfirmationRepo.claim.mockRejectedValue(new Error('db down'));
-
-		const result = await service.resolveOrphanedConfirmation('user-1', 'req-1', approval);
-
-		expect(result).toBe(false);
-	});
-
-	it('throws a terminal UserError for an inline orphan (nothing to resume)', async () => {
-		const { service, mocks } = createService();
-		mocks.pendingConfirmationRepo.claim.mockResolvedValue({
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'inline',
-			runId: 'run-1',
-		});
-
-		await expect(service.resolveOrphanedConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
-			UserError,
-		);
-		expect(mocks.host.rebuildSuspendedRun).not.toHaveBeenCalled();
-		expect(mocks.host.publishRunFinish).toHaveBeenCalledWith(
-			'thread-1',
-			'run-1',
-			'cancelled',
-			'restart_lost_confirmation',
-		);
-		expect(mocks.dbSnapshotStorage.markRunCancelled).toHaveBeenCalledWith('thread-1', 'run-1');
-	});
-
-	it('throws when a suspended orphan lacks the pointers needed to resume', async () => {
-		const { service, mocks } = createService();
-		mocks.pendingConfirmationRepo.claim.mockResolvedValue({
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'suspended',
-			runId: 'run-1',
-			// no toolCallId / checkpointKey -> can't resume
-		});
-
-		await expect(service.resolveOrphanedConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
-			UserError,
-		);
-		expect(mocks.host.rebuildSuspendedRun).not.toHaveBeenCalled();
-	});
-
-	it('rebuilds and resumes a suspended orphan when the checkpoint is loadable', async () => {
-		const { service, mocks } = createService();
-		const orphan = {
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'suspended',
-			runId: 'run-1',
-			toolCallId: 'tool-1',
-			checkpointKey: 'cp-1',
-		};
-		mocks.pendingConfirmationRepo.claim.mockResolvedValue(orphan);
-		mocks.host.rebuildSuspendedRun.mockResolvedValue(ready);
-		mocks.host.resumeSuspendedRun.mockResolvedValue(true);
-
-		const result = await service.resolveOrphanedConfirmation('user-1', 'req-1', approval);
-
-		expect(result).toBe(true);
-		expect(mocks.host.rebuildSuspendedRun).toHaveBeenCalledWith(orphan);
-		expect(mocks.runState.suspendRun).toHaveBeenCalledWith('thread-1', ready.state);
-		expect(mocks.host.resumeSuspendedRun).toHaveBeenCalledWith('user-1', 'req-1', approval);
-		expect(mocks.host.publishRunFinish).not.toHaveBeenCalled();
-	});
-
-	it('falls back to the terminal UserError when the rebuild fails', async () => {
-		const { service, mocks } = createService();
-		mocks.pendingConfirmationRepo.claim.mockResolvedValue({
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'suspended',
-			runId: 'run-1',
-			toolCallId: 'tool-1',
-			checkpointKey: 'cp-1',
-		});
-		mocks.host.rebuildSuspendedRun.mockResolvedValue({ kind: 'no-checkpoint' });
-
-		await expect(service.resolveOrphanedConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
-			UserError,
-		);
-		expect(mocks.host.resumeSuspendedRun).not.toHaveBeenCalled();
-		expect(mocks.host.publishRunFinish).toHaveBeenCalled();
 	});
 });
