@@ -20,6 +20,20 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+function normalizeWorkflowDescription(description?: string) {
+	if (!description) return { description: undefined, truncated: false };
+	if (description.length <= MAX_WORKFLOW_DESCRIPTION_LENGTH) {
+		return { description, truncated: false };
+	}
+
+	return {
+		description: description.slice(0, MAX_WORKFLOW_DESCRIPTION_LENGTH),
+		truncated: true,
+	};
+}
+
 const inputSchema = {
 	code: z
 		.string()
@@ -39,11 +53,8 @@ const inputSchema = {
 		.describe('Optional workflow name. If not provided, uses the name from the code.'),
 	description: z
 		.string()
-		.max(255)
 		.optional()
-		.describe(
-			'Short workflow description summarizing what it does (1-2 sentences, max 255 chars).',
-		),
+		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
 	projectId: z
 		.string()
 		.optional()
@@ -175,6 +186,8 @@ export const createCreateWorkflowFromCodeTool = (
 			const result = await handler.parseAndValidate(strippedCode);
 
 			const workflowJson = result.workflow;
+			const { description: workflowDescription, truncated: descriptionTruncated } =
+				normalizeWorkflowDescription(description);
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				workflowJson,
@@ -188,7 +201,7 @@ export const createCreateWorkflowFromCodeTool = (
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
-				...(description ? { description } : {}),
+				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
@@ -246,6 +259,15 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const notes = [
+				descriptionTruncated
+					? `Workflow description was shortened to ${MAX_WORKFLOW_DESCRIPTION_LENGTH} characters.`
+					: undefined,
+				skippedHttpNodes.length
+					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
+					: undefined,
+			].filter((note): note is string => note !== undefined);
+
 			const output = {
 				workflowId: savedWorkflow.id,
 				name: savedWorkflow.name,
@@ -257,9 +279,7 @@ export const createCreateWorkflowFromCodeTool = (
 					name: landingProject.name,
 					type: landingProject.type,
 				},
-				note: skippedHttpNodes.length
-					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
-					: undefined,
+				note: notes.length ? notes.join(' ') : undefined,
 			};
 
 			return {
