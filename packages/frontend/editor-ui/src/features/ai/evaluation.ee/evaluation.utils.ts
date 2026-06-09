@@ -1,5 +1,6 @@
 import startCase from 'lodash/startCase';
 import type { JsonValue } from 'n8n-workflow';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
 
@@ -96,9 +97,13 @@ export function getDeltaTone(delta: number | undefined): DeltaTone {
 	return 'default';
 }
 
-export function formatTokens(tokens: number | undefined): string {
+export function formatTokens(
+	tokens: number | undefined,
+	options: { withUnit?: boolean } = {},
+): string {
 	if (tokens === undefined || Number.isNaN(tokens)) return '–';
-	return `${Math.round(tokens).toLocaleString()}t`;
+	const formatted = Math.round(tokens).toLocaleString();
+	return options.withUnit === false ? formatted : `${formatted}t`;
 }
 
 // Coerce an arbitrary cell/output value to a string for display or persistence.
@@ -118,6 +123,24 @@ export type MetricScale = 'oneToFive' | 'normalized';
 
 export function getMetricScale(category: MetricCategory | undefined): MetricScale {
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
+}
+
+// A check as rendered on the wizard results page. `isAiJudged` checks show an
+// average score; the rest are pass/fail (a case passes only on a perfect score).
+// `icon`/`iconBg`/`iconFg` mirror the Step-2 check tile for visual consistency.
+export type ResultCheck = {
+	key: string;
+	label: string;
+	description?: string;
+	isAiJudged: boolean;
+	icon: IconName;
+	iconBg?: string;
+	iconFg?: string;
+};
+
+// A pass/fail (non-aiBased) case passes only when it scores a perfect 1.
+export function casePassed(value: number | undefined): boolean {
+	return normalizeMetricValue(value) === 1;
 }
 
 // aiBased: 1-5 → value/5*100 (so 5 → 100%). Otherwise: |v|≤1 is a 0-1 score
@@ -173,6 +196,20 @@ export function formatMetricRawScore(
 	const num = normalizeMetricValue(value);
 	if (num === undefined) return '';
 	return `${formatScoreNumerator(num)}/5`;
+}
+
+// Average score for the wizard results card: AI-based shows "X / 5", other
+// metrics show the 0–1 average to two decimals (e.g. "0.75"). This is the mean
+// across the run's cases, not a percentage.
+export function formatMetricAverage(
+	value: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '–';
+	return getMetricScale(options.category) === 'oneToFive'
+		? `${formatScoreNumerator(num)} / 5`
+		: num.toFixed(2);
 }
 
 // Run-level totals: "13/15" (AI-based: sum / 5×count) or "1.11/6" (0-1: sum / count).

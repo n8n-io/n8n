@@ -1,6 +1,5 @@
-import type { WorkflowSettings } from 'n8n-workflow';
-
-import { channelsToPolicy, policyToChannels } from '../redaction-channels';
+import type { WorkflowSettings } from '../src/interfaces';
+import { channelsToPolicy, policyToChannels } from '../src/redaction-channels';
 
 describe('redaction-channels', () => {
 	describe('policyToChannels', () => {

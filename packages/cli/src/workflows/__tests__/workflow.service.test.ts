@@ -500,6 +500,60 @@ describe('WorkflowService', () => {
 			);
 		});
 
+		test('preserves a below-floor stored redactionPolicy when an unrelated setting changes (ENT-35)', async () => {
+			// Floor enforced, workflow stored below the floor. A save that only changes another
+			// field must not overwrite the stored policy — the field is absent from the payload,
+			// enforcement is consulted with `undefined`, and the merge keeps the stored value.
+			setupExistingWorkflow({ redactionPolicy: 'none', timezone: 'UTC' });
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ timezone: 'Europe/Berlin' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(redactionEnforcementServiceMock.assertPolicyChangeAllowed).toHaveBeenCalledWith(
+				'none',
+				undefined,
+			);
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						redactionPolicy: 'none',
+						timezone: 'Europe/Berlin',
+					}),
+				}),
+			);
+		});
+
+		test('allows a save that re-sends the unchanged below-floor redactionPolicy verbatim (ENT-35)', async () => {
+			// Mirrors the editor sending the user's own stored value for a floor-locked channel:
+			// incoming === current, so enforcement allows it and the stored value is preserved.
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'none' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(redactionEnforcementServiceMock.assertPolicyChangeAllowed).toHaveBeenCalledWith(
+				'none',
+				'none',
+			);
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'none' }),
+				}),
+			);
+		});
+
 		describe('directional scope enforcement', () => {
 			test('should require enableRedaction for upgrade (none → all)', async () => {
 				setupExistingWorkflow({ redactionPolicy: 'none' });
