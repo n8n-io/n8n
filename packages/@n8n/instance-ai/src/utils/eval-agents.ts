@@ -45,12 +45,19 @@ function getApiKey(modelId: string): string {
 	const [provider] = modelId.split('/');
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
 	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
-	const key = process.env.N8N_INSTANCE_AI_MODEL_API_KEY ?? providerKey;
+	const key =
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
+		(provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined) ??
+		providerKey;
 
 	if (!key) {
 		throw new Error(
 			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_MODEL_API_KEY${
-				providerKeyEnv ? ` or ${providerKeyEnv}` : ''
+				provider === 'anthropic'
+					? ' or N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY'
+					: providerKeyEnv
+						? ` or ${providerKeyEnv}`
+						: ''
 			} in your environment.`,
 		);
 	}
@@ -109,10 +116,6 @@ export function createEvalAgent(
 		url,
 	});
 
-	if (provider === 'openai') {
-		agent.thinking('openai', { reasoningEffort: 'high' });
-	}
-
 	if (options.cache) {
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
 	} else {
@@ -120,9 +123,11 @@ export function createEvalAgent(
 	}
 
 	const thinking = options.thinking ?? 'off';
-	if (thinking === 'adaptive') {
+	if (provider === 'openai' && thinking !== 'off') {
+		agent.thinking('openai', { reasoningEffort: 'high' });
+	} else if (provider === 'anthropic' && thinking === 'adaptive') {
 		agent.thinking('anthropic', { mode: 'adaptive' });
-	} else if (typeof thinking === 'object') {
+	} else if (provider === 'anthropic' && typeof thinking === 'object') {
 		agent.thinking('anthropic', { mode: 'enabled', budgetTokens: thinking.budgetTokens });
 	}
 

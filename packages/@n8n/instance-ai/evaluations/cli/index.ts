@@ -1140,6 +1140,7 @@ function writeEvalResults(
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.conversation[0].text.slice(0, 70),
+			testCaseFile: slugByTestCase?.get(tc.testCase),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
@@ -1151,7 +1152,8 @@ function writeEvalResults(
 				totalRuns,
 				passAtK: sa.passAtK[metrics.kIndex] ?? 0,
 				passHatK: sa.passHatK[metrics.kIndex] ?? 0,
-				runs: sa.runs.map((sr) => ({
+				runs: sa.runs.map((sr, runIndex) => ({
+					workflowId: tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
 					score: sr.score,
 					reasoning: sr.reasoning,

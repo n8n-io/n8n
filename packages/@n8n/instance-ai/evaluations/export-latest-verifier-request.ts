@@ -3,7 +3,11 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { N8nClient } from './clients/n8n-client';
+import {
+	findStoredTestCaseResult,
+	findStoredVerifierRun,
+	type StoredEvalResults,
+} from './eval-results-artifact';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from './system-prompts/mock-execution-verify';
 
 type Scenario = {
@@ -11,6 +15,17 @@ type Scenario = {
 	description: string;
 	dataSetup: string;
 	successCriteria: string;
+};
+
+type ConversationTurn = {
+	role: 'user' | 'assistant';
+	text: string;
+};
+
+type WorkflowTestCaseJson = {
+	conversation?: ConversationTurn[];
+	scenarios?: Scenario[];
+	executionScenarios?: Scenario[];
 };
 
 type EvalNodeResult = {
@@ -54,7 +69,6 @@ const repoRoot = path.resolve(__dirname, '..', '..', '..', '..');
 const instanceAiRoot = path.resolve(__dirname, '..');
 const dataDir = path.join(instanceAiRoot, '.data');
 const evalResultsPath = path.join(instanceAiRoot, 'eval-results.json');
-const reportPath = path.join(dataDir, 'workflow-eval-report.html');
 const sqliteDbPath = path.join(repoRoot, '.n8n-instance-ai', '.n8n', 'database.sqlite');
 
 type CliArgs = {
@@ -282,11 +296,16 @@ function querySqlite(sql: string): string {
 	return execFileSync('sqlite3', [sqliteDbPath, sql], { encoding: 'utf8' }).trim();
 }
 
-function getWorkflowIdFromLatestReport(): string {
-	const html = readFileSync(reportPath, 'utf8');
-	const match = html.match(/<span class="workflow-id">([^<]+)<\/span>/);
-	if (!match?.[1]) throw new Error(`Could not find workflow id in ${reportPath}`);
-	return match[1];
+function getScenarios(testCase: WorkflowTestCaseJson): Scenario[] {
+	return testCase.executionScenarios ?? testCase.scenarios ?? [];
+}
+
+function getTestCasePrompt(testCase: WorkflowTestCaseJson): string | undefined {
+	return testCase.conversation?.[0]?.text;
+}
+
+function getSerializedTestCaseName(testCase: WorkflowTestCaseJson): string | undefined {
+	return getTestCasePrompt(testCase)?.slice(0, 70);
 }
 
 function getWorkflowJson(workflowId: string): WorkflowJson {
@@ -297,44 +316,28 @@ function getWorkflowJson(workflowId: string): WorkflowJson {
 	return jsonParse<WorkflowJson>(row);
 }
 
-async function getEvalResultForScenario(
-	scenarioName: string,
-	workflowId: string,
-	scenario: Scenario,
-): Promise<EvalResult> {
-	const evalResults = readJson<{
-		testCases: Array<{
-			scenarios: Array<{
-				name: string;
-				runs: Array<{ evalResult?: EvalResult }>;
-			}>;
-		}>;
-	}>(evalResultsPath);
-
-	const stored = evalResults.testCases
-		.flatMap((testCaseResult) => testCaseResult.scenarios)
-		.find((scenarioResult) => scenarioResult.name === scenarioName)
-		?.runs.find((item) => item.evalResult !== undefined)?.evalResult;
-
-	if (stored) return stored;
-
-	const baseUrl =
-		process.env.N8N_EVAL_BASE_URL ?? process.env.N8N_BASE_URL ?? 'http://localhost:5678';
-	const client = new N8nClient(baseUrl);
-	await client.login();
-	return await client.executeWithLlmMock(workflowId, scenario.dataSetup, 120_000);
-}
-
-async function main(): Promise<void> {
+function main(): void {
 	const args = parseCliArgs(process.argv.slice(2));
-	const workflowId = getWorkflowIdFromLatestReport();
-	const testCase = readJson<{ scenarios: Scenario[] }>(args.testCasePath);
-	const scenarioName = args.scenarioName ?? testCase.scenarios[0]?.name;
+	const testCase = readJson<WorkflowTestCaseJson>(args.testCasePath);
+	const scenarios = getScenarios(testCase);
+	const scenarioName = args.scenarioName ?? scenarios[0]?.name;
 	if (!scenarioName) throw new Error(`No scenarios found in ${args.testCasePath}`);
-	const scenario = testCase.scenarios.find((item) => item.name === scenarioName);
+	const scenario = scenarios.find((item) => item.name === scenarioName);
 	if (!scenario) throw new Error(`Scenario "${scenarioName}" not found in ${args.testCasePath}`);
+	const evalResults = readJson<StoredEvalResults<EvalResult>>(evalResultsPath);
+	const storedTestCase = findStoredTestCaseResult(
+		evalResults,
+		args.testCasePath,
+		getSerializedTestCaseName(testCase),
+	);
+	const storedRun = findStoredVerifierRun(storedTestCase, scenarioName);
+	if (!storedRun) {
+		throw new Error(
+			`eval-results.json does not include a workflowId and evalResult for scenario "${scenarioName}" in test case "${getSerializedTestCaseName(testCase) ?? args.testCasePath}". Re-run the workflow evals with this branch.`,
+		);
+	}
 
-	const workflowJson = getWorkflowJson(workflowId);
+	const workflowJson = getWorkflowJson(storedRun.workflowId);
 	const checklist = [
 		{
 			id: 1,
@@ -343,7 +346,7 @@ async function main(): Promise<void> {
 			strategy: 'llm',
 		},
 	];
-	const evalResult = await getEvalResultForScenario(scenarioName, workflowId, scenario);
+	const evalResult = storedRun.evalResult;
 	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJson);
 	const userMessage = `## Checklist\n\n${JSON.stringify(checklist, null, 2)}\n\n## Verification Artifact\n\n${artifact}\n\nVerify each checklist item against the artifact above.`;
 
@@ -402,4 +405,8 @@ async function main(): Promise<void> {
 	console.log(outputPath);
 }
 
-void main();
+if (require.main === module) {
+	main();
+}
+
+export { getScenarios };

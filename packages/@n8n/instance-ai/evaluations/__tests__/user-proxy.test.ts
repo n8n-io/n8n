@@ -485,6 +485,30 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(1); // only first call invoked the agent
 	});
 
+	it('does not treat a requestId as handled when decision generation throws', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue(new Error('temporary model failure'), {
+			action: 'answer_questions',
+			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'go' }],
+			agent,
+		});
+		const event = questionEvent('req-retry', [
+			{ id: 'q1', question: 'Q?', type: 'single', options: ['#general'] },
+		]);
+
+		await expect(proxy.respondToConfirmation(event)).rejects.toThrow('temporary model failure');
+		const response = await proxy.respondToConfirmation(event);
+
+		expect(response.kind).toBe('questions');
+		if (response.kind === 'questions') {
+			expect(response.answers).toEqual([{ questionId: 'q1', selectedOptions: ['#general'] }]);
+		}
+		expect(agent.callCount).toBe(2);
+	});
+
 	it('handles text input by routing to the agent and encoding as approval', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({

@@ -128,7 +128,6 @@ export class UserProxyLlm {
 			this.bumpStat('repeat');
 			return this.responseByRequestId.get(requestId) ?? buildAutoApprovePayload(event);
 		}
-		if (requestId) this.seenRequestIds.add(requestId);
 
 		const det = tryDeterministicConfirmationResponse(event);
 		if (det) {
@@ -233,7 +232,10 @@ export class UserProxyLlm {
 		requestId: string | undefined,
 		response: InstanceAiConfirmRequest,
 	): InstanceAiConfirmRequest {
-		if (requestId) this.responseByRequestId.set(requestId, response);
+		if (requestId) {
+			this.responseByRequestId.set(requestId, response);
+			this.seenRequestIds.add(requestId);
+		}
 		return response;
 	}
 
