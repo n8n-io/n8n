@@ -864,10 +864,13 @@ export class InstanceAiService {
 		const config = withThreadScopedSandboxIdentity(await this.resolveSandboxConfig(user), threadId);
 		if (!config.enabled) return undefined;
 
+		const { daytonaRuntimeMaterialize, daytonaSnapshotName } = this.instanceAiConfig;
 		const sandbox = await createSandbox(config, {
 			logger: this.logger,
 			errorReporter: this.errorReporter,
 			useSnapshotFallback: true,
+			runtimeMaterialize: daytonaRuntimeMaterialize,
+			...(daytonaSnapshotName ? { snapshotName: daytonaSnapshotName } : {}),
 		});
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;

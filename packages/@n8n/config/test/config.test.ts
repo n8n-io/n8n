@@ -298,6 +298,8 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
+			daytonaRuntimeMaterialize: false,
+			daytonaSnapshotName: '',
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',

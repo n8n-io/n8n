@@ -33,6 +33,8 @@ import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
 export interface CreateSnapshotOptions {
 	timeout?: number;
 	onLogs?: (chunk: string) => void;
+	/** Dev mode: Override the version-derived snapshot name */
+	name?: string;
 }
 
 const DAYTONA_WORKSPACE_BAKE_ROOT = '/tmp/n8n-workspace-bake';
@@ -114,22 +116,32 @@ export class SnapshotManager {
 	}
 
 	/**
-	 * Create the versioned Daytona snapshot for the configured n8n version.
+	 * Create a Daytona snapshot. By default uses the versioned name derived
+	 * from the configured n8n version; pass `options.name` to override it
+	 * (e.g. `build-snapshot.cjs --snapshot-name` for manual dev regeneration).
 	 * Treats 409 / "already exists" as success — re-runs against the same
-	 * version are idempotent. Throws on transient or unexpected errors so
+	 * name are idempotent. Throws on transient or unexpected errors so
 	 * callers can decide whether to retry, fall back, or fail loudly.
 	 *
 	 * Single source of truth for snapshot creation in the CI release pipeline
 	 * (`scripts/build-snapshot.cjs`). Runtime never calls this.
 	 */
 	async createSnapshot(daytona: Daytona, options?: CreateSnapshotOptions): Promise<string> {
-		const name = this.snapshotName();
-		if (!name) {
+		const { name: nameOverride, ...createOptions } = options ?? {};
+
+		if (nameOverride !== undefined && !nameOverride) {
+			throw new Error('SnapshotManager: explicit snapshot name must not be empty');
+		}
+
+		const version = this.n8nVersion;
+		if (nameOverride === undefined && !version) {
 			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
 		}
 
+		const name = nameOverride ?? `n8n/instance-ai:${version}`;
+
 		try {
-			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
+			await daytona.snapshot.create({ name, image: await this.ensureImage() }, createOptions);
 			this.logger.info('Created versioned Daytona snapshot', { name });
 			return name;
 		} catch (error) {
