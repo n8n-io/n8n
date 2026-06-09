@@ -24,7 +24,7 @@ RUN apk add --no-cache python3 make g++ && \
 # base change, so a base rebuild does not reach this image until the digest is
 # manually re-pinned here. Bump the digest together with the tag whenever the base
 # image is intentionally updated.
-FROM n8nio/base:24.15.0@sha256:dade45d8a974e72bccbf57c13bc684b5dbb2f73e0ca7c837739e439de7b91aa9
+FROM n8nio/base:24.15.0@sha256:04445a68859db3bdd7de2f2a036e790e6d2d564266e0b0b1f3cba34c0a66e331
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
