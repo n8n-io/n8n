@@ -70,5 +70,6 @@ describe('WorkflowSerializer.deserialize', () => {
 		expect(partial).not.toHaveProperty('parentFolder');
 		expect(partial).not.toHaveProperty('parentFolderId');
 		expect(partial).not.toHaveProperty('active');
+		expect(partial).not.toHaveProperty('activeVersionId');
 	});
 });

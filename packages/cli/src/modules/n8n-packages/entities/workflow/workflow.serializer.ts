@@ -24,7 +24,7 @@ export class WorkflowSerializer {
 			settings: workflow.settings,
 			versionId: workflow.versionId,
 			parentFolderId: workflow.parentFolder?.id ?? null,
-			active: workflow.activeVersionId === workflow.versionId,
+			active: workflow.activeVersionId !== null,
 			isArchived: workflow.isArchived,
 		});
 	}
