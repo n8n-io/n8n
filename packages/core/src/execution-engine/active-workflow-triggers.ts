@@ -155,7 +155,10 @@ export class ActiveWorkflowTriggers {
 	 * function is reported but does not stop the remaining cleanup, and the
 	 * original activation error is still surfaced to the caller.
 	 */
-	private async rollbackPartialActivation(workflowId: string, triggers: WorkflowActiveTriggersState) {
+	private async rollbackPartialActivation(
+		workflowId: string,
+		triggers: WorkflowActiveTriggersState,
+	) {
 		// Stop the crons first: deregistration is synchronous and is what actually
 		// prevents the failed activation from continuing to fire.
 		this.scheduledTaskManager.deregisterCrons(workflowId);
