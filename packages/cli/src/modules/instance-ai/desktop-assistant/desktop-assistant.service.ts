@@ -21,6 +21,7 @@ import type {
 	ExecutionStatus,
 	INode,
 	INodeCredentialDescription,
+	INodeParameters,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -195,8 +196,16 @@ export class DesktopAssistantService {
 			if (!description) continue;
 			if (!Array.isArray(description.credentials) || description.credentials.length === 0) continue;
 
+			// Resolve defaults from the description before evaluating displayOptions.
+			// Many nodes (e.g. Gmail Trigger) gate their credentials on parameters
+			// whose values come from the description's default rather than being
+			// stored on the workflow JSON. Mirrors `resolveDisplayedDefaults` in
+			// the adapter service's getNodeCredentialTypes.
+			const resolvedParameters = this.resolveParametersWithDefaults(node, description);
+			const nodeWithDefaults: INode = { ...node, parameters: resolvedParameters };
+
 			const hasRequired = description.credentials.some((credentialDesc) =>
-				this.nodeRequiresCredential(credentialDesc, node, description),
+				this.nodeRequiresCredential(credentialDesc, nodeWithDefaults, description),
 			);
 			if (hasRequired) result.add(node.name);
 		}
@@ -208,6 +217,26 @@ export class DesktopAssistantService {
 			return this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
 		} catch {
 			return undefined;
+		}
+	}
+
+	private resolveParametersWithDefaults(
+		node: INode,
+		description: INodeTypeDescription,
+	): INodeParameters {
+		const parameters: INodeParameters = node.parameters ?? {};
+		try {
+			const resolved = NodeHelpers.getNodeParameters(
+				description.properties,
+				parameters,
+				true,
+				false,
+				node,
+				description,
+			);
+			return resolved ?? parameters;
+		} catch {
+			return parameters;
 		}
 	}
 
