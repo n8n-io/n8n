@@ -53,19 +53,12 @@ function onSubmit(resumeData: unknown) {
 		@submit="onSubmit"
 	/>
 	<AskCredentialCard
-		v-else-if="payload.toolName === ASK_CREDENTIAL_TOOL_NAME && projectId && agentId"
-		:purpose="payload.input.purpose"
-		:credential-type="payload.input.credentialType"
-		:node-type="payload.input.nodeType"
-		:credential-slot="payload.input.credentialSlot"
-		:project-id="projectId"
-		:agent-id="agentId"
-		:disabled="disabled"
-		:resolved-value="payload.resolvedValue"
-		@submit="onSubmit"
-	/>
-	<AskCredentialCard
-		v-else-if="payload.toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME && projectId && agentId"
+		v-else-if="
+			(payload.toolName === ASK_CREDENTIAL_TOOL_NAME ||
+				payload.toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) &&
+			projectId &&
+			agentId
+		"
 		:purpose="payload.input.purpose"
 		:credential-type="payload.input.credentialType"
 		:node-type="payload.input.nodeType"

@@ -29,8 +29,6 @@ import { summariseToolCall } from '../utils/interactive-summary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 export { type ChatMessageStatus, type ToolCallState };
 
-type LocalInteractiveToolName = InteractiveToolName | typeof ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
-
 // ---------------------------------------------------------------------------
 // Tool call state — type lives in `../constants` so the literal values and
 // the type stay in one place. See ToolCallState there for state transitions.
@@ -122,9 +120,9 @@ const INTERACTIVE_TOOL_NAMES = [
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
-] as readonly LocalInteractiveToolName[];
+] as readonly InteractiveToolName[];
 
-export function isInteractiveToolName(v: unknown): v is LocalInteractiveToolName {
+export function isInteractiveToolName(v: unknown): v is InteractiveToolName {
 	return typeof v === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(v);
 }
 
