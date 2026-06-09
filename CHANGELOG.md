@@ -1,3 +1,6 @@
+## [2.26.1](https://github.com/n8n-io/n8n/compare/n8n@2.26.0...n8n@2.26.1) (2026-06-09)
+
+
 # [2.26.0](https://github.com/n8n-io/n8n/compare/n8n@2.25.1...n8n@2.26.0) (2026-06-09)
 
 
